@@ -22,17 +22,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
   const auditLogOrm = ormify(db, TableName.AuditLog);
 
   const find = async (
-    {
-      orgId,
-      projectId,
-      userAgentType,
-      startDate,
-      endDate,
-      limit = 20,
-      offset = 0,
-      actor,
-      eventType
-    }: TFindQuery,
+    { orgId, projectId, userAgentType, startDate, endDate, limit = 20, offset = 0, actor, eventType }: TFindQuery,
     tx?: Knex
   ) => {
     const sqlQuery = (tx || db)(TableName.AuditLog)

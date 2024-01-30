@@ -22,8 +22,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
     }
 
     const decodedToken = jwt.verify(token, cfg.AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
-    if (decodedToken.authTokenType !== AuthTokenType.MFA_TOKEN)
-      throw new Error("Unauthorized access");
+    if (decodedToken.authTokenType !== AuthTokenType.MFA_TOKEN) throw new Error("Unauthorized access");
 
     const user = await server.store.user.findById(decodedToken.userId);
     if (!user) throw new Error("User not found");

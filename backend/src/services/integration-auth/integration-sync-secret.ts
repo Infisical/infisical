@@ -26,9 +26,7 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { Integrations, IntegrationUrls } from "./integration-list";
 
-const getSecretKeyValuePair = (
-  secrets: Record<string, { value: string | null; comment?: string } | null>
-) =>
+const getSecretKeyValuePair = (secrets: Record<string, { value: string | null; comment?: string } | null>) =>
   Object.keys(secrets).reduce<Record<string, string | null | undefined>>((prev, key) => {
     // eslint-disable-next-line
     prev[key] = secrets?.[key] === null ? null : secrets?.[key]?.value;
@@ -289,9 +287,7 @@ const syncSecretsAzureKeyVault = async ({
     return result;
   };
 
-  const getAzureKeyVaultSecrets = await paginateAzureKeyVaultSecrets(
-    `${integration.app}/secrets?api-version=7.3`
-  );
+  const getAzureKeyVaultSecrets = await paginateAzureKeyVaultSecrets(`${integration.app}/secrets?api-version=7.3`);
 
   let lastSlashIndex: number;
   const res = (
@@ -301,14 +297,11 @@ const syncSecretsAzureKeyVault = async ({
           lastSlashIndex = getAzureKeyVaultSecret.id.lastIndexOf("/");
         }
 
-        const azureKeyVaultSecret = await request.get(
-          `${getAzureKeyVaultSecret.id}?api-version=7.3`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`
-            }
+        const azureKeyVaultSecret = await request.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
           }
-        );
+        });
 
         return {
           ...azureKeyVaultSecret.data,
@@ -701,11 +694,7 @@ const syncSecretsVercel = async ({
       return false;
     }
 
-    if (
-      integration.targetEnvironment === "preview" &&
-      secret.gitBranch &&
-      integration.path !== secret.gitBranch
-    ) {
+    if (integration.targetEnvironment === "preview" && secret.gitBranch && integration.path !== secret.gitBranch) {
       // case: secret on preview environment does not have same target git branch
       return false;
     }
@@ -719,16 +708,13 @@ const syncSecretsVercel = async ({
     if (vercelSecret.type === "encrypted") {
       // case: secret is encrypted -> need to decrypt
       const decryptedSecret = (
-        await request.get(
-          `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${integration.app}/env/${vercelSecret.id}`,
-          {
-            params,
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Accept-Encoding": "application/json"
-            }
+        await request.get(`${IntegrationUrls.VERCEL_API_URL}/v9/projects/${integration.app}/env/${vercelSecret.id}`, {
+          params,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
           }
-        )
+        })
       ).data;
 
       res[vercelSecret.key] = decryptedSecret;
@@ -798,47 +784,36 @@ const syncSecretsVercel = async ({
 
   // Sync/push new secrets
   if (newSecrets.length > 0) {
-    await request.post(
-      `${IntegrationUrls.VERCEL_API_URL}/v10/projects/${integration.app}/env`,
-      newSecrets,
-      {
-        params,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json"
-        }
+    await request.post(`${IntegrationUrls.VERCEL_API_URL}/v10/projects/${integration.app}/env`, newSecrets, {
+      params,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
       }
-    );
+    });
   }
 
   for await (const secret of updateSecrets) {
     if (secret.type !== "sensitive") {
       const { id, ...updatedSecret } = secret;
-      await request.patch(
-        `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${integration.app}/env/${id}`,
-        updatedSecret,
-        {
-          params,
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json"
-          }
-        }
-      );
-    }
-  }
-
-  for await (const secret of deleteSecrets) {
-    await request.delete(
-      `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
-      {
+      await request.patch(`${IntegrationUrls.VERCEL_API_URL}/v9/projects/${integration.app}/env/${id}`, updatedSecret, {
         params,
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Accept-Encoding": "application/json"
         }
+      });
+    }
+  }
+
+  for await (const secret of deleteSecrets) {
+    await request.delete(`${IntegrationUrls.VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`, {
+      params,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
       }
-    );
+    });
   }
 };
 
@@ -1366,9 +1341,7 @@ const syncSecretsFlyio = async ({
     )
   ).data.data.app.secrets;
 
-  const deleteSecretsKeys = getSecretsRes
-    .filter((secret) => !(secret.name in secrets))
-    .map((secret) => secret.name);
+  const deleteSecretsKeys = getSecretsRes.filter((secret) => !(secret.name in secrets)).map((secret) => secret.name);
 
   // unset (delete) secrets
   const DeleteSecrets = `mutation($input: UnsetSecretsInput!) {
@@ -1593,9 +1566,7 @@ const syncSecretsGitLab = async ({
     environment_scope: string;
   }
 
-  const gitLabApiUrl = integrationAuth.url
-    ? `${integrationAuth.url}/api`
-    : IntegrationUrls.GITLAB_API_URL;
+  const gitLabApiUrl = integrationAuth.url ? `${integrationAuth.url}/api` : IntegrationUrls.GITLAB_API_URL;
 
   const getAllEnvVariables = async (integrationAppId: string, accToken: string) => {
     const headers = {
@@ -1605,8 +1576,7 @@ const syncSecretsGitLab = async ({
     };
 
     let allEnvVariables: GitLabSecret[] = [];
-    let url: string | null =
-      `${gitLabApiUrl}/v4/projects/${integrationAppId}/variables?per_page=100`;
+    let url: string | null = `${gitLabApiUrl}/v4/projects/${integrationAppId}/variables?per_page=100`;
 
     while (url) {
       const response = await request.get(url, { headers });
@@ -1740,29 +1710,21 @@ const syncSecretsSupabase = async ({
     if (
       !(secretObj.name in secrets) &&
       // supbase reserved secret ref: https://supabase.com/docs/guides/functions/secrets#default-secrets
-      ![
-        "SUPABASE_ANON_KEY",
-        "SUPABASE_SERVICE_ROLE_KEY",
-        "SUPABASE_DB_URL",
-        "SUPABASE_URL"
-      ].includes(secretObj.name)
+      !["SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_DB_URL", "SUPABASE_URL"].includes(secretObj.name)
     ) {
       return secretObj.name;
     }
     return [];
   });
 
-  await request.delete(
-    `${IntegrationUrls.SUPABASE_API_URL}/v1/projects/${integration.appId}/secrets`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "Accept-Encoding": "application/json"
-      },
-      data: secretsToDelete
-    }
-  );
+  await request.delete(`${IntegrationUrls.SUPABASE_API_URL}/v1/projects/${integration.appId}/secrets`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      "Accept-Encoding": "application/json"
+    },
+    data: secretsToDelete
+  });
 };
 
 /**
@@ -1841,16 +1803,13 @@ const syncSecretsCheckly = async ({
     // sync secrets to checkly global envars
 
     let getSecretsRes = (
-      await request.get<{ key: string; value: string }[]>(
-        `${IntegrationUrls.CHECKLY_API_URL}/v1/variables`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
-            "X-Checkly-Account": integration.appId
-          }
+      await request.get<{ key: string; value: string }[]>(`${IntegrationUrls.CHECKLY_API_URL}/v1/variables`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json",
+          "X-Checkly-Account": integration.appId
         }
-      )
+      })
     ).data.reduce(
       (obj, secret) => ({
         ...obj,
@@ -2260,15 +2219,12 @@ const syncSecretsTeamCity = async ({
     for await (const key of Object.keys(res)) {
       if (!(key in secrets)) {
         // delete secret
-        await request.delete(
-          `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters/env.${key}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/json"
-            }
+        await request.delete(`${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters/env.${key}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
           }
-        );
+        });
       }
     }
   }
@@ -2353,15 +2309,12 @@ const syncSecretsCloudflarePages = async ({
   const getSecretsRes = (
     await request.get<{
       result: { deployment_configs: Record<string, { env_vars: Record<string, unknown> }> };
-    }>(
-      `${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
-        }
+    }>(`${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
       }
-    )
+    })
   ).data.result.deployment_configs[integration.targetEnvironment as string].env_vars;
 
   // copy the secrets object, so we can set deleted keys to null
@@ -2420,10 +2373,7 @@ const syncSecretsCloudflareWorkers = async ({
   ).data.result;
 
   const secretsObj = Object.fromEntries(
-    Object.entries(getSecretKeyValuePair(secrets)).map(([key, val]) => [
-      key,
-      { type: "secret_text", value: val }
-    ])
+    Object.entries(getSecretKeyValuePair(secrets)).map(([key, val]) => [key, { type: "secret_text", value: val }])
   );
 
   // get deleted secrets list
@@ -2463,13 +2413,11 @@ const syncSecretsCloudflareWorkers = async ({
     };
   }
 
-  const data: ConvertedSecret[] = Object.entries(secretsObj as SecretsObj).map(
-    ([name, secret]) => ({
-      name,
-      text: secret.value,
-      type: "secret_text"
-    })
-  );
+  const data: ConvertedSecret[] = Object.entries(secretsObj as SecretsObj).map(([name, secret]) => ({
+    name,
+    text: secret.value,
+    type: "secret_text"
+  }));
 
   await Promise.all(
     data.map(async (secret) => {
@@ -2697,15 +2645,12 @@ const syncSecretsWindmill = async ({
 
   // get secrets stored in windmill workspace
   const res = (
-    await request.get<WindmillSecret[]>(
-      `${IntegrationUrls.WINDMILL_API_URL}/w/${integration.appId}/variables/list`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json"
-        }
+    await request.get<WindmillSecret[]>(`${IntegrationUrls.WINDMILL_API_URL}/w/${integration.appId}/variables/list`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
       }
-    )
+    })
   ).data.reduce(
     (obj, secret) => ({
       ...obj,
@@ -2858,15 +2803,12 @@ const syncSecretsCloud66 = async ({
   for await (const key of Object.keys(res)) {
     if (!(key in secrets)) {
       // delete secret
-      await request.delete(
-        `${IntegrationUrls.CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments/${key}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json"
-          }
+      await request.delete(`${IntegrationUrls.CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments/${key}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
         }
-      );
+      });
     }
   }
 };
@@ -2920,8 +2862,7 @@ const syncSecretsHasuraCloud = async ({
   const res = await request.post(
     IntegrationUrls.HASURA_CLOUD_API_URL,
     {
-      query:
-        "query MyQuery($tenantId: uuid!) { getTenantEnv(tenantId: $tenantId) { hash envVars } }",
+      query: "query MyQuery($tenantId: uuid!) { getTenantEnv(tenantId: $tenantId) { hash envVars } }",
       variables: {
         tenantId: integration.appId
       }

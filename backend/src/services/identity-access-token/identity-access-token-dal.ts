@@ -14,11 +14,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     try {
       const doc = await (tx || db)(TableName.IdentityAccessToken)
         .where(filter)
-        .join(
-          TableName.Identity,
-          `${TableName.Identity}.id`,
-          `${TableName.IdentityAccessToken}.identityId`
-        )
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityAccessToken}.identityId`)
         .leftJoin(
           TableName.IdentityUaClientSecret,
           `${TableName.IdentityAccessToken}.identityUAClientSecretId`,

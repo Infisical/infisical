@@ -119,10 +119,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { token, user } = await server.services.password.verifyPasswordResetEmail(
-        req.body.email,
-        req.body.code
-      );
+      const { token, user } = await server.services.password.verifyPasswordResetEmail(req.body.email, req.body.code);
 
       return {
         message: "Successfully verified email",
@@ -183,9 +180,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const token = validateSignUpAuthorization(req.headers.authorization as string, "", false)!;
-      const backupPrivateKey = await server.services.password.getBackupPrivateKeyOfUser(
-        token.userId
-      );
+      const backupPrivateKey = await server.services.password.getBackupPrivateKeyOfUser(token.userId);
       if (!backupPrivateKey) throw new Error("Failed to find backup key");
 
       return { message: "Successfully fetched backup private key", backupPrivateKey };

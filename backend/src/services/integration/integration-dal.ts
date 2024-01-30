@@ -66,11 +66,7 @@ export const integrationDALFactory = (db: TDbClient) => {
     try {
       const integrations = await (tx || db)(TableName.Integration)
         .where(`${TableName.Environment}.projectId`, projectId)
-        .join(
-          TableName.Environment,
-          `${TableName.Integration}.envId`,
-          `${TableName.Environment}.id`
-        )
+        .join(TableName.Environment, `${TableName.Integration}.envId`, `${TableName.Environment}.id`)
         .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
         .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
         .select(db.ref("id").withSchema(TableName.Environment).as("envId"))
@@ -99,11 +95,7 @@ export const integrationDALFactory = (db: TDbClient) => {
       .where("isActive", true)
       .where(`${TableName.Environment}.slug`, environment)
       .join(TableName.Environment, `${TableName.Integration}.envId`, `${TableName.Environment}.id`)
-      .join(
-        TableName.IntegrationAuth,
-        `${TableName.IntegrationAuth}.id`,
-        `${TableName.Integration}.integrationAuthId`
-      )
+      .join(TableName.IntegrationAuth, `${TableName.IntegrationAuth}.id`, `${TableName.Integration}.integrationAuthId`)
       .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
       .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
       .select(db.ref("id").withSchema(TableName.Environment).as("envId"))
@@ -119,10 +111,7 @@ export const integrationDALFactory = (db: TDbClient) => {
         db.ref("refreshCiphertext").withSchema(TableName.IntegrationAuth).as("refreshCiphertextAu"),
         db.ref("refreshIV").withSchema(TableName.IntegrationAuth).as("refreshIVAu"),
         db.ref("refreshTag").withSchema(TableName.IntegrationAuth).as("refreshTagAu"),
-        db
-          .ref("accessIdCiphertext")
-          .withSchema(TableName.IntegrationAuth)
-          .as("accessIdCiphertextAu"),
+        db.ref("accessIdCiphertext").withSchema(TableName.IntegrationAuth).as("accessIdCiphertextAu"),
         db.ref("accessIdIV").withSchema(TableName.IntegrationAuth).as("accessIdIVAu"),
         db.ref("accessIdTag").withSchema(TableName.IntegrationAuth).as("accessIdTagAu"),
         db.ref("accessIV").withSchema(TableName.IntegrationAuth).as("accessIVAu"),

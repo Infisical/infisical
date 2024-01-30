@@ -27,9 +27,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
   // passport oauth strategy for Google
-  const isGoogleOauthActive = Boolean(
-    appCfg.CLIENT_ID_GOOGLE_LOGIN && appCfg.CLIENT_SECRET_GOOGLE_LOGIN
-  );
+  const isGoogleOauthActive = Boolean(appCfg.CLIENT_ID_GOOGLE_LOGIN && appCfg.CLIENT_SECRET_GOOGLE_LOGIN);
   if (isGoogleOauthActive) {
     passport.use(
       new GoogleStrategy(
@@ -70,9 +68,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   }
 
   // Passport strategy for Github
-  const isGithubOauthActive = Boolean(
-    appCfg.CLIENT_SECRET_GITHUB_LOGIN && appCfg.CLIENT_ID_GITHUB_LOGIN
-  );
+  const isGithubOauthActive = Boolean(appCfg.CLIENT_SECRET_GITHUB_LOGIN && appCfg.CLIENT_ID_GITHUB_LOGIN);
   if (isGithubOauthActive) {
     passport.use(
       new GitHubStrategy(
@@ -109,9 +105,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
 
   // passport strategy for gitlab
   const isGitlabOauthActive = Boolean(
-    appCfg.CLIENT_ID_GITLAB_LOGIN &&
-      appCfg.CLIENT_SECRET_GITLAB_LOGIN &&
-      appCfg.CLIENT_GITLAB_LOGIN_URL
+    appCfg.CLIENT_ID_GITLAB_LOGIN && appCfg.CLIENT_SECRET_GITLAB_LOGIN && appCfg.CLIENT_GITLAB_LOGIN_URL
   );
   if (isGitlabOauthActive) {
     passport.use(
@@ -180,15 +174,11 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     handler: (req, res) => {
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
-            req.passportUser.providerAuthToken
-          )}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
         );
       }
       return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(
-          req.passportUser.providerAuthToken
-        )}`
+        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
       );
     }
   });
@@ -225,15 +215,11 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     handler: (req, res) => {
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
-            req.passportUser.providerAuthToken
-          )}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
         );
       }
       return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(
-          req.passportUser.providerAuthToken
-        )}`
+        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
       );
     }
   });
@@ -272,15 +258,11 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     handler: (req, res) => {
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
-            req.passportUser.providerAuthToken
-          )}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
         );
       }
       return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(
-          req.passportUser.providerAuthToken
-        )}`
+        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
       );
     }
   });

@@ -16,12 +16,7 @@ import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { TProjectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 
-import {
-  orgAdminPermissions,
-  orgMemberPermissions,
-  orgNoAccessPermissions,
-  OrgPermissionSet
-} from "./org-permission";
+import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import {
   buildServiceTokenProjectPermission,
@@ -188,9 +183,9 @@ export const permissionServiceFactory = ({
     ? { permission: MongoAbility<ProjectPermissionSet, MongoQuery>; membership: undefined }
     : {
         permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-        membership: (T extends ActorType.USER
-          ? TProjectMemberships
-          : TIdentityProjectMemberships) & { permissions?: unknown };
+        membership: (T extends ActorType.USER ? TProjectMemberships : TIdentityProjectMemberships) & {
+          permissions?: unknown;
+        };
       };
 
   const getProjectPermission = async <T extends ActorType>(
@@ -214,9 +209,7 @@ export const permissionServiceFactory = ({
   };
 
   const getProjectPermissionByRole = async (role: string, projectId: string) => {
-    const isCustomRole = !Object.values(ProjectMembershipRole).includes(
-      role as ProjectMembershipRole
-    );
+    const isCustomRole = !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole);
     if (isCustomRole) {
       const projectRole = await projectRoleDAL.findOne({ slug: role, projectId });
       if (!projectRole) throw new BadRequestError({ message: "Role not found" });

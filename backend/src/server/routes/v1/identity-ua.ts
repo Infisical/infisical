@@ -39,11 +39,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identityUa, accessToken, identityAccessToken, validClientSecretInfo } =
-        await server.services.identityUa.login(
-          req.body.clientId,
-          req.body.clientSecret,
-          req.realIp
-        );
+        await server.services.identityUa.login(req.body.clientId, req.body.clientSecret, req.realIp);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -128,10 +124,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             identityId: identityUniversalAuth.identityId,
             accessTokenTTL: identityUniversalAuth.accessTokenTTL,
             accessTokenMaxTTL: identityUniversalAuth.accessTokenMaxTTL,
-            accessTokenTrustedIps:
-              identityUniversalAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
-            clientSecretTrustedIps:
-              identityUniversalAuth.clientSecretTrustedIps as TIdentityTrustedIp[],
+            accessTokenTrustedIps: identityUniversalAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
+            clientSecretTrustedIps: identityUniversalAuth.clientSecretTrustedIps as TIdentityTrustedIp[],
             accessTokenNumUsesLimit: identityUniversalAuth.accessTokenNumUsesLimit
           }
         }
@@ -197,10 +191,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             identityId: identityUniversalAuth.identityId,
             accessTokenTTL: identityUniversalAuth.accessTokenTTL,
             accessTokenMaxTTL: identityUniversalAuth.accessTokenMaxTTL,
-            accessTokenTrustedIps:
-              identityUniversalAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
-            clientSecretTrustedIps:
-              identityUniversalAuth.clientSecretTrustedIps as TIdentityTrustedIp[],
+            accessTokenTrustedIps: identityUniversalAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
+            clientSecretTrustedIps: identityUniversalAuth.clientSecretTrustedIps as TIdentityTrustedIp[],
             accessTokenNumUsesLimit: identityUniversalAuth.accessTokenNumUsesLimit
           }
         }
@@ -267,13 +259,12 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { clientSecret, clientSecretData, orgId } =
-        await server.services.identityUa.createUaClientSecret({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          identityId: req.params.identityId,
-          ...req.body
-        });
+      const { clientSecret, clientSecretData, orgId } = await server.services.identityUa.createUaClientSecret({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        identityId: req.params.identityId,
+        ...req.body
+      });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -306,12 +297,11 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { clientSecrets: clientSecretData, orgId } =
-        await server.services.identityUa.getUaClientSecrets({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          identityId: req.params.identityId
-        });
+      const { clientSecrets: clientSecretData, orgId } = await server.services.identityUa.getUaClientSecrets({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        identityId: req.params.identityId
+      });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

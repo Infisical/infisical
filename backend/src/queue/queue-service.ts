@@ -74,23 +74,18 @@ export const queueServiceFactory = (redisUrl: string) => {
 
   const start = <T extends QueueName>(
     name: T,
-    jobFn: (
-      job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>
-    ) => Promise<void>
+    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>) => Promise<void>
   ) => {
     if (queueContainer[name]) {
       throw new Error(`${name} queue is already initialized`);
     }
 
-    queueContainer[name] = new Queue<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(
-      name as string,
-      { connection }
-    );
-    workerContainer[name] = new Worker<
-      TQueueJobTypes[T]["payload"],
-      void,
-      TQueueJobTypes[T]["name"]
-    >(name, jobFn, { connection });
+    queueContainer[name] = new Queue<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name as string, {
+      connection
+    });
+    workerContainer[name] = new Worker<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name, jobFn, {
+      connection
+    });
   };
 
   const listen = <

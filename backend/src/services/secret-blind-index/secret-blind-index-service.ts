@@ -24,11 +24,7 @@ export const secretBlindIndexServiceFactory = ({
   permissionService,
   secretDAL
 }: TSecretBlindIndexServiceFactoryDep) => {
-  const getSecretBlindIndexStatus = async ({
-    actor,
-    projectId,
-    actorId
-  }: TGetProjectBlindIndexStatusDTO) => {
+  const getSecretBlindIndexStatus = async ({ actor, projectId, actorId }: TGetProjectBlindIndexStatusDTO) => {
     await permissionService.getProjectPermission(actor, actorId, projectId);
 
     const secretCount = await secretBlindIndexDAL.countOfSecretsWithNullSecretBlindIndex(projectId);
@@ -57,15 +53,13 @@ export const secretBlindIndexServiceFactory = ({
     }
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg)
-      throw new BadRequestError({ message: "Blind index not found", name: "CreateSecret" });
+    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "CreateSecret" });
 
     const secrets = await secretBlindIndexDAL.findSecretsByProjectId(
       projectId,
       secretsToUpdate.map(({ secretId }) => secretId)
     );
-    if (secrets.length !== secretsToUpdate.length)
-      throw new BadRequestError({ message: "Secret not found" });
+    if (secrets.length !== secretsToUpdate.length) throw new BadRequestError({ message: "Secret not found" });
 
     const operations = await Promise.all(
       secretsToUpdate.map(async ({ secretName, secretId: id }) => {

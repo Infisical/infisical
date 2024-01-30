@@ -82,9 +82,9 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           const serverCfg = getServerCfg();
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
           const { firstName } = profile;
-          const email = profile?.email ?? profile?.emailAddress as string // emailRippling is added because in Rippling the field `email` reserved
-          
-          if (!email || !firstName){
+          const email = profile?.email ?? (profile?.emailAddress as string); // emailRippling is added because in Rippling the field `email` reserved
+
+          if (!email || !firstName) {
             throw new BadRequestError({ message: "Invalid request. Missing email or first name" });
           }
 
@@ -150,15 +150,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     handler: (req, res) => {
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
-            req.passportUser.providerAuthToken
-          )}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
         );
       }
       return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(
-          req.passportUser.providerAuthToken
-        )}`
+        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
       );
     }
   });

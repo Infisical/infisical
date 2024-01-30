@@ -57,11 +57,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const data = await (tx || db)(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, snapshotId)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
-        .leftJoin(
-          TableName.SnapshotSecret,
-          `${TableName.Snapshot}.id`,
-          `${TableName.SnapshotSecret}.snapshotId`
-        )
+        .leftJoin(TableName.SnapshotSecret, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecret}.snapshotId`)
         .leftJoin(
           TableName.SecretVersion,
           `${TableName.SnapshotSecret}.secretVersionId`,
@@ -77,11 +73,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
           `${TableName.SecretVersionTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
-        .leftJoin(
-          TableName.SnapshotFolder,
-          `${TableName.SnapshotFolder}.snapshotId`,
-          `${TableName.Snapshot}.id`
-        )
+        .leftJoin(TableName.SnapshotFolder, `${TableName.SnapshotFolder}.snapshotId`, `${TableName.Snapshot}.id`)
         .leftJoin<TSecretFolderVersions>(
           TableName.SecretFolderVersion,
           `${TableName.SnapshotFolder}.folderVersionId`,
@@ -131,13 +123,13 @@ export const snapshotDALFactory = (db: TDbClient) => {
               {
                 key: "tagVersionId",
                 label: "tags" as const,
-                mapper: ({
-                  tagId: id,
-                  tagName: name,
-                  tagSlug: slug,
-                  tagColor: color,
-                  tagVersionId: vId
-                }) => ({ id, name, slug, color, vId })
+                mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
+                  id,
+                  name,
+                  slug,
+                  color,
+                  vId
+                })
               }
             ]
           },
@@ -192,11 +184,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
                   )
                   .from(TableName.Snapshot)
                   .join<TSecretSnapshots, TSecretSnapshots & { secretId: string; max: number }>(
-                    db(TableName.Snapshot)
-                      .groupBy("folderId")
-                      .max("createdAt")
-                      .select("folderId")
-                      .as("latestVersion"),
+                    db(TableName.Snapshot).groupBy("folderId").max("createdAt").select("folderId").as("latestVersion"),
                     `${TableName.Snapshot}.createdAt`,
                     "latestVersion.max"
                   )
@@ -215,11 +203,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
         })
         .orderBy("depth", "asc")
         .from<TSecretSnapshots & { folderVerId: string; folderVerName: string }>("parent")
-        .leftJoin<TSecretSnapshots>(
-          TableName.SnapshotSecret,
-          `parent.id`,
-          `${TableName.SnapshotSecret}.snapshotId`
-        )
+        .leftJoin<TSecretSnapshots>(TableName.SnapshotSecret, `parent.id`, `${TableName.SnapshotSecret}.snapshotId`)
         .leftJoin<TSecretVersions>(
           TableName.SecretVersion,
           `${TableName.SnapshotSecret}.secretVersionId`,
@@ -272,11 +256,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const formated = sqlNestRelationships({
         data,
         key: "snapshotId",
-        parentMapper: ({
-          snapshotId: id,
-          snapshotFolderId: folderId,
-          snapshotParentFolderId: parentFolderId
-        }) => ({
+        parentMapper: ({ snapshotId: id, snapshotFolderId: folderId, snapshotParentFolderId: parentFolderId }) => ({
           id,
           folderId,
           parentFolderId
@@ -293,13 +273,13 @@ export const snapshotDALFactory = (db: TDbClient) => {
               {
                 key: "tagVersionId",
                 label: "tags" as const,
-                mapper: ({
-                  tagId: id,
-                  tagName: name,
-                  tagSlug: slug,
-                  tagColor: color,
-                  tagVersionId: vId
-                }) => ({ id, name, slug, color, vId })
+                mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
+                  id,
+                  name,
+                  slug,
+                  color,
+                  vId
+                })
               }
             ]
           },
@@ -328,11 +308,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const docs = await (tx || db)(TableName.Snapshot)
         .where(`${TableName.Snapshot}.folderId`, folderId)
         .join<TSecretSnapshots>(
-          (tx || db)(TableName.Snapshot)
-            .groupBy("folderId")
-            .max("createdAt")
-            .select("folderId")
-            .as("latestVersion"),
+          (tx || db)(TableName.Snapshot).groupBy("folderId").max("createdAt").select("folderId").as("latestVersion"),
           (bd) => {
             bd.on(`${TableName.Snapshot}.folderId`, "latestVersion.folderId").andOn(
               `${TableName.Snapshot}.createdAt`,

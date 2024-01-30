@@ -117,12 +117,11 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const approvals =
-        await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          projectId: req.query.workspaceId
-        });
+      const approvals = await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        projectId: req.query.workspaceId
+      });
       return { approvals };
     }
   });

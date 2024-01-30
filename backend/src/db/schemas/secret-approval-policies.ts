@@ -19,6 +19,4 @@ export const SecretApprovalPoliciesSchema = z.object({
 
 export type TSecretApprovalPolicies = z.infer<typeof SecretApprovalPoliciesSchema>;
 export type TSecretApprovalPoliciesInsert = Omit<TSecretApprovalPolicies, TImmutableDBKeys>;
-export type TSecretApprovalPoliciesUpdate = Partial<
-  Omit<TSecretApprovalPolicies, TImmutableDBKeys>
->;
+export type TSecretApprovalPoliciesUpdate = Partial<Omit<TSecretApprovalPolicies, TImmutableDBKeys>>;

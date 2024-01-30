@@ -45,7 +45,5 @@ export async function seed(knex: Knex): Promise<void> {
       }))
     )
     .returning("*");
-  await knex(TableName.SecretFolder).insert(
-    envs.map(({ id }) => ({ name: "root", envId: id, parentId: null }))
-  );
+  await knex(TableName.SecretFolder).insert(envs.map(({ id }) => ({ name: "root", envId: id, parentId: null })));
 }

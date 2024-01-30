@@ -12,10 +12,7 @@ export const secretScanningDALFactory = (db: TDbClient) => {
 
   const upsert = async (data: TSecretScanningGitRisksInsert[], tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.SecretScanningGitRisk)
-        .insert(data)
-        .onConflict("fingerprint")
-        .merge();
+      const docs = await (tx || db)(TableName.SecretScanningGitRisk).insert(data).onConflict("fingerprint").merge();
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "GitRiskUpsert" });

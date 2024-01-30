@@ -41,11 +41,7 @@ export type TFindOpt<R extends object = object> = {
 // What is ormify
 // It is to inject typical operations like find, findOne, update, delete, create
 // This will avoid writing most common ones each time
-export const ormify = <DbOps extends object, Tname extends keyof Tables>(
-  db: Knex,
-  tableName: Tname,
-  dal?: DbOps
-) => ({
+export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Knex, tableName: Tname, dal?: DbOps) => ({
   transaction: async <T>(cb: (tx: Knex) => Promise<T>) =>
     db.transaction(async (trx) => {
       const res = await cb(trx);
@@ -78,9 +74,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {
-        void query.orderBy(
-          sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls }))
-        );
+        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
       const res = await query;
       return res;
@@ -120,11 +114,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
       throw new DatabaseError({ error, name: "Update by id" });
     }
   },
-  update: async (
-    filter: TFindFilter<Tables[Tname]["base"]>,
-    data: Tables[Tname]["update"],
-    tx?: Knex
-  ) => {
+  update: async (filter: TFindFilter<Tables[Tname]["base"]>, data: Tables[Tname]["update"], tx?: Knex) => {
     try {
       const res = await (tx || db)(tableName)
         .where(buildFindFilter(filter))
@@ -148,10 +138,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
   },
   delete: async (filter: TFindFilter<Tables[Tname]["base"]>, tx?: Knex) => {
     try {
-      const res = await (tx || db)(tableName)
-        .where(buildFindFilter(filter))
-        .delete()
-        .returning("*");
+      const res = await (tx || db)(tableName).where(buildFindFilter(filter)).delete().returning("*");
       return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete" });

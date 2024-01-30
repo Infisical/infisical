@@ -5,9 +5,7 @@ import { SecretApprovalRequestsSecretsSchema, TableName, TSecretTags } from "@ap
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
-export type TSecretApprovalRequestSecretDALFactory = ReturnType<
-  typeof secretApprovalRequestSecretDALFactory
->;
+export type TSecretApprovalRequestSecretDALFactory = ReturnType<typeof secretApprovalRequestSecretDALFactory>;
 
 export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   const secretApprovalRequestSecretOrm = ormify(db, TableName.SecretApprovalRequestSecret);
@@ -25,16 +23,8 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalRequestSecret}.id`,
           `${TableName.SecretApprovalRequestSecretTag}.secretId`
         )
-        .leftJoin(
-          TableName.SecretTag,
-          `${TableName.SecretApprovalRequestSecretTag}.tagId`,
-          `${TableName.SecretTag}.id`
-        )
-        .leftJoin(
-          TableName.Secret,
-          `${TableName.SecretApprovalRequestSecret}.secretId`,
-          `${TableName.Secret}.id`
-        )
+        .leftJoin(TableName.SecretTag, `${TableName.SecretApprovalRequestSecretTag}.tagId`, `${TableName.SecretTag}.id`)
+        .leftJoin(TableName.Secret, `${TableName.SecretApprovalRequestSecret}.secretId`, `${TableName.Secret}.id`)
         .leftJoin(
           TableName.SecretVersion,
           `${TableName.SecretVersion}.id`,
@@ -75,37 +65,24 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           db.ref("secretValueCiphertext").withSchema(TableName.Secret).as("orgSecValueCiphertext"),
           db.ref("secretCommentIV").withSchema(TableName.Secret).as("orgSecCommentIV"),
           db.ref("secretCommentTag").withSchema(TableName.Secret).as("orgSecCommentTag"),
-          db
-            .ref("secretCommentCiphertext")
-            .withSchema(TableName.Secret)
-            .as("orgSecCommentCiphertext")
+          db.ref("secretCommentCiphertext").withSchema(TableName.Secret).as("orgSecCommentCiphertext")
         )
         .select(
           db.ref("version").withSchema(TableName.SecretVersion).as("secVerVersion"),
           db.ref("secretKeyIV").withSchema(TableName.SecretVersion).as("secVerKeyIV"),
           db.ref("secretKeyTag").withSchema(TableName.SecretVersion).as("secVerKeyTag"),
-          db
-            .ref("secretKeyCiphertext")
-            .withSchema(TableName.SecretVersion)
-            .as("secVerKeyCiphertext"),
+          db.ref("secretKeyCiphertext").withSchema(TableName.SecretVersion).as("secVerKeyCiphertext"),
           db.ref("secretValueIV").withSchema(TableName.SecretVersion).as("secVerValueIV"),
           db.ref("secretValueTag").withSchema(TableName.SecretVersion).as("secVerValueTag"),
-          db
-            .ref("secretValueCiphertext")
-            .withSchema(TableName.SecretVersion)
-            .as("secVerValueCiphertext"),
+          db.ref("secretValueCiphertext").withSchema(TableName.SecretVersion).as("secVerValueCiphertext"),
           db.ref("secretCommentIV").withSchema(TableName.SecretVersion).as("secVerCommentIV"),
           db.ref("secretCommentTag").withSchema(TableName.SecretVersion).as("secVerCommentTag"),
-          db
-            .ref("secretCommentCiphertext")
-            .withSchema(TableName.SecretVersion)
-            .as("secVerCommentCiphertext")
+          db.ref("secretCommentCiphertext").withSchema(TableName.SecretVersion).as("secVerCommentCiphertext")
         );
       const formatedDoc = sqlNestRelationships({
         data: doc,
         key: "id",
-        parentMapper: (data) =>
-          SecretApprovalRequestsSecretsSchema.omit({ secretVersion: true }).parse(data),
+        parentMapper: (data) => SecretApprovalRequestsSecretsSchema.omit({ secretVersion: true }).parse(data),
         childrenMapper: [
           {
             key: "tagJnId",
@@ -186,12 +163,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
               {
                 key: "secVerTagId",
                 label: "tags" as const,
-                mapper: ({
-                  secVerTagId: id,
-                  secVerTagName: name,
-                  secVerTagSlug: slug,
-                  secVerTagColor: color
-                }) => ({
+                mapper: ({ secVerTagId: id, secVerTagName: name, secVerTagSlug: slug, secVerTagColor: color }) => ({
                   // eslint-disable-next-line
                   id,
                   // eslint-disable-next-line

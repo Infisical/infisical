@@ -24,9 +24,7 @@ export const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
  * Extracts and formats permissions from a CASL Ability object or a raw permission set.
  */
 const extractPermissions = (ability: MongoAbility) =>
-  ability.rules.map(
-    (permission) => `${permission.action as string}_${permission.subject as string}`
-  );
+  ability.rules.map((permission) => `${permission.action as string}_${permission.subject as string}`);
 
 /**
  * Compares two sets of permissions to determine if the first set is at least as privileged as the second set.

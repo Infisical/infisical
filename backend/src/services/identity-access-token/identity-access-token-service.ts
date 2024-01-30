@@ -7,18 +7,13 @@ import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 
 import { AuthTokenType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
-import {
-  TIdentityAccessTokenJwtPayload,
-  TRenewAccessTokenDTO
-} from "./identity-access-token-types";
+import { TIdentityAccessTokenJwtPayload, TRenewAccessTokenDTO } from "./identity-access-token-types";
 
 type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
 };
 
-export type TIdentityAccessTokenServiceFactory = ReturnType<
-  typeof identityAccessTokenServiceFactory
->;
+export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
 
 export const identityAccessTokenServiceFactory = ({
   identityAccessTokenDAL
@@ -33,11 +28,7 @@ export const identityAccessTokenServiceFactory = ({
       createdAt: accessTokenCreatedAt
     } = identityAccessToken;
 
-    if (
-      accessTokenNumUsesLimit > 0 &&
-      accessTokenNumUses > 0 &&
-      accessTokenNumUses >= accessTokenNumUsesLimit
-    ) {
+    if (accessTokenNumUsesLimit > 0 && accessTokenNumUses > 0 && accessTokenNumUses >= accessTokenNumUsesLimit) {
       throw new BadRequestError({
         message: "Unable to renew because access token number of uses limit reached"
       });
@@ -95,8 +86,7 @@ export const identityAccessTokenServiceFactory = ({
     const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload & {
       identityAccessTokenId: string;
     };
-    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN)
-      throw new UnauthorizedError();
+    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) throw new UnauthorizedError();
 
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: decodedToken.identityAccessTokenId,
@@ -106,20 +96,14 @@ export const identityAccessTokenServiceFactory = ({
 
     validateAccessTokenExp(identityAccessToken);
 
-    const updatedIdentityAccessToken = await identityAccessTokenDAL.updateById(
-      identityAccessToken.id,
-      {
-        accessTokenLastRenewedAt: new Date()
-      }
-    );
+    const updatedIdentityAccessToken = await identityAccessTokenDAL.updateById(identityAccessToken.id, {
+      accessTokenLastRenewedAt: new Date()
+    });
 
     return { accessToken, identityAccessToken: updatedIdentityAccessToken };
   };
 
-  const fnValidateIdentityAccessToken = async (
-    token: TIdentityAccessTokenJwtPayload,
-    ipAddress?: string
-  ) => {
+  const fnValidateIdentityAccessToken = async (token: TIdentityAccessTokenJwtPayload, ipAddress?: string) => {
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: token.identityAccessTokenId,
       isAccessTokenRevoked: false

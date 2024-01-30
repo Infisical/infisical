@@ -1,9 +1,4 @@
-import {
-  FastifyInstance,
-  RawReplyDefaultExpression,
-  RawRequestDefaultExpression,
-  RawServerDefault
-} from "fastify";
+import { FastifyInstance, RawReplyDefaultExpression, RawRequestDefaultExpression, RawServerDefault } from "fastify";
 import { Logger } from "pino";
 
 import { ZodTypeProvider } from "@app/server/plugins/fastify-zod";

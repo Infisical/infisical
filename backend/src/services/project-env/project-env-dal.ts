@@ -12,9 +12,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
 
   const findBySlugs = async (projectId: string, env: string[], tx?: Knex) => {
     try {
-      const envs = await (tx || db)(TableName.Environment)
-        .where("projectId", projectId)
-        .whereIn("slug", env);
+      const envs = await (tx || db)(TableName.Environment).where("projectId", projectId).whereIn("slug", env);
       return envs;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by slugs" });
@@ -31,12 +29,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     return lastPos?.position || 0;
   };
 
-  const updateAllPosition = async (
-    projectId: string,
-    pos: number,
-    targetPos: number,
-    tx?: Knex
-  ) => {
+  const updateAllPosition = async (projectId: string, pos: number, targetPos: number, tx?: Knex) => {
     try {
       if (targetPos === -1) {
         // this means delete

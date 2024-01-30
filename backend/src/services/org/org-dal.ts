@@ -11,13 +11,7 @@ import {
   TUserEncryptionKeys
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import {
-  buildFindFilter,
-  selectAllTableCols,
-  TFindFilter,
-  TFindOpt,
-  withTransaction
-} from "@app/lib/knex";
+import { buildFindFilter, selectAllTableCols, TFindFilter, TFindOpt, withTransaction } from "@app/lib/knex";
 
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
 
@@ -36,11 +30,7 @@ export const orgDALFactory = (db: TDbClient) => {
     try {
       const org = await db(TableName.OrgMembership)
         .where({ userId })
-        .join(
-          TableName.Organization,
-          `${TableName.OrgMembership}.orgId`,
-          `${TableName.Organization}.id`
-        )
+        .join(TableName.Organization, `${TableName.OrgMembership}.orgId`, `${TableName.Organization}.id`)
         .select(selectAllTableCols(TableName.Organization));
       return org;
     } catch (error) {
@@ -105,10 +95,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const deleteById = async (orgId: string, tx?: Knex) => {
     try {
-      const [org] = await (tx || db)(TableName.Organization)
-        .where({ id: orgId })
-        .delete()
-        .returning("*");
+      const [org] = await (tx || db)(TableName.Organization).where({ id: orgId }).delete().returning("*");
       return org;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update organization" });
@@ -142,26 +129,16 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const updateMembershipById = async (id: string, data: TOrgMembershipsUpdate, tx?: Knex) => {
     try {
-      const [membership] = await (tx || db)(TableName.OrgMembership)
-        .where({ id })
-        .update(data)
-        .returning("*");
+      const [membership] = await (tx || db)(TableName.OrgMembership).where({ id }).update(data).returning("*");
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update org membership" });
     }
   };
 
-  const updateMembership = async (
-    filter: Partial<TOrgMemberships>,
-    data: TOrgMembershipsUpdate,
-    tx?: Knex
-  ) => {
+  const updateMembership = async (filter: Partial<TOrgMemberships>, data: TOrgMembershipsUpdate, tx?: Knex) => {
     try {
-      const membership = await (tx || db)(TableName.OrgMembership)
-        .where(filter)
-        .update(data)
-        .returning("*");
+      const membership = await (tx || db)(TableName.OrgMembership).where(filter).update(data).returning("*");
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update org memberships" });
@@ -170,10 +147,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const deleteMembershipById = async (id: string, orgId: string, tx?: Knex) => {
     try {
-      const [membership] = await (tx || db)(TableName.OrgMembership)
-        .where({ id, orgId })
-        .delete()
-        .returning("*");
+      const [membership] = await (tx || db)(TableName.OrgMembership).where({ id, orgId }).delete().returning("*");
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete org membership" });
@@ -189,16 +163,11 @@ export const orgDALFactory = (db: TDbClient) => {
         // eslint-disable-next-line
         .where(buildFindFilter(filter))
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
-        .select(
-          selectAllTableCols(TableName.OrgMembership),
-          db.ref("email").withSchema(TableName.Users)
-        );
+        .select(selectAllTableCols(TableName.OrgMembership), db.ref("email").withSchema(TableName.Users));
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {
-        void query.orderBy(
-          sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls }))
-        );
+        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
       const res = await query;
       return res;

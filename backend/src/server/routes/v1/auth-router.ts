@@ -5,11 +5,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import {
-  AuthMode,
-  AuthModeRefreshJwtTokenPayload,
-  AuthTokenType
-} from "@app/services/auth/auth-type";
+import { AuthMode, AuthModeRefreshJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 
 export const registerAuthRoutes = async (server: FastifyZodProvider) => {
   server.route({
@@ -74,10 +70,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
           message: "Failed  to find refresh token"
         });
 
-      const decodedToken = jwt.verify(
-        refreshToken,
-        appCfg.AUTH_SECRET
-      ) as AuthModeRefreshJwtTokenPayload;
+      const decodedToken = jwt.verify(refreshToken, appCfg.AUTH_SECRET) as AuthModeRefreshJwtTokenPayload;
       if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN)
         throw new UnauthorizedError({ message: "Invalid token", name: "Auth token route" });
 
@@ -85,8 +78,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         decodedToken.tokenVersionId,
         decodedToken.userId
       );
-      if (!tokenVersion)
-        throw new UnauthorizedError({ message: "Invalid token", name: "Auth token route" });
+      if (!tokenVersion) throw new UnauthorizedError({ message: "Invalid token", name: "Auth token route" });
 
       if (decodedToken.refreshVersion !== tokenVersion.refreshVersion)
         throw new UnauthorizedError({ message: "Invalid token", name: "Auth token route" });

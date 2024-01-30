@@ -518,13 +518,7 @@ const exchangeRefreshHeroku = async ({ refreshToken }: { refreshToken: string })
  * @param {String} obj.refreshToken - refresh token to use to get new access token for GitLab
  * @returns
  */
-const exchangeRefreshGitLab = async ({
-  refreshToken,
-  url
-}: {
-  url?: string | null;
-  refreshToken: string;
-}) => {
+const exchangeRefreshGitLab = async ({ refreshToken, url }: { url?: string | null; refreshToken: string }) => {
   const accessExpiresAt = new Date();
   const appCfg = getConfig();
   if (!appCfg.CLIENT_ID_GITLAB || !appCfg.CLIENT_SECRET_GITLAB) {
@@ -628,19 +622,18 @@ const exchangeRefreshGCPSecretManager = async ({
 
     const token = jwt.sign(payload, serviceAccount.private_key, { algorithm: "RS256" });
 
-    const { data }: { data: ServiceAccountAccessTokenGCPSecretManagerResponse } =
-      await request.post(
-        IntegrationUrls.GCP_TOKEN_URL,
-        new URLSearchParams({
-          grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-          assertion: token
-        }).toString(),
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-          }
+    const { data }: { data: ServiceAccountAccessTokenGCPSecretManagerResponse } = await request.post(
+      IntegrationUrls.GCP_TOKEN_URL,
+      new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        assertion: token
+      }).toString(),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
         }
-      );
+      }
+    );
 
     accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + data.expires_in);
 

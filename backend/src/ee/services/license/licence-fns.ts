@@ -31,11 +31,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretRotation: true
 });
 
-export const setupLicenceRequestWithStore = (
-  baseURL: string,
-  refreshUrl: string,
-  licenseKey: string
-) => {
+export const setupLicenceRequestWithStore = (baseURL: string, refreshUrl: string, licenseKey: string) => {
   let token: string;
   const licenceReq = axios.create({
     baseURL,

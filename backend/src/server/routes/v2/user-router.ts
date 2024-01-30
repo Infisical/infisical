@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-import {
-  AuthTokenSessionsSchema,
-  OrganizationsSchema,
-  UserEncryptionKeysSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { AuthTokenSessionsSchema, OrganizationsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { ApiKeysSchema } from "@app/db/schemas/api-keys";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode } from "@app/services/auth/auth-type";
@@ -26,10 +21,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const user = await server.services.user.toggleUserMfa(
-        req.permission.id,
-        req.body.isMfaEnabled
-      );
+      const user = await server.services.user.toggleUserMfa(req.permission.id, req.body.isMfaEnabled);
       return { user };
     }
   });
@@ -50,11 +42,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const user = await server.services.user.updateUserName(
-        req.permission.id,
-        req.body.firstName,
-        req.body.lastName
-      );
+      const user = await server.services.user.updateUserName(req.permission.id, req.body.firstName, req.body.lastName);
       return { user };
     }
   });
@@ -74,10 +62,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const user = await server.services.user.updateAuthMethods(
-        req.permission.id,
-        req.body.authMethods
-      );
+      const user = await server.services.user.updateAuthMethods(req.permission.id, req.body.authMethods);
       return { user };
     }
   });
@@ -131,11 +116,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const apiKeys = await server.services.apiKey.createApiKey(
-        req.permission.id,
-        req.body.name,
-        req.body.expiresIn
-      );
+      const apiKeys = await server.services.apiKey.createApiKey(req.permission.id, req.body.name, req.body.expiresIn);
       return apiKeys;
     }
   });
@@ -155,10 +136,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const apiKeyData = await server.services.apiKey.deleteApiKey(
-        req.permission.id,
-        req.params.apiKeyDataId
-      );
+      const apiKeyData = await server.services.apiKey.deleteApiKey(req.permission.id, req.params.apiKeyDataId);
       return { apiKeyData };
     }
   });

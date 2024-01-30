@@ -11,17 +11,9 @@ export type TSecretDALFactory = ReturnType<typeof secretDALFactory>;
 export const secretDALFactory = (db: TDbClient) => {
   const secretOrm = ormify(db, TableName.Secret);
 
-  const update = async (
-    filter: Partial<TSecrets>,
-    data: Omit<TSecretsUpdate, "version">,
-    tx?: Knex
-  ) => {
+  const update = async (filter: Partial<TSecrets>, data: Omit<TSecretsUpdate, "version">, tx?: Knex) => {
     try {
-      const sec = await (tx || db)(TableName.Secret)
-        .where(filter)
-        .update(data)
-        .increment("version", 1)
-        .returning("*");
+      const sec = await (tx || db)(TableName.Secret).where(filter).update(data).increment("version", 1).returning("*");
       return sec;
     } catch (error) {
       throw new DatabaseError({ error, name: "update secret" });
@@ -30,10 +22,7 @@ export const secretDALFactory = (db: TDbClient) => {
 
   // the idea is to use postgres specific function
   // insert with id this will cause a conflict then merge the data
-  const bulkUpdate = async (
-    data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
-    tx?: Knex
-  ) => {
+  const bulkUpdate = async (data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>, tx?: Knex) => {
     try {
       const secs = await Promise.all(
         data.map(async ({ filter, data: updateData }) => {
@@ -91,16 +80,8 @@ export const secretDALFactory = (db: TDbClient) => {
         .where((bd) => {
           void bd.whereNull("userId").orWhere({ userId: userId || null });
         })
-        .leftJoin(
-          TableName.JnSecretTag,
-          `${TableName.Secret}.id`,
-          `${TableName.JnSecretTag}.${TableName.Secret}Id`
-        )
-        .leftJoin(
-          TableName.SecretTag,
-          `${TableName.JnSecretTag}.${TableName.SecretTag}Id`,
-          `${TableName.SecretTag}.id`
-        )
+        .leftJoin(TableName.JnSecretTag, `${TableName.Secret}.id`, `${TableName.JnSecretTag}.${TableName.Secret}Id`)
+        .leftJoin(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
         .select(selectAllTableCols(TableName.Secret))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))

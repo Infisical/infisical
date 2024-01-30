@@ -11,23 +11,14 @@ export async function up(knex: Knex): Promise<void> {
       t.boolean("hasMerged").defaultTo(false).notNullable();
       t.string("status").defaultTo("open").notNullable();
       t.jsonb("conflicts");
-      t.foreign("policyId")
-        .references("id")
-        .inTable(TableName.SecretApprovalPolicy)
-        .onDelete("CASCADE");
+      t.foreign("policyId").references("id").inTable(TableName.SecretApprovalPolicy).onDelete("CASCADE");
       t.string("slug").notNullable();
       t.uuid("folderId").notNullable();
       t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
       t.uuid("statusChangeBy");
-      t.foreign("statusChangeBy")
-        .references("id")
-        .inTable(TableName.ProjectMembership)
-        .onDelete("SET NULL");
+      t.foreign("statusChangeBy").references("id").inTable(TableName.ProjectMembership).onDelete("SET NULL");
       t.uuid("committerId").notNullable();
-      t.foreign("committerId")
-        .references("id")
-        .inTable(TableName.ProjectMembership)
-        .onDelete("CASCADE");
+      t.foreign("committerId").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
   }
@@ -40,10 +31,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("member").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
       t.string("status").notNullable();
       t.uuid("requestId").notNullable();
-      t.foreign("requestId")
-        .references("id")
-        .inTable(TableName.SecretApprovalRequest)
-        .onDelete("CASCADE");
+      t.foreign("requestId").references("id").inTable(TableName.SecretApprovalRequest).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
   }
@@ -73,18 +61,12 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
       // commit details
       t.uuid("requestId").notNullable();
-      t.foreign("requestId")
-        .references("id")
-        .inTable(TableName.SecretApprovalRequest)
-        .onDelete("CASCADE");
+      t.foreign("requestId").references("id").inTable(TableName.SecretApprovalRequest).onDelete("CASCADE");
       t.string("op").notNullable();
       t.uuid("secretId");
       t.foreign("secretId").references("id").inTable(TableName.Secret).onDelete("SET NULL");
       t.uuid("secretVersion");
-      t.foreign("secretVersion")
-        .references("id")
-        .inTable(TableName.SecretVersion)
-        .onDelete("SET NULL");
+      t.foreign("secretVersion").references("id").inTable(TableName.SecretVersion).onDelete("SET NULL");
     });
   }
   await createOnUpdateTrigger(knex, TableName.SecretApprovalRequestSecret);
@@ -93,10 +75,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.SecretApprovalRequestSecretTag, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("secretId").notNullable();
-      t.foreign("secretId")
-        .references("id")
-        .inTable(TableName.SecretApprovalRequestSecret)
-        .onDelete("CASCADE");
+      t.foreign("secretId").references("id").inTable(TableName.SecretApprovalRequestSecret).onDelete("CASCADE");
       t.uuid("tagId").notNullable();
       t.foreign("tagId").references("id").inTable(TableName.SecretTag).onDelete("CASCADE");
       t.timestamps(true, true, true);

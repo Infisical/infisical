@@ -16,13 +16,6 @@ export const SecretApprovalRequestsReviewersSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TSecretApprovalRequestsReviewers = z.infer<
-  typeof SecretApprovalRequestsReviewersSchema
->;
-export type TSecretApprovalRequestsReviewersInsert = Omit<
-  TSecretApprovalRequestsReviewers,
-  TImmutableDBKeys
->;
-export type TSecretApprovalRequestsReviewersUpdate = Partial<
-  Omit<TSecretApprovalRequestsReviewers, TImmutableDBKeys>
->;
+export type TSecretApprovalRequestsReviewers = z.infer<typeof SecretApprovalRequestsReviewersSchema>;
+export type TSecretApprovalRequestsReviewersInsert = Omit<TSecretApprovalRequestsReviewers, TImmutableDBKeys>;
+export type TSecretApprovalRequestsReviewersUpdate = Partial<Omit<TSecretApprovalRequestsReviewers, TImmutableDBKeys>>;

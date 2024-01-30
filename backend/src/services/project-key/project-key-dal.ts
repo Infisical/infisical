@@ -15,11 +15,7 @@ export const projectKeyDALFactory = (db: TDbClient) => {
     try {
       const projectKey = await db(TableName.ProjectKeys)
         .join(TableName.Users, `${TableName.ProjectKeys}.senderId`, `${TableName.Users}.id`)
-        .join(
-          TableName.UserEncryptionKey,
-          `${TableName.UserEncryptionKey}.userId`,
-          `${TableName.Users}.id`
-        )
+        .join(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
         .where({ projectId, receiverId: userId })
         .orderBy("createdAt", "desc", "last")
         .select(selectAllTableCols(TableName.ProjectKeys))
@@ -38,11 +34,7 @@ export const projectKeyDALFactory = (db: TDbClient) => {
       const pubKeys = await db(TableName.ProjectMembership)
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
-        .join(
-          TableName.UserEncryptionKey,
-          `${TableName.Users}.id`,
-          `${TableName.UserEncryptionKey}.userId`
-        )
+        .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .select("userId", "publicKey");
       return pubKeys;
     } catch (error) {

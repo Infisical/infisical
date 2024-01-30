@@ -9,12 +9,7 @@ import { UnauthorizedError } from "@app/lib/errors";
 import { AuthModeJwtTokenPayload } from "../auth/auth-type";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTokenDALFactory } from "./auth-token-dal";
-import {
-  TCreateTokenForUserDTO,
-  TIssueAuthTokenDTO,
-  TokenType,
-  TValidateTokenForUserDTO
-} from "./auth-token-types";
+import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenForUserDTO } from "./auth-token-types";
 
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
@@ -125,14 +120,10 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL }: TAuthTokenServiceFact
     return session;
   };
 
-  const clearTokenSessionById = async (
-    userId: string,
-    sessionId: string
-  ): Promise<TAuthTokenSessions | undefined> =>
+  const clearTokenSessionById = async (userId: string, sessionId: string): Promise<TAuthTokenSessions | undefined> =>
     tokenDAL.incrementTokenSessionVersion(userId, sessionId);
 
-  const getUserTokenSessionById = async (id: string, userId: string) =>
-    tokenDAL.findOneTokenSession({ id, userId });
+  const getUserTokenSessionById = async (id: string, userId: string) => tokenDAL.findOneTokenSession({ id, userId });
 
   const getTokenSessionByUser = async (userId: string) => tokenDAL.findTokenSessions({ userId });
 
@@ -145,8 +136,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL }: TAuthTokenServiceFact
       userId: token.userId
     });
     if (!session) throw new UnauthorizedError({ name: "Session not found" });
-    if (token.accessVersion !== session.accessVersion)
-      throw new UnauthorizedError({ name: "Stale session" });
+    if (token.accessVersion !== session.accessVersion) throw new UnauthorizedError({ name: "Stale session" });
 
     const user = await userDAL.findById(session.userId);
     if (!user || !user.isAccepted) throw new UnauthorizedError({ name: "Token user not found" });

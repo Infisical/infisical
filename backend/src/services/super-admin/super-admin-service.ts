@@ -19,8 +19,7 @@ export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFacto
 
 let serverCfg: Readonly<TSuperAdmin>;
 export const getServerCfg = () => {
-  if (!serverCfg)
-    throw new BadRequestError({ name: "Get server cfg", message: "Server cfg not initialized" });
+  if (!serverCfg) throw new BadRequestError({ name: "Get server cfg", message: "Server cfg not initialized" });
   return serverCfg;
 };
 
@@ -64,8 +63,7 @@ export const superAdminServiceFactory = ({
     userAgent
   }: TAdminSignUpDTO) => {
     const existingUser = await userDAL.findOne({ email });
-    if (existingUser)
-      throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
+    if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
 
     const userInfo = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.create(

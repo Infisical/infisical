@@ -24,6 +24,4 @@ export const IdentityUaClientSecretsSchema = z.object({
 
 export type TIdentityUaClientSecrets = z.infer<typeof IdentityUaClientSecretsSchema>;
 export type TIdentityUaClientSecretsInsert = Omit<TIdentityUaClientSecrets, TImmutableDBKeys>;
-export type TIdentityUaClientSecretsUpdate = Partial<
-  Omit<TIdentityUaClientSecrets, TImmutableDBKeys>
->;
+export type TIdentityUaClientSecretsUpdate = Partial<Omit<TIdentityUaClientSecrets, TImmutableDBKeys>>;

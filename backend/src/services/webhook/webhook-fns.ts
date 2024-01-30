@@ -44,10 +44,7 @@ export const triggerWebhookRequest = async (
       });
     }
     if (secretKey) {
-      const webhookSign = crypto
-        .createHmac("sha256", secretKey)
-        .update(JSON.stringify(payload))
-        .digest("hex");
+      const webhookSign = crypto.createHmac("sha256", secretKey).update(JSON.stringify(payload)).digest("hex");
       headers["x-infisical-signature"] = `t=${payload.timestamp};${webhookSign}`;
     }
   }
@@ -98,10 +95,7 @@ export const fnTriggerWebhook = async ({
   logger.info("Secret webhook job started", { environment, secretPath, projectId });
   const webhooksTriggered = await Promise.allSettled(
     toBeTriggeredHooks.map((hook) =>
-      triggerWebhookRequest(
-        hook,
-        getWebhookPayload("secrets.modified", projectId, environment, secretPath)
-      )
+      triggerWebhookRequest(hook, getWebhookPayload("secrets.modified", projectId, environment, secretPath))
     )
   );
   // filter hooks by status

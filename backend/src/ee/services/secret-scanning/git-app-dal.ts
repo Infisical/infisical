@@ -12,11 +12,7 @@ export const gitAppDALFactory = (db: TDbClient) => {
 
   const upsert = async (data: TGitAppOrgInsert, tx?: Knex) => {
     try {
-      const [doc] = await (tx || db)(TableName.GitAppOrg)
-        .insert(data)
-        .onConflict("orgId")
-        .merge()
-        .returning("*");
+      const [doc] = await (tx || db)(TableName.GitAppOrg).insert(data).onConflict("orgId").merge().returning("*");
       return doc;
     } catch (error) {
       throw new DatabaseError({ error, name: "UpsertGitAppOrm" });

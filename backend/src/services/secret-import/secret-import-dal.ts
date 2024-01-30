@@ -53,11 +53,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db)(TableName.SecretImport)
         .where(filter)
-        .join(
-          TableName.Environment,
-          `${TableName.SecretImport}.importEnv`,
-          `${TableName.Environment}.id`
-        )
+        .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),

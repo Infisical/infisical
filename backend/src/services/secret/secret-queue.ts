@@ -23,11 +23,7 @@ import { TWebhookDALFactory } from "../webhook/webhook-dal";
 import { fnTriggerWebhook } from "../webhook/webhook-fns";
 import { TSecretDALFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
-import {
-  TCreateSecretReminderDTO,
-  THandleReminderDTO,
-  TRemoveSecretReminderDTO
-} from "./secret-types";
+import { TCreateSecretReminderDTO, THandleReminderDTO, TRemoveSecretReminderDTO } from "./secret-types";
 
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 
@@ -105,20 +101,13 @@ export const secretQueueFactory = ({
       QueueJobs.SecretReminder,
       {
         // on prod it this will be in days, in development this will be second
-        every:
-          appCfg.NODE_ENV === "development"
-            ? secondsToMillis(dto.repeatDays)
-            : daysToMillisecond(dto.repeatDays)
+        every: appCfg.NODE_ENV === "development" ? secondsToMillis(dto.repeatDays) : daysToMillisecond(dto.repeatDays)
       },
       `reminder-${dto.secretId}`
     );
   };
 
-  const addSecretReminder = async ({
-    oldSecret,
-    newSecret,
-    projectId
-  }: TCreateSecretReminderDTO) => {
+  const addSecretReminder = async ({ oldSecret, newSecret, projectId }: TCreateSecretReminderDTO) => {
     try {
       const appCfg = getConfig();
 
@@ -179,8 +168,7 @@ export const secretQueueFactory = ({
 
     if (newSecret.type !== "personal" && secretReminderRepeatDays !== undefined) {
       if (
-        (secretReminderRepeatDays &&
-          oldSecret.secretReminderRepeatDays !== secretReminderRepeatDays) ||
+        (secretReminderRepeatDays && oldSecret.secretReminderRepeatDays !== secretReminderRepeatDays) ||
         (secretReminderNote && oldSecret.secretReminderNote !== secretReminderNote)
       ) {
         await addSecretReminder({
@@ -212,10 +200,7 @@ export const secretQueueFactory = ({
       secretDAL,
       folderDAL
     });
-    const content: Record<
-      string,
-      { value: string; comment?: string; skipMultilineEncoding?: boolean }
-    > = {};
+    const content: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }> = {};
 
     importedSecrets.forEach(({ secrets: secs }) => {
       secs.forEach((secret) => {
@@ -294,8 +279,7 @@ export const secretQueueFactory = ({
 
     const integrations = await integrationDAL.findByProjectIdV2(projectId, environment);
     const toBeSyncedIntegrations = integrations.filter(
-      ({ secretPath: integrationSecPath, isActive }) =>
-        isActive && isSamePath(secretPath, integrationSecPath)
+      ({ secretPath: integrationSecPath, isActive }) => isActive && isSamePath(secretPath, integrationSecPath)
     );
 
     if (!integrations.length) return;
@@ -309,14 +293,8 @@ export const secretQueueFactory = ({
       };
 
       const botKey = await projectBotService.getBotKey(projectId);
-      const { accessToken, accessId } = await integrationAuthService.getIntegrationAccessToken(
-        integrationAuth,
-        botKey
-      );
-      const secrets = await getIntegrationSecrets(
-        { environment, projectId, secretPath, folderId: folder.id },
-        botKey
-      );
+      const { accessToken, accessId } = await integrationAuthService.getIntegrationAccessToken(integrationAuth, botKey);
+      const secrets = await getIntegrationSecrets({ environment, projectId, secretPath, folderId: folder.id }, botKey);
       const suffixedSecrets: typeof secrets = {};
       const metadata = integration.metadata as Record<string, string>;
       if (metadata) {
@@ -353,25 +331,19 @@ export const secretQueueFactory = ({
     const project = await projectDAL.findById(projectId);
 
     if (!organization) {
-      logger.info(
-        `secretReminderQueue.process: [secretDocument=${data.secretId}] no organization found`
-      );
+      logger.info(`secretReminderQueue.process: [secretDocument=${data.secretId}] no organization found`);
       return;
     }
 
     if (!project) {
-      logger.info(
-        `secretReminderQueue.process: [secretDocument=${data.secretId}] no project found`
-      );
+      logger.info(`secretReminderQueue.process: [secretDocument=${data.secretId}] no project found`);
       return;
     }
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
 
     if (!projectMembers || !projectMembers.length) {
-      logger.info(
-        `secretReminderQueue.process: [secretDocument=${data.secretId}] no project members found`
-      );
+      logger.info(`secretReminderQueue.process: [secretDocument=${data.secretId}] no project members found`);
       return;
     }
 

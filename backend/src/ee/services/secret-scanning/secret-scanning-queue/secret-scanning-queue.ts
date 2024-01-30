@@ -10,15 +10,8 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TSecretScanningDALFactory } from "../secret-scanning-dal";
-import {
-  scanContentAndGetFindings,
-  scanFullRepoContentAndGetFindings
-} from "./secret-scanning-fns";
-import {
-  SecretMatch,
-  TScanFullRepoEventPayload,
-  TScanPushEventPayload
-} from "./secret-scanning-queue-types";
+import { scanContentAndGetFindings, scanFullRepoContentAndGetFindings } from "./secret-scanning-fns";
+import { SecretMatch, TScanFullRepoEventPayload, TScanPushEventPayload } from "./secret-scanning-queue-types";
 
 type TSecretScanningQueueFactoryDep = {
   queueService: TQueueServiceFactory;

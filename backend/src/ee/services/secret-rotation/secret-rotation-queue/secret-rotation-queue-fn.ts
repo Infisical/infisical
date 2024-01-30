@@ -11,12 +11,7 @@ import knex from "knex";
 import { getConfig } from "@app/lib/config/env";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import {
-  TAssignOp,
-  TDbProviderClients,
-  TDirectAssignOp,
-  THttpProviderFunction
-} from "../templates/types";
+import { TAssignOp, TDbProviderClients, TDirectAssignOp, THttpProviderFunction } from "../templates/types";
 import { TSecretRotationData, TSecretRotationDbFn } from "./secret-rotation-queue-types";
 
 const REGEX = /\${([^}]+)}/g;
@@ -64,10 +59,7 @@ const getInterpolationValue = (variables: TSecretRotationData) => (key: string) 
   return variables[type as keyof TSecretRotationData][keyName];
 };
 
-export const secretRotationHttpFn = async (
-  func: THttpProviderFunction,
-  variables: TSecretRotationData
-) => {
+export const secretRotationHttpFn = async (func: THttpProviderFunction, variables: TSecretRotationData) => {
   // string interpolation
   const headers = interpolate(func.header, getInterpolationValue(variables));
   const url = interpolate(func.url, getInterpolationValue(variables));
@@ -117,10 +109,7 @@ export const secretRotationDbFn = async ({
   return data;
 };
 
-export const secretRotationPreSetFn = (
-  op: Record<string, TDirectAssignOp>,
-  variables: TSecretRotationData
-) => {
+export const secretRotationPreSetFn = (op: Record<string, TDirectAssignOp>, variables: TSecretRotationData) => {
   const getValFn = getInterpolationValue(variables);
   Object.entries(op || {}).forEach(([key, assignFn]) => {
     const [type, keyName] = key.split(".") as [keyof TSecretRotationData, string];
@@ -128,10 +117,7 @@ export const secretRotationPreSetFn = (
   });
 };
 
-export const secretRotationHttpSetFn = async (
-  func: THttpProviderFunction,
-  variables: TSecretRotationData
-) => {
+export const secretRotationHttpSetFn = async (func: THttpProviderFunction, variables: TSecretRotationData) => {
   const getValFn = getInterpolationValue(variables);
   // http setter
   const res = await secretRotationHttpFn(func, variables);
@@ -145,10 +131,7 @@ export const secretRotationHttpSetFn = async (
   });
 };
 
-export const getDbSetQuery = (
-  db: TDbProviderClients,
-  variables: { username: string; password: string }
-) => {
+export const getDbSetQuery = (db: TDbProviderClients, variables: { username: string; password: string }) => {
   if (db === TDbProviderClients.Pg) {
     return {
       query: `ALTER USER ?? WITH PASSWORD '${variables.password}'`,

@@ -19,6 +19,4 @@ export const IdentityProjectMembershipsSchema = z.object({
 
 export type TIdentityProjectMemberships = z.infer<typeof IdentityProjectMembershipsSchema>;
 export type TIdentityProjectMembershipsInsert = Omit<TIdentityProjectMemberships, TImmutableDBKeys>;
-export type TIdentityProjectMembershipsUpdate = Partial<
-  Omit<TIdentityProjectMemberships, TImmutableDBKeys>
->;
+export type TIdentityProjectMembershipsUpdate = Partial<Omit<TIdentityProjectMemberships, TImmutableDBKeys>>;
