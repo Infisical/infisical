@@ -3,6 +3,7 @@ import slugify from "@sindresorhus/slugify";
 import jwt from "jsonwebtoken";
 
 import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
+import { TProjects } from "@app/db/schemas/projects";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
@@ -17,9 +18,10 @@ import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
 
-import { AuthMethod, AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { TProjectDALFactory } from "../project/project-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
@@ -28,6 +30,7 @@ import { TOrgDALFactory } from "./org-dal";
 import { TOrgRoleDALFactory } from "./org-role-dal";
 import {
   TDeleteOrgMembershipDTO,
+  TFindAllWorkspacesDTO,
   TInviteUserToOrgDTO,
   TUpdateOrgMembershipDTO,
   TVerifyUserToOrgDTO
@@ -38,6 +41,7 @@ type TOrgServiceFactoryDep = {
   orgBotDAL: TOrgBotDALFactory;
   orgRoleDAL: TOrgRoleDALFactory;
   userDAL: TUserDALFactory;
+  projectDAL: TProjectDALFactory;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   smtpService: TSmtpService;
@@ -58,6 +62,7 @@ export const orgServiceFactory = ({
   incidentContactDAL,
   permissionService,
   smtpService,
+  projectDAL,
   tokenService,
   orgBotDAL,
   licenseService,
@@ -93,6 +98,37 @@ export const orgServiceFactory = ({
     const members = await orgDAL.findAllOrgMembers(orgId);
     return members;
   };
+
+  const findAllWorkspaces = async ({ actor, actorId, orgId }: TFindAllWorkspacesDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionActions.Read,
+      OrgPermissionSubjects.Workspace
+    );
+
+    const organizationWorkspaceIds = new Set(
+      (await projectDAL.find({ orgId })).map((workspace) => workspace.id)
+    );
+
+    let workspaces: (TProjects & { organization: string } & {
+      environments: {
+        id: string;
+        slug: string;
+        name: string;
+      }[];
+    })[];
+
+    if (actor === ActorType.USER) {
+      workspaces = await projectDAL.findAllProjects(actorId);
+    } else if (actor === ActorType.IDENTITY) {
+      workspaces = await projectDAL.findAllProjectsByIdentity(actorId);
+    } else {
+      throw new BadRequestError({ message: "Invalid actor type" });
+    }
+
+    return workspaces.filter((workspace) => organizationWorkspaceIds.has(workspace.id));
+  };
+
   /*
    * Update organization settings
    * */
@@ -459,6 +495,7 @@ export const orgServiceFactory = ({
     createOrganization,
     deleteOrganizationById,
     deleteOrgMembership,
+    findAllWorkspaces,
     updateOrgMembership,
     // incident contacts
     findIncidentContacts,

@@ -1,3 +1,5 @@
+import { ActorType } from "../auth/auth-type";
+
 export type TUpdateOrgMembershipDTO = {
   userId: string;
   orgId: string;
@@ -21,4 +23,10 @@ export type TVerifyUserToOrgDTO = {
   email: string;
   orgId: string;
   code: string;
+};
+
+export type TFindAllWorkspacesDTO = {
+  actor: ActorType;
+  actorId: string;
+  orgId: string;
 };
