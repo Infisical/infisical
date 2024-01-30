@@ -40,9 +40,11 @@ export type TOrgPlanDTO = {
   projectId?: string;
 } & TOrgPermission;
 
-export type TStartOrgTrailDTO = {
+export type TStartOrgTrialDTO = {
   success_url: string;
 } & TOrgPermission;
+
+export type TCreateOrgPortalSession = TOrgPermission;
 
 export type TGetOrgBillInfoDTO = TOrgPermission;
 

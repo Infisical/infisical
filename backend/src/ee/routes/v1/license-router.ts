@@ -79,11 +79,31 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const data = await server.services.license.startOrgTrail({
+      const data = await server.services.license.startOrgTrial({
         actorId: req.permission.id,
         actor: req.permission.type,
         orgId: req.params.organizationId,
         success_url: req.body.success_url
+      });
+      return data;
+    }
+  });
+
+  server.route({
+    url: "/:organizationId/customer-portal-session",
+    method: "POST",
+    schema: {
+      params: z.object({ organizationId: z.string().trim() }),
+      response: {
+        200: z.any()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const data = await server.services.license.createOrganizationPortalSession({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        orgId: req.params.organizationId
       });
       return data;
     }

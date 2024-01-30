@@ -24,7 +24,8 @@ import {
   TOrgPlanDTO,
   TOrgPlansTableDTO,
   TOrgPmtMethodsDTO,
-  TStartOrgTrailDTO,
+  TStartOrgTrialDTO,
+  TCreateOrgPortalSession,
   TUpdateOrgBillingDetailsDTO
 } from "./license-types";
 
@@ -201,7 +202,7 @@ export const licenseServiceFactory = ({
     return plan;
   };
 
-  const startOrgTrail = async ({ orgId, actorId, actor, success_url }: TStartOrgTrailDTO) => {
+  const startOrgTrial = async ({ orgId, actorId, actor, success_url }: TStartOrgTrialDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionActions.Create,
@@ -222,12 +223,66 @@ export const licenseServiceFactory = ({
     const {
       data: { url }
     } = await licenseServerCloudApi.request.post(
-      `/api/license-server/v1/customers/${organization.customerId}/session/trail`,
+      `/api/license-server/v1/customers/${organization.customerId}/session/trial`,
       { success_url }
     );
     featureStore.del(FEATURE_CACHE_KEY(orgId));
     return { url };
   };
+
+  const createOrganizationPortalSession = async ({ orgId, actorId, actor }: TCreateOrgPortalSession) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionActions.Create,
+      OrgPermissionSubjects.Billing
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionActions.Edit,
+      OrgPermissionSubjects.Billing
+    );
+
+    const organization = await orgDAL.findOrgById(orgId);
+    if (!organization) {
+      throw new BadRequestError({
+        message: "Failed to find organization"
+      });
+    }
+
+    const {
+      data: { pmtMethods }
+    } = await licenseServerCloudApi.request.get(
+      `/api/license-server/v1/customers/${organization.customerId}/billing-details/payment-methods`
+    );
+
+    if (pmtMethods.length < 1) {
+      // case: organization has no payment method on file
+      // -> redirect to add payment method portal
+      const {
+        data: { url }
+      } = await licenseServerCloudApi.request.post(
+        `/api/license-server/v1/customers/${organization.customerId}/billing-details/payment-methods`,
+        {
+          success_url: appCfg.SITE_URL + "/dashboard",
+          cancel_url: appCfg.SITE_URL + "/dashboard"
+        }
+      );
+      
+      return { url };
+    } else {
+      // case: organization has payment method on file
+      // -> redirect to billing portal
+      const {
+        data: { url }
+      } = await licenseServerCloudApi.request.post(
+        `/api/license-server/v1/customers/${organization.customerId}/billing-details/billing-portal`,
+        {
+          return_url: appCfg.SITE_URL + "/dashboard"
+        }
+      );
+
+      return { url };
+    }
+  }
 
   const getOrgBillingInfo = async ({ orgId, actor, actorId }: TGetOrgBillInfoDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
@@ -511,7 +566,8 @@ export const licenseServiceFactory = ({
     refreshPlan,
     getOrgPlan,
     getOrgPlansTableByBillCycle,
-    startOrgTrail,
+    startOrgTrial,
+    createOrganizationPortalSession,
     getOrgBillingInfo,
     getOrgPlanTable,
     getOrgBillingDetails,
