@@ -30,7 +30,7 @@ export const projectDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Environment).as("envName")
         )
         .orderBy("createdAt", "asc", "last");
-      return sqlNestRelationships({
+      const nestedWorkspaces = sqlNestRelationships({
         data: workspaces,
         key: "id",
         parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
@@ -46,8 +46,64 @@ export const projectDALFactory = (db: TDbClient) => {
           }
         ]
       });
+
+      return nestedWorkspaces.map((workspace) => ({
+        ...workspace,
+        organization: workspace.id
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all projects" });
+    }
+  };
+
+  const findAllProjectsByIdentity = async (identityId: string) => {
+    try {
+      const workspaces = await db(TableName.IdentityProjectMembership)
+        .where({ identityId })
+        .join(
+          TableName.Project,
+          `${TableName.IdentityProjectMembership}.projectId`,
+          `${TableName.Project}.id`
+        )
+        .leftJoin(
+          TableName.Environment,
+          `${TableName.Environment}.projectId`,
+          `${TableName.Project}.id`
+        )
+        .select(
+          selectAllTableCols(TableName.Project),
+          db.ref("id").withSchema(TableName.Project).as("_id"),
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("name").withSchema(TableName.Environment).as("envName")
+        )
+        .orderBy("createdAt", "asc", "last");
+
+      const nestedWorkspaces = sqlNestRelationships({
+        data: workspaces,
+        key: "id",
+        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
+        childrenMapper: [
+          {
+            key: "envId",
+            label: "environments" as const,
+            mapper: ({ envId: id, envSlug: slug, envName: name }) => ({
+              id,
+              slug,
+              name
+            })
+          }
+        ]
+      });
+
+      // we need to add "organization" to each workspace entry
+
+      return nestedWorkspaces.map((workspace) => ({
+        ...workspace,
+        organization: workspace.id
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all projects by identity" });
     }
   };
 
@@ -96,6 +152,7 @@ export const projectDALFactory = (db: TDbClient) => {
   return {
     ...projectOrm,
     findAllProjects,
+    findAllProjectsByIdentity,
     findProjectById
   };
 };
