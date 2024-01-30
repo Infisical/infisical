@@ -96,7 +96,7 @@ export const projectDALFactory = (db: TDbClient) => {
         ]
       });
 
-      // We need to add the organization field, as it's for one of our API endpoint responses.
+      // We need to add the organization field, as it's required for one of our API endpoint responses.
       return nestedWorkspaces.map((workspace) => ({
         ...workspace,
         organization: workspace.id
