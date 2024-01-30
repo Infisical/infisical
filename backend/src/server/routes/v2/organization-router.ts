@@ -47,6 +47,42 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:organizationId/workspaces",
+    schema: {
+      params: z.object({
+        organizationId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          workspaces: z
+            .object({
+              name: z.string(),
+              organization: z.string(),
+              environments: z
+                .object({
+                  name: z.string(),
+                  slug: z.string()
+                })
+                .array()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const workspaces = await server.services.org.findAllWorkspaces({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.params.organizationId
+      });
+
+      return { workspaces };
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/:organizationId/memberships/:membershipId",
     schema: {
