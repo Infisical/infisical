@@ -71,9 +71,12 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         try {
           const serverCfg = getServerCfg();
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
-          const { email, firstName } = profile;
-          if (!email || !firstName)
+          const { firstName } = profile;
+          const email = profile?.email ?? profile?.emailAddress as string // emailRippling is added because in Rippling the field `email` reserved
+          
+          if (!email || !firstName){
             throw new BadRequestError({ message: "Invalid request. Missing email or first name" });
+          }
 
           const { isUserCompleted, providerAuthToken } = await server.services.saml.samlLogin({
             email,
