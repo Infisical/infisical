@@ -103,7 +103,7 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
       - name: Save DigitalOcean kubeconfig with short-lived credentials
-        run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 k8s-1-25-4-do-0-nyc1-1670645170179
+        run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 infisical-gamma-postgres
       - name: switch to gamma namespace
         run: kubectl config set-context --current --namespace=gamma
       - name: test kubectl
