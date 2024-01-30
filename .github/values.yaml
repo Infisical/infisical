@@ -22,7 +22,7 @@ infisical:
   replicaCount: 2
   image:
     repository: infisical/infisical
-    tag: "v0.44.16-postgres"
+    tag: "latest-postgres"
     pullPolicy: IfNotPresent
 
   deploymentAnnotations:
