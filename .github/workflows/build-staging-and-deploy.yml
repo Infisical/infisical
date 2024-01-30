@@ -71,13 +71,16 @@ jobs:
         with:
           node-version: "20"
       - name: Change directory to backend and install dependencies
+        env:
+          DB_CONNECTION_URI: ${{ secrets.DB_CONNECTION_URI }}
         run: |
           cd backend
           npm install
-      - name: Run postgres DB migration files
-        env:
-          DB_CONNECTION_URI: ${{ secrets.DB_CONNECTION_URI }}
-        run: npm run migration:latest
+          npm run migration:latest
+      # - name: Run postgres DB migration files
+      #   env:
+      #     DB_CONNECTION_URI: ${{ secrets.DB_CONNECTION_URI }}
+      #   run: npm run migration:latest
   gamma-deployment:
     name: Deploy to gamma
     runs-on: ubuntu-latest
