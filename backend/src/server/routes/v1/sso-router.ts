@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+// All the any rules are disabled because passport typesense with fastify is really poor
+
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
 import { Strategy as GitHubStrategy } from "passport-github";
@@ -19,9 +27,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
   // passport oauth strategy for Google
-  const isGoogleOauthActive = Boolean(
-    appCfg.CLIENT_ID_GOOGLE_LOGIN && appCfg.CLIENT_SECRET_GOOGLE_LOGIN
-  );
+  const isGoogleOauthActive = Boolean(appCfg.CLIENT_ID_GOOGLE_LOGIN && appCfg.CLIENT_SECRET_GOOGLE_LOGIN);
   if (isGoogleOauthActive) {
     passport.use(
       new GoogleStrategy(
@@ -32,6 +38,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           callbackURL: `${appCfg.SITE_URL}/api/v1/sso/google`,
           scope: ["profile", " email"]
         },
+        // eslint-disable-next-line
         async (req, _accessToken, _refreshToken, profile, cb) => {
           try {
             const email = profile?.emails?.[0]?.value;
@@ -61,9 +68,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   }
 
   // Passport strategy for Github
-  const isGithubOauthActive = Boolean(
-    appCfg.CLIENT_SECRET_GITHUB_LOGIN && appCfg.CLIENT_ID_GITHUB_LOGIN
-  );
+  const isGithubOauthActive = Boolean(appCfg.CLIENT_SECRET_GITHUB_LOGIN && appCfg.CLIENT_ID_GITHUB_LOGIN);
   if (isGithubOauthActive) {
     passport.use(
       new GitHubStrategy(
@@ -74,6 +79,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           callbackURL: `${appCfg.SITE_URL}/api/v1/sso/github`,
           scope: ["user:email"]
         },
+        // eslint-disable-next-line
         async (req, accessToken, _refreshToken, profile, cb) => {
           try {
             const ghEmails = await fetchGithubEmails(accessToken);
@@ -99,9 +105,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
 
   // passport strategy for gitlab
   const isGitlabOauthActive = Boolean(
-    appCfg.CLIENT_ID_GITLAB_LOGIN &&
-      appCfg.CLIENT_SECRET_GITLAB_LOGIN &&
-      appCfg.CLIENT_GITLAB_LOGIN_URL
+    appCfg.CLIENT_ID_GITLAB_LOGIN && appCfg.CLIENT_SECRET_GITLAB_LOGIN && appCfg.CLIENT_GITLAB_LOGIN_URL
   );
   if (isGitlabOauthActive) {
     passport.use(
@@ -152,6 +156,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           state: req.query.callback_port,
           authInfo: false
           // this is due to zod type difference
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }) as any
       )(req, res),
     handler: () => {}
@@ -165,19 +170,15 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       failureRedirect: "/login/provider/error",
       authInfo: false
       // this is due to zod type difference
-    }) as any,
+    }) as never,
     handler: (req, res) => {
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
-            req.passportUser.providerAuthToken
-          )}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
         );
       }
       return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(
-          req.passportUser.providerAuthToken
-        )}`
+        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
       );
     }
   });
@@ -214,15 +215,11 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     handler: (req, res) => {
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
-            req.passportUser.providerAuthToken
-          )}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
         );
       }
       return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(
-          req.passportUser.providerAuthToken
-        )}`
+        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
       );
     }
   });
@@ -242,6 +239,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           state: req.query.callback_port,
           authInfo: false
           // this is due to zod type difference
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }) as any
       )(req, res),
     handler: () => {}
@@ -255,19 +253,16 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       failureRedirect: "/login/provider/error",
       authInfo: false
       // this is due to zod type difference
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
     handler: (req, res) => {
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
-            req.passportUser.providerAuthToken
-          )}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
         );
       }
       return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(
-          req.passportUser.providerAuthToken
-        )}`
+        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
       );
     }
   });

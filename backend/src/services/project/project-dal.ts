@@ -12,16 +12,8 @@ export const projectDALFactory = (db: TDbClient) => {
     try {
       const workspaces = await db(TableName.ProjectMembership)
         .where({ userId })
-        .join(
-          TableName.Project,
-          `${TableName.ProjectMembership}.projectId`,
-          `${TableName.Project}.id`
-        )
-        .leftJoin(
-          TableName.Environment,
-          `${TableName.Environment}.projectId`,
-          `${TableName.Project}.id`
-        )
+        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Project).as("_id"),
@@ -60,16 +52,8 @@ export const projectDALFactory = (db: TDbClient) => {
     try {
       const workspaces = await db(TableName.IdentityProjectMembership)
         .where({ identityId })
-        .join(
-          TableName.Project,
-          `${TableName.IdentityProjectMembership}.projectId`,
-          `${TableName.Project}.id`
-        )
-        .leftJoin(
-          TableName.Environment,
-          `${TableName.Environment}.projectId`,
-          `${TableName.Project}.id`
-        )
+        .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Project).as("_id"),
@@ -110,16 +94,8 @@ export const projectDALFactory = (db: TDbClient) => {
     try {
       const workspaces = await db(TableName.ProjectMembership)
         .where(`${TableName.Project}.id`, id)
-        .join(
-          TableName.Project,
-          `${TableName.ProjectMembership}.projectId`,
-          `${TableName.Project}.id`
-        )
-        .join(
-          TableName.Environment,
-          `${TableName.Environment}.projectId`,
-          `${TableName.Project}.id`
-        )
+        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .join(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Project).as("_id"),

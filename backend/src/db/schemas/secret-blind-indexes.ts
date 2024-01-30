@@ -12,11 +12,11 @@ export const SecretBlindIndexesSchema = z.object({
   encryptedSaltCipherText: z.string(),
   saltIV: z.string(),
   saltTag: z.string(),
-  algorithm: z.string().default('aes-256-gcm'),
-  keyEncoding: z.string().default('utf8'),
+  algorithm: z.string().default("aes-256-gcm"),
+  keyEncoding: z.string().default("utf8"),
   projectId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TSecretBlindIndexes = z.infer<typeof SecretBlindIndexesSchema>;

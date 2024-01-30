@@ -15,7 +15,7 @@ export const ProjectRolesSchema = z.object({
   permissions: z.unknown(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  projectId: z.string(),
+  projectId: z.string()
 });
 
 export type TProjectRoles = z.infer<typeof ProjectRolesSchema>;

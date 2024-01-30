@@ -22,7 +22,7 @@ export const SecretRotationsSchema = z.object({
   keyEncoding: z.string().nullable().optional(),
   envId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TSecretRotations = z.infer<typeof SecretRotationsSchema>;

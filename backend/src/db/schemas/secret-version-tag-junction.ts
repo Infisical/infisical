@@ -10,7 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const SecretVersionTagJunctionSchema = z.object({
   id: z.string().uuid(),
   secret_versionsId: z.string().uuid(),
-  secret_tagsId: z.string().uuid(),
+  secret_tagsId: z.string().uuid()
 });
 
 export type TSecretVersionTagJunction = z.infer<typeof SecretVersionTagJunctionSchema>;

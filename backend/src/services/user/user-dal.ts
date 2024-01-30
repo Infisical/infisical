@@ -24,11 +24,7 @@ export const userDALFactory = (db: TDbClient) => {
     try {
       return await db(TableName.Users)
         .where({ email })
-        .join(
-          TableName.UserEncryptionKey,
-          `${TableName.Users}.id`,
-          `${TableName.UserEncryptionKey}.userId`
-        )
+        .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .first();
     } catch (error) {
       throw new DatabaseError({ error, name: "Find user enc by email" });
@@ -39,11 +35,7 @@ export const userDALFactory = (db: TDbClient) => {
     try {
       const user = await db(TableName.Users)
         .where(`${TableName.Users}.id`, userId)
-        .join(
-          TableName.UserEncryptionKey,
-          `${TableName.Users}.id`,
-          `${TableName.UserEncryptionKey}.userId`
-        )
+        .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .first();
       if (user?.id) {
         // change to user id
@@ -64,11 +56,7 @@ export const userDALFactory = (db: TDbClient) => {
     }
   };
 
-  const updateUserEncryptionByUserId = async (
-    userId: string,
-    data: TUserEncryptionKeysUpdate,
-    tx?: Knex
-  ) => {
+  const updateUserEncryptionByUserId = async (userId: string, data: TUserEncryptionKeysUpdate, tx?: Knex) => {
     try {
       const [userEnc] = await (tx || db)(TableName.UserEncryptionKey)
         .where({ userId })
@@ -86,10 +74,7 @@ export const userDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const [userEnc] = await (tx
-        ? tx(TableName.UserEncryptionKey)
-        : db(TableName.UserEncryptionKey)
-      )
+      const [userEnc] = await (tx ? tx(TableName.UserEncryptionKey) : db(TableName.UserEncryptionKey))
         // if user insert make sure to pass all required data
         .insert({ userId, ...data } as TUserEncryptionKeys)
         .onConflict("userId")

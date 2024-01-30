@@ -12,7 +12,7 @@ export const IncidentContactsSchema = z.object({
   email: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid(),
+  orgId: z.string().uuid()
 });
 
 export type TIncidentContacts = z.infer<typeof IncidentContactsSchema>;

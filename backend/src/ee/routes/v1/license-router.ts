@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+// TODO(akhilmhdh): Fix this when licence service gets it type
 import { z } from "zod";
 
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";

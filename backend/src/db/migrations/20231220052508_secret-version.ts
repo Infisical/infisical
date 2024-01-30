@@ -38,12 +38,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.SecretVersion);
   // many to many relation between tags
-  await createJunctionTable(
-    knex,
-    TableName.SecretVersionTag,
-    TableName.SecretVersion,
-    TableName.SecretTag
-  );
+  await createJunctionTable(knex, TableName.SecretVersionTag, TableName.SecretVersion, TableName.SecretTag);
 }
 
 export async function down(knex: Knex): Promise<void> {

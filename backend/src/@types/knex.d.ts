@@ -177,11 +177,7 @@ declare module "knex/types/tables" {
       TUserEncryptionKeysInsert,
       TUserEncryptionKeysUpdate
     >;
-    [TableName.AuthTokens]: Knex.CompositeTableType<
-      TAuthTokens,
-      TAuthTokensInsert,
-      TAuthTokensUpdate
-    >;
+    [TableName.AuthTokens]: Knex.CompositeTableType<TAuthTokens, TAuthTokensInsert, TAuthTokensUpdate>;
     [TableName.AuthTokenSession]: Knex.CompositeTableType<
       TAuthTokenSessions,
       TAuthTokenSessionsInsert,
@@ -192,32 +188,16 @@ declare module "knex/types/tables" {
       TBackupPrivateKeyInsert,
       TBackupPrivateKeyUpdate
     >;
-    [TableName.Organization]: Knex.CompositeTableType<
-      TOrganizations,
-      TOrganizationsInsert,
-      TOrganizationsUpdate
-    >;
-    [TableName.OrgMembership]: Knex.CompositeTableType<
-      TOrgMemberships,
-      TOrgMembershipsInsert,
-      TOrgMembershipsUpdate
-    >;
+    [TableName.Organization]: Knex.CompositeTableType<TOrganizations, TOrganizationsInsert, TOrganizationsUpdate>;
+    [TableName.OrgMembership]: Knex.CompositeTableType<TOrgMemberships, TOrgMembershipsInsert, TOrgMembershipsUpdate>;
     [TableName.OrgRoles]: Knex.CompositeTableType<TOrgRoles, TOrgRolesInsert, TOrgRolesUpdate>;
     [TableName.IncidentContact]: Knex.CompositeTableType<
       TIncidentContacts,
       TIncidentContactsInsert,
       TIncidentContactsUpdate
     >;
-    [TableName.UserAction]: Knex.CompositeTableType<
-      TUserActions,
-      TUserActionsInsert,
-      TUserActionsUpdate
-    >;
-    [TableName.SuperAdmin]: Knex.CompositeTableType<
-      TSuperAdmin,
-      TSuperAdminInsert,
-      TSuperAdminUpdate
-    >;
+    [TableName.UserAction]: Knex.CompositeTableType<TUserActions, TUserActionsInsert, TUserActionsUpdate>;
+    [TableName.SuperAdmin]: Knex.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
     [TableName.ApiKey]: Knex.CompositeTableType<TApiKeys, TApiKeysInsert, TApiKeysUpdate>;
     [TableName.Project]: Knex.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
     [TableName.ProjectMembership]: Knex.CompositeTableType<
@@ -230,73 +210,33 @@ declare module "knex/types/tables" {
       TProjectEnvironmentsInsert,
       TProjectEnvironmentsUpdate
     >;
-    [TableName.ProjectBot]: Knex.CompositeTableType<
-      TProjectBots,
-      TProjectBotsInsert,
-      TProjectBotsUpdate
-    >;
-    [TableName.ProjectRoles]: Knex.CompositeTableType<
-      TProjectRoles,
-      TProjectRolesInsert,
-      TProjectRolesUpdate
-    >;
-    [TableName.ProjectKeys]: Knex.CompositeTableType<
-      TProjectKeys,
-      TProjectKeysInsert,
-      TProjectKeysUpdate
-    >;
+    [TableName.ProjectBot]: Knex.CompositeTableType<TProjectBots, TProjectBotsInsert, TProjectBotsUpdate>;
+    [TableName.ProjectRoles]: Knex.CompositeTableType<TProjectRoles, TProjectRolesInsert, TProjectRolesUpdate>;
+    [TableName.ProjectKeys]: Knex.CompositeTableType<TProjectKeys, TProjectKeysInsert, TProjectKeysUpdate>;
     [TableName.Secret]: Knex.CompositeTableType<TSecrets, TSecretsInsert, TSecretsUpdate>;
     [TableName.SecretBlindIndex]: Knex.CompositeTableType<
       TSecretBlindIndexes,
       TSecretBlindIndexesInsert,
       TSecretBlindIndexesUpdate
     >;
-    [TableName.SecretVersion]: Knex.CompositeTableType<
-      TSecretVersions,
-      TSecretVersionsInsert,
-      TSecretVersionsUpdate
-    >;
-    [TableName.SecretFolder]: Knex.CompositeTableType<
-      TSecretFolders,
-      TSecretFoldersInsert,
-      TSecretFoldersUpdate
-    >;
+    [TableName.SecretVersion]: Knex.CompositeTableType<TSecretVersions, TSecretVersionsInsert, TSecretVersionsUpdate>;
+    [TableName.SecretFolder]: Knex.CompositeTableType<TSecretFolders, TSecretFoldersInsert, TSecretFoldersUpdate>;
     [TableName.SecretFolderVersion]: Knex.CompositeTableType<
       TSecretFolderVersions,
       TSecretFolderVersionsInsert,
       TSecretFolderVersionsUpdate
     >;
-    [TableName.SecretTag]: Knex.CompositeTableType<
-      TSecretTags,
-      TSecretTagsInsert,
-      TSecretTagsUpdate
-    >;
-    [TableName.SecretImport]: Knex.CompositeTableType<
-      TSecretImports,
-      TSecretImportsInsert,
-      TSecretImportsUpdate
-    >;
-    [TableName.Integration]: Knex.CompositeTableType<
-      TIntegrations,
-      TIntegrationsInsert,
-      TIntegrationsUpdate
-    >;
+    [TableName.SecretTag]: Knex.CompositeTableType<TSecretTags, TSecretTagsInsert, TSecretTagsUpdate>;
+    [TableName.SecretImport]: Knex.CompositeTableType<TSecretImports, TSecretImportsInsert, TSecretImportsUpdate>;
+    [TableName.Integration]: Knex.CompositeTableType<TIntegrations, TIntegrationsInsert, TIntegrationsUpdate>;
     [TableName.Webhook]: Knex.CompositeTableType<TWebhooks, TWebhooksInsert, TWebhooksUpdate>;
-    [TableName.ServiceToken]: Knex.CompositeTableType<
-      TServiceTokens,
-      TServiceTokensInsert,
-      TServiceTokensUpdate
-    >;
+    [TableName.ServiceToken]: Knex.CompositeTableType<TServiceTokens, TServiceTokensInsert, TServiceTokensUpdate>;
     [TableName.IntegrationAuth]: Knex.CompositeTableType<
       TIntegrationAuths,
       TIntegrationAuthsInsert,
       TIntegrationAuthsUpdate
     >;
-    [TableName.Identity]: Knex.CompositeTableType<
-      TIdentities,
-      TIdentitiesInsert,
-      TIdentitiesUpdate
-    >;
+    [TableName.Identity]: Knex.CompositeTableType<TIdentities, TIdentitiesInsert, TIdentitiesUpdate>;
     [TableName.IdentityUniversalAuth]: Knex.CompositeTableType<
       TIdentityUniversalAuths,
       TIdentityUniversalAuthsInsert,
@@ -362,11 +302,7 @@ declare module "knex/types/tables" {
       TSecretRotationOutputsInsert,
       TSecretRotationOutputsUpdate
     >;
-    [TableName.Snapshot]: Knex.CompositeTableType<
-      TSecretSnapshots,
-      TSecretSnapshotsInsert,
-      TSecretSnapshotsUpdate
-    >;
+    [TableName.Snapshot]: Knex.CompositeTableType<TSecretSnapshots, TSecretSnapshotsInsert, TSecretSnapshotsUpdate>;
     [TableName.SnapshotSecret]: Knex.CompositeTableType<
       TSecretSnapshotSecrets,
       TSecretSnapshotSecretsInsert,
@@ -377,11 +313,7 @@ declare module "knex/types/tables" {
       TSecretSnapshotFoldersInsert,
       TSecretSnapshotFoldersUpdate
     >;
-    [TableName.SamlConfig]: Knex.CompositeTableType<
-      TSamlConfigs,
-      TSamlConfigsInsert,
-      TSamlConfigsUpdate
-    >;
+    [TableName.SamlConfig]: Knex.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
     [TableName.OrgBot]: Knex.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;
     [TableName.AuditLog]: Knex.CompositeTableType<TAuditLogs, TAuditLogsInsert, TAuditLogsUpdate>;
     [TableName.GitAppInstallSession]: Knex.CompositeTableType<
@@ -395,11 +327,7 @@ declare module "knex/types/tables" {
       TSecretScanningGitRisksInsert,
       TSecretScanningGitRisksUpdate
     >;
-    [TableName.TrustedIps]: Knex.CompositeTableType<
-      TTrustedIps,
-      TTrustedIpsInsert,
-      TTrustedIpsUpdate
-    >;
+    [TableName.TrustedIps]: Knex.CompositeTableType<TTrustedIps, TTrustedIpsInsert, TTrustedIpsUpdate>;
     // Junction tables
     [TableName.JnSecretTag]: Knex.CompositeTableType<
       TSecretTagJunction,

@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-import {
-  OrganizationsSchema,
-  OrgMembershipsSchema,
-  UserEncryptionKeysSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { OrganizationsSchema, OrgMembershipsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
@@ -38,10 +33,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
-      const users = await server.services.org.findAllOrgMembers(
-        req.permission.id,
-        req.params.organizationId
-      );
+      const users = await server.services.org.findAllOrgMembers(req.permission.id, req.params.organizationId);
       return { users };
     }
   });

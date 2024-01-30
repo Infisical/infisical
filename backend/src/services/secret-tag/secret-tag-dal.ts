@@ -23,11 +23,7 @@ export const secretTagDALFactory = (db: TDbClient) => {
   const deleteTagsManySecret = async (projectId: string, secretIds: string[], tx?: Knex) => {
     try {
       const tags = await (tx || db)(TableName.JnSecretTag)
-        .join(
-          TableName.SecretTag,
-          `${TableName.JnSecretTag}.${TableName.SecretTag}Id`,
-          `${TableName.SecretTag}.id`
-        )
+        .join(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
         .where("projectId", projectId)
         .whereIn(`${TableName.Secret}Id`, secretIds)
         .delete()

@@ -5,12 +5,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
-import {
-  ActorType,
-  AuthMode,
-  AuthModeJwtTokenPayload,
-  AuthTokenType
-} from "@app/services/auth/auth-type";
+import { ActorType, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 
 export type TAuthMode =
@@ -87,16 +82,12 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
 
     switch (authMode) {
       case AuthMode.JWT: {
-        const { user, tokenVersionId } =
-          await server.services.authToken.fnValidateJwtIdentity(token);
+        const { user, tokenVersionId } = await server.services.authToken.fnValidateJwtIdentity(token);
         req.auth = { authMode: AuthMode.JWT, user, userId: user.id, tokenVersionId, actor };
         break;
       }
       case AuthMode.IDENTITY_ACCESS_TOKEN: {
-        const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(
-          token,
-          req.realIp
-        );
+        const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
         req.auth = {
           authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
           actor,
@@ -106,9 +97,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
         break;
       }
       case AuthMode.SERVICE_TOKEN: {
-        const serviceToken = await server.services.serviceToken.fnValidateServiceToken(
-          token as string
-        );
+        const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
         req.auth = {
           authMode: AuthMode.SERVICE_TOKEN as const,
           serviceToken,

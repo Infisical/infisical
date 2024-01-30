@@ -2,10 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectDALFactory } from "../project/project-dal";
@@ -32,10 +29,7 @@ export const projectEnvServiceFactory = ({
 }: TProjectEnvServiceFactoryDep) => {
   const createEnvironment = async ({ projectId, actorId, actor, name, slug }: TCreateEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.Environments
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Environments);
 
     const envs = await projectEnvDAL.find({ projectId });
     const existingEnv = envs.find(({ slug: envSlug }) => envSlug === slug);
@@ -65,20 +59,9 @@ export const projectEnvServiceFactory = ({
     return env;
   };
 
-  const updateEnvironment = async ({
-    projectId,
-    slug,
-    actor,
-    actorId,
-    name,
-    id,
-    position
-  }: TUpdateEnvDTO) => {
+  const updateEnvironment = async ({ projectId, slug, actor, actorId, name, id, position }: TUpdateEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      ProjectPermissionSub.Environments
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Environments);
 
     const oldEnv = await projectEnvDAL.findOne({ id, projectId });
     if (!oldEnv) throw new BadRequestError({ message: "Environment not found" });
@@ -104,10 +87,7 @@ export const projectEnvServiceFactory = ({
 
   const deleteEnvironment = async ({ projectId, actor, actorId, id }: TDeleteEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      ProjectPermissionSub.Environments
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
 
     const env = await projectEnvDAL.transaction(async (tx) => {
       const [doc] = await projectEnvDAL.delete({ id, projectId }, tx);

@@ -1,8 +1,8 @@
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
-import { AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthModeMfaJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 
 export const registerMfaRouter = async (server: FastifyZodProvider) => {
   const cfg = getConfig();
@@ -12,18 +12,17 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
     const authorizationHeader = req.headers.authorization;
 
     if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
-      res.status(401).send({ error: "Missing bearer token" });
+      void res.status(401).send({ error: "Missing bearer token" });
       return res;
     }
     const token = authorizationHeader.split(" ")[1];
     if (!token) {
-      res.status(401).send({ error: "Missing bearer token" });
+      void res.status(401).send({ error: "Missing bearer token" });
       return res;
     }
 
-    const decodedToken = jwt.verify(token, cfg.AUTH_SECRET) as JwtPayload;
-    if (decodedToken.authTokenType !== AuthTokenType.MFA_TOKEN)
-      throw new Error("Unauthorized access");
+    const decodedToken = jwt.verify(token, cfg.AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
+    if (decodedToken.authTokenType !== AuthTokenType.MFA_TOKEN) throw new Error("Unauthorized access");
 
     const user = await server.store.user.findById(decodedToken.userId);
     if (!user) throw new Error("User not found");
@@ -79,7 +78,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
         mfaToken: req.body.mfaToken
       });
 
-      res.setCookie("jid", token.refresh, {
+      void res.setCookie("jid", token.refresh, {
         httpOnly: true,
         path: "/",
         sameSite: "strict",

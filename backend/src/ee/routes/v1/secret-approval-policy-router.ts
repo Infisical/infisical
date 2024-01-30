@@ -111,7 +111,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approvals:  sapPubSchema.merge(z.object({approvers:z.string().array()})).array()
+          approvals: sapPubSchema.merge(z.object({ approvers: z.string().array() })).array()
         })
       }
     },
@@ -137,7 +137,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          policy: sapPubSchema.merge(z.object({approvers:z.string().array()})).optional()
+          policy: sapPubSchema.merge(z.object({ approvers: z.string().array() })).optional()
         })
       }
     },

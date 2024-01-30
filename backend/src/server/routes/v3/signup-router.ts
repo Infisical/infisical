@@ -48,10 +48,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { token, user } = await server.services.signup.verifyEmailSignup(
-        req.body.email,
-        req.body.code
-      );
+      const { token, user } = await server.services.signup.verifyEmailSignup(req.body.email, req.body.code);
       return { message: "Successfuly verified email", token, user };
     }
   });
@@ -93,21 +90,16 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const { user, accessToken, refreshToken } =
-        await server.services.signup.completeEmailAccountSignup({
-          ...req.body,
-          ip: req.realIp,
-          userAgent,
-          authorization: req.headers.authorization as string
-        });
+      const { user, accessToken, refreshToken } = await server.services.signup.completeEmailAccountSignup({
+        ...req.body,
+        ip: req.realIp,
+        userAgent,
+        authorization: req.headers.authorization as string
+      });
 
-      server.services.telemetry.sendLoopsEvent(
-        user.email,
-        user.firstName || "",
-        user.lastName || ""
-      );
+      void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
 
-      server.services.telemetry.sendPostHogEvents({
+      void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserSignedUp,
         distinctId: user.email,
         properties: {
@@ -116,7 +108,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      res.setCookie("jid", refreshToken, {
+      await res.setCookie("jid", refreshToken, {
         httpOnly: true,
         path: "/",
         sameSite: "strict",
@@ -161,14 +153,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const { user, accessToken, refreshToken } =
-        await server.services.signup.completeAccountInvite({
-          ...req.body,
-          ip: req.realIp,
-          userAgent
-        });
+      const { user, accessToken, refreshToken } = await server.services.signup.completeAccountInvite({
+        ...req.body,
+        ip: req.realIp,
+        userAgent
+      });
 
-      res.setCookie("jid", refreshToken, {
+      await res.setCookie("jid", refreshToken, {
         httpOnly: true,
         path: "/",
         sameSite: "strict",

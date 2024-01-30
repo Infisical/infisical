@@ -183,7 +183,11 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim().optional(),
-        secretPath: z.string().trim().optional().transform((val)=> val?removeTrailingSlash(val):val)
+        secretPath: z
+          .string()
+          .trim()
+          .optional()
+          .transform((val) => (val ? removeTrailingSlash(val) : val))
       }),
       response: {
         200: z.object({

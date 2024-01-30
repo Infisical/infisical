@@ -25,12 +25,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const path = req.body.path || req.body.directory;
       const folder = await server.services.folder.createFolder({
@@ -79,12 +74,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const path = req.body.path || req.body.directory;
       const { folder, old } = await server.services.folder.updateFolder({
@@ -133,12 +123,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const path = req.body.path || req.body.directory;
       const folder = await server.services.folder.deleteFolder({
@@ -183,12 +168,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const path = req.query.path || req.query.directory;
       const folders = await server.services.folder.getFolders({

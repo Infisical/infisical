@@ -20,7 +20,7 @@ export async function seed(knex: Knex): Promise<void> {
       name: seedData1.project.name,
       orgId: seedData1.organization.id,
       slug: "first-project",
-      // @ts-ignore pre calc id
+      // @ts-expect-error exluded type id needs to be inserted here to keep it testable
       id: seedData1.project.id
     })
     .returning("*");
@@ -45,7 +45,5 @@ export async function seed(knex: Knex): Promise<void> {
       }))
     )
     .returning("*");
-  await knex(TableName.SecretFolder).insert(
-    envs.map(({ id }) => ({ name: "root", envId: id, parentId: null }))
-  );
+  await knex(TableName.SecretFolder).insert(envs.map(({ id }) => ({ name: "root", envId: id, parentId: null })));
 }

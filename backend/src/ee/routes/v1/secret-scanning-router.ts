@@ -62,12 +62,11 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const appInstallationCompleted =
-        await server.services.secretScanning.getOrgInstallationStatus({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          orgId: req.params.organizationId
-        });
+      const appInstallationCompleted = await server.services.secretScanning.getOrgInstallationStatus({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.params.organizationId
+      });
       return { appInstallationCompleted };
     }
   });

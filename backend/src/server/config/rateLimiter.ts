@@ -6,7 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
   const appCfg = getConfig();
   const redis = appCfg.isRedisConfigured
-    ? new Redis(appCfg.REDIS_URL as string, { connectTimeout: 500, maxRetriesPerRequest: 1 })
+    ? new Redis(appCfg.REDIS_URL, { connectTimeout: 500, maxRetriesPerRequest: 1 })
     : null;
 
   return {

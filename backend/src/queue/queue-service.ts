@@ -63,37 +63,32 @@ export type TQueueJobTypes = {
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
 export const queueServiceFactory = (redisUrl: string) => {
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
-  const queueContainer: Record<
+  const queueContainer = {} as Record<
     QueueName,
     Queue<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
-  > = {} as any;
-  const workerContainer: Record<
+  >;
+  const workerContainer = {} as Record<
     QueueName,
     Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
-  > = {} as any;
+  >;
 
   const start = <T extends QueueName>(
     name: T,
-    jobFn: (
-      job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>
-    ) => Promise<void>
+    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>) => Promise<void>
   ) => {
     if (queueContainer[name]) {
       throw new Error(`${name} queue is already initialized`);
     }
 
-    queueContainer[name] = new Queue<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(
-      name as string,
-      { connection }
-    );
-    workerContainer[name] = new Worker<
-      TQueueJobTypes[T]["payload"],
-      void,
-      TQueueJobTypes[T]["name"]
-    >(name, jobFn, { connection });
+    queueContainer[name] = new Queue<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name as string, {
+      connection
+    });
+    workerContainer[name] = new Worker<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name, jobFn, {
+      connection
+    });
   };
 
-  const listen = async <
+  const listen = <
     T extends QueueName,
     U extends keyof WorkerListener<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>
   >(

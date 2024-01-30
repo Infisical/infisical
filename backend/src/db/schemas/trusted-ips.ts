@@ -16,7 +16,7 @@ export const TrustedIpsSchema = z.object({
   comment: z.string().nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TTrustedIps = z.infer<typeof TrustedIpsSchema>;

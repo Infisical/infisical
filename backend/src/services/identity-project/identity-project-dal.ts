@@ -14,11 +14,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db)(TableName.IdentityProjectMembership)
         .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
-        .join(
-          TableName.Identity,
-          `${TableName.IdentityProjectMembership}.identityId`,
-          `${TableName.Identity}.id`
-        )
+        .join(TableName.Identity, `${TableName.IdentityProjectMembership}.identityId`, `${TableName.Identity}.id`)
         .leftJoin(
           TableName.ProjectRoles,
           `${TableName.IdentityProjectMembership}.roleId`,

@@ -21,20 +21,10 @@ type TOrgRoleServiceFactoryDep = {
 
 export type TOrgRoleServiceFactory = ReturnType<typeof orgRoleServiceFactory>;
 
-export const orgRoleServiceFactory = ({
-  orgRoleDAL,
-  permissionService
-}: TOrgRoleServiceFactoryDep) => {
-  const createRole = async (
-    userId: string,
-    orgId: string,
-    data: Omit<TOrgRolesInsert, "orgId">
-  ) => {
+export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRoleServiceFactoryDep) => {
+  const createRole = async (userId: string, orgId: string, data: Omit<TOrgRolesInsert, "orgId">) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
-      OrgPermissionSubjects.Role
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Role);
     const existingRole = await orgRoleDAL.findOne({ slug: data.slug, orgId });
     if (existingRole) throw new BadRequestError({ name: "Create Role", message: "Duplicate role" });
     const role = await orgRoleDAL.create({
@@ -45,17 +35,9 @@ export const orgRoleServiceFactory = ({
     return role;
   };
 
-  const updateRole = async (
-    userId: string,
-    orgId: string,
-    roleId: string,
-    data: Omit<TOrgRolesUpdate, "orgId">
-  ) => {
+  const updateRole = async (userId: string, orgId: string, roleId: string, data: Omit<TOrgRolesUpdate, "orgId">) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Edit,
-      OrgPermissionSubjects.Role
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Role);
     if (data?.slug) {
       const existingRole = await orgRoleDAL.findOne({ slug: data.slug, orgId });
       if (existingRole && existingRole.id !== roleId)
@@ -71,10 +53,7 @@ export const orgRoleServiceFactory = ({
 
   const deleteRole = async (userId: string, orgId: string, roleId: string) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Delete,
-      OrgPermissionSubjects.Role
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
     const [deletedRole] = await orgRoleDAL.delete({ id: roleId, orgId });
     if (!deleteRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
 
@@ -83,10 +62,7 @@ export const orgRoleServiceFactory = ({
 
   const listRoles = async (userId: string, orgId: string) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.Role
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
     const customRoles = await orgRoleDAL.find({ orgId });
     const roles = [
       {

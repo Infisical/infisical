@@ -31,9 +31,7 @@ export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
     if (!user) throw new BadRequestError({ name: "Update auth methods" });
 
     const hasSamlEnabled = user?.authMethods?.some((method) =>
-      [AuthMethod.OKTA_SAML, AuthMethod.AZURE_SAML, AuthMethod.JUMPCLOUD_SAML].includes(
-        method as AuthMethod
-      )
+      [AuthMethod.OKTA_SAML, AuthMethod.AZURE_SAML, AuthMethod.JUMPCLOUD_SAML].includes(method as AuthMethod)
     );
     if (hasSamlEnabled)
       throw new BadRequestError({

@@ -25,11 +25,7 @@ type TAuthLoginServiceFactoryDep = {
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
-export const authLoginServiceFactory = ({
-  userDAL,
-  tokenService,
-  smtpService
-}: TAuthLoginServiceFactoryDep) => {
+export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
    * Not exported. This is to update user device list
@@ -37,9 +33,7 @@ export const authLoginServiceFactory = ({
    */
   const updateUserDeviceSession = async (user: TUsers, ip: string, userAgent: string) => {
     const devices = await UserDeviceSchema.parseAsync(user.devices || []);
-    const isDeviceSeen = devices.some(
-      (device) => device.ip === ip && device.userAgent === userAgent
-    );
+    const isDeviceSeen = devices.some((device) => device.ip === ip && device.userAgent === userAgent);
 
     if (!isDeviceSeen) {
       const newDeviceList = devices.concat([{ ip, userAgent }]);
@@ -159,8 +153,7 @@ export const authLoginServiceFactory = ({
       validateProviderAuthToken(providerAuthToken as string, email);
     }
 
-    if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey)
-      throw new Error("Failed to authenticate. Try again?");
+    if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey) throw new Error("Failed to authenticate. Try again?");
     const isValidClientProof = await srpCheckClientProof(
       userEnc.salt,
       userEnc.verifier,
@@ -176,11 +169,9 @@ export const authLoginServiceFactory = ({
     });
     // send multi factor auth token if they it enabled
     if (userEnc.isMfaEnabled) {
-      const mfaToken = jwt.sign(
-        { authTokenType: AuthTokenType.MFA_TOKEN, userId: userEnc.userId },
-        cfg.AUTH_SECRET,
-        { expiresIn: cfg.JWT_MFA_LIFETIME }
-      );
+      const mfaToken = jwt.sign({ authTokenType: AuthTokenType.MFA_TOKEN, userId: userEnc.userId }, cfg.AUTH_SECRET, {
+        expiresIn: cfg.JWT_MFA_LIFETIME
+      });
       await sendUserMfaCode(userEnc.userId, userEnc.email);
 
       return { isMfaEnabled: true, token: mfaToken } as const;
@@ -230,8 +221,7 @@ export const authLoginServiceFactory = ({
     let user = await userDAL.findUserByEmail(email);
     const appCfg = getConfig();
     const isOauthSignUpDisabled = !isSignupAllowed && !user;
-    if (isOauthSignUpDisabled)
-      throw new BadRequestError({ message: "User signup disabled", name: "Oauth 2 login" });
+    if (isOauthSignUpDisabled) throw new BadRequestError({ message: "User signup disabled", name: "Oauth 2 login" });
 
     if (!user) {
       user = await userDAL.create({ email, firstName, lastName, authMethods: [authMethod] });

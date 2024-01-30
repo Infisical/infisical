@@ -16,7 +16,7 @@ export const AuthTokenSessionsSchema = z.object({
   lastUsed: z.date(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  userId: z.string().uuid(),
+  userId: z.string().uuid()
 });
 
 export type TAuthTokenSessions = z.infer<typeof AuthTokenSessionsSchema>;

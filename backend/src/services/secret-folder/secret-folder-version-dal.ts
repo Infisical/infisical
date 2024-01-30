@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName,TSecretFolderVersions } from "@app/db/schemas";
+import { TableName, TSecretFolderVersions } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -14,11 +14,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
   const findLatestVersionByFolderId = async (folderId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db)(TableName.SecretFolderVersion)
-        .join(
-          TableName.SecretFolder,
-          `${TableName.SecretFolderVersion}.folderId`,
-          `${TableName.SecretFolder}.id`
-        )
+        .join(TableName.SecretFolder, `${TableName.SecretFolderVersion}.folderId`, `${TableName.SecretFolder}.id`)
         .where({ parentId: folderId })
         .join<TSecretFolderVersions>(
           (tx || db)(TableName.SecretFolderVersion)
@@ -42,9 +38,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
 
   const findLatestFolderVersions = async (folderIds: string[], tx?: Knex) => {
     try {
-      const docs: Array<TSecretFolderVersions & { max: number }> = await (tx || db)(
-        TableName.SecretFolderVersion
-      )
+      const docs: Array<TSecretFolderVersions & { max: number }> = await (tx || db)(TableName.SecretFolderVersion)
         .whereIn("folderId", folderIds)
         .join(
           (tx || db)(TableName.SecretFolderVersion)

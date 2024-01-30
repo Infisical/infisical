@@ -12,7 +12,7 @@ export const IdentitiesSchema = z.object({
   name: z.string(),
   authMethod: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TIdentities = z.infer<typeof IdentitiesSchema>;

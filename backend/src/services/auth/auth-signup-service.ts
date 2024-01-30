@@ -148,9 +148,7 @@ export const authSignupServiceFactory = ({
     });
 
     const hasSamlEnabled = user?.authMethods?.some((authMethod) =>
-      [AuthMethod.OKTA_SAML, AuthMethod.AZURE_SAML, AuthMethod.JUMPCLOUD_SAML].includes(
-        authMethod as AuthMethod
-      )
+      [AuthMethod.OKTA_SAML, AuthMethod.AZURE_SAML, AuthMethod.JUMPCLOUD_SAML].includes(authMethod as AuthMethod)
     );
 
     if (!hasSamlEnabled) {
@@ -162,9 +160,7 @@ export const authSignupServiceFactory = ({
       { userId: user.id, status: OrgMembershipStatus.Accepted }
     );
     const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
-    await Promise.allSettled(
-      uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId))
-    );
+    await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
 
     const tokenSession = await tokenService.getUserTokenSession({
       userAgent,
@@ -259,9 +255,7 @@ export const authSignupServiceFactory = ({
         tx
       );
       const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
-      await Promise.allSettled(
-        uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId))
-      );
+      await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
 
       return { info: us, key: userEncKey };
     });

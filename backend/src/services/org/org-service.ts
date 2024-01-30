@@ -5,10 +5,7 @@ import jwt from "jsonwebtoken";
 import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
 import { TProjects } from "@app/db/schemas/projects";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -74,8 +71,7 @@ export const orgServiceFactory = ({
   const findOrganizationById = async (userId: string, orgId: string) => {
     await permissionService.getUserOrgPermission(userId, orgId);
     const org = await orgDAL.findOrgById(orgId);
-    if (!org)
-      throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
+    if (!org) throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
     return org;
   };
   /*
@@ -90,10 +86,7 @@ export const orgServiceFactory = ({
    * */
   const findAllOrgMembers = async (userId: string, orgId: string) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.Member
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
 
     const members = await orgDAL.findAllOrgMembers(orgId);
     return members;
@@ -101,14 +94,9 @@ export const orgServiceFactory = ({
 
   const findAllWorkspaces = async ({ actor, actorId, orgId }: TFindAllWorkspacesDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.Workspace
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
 
-    const organizationWorkspaceIds = new Set(
-      (await projectDAL.find({ orgId })).map((workspace) => workspace.id)
-    );
+    const organizationWorkspaceIds = new Set((await projectDAL.find({ orgId })).map((workspace) => workspace.id));
 
     let workspaces: (TProjects & { organization: string } & {
       environments: {
@@ -134,13 +122,9 @@ export const orgServiceFactory = ({
    * */
   const updateOrgName = async (userId: string, orgId: string, name: string) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Edit,
-      OrgPermissionSubjects.Settings
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
     const org = await orgDAL.updateById(orgId, { name });
-    if (!org)
-      throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
+    if (!org) throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
     return org;
   };
   /*
@@ -209,7 +193,7 @@ export const orgServiceFactory = ({
    * */
   const deleteOrganizationById = async (userId: string, orgId: string) => {
     const { membership } = await permissionService.getUserOrgPermission(userId, orgId);
-    if (membership.role !== OrgMembershipRole.Admin)
+    if ((membership.role as OrgMembershipRole) !== OrgMembershipRole.Admin)
       throw new UnauthorizedError({ name: "Delete org by id", message: "Not an admin" });
 
     const organization = await orgDAL.deleteById(orgId);
@@ -222,29 +206,19 @@ export const orgServiceFactory = ({
    * Org membership management
    * Not another service because it has close ties with how an org works doesn't make sense to seperate them
    * */
-  const updateOrgMembership = async ({
-    role,
-    orgId,
-    userId,
-    membershipId
-  }: TUpdateOrgMembershipDTO) => {
+  const updateOrgMembership = async ({ role, orgId, userId, membershipId }: TUpdateOrgMembershipDTO) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Edit,
-      OrgPermissionSubjects.Member
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
 
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
     if (isCustomRole) {
       const customRole = await orgRoleDAL.findOne({ slug: role, orgId });
-      if (!customRole)
-        throw new BadRequestError({ name: "Update membership", message: "Role not found" });
+      if (!customRole) throw new BadRequestError({ name: "Update membership", message: "Role not found" });
 
       const plan = await licenseService.getPlan(orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
-          message:
-            "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
+          message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
         });
 
       const [membership] = await orgDAL.updateMembership(
@@ -257,10 +231,7 @@ export const orgServiceFactory = ({
       return membership;
     }
 
-    const [membership] = await orgDAL.updateMembership(
-      { id: membershipId, orgId },
-      { role, roleId: null }
-    );
+    const [membership] = await orgDAL.updateMembership({ id: membershipId, orgId }, { role, roleId: null });
     return membership;
   };
   /*
@@ -268,10 +239,7 @@ export const orgServiceFactory = ({
    */
   const inviteUserToOrganization = async ({ orgId, userId, inviteeEmail }: TInviteUserToOrgDTO) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
-      OrgPermissionSubjects.Member
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
 
     const samlCfg = await samlConfigDAL.findOne({ orgId });
     if (samlCfg && samlCfg.isActive) {
@@ -284,8 +252,7 @@ export const orgServiceFactory = ({
       // case: limit imposed on number of members allowed
       // case: number of members used exceeds the number of members allowed
       throw new BadRequestError({
-        message:
-          "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+        message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
       });
     }
     const invitee = await orgDAL.transaction(async (tx) => {
@@ -293,10 +260,7 @@ export const orgServiceFactory = ({
       if (inviteeUser) {
         // if user already exist means its already part of infisical
         // Thus the signup flow is not needed anymore
-        const [inviteeMembership] = await orgDAL.findMembership(
-          { orgId, userId: inviteeUser.id },
-          { tx }
-        );
+        const [inviteeMembership] = await orgDAL.findMembership({ orgId, userId: inviteeUser.id }, { tx });
         if (inviteeMembership && inviteeMembership.status === OrgMembershipStatus.Accepted) {
           throw new BadRequestError({
             message: "Failed to invite an existing member of org",
@@ -432,10 +396,7 @@ export const orgServiceFactory = ({
 
   const deleteOrgMembership = async ({ orgId, userId, membershipId }: TDeleteOrgMembershipDTO) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Delete,
-      OrgPermissionSubjects.Member
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
 
     const membership = await orgDAL.deleteMembershipById(membershipId, orgId);
 
@@ -448,20 +409,14 @@ export const orgServiceFactory = ({
    * */
   const findIncidentContacts = async (userId: string, orgId: string) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.IncidentAccount
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
     const incidentContacts = await incidentContactDAL.findByOrgId(orgId);
     return incidentContacts;
   };
 
   const createIncidentContact = async (userId: string, orgId: string, email: string) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
-      OrgPermissionSubjects.IncidentAccount
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.IncidentAccount);
     const doesIncidentContactExist = await incidentContactDAL.findOne(orgId, { email });
     if (doesIncidentContactExist) {
       throw new BadRequestError({
@@ -476,10 +431,7 @@ export const orgServiceFactory = ({
 
   const deleteIncidentContact = async (userId: string, orgId: string, id: string) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Delete,
-      OrgPermissionSubjects.IncidentAccount
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.IncidentAccount);
 
     const incidentContact = await incidentContactDAL.deleteById(id, orgId);
     return incidentContact;

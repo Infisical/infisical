@@ -13,7 +13,7 @@ export const GitAppOrgSchema = z.object({
   userId: z.string().uuid(),
   orgId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TGitAppOrg = z.infer<typeof GitAppOrgSchema>;

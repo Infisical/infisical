@@ -48,14 +48,12 @@ export const generateUserSrpKeys = async (password: string) => {
   await new Promise((resolve) => {
     client.init({ username: seedData1.email, password: seedData1.password }, () => resolve(null));
   });
-  const { salt, verifier } = await new Promise<{ salt: string; verifier: string }>(
-    (resolve, reject) => {
-      client.createVerifier((err, res) => {
-        if (err) return reject(err);
-        return resolve(res);
-      });
-    }
-  );
+  const { salt, verifier } = await new Promise<{ salt: string; verifier: string }>((resolve, reject) => {
+    client.createVerifier((err, res) => {
+      if (err) return reject(err);
+      return resolve(res);
+    });
+  });
   const derivedKey = await argon2.hash(password, {
     salt: Buffer.from(salt),
     memoryCost: 65536,

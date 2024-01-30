@@ -37,7 +37,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.GET_WORKSPACE_KEY,
           metadata: {
-            keyId: key.id
+            keyId: key?.id as string
           }
         }
       });

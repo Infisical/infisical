@@ -9,11 +9,7 @@ import { TokenType } from "../auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TAuthDALFactory } from "./auth-dal";
-import {
-  TChangePasswordDTO,
-  TCreateBackupPrivateKeyDTO,
-  TResetPasswordViaBackupKeyDTO
-} from "./auth-password-type";
+import { TChangePasswordDTO, TCreateBackupPrivateKeyDTO, TResetPasswordViaBackupKeyDTO } from "./auth-password-type";
 import { AuthTokenType } from "./auth-type";
 
 type TAuthPasswordServiceFactoryDep = {
@@ -70,8 +66,7 @@ export const authPaswordServiceFactory = ({
       serverPrivateKey: null,
       clientPublicKey: null
     });
-    if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey)
-      throw new Error("Failed to authenticate. Try again?");
+    if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey) throw new Error("Failed to authenticate. Try again?");
     const isValidClientProof = await srpCheckClientProof(
       userEnc.salt,
       userEnc.verifier,
@@ -200,8 +195,7 @@ export const authPaswordServiceFactory = ({
       throw new Error("Failed to find  user");
     }
 
-    if (!userEnc.clientPublicKey || !userEnc.serverPrivateKey)
-      throw new Error("failed to create backup key");
+    if (!userEnc.clientPublicKey || !userEnc.serverPrivateKey) throw new Error("failed to create backup key");
     const isValidClientProff = await srpCheckClientProof(
       userEnc.salt,
       userEnc.verifier,
