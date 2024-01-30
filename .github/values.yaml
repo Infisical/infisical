@@ -1,49 +1,52 @@
-backend:
-  enabled: true
-  name: backend
-  podAnnotations: {}
-  deploymentAnnotations:
-    secrets.infisical.com/auto-reload: "true"
+## @section Common parameters
+##
+
+## @param nameOverride Override release name
+##
+nameOverride: ""
+## @param fullnameOverride Override release fullname
+##
+fullnameOverride: ""
+
+## @section Infisical backend parameters
+## Documentation : https://infisical.com/docs/self-hosting/deployments/kubernetes
+##
+
+infisical:
+  ## @param backend.enabled Enable backend
+  ##
+  enabled: false
+  ## @param backend.name Backend name
+  ##
+  name: infisical
   replicaCount: 2
   image:
-    repository: infisical/staging_infisical
-    tag: "latest"
-    pullPolicy: Always
-  kubeSecretRef: managed-backend-secret
-  service:
-    annotations: {}
-    type: ClusterIP
-    nodePort: ""
-  resources:
-    limits:
-      memory: 300Mi
+    repository: infisical/infisical
+    tag: "v0.44.16-postgres"
+    pullPolicy: IfNotPresent
 
-backendEnvironmentVariables: null
+  deploymentAnnotations:
+    secrets.infisical.com/auto-reload: "true"
 
-## Mongo DB persistence
-mongodb:
-  enabled: false
-  persistence:
-    enabled: false
-
-## By default the backend will be connected to a Mongo instance within the cluster
-## However, it is recommended to add a managed document DB connection string for production-use (DBaaS)
-## Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
-## e.g. "mongodb://<user>:<pass>@<host>:<port>/<database-name>"
-mongodbConnection:
-  externalMongoDBConnectionString: ""
+  kubeSecretRef: "infisical-gamma-secrets"
 
 ingress:
+  ## @param ingress.enabled Enable ingress
+  ##
   enabled: true
-  # annotations:
-  #   kubernetes.io/ingress.class: "nginx"
-  # cert-manager.io/issuer: letsencrypt-nginx
-  hostName: gamma.infisical.com ## <- Replace with your own domain
+  ## @param ingress.ingressClassName Ingress class name
+  ##
+  ingressClassName: nginx
+  ## @param ingress.nginx.enabled Ingress controller
+  ##
+  # nginx:
+  #   enabled: true
+  ## @param ingress.annotations Ingress annotations
+  ##
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hostName: "gamma.infisical.com"
   tls:
-    []
-    # - secretName: letsencrypt-nginx
-    #   hosts:
-    #     - infisical.local
-
-mailhog:
-  enabled: false
+    - secretName: letsencrypt-prod
+      hosts:
+        - gamma.infisical.com
