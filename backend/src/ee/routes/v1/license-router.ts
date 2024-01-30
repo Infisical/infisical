@@ -79,7 +79,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const data = await server.services.license.startOrgTrail({
+      const data = await server.services.license.startOrgTrial({
         actorId: req.permission.id,
         actor: req.permission.type,
         orgId: req.params.organizationId,
