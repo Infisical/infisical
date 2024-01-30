@@ -15,8 +15,8 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
   server.route({
     url: "/logout",
     method: "POST",
-    config:{
-      rateLimit:authRateLimit
+    config: {
+      rateLimit: authRateLimit
     },
     schema: {
       response: {
@@ -31,7 +31,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       if (req.auth.authMode === AuthMode.JWT) {
         await server.services.login.logout(req.permission.id, req.auth.tokenVersionId);
       }
-      res.cookie("jid", "", {
+      void res.cookie("jid", "", {
         httpOnly: true,
         path: "/",
         sameSite: "strict",

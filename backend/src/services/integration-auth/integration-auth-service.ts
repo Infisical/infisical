@@ -906,7 +906,7 @@ export const integrationAuthServiceFactory = ({
           }
         );
 
-        secrets.forEach((a: any) => {
+        secrets.forEach((a) => {
           secretGroups.push({
             name: a.name,
             groupId: a.id

@@ -43,7 +43,7 @@ export const projectBotServiceFactory = ({
     if (!bot.encryptedProjectKeyNonce || !bot.encryptedProjectKey)
       throw new BadRequestError({ message: "Encryption key missing" });
 
-    if (rootEncryptionKey && bot.keyEncoding === SecretKeyEncoding.BASE64) {
+    if (rootEncryptionKey && (bot.keyEncoding as SecretKeyEncoding) === SecretKeyEncoding.BASE64) {
       const privateKeyBot = decryptSymmetric({
         iv: bot.iv,
         tag: bot.tag,
@@ -57,7 +57,7 @@ export const projectBotServiceFactory = ({
         publicKey: bot.sender.publicKey
       });
     }
-    if (encryptionKey && bot.keyEncoding === SecretKeyEncoding.UTF8) {
+    if (encryptionKey && (bot.keyEncoding as SecretKeyEncoding) === SecretKeyEncoding.UTF8) {
       const privateKeyBot = decryptSymmetric128BitHexKeyUTF8({
         iv: bot.iv,
         tag: bot.tag,

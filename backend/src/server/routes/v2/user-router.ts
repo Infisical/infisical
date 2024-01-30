@@ -26,7 +26,10 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const user = await server.services.user.toggleUserMfa(req.permission.id, req.body.isMfaEnabled);
+      const user = await server.services.user.toggleUserMfa(
+        req.permission.id,
+        req.body.isMfaEnabled
+      );
       return { user };
     }
   });

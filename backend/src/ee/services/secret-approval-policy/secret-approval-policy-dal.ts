@@ -18,6 +18,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
 
   const sapFindQuery = (tx: Knex, filter: TFindFilter<TSecretApprovalPolicies>) =>
     tx(TableName.SecretApprovalPolicy)
+      // eslint-disable-next-line
       .where(buildFindFilter(filter))
       .join(
         TableName.Environment,

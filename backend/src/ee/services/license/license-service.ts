@@ -1,3 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+// eslint-disable @typescript-eslint/no-unsafe-assignment
+
+// TODO(akhilmhdh): With tony find out the api structure and fill it here
+
 import { ForbiddenError } from "@casl/ability";
 import NodeCache from "node-cache";
 
@@ -92,7 +98,7 @@ export const licenseServiceFactory = ({
       // else it would reach catch statement
       isValidLicense = true;
     } catch (error) {
-      logger.error(`init-license: encountered an error when init license [error=${error}]`);
+      logger.error(`init-license: encountered an error when init license [error]`, error);
     }
   };
 
@@ -119,7 +125,10 @@ export const licenseServiceFactory = ({
         return currentPlan;
       }
     } catch (error) {
-      logger.error(`getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error=${error}]`);
+      logger.error(
+        `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`,
+        error
+      );
       return onPremFeatures;
     }
     return onPremFeatures;
@@ -136,7 +145,7 @@ export const licenseServiceFactory = ({
     if (instanceType === InstanceType.Cloud) {
       const {
         data: { customerId }
-      } = await licenseServerCloudApi.request.post(
+      } = await licenseServerCloudApi.request.post<{ customerId: string }>(
         "/api/license-server/v1/customers",
         {
           email,

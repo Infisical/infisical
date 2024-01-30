@@ -118,7 +118,7 @@ export const registerRoutes = async (
     queue: queueService
   }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory }
 ) => {
-  server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
+  await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
 
   // db layers
   const userDAL = userDALFactory(db);

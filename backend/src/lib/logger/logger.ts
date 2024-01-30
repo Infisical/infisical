@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 // logger follows a singleton pattern
 // easier to use it that's all.
 import pino, { Logger } from "pino";
@@ -14,10 +15,10 @@ const logLevelToSeverityLookup: Record<string, string> = {
 
 // eslint-disable-next-line import/no-mutable-exports
 export let logger: Readonly<Logger>;
-// akhilmhdh: 
-// The logger is not placed in the main app config to avoid a circular dependency. 
-// The config requires the logger to display errors when an invalid environment is supplied. 
-// On the other hand, the logger needs the config to obtain credentials for AWS or other transports. 
+// akhilmhdh:
+// The logger is not placed in the main app config to avoid a circular dependency.
+// The config requires the logger to display errors when an invalid environment is supplied.
+// On the other hand, the logger needs the config to obtain credentials for AWS or other transports.
 // By keeping the logger separate, it becomes an independent package.
 
 const loggerConfig = z.object({
@@ -66,6 +67,7 @@ export const initLogger = async () => {
         })
       }
     },
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     transport
   );
   return logger;

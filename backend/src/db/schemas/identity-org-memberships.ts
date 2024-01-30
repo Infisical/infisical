@@ -14,9 +14,11 @@ export const IdentityOrgMembershipsSchema = z.object({
   orgId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  identityId: z.string().uuid(),
+  identityId: z.string().uuid()
 });
 
 export type TIdentityOrgMemberships = z.infer<typeof IdentityOrgMembershipsSchema>;
 export type TIdentityOrgMembershipsInsert = Omit<TIdentityOrgMemberships, TImmutableDBKeys>;
-export type TIdentityOrgMembershipsUpdate = Partial<Omit<TIdentityOrgMemberships, TImmutableDBKeys>>;
+export type TIdentityOrgMembershipsUpdate = Partial<
+  Omit<TIdentityOrgMemberships, TImmutableDBKeys>
+>;

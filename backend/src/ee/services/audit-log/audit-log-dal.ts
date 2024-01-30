@@ -48,10 +48,10 @@ export const auditLogDALFactory = (db: TDbClient) => {
       .limit(limit)
       .offset(offset);
     if (startDate) {
-      sqlQuery.where("createdAt", ">=", startDate);
+      void sqlQuery.where("createdAt", ">=", startDate);
     }
     if (endDate) {
-      sqlQuery.where("createdAt", "<=", endDate);
+      void sqlQuery.where("createdAt", "<=", endDate);
     }
     const docs = await sqlQuery;
     return docs;

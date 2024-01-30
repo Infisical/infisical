@@ -223,7 +223,7 @@ export const infisicalSymmetricEncypt = (data: string) => {
   throw new Error("Missing both encryption keys");
 };
 
-export const infisicalSymmetricDecrypt = <T extends any = string>({
+export const infisicalSymmetricDecrypt = <T = string>({
   keyEncoding,
   ciphertext,
   tag,

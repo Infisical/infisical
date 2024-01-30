@@ -111,17 +111,18 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approvals:  sapPubSchema.merge(z.object({approvers:z.string().array()})).array()
+          approvals: sapPubSchema.merge(z.object({ approvers: z.string().array() })).array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const approvals = await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        projectId: req.query.workspaceId
-      });
+      const approvals =
+        await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId: req.query.workspaceId
+        });
       return { approvals };
     }
   });
@@ -137,7 +138,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          policy: sapPubSchema.merge(z.object({approvers:z.string().array()})).optional()
+          policy: sapPubSchema.merge(z.object({ approvers: z.string().array() })).optional()
         })
       }
     },

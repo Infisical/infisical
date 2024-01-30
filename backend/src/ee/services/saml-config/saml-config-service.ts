@@ -239,9 +239,9 @@ export const samlConfigServiceFactory = ({
         "64f23239a5d4ed17f1e544c4": "9256337f-e3da-43d7-8266-39c9276e8426",
         "65348e49db355e6e4782571f": "b8a227c7-843e-410e-8982-b4976a599b69",
         "657a219fc8a80c2eff97eb38": "fcab1573-ae7f-4fcf-9645-646207acf035"
-    };
+      };
 
-    const id = UUIDToMongoId[dto.id] ?? dto.id
+      const id = UUIDToMongoId[dto.id] ?? dto.id;
 
       ssoConfig = await samlConfigDAL.findById(id);
     }
@@ -252,7 +252,7 @@ export const samlConfigServiceFactory = ({
       const { permission } = await permissionService.getOrgPermission(
         dto.actor,
         dto.actorId,
-        ssoConfig!.orgId
+        ssoConfig.orgId
       );
       ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionActions.Read,
@@ -400,7 +400,7 @@ export const samlConfigServiceFactory = ({
         isUserCompleted,
         ...(relayState
           ? {
-              callbackPort: JSON.parse(relayState).callbackPort as string
+              callbackPort: (JSON.parse(relayState) as { callbackPort: string }).callbackPort
             }
           : {})
       },

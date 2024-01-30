@@ -6,6 +6,7 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -34,7 +35,6 @@ import {
   TSecretRotationDbFn,
   TSecretRotationEncData
 } from "./secret-rotation-queue-types";
-import { BadRequestError } from "@app/lib/errors";
 
 export type TSecretRotationQueueFactory = ReturnType<typeof secretRotationQueueFactory>;
 
@@ -70,7 +70,7 @@ export const secretRotationQueueFactory = ({
 }: TSecretRotationQueueFactoryDep) => {
   const addToQueue = async (rotationId: string, interval: number) => {
     const appCfg = getConfig();
-    queue.queue(
+    await queue.queue(
       QueueName.SecretRotation,
       QueueJobs.SecretRotation,
       { rotationId },
@@ -265,7 +265,7 @@ export const secretRotationQueueFactory = ({
             return {
               ...el,
               secretId: id,
-              secretBlindIndex: el.secretBlindIndex as string
+              secretBlindIndex: el.secretBlindIndex
             };
           }),
           tx
@@ -288,7 +288,7 @@ export const secretRotationQueueFactory = ({
       logger.error(error);
       if (error instanceof DisableRotationErrors) {
         if (job.id) {
-          queue.stopRepeatableJobByJobId(QueueName.SecretRotation, job.id);
+          await queue.stopRepeatableJobByJobId(QueueName.SecretRotation, job.id);
         }
       }
 

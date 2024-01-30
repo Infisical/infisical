@@ -26,7 +26,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
   const findLastEnvPosition = async (projectId: string, tx?: Knex) => {
     const lastPos = await (tx || db)(TableName.Environment)
       .where({ projectId })
-      .max({ position: "position" })
+      .max("position", { as: "position" })
       .first();
     return lastPos?.position || 0;
   };

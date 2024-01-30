@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName,TSecretScanningGitRisksInsert } from "@app/db/schemas";
+import { TableName, TSecretScanningGitRisksInsert } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 

@@ -39,7 +39,7 @@ export const setupLicenceRequestWithStore = (
   let token: string;
   const licenceReq = axios.create({
     baseURL,
-    timeout: 35 * 1000,
+    timeout: 35 * 1000
     // signal: AbortSignal.timeout(60 * 1000)
   });
 
@@ -47,7 +47,7 @@ export const setupLicenceRequestWithStore = (
     const appCfg = getConfig();
     const {
       data: { token: authToken }
-    } = await request.post(
+    } = await request.post<{ token: string }>(
       refreshUrl,
       {},
       {
@@ -75,18 +75,18 @@ export const setupLicenceRequestWithStore = (
   licenceReq.interceptors.response.use(
     (response) => response,
     async (err) => {
-      const originalRequest = err.config;
+      const originalRequest = (err as AxiosError).config;
 
       // eslint-disable-next-line
-      if ((err as AxiosError)?.response?.status === 401 && !originalRequest._retry) {
+      if ((err as AxiosError)?.response?.status === 401 && !(originalRequest as any)._retry) {
         // eslint-disable-next-line
-        originalRequest._retry = true;
+        (originalRequest as any)._retry = true; // injected
 
         // refresh
         await refreshLicence();
 
         licenceReq.defaults.headers.common.Authorization = `Bearer ${token}`;
-        return licenceReq(originalRequest);
+        return licenceReq(originalRequest!);
       }
 
       return Promise.reject(err);

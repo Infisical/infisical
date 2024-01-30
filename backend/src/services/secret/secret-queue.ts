@@ -318,7 +318,7 @@ export const secretQueueFactory = ({
         botKey
       );
       const suffixedSecrets: typeof secrets = {};
-      const metadata = integration.metadata as Record<string, any>;
+      const metadata = integration.metadata as Record<string, string>;
       if (metadata) {
         Object.keys(secrets).forEach((key) => {
           const prefix = metadata?.secretPrefix || "";

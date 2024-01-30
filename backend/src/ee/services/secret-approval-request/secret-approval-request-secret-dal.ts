@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretApprovalRequestsSecretsSchema, TableName } from "@app/db/schemas";
+import { SecretApprovalRequestsSecretsSchema, TableName, TSecretTags } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
@@ -45,7 +45,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           `${TableName.SecretVersionTag}.${TableName.SecretVersion}Id`,
           `${TableName.SecretVersion}.id`
         )
-        .leftJoin(
+        .leftJoin<TSecretTags>(
           db.ref(TableName.SecretTag).as("secVerTag"),
           `${TableName.SecretVersionTag}.${TableName.SecretTag}Id`,
           db.ref("id").withSchema("secVerTag")
@@ -192,9 +192,13 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
                   secVerTagSlug: slug,
                   secVerTagColor: color
                 }) => ({
+                  // eslint-disable-next-line
                   id,
+                  // eslint-disable-next-line
                   name,
+                  // eslint-disable-next-line
                   slug,
+                  // eslint-disable-next-line
                   color
                 })
               }

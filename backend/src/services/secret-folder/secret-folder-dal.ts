@@ -42,7 +42,7 @@ const sqlFindMultipleFolderByEnvPathQuery = (
       // Thus each node has connection to parent node
       // for a given path from root we recursively reach to the leaf path or till we get null
       // the below query is the base case where we select root folder which has parent folder id as null
-      baseQb
+      void baseQb
         .select({
           depth: 1,
           // latestFolderVerId: db.raw("NULL::uuid"),
@@ -57,34 +57,35 @@ const sqlFindMultipleFolderByEnvPathQuery = (
           formatedQuery.map(({ envId }) => envId)
         )
         .select(selectAllTableCols(TableName.SecretFolder))
-        .union((qb) =>
-          // for here on we keep going to next child node.
-          // we also keep a measure of depth then we check the depth matches the array path segment and folder name
-          // that is at depth 1 for a path /folder1/folder2 -> the name should be folder1
-          qb
-            .select({
-              depth: db.raw("parent.depth + 1"),
-              path: db.raw(
-                "CONCAT((CASE WHEN parent.path = '/' THEN '' ELSE parent.path END),'/', secret_folders.name)"
-              )
-            })
-            .select(selectAllTableCols(TableName.SecretFolder))
-            .where((wb) =>
-              formatedQuery.map(({ secretPath }) =>
-                wb.orWhereRaw(
-                  `depth = array_position(ARRAY[${secretPath
-                    .map(() => "?")
-                    .join(",")}]::varchar[], ${TableName.SecretFolder}.name,depth)`,
-                  [...secretPath]
+        .union(
+          (qb) =>
+            // for here on we keep going to next child node.
+            // we also keep a measure of depth then we check the depth matches the array path segment and folder name
+            // that is at depth 1 for a path /folder1/folder2 -> the name should be folder1
+            void qb
+              .select({
+                depth: db.raw("parent.depth + 1"),
+                path: db.raw(
+                  "CONCAT((CASE WHEN parent.path = '/' THEN '' ELSE parent.path END),'/', secret_folders.name)"
+                )
+              })
+              .select(selectAllTableCols(TableName.SecretFolder))
+              .where((wb) =>
+                formatedQuery.map(({ secretPath }) =>
+                  wb.orWhereRaw(
+                    `depth = array_position(ARRAY[${secretPath
+                      .map(() => "?")
+                      .join(",")}]::varchar[], ${TableName.SecretFolder}.name,depth)`,
+                    [...secretPath]
+                  )
                 )
               )
-            )
-            .from(TableName.SecretFolder)
-            .join("parent", (bd) =>
-              bd
-                .on("parent.id", `${TableName.SecretFolder}.parentId`)
-                .andOn("parent.envId", `${TableName.SecretFolder}.envId`)
-            )
+              .from(TableName.SecretFolder)
+              .join("parent", (bd) =>
+                bd
+                  .on("parent.id", `${TableName.SecretFolder}.parentId`)
+                  .andOn("parent.envId", `${TableName.SecretFolder}.envId`)
+              )
         );
     })
     .select("*")
@@ -113,7 +114,7 @@ const sqlFindFolderByPathQuery = (
       // Thus each node has connection to parent node
       // for a given path from root we recursively reach to the leaf path or till we get null
       // the below query is the base case where we select root folder which has parent folder id as null
-      baseQb
+      void baseQb
         .select({
           depth: 1,
           // latestFolderVerId: db.raw("NULL::uuid"),
@@ -131,26 +132,27 @@ const sqlFindFolderByPathQuery = (
         })
         .where(`${TableName.Environment}.slug`, environment)
         .select(selectAllTableCols(TableName.SecretFolder))
-        .union((qb) =>
-          // for here on we keep going to next child node.
-          // we also keep a measure of depth then we check the depth matches the array path segment and folder name
-          // that is at depth 1 for a path /folder1/folder2 -> the name should be folder1
-          qb
-            .select({
-              depth: db.raw("parent.depth + 1"),
-              path: db.raw(
-                "CONCAT((CASE WHEN parent.path = '/' THEN '' ELSE parent.path END),'/', secret_folders.name)"
+        .union(
+          (qb) =>
+            // for here on we keep going to next child node.
+            // we also keep a measure of depth then we check the depth matches the array path segment and folder name
+            // that is at depth 1 for a path /folder1/folder2 -> the name should be folder1
+            void qb
+              .select({
+                depth: db.raw("parent.depth + 1"),
+                path: db.raw(
+                  "CONCAT((CASE WHEN parent.path = '/' THEN '' ELSE parent.path END),'/', secret_folders.name)"
+                )
+              })
+              .select(selectAllTableCols(TableName.SecretFolder))
+              .whereRaw(
+                `depth = array_position(ARRAY[${pathSegments
+                  .map(() => "?")
+                  .join(",")}]::varchar[], secret_folders.name,depth)`,
+                [...pathSegments]
               )
-            })
-            .select(selectAllTableCols(TableName.SecretFolder))
-            .whereRaw(
-              `depth = array_position(ARRAY[${pathSegments
-                .map(() => "?")
-                .join(",")}]::varchar[], secret_folders.name,depth)`,
-              [...pathSegments]
-            )
-            .from(TableName.SecretFolder)
-            .join("parent", "parent.id", `${TableName.SecretFolder}.parentId`)
+              .from(TableName.SecretFolder)
+              .join("parent", "parent.id", `${TableName.SecretFolder}.parentId`)
         );
     })
     .from<TSecretFolders & { depth: number; path: string }>("parent")
@@ -183,7 +185,7 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
       // first remember our folders are connected as a link list or known as adjacency list
       // Thus each node has connection to parent node
       // we first find the folder given in folder id
-      baseQb
+      void baseQb
         .from(TableName.SecretFolder)
         .select(selectAllTableCols(TableName.SecretFolder))
         .select({
@@ -202,24 +204,25 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
         )
         .where({ projectId })
         .whereIn(`${TableName.SecretFolder}.id`, folderIds)
-        .union((qb) =>
-          // then we keep going up
-          // until parent id is null
-          qb
-            .select(selectAllTableCols(TableName.SecretFolder))
-            .select({
-              // then we join join this folder name behind previous as we are going from child to parent
-              // the root folder check is used to avoid last / and also root name in folders
-              path: db.raw(
-                `CONCAT( CASE 
+        .union(
+          (qb) =>
+            // then we keep going up
+            // until parent id is null
+            void qb
+              .select(selectAllTableCols(TableName.SecretFolder))
+              .select({
+                // then we join join this folder name behind previous as we are going from child to parent
+                // the root folder check is used to avoid last / and also root name in folders
+                path: db.raw(
+                  `CONCAT( CASE 
                   WHEN  ${TableName.SecretFolder}."parentId" is NULL THEN '' 
                   ELSE  CONCAT('/', secret_folders.name) 
                 END, parent.path )`
-              ),
-              child: db.raw("COALESCE(parent.child, parent.id)")
-            })
-            .from(TableName.SecretFolder)
-            .join("parent", "parent.parentId", `${TableName.SecretFolder}.id`)
+                ),
+                child: db.raw("COALESCE(parent.child, parent.id)")
+              })
+              .from(TableName.SecretFolder)
+              .join("parent", "parent.parentId", `${TableName.SecretFolder}.id`)
         );
     })
     .select("*")

@@ -184,7 +184,7 @@ export const projectMembershipServiceFactory = ({
     await smtpService.sendMail({
       template: SmtpTemplates.WorkspaceInvite,
       subjectLine: "Infisical workspace invitation",
-      recipients: orgMembers.map(({ email }) => email).filter(Boolean) as string[],
+      recipients: orgMembers.map(({ email }) => email).filter(Boolean),
       substitutions: {
         inviterFirstName: sender.firstName,
         inviterEmail: sender.email,

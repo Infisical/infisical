@@ -56,7 +56,6 @@ export const identityServiceFactory = ({
       return newIdentity;
     });
 
-
     return identity;
   };
 

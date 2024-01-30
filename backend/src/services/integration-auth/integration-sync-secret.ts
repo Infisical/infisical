@@ -1,4 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-param-reassign,no-await-in-loop */
+// Taken from old code and too much work at present thus disabling the above any rules
+// resolve it later: akhilmhdh - TODO
+
 import {
   CreateSecretCommand,
   GetSecretValueCommand,
@@ -8,6 +15,7 @@ import {
 } from "@aws-sdk/client-secrets-manager";
 import { Octokit } from "@octokit/rest";
 import AWS from "aws-sdk";
+import { AxiosError } from "axios";
 import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
 import { z } from "zod";
@@ -87,8 +95,8 @@ const syncSecretsGCPSecretManager = async ({
       ...(pageToken ? { pageToken } : {})
     });
 
-    const res: GCPSMListSecretsRes = (
-      await request.get(
+    const res = (
+      await request.get<GCPSMListSecretsRes>(
         `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets${filterParam}`,
         {
           params,
@@ -309,7 +317,7 @@ const syncSecretsAzureKeyVault = async ({
       })
     )
   ).reduce(
-    (obj: any, secret: any) => ({
+    (obj, secret) => ({
       ...obj,
       [secret.key]: secret
     }),
@@ -378,8 +386,9 @@ const syncSecretsAzureKeyVault = async ({
 
         isSecretSet = true;
       } catch (err) {
-        const error: any = err;
-        if (error?.response?.data?.error?.innererror?.code === "ObjectIsDeletedButRecoverable") {
+        const error = err as AxiosError;
+        // eslint-disable-next-line
+        if ((error?.response?.data as any)?.error?.innererror?.code === "ObjectIsDeletedButRecoverable") {
           await request.post(
             `${azIntegration.app}/deletedsecrets/${key}/recover?api-version=7.3`,
             {},
@@ -405,7 +414,7 @@ const syncSecretsAzureKeyVault = async ({
   // Sync/push set secrets
   for await (const setSecret of setSecrets) {
     const { key, value } = setSecret;
-    setSecretAzureKeyVault({
+    await setSecretAzureKeyVault({
       key,
       value,
       integration,
@@ -425,11 +434,6 @@ const syncSecretsAzureKeyVault = async ({
 
 /**
  * Sync/push [secrets] to AWS parameter store
- * @param {Object} obj
- * @param {TIntegrations} obj.integration - integration details
- * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
- * @param {String} obj.accessId - access id for AWS parameter store integration
- * @param {String} obj.accessToken - access token for AWS parameter store integration
  */
 const syncSecretsAWSParameterStore = async ({
   integration,
@@ -463,60 +467,60 @@ const syncSecretsAWSParameterStore = async ({
 
   const parameterList = (await ssm.getParametersByPath(params).promise()).Parameters;
 
-  let awsParameterStoreSecretsObj: {
-    [key: string]: any;
-  } = {};
-
-  if (parameterList) {
-    awsParameterStoreSecretsObj = parameterList.reduce(
-      (obj: any, secret: any) => ({
+  const awsParameterStoreSecretsObj = (parameterList || [])
+    .filter(({ Name }) => Boolean(Name))
+    .reduce(
+      (obj, secret) => ({
         ...obj,
-        [secret.Name.substring((integration.path as string).length)]: secret
+        [(secret.Name as string).substring((integration.path as string).length)]: secret
       }),
-      {}
+      {} as Record<string, AWS.SSM.Parameter>
     );
-  }
 
   // Identify secrets to create
-  Object.keys(secrets).map(async (key) => {
-    if (!(key in awsParameterStoreSecretsObj)) {
-      // case: secret does not exist in AWS parameter store
-      // -> create secret
-      await ssm
-        .putParameter({
-          Name: `${integration.path}${key}`,
-          Type: "SecureString",
-          Value: secrets[key].value,
-          Overwrite: true
-        })
-        .promise();
-      // case: secret exists in AWS parameter store
-    } else if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
-      // case: secret value doesn't match one in AWS parameter store
-      // -> update secret
-      await ssm
-        .putParameter({
-          Name: `${integration.path}${key}`,
-          Type: "SecureString",
-          Value: secrets[key].value,
-          Overwrite: true
-        })
-        .promise();
-    }
-  });
+  await Promise.all(
+    Object.keys(secrets).map(async (key) => {
+      if (!(key in awsParameterStoreSecretsObj)) {
+        // case: secret does not exist in AWS parameter store
+        // -> create secret
+        await ssm
+          .putParameter({
+            Name: `${integration.path}${key}`,
+            Type: "SecureString",
+            Value: secrets[key].value,
+            Overwrite: true
+          })
+          .promise();
+        // case: secret exists in AWS parameter store
+      } else if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
+        // case: secret value doesn't match one in AWS parameter store
+        // -> update secret
+        await ssm
+          .putParameter({
+            Name: `${integration.path}${key}`,
+            Type: "SecureString",
+            Value: secrets[key].value,
+            Overwrite: true
+          })
+          .promise();
+      }
+    })
+  );
 
   // Identify secrets to delete
-  Object.keys(awsParameterStoreSecretsObj).map(async (key) => {
-    if (!(key in secrets)) {
-      // case:
-      // -> delete secret
-      await ssm
-        .deleteParameter({
-          Name: awsParameterStoreSecretsObj[key].Name
-        })
-        .promise();
-    }
-  });
+  await Promise.all(
+    Object.keys(awsParameterStoreSecretsObj).map(async (key) => {
+      if (!(key in secrets)) {
+        // case:
+        // -> delete secret
+        await ssm
+          .deleteParameter({
+            Name: awsParameterStoreSecretsObj[key].Name as string
+          })
+          .promise();
+      }
+    })
+  );
 
   AWS.config.update({
     region: undefined,
@@ -564,7 +568,7 @@ const syncSecretsAWSSecretManager = async ({
       })
     );
 
-    let awsSecretManagerSecretObj: { [key: string]: any } = {};
+    let awsSecretManagerSecretObj: { [key: string]: AWS.SecretsManager } = {};
 
     if (awsSecretManagerSecret?.SecretString) {
       awsSecretManagerSecretObj = JSON.parse(awsSecretManagerSecret.SecretString);
@@ -680,15 +684,18 @@ const syncSecretsVercel = async ({
       : {})
   };
 
-  const vercelSecrets: VercelSecret[] = (
-    await request.get(`${IntegrationUrls.VERCEL_API_URL}/v9/projects/${integration.app}/env`, {
-      params,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json"
+  const vercelSecrets = (
+    await request.get<{ envs: VercelSecret[] }>(
+      `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${integration.app}/env`,
+      {
+        params,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
       }
-    })
-  ).data.envs.filter((secret: VercelSecret) => {
+    )
+  ).data.envs.filter((secret) => {
     if (!secret.target.includes(integration.targetEnvironment as string)) {
       // case: secret does not have the same target environment
       return false;
@@ -866,7 +873,7 @@ const syncSecretsNetlify = async ({
   });
 
   const res = (
-    await request.get(
+    await request.get<NetlifySecret[]>(
       `${IntegrationUrls.NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env`,
       {
         params: getParams,
@@ -877,11 +884,11 @@ const syncSecretsNetlify = async ({
       }
     )
   ).data.reduce(
-    (obj: any, secret: any) => ({
+    (obj, secret) => ({
       ...obj,
       [secret.key]: secret
     }),
-    {}
+    {} as Record<string, NetlifySecret>
   );
 
   const newSecrets: NetlifySecret[] = []; // createEnvVars
@@ -905,16 +912,16 @@ const syncSecretsNetlify = async ({
     } else {
       // case: Infisical secret exists in Netlify
       const contexts = res[key].values.reduce(
-        (obj: any, value: NetlifyValue) => ({
+        (obj, value) => ({
           ...obj,
           [value.context]: value
         }),
-        {}
+        {} as Record<string, NetlifyValue>
       );
 
       if ((integration.targetEnvironment as string) in contexts) {
         // case: Netlify secret value exists in integration context
-        if (secrets[key] !== contexts[integration.targetEnvironment as string].value) {
+        if (secrets[key].value !== contexts[integration.targetEnvironment as string].value) {
           // case: Infisical and Netlify secret values are different
           // -> update Netlify secret context and value
           updateSecrets.push({
@@ -994,62 +1001,63 @@ const syncSecretsNetlify = async ({
   }
 
   if (updateSecrets.length > 0) {
-    updateSecrets.forEach(async (secret: NetlifySecret) => {
-      await request.patch(
-        `${IntegrationUrls.NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}`,
-        {
-          context: secret.values[0].context,
-          value: secret.values[0].value
-        },
-        {
-          params: syncParams,
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json"
+    await Promise.all(
+      updateSecrets.map(async (secret: NetlifySecret) => {
+        await request.patch(
+          `${IntegrationUrls.NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}`,
+          {
+            context: secret.values[0].context,
+            value: secret.values[0].value
+          },
+          {
+            params: syncParams,
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json"
+            }
           }
-        }
-      );
-    });
+        );
+      })
+    );
   }
 
   if (deleteSecrets.length > 0) {
-    deleteSecrets.forEach(async (key: string) => {
-      await request.delete(
-        `${IntegrationUrls.NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${key}`,
-        {
-          params: syncParams,
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json"
+    await Promise.all(
+      deleteSecrets.map(async (key: string) => {
+        await request.delete(
+          `${IntegrationUrls.NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${key}`,
+          {
+            params: syncParams,
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json"
+            }
           }
-        }
-      );
-    });
+        );
+      })
+    );
   }
 
   if (deleteSecretValues.length > 0) {
-    deleteSecretValues.forEach(async (secret: NetlifySecret) => {
-      await request.delete(
-        `${IntegrationUrls.NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}/value/${secret.values[0].id}`,
-        {
-          params: syncParams,
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json"
+    await Promise.all(
+      deleteSecretValues.map(async (secret: NetlifySecret) => {
+        await request.delete(
+          `${IntegrationUrls.NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}/value/${secret.values[0].id}`,
+          {
+            params: syncParams,
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json"
+            }
           }
-        }
-      );
-    });
+        );
+      })
+    );
   }
 };
 
 /**
  * Sync/push [secrets] to GitHub repo with name [integration.app]
- * @param {Object} obj
- * @param {TIntegrations} obj.integration - integration details
- * @param {TIntegrationAuth} obj.integrationAuth - integration auth details
- * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
- * @param {String} obj.accessToken - access token for GitHub integration
  */
 const syncSecretsGitHub = async ({
   integration,
@@ -1096,7 +1104,7 @@ const syncSecretsGitHub = async ({
       repo: integration.app as string
     })
   ).data.secrets.reduce(
-    (obj: any, secret: any) => ({
+    (obj, secret) => ({
       ...obj,
       [secret.name]: secret
     }),
@@ -1121,46 +1129,46 @@ const syncSecretsGitHub = async ({
     {}
   );
 
-  Object.keys(encryptedSecrets).map(async (key) => {
-    if (!(key in secrets)) {
-      await octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
-        owner: integration.owner as string,
-        repo: integration.app as string,
-        secret_name: key
+  await Promise.all(
+    Object.keys(encryptedSecrets).map(async (key) => {
+      if (!(key in secrets)) {
+        return octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+          owner: integration.owner as string,
+          repo: integration.app as string,
+          secret_name: key
+        });
+      }
+    })
+  );
+
+  await Promise.all(
+    Object.keys(secrets).map((key) => {
+      // let encryptedSecret;
+      return sodium.ready.then(async () => {
+        // convert secret & base64 key to Uint8Array.
+        const binkey = sodium.from_base64(repoPublicKey.key, sodium.base64_variants.ORIGINAL);
+        const binsec = sodium.from_string(secrets[key].value);
+
+        // encrypt secret using libsodium
+        const encBytes = sodium.crypto_box_seal(binsec, binkey);
+
+        // convert encrypted Uint8Array to base64
+        const encryptedSecret = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
+
+        await octokit.request("PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+          owner: integration.owner as string,
+          repo: integration.app as string,
+          secret_name: key,
+          encrypted_value: encryptedSecret,
+          key_id: repoPublicKey.key_id
+        });
       });
-    }
-  });
-
-  Object.keys(secrets).forEach((key) => {
-    // let encryptedSecret;
-    sodium.ready.then(async () => {
-      // convert secret & base64 key to Uint8Array.
-      const binkey = sodium.from_base64(repoPublicKey.key, sodium.base64_variants.ORIGINAL);
-      const binsec = sodium.from_string(secrets[key].value);
-
-      // encrypt secret using libsodium
-      const encBytes = sodium.crypto_box_seal(binsec, binkey);
-
-      // convert encrypted Uint8Array to base64
-      const encryptedSecret = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
-
-      await octokit.request("PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
-        owner: integration.owner as string,
-        repo: integration.app as string,
-        secret_name: key,
-        encrypted_value: encryptedSecret,
-        key_id: repoPublicKey.key_id
-      });
-    });
-  });
+    })
+  );
 };
 
 /**
  * Sync/push [secrets] to Render service with id [integration.appId]
- * @param {Object} obj
- * @param {TIntegrations} obj.integration - integration details
- * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
- * @param {String} obj.accessToken - access token for Render integration
  */
 const syncSecretsRender = async ({
   integration,
@@ -1188,10 +1196,6 @@ const syncSecretsRender = async ({
 
 /**
  * Sync/push [secrets] to Laravel Forge sites with id [integration.appId]
- * @param {Object} obj
- * @param {TIntegrations} obj.integration - integration details
- * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
- * @param {String} obj.accessToken - access token for Laravel Forge integration
  */
 const syncSecretsLaravelForge = async ({
   integration,
@@ -1204,13 +1208,11 @@ const syncSecretsLaravelForge = async ({
   accessId: string | null;
   accessToken: string;
 }) => {
-  function transformObjectToString(obj: any) {
+  function transformObjectToString(obj: Record<string, { value: string }>) {
     let result = "";
-    for (const key in obj) {
-      if (obj.hasOwnPropery(key)) {
-        result += `${key}=${obj[key].value}\n`;
-      }
-    }
+    Object.keys(obj).forEach((key) => {
+      result += `${key}=${obj[key].value}\n`;
+    });
     return result;
   }
 
@@ -1231,10 +1233,6 @@ const syncSecretsLaravelForge = async ({
 
 /**
  * Sync/push [secrets] to Railway project with id [integration.appId]
- * @param {Object} obj
- * @param {TIntegrations} obj.integration - integration details
- * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
- * @param {String} obj.accessToken - access token for Railway integration
  */
 const syncSecretsRailway = async ({
   integration,
@@ -1279,10 +1277,6 @@ const syncSecretsRailway = async ({
 
 /**
  * Sync/push [secrets] to Fly.io app
- * @param {Object} obj
- * @param {TIntegrations} obj.integration - integration details
- * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
- * @param {String} obj.accessToken - access token for Render integration
  */
 const syncSecretsFlyio = async ({
   integration,
@@ -1354,7 +1348,7 @@ const syncSecretsFlyio = async ({
   }`;
 
   const getSecretsRes = (
-    await request.post(
+    await request.post<{ data: { app: { secrets: FlyioSecret[] } } }>(
       IntegrationUrls.FLYIO_API_URL,
       {
         query: GetSecrets,
@@ -1373,8 +1367,8 @@ const syncSecretsFlyio = async ({
   ).data.data.app.secrets;
 
   const deleteSecretsKeys = getSecretsRes
-    .filter((secret: FlyioSecret) => !(secret.name in secrets))
-    .map((secret: FlyioSecret) => secret.name);
+    .filter((secret) => !(secret.name in secrets))
+    .map((secret) => secret.name);
 
   // unset (delete) secrets
   const DeleteSecrets = `mutation($input: UnsetSecretsInput!) {
@@ -1460,7 +1454,7 @@ const syncSecretsCircleCI = async ({
 
   // get secrets from CircleCI
   const getSecretsRes = (
-    await request.get(
+    await request.get<{ items: { name: string }[] }>(
       `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
       {
         headers: {
@@ -1472,19 +1466,21 @@ const syncSecretsCircleCI = async ({
   ).data?.items;
 
   // delete secrets from CircleCI
-  getSecretsRes.forEach(async (sec: any) => {
-    if (!(sec.name in secrets)) {
-      await request.delete(
-        `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar/${sec.name}`,
-        {
-          headers: {
-            "Circle-Token": accessToken,
-            "Content-Type": "application/json"
+  await Promise.all(
+    getSecretsRes.map(async (sec) => {
+      if (!(sec.name in secrets)) {
+        return request.delete(
+          `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar/${sec.name}`,
+          {
+            headers: {
+              "Circle-Token": accessToken,
+              "Content-Type": "application/json"
+            }
           }
-        }
-      );
-    }
-  });
+        );
+      }
+    })
+  );
 };
 
 /**
@@ -1501,21 +1497,20 @@ const syncSecretsTravisCI = async ({
 }) => {
   // get secrets from travis-ci
   const getSecretsRes = (
-    await request.get(
-      `${IntegrationUrls.TRAVISCI_API_URL}/settings/env_vars?repository_id=${integration.appId}`,
-      {
-        headers: {
-          Authorization: `token ${accessToken}`,
-          "Accept-Encoding": "application/json"
-        }
+    await request.get<{
+      env_vars: { name: string; value: string; repository_id: string; id: string }[];
+    }>(`${IntegrationUrls.TRAVISCI_API_URL}/settings/env_vars?repository_id=${integration.appId}`, {
+      headers: {
+        Authorization: `token ${accessToken}`,
+        "Accept-Encoding": "application/json"
       }
-    )
+    })
   ).data?.env_vars.reduce(
-    (obj: any, secret: any) => ({
+    (obj, secret) => ({
       ...obj,
       [secret.name]: secret
     }),
-    {}
+    {} as Record<string, { name: string; value: string; repository_id: string; id: string }>
   );
 
   // add secrets
@@ -1614,10 +1609,10 @@ const syncSecretsGitLab = async ({
       `${gitLabApiUrl}/v4/projects/${integrationAppId}/variables?per_page=100`;
 
     while (url) {
-      const response: any = await request.get(url, { headers });
+      const response = await request.get(url, { headers });
       allEnvVariables = [...allEnvVariables, ...response.data];
 
-      const linkHeader = response.headers.link;
+      const linkHeader = response.headers.link as string;
       const nextLink = linkHeader?.split(",").find((part: string) => part.includes('rel="next"'));
 
       if (nextLink) {
@@ -1649,7 +1644,7 @@ const syncSecretsGitLab = async ({
     });
 
   for await (const key of Object.keys(secrets)) {
-    const existingSecret = getSecretsRes.find((s: any) => s.key === key);
+    const existingSecret = getSecretsRes.find((s) => s.key === key);
     if (!existingSecret) {
       await request.post(
         `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables`,
@@ -1714,7 +1709,7 @@ const syncSecretsSupabase = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
-  const { data: getSecretsRes } = await request.get(
+  const { data: getSecretsRes } = await request.get<{ name: string; value: string }[]>(
     `${IntegrationUrls.SUPABASE_API_URL}/v1/projects/${integration.appId}/secrets`,
     {
       headers: {
@@ -1741,8 +1736,7 @@ const syncSecretsSupabase = async ({
     }
   );
 
-  const secretsToDelete: any = [];
-  getSecretsRes?.forEach((secretObj: any) => {
+  const secretsToDelete = getSecretsRes?.flatMap((secretObj) => {
     if (
       !(secretObj.name in secrets) &&
       // supbase reserved secret ref: https://supabase.com/docs/guides/functions/secrets#default-secrets
@@ -1753,8 +1747,9 @@ const syncSecretsSupabase = async ({
         "SUPABASE_URL"
       ].includes(secretObj.name)
     ) {
-      secretsToDelete.push(secretObj.name);
+      return secretObj.name;
     }
+    return [];
   });
 
   await request.delete(
@@ -1788,7 +1783,7 @@ const syncSecretsCheckly = async ({
     // sync secrets to checkly group envars
 
     let getGroupSecretsRes = (
-      await request.get(
+      await request.get<{ environmentVariables: { key: string; value: string }[] }>(
         `${IntegrationUrls.CHECKLY_API_URL}/v1/check-groups/${integration.targetServiceId}`,
         {
           headers: {
@@ -1799,11 +1794,11 @@ const syncSecretsCheckly = async ({
         }
       )
     ).data.environmentVariables.reduce(
-      (obj: any, secret: any) => ({
+      (obj, secret) => ({
         ...obj,
         [secret.key]: secret.value
       }),
-      {}
+      {} as Record<string, string>
     );
 
     getGroupSecretsRes = Object.keys(getGroupSecretsRes).reduce(
@@ -1846,19 +1841,22 @@ const syncSecretsCheckly = async ({
     // sync secrets to checkly global envars
 
     let getSecretsRes = (
-      await request.get(`${IntegrationUrls.CHECKLY_API_URL}/v1/variables`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json",
-          "X-Checkly-Account": integration.appId
+      await request.get<{ key: string; value: string }[]>(
+        `${IntegrationUrls.CHECKLY_API_URL}/v1/variables`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+            "X-Checkly-Account": integration.appId
+          }
         }
-      })
+      )
     ).data.reduce(
-      (obj: any, secret: any) => ({
+      (obj, secret) => ({
         ...obj,
         [secret.key]: secret.value
       }),
-      {}
+      {} as Record<string, string>
     );
 
     getSecretsRes = Object.keys(getSecretsRes).reduce(
@@ -1901,7 +1899,7 @@ const syncSecretsCheckly = async ({
         );
         // case: secret exists in checkly
         // -> update/set secret
-      } else if (secrets[key] !== getSecretsRes[key]) {
+      } else if (secrets[key].value !== getSecretsRes[key]) {
         await request.put(
           `${IntegrationUrls.CHECKLY_API_URL}/v1/variables/${key}`,
           {
@@ -1951,7 +1949,7 @@ const syncSecretsQovery = async ({
   accessToken: string;
 }) => {
   const getSecretsRes = (
-    await request.get(
+    await request.get<{ results: { id: string; value: string; key: string }[] }>(
       `${IntegrationUrls.QOVERY_API_URL}/${integration.scope}/${integration.appId}/environmentVariable`,
       {
         headers: {
@@ -1961,11 +1959,11 @@ const syncSecretsQovery = async ({
       }
     )
   ).data.results.reduce(
-    (obj: any, secret: any) => ({
+    (obj, secret) => ({
       ...obj,
       [secret.key]: { id: secret.id, value: secret.value }
     }),
-    {}
+    {} as Record<string, { id: string; value: string }>
   );
 
   // add secrets
@@ -2042,7 +2040,7 @@ const syncSecretsTerraformCloud = async ({
 }) => {
   // get secrets from Terraform Cloud
   const getSecretsRes = (
-    await request.get(
+    await request.get<{ data: { attributes: { key: string; value: string }; id: string }[] }>(
       `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`,
       {
         headers: {
@@ -2052,11 +2050,11 @@ const syncSecretsTerraformCloud = async ({
       }
     )
   ).data.data.reduce(
-    (obj: any, secret: any) => ({
+    (obj, secret) => ({
       ...obj,
       [secret.attributes.key]: secret
     }),
-    {}
+    {} as Record<string, { attributes: { key: string; value: string }; id: string }>
   );
 
   // create or update secrets on Terraform Cloud
@@ -2138,7 +2136,7 @@ const syncSecretsTeamCity = async ({
 }: {
   integrationAuth: TIntegrationAuths;
   integration: TIntegrations;
-  secrets: any;
+  secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
   interface TeamCitySecret {
@@ -2171,13 +2169,16 @@ const syncSecretsTeamCity = async ({
       )
     ).data.property
       .filter((parameter) => !parameter.inherited)
-      .reduce((obj: any, secret: TeamCitySecret) => {
-        const secretName = secret.name.replace(/^env\./, "");
-        return {
-          ...obj,
-          [secretName]: secret.value
-        };
-      }, {});
+      .reduce(
+        (obj, secret) => {
+          const secretName = secret.name.replace(/^env\./, "");
+          return {
+            ...obj,
+            [secretName]: secret.value
+          };
+        },
+        {} as Record<string, string>
+      );
 
     for await (const key of Object.keys(secrets)) {
       if (!(key in res) || (key in res && secrets[key].value !== res[key])) {
@@ -2216,7 +2217,7 @@ const syncSecretsTeamCity = async ({
   } else {
     // case: sync to TeamCity project
     const res = (
-      await request.get(
+      await request.get<{ property: TeamCitySecret[] }>(
         `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`,
         {
           headers: {
@@ -2225,16 +2226,19 @@ const syncSecretsTeamCity = async ({
           }
         }
       )
-    ).data.property.reduce((obj: any, secret: TeamCitySecret) => {
-      const secretName = secret.name.replace(/^env\./, "");
-      return {
-        ...obj,
-        [secretName]: secret.value
-      };
-    }, {});
+    ).data.property.reduce(
+      (obj, secret) => {
+        const secretName = secret.name.replace(/^env\./, "");
+        return {
+          ...obj,
+          [secretName]: secret.value
+        };
+      },
+      {} as Record<string, string>
+    );
 
     for await (const key of Object.keys(secrets)) {
-      if (!(key in res) || (key in res && secrets[key] !== res[key])) {
+      if (!(key in res) || (key in res && secrets[key].value !== res[key])) {
         // case: secret does not exist in TeamCity or secret value has changed
         // -> create/update secret
         await request.post(
@@ -2347,7 +2351,9 @@ const syncSecretsCloudflarePages = async ({
 }) => {
   // get secrets from cloudflare pages
   const getSecretsRes = (
-    await request.get(
+    await request.get<{
+      result: { deployment_configs: Record<string, { env_vars: Record<string, unknown> }> };
+    }>(
       `${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`,
       {
         headers: {
@@ -2359,21 +2365,12 @@ const syncSecretsCloudflarePages = async ({
   ).data.result.deployment_configs[integration.targetEnvironment as string].env_vars;
 
   // copy the secrets object, so we can set deleted keys to null
-  const secretsObj: any = getSecretKeyValuePair(secrets);
-
-  for (const [key, val] of Object.entries(secretsObj)) {
-    secretsObj[key] = { type: "secret_text", value: val };
-  }
-
-  if (getSecretsRes) {
-    for await (const key of Object.keys(getSecretsRes)) {
-      if (!(key in secrets)) {
-        // case: secret does not exist in infisical
-        // -> delete secret from cloudflare pages
-        secretsObj[key] = null;
-      }
-    }
-  }
+  const secretsObj = Object.fromEntries(
+    Object.entries(getSecretKeyValuePair(secrets)).map(([key, val]) => [
+      key,
+      key in Object.keys(getSecretsRes) ? { type: "secret_text", value: val } : null
+    ])
+  );
 
   const data = {
     deployment_configs: {
@@ -2411,7 +2408,7 @@ const syncSecretsCloudflareWorkers = async ({
 }) => {
   // get secrets from cloudflare workers
   const getSecretsRes = (
-    await request.get(
+    await request.get<{ result: { name: string }[] }>(
       `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accessId}/workers/scripts/${integration.app}/secrets`,
       {
         headers: {
@@ -2422,33 +2419,36 @@ const syncSecretsCloudflareWorkers = async ({
     )
   ).data.result;
 
-  const secretsObj: any = getSecretKeyValuePair(secrets);
-
-  for (const [key, val] of Object.entries(secretsObj)) {
-    secretsObj[key] = { type: "secret_text", value: val };
-  }
+  const secretsObj = Object.fromEntries(
+    Object.entries(getSecretKeyValuePair(secrets)).map(([key, val]) => [
+      key,
+      { type: "secret_text", value: val }
+    ])
+  );
 
   // get deleted secrets list
   const deletedSecretKeys: string[] = [];
   if (getSecretsRes) {
-    getSecretsRes.forEach((secretRes: any) => {
+    getSecretsRes.forEach((secretRes) => {
       if (!Object.keys(secrets).includes(secretRes.name)) {
         deletedSecretKeys.push(secretRes.name);
       }
     });
   }
 
-  deletedSecretKeys.forEach(async (secretKey) => {
-    await request.delete(
-      `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accessId}/workers/scripts/${integration.app}/secrets/${secretKey}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
+  await Promise.all(
+    deletedSecretKeys.map(async (secretKey) => {
+      return request.delete(
+        `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accessId}/workers/scripts/${integration.app}/secrets/${secretKey}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
+          }
         }
-      }
-    );
-  });
+      );
+    })
+  );
 
   interface ConvertedSecret {
     name: string;
@@ -2471,27 +2471,24 @@ const syncSecretsCloudflareWorkers = async ({
     })
   );
 
-  data.forEach(async (secret) => {
-    await request.put(
-      `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accessId}/workers/scripts/${integration.app}/secrets`,
-      secret,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
+  await Promise.all(
+    data.map(async (secret) => {
+      return request.put(
+        `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accessId}/workers/scripts/${integration.app}/secrets`,
+        secret,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
+          }
         }
-      }
-    );
-  });
+      );
+    })
+  );
 };
 
 /**
  * Sync/push [secrets] to BitBucket repo with name [integration.app]
- * @param {Object} obj
- * @param {TIntegrations} obj.integration - integration details
- * @param {TIntegrationAuth} obj.integrationAuth - integration auth details
- * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
- * @param {String} obj.accessToken - access token for BitBucket integration
  */
 const syncSecretsBitBucket = async ({
   integration,
@@ -2700,18 +2697,21 @@ const syncSecretsWindmill = async ({
 
   // get secrets stored in windmill workspace
   const res = (
-    await request.get(`${IntegrationUrls.WINDMILL_API_URL}/w/${integration.appId}/variables/list`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json"
+    await request.get<WindmillSecret[]>(
+      `${IntegrationUrls.WINDMILL_API_URL}/w/${integration.appId}/variables/list`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
       }
-    })
+    )
   ).data.reduce(
-    (obj: any, secret: WindmillSecret) => ({
+    (obj, secret) => ({
       ...obj,
       [secret.path]: secret
     }),
-    {}
+    {} as Record<string, WindmillSecret>
   );
 
   // eslint-disable-next-line
@@ -2778,11 +2778,6 @@ const syncSecretsWindmill = async ({
 
 /**
  * Sync/push [secrets] to Cloud66 application with name [integration.app]
- * @param {Object} obj
- * @param {TIntegrations} obj.integration - integration details
- * @param {TIntegrationAuth} obj.integrationAuth - integration auth details
- * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
- * @param {String} obj.accessToken - access token for Cloud66 integration
  */
 const syncSecretsCloud66 = async ({
   integration,
@@ -2802,12 +2797,12 @@ const syncSecretsCloud66 = async ({
     updated_at: string;
     is_password: boolean;
     is_generated: boolean;
-    history: any[];
+    history: unknown[];
   }
 
   // get all current secrets
   const res = (
-    await request.get(
+    await request.get<{ response: Cloud66Secret[] }>(
       `${IntegrationUrls.CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments`,
       {
         headers: {
@@ -2817,9 +2812,9 @@ const syncSecretsCloud66 = async ({
       }
     )
   ).data.response
-    .filter((secret: Cloud66Secret) => !secret.readonly || !secret.is_generated)
+    .filter((secret) => !secret.readonly || !secret.is_generated)
     .reduce(
-      (obj: any, secret: any) => ({
+      (obj, secret) => ({
         ...obj,
         [secret.key]: secret
       }),

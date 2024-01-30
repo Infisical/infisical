@@ -33,7 +33,11 @@ export const identityAccessTokenServiceFactory = ({
       createdAt: accessTokenCreatedAt
     } = identityAccessToken;
 
-    if (accessTokenNumUsesLimit > 0 && accessTokenNumUses > 0 && accessTokenNumUses >= accessTokenNumUsesLimit) {
+    if (
+      accessTokenNumUsesLimit > 0 &&
+      accessTokenNumUses > 0 &&
+      accessTokenNumUses >= accessTokenNumUsesLimit
+    ) {
       throw new BadRequestError({
         message: "Unable to renew because access token number of uses limit reached"
       });
@@ -88,7 +92,9 @@ export const identityAccessTokenServiceFactory = ({
   const renewAccessToken = async ({ accessToken }: TRenewAccessTokenDTO) => {
     const appCfg = getConfig();
 
-    const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload;
+    const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload & {
+      identityAccessTokenId: string;
+    };
     if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN)
       throw new UnauthorizedError();
 

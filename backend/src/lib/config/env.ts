@@ -56,7 +56,12 @@ const envSchema = z
     CLIENT_SECRET_GITHUB_LOGIN: zpStr(z.string().optional()),
     CLIENT_ID_GITLAB_LOGIN: zpStr(z.string().optional()),
     CLIENT_SECRET_GITLAB_LOGIN: zpStr(z.string().optional()),
-    CLIENT_GITLAB_LOGIN_URL: zpStr(z.string().optional().default(process.env.URL_GITLAB_LOGIN ?? GITLAB_URL)), // fallback since URL_GITLAB_LOGIN has been renamed
+    CLIENT_GITLAB_LOGIN_URL: zpStr(
+      z
+        .string()
+        .optional()
+        .default(process.env.URL_GITLAB_LOGIN ?? GITLAB_URL)
+    ), // fallback since URL_GITLAB_LOGIN has been renamed
     // integration client secrets
     // heroku
     CLIENT_ID_HEROKU: zpStr(z.string().optional()),
@@ -121,7 +126,7 @@ export const initEnvConfig = (logger: Logger) => {
     logger.error(parsedEnv.error.issues);
     process.exit(-1);
   }
-  
+
   envCfg = Object.freeze(parsedEnv.data);
   return envCfg;
 };

@@ -170,9 +170,7 @@ export const secretScanningServiceFactory = ({
     await secretScanningDAL.transaction(async (tx) => {
       if (repositoryIds.length) {
         await Promise.all(
-          repositoryIds.map((repoId) =>
-            secretScanningDAL.delete({ repositoryId: repoId }, tx)
-          )
+          repositoryIds.map((repoId) => secretScanningDAL.delete({ repositoryId: repoId }, tx))
         );
       }
       await gitAppOrgDAL.delete({ installationId }, tx);

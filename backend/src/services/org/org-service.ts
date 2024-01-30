@@ -209,7 +209,7 @@ export const orgServiceFactory = ({
    * */
   const deleteOrganizationById = async (userId: string, orgId: string) => {
     const { membership } = await permissionService.getUserOrgPermission(userId, orgId);
-    if (membership.role !== OrgMembershipRole.Admin)
+    if ((membership.role as OrgMembershipRole) !== OrgMembershipRole.Admin)
       throw new UnauthorizedError({ name: "Delete org by id", message: "Not an admin" });
 
     const organization = await orgDAL.deleteById(orgId);

@@ -41,6 +41,11 @@ export type AuthModeJwtTokenPayload = {
   accessVersion: number;
 };
 
+export type AuthModeMfaJwtTokenPayload = {
+  authTokenType: AuthTokenType.MFA_TOKEN;
+  userId: string;
+};
+
 export type AuthModeRefreshJwtTokenPayload = {
   authTokenType: AuthTokenType.REFRESH_TOKEN;
   userId: string;

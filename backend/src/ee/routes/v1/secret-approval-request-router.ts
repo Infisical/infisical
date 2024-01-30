@@ -174,11 +174,13 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         ...req.auditLogInfo,
         event: {
           type: isClosing ? EventType.SECRET_APPROVAL_CLOSED : EventType.SECRET_APPROVAL_REOPENED,
+          // eslint-disable-next-line
           metadata: {
             [isClosing ? ("closedBy" as const) : ("reopenedBy" as const)]:
               approval.statusChangeBy as string,
             secretApprovalRequestId: approval.id,
             secretApprovalRequestSlug: approval.slug
+            // eslint-disable-next-line
           } as any
           // akhilmhdh: had to apply any to avoid ts issue with this
         }

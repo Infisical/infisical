@@ -14,9 +14,11 @@ export const SecretApprovalPoliciesSchema = z.object({
   approvals: z.number().default(1),
   envId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TSecretApprovalPolicies = z.infer<typeof SecretApprovalPoliciesSchema>;
 export type TSecretApprovalPoliciesInsert = Omit<TSecretApprovalPolicies, TImmutableDBKeys>;
-export type TSecretApprovalPoliciesUpdate = Partial<Omit<TSecretApprovalPolicies, TImmutableDBKeys>>;
+export type TSecretApprovalPoliciesUpdate = Partial<
+  Omit<TSecretApprovalPolicies, TImmutableDBKeys>
+>;

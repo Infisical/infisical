@@ -162,7 +162,8 @@ export const snapshotDALFactory = (db: TDbClient) => {
     try {
       const data = await (tx || db)
         .withRecursive("parent", (qb) => {
-          qb.from(TableName.Snapshot)
+          void qb
+            .from(TableName.Snapshot)
             .leftJoin<TSecretSnapshotFolders>(
               TableName.SnapshotFolder,
               `${TableName.SnapshotFolder}.snapshotId`,
@@ -180,35 +181,36 @@ export const snapshotDALFactory = (db: TDbClient) => {
               db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("folderVerId")
             )
             .where(`${TableName.Snapshot}.id`, snapshotId)
-            .union((cb) =>
-              cb
-                .select(selectAllTableCols(TableName.Snapshot))
-                .select({ depth: db.raw("parent.depth + 1") })
-                .select(
-                  db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderVerName"),
-                  db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("folderVerId")
-                )
-                .from(TableName.Snapshot)
-                .join<TSecretSnapshots, TSecretSnapshots & { secretId: string; max: number }>(
-                  db(TableName.Snapshot)
-                    .groupBy("folderId")
-                    .max("createdAt")
-                    .select("folderId")
-                    .as("latestVersion"),
-                  `${TableName.Snapshot}.createdAt`,
-                  "latestVersion.max"
-                )
-                .leftJoin<TSecretSnapshotFolders>(
-                  TableName.SnapshotFolder,
-                  `${TableName.SnapshotFolder}.snapshotId`,
-                  `${TableName.Snapshot}.id`
-                )
-                .leftJoin<TSecretFolderVersions>(
-                  TableName.SecretFolderVersion,
-                  `${TableName.SnapshotFolder}.folderVersionId`,
-                  `${TableName.SecretFolderVersion}.id`
-                )
-                .join("parent", "parent.folderVerId", `${TableName.Snapshot}.folderId`)
+            .union(
+              (cb) =>
+                void cb
+                  .select(selectAllTableCols(TableName.Snapshot))
+                  .select({ depth: db.raw("parent.depth + 1") })
+                  .select(
+                    db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderVerName"),
+                    db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("folderVerId")
+                  )
+                  .from(TableName.Snapshot)
+                  .join<TSecretSnapshots, TSecretSnapshots & { secretId: string; max: number }>(
+                    db(TableName.Snapshot)
+                      .groupBy("folderId")
+                      .max("createdAt")
+                      .select("folderId")
+                      .as("latestVersion"),
+                    `${TableName.Snapshot}.createdAt`,
+                    "latestVersion.max"
+                  )
+                  .leftJoin<TSecretSnapshotFolders>(
+                    TableName.SnapshotFolder,
+                    `${TableName.SnapshotFolder}.snapshotId`,
+                    `${TableName.Snapshot}.id`
+                  )
+                  .leftJoin<TSecretFolderVersions>(
+                    TableName.SecretFolderVersion,
+                    `${TableName.SnapshotFolder}.folderVersionId`,
+                    `${TableName.SecretFolderVersion}.id`
+                  )
+                  .join("parent", "parent.folderVerId", `${TableName.Snapshot}.folderId`)
             );
         })
         .orderBy("depth", "asc")
@@ -285,7 +287,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
             label: "secretVersions" as const,
             mapper: (el) => ({
               ...SecretVersionsSchema.parse(el),
-              latestSecretVersion: el.latestSecretVersion
+              latestSecretVersion: el.latestSecretVersion as number
             }),
             childrenMapper: [
               {
@@ -307,7 +309,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
             mapper: ({ folderVerId: id, folderVerName: name, latestFolderVersion }) => ({
               id,
               name,
-              latestFolderVersion
+              latestFolderVersion: latestFolderVersion as number
             })
           }
         ]

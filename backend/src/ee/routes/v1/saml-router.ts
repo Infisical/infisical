@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+// All the any rules are disabled because passport typesense with fastify is really poor
+
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
 import { MultiSamlStrategy } from "@node-saml/passport-saml";
@@ -33,6 +41,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     new MultiSamlStrategy(
       {
         passReqToCallback: true,
+        // eslint-disable-next-line
         getSamlOptions: async (req, done) => {
           try {
             const { ssoIdentifier } = req.params;
@@ -67,6 +76,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           }
         }
       },
+      // eslint-disable-next-line
       async (req, profile, cb) => {
         try {
           const serverCfg = getServerCfg();

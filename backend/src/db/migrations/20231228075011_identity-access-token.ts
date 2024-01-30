@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
         .references("id")
         .inTable(TableName.IdentityUaClientSecret)
         .onDelete("CASCADE");
-        t.uuid("identityId").notNullable();
+      t.uuid("identityId").notNullable();
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });

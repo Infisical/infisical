@@ -63,7 +63,7 @@ export const secretDALFactory = (db: TDbClient) => {
         .where({ folderId })
         .where((bd) => {
           data.forEach((el) => {
-            bd.orWhere({
+            void bd.orWhere({
               secretBlindIndex: el.blindIndex,
               type: el.type,
               ...(el.type === SecretType.Personal ? { userId } : {})
@@ -89,7 +89,7 @@ export const secretDALFactory = (db: TDbClient) => {
       const secs = await (tx || db)(TableName.Secret)
         .where({ folderId })
         .where((bd) => {
-          bd.whereNull("userId").orWhere({ userId: userId || null });
+          void bd.whereNull("userId").orWhere({ userId: userId || null });
         })
         .leftJoin(
           TableName.JnSecretTag,
@@ -144,7 +144,7 @@ export const secretDALFactory = (db: TDbClient) => {
             if (el.type === SecretType.Personal && !userId) {
               throw new BadRequestError({ message: "Missing personal user id" });
             }
-            bd.orWhere({
+            void bd.orWhere({
               secretBlindIndex: el.blindIndex,
               type: el.type,
               userId: el.type === SecretType.Personal ? userId : null

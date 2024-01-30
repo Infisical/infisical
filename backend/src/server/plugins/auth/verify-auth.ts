@@ -1,11 +1,11 @@
-import { FastifyRequest } from "fastify";
+import { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from "fastify";
 
 import { UnauthorizedError } from "@app/lib/errors";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const verifyAuth =
   <T extends FastifyRequest>(authStrats: AuthMode[]) =>
-  async (req: T) => {
+  (req: T, _res: FastifyReply, done: HookHandlerDoneFunction) => {
     if (!Array.isArray(authStrats)) throw new Error("Auth strategy must be array");
     if (!req.auth)
       throw new UnauthorizedError({ name: "Unauthorized access", message: "Token missing" });
@@ -14,4 +14,5 @@ export const verifyAuth =
     if (!isAccessAllowed) {
       throw new UnauthorizedError({ name: `${req.url} Unauthorized Access` });
     }
+    done();
   };

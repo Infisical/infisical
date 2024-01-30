@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+// All the any rules are disabled because passport typesense with fastify is really poor
+
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
 import { Strategy as GitHubStrategy } from "passport-github";
@@ -32,6 +40,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           callbackURL: `${appCfg.SITE_URL}/api/v1/sso/google`,
           scope: ["profile", " email"]
         },
+        // eslint-disable-next-line
         async (req, _accessToken, _refreshToken, profile, cb) => {
           try {
             const email = profile?.emails?.[0]?.value;
@@ -74,6 +83,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           callbackURL: `${appCfg.SITE_URL}/api/v1/sso/github`,
           scope: ["user:email"]
         },
+        // eslint-disable-next-line
         async (req, accessToken, _refreshToken, profile, cb) => {
           try {
             const ghEmails = await fetchGithubEmails(accessToken);
@@ -152,6 +162,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           state: req.query.callback_port,
           authInfo: false
           // this is due to zod type difference
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }) as any
       )(req, res),
     handler: () => {}
@@ -165,7 +176,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       failureRedirect: "/login/provider/error",
       authInfo: false
       // this is due to zod type difference
-    }) as any,
+    }) as never,
     handler: (req, res) => {
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
@@ -242,6 +253,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           state: req.query.callback_port,
           authInfo: false
           // this is due to zod type difference
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }) as any
       )(req, res),
     handler: () => {}
@@ -255,6 +267,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       failureRedirect: "/login/provider/error",
       authInfo: false
       // this is due to zod type difference
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
     handler: (req, res) => {
       if (req.passportUser.isUserCompleted) {

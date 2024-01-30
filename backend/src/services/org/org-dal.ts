@@ -7,7 +7,8 @@ import {
   TOrganizationsInsert,
   TOrgMemberships,
   TOrgMembershipsInsert,
-  TOrgMembershipsUpdate
+  TOrgMembershipsUpdate,
+  TUserEncryptionKeys
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import {
@@ -40,7 +41,7 @@ export const orgDALFactory = (db: TDbClient) => {
           `${TableName.OrgMembership}.orgId`,
           `${TableName.Organization}.id`
         )
-        .select(`${TableName.Organization}.*`);
+        .select(selectAllTableCols(TableName.Organization));
       return org;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org by user id" });
@@ -50,9 +51,9 @@ export const orgDALFactory = (db: TDbClient) => {
   const findOrgByProjectId = async (projectId: string): Promise<TOrganizations> => {
     try {
       const [org] = await db(TableName.Project)
-        .where({ [`${[TableName.Project]}.id`]: projectId })
+        .where({ [`${TableName.Project}.id` as "id"]: projectId })
         .join(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
-        .select(`${TableName.Organization}.*`);
+        .select(selectAllTableCols(TableName.Organization));
 
       return org;
     } catch (error) {
@@ -66,7 +67,7 @@ export const orgDALFactory = (db: TDbClient) => {
       const members = await db(TableName.OrgMembership)
         .where({ orgId })
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(
+        .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
           `${TableName.Users}.id`
@@ -185,16 +186,17 @@ export const orgDALFactory = (db: TDbClient) => {
   ) => {
     try {
       const query = (tx || db)(TableName.OrgMembership)
+        // eslint-disable-next-line
         .where(buildFindFilter(filter))
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
         .select(
           selectAllTableCols(TableName.OrgMembership),
           db.ref("email").withSchema(TableName.Users)
         );
-      if (limit) query.limit(limit);
-      if (offset) query.offset(offset);
+      if (limit) void query.limit(limit);
+      if (offset) void query.offset(offset);
       if (sort) {
-        query.orderBy(
+        void query.orderBy(
           sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls }))
         );
       }

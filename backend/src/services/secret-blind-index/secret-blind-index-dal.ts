@@ -25,8 +25,8 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
         )
         .where({ projectId })
         .whereNull("secretBlindIndex")
-        .count(`${TableName.Secret}.id`);
-      return (doc as any)?.[0]?.count || 0;
+        .count(`${TableName.Secret}.id` as "id");
+      return doc?.[0]?.count || 0;
     } catch (error) {
       throw new DatabaseError({ error, name: "CountOfSecretWillNullSecretBlindIndex" });
     }

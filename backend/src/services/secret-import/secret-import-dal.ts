@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName,TSecretImports } from "@app/db/schemas";
+import { TableName, TSecretImports } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -15,7 +15,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
   const findLastImportPosition = async (folderId: string, tx?: Knex) => {
     const lastPos = await (tx || db)(TableName.SecretImport)
       .where({ folderId })
-      .max({ position: "position" })
+      .max("position", { as: "position" })
       .first();
     return lastPos?.position || 0;
   };

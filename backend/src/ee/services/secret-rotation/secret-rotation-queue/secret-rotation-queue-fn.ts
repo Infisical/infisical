@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-param-reassign */
 import axios from "axios";
 import jmespath from "jmespath";
@@ -37,7 +42,7 @@ export const interpolate = (data: any, getValue: (key: string) => unknown) => {
     if ((data as { ref: string })?.ref) return getValue((data as { ref: string }).ref);
     const temp = data as Record<string, unknown>; // for converting ts object to record type
     Object.keys(temp).forEach((key) => {
-      temp[key as keyof typeof temp] = interpolate(data[key as keyof typeof temp], getValue);
+      temp[key] = interpolate(data[key], getValue);
     });
   }
   return data;

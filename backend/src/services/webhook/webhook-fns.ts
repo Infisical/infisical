@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 
+import { AxiosError } from "axios";
 import picomatch from "picomatch";
 
 import { SecretKeyEncoding, TWebhooks } from "@app/db/schemas";
@@ -111,7 +112,7 @@ export const fnTriggerWebhook = async ({
     .filter(({ status }) => status === "rejected")
     .map((data, i) => ({
       id: toBeTriggeredHooks[i].id,
-      error: data.status === "rejected" && data.reason.message
+      error: data.status === "rejected" ? (data.reason as AxiosError).message : ""
     }));
 
   await webhookDAL.transaction(async (tx) => {

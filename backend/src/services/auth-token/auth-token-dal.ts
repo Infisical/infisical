@@ -7,8 +7,6 @@ import { ormify } from "@app/lib/knex";
 
 import { TDeleteTokenForUserDALDTO } from "./auth-token-types";
 
-export type TTokenDALConfig = {};
-
 export type TTokenDALFactory = ReturnType<typeof tokenDALFactory>;
 
 export const tokenDALFactory = (db: TDbClient) => {

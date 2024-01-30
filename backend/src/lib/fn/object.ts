@@ -21,9 +21,9 @@ export const pick = <T extends object, TKeys extends keyof T>(
  * object. Optional second argument shakes out values
  * by custom evaluation.
  */
-export const shake = <RemovedKeys extends string, T = {}>(
+export const shake = <RemovedKeys extends string, T = object>(
   obj: T,
-  filter: (value: any) => boolean = (x) => x === undefined || x === null
+  filter: (value: unknown) => boolean = (x) => x === undefined || x === null
 ): Omit<T, RemovedKeys> => {
   if (!obj) return {} as T;
   const keys = Object.keys(obj) as (keyof T)[];

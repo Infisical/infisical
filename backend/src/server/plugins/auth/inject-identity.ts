@@ -106,9 +106,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
         break;
       }
       case AuthMode.SERVICE_TOKEN: {
-        const serviceToken = await server.services.serviceToken.fnValidateServiceToken(
-          token as string
-        );
+        const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
         req.auth = {
           authMode: AuthMode.SERVICE_TOKEN as const,
           serviceToken,

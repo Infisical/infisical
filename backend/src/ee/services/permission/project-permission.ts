@@ -239,17 +239,29 @@ export const buildServiceTokenProjectPermission = (
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
   scopes.forEach(({ secretPath, environment }) => {
     if (canWrite) {
-      // TODO: @Akhi 
-      // @ts-expect-error type 
-      can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets, { secretPath: { $glob: secretPath }, environment });
-      // @ts-expect-error type 
-      can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets, { secretPath: { $glob: secretPath }, environment });
-      // @ts-expect-error type 
-      can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets, {secretPath: { $glob: secretPath }, environment });
+      // TODO: @Akhi
+      // @ts-expect-error type
+      can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets, {
+        secretPath: { $glob: secretPath },
+        environment
+      });
+      // @ts-expect-error type
+      can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets, {
+        secretPath: { $glob: secretPath },
+        environment
+      });
+      // @ts-expect-error type
+      can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets, {
+        secretPath: { $glob: secretPath },
+        environment
+      });
     }
     if (canRead) {
-      // @ts-expect-error type 
-      can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets, { secretPath: { $glob: secretPath }, environment });
+      // @ts-expect-error type
+      can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets, {
+        secretPath: { $glob: secretPath },
+        environment
+      });
     }
   });
 
@@ -257,6 +269,8 @@ export const buildServiceTokenProjectPermission = (
 };
 
 export const projectNoAccessPermissions = buildNoAccessProjectPermission();
+
+/* eslint-disable */
 
 /**
  * Extracts and formats permissions from a CASL Ability object or a raw permission set.
@@ -287,3 +301,5 @@ export const isAtLeastAsPrivilegedWorkspace = (
 
   return set1.size >= set2.size;
 };
+
+/* eslint-enable */

@@ -96,8 +96,8 @@ export const secretScanningQueueFactory = ({
           path: filepath
         });
 
-        const { data }: any = fileContentsResponse;
-        const fileContent = Buffer.from(data.content, "base64").toString();
+        const { data } = fileContentsResponse;
+        const fileContent = Buffer.from((data as { content: string }).content, "base64").toString();
 
         // eslint-disable-next-line
         const findings = await scanContentAndGetFindings(`\n${fileContent}`); // extra line to count lines correctly
@@ -118,7 +118,7 @@ export const secretScanningQueueFactory = ({
     }
     await secretScanningDAL.transaction(async (tx) => {
       if (!Object.keys(allFindingsByFingerprint).length) return;
-      secretScanningDAL.upsert(
+      await secretScanningDAL.upsert(
         Object.keys(allFindingsByFingerprint).map((key) => ({
           installationId,
           email: allFindingsByFingerprint[key].Email,
@@ -186,7 +186,9 @@ export const secretScanningQueueFactory = ({
     });
 
     const findings = await scanFullRepoContentAndGetFindings(
-      octokit,
+      // this is because of collision of octokit in probot and github
+      // eslint-disable-next-line
+      octokit as any,
       installationId,
       repository.fullName
     );

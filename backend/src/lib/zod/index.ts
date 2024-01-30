@@ -1,4 +1,4 @@
-import { z,ZodTypeAny } from "zod";
+import { z, ZodTypeAny } from "zod";
 
 // this is a patched zod string to remove empty string to undefined
 export const zpStr = <T extends ZodTypeAny>(

@@ -20,17 +20,19 @@ export const registerExternalNextjs = async (
   if (standaloneMode) {
     const nextJsBuildPath = path.join(dir, "frontend-build");
 
-    const { default: conf } = await import(
+    const { default: conf } = (await import(
       path.join(dir, "frontend-build/.next/required-server-files.json"),
       // @ts-expect-error type
       {
         assert: { type: "json" }
       }
-    );
+    )) as { default: { config: string } };
 
+    /* eslint-disable */
     const { default: NextServer } = (
       await import(path.join(dir, "frontend-build/node_modules/next/dist/server/next-server.js"))
     ).default;
+
     const nextApp = new NextServer({
       dev: false,
       dir: nextJsBuildPath,
@@ -52,5 +54,6 @@ export const registerExternalNextjs = async (
     });
     server.addHook("onClose", () => nextApp.close());
     await nextApp.prepare();
+    /* eslint-enable */
   }
 };

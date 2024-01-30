@@ -1,7 +1,12 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretApprovalRequestsSchema, TableName, TSecretApprovalRequests } from "@app/db/schemas";
+import {
+  SecretApprovalRequestsSchema,
+  TableName,
+  TSecretApprovalRequests,
+  TSecretApprovalRequestsSecrets
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import {
   ormify,
@@ -125,10 +130,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               `${TableName.SecretApprovalPolicyApprover}.policyId`
             )
             .where({ projectId })
-            .andWhere((bd) =>
-              bd
-                .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
-                .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
+            .andWhere(
+              (bd) =>
+                void bd
+                  .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
+                  .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
             )
             .select("status", `${TableName.SecretApprovalRequest}.id`)
             .groupBy(`${TableName.SecretApprovalRequest}.id`, "status")
@@ -141,11 +147,13 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
 
       return {
         open: parseInt(
-          (docs.find(({ status }) => status === RequestState.Open)?.count as string) || "0",
+          (docs.find(({ status }) => status === RequestState.Open) as { count: string })?.count ||
+            "0",
           10
         ),
         closed: parseInt(
-          (docs.find(({ status }) => status === RequestState.Closed)?.count as string) || "0",
+          (docs.find(({ status }) => status === RequestState.Closed) as { count: string })?.count ||
+            "0",
           10
         )
       };
@@ -195,7 +203,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalRequest}.id`,
           `${TableName.SecretApprovalRequestReviewer}.requestId`
         )
-        .leftJoin(
+        .leftJoin<TSecretApprovalRequestsSecrets>(
           TableName.SecretApprovalRequestSecret,
           `${TableName.SecretApprovalRequestSecret}.requestId`,
           `${TableName.SecretApprovalRequest}.id`
@@ -208,10 +216,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             committerId: committer
           })
         )
-        .andWhere((bd) =>
-          bd
-            .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
-            .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
+        .andWhere(
+          (bd) =>
+            void bd
+              .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
+              .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
         )
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(

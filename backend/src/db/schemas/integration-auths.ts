@@ -29,7 +29,7 @@ export const IntegrationAuthsSchema = z.object({
   keyEncoding: z.string(),
   projectId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TIntegrationAuths = z.infer<typeof IntegrationAuthsSchema>;

@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -14,7 +14,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
       const members = await db(TableName.ProjectMembership)
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
-        .join(
+        .join<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
           `${TableName.Users}.id`
@@ -25,10 +25,10 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("role").withSchema(TableName.ProjectMembership),
           db.ref("roleId").withSchema(TableName.ProjectMembership),
           db.ref("email").withSchema(TableName.Users),
+          db.ref("publicKey").withSchema(TableName.UserEncryptionKey),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
-          db.ref("id").withSchema(TableName.Users).as("userId"),
-          db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
+          db.ref("id").withSchema(TableName.Users).as("userId")
         );
       return members.map(({ email, firstName, lastName, publicKey, ...data }) => ({
         ...data,

@@ -29,7 +29,7 @@ export const unique = <T, K extends string | number | symbol>(
 ): T[] => {
   const valueMap = array.reduce(
     (acc, item) => {
-      const key = toKey ? toKey(item) : (item as any as string | number | symbol);
+      const key = toKey ? toKey(item) : (item as unknown as string | number | symbol);
       if (acc[key]) return acc;
       acc[key] = item;
       return acc;

@@ -12,9 +12,16 @@ export const SecretApprovalRequestSecretTagsSchema = z.object({
   secretId: z.string().uuid(),
   tagId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
-export type TSecretApprovalRequestSecretTags = z.infer<typeof SecretApprovalRequestSecretTagsSchema>;
-export type TSecretApprovalRequestSecretTagsInsert = Omit<TSecretApprovalRequestSecretTags, TImmutableDBKeys>;
-export type TSecretApprovalRequestSecretTagsUpdate = Partial<Omit<TSecretApprovalRequestSecretTags, TImmutableDBKeys>>;
+export type TSecretApprovalRequestSecretTags = z.infer<
+  typeof SecretApprovalRequestSecretTagsSchema
+>;
+export type TSecretApprovalRequestSecretTagsInsert = Omit<
+  TSecretApprovalRequestSecretTags,
+  TImmutableDBKeys
+>;
+export type TSecretApprovalRequestSecretTagsUpdate = Partial<
+  Omit<TSecretApprovalRequestSecretTags, TImmutableDBKeys>
+>;

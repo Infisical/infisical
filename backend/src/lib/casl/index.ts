@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { buildMongoQueryMatcher, MongoAbility } from "@casl/ability";
 import { FieldCondition, FieldInstruction, JsInterpreter } from "@ucast/mongo2js";
 import picomatch from "picomatch";
@@ -12,7 +13,7 @@ const $glob: FieldInstruction<string> = {
 };
 
 const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
-  const secretPath = context.get(object, node.field);
+  const secretPath = context.get(object, node.field) as string;
   const permissionSecretGlobPath = node.value;
   return picomatch.isMatch(secretPath, permissionSecretGlobPath, { strictSlashes: false });
 };
@@ -23,7 +24,9 @@ export const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
  * Extracts and formats permissions from a CASL Ability object or a raw permission set.
  */
 const extractPermissions = (ability: MongoAbility) =>
-  ability.rules.map((permission) => `${permission.action}_${permission.subject}`);
+  ability.rules.map(
+    (permission) => `${permission.action as string}_${permission.subject as string}`
+  );
 
 /**
  * Compares two sets of permissions to determine if the first set is at least as privileged as the second set.
