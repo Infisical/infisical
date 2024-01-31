@@ -67,7 +67,7 @@ export const projectEnvServiceFactory = ({
     if (!oldEnv) throw new BadRequestError({ message: "Environment not found" });
 
     if (slug) {
-      const existingEnv = await projectEnvDAL.findOne({ slug });
+      const existingEnv = await projectEnvDAL.findOne({ slug, projectId });
       if (existingEnv && existingEnv.id !== id) {
         throw new BadRequestError({
           message: "Environment with slug already exist",

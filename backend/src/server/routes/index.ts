@@ -444,6 +444,7 @@ export const registerRoutes = async (
   });
 
   await superAdminService.initServerCfg();
+  await auditLogQueue.startAuditLogPruneJob();
   // setup the communication with license key server
   await licenseService.init();
   // inject all services

@@ -26,14 +26,23 @@ const loggerConfig = z.object({
   AWS_CLOUDWATCH_LOG_REGION: z.string().default("us-east-1"),
   AWS_CLOUDWATCH_LOG_ACCESS_KEY_ID: z.string().min(1).optional(),
   AWS_CLOUDWATCH_LOG_ACCESS_KEY_SECRET: z.string().min(1).optional(),
-  AWS_CLOUDWATCH_LOG_INTERVAL: z.coerce.number().default(1000)
+  AWS_CLOUDWATCH_LOG_INTERVAL: z.coerce.number().default(1000),
+  NODE_ENV: z.enum(["development", "test", "production"]).default("production")
 });
 
 export const initLogger = async () => {
-  const targets: pino.TransportMultiOptions["targets"][number][] = [
-    { level: "info", target: "pino/file", options: {} }
-  ];
   const cfg = loggerConfig.parse(process.env);
+  const targets: pino.TransportMultiOptions["targets"][number][] = [
+    {
+      level: "info",
+      target: "pino/file",
+      options: {
+        destination: cfg.NODE_ENV === "development" ? 1 : "/var/log/infisical",
+        mkdir: true
+      }
+    }
+  ];
+
   if (cfg.AWS_CLOUDWATCH_LOG_ACCESS_KEY_ID && cfg.AWS_CLOUDWATCH_LOG_ACCESS_KEY_SECRET) {
     targets.push({
       target: "@serdnam/pino-cloudwatch-transport",
