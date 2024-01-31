@@ -37,7 +37,7 @@ export const initLogger = async () => {
       level: "info",
       target: "pino/file",
       options: {
-        destination: cfg.NODE_ENV === "development" ? 1 : "/var/log/infisical",
+        destination: cfg.NODE_ENV === "development" ? 1 : "/var/logs/infisical.log",
         mkdir: true
       }
     }

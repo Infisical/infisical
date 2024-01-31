@@ -63,7 +63,7 @@ export const auditLogQueueServiceFactory = ({
   queueService.start(QueueName.AuditLogPrune, async () => {
     logger.info(`${QueueName.AuditLogPrune}: queue task started`);
     await auditLogDAL.pruneAuditLog();
-    logger.info(`${QueueName.AuditLogPrune}: queue task competed`);
+    logger.info(`${QueueName.AuditLogPrune}: queue task completed`);
   });
 
   // we do a repeat cron job in utc timezone at 12 Midnight each day
