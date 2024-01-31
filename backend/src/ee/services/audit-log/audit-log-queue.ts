@@ -15,19 +15,6 @@ type TAuditLogQueueServiceFactoryDep = {
 
 export type TAuditLogQueueServiceFactory = ReturnType<typeof auditLogQueueServiceFactory>;
 
-const getTimeDiffForNextAuditLogPrune = (mills: number) => {
-  const today = new Date(mills);
-  // Get UTC midnight timestamp for today
-  const nextUtcMidnight = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0));
-
-  // Check if we have already passed UTC midnight today
-  if (today.getTime() >= nextUtcMidnight.getTime()) {
-    // Add one day to get the timestamp for tomorrow's UTC midnight
-    nextUtcMidnight.setDate(nextUtcMidnight.getDate() + 1);
-  }
-  return nextUtcMidnight.getTime();
-};
-
 export const auditLogQueueServiceFactory = ({
   auditLogDAL,
   queueService,
@@ -73,37 +60,29 @@ export const auditLogQueueServiceFactory = ({
     });
   });
 
-  queueService.start(
-    QueueName.AuditLogPrune,
-    async () => {
-      logger.info("Started audit log pruning");
-      await auditLogDAL.pruneAuditLog();
-      // calculate next utc time delay
-      // const nextPruneTime = getTimeDiffForNextAuditLogPrune();
-      // await queueService.stopJobById(QueueName.AuditLogPrune, "audit-log-prune");
-      logger.info("Finished audit log pruning");
-    },
-    {
-      settings: {
-        repeatStrategy: getTimeDiffForNextAuditLogPrune
-      }
-    }
-  );
+  queueService.start(QueueName.AuditLogPrune, async () => {
+    logger.info("Started audit log pruning");
+    await auditLogDAL.pruneAuditLog();
+    // calculate next utc time delay
+    // const nextPruneTime = getTimeDiffForNextAuditLogPrune();
+    // await queueService.stopJobById(QueueName.AuditLogPrune, "audit-log-prune");
+    logger.info("Finished audit log pruning");
+  });
 
-  // we are not using repeat because we want to run the in a predictable time of midnight UTC
-  // repeat has only cron job and every so we do the repeat manually
+  // we do a repeat cron job in utc timezone at 12 Midnight each day
   const startAuditLogPruneJob = async () => {
     // clear previous job
     await queueService.stopRepeatableJob(
       QueueName.AuditLogPrune,
       QueueJobs.AuditLogPrune,
-      {},
+      { pattern: "0 0 * * *", utc: true },
       QueueName.AuditLogPrune // just a job id
     );
+
     await queueService.queue(QueueName.AuditLogPrune, QueueJobs.AuditLogPrune, undefined, {
       delay: 5000,
       jobId: QueueName.AuditLogPrune,
-      repeat: {}
+      repeat: { pattern: "0 0 * * *", utc: true }
     });
   };
 
