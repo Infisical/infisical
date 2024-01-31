@@ -44,7 +44,7 @@ export const auditLogQueueServiceFactory = ({
 
     const plan = await licenseService.getPlan(orgId);
     const ttl = plan.auditLogsRetentionDays * MS_IN_DAY;
-    // skip inserting if audit log retension is 0 meaning its not supported
+    // skip inserting if audit log retention is 0 meaning its not supported
     if (ttl === 0) return;
     await auditLogDAL.create({
       actor: actor.type,
@@ -61,12 +61,9 @@ export const auditLogQueueServiceFactory = ({
   });
 
   queueService.start(QueueName.AuditLogPrune, async () => {
-    logger.info("Started audit log pruning");
+    logger.info(`${QueueName.AuditLogPrune}: queue task started`);
     await auditLogDAL.pruneAuditLog();
-    // calculate next utc time delay
-    // const nextPruneTime = getTimeDiffForNextAuditLogPrune();
-    // await queueService.stopJobById(QueueName.AuditLogPrune, "audit-log-prune");
-    logger.info("Finished audit log pruning");
+    logger.info(`${QueueName.AuditLogPrune}: queue task competed`);
   });
 
   // we do a repeat cron job in utc timezone at 12 Midnight each day
@@ -86,9 +83,8 @@ export const auditLogQueueServiceFactory = ({
     });
   };
 
-  queueService.listen(QueueName.AuditLogPrune, "error", (err) => {
-    logger.error("Audit log pruning failed");
-    logger.error(err);
+  queueService.listen(QueueName.AuditLogPrune, "failed", (err) => {
+    logger.error(err?.failedReason, `${QueueName.AuditLogPrune}: log pruning failed`);
   });
 
   return {
