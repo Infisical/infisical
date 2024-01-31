@@ -96,32 +96,32 @@ services:
       - 1025:1025 # SMTP server
       - 8025:8025 # Web UI
 
-  mongo:
-    image: mongo
-    container_name: infisical-dev-mongo
-    restart: always
-    env_file: .env
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=example
-    volumes:
-      - mongo-data:/data/db
-    ports:
-      - 27017:27017
-
-  mongo-express:
-    container_name: infisical-dev-mongo-express
-    image: mongo-express
-    restart: always
-    depends_on:
-      - mongo
-    env_file: .env
-    environment:
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=root
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=example
-      - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongo:27017/
-    ports:
-      - 8081:8081
+  # mongo:
+  #   image: mongo
+  #   container_name: infisical-dev-mongo
+  #   restart: always
+  #   env_file: .env
+  #   environment:
+  #     - MONGO_INITDB_ROOT_USERNAME=root
+  #     - MONGO_INITDB_ROOT_PASSWORD=example
+  #   volumes:
+  #     - mongo-data:/data/db
+  #   ports:
+  #     - 27017:27017
+  #
+  # mongo-express:
+  #   container_name: infisical-dev-mongo-express
+  #   image: mongo-express
+  #   restart: always
+  #   depends_on:
+  #     - mongo
+  #   env_file: .env
+  #   environment:
+  #     - ME_CONFIG_MONGODB_ADMINUSERNAME=root
+  #     - ME_CONFIG_MONGODB_ADMINPASSWORD=example
+  #     - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongo:27017/
+  #   ports:
+  #     - 8081:8081
 
 volumes:
   postgres-data:

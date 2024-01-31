@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { DatabaseError } from "@app/lib/errors";
 import { ormify, stripUndefinedInWhere } from "@app/lib/knex";
 
 export type TAuditLogDALFactory = ReturnType<typeof auditLogDALFactory>;
@@ -25,27 +26,42 @@ export const auditLogDALFactory = (db: TDbClient) => {
     { orgId, projectId, userAgentType, startDate, endDate, limit = 20, offset = 0, actor, eventType }: TFindQuery,
     tx?: Knex
   ) => {
-    const sqlQuery = (tx || db)(TableName.AuditLog)
-      .where(
-        stripUndefinedInWhere({
-          projectId,
-          orgId,
-          eventType,
-          actor,
-          userAgentType
-        })
-      )
-      .limit(limit)
-      .offset(offset);
-    if (startDate) {
-      void sqlQuery.where("createdAt", ">=", startDate);
+    try {
+      const sqlQuery = (tx || db)(TableName.AuditLog)
+        .where(
+          stripUndefinedInWhere({
+            projectId,
+            orgId,
+            eventType,
+            actor,
+            userAgentType
+          })
+        )
+        .limit(limit)
+        .offset(offset);
+      if (startDate) {
+        void sqlQuery.where("createdAt", ">=", startDate);
+      }
+      if (endDate) {
+        void sqlQuery.where("createdAt", "<=", endDate);
+      }
+      const docs = await sqlQuery;
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error });
     }
-    if (endDate) {
-      void sqlQuery.where("createdAt", "<=", endDate);
-    }
-    const docs = await sqlQuery;
-    return docs;
   };
 
-  return { ...auditLogOrm, find };
+  // delete all audit log that have expired
+  const pruneAuditLog = async (tx?: Knex) => {
+    try {
+      const today = new Date();
+      const docs = await (tx || db)(TableName.AuditLog).where("expiresAt", "<", today).del();
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "PruneAuditLog" });
+    }
+  };
+
+  return { ...auditLogOrm, pruneAuditLog, find };
 };
