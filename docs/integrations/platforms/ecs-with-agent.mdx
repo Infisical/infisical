@@ -1,0 +1,90 @@
+---
+title: 'Amazon ECS'
+description: "How to deliver secrets to Amazon Elastic Container Service"
+---
+
+![title](../../images/k8-diagram.png)
+
+This guide will go over the steps needed to configure an Amazon Elastic Container Service (ECS) task definition to access secrets stored in Infisical. 
+
+At a high level, the steps involve setting up an ECS task with a Infisical Agent sidecar container. This container uses Universal Authentication to communicate with the target Infisical instance for fetching secrets.
+Once the secrets/access tokens are retrieved, they are then stored in a shared Amazon Elastic File System (EFS) volume. This volume is then made accessible to your application container and all of its replicas.
+
+This guide will focus on integrating Infisical Cloud with Amazon ECS on AWS Fargate and Amazon EFS.
+However, the principles and steps can be adapted for use with any instance of Infisical (on premise or cloud) and different ECS configurations, such as Amazon ECS on EC2 instances.
+
+## Prerequisites
+This guide requires the following prerequisites:
+- Infisical instance configured and running 
+- Git installed
+- Terraform v1.0 or later installed
+- Access to AWS credentials
+
+## Clone guide assets repository
+To help you follow along with ease, please clone the guide assets from this [Github repository](https://github.com/Infisical/infisical-guides.git).
+This repository contains assets for all Infisical guides. The content for this guide can be within a sub directory. 
+Specifically, change your working directory to `aws-ecs-with-agent`.
+
+## Configure AWS credentials
+Because we'll be creating AWS recourses through Terraform, you will need to obtain a set of AWS Access Key and Secret Key.
+Once you generated these credentials, export them to your terminal. 
+
+1. Export the AWS Access Key ID:
+
+   ```bash
+   export AWS_ACCESS_KEY_ID=<your AWS access key ID>
+   ```
+
+2. Export the AWS Secret Access Key:
+
+   ```bash
+   export AWS_SECRET_ACCESS_KEY=<your AWS secret access key>
+   ```
+
+3. Export the AWS Session Token:
+
+   ```bash
+   export AWS_SESSION_TOKEN=<your AWS session token>
+   ```
+
+## Set up infrastructure
+
+Before we can deploy a sample service on Amazon ECS to demonstrate how you deliver secrets from Infisical, you must first provision baseline infrastructure components.
+The following resources need to be created:
+- AWS ECS Cluster with Fargate as launch type
+- EFS volume
+- Networking resources 
+
+Instead of creating these resources one by one, we'll use the Terraform template in the guide folder to provision all resources at once.
+
+1. Change directory to `terraform`
+```sh 
+cd terraform
+```
+
+2. Initialize Terraform
+```
+terraform init 
+```
+
+3. Preview resources that will be created 
+```
+terraform plan
+```
+
+4. Trigger resource creation
+```
+terraform apply 
+```
+
+## Configure Authentication with Infisical
+In order to communicate with Infisical from our ECS application, we'll need to first authenticate with Infisical.
+There are a number of methods to authenticate with Infisical; however, in this guide we'll be using Universal Auth to authenticate.
+
+Follow the documentation to here to configure and generate a client id and client secret with Universal auth here.
+Make sure to save these credentials somewhere handy because we'll need them soon.
+
+## Setup sample application
+
+** diagram **
+
