@@ -41,7 +41,7 @@ export const projectDALFactory = (db: TDbClient) => {
 
       return nestedWorkspaces.map((workspace) => ({
         ...workspace,
-        organization: workspace.id
+        organization: workspace.orgId
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all projects" });
@@ -83,7 +83,7 @@ export const projectDALFactory = (db: TDbClient) => {
       // We need to add the organization field, as it's required for one of our API endpoint responses.
       return nestedWorkspaces.map((workspace) => ({
         ...workspace,
-        organization: workspace.id
+        organization: workspace.orgId
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all projects by identity" });
