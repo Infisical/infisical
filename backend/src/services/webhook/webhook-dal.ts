@@ -80,7 +80,8 @@ export const webhookDALFactory = (db: TDbClient) => {
         .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
         .select(db.ref("id").withSchema(TableName.Environment).as("envId"))
         .select(db.ref("projectId").withSchema(TableName.Environment))
-        .select(selectAllTableCols(TableName.Webhook));
+        .select(selectAllTableCols(TableName.Webhook))
+        .orderBy(`${TableName.Webhook}.createdAt`, "asc");
 
       return webhooks.map(({ envId, envSlug, envName, ...el }) => ({
         ...el,

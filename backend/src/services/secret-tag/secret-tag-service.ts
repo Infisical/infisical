@@ -47,7 +47,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
 
-    const tags = await secretTagDAL.find({ projectId });
+    const tags = await secretTagDAL.find({ projectId }, { sort: [["createdAt", "asc"]] });
     return tags;
   };
 
