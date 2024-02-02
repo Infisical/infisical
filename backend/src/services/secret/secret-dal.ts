@@ -86,7 +86,8 @@ export const secretDALFactory = (db: TDbClient) => {
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"));
+        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"))
+        .orderBy("createdAt", "desc");
       const data = sqlNestRelationships({
         data: secs,
         key: "id",
