@@ -31,7 +31,7 @@ export const fnSecretsFromImports = async ({
       type: SecretType.Shared
     },
     {
-      sort: [["createdAt", "desc"]]
+      sort: [["id", "asc"]]
     }
   );
 
