@@ -21,8 +21,8 @@ infisical:
   name: infisical
   replicaCount: 2
   image:
-    repository: infisical/infisical
-    tag: "latest-postgres"
+    repository: infisical/staging_infisical
+    tag: "latest"
     pullPolicy: IfNotPresent
 
   deploymentAnnotations:
