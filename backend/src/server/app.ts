@@ -5,6 +5,7 @@ import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import cors from "@fastify/cors";
+import fastifyEtag from "@fastify/etag";
 import fastifyFormBody from "@fastify/formbody";
 import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
@@ -49,6 +50,8 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
     await server.register<FastifyCookieOptions>(cookie, {
       secret: appCfg.COOKIE_SECRET_SIGN_KEY
     });
+
+    await server.register(fastifyEtag);
 
     await server.register<FastifyCorsOptions>(cors, {
       credentials: true,
