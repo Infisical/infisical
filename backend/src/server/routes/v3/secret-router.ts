@@ -18,6 +18,7 @@ import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { secretRawSchema } from "../sanitizedSchemas";
+import { getUserAgentType } from "@app/server/plugins/audit-log";
 
 const getDistinctId = (req: FastifyRequest) => {
   if (req.auth.actor === ActorType.USER) {
@@ -107,6 +108,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           workspaceId,
           environment,
           secretPath: req.query.secretPath,
+          channel: getUserAgentType(req.headers["user-agent"]),     
           ...req.auditLogInfo
         }
       });
@@ -188,6 +190,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           workspaceId,
           environment,
           secretPath: req.query.secretPath,
+          channel: getUserAgentType(req.headers["user-agent"]),
           ...req.auditLogInfo
         }
       });
@@ -255,7 +258,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           workspaceId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
-
+          channel: getUserAgentType(req.headers["user-agent"]),
           ...req.auditLogInfo
         }
       });
@@ -322,7 +325,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           workspaceId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
-
+          channel: getUserAgentType(req.headers["user-agent"]),
           ...req.auditLogInfo
         }
       });
@@ -384,7 +387,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           workspaceId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
-
+          channel: getUserAgentType(req.headers["user-agent"]),
           ...req.auditLogInfo
         }
       });
@@ -467,18 +470,29 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretPulled,
-        distinctId: getDistinctId(req),
-        properties: {
-          numberOfSecrets: secrets.length,
-          workspaceId: req.query.workspaceId,
-          environment: req.query.environment,
-          secretPath: req.query.secretPath,
-
-          ...req.auditLogInfo
+      let shouldRecordK8Event = false;
+      if (req.authData.userAgent == "k8-operator") {
+        const randomNumber = Math.random();
+        if (randomNumber > 0.95) {
+          shouldRecordK8Event = true;
         }
-      });
+      }
+      const shouldCapture = req.authData.userAgent !== "k8-operator" || shouldRecordK8Event;
+      const approximateNumberTotalSecrets = secrets.length * 20;
+      if (shouldCapture) {
+        server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretPulled,
+          distinctId: getDistinctId(req),
+          properties: {
+            numberOfSecrets: shouldRecordK8Event ? approximateNumberTotalSecrets : secrets.length,
+            workspaceId: req.query.workspaceId,
+            environment: req.query.environment,
+            secretPath: req.query.secretPath,
+            channel: getUserAgentType(req.headers["user-agent"]),
+            ...req.auditLogInfo
+          }
+        });
+      }
 
       return { secrets, imports };
     }
@@ -550,7 +564,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           workspaceId: req.query.workspaceId,
           environment: req.query.environment,
           secretPath: req.query.secretPath,
-
+          channel: getUserAgentType(req.headers["user-agent"]),
           ...req.auditLogInfo
         }
       });
@@ -711,7 +725,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           workspaceId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
-
+          channel: getUserAgentType(req.headers["user-agent"]),
           ...req.auditLogInfo
         }
       });
@@ -890,7 +904,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           workspaceId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
-
+          channel: getUserAgentType(req.headers["user-agent"]),
           ...req.auditLogInfo
         }
       });
@@ -1005,7 +1019,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           workspaceId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
-
+          channel: getUserAgentType(req.headers["user-agent"]),
           ...req.auditLogInfo
         }
       });
@@ -1123,7 +1137,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           workspaceId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
-
+          channel: getUserAgentType(req.headers["user-agent"]),
           ...req.auditLogInfo
         }
       });
@@ -1240,7 +1254,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           workspaceId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
-
+          channel: getUserAgentType(req.headers["user-agent"]),
           ...req.auditLogInfo
         }
       });
@@ -1345,7 +1359,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           workspaceId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
-
+          channel: getUserAgentType(req.headers["user-agent"]),
           ...req.auditLogInfo
         }
       });
