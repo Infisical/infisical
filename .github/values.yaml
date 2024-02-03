@@ -23,7 +23,7 @@ infisical:
   image:
     repository: infisical/staging_infisical
     tag: "latest"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
 
   deploymentAnnotations:
     secrets.infisical.com/auto-reload: "false"
