@@ -328,7 +328,7 @@ export const useCreateCustomerPortalSession = () => {
   return useMutation({
     mutationFn: async (organizationId: string) => {
       const { data } = await apiRequest.post(
-        `/api/v1/organization/${organizationId}/customer-portal-session`
+        `/api/v1/organizations/${organizationId}/customer-portal-session`
       );
       return data;
     }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 import { Knex } from "knex";
 import { Tables } from "knex/types/tables";
 
@@ -15,22 +16,22 @@ export const withTransaction = <K extends object>(db: Knex, dal: K) => ({
   ...dal
 });
 
-export type TFindFilter<R extends {} = any> = Partial<R> & {
+export type TFindFilter<R extends object = object> = Partial<R> & {
   $in?: Partial<{ [k in keyof R]: R[k][] }>;
 };
 export const buildFindFilter =
-  <R extends {} = any>({ $in, ...filter }: TFindFilter<R>) =>
+  <R extends object = object>({ $in, ...filter }: TFindFilter<R>) =>
   (bd: Knex.QueryBuilder<R, R>) => {
-    bd.where(filter);
+    void bd.where(filter);
     if ($in) {
       Object.entries($in).forEach(([key, val]) => {
-        bd.whereIn(key as any, val as any);
+        void bd.whereIn(key as never, val as never);
       });
     }
     return bd;
   };
 
-export type TFindOpt<R extends {} = any> = {
+export type TFindOpt<R extends object = object> = {
   limit?: number;
   offset?: number;
   sort?: Array<[keyof R, "asc" | "desc"] | [keyof R, "asc" | "desc", "first" | "last"]>;
@@ -40,11 +41,7 @@ export type TFindOpt<R extends {} = any> = {
 // What is ormify
 // It is to inject typical operations like find, findOne, update, delete, create
 // This will avoid writing most common ones each time
-export const ormify = <DbOps extends object, Tname extends keyof Tables>(
-  db: Knex,
-  tableName: Tname,
-  dal?: DbOps
-) => ({
+export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Knex, tableName: Tname, dal?: DbOps) => ({
   transaction: async <T>(cb: (tx: Knex) => Promise<T>) =>
     db.transaction(async (trx) => {
       const res = await cb(trx);
@@ -53,7 +50,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
   findById: async (id: string, tx?: Knex) => {
     try {
       const result = await (tx || db)(tableName)
-        .where({ id } as any)
+        .where({ id } as never)
         .first("*");
       return result;
     } catch (error) {
@@ -74,12 +71,10 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
   ) => {
     try {
       const query = (tx || db)(tableName).where(buildFindFilter(filter));
-      if (limit) query.limit(limit);
-      if (offset) query.offset(offset);
+      if (limit) void query.limit(limit);
+      if (offset) void query.offset(offset);
       if (sort) {
-        query.orderBy(
-          sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls }))
-        );
+        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
       const res = await query;
       return res;
@@ -90,7 +85,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
   create: async (data: Tables[Tname]["insert"], tx?: Knex) => {
     try {
       const [res] = await (tx || db)(tableName)
-        .insert(data as any)
+        .insert(data as never)
         .returning("*");
       return res;
     } catch (error) {
@@ -101,7 +96,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
     try {
       if (!data.length) return [];
       const res = await (tx || db)(tableName)
-        .insert(data as any)
+        .insert(data as never)
         .returning("*");
       return res;
     } catch (error) {
@@ -111,23 +106,19 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
   updateById: async (id: string, data: Tables[Tname]["update"], tx?: Knex) => {
     try {
       const [res] = await (tx || db)(tableName)
-        .where({ id } as any)
-        .update(data as any)
+        .where({ id } as never)
+        .update(data as never)
         .returning("*");
       return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update by id" });
     }
   },
-  update: async (
-    filter: TFindFilter<Tables[Tname]["base"]>,
-    data: Tables[Tname]["update"],
-    tx?: Knex
-  ) => {
+  update: async (filter: TFindFilter<Tables[Tname]["base"]>, data: Tables[Tname]["update"], tx?: Knex) => {
     try {
       const res = await (tx || db)(tableName)
         .where(buildFindFilter(filter))
-        .update(data as any)
+        .update(data as never)
         .returning("*");
       return res;
     } catch (error) {
@@ -137,7 +128,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
   deleteById: async (id: string, tx?: Knex) => {
     try {
       const [res] = await (tx || db)(tableName)
-        .where({ id } as any)
+        .where({ id } as never)
         .delete()
         .returning("*");
       return res;
@@ -147,10 +138,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
   },
   delete: async (filter: TFindFilter<Tables[Tname]["base"]>, tx?: Knex) => {
     try {
-      const res = await (tx || db)(tableName)
-        .where(buildFindFilter(filter))
-        .delete()
-        .returning("*");
+      const res = await (tx || db)(tableName).where(buildFindFilter(filter)).delete().returning("*");
       return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete" });

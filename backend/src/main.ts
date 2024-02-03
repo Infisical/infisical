@@ -22,19 +22,21 @@ const run = async () => {
 
   const server = await main({ db, smtp, logger, queue });
   const bootstrap = await bootstrapCheck({ db });
+  // eslint-disable-next-line
   process.on("SIGINT", async () => {
     await server.close();
     await db.destroy();
     process.exit(0);
   });
 
+  // eslint-disable-next-line
   process.on("SIGTERM", async () => {
     await server.close();
     await db.destroy();
     process.exit(0);
   });
 
-  server.listen({
+  await server.listen({
     port: appCfg.PORT,
     host: appCfg.HOST,
     listenTextResolver: (address) => {
@@ -44,4 +46,4 @@ const run = async () => {
   });
 };
 
-run();
+void run();

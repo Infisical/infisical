@@ -21,7 +21,7 @@ export const UserEncryptionKeysSchema = z.object({
   tag: z.string(),
   salt: z.string(),
   verifier: z.string(),
-  userId: z.string().uuid(),
+  userId: z.string().uuid()
 });
 
 export type TUserEncryptionKeys = z.infer<typeof UserEncryptionKeysSchema>;

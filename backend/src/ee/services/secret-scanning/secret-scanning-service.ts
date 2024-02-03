@@ -4,10 +4,7 @@ import { ForbiddenError } from "@casl/ability";
 import { WebhookEventMap } from "@octokit/webhooks-types";
 import { ProbotOctokit } from "probot";
 
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
@@ -44,30 +41,19 @@ export const secretScanningServiceFactory = ({
 }: TSecretScanningServiceFactoryDep) => {
   const createInstallationSession = async ({ actor, orgId, actorId }: TInstallAppSessionDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
-      OrgPermissionSubjects.SecretScanning
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
 
     const sessionId = crypto.randomBytes(16).toString("hex");
     await gitAppInstallSessionDAL.upsert({ orgId, sessionId, userId: actorId });
     return { sessionId };
   };
 
-  const linkInstallationToOrg = async ({
-    sessionId,
-    actorId,
-    installationId,
-    actor
-  }: TLinkInstallSessionDTO) => {
+  const linkInstallationToOrg = async ({ sessionId, actorId, installationId, actor }: TLinkInstallSessionDTO) => {
     const session = await gitAppInstallSessionDAL.findOne({ sessionId });
     if (!session) throw new UnauthorizedError({ message: "Session not found" });
 
     const { permission } = await permissionService.getOrgPermission(actor, actorId, session.orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
-      OrgPermissionSubjects.SecretScanning
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
     const installatedApp = await gitAppOrgDAL.transaction(async (tx) => {
       await gitAppInstallSessionDAL.deleteById(session.id, tx);
       return gitAppOrgDAL.upsert({ orgId: session.orgId, installationId, userId: actorId }, tx);
@@ -99,10 +85,7 @@ export const secretScanningServiceFactory = ({
 
   const getOrgInstallationStatus = async ({ actorId, orgId, actor }: TGetOrgInstallStatusDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.SecretScanning
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
 
     const appInstallation = await gitAppOrgDAL.findOne({ orgId });
     return Boolean(appInstallation);
@@ -110,26 +93,14 @@ export const secretScanningServiceFactory = ({
 
   const getRisksByOrg = async ({ actor, orgId, actorId }: TGetOrgRisksDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.SecretScanning
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
     const risks = await secretScanningDAL.find({ orgId }, { sort: [["createdAt", "desc"]] });
     return { risks };
   };
 
-  const updateRiskStatus = async ({
-    actorId,
-    orgId,
-    actor,
-    riskId,
-    status
-  }: TUpdateRiskStatusDTO) => {
+  const updateRiskStatus = async ({ actorId, orgId, actor, riskId, status }: TUpdateRiskStatusDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Edit,
-      OrgPermissionSubjects.SecretScanning
-    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
 
     const isRiskResolved = Boolean(
       [
@@ -169,11 +140,7 @@ export const secretScanningServiceFactory = ({
   const handleRepoDeleteEvent = async (installationId: string, repositoryIds: string[]) => {
     await secretScanningDAL.transaction(async (tx) => {
       if (repositoryIds.length) {
-        await Promise.all(
-          repositoryIds.map((repoId) =>
-            secretScanningDAL.delete({ repositoryId: repoId }, tx)
-          )
-        );
+        await Promise.all(repositoryIds.map((repoId) => secretScanningDAL.delete({ repositoryId: repoId }, tx)));
       }
       await gitAppOrgDAL.delete({ installationId }, tx);
     });

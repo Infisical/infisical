@@ -32,10 +32,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("secretId").notNullable();
       t.foreign("secretId").references("id").inTable(TableName.Secret).onDelete("CASCADE");
       t.uuid("rotationId").notNullable();
-      t.foreign("rotationId")
-        .references("id")
-        .inTable(TableName.SecretRotation)
-        .onDelete("CASCADE");
+      t.foreign("rotationId").references("id").inTable(TableName.SecretRotation).onDelete("CASCADE");
     });
   }
 }

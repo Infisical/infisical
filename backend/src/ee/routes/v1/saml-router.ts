@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+// All the any rules are disabled because passport typesense with fastify is really poor
+
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
 import { MultiSamlStrategy } from "@node-saml/passport-saml";
@@ -33,6 +41,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     new MultiSamlStrategy(
       {
         passReqToCallback: true,
+        // eslint-disable-next-line
         getSamlOptions: async (req, done) => {
           try {
             const { ssoIdentifier } = req.params;
@@ -67,13 +76,17 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           }
         }
       },
+      // eslint-disable-next-line
       async (req, profile, cb) => {
         try {
           const serverCfg = getServerCfg();
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
-          const { email, firstName } = profile;
-          if (!email || !firstName)
+          const { firstName } = profile;
+          const email = profile?.email ?? (profile?.emailAddress as string); // emailRippling is added because in Rippling the field `email` reserved
+
+          if (!email || !firstName) {
             throw new BadRequestError({ message: "Invalid request. Missing email or first name" });
+          }
 
           const { isUserCompleted, providerAuthToken } = await server.services.saml.samlLogin({
             email,
@@ -137,15 +150,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     handler: (req, res) => {
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
-            req.passportUser.providerAuthToken
-          )}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
         );
       }
       return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(
-          req.passportUser.providerAuthToken
-        )}`
+        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
       );
     }
   });

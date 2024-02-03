@@ -12,7 +12,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/srp1",
     config: {
-      rateLimit:passwordRateLimit 
+      rateLimit: passwordRateLimit
     },
     schema: {
       body: z.object({
@@ -39,7 +39,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/change-password",
     config: {
-      rateLimit:passwordRateLimit 
+      rateLimit: passwordRateLimit
     },
     schema: {
       body: z.object({
@@ -64,7 +64,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       const appCfg = getConfig();
       await server.services.password.changePassword({ ...req.body, userId: req.permission.id });
 
-      res.cookie("jid", appCfg.COOKIE_SECRET_SIGN_KEY, {
+      void res.cookie("jid", appCfg.COOKIE_SECRET_SIGN_KEY, {
         httpOnly: true,
         path: "/",
         sameSite: "strict",
@@ -78,7 +78,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/email/password-reset",
     config: {
-      rateLimit:passwordRateLimit 
+      rateLimit: passwordRateLimit
     },
     schema: {
       body: z.object({
@@ -103,7 +103,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/email/password-reset-verify",
     config: {
-      rateLimit:passwordRateLimit 
+      rateLimit: passwordRateLimit
     },
     schema: {
       body: z.object({
@@ -119,10 +119,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { token, user } = await server.services.password.verifyPasswordResetEmail(
-        req.body.email,
-        req.body.code
-      );
+      const { token, user } = await server.services.password.verifyPasswordResetEmail(req.body.email, req.body.code);
 
       return {
         message: "Successfully verified email",
@@ -136,7 +133,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/backup-private-key",
     config: {
-      rateLimit:passwordRateLimit 
+      rateLimit: passwordRateLimit
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
@@ -156,10 +153,10 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const token = validateSignUpAuthorization(req.headers.authorization as string, "",false)!
+      const token = validateSignUpAuthorization(req.headers.authorization as string, "", false)!;
       const backupPrivateKey = await server.services.password.createBackupPrivateKey({
         ...req.body,
-        userId: token.userId,
+        userId: token.userId
       });
       if (!backupPrivateKey) throw new Error("Failed to create backup key");
 
@@ -171,7 +168,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/backup-private-key",
     config: {
-      rateLimit:passwordRateLimit 
+      rateLimit: passwordRateLimit
     },
     schema: {
       response: {
@@ -182,10 +179,8 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const token = validateSignUpAuthorization(req.headers.authorization as string, "",false)!
-      const backupPrivateKey = await server.services.password.getBackupPrivateKeyOfUser(
-        token.userId
-      );
+      const token = validateSignUpAuthorization(req.headers.authorization as string, "", false)!;
+      const backupPrivateKey = await server.services.password.getBackupPrivateKeyOfUser(token.userId);
       if (!backupPrivateKey) throw new Error("Failed to find backup key");
 
       return { message: "Successfully fetched backup private key", backupPrivateKey };
@@ -213,10 +208,10 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const token = validateSignUpAuthorization(req.headers.authorization as string, "",false)!
+      const token = validateSignUpAuthorization(req.headers.authorization as string, "", false)!;
       await server.services.password.resetPasswordByBackupKey({
         ...req.body,
-        userId: token.userId,
+        userId: token.userId
       });
 
       return { message: "Successfully updated backup private key" };

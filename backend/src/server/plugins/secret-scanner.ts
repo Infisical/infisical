@@ -1,3 +1,4 @@
+import { PushEvent } from "@octokit/webhooks-types";
 import { Probot } from "probot";
 import SmeeClient from "smee-client";
 
@@ -22,7 +23,7 @@ export const registerSecretScannerGhApp = async (server: FastifyZodProvider) => 
 
     app.on("push", async (context) => {
       const { payload } = context;
-      await server.services.secretScanning.handleRepoPushEvent(payload as any);
+      await server.services.secretScanning.handleRepoPushEvent(payload as PushEvent);
     });
   };
 
@@ -49,16 +50,17 @@ export const registerSecretScannerGhApp = async (server: FastifyZodProvider) => 
       method: "POST",
       url: "/",
       handler: async (req, res) => {
-        const eventName = req.headers["x-github-event"] as any;
+        const eventName = req.headers["x-github-event"];
         const signatureSHA256 = req.headers["x-hub-signature-256"] as string;
         const id = req.headers["x-github-delivery"] as string;
         await probot.webhooks.verifyAndReceive({
           id,
+          // @ts-expect-error type
           name: eventName,
           payload: req.body as string,
           signature: signatureSHA256
         });
-        res.send("ok");
+        void res.send("ok");
       }
     });
   }

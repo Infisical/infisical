@@ -8,10 +8,7 @@ import { buildSecretBlindIndexFromName, decryptSymmetric128BitHexKeyUTF8 } from 
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretDALFactory } from "./secret-dal";
 
-export const generateSecretBlindIndexBySalt = async (
-  secretName: string,
-  secretBlindIndexDoc: TSecretBlindIndexes
-) => {
+export const generateSecretBlindIndexBySalt = async (secretName: string, secretBlindIndexDoc: TSecretBlindIndexes) => {
   const appCfg = getConfig();
   const secretBlindIndex = await buildSecretBlindIndexFromName({
     secretName,
@@ -32,12 +29,7 @@ type TInterpolateSecretArg = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
 };
 
-export const interpolateSecrets = ({
-  projectId,
-  secretEncKey,
-  secretDAL,
-  folderDAL
-}: TInterpolateSecretArg) => {
+export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderDAL }: TInterpolateSecretArg) => {
   const fetchSecretsCrossEnv = () => {
     const fetchCache: Record<string, Record<string, string>> = {};
 
@@ -197,10 +189,7 @@ export const interpolateSecrets = ({
   return expandSecrets;
 };
 
-export const decryptSecretRaw = (
-  secret: TSecrets & { workspace: string; environment: string },
-  key: string
-) => {
+export const decryptSecretRaw = (secret: TSecrets & { workspace: string; environment: string }, key: string) => {
   const secretKey = decryptSymmetric128BitHexKeyUTF8({
     ciphertext: secret.secretKeyCiphertext,
     iv: secret.secretKeyIV,

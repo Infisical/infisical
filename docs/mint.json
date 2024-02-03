@@ -1,9 +1,8 @@
 {
   "name": "Infisical",
-  "basePath": "/docs",
   "logo": {
-    "dark": "/docs/logo/dark.svg",
-    "light": "/docs/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg",
     "href": "https://infisical.com"
   },
   "favicon": "/favicon.png",

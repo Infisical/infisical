@@ -81,7 +81,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         return { mfaEnabled: true, token: data.token } as const; // for discriminated union
       }
 
-      res.setCookie("jid", data.token.refresh, {
+      void res.setCookie("jid", data.token.refresh, {
         httpOnly: true,
         path: "/",
         sameSite: "strict",

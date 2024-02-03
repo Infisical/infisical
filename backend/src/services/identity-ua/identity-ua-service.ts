@@ -6,10 +6,7 @@ import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
@@ -71,8 +68,7 @@ export const identityUaServiceFactory = ({
     );
     if (!validClientSecretInfo) throw new UnauthorizedError();
 
-    const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } =
-      validClientSecretInfo;
+    const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
     if (clientSecretTTL > 0) {
       const clientSecretCreated = new Date(validClientSecretInfo.createdAt);
       const ttlInMilliseconds = clientSecretTTL * 1000;
@@ -97,16 +93,12 @@ export const identityUaServiceFactory = ({
         isClientSecretRevoked: true
       });
       throw new UnauthorizedError({
-        message:
-          "Failed to authenticate identity credentials due to client secret number of uses limit reached"
+        message: "Failed to authenticate identity credentials due to client secret number of uses limit reached"
       });
     }
 
     const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
-      const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(
-        validClientSecretInfo.id,
-        tx
-      );
+      const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo.id, tx);
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityUa.identityId,
@@ -132,10 +124,7 @@ export const identityUaServiceFactory = ({
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
       {
-        expiresIn:
-          identityAccessToken.accessTokenMaxTTL === 0
-            ? undefined
-            : identityAccessToken.accessTokenMaxTTL
+        expiresIn: identityAccessToken.accessTokenMaxTTL === 0 ? undefined : identityAccessToken.accessTokenMaxTTL
       }
     );
     return { accessToken, identityUa, validClientSecretInfo, identityAccessToken };
@@ -162,35 +151,26 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.orgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
-      OrgPermissionSubjects.Identity
-    );
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityMembershipOrg.orgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
-    const reformattedClientSecretTrustedIps = clientSecretTrustedIps.map(
-      (clientSecretTrustedIp) => {
-        if (
-          !plan.ipAllowlisting &&
-          clientSecretTrustedIp.ipAddress !== "0.0.0.0/0" &&
-          clientSecretTrustedIp.ipAddress !== "::/0"
-        )
-          throw new BadRequestError({
-            message:
-              "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
-          });
-        if (!isValidIpOrCidr(clientSecretTrustedIp.ipAddress))
-          throw new BadRequestError({
-            message: "The IP is not a valid IPv4, IPv6, or CIDR block"
-          });
-        return extractIPDetails(clientSecretTrustedIp.ipAddress);
-      }
-    );
+    const reformattedClientSecretTrustedIps = clientSecretTrustedIps.map((clientSecretTrustedIp) => {
+      if (
+        !plan.ipAllowlisting &&
+        clientSecretTrustedIp.ipAddress !== "0.0.0.0/0" &&
+        clientSecretTrustedIp.ipAddress !== "::/0"
+      )
+        throw new BadRequestError({
+          message:
+            "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
+        });
+      if (!isValidIpOrCidr(clientSecretTrustedIp.ipAddress))
+        throw new BadRequestError({
+          message: "The IP is not a valid IPv4, IPv6, or CIDR block"
+        });
+      return extractIPDetails(clientSecretTrustedIp.ipAddress);
+    });
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -254,41 +234,31 @@ export const identityUaServiceFactory = ({
 
     if (
       (accessTokenMaxTTL || uaIdentityAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || uaIdentityAuth.accessTokenMaxTTL) >
-        (accessTokenMaxTTL || uaIdentityAuth.accessTokenMaxTTL)
+      (accessTokenTTL || uaIdentityAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || uaIdentityAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.orgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Edit,
-      OrgPermissionSubjects.Identity
-    );
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityMembershipOrg.orgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
-    const reformattedClientSecretTrustedIps = clientSecretTrustedIps?.map(
-      (clientSecretTrustedIp) => {
-        if (
-          !plan.ipAllowlisting &&
-          clientSecretTrustedIp.ipAddress !== "0.0.0.0/0" &&
-          clientSecretTrustedIp.ipAddress !== "::/0"
-        )
-          throw new BadRequestError({
-            message:
-              "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
-          });
-        if (!isValidIpOrCidr(clientSecretTrustedIp.ipAddress))
-          throw new BadRequestError({
-            message: "The IP is not a valid IPv4, IPv6, or CIDR block"
-          });
-        return extractIPDetails(clientSecretTrustedIp.ipAddress);
-      }
-    );
+    const reformattedClientSecretTrustedIps = clientSecretTrustedIps?.map((clientSecretTrustedIp) => {
+      if (
+        !plan.ipAllowlisting &&
+        clientSecretTrustedIp.ipAddress !== "0.0.0.0/0" &&
+        clientSecretTrustedIp.ipAddress !== "::/0"
+      )
+        throw new BadRequestError({
+          message:
+            "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
+        });
+      if (!isValidIpOrCidr(clientSecretTrustedIp.ipAddress))
+        throw new BadRequestError({
+          message: "The IP is not a valid IPv4, IPv6, or CIDR block"
+        });
+      return extractIPDetails(clientSecretTrustedIp.ipAddress);
+    });
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -330,15 +300,8 @@ export const identityUaServiceFactory = ({
 
     const uaIdentityAuth = await identityUaDAL.findOne({ identityId });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.orgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.Identity
-    );
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityMembershipOrg.orgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
     return { ...uaIdentityAuth, orgId: identityMembershipOrg.orgId };
   };
 
@@ -356,15 +319,8 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({
         message: "The identity does not have universal auth"
       });
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.orgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
-      OrgPermissionSubjects.Identity
-    );
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityMembershipOrg.orgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
@@ -409,15 +365,8 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({
         message: "The identity does not have universal auth"
       });
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.orgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.Identity
-    );
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityMembershipOrg.orgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
@@ -441,27 +390,15 @@ export const identityUaServiceFactory = ({
     return { clientSecrets, orgId: identityMembershipOrg.orgId };
   };
 
-  const revokeUaClientSecret = async ({
-    identityId,
-    actorId,
-    actor,
-    clientSecretId
-  }: TRevokeUaClientSecretDTO) => {
+  const revokeUaClientSecret = async ({ identityId, actorId, actor, clientSecretId }: TRevokeUaClientSecretDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
         message: "The identity does not have universal auth"
       });
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.orgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Delete,
-      OrgPermissionSubjects.Identity
-    );
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityMembershipOrg.orgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,

@@ -11,7 +11,7 @@ export const SecretRotationOutputsSchema = z.object({
   id: z.string().uuid(),
   key: z.string(),
   secretId: z.string().uuid(),
-  rotationId: z.string().uuid(),
+  rotationId: z.string().uuid()
 });
 
 export type TSecretRotationOutputs = z.infer<typeof SecretRotationOutputsSchema>;

@@ -61,12 +61,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       // just for delivery hero usecase
       let { secretPath, environment, workspaceId } = req.query;
@@ -80,8 +75,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      if (!workspaceId || !environment)
-        throw new BadRequestError({ message: "Missing workspace id or environment" });
+      if (!workspaceId || !environment) throw new BadRequestError({ message: "Missing workspace id or environment" });
 
       const { secrets, imports } = await server.services.secret.getSecretsRaw({
         actorId: req.permission.id,
@@ -144,12 +138,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       let { secretPath, environment, workspaceId } = req.query;
       if (req.auth.actor === ActorType.SERVICE) {
@@ -162,8 +151,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      if (!workspaceId || !environment)
-        throw new BadRequestError({ message: "Missing workspace id or environment" });
+      if (!workspaceId || !environment) throw new BadRequestError({ message: "Missing workspace id or environment" });
 
       const secret = await server.services.secret.getSecretByNameRaw({
         actorId: req.permission.id,
@@ -218,9 +206,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        secretValue: z
-          .string()
-          .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
+        secretValue: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
         secretComment: z.string().trim().optional().default(""),
         skipMultilineEncoding: z.boolean().optional(),
         type: z.nativeEnum(SecretType).default(SecretType.Shared)
@@ -231,12 +217,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const secret = await server.services.secret.createSecretRaw({
         actorId: req.permission.id,
@@ -293,9 +274,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        secretValue: z
-          .string()
-          .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
+        secretValue: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         skipMultilineEncoding: z.boolean().optional(),
         type: z.nativeEnum(SecretType).default(SecretType.Shared)
@@ -306,12 +285,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const secret = await server.services.secret.updateSecretRaw({
         actorId: req.permission.id,
@@ -375,12 +349,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const secret = await server.services.secret.deleteSecretRaw({
         actorId: req.permission.id,
@@ -474,12 +443,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { secrets, imports } = await server.services.secret.getSecrets({
         actorId: req.permission.id,
@@ -549,12 +513,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const secret = await server.services.secret.getSecretByName({
         actorId: req.permission.id,
@@ -634,18 +593,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               })
             )
           }),
-          z
-            .object({ approval: SecretApprovalRequestsSchema })
-            .describe("When secret protection policy is enabled")
+          z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret protection policy is enabled")
         ])
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
         workspaceId: projectId,
@@ -673,32 +625,31 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           projectId
         });
         if (policy) {
-          const approval =
-            await server.services.secretApprovalRequest.generateSecretApprovalRequest({
-              actorId: req.permission.id,
-              actor: req.permission.type,
-              secretPath,
-              environment,
-              projectId,
-              policy,
-              data: {
-                [CommitType.Create]: [
-                  {
-                    secretName: req.params.secretName,
-                    secretValueCiphertext,
-                    secretValueIV,
-                    secretValueTag,
-                    secretCommentIV,
-                    secretCommentTag,
-                    secretCommentCiphertext,
-                    skipMultilineEncoding,
-                    secretKeyTag,
-                    secretKeyCiphertext,
-                    secretKeyIV
-                  }
-                ]
-              }
-            });
+          const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            secretPath,
+            environment,
+            projectId,
+            policy,
+            data: {
+              [CommitType.Create]: [
+                {
+                  secretName: req.params.secretName,
+                  secretValueCiphertext,
+                  secretValueIV,
+                  secretValueTag,
+                  secretCommentIV,
+                  secretCommentTag,
+                  secretCommentCiphertext,
+                  skipMultilineEncoding,
+                  secretKeyTag,
+                  secretKeyCiphertext,
+                  secretKeyIV
+                }
+              ]
+            }
+          });
 
           await server.services.auditLog.createAuditLog({
             projectId: req.body.workspaceId,
@@ -810,18 +761,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               })
             )
           }),
-          z
-            .object({ approval: SecretApprovalRequestsSchema })
-            .describe("When secret protection policy is enabled")
+          z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret protection policy is enabled")
         ])
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
         secretValueCiphertext,
@@ -854,34 +798,33 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           projectId
         });
         if (policy) {
-          const approval =
-            await server.services.secretApprovalRequest.generateSecretApprovalRequest({
-              actorId: req.permission.id,
-              actor: req.permission.type,
-              secretPath,
-              environment,
-              projectId,
-              policy,
-              data: {
-                [CommitType.Update]: [
-                  {
-                    secretName: req.params.secretName,
-                    newSecretName,
-                    secretValueCiphertext,
-                    secretValueIV,
-                    secretValueTag,
-                    secretCommentIV,
-                    secretCommentTag,
-                    secretCommentCiphertext,
-                    skipMultilineEncoding,
-                    secretKeyTag,
-                    secretKeyCiphertext,
-                    secretKeyIV,
-                    tagIds: tags
-                  }
-                ]
-              }
-            });
+          const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            secretPath,
+            environment,
+            projectId,
+            policy,
+            data: {
+              [CommitType.Update]: [
+                {
+                  secretName: req.params.secretName,
+                  newSecretName,
+                  secretValueCiphertext,
+                  secretValueIV,
+                  secretValueTag,
+                  secretCommentIV,
+                  secretCommentTag,
+                  secretCommentCiphertext,
+                  skipMultilineEncoding,
+                  secretKeyTag,
+                  secretKeyCiphertext,
+                  secretKeyIV,
+                  tagIds: tags
+                }
+              ]
+            }
+          });
 
           await server.services.auditLog.createAuditLog({
             projectId: req.body.workspaceId,
@@ -980,18 +923,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               })
             )
           }),
-          z
-            .object({ approval: SecretApprovalRequestsSchema })
-            .describe("When secret protection policy is enabled")
+          z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret protection policy is enabled")
         ])
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { secretPath, type, workspaceId: projectId, secretId, environment } = req.body;
       if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
@@ -1003,22 +939,21 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           projectId
         });
         if (policy) {
-          const approval =
-            await server.services.secretApprovalRequest.generateSecretApprovalRequest({
-              actorId: req.permission.id,
-              actor: req.permission.type,
-              secretPath,
-              environment,
-              projectId,
-              policy,
-              data: {
-                [CommitType.Delete]: [
-                  {
-                    secretName: req.params.secretName
-                  }
-                ]
-              }
-            });
+          const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            secretPath,
+            environment,
+            projectId,
+            policy,
+            data: {
+              [CommitType.Delete]: [
+                {
+                  secretName: req.params.secretName
+                }
+              ]
+            }
+          });
 
           await server.services.auditLog.createAuditLog({
             projectId: req.body.workspaceId,
@@ -1110,18 +1045,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           z.object({
             secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
           }),
-          z
-            .object({ approval: SecretApprovalRequestsSchema })
-            .describe("When secret protection policy is enabled")
+          z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret protection policy is enabled")
         ])
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
@@ -1133,18 +1061,17 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           projectId
         });
         if (policy) {
-          const approval =
-            await server.services.secretApprovalRequest.generateSecretApprovalRequest({
-              actorId: req.permission.id,
-              actor: req.permission.type,
-              secretPath,
-              environment,
-              projectId,
-              policy,
-              data: {
-                [CommitType.Create]: inputSecrets.filter(({ type }) => type === "shared")
-              }
-            });
+          const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            secretPath,
+            environment,
+            projectId,
+            policy,
+            data: {
+              [CommitType.Create]: inputSecrets.filter(({ type }) => type === "shared")
+            }
+          });
 
           await server.services.auditLog.createAuditLog({
             projectId: req.body.workspaceId,
@@ -1236,18 +1163,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           z.object({
             secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
           }),
-          z
-            .object({ approval: SecretApprovalRequestsSchema })
-            .describe("When secret protection policy is enabled")
+          z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret protection policy is enabled")
         ])
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
@@ -1259,18 +1179,17 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           projectId
         });
         if (policy) {
-          const approval =
-            await server.services.secretApprovalRequest.generateSecretApprovalRequest({
-              actorId: req.permission.id,
-              actor: req.permission.type,
-              secretPath,
-              environment,
-              projectId,
-              policy,
-              data: {
-                [CommitType.Update]: inputSecrets.filter(({ type }) => type === "shared")
-              }
-            });
+          const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            secretPath,
+            environment,
+            projectId,
+            policy,
+            data: {
+              [CommitType.Update]: inputSecrets.filter(({ type }) => type === "shared")
+            }
+          });
 
           await server.services.auditLog.createAuditLog({
             projectId: req.body.workspaceId,
@@ -1350,18 +1269,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           z.object({
             secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
           }),
-          z
-            .object({ approval: SecretApprovalRequestsSchema })
-            .describe("When secret protection policy is enabled")
+          z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret protection policy is enabled")
         ])
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
@@ -1373,18 +1285,17 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           projectId
         });
         if (policy) {
-          const approval =
-            await server.services.secretApprovalRequest.generateSecretApprovalRequest({
-              actorId: req.permission.id,
-              actor: req.permission.type,
-              secretPath,
-              environment,
-              projectId,
-              policy,
-              data: {
-                [CommitType.Delete]: inputSecrets.filter(({ type }) => type === "shared")
-              }
-            });
+          const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            secretPath,
+            environment,
+            projectId,
+            policy,
+            data: {
+              [CommitType.Delete]: inputSecrets.filter(({ type }) => type === "shared")
+            }
+          });
           await server.services.auditLog.createAuditLog({
             projectId: req.body.workspaceId,
             ...req.auditLogInfo,

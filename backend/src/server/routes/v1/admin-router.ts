@@ -39,10 +39,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: (req, _, done) => {
-      verifyAuth([AuthMode.JWT, AuthMode.API_KEY])(req);
-      verifySuperAdmin(req);
-      done();
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.API_KEY])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
     },
     handler: async (req) => {
       const config = await server.services.superAdmin.updateServerCfg(req.body);
@@ -97,7 +97,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      res.setCookie("jid", token.refresh, {
+      void res.setCookie("jid", token.refresh, {
         httpOnly: true,
         path: "/",
         sameSite: "strict",

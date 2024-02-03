@@ -4,10 +4,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import bcrypt from "bcrypt";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
@@ -50,10 +47,7 @@ export const serviceTokenServiceFactory = ({
     encryptedKey
   }: TCreateServiceTokenDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.ServiceTokens
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
 
     scopes.forEach(({ environment, secretPath }) => {
       ForbiddenError.from(permission).throwUnlessCan(
@@ -67,8 +61,7 @@ export const serviceTokenServiceFactory = ({
     // validates env
     const scopeEnvs = [...new Set(scopes.map(({ environment }) => environment))];
     const inputEnvs = await projectEnvDAL.findBySlugs(projectId, scopeEnvs);
-    if (inputEnvs.length !== scopeEnvs.length)
-      throw new BadRequestError({ message: "Environment not found" });
+    if (inputEnvs.length !== scopeEnvs.length) throw new BadRequestError({ message: "Environment not found" });
 
     const secret = crypto.randomBytes(16).toString("hex");
     const secretHash = await bcrypt.hash(secret, appCfg.SALT_ROUNDS);
@@ -101,23 +94,15 @@ export const serviceTokenServiceFactory = ({
     const serviceToken = await serviceTokenDAL.findById(id);
     if (!serviceToken) throw new BadRequestError({ message: "Token not found" });
 
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      serviceToken.projectId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      ProjectPermissionSub.ServiceTokens
-    );
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, serviceToken.projectId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens);
 
     const deletedServiceToken = await serviceTokenDAL.deleteById(id);
     return deletedServiceToken;
   };
 
   const getServiceToken = async ({ actor, actorId }: TGetServiceTokenInfoDTO) => {
-    if (actor !== ActorType.SERVICE)
-      throw new BadRequestError({ message: "Service token not found" });
+    if (actor !== ActorType.SERVICE) throw new BadRequestError({ message: "Service token not found" });
 
     const serviceToken = await serviceTokenDAL.findById(actorId);
     if (!serviceToken) throw new BadRequestError({ message: "Token not found" });
@@ -128,18 +113,11 @@ export const serviceTokenServiceFactory = ({
     return { serviceToken, user: serviceTokenUser };
   };
 
-  const getProjectServiceTokens = async ({
-    actorId,
-    actor,
-    projectId
-  }: TProjectServiceTokensDTO) => {
+  const getProjectServiceTokens = async ({ actorId, actor, projectId }: TProjectServiceTokensDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.ServiceTokens
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
 
-    const tokens = await serviceTokenDAL.find({ projectId });
+    const tokens = await serviceTokenDAL.find({ projectId }, { sort: [["createdAt", "desc"]] });
     return tokens;
   };
 

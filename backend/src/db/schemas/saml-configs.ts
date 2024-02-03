@@ -22,7 +22,7 @@ export const SamlConfigsSchema = z.object({
   certTag: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid(),
+  orgId: z.string().uuid()
 });
 
 export type TSamlConfigs = z.infer<typeof SamlConfigsSchema>;

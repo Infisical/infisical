@@ -31,10 +31,7 @@ export async function up(knex: Knex): Promise<void> {
       t.boolean("isClientSecretRevoked").defaultTo(false).notNullable();
       t.timestamps(true, true, true);
       t.uuid("identityUAId").notNullable();
-      t.foreign("identityUAId")
-        .references("id")
-        .inTable(TableName.IdentityUniversalAuth)
-        .onDelete("CASCADE");
+      t.foreign("identityUAId").references("id").inTable(TableName.IdentityUniversalAuth).onDelete("CASCADE");
     });
   }
   await createOnUpdateTrigger(knex, TableName.IdentityUniversalAuth);

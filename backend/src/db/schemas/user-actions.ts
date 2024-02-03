@@ -12,7 +12,7 @@ export const UserActionsSchema = z.object({
   action: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  userId: z.string().uuid(),
+  userId: z.string().uuid()
 });
 
 export type TUserActions = z.infer<typeof UserActionsSchema>;

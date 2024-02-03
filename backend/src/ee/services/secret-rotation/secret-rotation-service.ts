@@ -47,10 +47,7 @@ export const secretRotationServiceFactory = ({
 }: TSecretRotationServiceFactoryDep) => {
   const getProviderTemplates = async ({ actor, actorId, projectId }: TProjectPermission) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.SecretRotation
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
 
     return {
       custom: [],
@@ -93,8 +90,7 @@ export const secretRotationServiceFactory = ({
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.secretRotation)
       throw new BadRequestError({
-        message:
-          "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
+        message: "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
       });
 
     const selectedTemplate = rotationTemplates.find(({ name }) => name === provider);
@@ -152,24 +148,14 @@ export const secretRotationServiceFactory = ({
     const [doc] = await secretRotationDAL.find({ id: rotationId });
     if (!doc) throw new BadRequestError({ message: "Rotation not found" });
 
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      doc.projectId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.SecretRotation
-    );
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, doc.projectId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
     return doc;
   };
 
   const getByProjectId = async ({ actorId, projectId, actor }: TListByProjectIdDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.SecretRotation
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
     const doc = await secretRotationDAL.find({ projectId });
     return doc;
   };
@@ -182,19 +168,11 @@ export const secretRotationServiceFactory = ({
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.secretRotation)
       throw new BadRequestError({
-        message:
-          "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
+        message: "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
       });
 
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      doc.projectId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      ProjectPermissionSub.SecretRotation
-    );
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, doc.projectId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretRotation);
     await secretRotationQueue.removeFromQueue(doc.id, doc.interval);
     await secretRotationQueue.addToQueue(doc.id, doc.interval);
     return doc;
@@ -204,11 +182,7 @@ export const secretRotationServiceFactory = ({
     const doc = await secretRotationDAL.findById(rotationId);
     if (!doc) throw new BadRequestError({ message: "Rotation not found" });
 
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      doc.projectId
-    );
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, doc.projectId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretRotation

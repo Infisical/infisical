@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
@@ -7,6 +9,7 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { useToggle } from "@app/hooks";
 import { useRenameWorkspace } from "@app/hooks/api";
 
 const formSchema = yup.object({
@@ -19,6 +22,7 @@ export const ProjectNameChangeSection = () => {
   const { createNotification } = useNotificationContext();
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync, isLoading } = useRenameWorkspace();
+  const [isProjectIdCopied, setIsProjectIdCopied] = useToggle(false);
 
   const { handleSubmit, control, reset } = useForm<FormData>({ resolver: yupResolver(formSchema) });
 
@@ -29,6 +33,16 @@ export const ProjectNameChangeSection = () => {
       });
     }
   }, [currentWorkspace]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+
+    if (isProjectIdCopied) {
+      timer = setTimeout(() => setIsProjectIdCopied.off(), 2000);
+    }
+
+    return () => clearTimeout(timer);
+}, [setIsProjectIdCopied]);
 
   const onFormSubmit = async ({ name }: FormData) => {
     try {
@@ -52,12 +66,38 @@ export const ProjectNameChangeSection = () => {
     }
   };
 
+  const copyProjectIdToClipboard = () => {
+    navigator.clipboard.writeText(currentWorkspace?.id || "");
+    setIsProjectIdCopied.on();
+
+    createNotification({
+      text: "Copied Project ID to clipboard",
+      type: "success"
+    });
+  }
+
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit)}
       className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
-      <h2 className="mb-8 flex-1 text-xl font-semibold text-mineshaft-100">Project Name</h2>
+      <div className="flex justify-betweens">
+        <h2 className="text-xl font-semibold flex-1 text-mineshaft-100 mb-8">Project Name</h2>
+        <div>
+          <Button
+            colorSchema="secondary"
+            className="group relative"
+            leftIcon={<FontAwesomeIcon icon={isProjectIdCopied ? faCheck : faCopy} />}
+            onClick={copyProjectIdToClipboard}
+          >
+            Copy Project ID
+            <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
+              Click to copy
+            </span>
+          </Button>
+        </div>
+      </div>
+
       <div className="max-w-md">
         <Controller
           defaultValue=""

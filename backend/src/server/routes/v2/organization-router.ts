@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-import {
-  OrganizationsSchema,
-  OrgMembershipsSchema,
-  UserEncryptionKeysSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { OrganizationsSchema, OrgMembershipsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
@@ -38,11 +33,45 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
-      const users = await server.services.org.findAllOrgMembers(
-        req.permission.id,
-        req.params.organizationId
-      );
+      const users = await server.services.org.findAllOrgMembers(req.permission.id, req.params.organizationId);
       return { users };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:organizationId/workspaces",
+    schema: {
+      params: z.object({
+        organizationId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          workspaces: z
+            .object({
+              id: z.string(),
+              name: z.string(),
+              organization: z.string(),
+              environments: z
+                .object({
+                  name: z.string(),
+                  slug: z.string()
+                })
+                .array()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const workspaces = await server.services.org.findAllWorkspaces({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.params.organizationId
+      });
+
+      return { workspaces };
     }
   });
 

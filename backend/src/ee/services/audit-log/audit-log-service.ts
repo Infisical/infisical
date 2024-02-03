@@ -34,10 +34,7 @@ export const auditLogServiceFactory = ({
     auditLogActor
   }: TListProjectAuditLogDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.AuditLogs
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
     const auditLogs = await auditLogDAL.find({
       startDate,
       endDate,
@@ -48,20 +45,17 @@ export const auditLogServiceFactory = ({
       actor: auditLogActor,
       projectId
     });
-    return auditLogs.map(
-      ({ eventType: logEventType, actor: eActor, actorMetadata, eventMetadata, ...el }) => ({
-        ...el,
-        event: { type: logEventType, metadata: eventMetadata },
-        actor: { type: eActor, metadata: actorMetadata }
-      })
-    );
+    return auditLogs.map(({ eventType: logEventType, actor: eActor, actorMetadata, eventMetadata, ...el }) => ({
+      ...el,
+      event: { type: logEventType, metadata: eventMetadata },
+      actor: { type: eActor, metadata: actorMetadata }
+    }));
   };
 
   const createAuditLog = async (data: TCreateAuditLogDTO) => {
     // add all cases in which project id or org id cannot be added
     if (data.event.type !== EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH) {
-      if (!data.projectId && !data.orgId)
-        throw new BadRequestError({ message: "Must either project id or org id" });
+      if (!data.projectId && !data.orgId) throw new BadRequestError({ message: "Must either project id or org id" });
     }
     return auditLogQueue.pushToLog(data);
   };

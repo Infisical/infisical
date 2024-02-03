@@ -45,8 +45,7 @@ export const apiKeyServiceFactory = ({ apiKeyDAL, userDAL }: TApiKeyServiceFacto
 
   const deleteApiKey = async (userId: string, apiKeyId: string) => {
     const [apiKeyData] = await apiKeyDAL.delete({ id: apiKeyId, userId });
-    if (!apiKeyData)
-      throw new BadRequestError({ message: "Failed to find api key", name: "delete api key" });
+    if (!apiKeyData) throw new BadRequestError({ message: "Failed to find api key", name: "delete api key" });
     return formatApiKey(apiKeyData);
   };
 

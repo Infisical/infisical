@@ -9,11 +9,7 @@ export const permissionDALFactory = (db: TDbClient) => {
   const getOrgPermission = async (userId: string, orgId: string) => {
     try {
       const membership = await db(TableName.OrgMembership)
-        .leftJoin(
-          TableName.OrgRoles,
-          `${TableName.OrgMembership}.roleId`,
-          `${TableName.OrgRoles}.id`
-        )
+        .leftJoin(TableName.OrgRoles, `${TableName.OrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
         .where("userId", userId)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .select("permissions")
@@ -29,11 +25,7 @@ export const permissionDALFactory = (db: TDbClient) => {
   const getOrgIdentityPermission = async (identityId: string, orgId: string) => {
     try {
       const membership = await db(TableName.IdentityOrgMembership)
-        .leftJoin(
-          TableName.OrgRoles,
-          `${TableName.IdentityOrgMembership}.roleId`,
-          `${TableName.OrgRoles}.id`
-        )
+        .leftJoin(TableName.OrgRoles, `${TableName.IdentityOrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
         .where("identityId", identityId)
         .where(`${TableName.IdentityOrgMembership}.orgId`, orgId)
         .select(selectAllTableCols(TableName.IdentityOrgMembership))
@@ -48,11 +40,7 @@ export const permissionDALFactory = (db: TDbClient) => {
   const getProjectPermission = async (userId: string, projectId: string) => {
     try {
       const membership = await db(TableName.ProjectMembership)
-        .leftJoin(
-          TableName.ProjectRoles,
-          `${TableName.ProjectMembership}.roleId`,
-          `${TableName.ProjectRoles}.id`
-        )
+        .leftJoin(TableName.ProjectRoles, `${TableName.ProjectMembership}.roleId`, `${TableName.ProjectRoles}.id`)
         .where("userId", userId)
         .where(`${TableName.ProjectMembership}.projectId`, projectId)
         .select(selectAllTableCols(TableName.ProjectMembership))

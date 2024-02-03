@@ -57,6 +57,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         projectId: integrationAuth.projectId,
         event: {
           type: EventType.CREATE_INTEGRATION,
+          // eslint-disable-next-line
           metadata: shake({
             integrationId: integration.id.toString(),
             integration: integration.integration,
@@ -71,6 +72,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             targetServiceId: integration.targetServiceId,
             path: integration.path,
             region: integration.region
+            // eslint-disable-next-line
           }) as any
         }
       });
@@ -138,6 +140,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         projectId: integration.projectId,
         event: {
           type: EventType.DELETE_INTEGRATION,
+          // eslint-disable-next-line
           metadata: shake({
             integrationId: integration.id,
             integration: integration.integration,
@@ -152,6 +155,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             targetServiceId: integration.targetServiceId,
             path: integration.path,
             region: integration.region
+            // eslint-disable-next-line
           }) as any
         }
       });

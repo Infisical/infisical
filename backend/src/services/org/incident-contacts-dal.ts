@@ -7,9 +7,7 @@ export type TIncidentContactsDALFactory = ReturnType<typeof incidentContactDALFa
 export const incidentContactDALFactory = (db: TDbClient) => {
   const create = async (orgId: string, email: string) => {
     try {
-      const [incidentContact] = await db(TableName.IncidentContact)
-        .insert({ orgId, email })
-        .returning("*");
+      const [incidentContact] = await db(TableName.IncidentContact).insert({ orgId, email }).returning("*");
       return incidentContact;
     } catch (error) {
       throw new DatabaseError({ name: "Incident contact create", error });
@@ -38,10 +36,7 @@ export const incidentContactDALFactory = (db: TDbClient) => {
 
   const deleteById = async (id: string, orgId: string) => {
     try {
-      const [incidentContact] = await db(TableName.IncidentContact)
-        .where({ orgId, id })
-        .delete()
-        .returning("*");
+      const [incidentContact] = await db(TableName.IncidentContact).where({ orgId, id }).delete().returning("*");
       return incidentContact;
     } catch (error) {
       throw new DatabaseError({ name: "Incident contact delete", error });

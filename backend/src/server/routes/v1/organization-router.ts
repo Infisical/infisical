@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-import {
-  IncidentContactsSchema,
-  OrganizationsSchema,
-  OrgMembershipsSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { IncidentContactsSchema, OrganizationsSchema, OrgMembershipsSchema, UsersSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -42,10 +37,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const organization = await server.services.org.findOrganizationById(
-        req.permission.id,
-        req.params.organizationId
-      );
+      const organization = await server.services.org.findOrganizationById(req.permission.id, req.params.organizationId);
       return { organization };
     }
   });
@@ -76,10 +68,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const users = await server.services.org.findAllOrgMembers(
-        req.permission.id,
-        req.params.organizationId
-      );
+      const users = await server.services.org.findAllOrgMembers(req.permission.id, req.params.organizationId);
       return { users };
     }
   });

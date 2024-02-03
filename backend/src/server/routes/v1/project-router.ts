@@ -255,7 +255,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           invitee: UsersSchema,
-          latestKey: ProjectKeysSchema
+          latestKey: ProjectKeysSchema.optional()
         })
       }
     },

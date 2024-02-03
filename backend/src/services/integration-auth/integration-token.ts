@@ -80,8 +80,8 @@ const exchangeCodeGCP = async ({ code }: { code: string }) => {
     throw new BadRequestError({ message: "Missing client id and client secret" });
   }
 
-  const res: ExchangeCodeGCPResponse = (
-    await request.post(
+  const res = (
+    await request.post<ExchangeCodeGCPResponse>(
       IntegrationUrls.GCP_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -108,8 +108,8 @@ const exchangeCodeAzure = async ({ code }: { code: string }) => {
   if (!appCfg.CLIENT_ID_AZURE || !appCfg.CLIENT_SECRET_AZURE) {
     throw new BadRequestError({ message: "Missing client id and client secret" });
   }
-  const res: ExchangeCodeAzureResponse = (
-    await request.post(
+  const res = (
+    await request.post<ExchangeCodeAzureResponse>(
       IntegrationUrls.AZURE_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -118,7 +118,7 @@ const exchangeCodeAzure = async ({ code }: { code: string }) => {
         client_id: appCfg.CLIENT_ID_AZURE,
         client_secret: appCfg.CLIENT_SECRET_AZURE,
         redirect_uri: `${appCfg.SITE_URL}/integrations/azure-key-vault/oauth2/callback`
-      } as any)
+      })
     )
   ).data;
 
@@ -138,8 +138,8 @@ const exchangeCodeHeroku = async ({ code }: { code: string }) => {
     throw new BadRequestError({ message: "Missing client id and client secret" });
   }
 
-  const res: ExchangeCodeHerokuResponse = (
-    await request.post(
+  const res = (
+    await request.post<ExchangeCodeHerokuResponse>(
       IntegrationUrls.HEROKU_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -160,12 +160,6 @@ const exchangeCodeHeroku = async ({ code }: { code: string }) => {
 /**
  * Return [accessToken], [accessExpiresAt], and [refreshToken] for Vercel
  * code-token exchange
- * @param {Object} obj1
- * @param {Object} obj1.code - code for code-token exchange
- * @returns {Object} obj2
- * @returns {String} obj2.accessToken - access token for Heroku API
- * @returns {String} obj2.refreshToken - refresh token for Heroku API
- * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
  */
 const exchangeCodeVercel = async ({ code }: { code: string }) => {
   const appCfg = getConfig();
@@ -173,15 +167,15 @@ const exchangeCodeVercel = async ({ code }: { code: string }) => {
     throw new BadRequestError({ message: "Missing client id and client secret" });
   }
 
-  const res: ExchangeCodeVercelResponse = (
-    await request.post(
+  const res = (
+    await request.post<ExchangeCodeVercelResponse>(
       IntegrationUrls.VERCEL_TOKEN_URL,
       new URLSearchParams({
         code,
         client_id: appCfg.CLIENT_ID_VERCEL,
         client_secret: appCfg.CLIENT_SECRET_VERCEL,
         redirect_uri: `${appCfg.SITE_URL}/integrations/vercel/oauth2/callback`
-      } as any)
+      })
     )
   ).data;
 
@@ -196,12 +190,6 @@ const exchangeCodeVercel = async ({ code }: { code: string }) => {
 /**
  * Return [accessToken], [accessExpiresAt], and [refreshToken] for Vercel
  * code-token exchange
- * @param {Object} obj1
- * @param {Object} obj1.code - code for code-token exchange
- * @returns {Object} obj2
- * @returns {String} obj2.accessToken - access token for Heroku API
- * @returns {String} obj2.refreshToken - refresh token for Heroku API
- * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
  */
 const exchangeCodeNetlify = async ({ code }: { code: string }) => {
   const appCfg = getConfig();
@@ -209,8 +197,8 @@ const exchangeCodeNetlify = async ({ code }: { code: string }) => {
     throw new BadRequestError({ message: "Missing client id and client secret" });
   }
 
-  const res: ExchangeCodeNetlifyResponse = (
-    await request.post(
+  const res = (
+    await request.post<ExchangeCodeNetlifyResponse>(
       IntegrationUrls.NETLIFY_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -218,7 +206,7 @@ const exchangeCodeNetlify = async ({ code }: { code: string }) => {
         client_id: appCfg.CLIENT_ID_NETLIFY,
         client_secret: appCfg.CLIENT_SECRET_NETLIFY,
         redirect_uri: `${appCfg.SITE_URL}/integrations/netlify/oauth2/callback`
-      } as any)
+      })
     )
   ).data;
 
@@ -230,7 +218,7 @@ const exchangeCodeNetlify = async ({ code }: { code: string }) => {
   // });
 
   const res3 = (
-    await request.get("https://api.netlify.com/api/v1/accounts", {
+    await request.get<Array<{ id: string }>>("https://api.netlify.com/api/v1/accounts", {
       headers: {
         Authorization: `Bearer ${res.access_token}`
       }
@@ -252,8 +240,8 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
     throw new BadRequestError({ message: "Missing client id and client secret" });
   }
 
-  const res: ExchangeCodeGithubResponse = (
-    await request.get(IntegrationUrls.GITHUB_TOKEN_URL, {
+  const res = (
+    await request.get<ExchangeCodeGithubResponse>(IntegrationUrls.GITHUB_TOKEN_URL, {
       params: {
         client_id: appCfg.CLIENT_ID_GITHUB,
         client_secret: appCfg.CLIENT_SECRET_GITHUB,
@@ -285,8 +273,8 @@ const exchangeCodeGitlab = async ({ code, url }: { code: string; url?: string })
     throw new BadRequestError({ message: "Missing client id and client secret" });
   }
 
-  const res: ExchangeCodeGitlabResponse = (
-    await request.post(
+  const res = (
+    await request.post<ExchangeCodeGitlabResponse>(
       url ? `${url}/oauth/token` : IntegrationUrls.GITLAB_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -294,7 +282,7 @@ const exchangeCodeGitlab = async ({ code, url }: { code: string; url?: string })
         client_id: appCfg.CLIENT_ID_GITLAB,
         client_secret: appCfg.CLIENT_SECRET_GITLAB,
         redirect_uri: `${appCfg.SITE_URL}/integrations/gitlab/oauth2/callback`
-      } as any),
+      }),
       {
         headers: {
           "Accept-Encoding": "application/json"
@@ -324,8 +312,8 @@ const exchangeCodeBitBucket = async ({ code }: { code: string }) => {
     throw new BadRequestError({ message: "Missing client id and client secret" });
   }
 
-  const res: ExchangeCodeBitBucketResponse = (
-    await request.post(
+  const res = (
+    await request.post<ExchangeCodeBitBucketResponse>(
       IntegrationUrls.BITBUCKET_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -333,7 +321,7 @@ const exchangeCodeBitBucket = async ({ code }: { code: string }) => {
         client_id: appCfg.CLIENT_ID_BITBUCKET,
         client_secret: appCfg.CLIENT_SECRET_BITBUCKET,
         redirect_uri: `${appCfg.SITE_URL}/integrations/bitbucket/oauth2/callback`
-      } as any),
+      }),
       {
         headers: {
           "Accept-Encoding": "application/json"
@@ -530,13 +518,7 @@ const exchangeRefreshHeroku = async ({ refreshToken }: { refreshToken: string })
  * @param {String} obj.refreshToken - refresh token to use to get new access token for GitLab
  * @returns
  */
-const exchangeRefreshGitLab = async ({
-  refreshToken,
-  url
-}: {
-  url?: string | null;
-  refreshToken: string;
-}) => {
+const exchangeRefreshGitLab = async ({ refreshToken, url }: { url?: string | null; refreshToken: string }) => {
   const accessExpiresAt = new Date();
   const appCfg = getConfig();
   if (!appCfg.CLIENT_ID_GITLAB || !appCfg.CLIENT_SECRET_GITLAB) {
@@ -593,7 +575,7 @@ const exchangeRefreshBitBucket = async ({ refreshToken }: { refreshToken: string
       client_id: appCfg.CLIENT_ID_BITBUCKET,
       client_secret: appCfg.CLIENT_SECRET_BITBUCKET,
       redirect_uri: `${appCfg.SITE_URL}/integrations/bitbucket/oauth2/callback`
-    } as any),
+    }),
     {
       headers: {
         "Accept-Encoding": "application/json"
@@ -624,7 +606,11 @@ const exchangeRefreshGCPSecretManager = async ({
   const accessExpiresAt = new Date();
 
   if (metadata?.authMethod === "serviceAccount") {
-    const serviceAccount = JSON.parse(refreshToken);
+    const serviceAccount = JSON.parse(refreshToken) as {
+      client_email: string;
+      token_uri: string;
+      private_key: string;
+    };
 
     const payload = {
       iss: serviceAccount.client_email,
@@ -636,19 +622,18 @@ const exchangeRefreshGCPSecretManager = async ({
 
     const token = jwt.sign(payload, serviceAccount.private_key, { algorithm: "RS256" });
 
-    const { data }: { data: ServiceAccountAccessTokenGCPSecretManagerResponse } =
-      await request.post(
-        IntegrationUrls.GCP_TOKEN_URL,
-        new URLSearchParams({
-          grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-          assertion: token
-        }).toString(),
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-          }
+    const { data }: { data: ServiceAccountAccessTokenGCPSecretManagerResponse } = await request.post(
+      IntegrationUrls.GCP_TOKEN_URL,
+      new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        assertion: token
+      }).toString(),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
         }
-      );
+      }
+    );
 
     accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + data.expires_in);
 
@@ -663,14 +648,14 @@ const exchangeRefreshGCPSecretManager = async ({
   if (!appCfg.CLIENT_SECRET_GCP_SECRET_MANAGER || !appCfg.CLIENT_ID_GCP_SECRET_MANAGER) {
     throw new BadRequestError({ message: "Missing client id and client secret" });
   }
-  const { data }: { data: RefreshTokenGCPSecretManagerResponse } = await request.post(
+  const { data } = await request.post<RefreshTokenGCPSecretManagerResponse>(
     IntegrationUrls.GCP_TOKEN_URL,
     new URLSearchParams({
       client_id: appCfg.CLIENT_ID_GCP_SECRET_MANAGER,
       client_secret: appCfg.CLIENT_SECRET_GCP_SECRET_MANAGER,
       refresh_token: refreshToken,
       grant_type: "refresh_token"
-    } as any)
+    })
   );
 
   accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + data.expires_in);

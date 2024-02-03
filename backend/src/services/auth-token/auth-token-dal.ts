@@ -7,16 +7,12 @@ import { ormify } from "@app/lib/knex";
 
 import { TDeleteTokenForUserDALDTO } from "./auth-token-types";
 
-export type TTokenDALConfig = {};
-
 export type TTokenDALFactory = ReturnType<typeof tokenDALFactory>;
 
 export const tokenDALFactory = (db: TDbClient) => {
   const authOrm = ormify(db, TableName.AuthTokens);
 
-  const findOneTokenSession = async (
-    filter: Partial<TAuthTokenSessions>
-  ): Promise<TAuthTokenSessions | undefined> => {
+  const findOneTokenSession = async (filter: Partial<TAuthTokenSessions>): Promise<TAuthTokenSessions | undefined> => {
     try {
       const doc = await db(TableName.AuthTokenSession).where(filter).first();
       return doc;
@@ -31,20 +27,14 @@ export const tokenDALFactory = (db: TDbClient) => {
     orgId
   }: TDeleteTokenForUserDALDTO): Promise<TAuthTokens[] | undefined> => {
     try {
-      const doc = await db(TableName.AuthTokens)
-        .where({ userId, type, orgId })
-        .delete()
-        .returning("*");
+      const doc = await db(TableName.AuthTokens).where({ userId, type, orgId }).delete().returning("*");
       return doc;
     } catch (error) {
       throw new DatabaseError({ error, name: "DeleteTokenForUser" });
     }
   };
 
-  const decrementTriesField = async ({
-    userId,
-    type
-  }: TDeleteTokenForUserDALDTO): Promise<void> => {
+  const decrementTriesField = async ({ userId, type }: TDeleteTokenForUserDALDTO): Promise<void> => {
     try {
       await db(TableName.AuthTokens).where({ userId, type }).decrement("triesLeft", 1);
     } catch (error) {
@@ -101,10 +91,7 @@ export const tokenDALFactory = (db: TDbClient) => {
 
   const deleteTokenSession = async (filter: Partial<TAuthTokenSessions>, tx?: Knex) => {
     try {
-      const sessions = await (tx || db)(TableName.AuthTokenSession)
-        .where(filter)
-        .del()
-        .returning("*");
+      const sessions = await (tx || db)(TableName.AuthTokenSession).where(filter).del().returning("*");
       return sessions;
     } catch (error) {
       throw new DatabaseError({ name: "Delete token session", error });

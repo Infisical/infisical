@@ -1,7 +1,7 @@
 import { TDbClient } from "@app/db";
 import { TableName, TProjectKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TProjectKeyDALFactory = ReturnType<typeof projectKeyDALFactory>;
 
@@ -11,25 +11,19 @@ export const projectKeyDALFactory = (db: TDbClient) => {
   const findLatestProjectKey = async (
     userId: string,
     projectId: string
-  ): Promise<TProjectKeys & { sender: { publicKey: string } }> => {
+  ): Promise<(TProjectKeys & { sender: { publicKey: string } }) | undefined> => {
     try {
       const projectKey = await db(TableName.ProjectKeys)
-        .where({ projectId, receiverId: userId })
         .join(TableName.Users, `${TableName.ProjectKeys}.senderId`, `${TableName.Users}.id`)
-        .join(
-          TableName.UserEncryptionKey,
-          `${TableName.UserEncryptionKey}.userId`,
-          `${TableName.Users}.id`
-        )
+        .join(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
+        .where({ projectId, receiverId: userId })
         .orderBy("createdAt", "desc", "last")
-        .select(`${TableName.ProjectKeys}.*`, `${TableName.UserEncryptionKey}.publicKey`)
+        .select(selectAllTableCols(TableName.ProjectKeys))
+        .select(db.ref("publicKey").withSchema(TableName.UserEncryptionKey))
         .first();
       if (projectKey) {
-        projectKey.sender = {
-          publicKey: projectKey.publicKey
-        };
+        return { ...projectKey, sender: { publicKey: projectKey.publicKey } };
       }
-      return projectKey;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find latest project key" });
     }
@@ -40,11 +34,7 @@ export const projectKeyDALFactory = (db: TDbClient) => {
       const pubKeys = await db(TableName.ProjectMembership)
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
-        .join(
-          TableName.UserEncryptionKey,
-          `${TableName.Users}.id`,
-          `${TableName.UserEncryptionKey}.userId`
-        )
+        .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .select("userId", "publicKey");
       return pubKeys;
     } catch (error) {
