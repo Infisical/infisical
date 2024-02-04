@@ -18,3 +18,4 @@ export {
   decryptSecretVersions
 } from "./secret-encryption";
 export { generateSrpServerKey, srpCheckClientProof } from "./srp";
+export { decodeBase64, encodeBase64 } from "tweetnacl-util";
