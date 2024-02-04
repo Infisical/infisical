@@ -66,10 +66,15 @@ export const projectServiceFactory = ({
 
     const newProject = projectDAL.transaction(async (tx) => {
       const project = await projectDAL.create(
-        { name: workspaceName, orgId, slug: slugify(`${workspaceName}-${alphaNumericNanoId(4)}`) },
+        {
+          name: workspaceName,
+          orgId,
+          slug: slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
+          e2ee: false
+        },
         tx
       );
-      // set user as admin member for proeject
+      // set user as admin member for project
       await projectMembershipDAL.create(
         {
           userId: actorId,
@@ -78,6 +83,7 @@ export const projectServiceFactory = ({
         },
         tx
       );
+
       // generate the blind index for project
       await secretBlindIndexDAL.create(
         {

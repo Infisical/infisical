@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -43,7 +44,7 @@ export const projectKeyServiceFactory = ({
         name: "Upload project keys"
       });
 
-    await projectKeyDAL.create({ projectId, receiverId, encryptedKey, nonce, senderId: actorId });
+    await projectKeyDAL.create({ projectId, receiverId, encryptedKey, nonce, senderId: actorId }, tx);
   };
 
   const getLatestProjectKey = async ({ actorId, projectId, actor, actorOrgId }: TGetLatestProjectKeyDTO) => {

@@ -134,11 +134,16 @@ export const projectMembershipServiceFactory = ({
 
     await projectMembershipDAL.transaction(async (tx) => {
       await projectMembershipDAL.insertMany(
-        orgMembers.map(({ userId }) => ({
-          projectId,
-          userId: userId as string,
-          role: ProjectMembershipRole.Member
-        })),
+        orgMembers.map(({ userId, id: membershipId }) => {
+          const role =
+            members.find((i) => i.orgMembershipId === membershipId)?.projectRole || ProjectMembershipRole.Member;
+
+          return {
+            projectId,
+            userId: userId as string,
+            role
+          };
+        }),
         tx
       );
       const encKeyGroupByOrgMembId = groupBy(members, (i) => i.orgMembershipId);
