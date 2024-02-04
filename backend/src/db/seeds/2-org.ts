@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+
 import { Knex } from "knex";
 
 import { OrgMembershipRole, OrgMembershipStatus, TableName } from "../schemas";
