@@ -14,7 +14,8 @@ export const ProjectsSchema = z.object({
   autoCapitalization: z.boolean().default(true).nullable().optional(),
   orgId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  e2ee: z.boolean().default(true)
 });
 
 export type TProjects = z.infer<typeof ProjectsSchema>;
