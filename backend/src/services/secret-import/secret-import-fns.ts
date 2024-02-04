@@ -25,10 +25,15 @@ export const fnSecretsFromImports = async ({
   if (!folderIds.length) {
     return [];
   }
-  const importedSecrets = await secretDAL.find({
-    $in: { folderId: folderIds },
-    type: SecretType.Shared
-  });
+  const importedSecrets = await secretDAL.find(
+    {
+      $in: { folderId: folderIds },
+      type: SecretType.Shared
+    },
+    {
+      sort: [["id", "asc"]]
+    }
+  );
 
   const importedSecsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
   return allowedImports.map(({ importPath, importEnv }, i) => ({

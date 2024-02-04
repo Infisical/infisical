@@ -117,7 +117,7 @@ export const serviceTokenServiceFactory = ({
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
 
-    const tokens = await serviceTokenDAL.find({ projectId });
+    const tokens = await serviceTokenDAL.find({ projectId }, { sort: [["createdAt", "desc"]] });
     return tokens;
   };
 

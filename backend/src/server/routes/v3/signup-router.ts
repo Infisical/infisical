@@ -108,7 +108,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      await res.setCookie("jid", refreshToken, {
+      void res.setCookie("jid", refreshToken, {
         httpOnly: true,
         path: "/",
         sameSite: "strict",
@@ -159,7 +159,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         userAgent
       });
 
-      await res.setCookie("jid", refreshToken, {
+      void res.setCookie("jid", refreshToken, {
         httpOnly: true,
         path: "/",
         sameSite: "strict",

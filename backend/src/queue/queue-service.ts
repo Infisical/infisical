@@ -1,4 +1,4 @@
-import { Job, JobsOptions, Queue, RepeatOptions, Worker, WorkerListener } from "bullmq";
+import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
 import Redis from "ioredis";
 
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
@@ -11,6 +11,7 @@ export enum QueueName {
   SecretRotation = "secret-rotation",
   SecretReminder = "secret-reminder",
   AuditLog = "audit-log",
+  AuditLogPrune = "audit-log-prune",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
   SecretFullRepoScan = "secret-full-repo-scan",
@@ -21,6 +22,7 @@ export enum QueueJobs {
   SecretReminder = "secret-reminder-job",
   SecretRotation = "secret-rotation-job",
   AuditLog = "audit-log-job",
+  AuditLogPrune = "audit-log-prune-job",
   SecWebhook = "secret-webhook-trigger",
   IntegrationSync = "secret-integration-pull",
   SecretScan = "secret-scan"
@@ -44,6 +46,10 @@ export type TQueueJobTypes = {
   [QueueName.AuditLog]: {
     name: QueueJobs.AuditLog;
     payload: TCreateAuditLogDTO;
+  };
+  [QueueName.AuditLogPrune]: {
+    name: QueueJobs.AuditLogPrune;
+    payload: undefined;
   };
   [QueueName.SecretWebhook]: {
     name: QueueJobs.SecWebhook;
@@ -74,16 +80,20 @@ export const queueServiceFactory = (redisUrl: string) => {
 
   const start = <T extends QueueName>(
     name: T,
-    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>) => Promise<void>
+    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>) => Promise<void>,
+    queueSettings: Omit<QueueOptions, "connection"> = {}
   ) => {
     if (queueContainer[name]) {
       throw new Error(`${name} queue is already initialized`);
     }
 
     queueContainer[name] = new Queue<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name as string, {
+      ...queueSettings,
       connection
     });
+
     workerContainer[name] = new Worker<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name, jobFn, {
+      ...queueSettings,
       connection
     });
   };
@@ -129,9 +139,20 @@ export const queueServiceFactory = (redisUrl: string) => {
     return q.removeRepeatableByKey(job.repeatJobKey);
   };
 
+  const stopJobById = async <T extends QueueName>(name: T, jobId: string) => {
+    const q = queueContainer[name];
+    const job = await q.getJob(jobId);
+    return job?.remove().catch(() => undefined);
+  };
+
+  const clearQueue = async (name: QueueName) => {
+    const q = queueContainer[name];
+    await q.drain();
+  };
+
   const shutdown = async () => {
     await Promise.all(Object.values(workerContainer).map((worker) => worker.close()));
   };
 
-  return { start, listen, queue, shutdown, stopRepeatableJob, stopRepeatableJobByJobId };
+  return { start, listen, queue, shutdown, stopRepeatableJob, stopRepeatableJobByJobId, clearQueue, stopJobById };
 };
