@@ -37,12 +37,12 @@ The distinguishing factor, however, is the authentication method used.
     Once you have created a service token with the required permissions, you'll need to feed the token to the CLI. 
 
     #### Pass as flag
-    You may use the --token flag to set the token 
+    You may use the `--token` flag to set the token
 
     ```
-    infisical export --token=<>
-    infisical secrets --token=<>
-    infisical run --token=<> -- npm run dev
+    infisical export --token=<your-token>
+    infisical secrets --token=<your-token>
+    infisical run --token=<your-token> -- npm run dev
     ```
 
     #### Pass via shell environment variable
