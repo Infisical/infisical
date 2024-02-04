@@ -472,7 +472,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
       // TODO: Move to telemetry plugin
       let shouldRecordK8Event = false;
-      if (req.headers["user-agent"] === "k8-operator") {
+      if (req.headers["user-agent"] === "k8-operatoer") {
         const randomNumber = Math.random();
         if (randomNumber > 0.95) {
           shouldRecordK8Event = true;
