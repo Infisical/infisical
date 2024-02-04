@@ -30,26 +30,28 @@ func CheckForUpdate() {
 	// daysSinceRelease, _ := daysSinceDate(publishedDate)
 
 	if latestVersion != CLI_VERSION {
-		yellow := color.New(color.FgYellow).SprintFunc()
-		blue := color.New(color.FgCyan).SprintFunc()
-		black := color.New(color.FgBlack).SprintFunc()
+		// do not print instructions if building locally
+		if CLI_VERSION != "devel" {
+			yellow := color.New(color.FgYellow).SprintFunc()
+			blue := color.New(color.FgCyan).SprintFunc()
+			black := color.New(color.FgBlack).SprintFunc()
 
-		msg := fmt.Sprintf("%s %s %s %s",
-			yellow("A new release of infisical is available:"),
-			blue(CLI_VERSION),
-			black("->"),
-			blue(latestVersion),
-		)
+			msg := fmt.Sprintf("%s %s %s %s",
+				yellow("A new release of infisical is available:"),
+				blue(CLI_VERSION),
+				black("->"),
+				blue(latestVersion),
+			)
 
-		fmt.Fprintln(os.Stderr, msg)
-
-		updateInstructions := GetUpdateInstructions()
-
-		if updateInstructions != "" {
-			msg = fmt.Sprintf("\n%s\n", GetUpdateInstructions())
 			fmt.Fprintln(os.Stderr, msg)
-		}
 
+			updateInstructions := GetUpdateInstructions()
+
+			if updateInstructions != "" {
+				msg = fmt.Sprintf("\n%s\n", GetUpdateInstructions())
+				fmt.Fprintln(os.Stderr, msg)
+			}
+		}
 	}
 }
 
