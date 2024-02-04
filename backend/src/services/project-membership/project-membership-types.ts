@@ -1,3 +1,4 @@
+import { ProjectMembershipRole } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TGetProjectMembershipDTO = TProjectPermission;
@@ -20,5 +21,6 @@ export type TAddUsersToWorkspaceDTO = {
     orgMembershipId: string;
     workspaceEncryptedKey: string;
     workspaceEncryptedNonce: string;
+    projectRole: ProjectMembershipRole;
   }[];
 } & TProjectPermission;

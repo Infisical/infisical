@@ -25,7 +25,8 @@ export type NameWorkspaceSecretsDTO = {
 
 // mutation dto
 export type CreateWorkspaceDTO = {
-  workspaceName: string;
+  projectName: string;
+  inviteAllOrgMembers: boolean;
   organizationId: string;
 };
 

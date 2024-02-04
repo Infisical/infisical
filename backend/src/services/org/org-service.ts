@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 
 import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
@@ -11,6 +12,7 @@ import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-
 import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { generateSymmetricKey, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
@@ -115,6 +117,49 @@ export const orgServiceFactory = ({
     }
 
     return workspaces.filter((workspace) => organizationWorkspaceIds.has(workspace.id));
+  };
+
+  const addGhostUser = async (orgId: string) => {
+    const email = `ghost@${orgId}.com`;
+    const password = crypto.randomBytes(128).toString("hex");
+
+    const user = await userDAL.create({
+      ghost: true,
+      authMethods: [AuthMethod.EMAIL],
+      email: `ghost@${orgId}.com`,
+      isAccepted: true
+    });
+
+    const encKeys = await generateUserSrpKeys(email, password);
+
+    await userDAL.upsertUserEncryptionKey(user.id, {
+      encryptionVersion: 2,
+      protectedKey: encKeys.protectedKey,
+      protectedKeyIV: encKeys.protectedKeyIV,
+      protectedKeyTag: encKeys.protectedKeyTag,
+      publicKey: encKeys.publicKey,
+      encryptedPrivateKey: encKeys.encryptedPrivateKey,
+      iv: encKeys.encryptedPrivateKeyIV,
+      tag: encKeys.encryptedPrivateKeyTag,
+      salt: encKeys.salt,
+      verifier: encKeys.verifier
+    });
+
+    const createMembershipData = {
+      orgId,
+      userId: user.id,
+      role: OrgMembershipRole.Admin,
+      status: OrgMembershipStatus.Accepted
+    };
+
+    console.log("createMembershipData", createMembershipData);
+
+    await orgDAL.createMembership(createMembershipData);
+
+    return {
+      user,
+      keys: encKeys
+    };
   };
 
   /*
@@ -294,7 +339,8 @@ export const orgServiceFactory = ({
         {
           email: inviteeEmail,
           isAccepted: false,
-          authMethods: [AuthMethod.EMAIL]
+          authMethods: [AuthMethod.EMAIL],
+          ghost: false
         },
         tx
       );
@@ -448,6 +494,7 @@ export const orgServiceFactory = ({
     deleteOrganizationById,
     deleteOrgMembership,
     findAllWorkspaces,
+    addGhostUser,
     updateOrgMembership,
     // incident contacts
     findIncidentContacts,

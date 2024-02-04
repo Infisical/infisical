@@ -1,7 +1,5 @@
 // REFACTOR(akhilmhdh): This file needs to be split into multiple components too complex
 
-import crypto from "crypto";
-
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -23,7 +21,7 @@ import {
   faNetworkWired,
   faPlug,
   faPlus,
-  faUserPlus,
+  faUserPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -33,7 +31,6 @@ import * as yup from "yup";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
 import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
-import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   Checkbox,
@@ -53,13 +50,12 @@ import {
 } from "@app/context";
 import { withPermission } from "@app/hoc";
 import {
-  fetchOrgUsers,
-  useAddUserToWs,
+  // fetchOrgUsers,
+  // useAddUserToWs,
   useCreateWorkspace,
   useRegisterUserAction,
-  useUploadWsKey
 } from "@app/hooks/api";
-import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
+// import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -475,7 +471,7 @@ const OrganizationPage = withPermission(
     const currentOrg = String(router.query.id);
     const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === currentOrg) || [];
     const { createNotification } = useNotificationContext();
-    const addWsUser = useAddUserToWs();
+   // const addWsUser = useAddUserToWs();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "addNewWs",
@@ -497,7 +493,6 @@ const OrganizationPage = withPermission(
     const [searchFilter, setSearchFilter] = useState("");
     const createWs = useCreateWorkspace();
     const { user } = useUser();
-    const uploadWsKey = useUploadWsKey();
     const { data: serverDetails } = useFetchServerStatus();
 
     const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
@@ -510,45 +505,31 @@ const OrganizationPage = withPermission(
           }
         } = await createWs.mutateAsync({
           organizationId: currentOrg,
-          workspaceName: name
+          inviteAllOrgMembers: addMembers,
+          projectName: name
         });
 
-        const randomBytes = crypto.randomBytes(16).toString("hex");
-        const PRIVATE_KEY = String(localStorage.getItem("PRIVATE_KEY"));
-        const { ciphertext, nonce } = encryptAssymmetric({
-          plaintext: randomBytes,
-          publicKey: user.publicKey,
-          privateKey: PRIVATE_KEY
-        });
-
-        await uploadWsKey.mutateAsync({
-          encryptedKey: ciphertext,
-          nonce,
-          userId: user?.id,
-          workspaceId: newWorkspaceId
-        });
-
+        /*
         if (addMembers) {
           // not using hooks because need at this point only
           const orgUsers = await fetchOrgUsers(currentOrg);
           const decryptKey = await fetchUserWsKey(newWorkspaceId);
-          const members = orgUsers
-            .filter(
-              ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
-            )
-            .map(({ user: orgUser, id: orgMembershipId }) => ({
-              userPublicKey: orgUser.publicKey,
-              orgMembershipId
-            }));
-          if (members.length) {
-            await addWsUser.mutateAsync({
-              workspaceId: newWorkspaceId,
-              decryptKey,
-              userPrivateKey: PRIVATE_KEY,
-              members
-            });
-          }
+
+          await addWsUser.mutateAsync({
+            workspaceId: newWorkspaceId,
+            decryptKey,
+            userPrivateKey: PRIVATE_KEY,
+            members: orgUsers
+              .filter(
+                ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
+              )
+              .map(({ user: orgUser, id: orgMembershipId }) => ({
+                userPublicKey: orgUser.publicKey,
+                orgMembershipId
+              }))
+          });
         }
+        */
         createNotification({ text: "Workspace created", type: "success" });
         handlePopUpClose("addNewWs");
         router.push(`/project/${newWorkspaceId}/secrets/overview`);
@@ -735,7 +716,7 @@ const OrganizationPage = withPermission(
           new Date().getTime() - new Date(user?.createdAt).getTime() <
           30 * 24 * 60 * 60 * 1000
         ) && (
-          <div className="mb-4 flex flex-col items-start justify-start px-6 pb-6 pb-0 text-3xl">
+          <div className="mb-4 flex flex-col items-start justify-start px-6 pb-0 text-3xl">
             <p className="mr-4 mb-4 font-semibold text-white">Onboarding Guide</p>
             <div className="mb-3 grid w-full grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               <LearningItemSquare
