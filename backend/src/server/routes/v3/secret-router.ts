@@ -479,7 +479,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      const shouldCapture = (req.query.workspaceId != "650e71fbae3e6c8572f436d4") && (req.headers["user-agent"] !== "k8-operator" || shouldRecordK8Event);
+      const shouldCapture =
+        req.query.workspaceId !== "650e71fbae3e6c8572f436d4" &&
+        (req.headers["user-agent"] !== "k8-operator" || shouldRecordK8Event);
       const approximateNumberTotalSecrets = secrets.length * 20;
       if (shouldCapture) {
         server.services.telemetry.sendPostHogEvents({
