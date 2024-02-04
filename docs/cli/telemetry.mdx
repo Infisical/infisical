@@ -1,0 +1,76 @@
+---
+title: "Telemetry"
+description: "How Infisical collects and aggregate CLI usage data."
+---
+
+Telemetry data enables Infisical's team to be aware of any critical errors, debug problems more quickly and know which features are being used the most to give you the best possible user experience.
+
+Infisical collects non-sensitive aggregated CLI usage data to improve its products. Infisical collects this information by default, but you can disable this data collection at any time.
+
+## Data collected
+
+✅ Infisical **collects** the following data:
+
+- Infisical CLI version
+- The methods run in Infisical CLI.
+  - Infisical only tracks method names, and does not track any arguments supplied to methods.
+- Errors.
+
+❌ Infisical **does not collect**:
+
+- IP addresses or credentials.
+- Any data related to your secrets.
+
+For more information, see Infisical's [Privacy Policy](https://infisical.com/privacy).
+
+## Toggle Telemetry
+
+<Accordion title="Disable telemetry">
+
+#### Command-line parameter
+
+```bash
+infisical --no-telemetry <your-command>
+```
+
+#### Globally
+
+<Tabs>
+   <Tab title="Unix/Linux">
+      <Tip>
+        `$HOME/.profile` is pretty common but, you could place it under `$HOME/.profile.d/infisical.sh` or any profile file run at login 
+      </Tip>
+
+      ```bash
+      cat <<EOF >> ~/.profile && source ~/.profile
+      
+      # Disabling Infisical CLI telemetry
+      export INFISICAL_DISABLE_TELEMETRY=true
+      EOF 
+      ```
+   </Tab>
+   <Tab title="Windows">
+      <Warning>
+        You might need to open the console as **administrator** !
+      </Warning>
+
+      ```bash
+      # Default terminal or Windows Powershell
+      setx INFISICAL_DISABLE_TELEMETRY "true"
+      ```
+
+      ```powershell
+      # Windows Powershell
+      [System.Environment]::SetEnvironmentVariable('INFISICAL_DISABLE_TELEMETRY','true', 'User')
+      ```
+
+   </Tab>
+</Tabs>
+</Accordion>
+
+<Note>
+Want to disable telemetry in CI environments?
+
+Set the `INFISICAL_DISABLE_TELEMETRY=true` environment variable in your runner(s).
+
+</Note>

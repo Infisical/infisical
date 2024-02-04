@@ -183,6 +183,7 @@
       "pages": [
         "cli/overview",
         "cli/usage",
+        "cli/telemetry",
         {
           "group": "Core commands",
           "pages": [
