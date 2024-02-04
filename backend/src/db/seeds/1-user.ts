@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+
 import { Knex } from "knex";
 
 import { AuthMethod } from "../../services/auth/auth-type";
@@ -18,6 +21,7 @@ export async function seed(knex: Knex): Promise<void> {
         id: seedData1.id,
         email: seedData1.email,
         superAdmin: true,
+        ghost: false,
         firstName: "test",
         lastName: "",
         authMethods: [AuthMethod.EMAIL],
