@@ -10,3 +10,4 @@ export {
   generateAsymmetricKeyPair
 } from "./encryption";
 export { generateSrpServerKey, srpCheckClientProof } from "./srp";
+export { decodeBase64, encodeBase64 } from "tweetnacl-util";
