@@ -1,0 +1,30 @@
+---
+title: "Components"
+description: "Infisical's components span multiple clients, an API, and a storage backend"
+---
+
+## Infisical API
+
+The Infisical API (sometimes referred to as the **backend**) contains the core platform logic.
+
+## Storage backend
+
+Infisical relies on a storage backend to store data including users and secrets.
+
+Currently, the only supported storage backend is [MongoDB](https://www.mongodb.com) but we plan to add support for other options including PostgreSQL in Q1 2024.
+
+## Redis
+
+Infisical uses [Redis](https://redis.com) to enable more complex workflows including a queuing system to manage long running asynchronous tasks, cron jobs, as well as reliable cache for frequently used resources.
+
+## Infisical Web UI
+
+The Web UI is the browser-based portal that connects to the Infisical API.
+
+## Infisical clients
+
+Clients are any application or infrastructure that connecting to the Infisical API using one of the below methods:
+- Public API: Making API requests directly to the Infisical API.
+- Client SDK: A platform-specific library with method abstractions for working with secrets. Currently, there are three official SDKs: [Node SDK](https://infisical.com/docs/sdks/languages/node), [Python SDK](https://infisical.com/docs/sdks/languages/python), and [Java SDK](https://infisical.com/docs/sdks/languages/java).
+- CLI: A terminal-based interface for interacting with the Infisical API.
+- Kubernetes Operator: This operator retrieves secrets from Infisical and securely store

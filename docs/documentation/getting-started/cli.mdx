@@ -1,0 +1,128 @@
+---
+title: "CLI"
+---
+
+The Infisical CLI can be used to inject secrets into any framework like Next.js, Express, Django and more in local development.
+
+It can also be used to expose secrets from Infisical as environment variables in CI/CD pipelines and [Docker containers](/documentation/getting-started/docker)
+
+Prerequisites: 
+
+- Have a project with secrets ready in [Infisical Cloud](https://app.infisical.com).
+
+## Installation
+
+Follow the instructions for your operating system to install the Infisical CLI.
+
+<Tabs>
+   <Tab title="MacOS">
+  	Use [brew](https://brew.sh/) package manager
+
+    	```console
+    	$ brew install infisical/get-cli/infisical
+    	```
+   </Tab>
+   <Tab title="Windows">
+      Use [Scoop](https://scoop.sh/) package manager
+
+        ```console
+        $ scoop bucket add org https://github.com/Infisical/scoop-infisical.git
+        ```
+
+        ```console
+        $ scoop install infisical
+        ```
+   </Tab>
+	 <Tab title="Alpine">
+	 Install prerequisite
+		```console
+		$ apk add --no-cache bash sudo
+		```
+
+    	Add Infisical repository
+    	```console
+    	$ curl -1sLf \
+    		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
+    		| bash
+    	```
+
+    	Then install CLI
+    	```console
+    	$ apk update && sudo apk add infisical
+    	```
+
+   </Tab>
+	 <Tab title="RedHat/CentOs/Amazon">
+	 Add Infisical repository
+		```console
+		$ curl -1sLf \
+		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' \
+		| sudo -E bash
+		```
+
+    	Then install CLI
+    	```console
+    	$ sudo yum install infisical
+    	```
+
+   </Tab>
+	 <Tab title="Debian/Ubuntu">
+	 	Add Infisical repository 
+			
+		```console
+		$ curl -1sLf \
+		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' \
+		| sudo -E bash
+		```
+
+    	Then install CLI
+    	```console
+    	$ sudo apt-get update && sudo apt-get install -y infisical
+    	```
+
+   </Tab>
+	<Tab title="Arch Linux">
+		Use the `yay` package manager to install from the [Arch User Repository](https://aur.archlinux.org/packages/infisical-bin)
+			
+		```console
+		$ yay -S infisical-bin
+		```
+
+   </Tab>
+</Tabs>
+
+## Login
+
+Authenticate the CLI with the Infisical platform using your email and password.
+
+```console
+$ infisical login
+```
+
+## Initialization
+
+Navigate to the root of your project directory and run the `init` command. This step connects your local project to the project on the Infisical platform and creates a `infisical.json` file containing a reference to that latter project.
+
+```console
+$ infisical init
+```
+
+## Start your app with environment variables injected
+
+```console
+$ infisical run -- <your_application_start_command>
+```
+
+## Example Start Commands
+
+```console
+$ infisical run -- npm run dev
+$ infisical run -- flask run
+$ infisical run -- ./your_bash_script.sh
+```
+
+Your app should now be running with the secrets from Infisical injected as environment variables.
+
+See also:
+
+- [Full documentation for the Infisical CLI](/cli/overview)

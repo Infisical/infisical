@@ -6,13 +6,14 @@ services:
     restart: unless-stopped
     depends_on:
       - mongo
-    image: infisical/backend:test
+    image: infisical/infisical:test
     command: npm run start
     environment:
       - NODE_ENV=production
       - MONGO_URL=mongodb://test:example@mongo:27017/?authSource=admin
       - MONGO_USERNAME=test
       - MONGO_PASSWORD=example
+      - ENCRYPTION_KEY=a984ecdf82ec779e55dbcc21303a900f
     networks:
       - infisical-test
 

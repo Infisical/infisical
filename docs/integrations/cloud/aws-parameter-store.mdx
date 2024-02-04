@@ -1,0 +1,76 @@
+---
+title: "AWS Parameter Store"
+description: "How to sync secrets from Infisical to AWS Parameter Store"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- Set up AWS and have/create an IAM user
+
+<Steps>
+  <Step title="Grant the IAM user permissions to access AWS Parameter Store">
+    Navigate to your IAM user permissions and add a permission policy to grant access to AWS Parameter Store.
+
+    ![integration IAM 1](../../images/integrations/aws/integrations-aws-iam-1.png)
+    ![integration IAM 2](../../images/integrations/aws/integrations-aws-parameter-store-iam-2.png)
+    ![integrations IAM 3](../../images/integrations/aws/integrations-aws-parameter-store-iam-3.png)
+
+    For enhanced security, here's a custom policy containing the minimum permissions required by Infisical to sync secrets to AWS Parameter Store for the IAM user that you can use:
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "AllowSSMAccess",
+          "Effect": "Allow",
+          "Action": [
+            "ssm:PutParameter",
+            "ssm:DeleteParameter",
+            "ssm:GetParametersByPath",
+            "ssm:DeleteParameters"
+          ],
+          "Resource": "*"
+        }
+      ]
+    }
+    ```
+  </Step>
+  <Step title="Authorize Infisical for AWS Parameter store">
+    Obtain a AWS access key ID and secret access key for your IAM user in IAM > Users > User > Security credentials > Access keys
+
+      ![access key 1](../../images/integrations/aws/integrations-aws-access-key-1.png)
+      ![access key 2](../../images/integrations/aws/integrations-aws-access-key-2.png)
+      ![access key 3](../../images/integrations/aws/integrations-aws-access-key-3.png)
+      
+      Navigate to your project's integrations tab in Infisical.
+
+      ![integrations](../../images/integrations.png)
+
+      Press on the AWS Parameter Store tile and input your AWS access key ID and secret access key from the previous step.
+
+      ![integration auth](../../images/integrations/aws/integrations-aws-parameter-store-auth.png)
+
+      <Info>
+        If this is your project's first cloud integration, then you'll have to grant
+        Infisical access to your project's environment variables. Although this step
+        breaks E2EE, it's necessary for Infisical to sync the environment variables to
+        the cloud platform.
+    </Info>
+  </Step>
+  <Step title="Start integration">
+    Select which Infisical environment secrets you want to sync to which AWS Parameter Store region and indicate the path for your secrets. Then, press create integration to start syncing secrets to AWS Parameter Store.
+
+    ![integration create](../../images/integrations/aws/integrations-aws-parameter-store-create.png)
+
+    <Tip>
+      Infisical requires you to add a path for your secrets to be stored in AWS
+      Parameter Store and recommends setting the path structure to
+      `/[project_name]/[environment]/` according to best practices. This enables a
+      secret like `TEST` to be stored as `/[project_name]/[environment]/TEST` in AWS
+      Parameter Store.
+    </Tip>
+  </Step>
+</Steps>
+

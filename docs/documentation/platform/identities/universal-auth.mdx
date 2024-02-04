@@ -1,0 +1,140 @@
+---
+title: Universal Auth
+description: "Authenticate with Infisical from any platform/environment"
+---
+
+**Universal Auth** is the most versatile authentication method that can be configured on an identity from any platform/environment to access Infisical.
+
+In this method, each identity is given a **Client ID** for which you can generate one or more **Client Secret(s)**. Together, a **Client ID** and **Client Secret** can be exchanged for an access token to authenticate with the Infisical API.
+
+## Properties
+
+Universal Auth supports many settings that can be beneficial for tightening your workflow security configuration:
+
+- Support for restrictions on the number of times that the **Client Secret(s)** and access token(s) can be used.
+- Support for expiration, so, if specified, the **Client Secret** of the identity will automatically be defunct after a period of time.
+- Support for IP allowlisting; this means you can restrict the usage of **Client Secret(s)** and access token to a specific IP or CIDR range.
+
+## Workflow
+
+In the following steps, we explore how to create and use identities for your workloads and applications to access the Infisical API
+using the Universal Auth authentication method.
+
+<Steps>
+  <Step title="Creating an identity">
+    To create an identity, head to your Organization Settings > Access Control > Machine Identities and press **Create identity**.
+
+    ![identities organization](/images/platform/identities/identities-org.png)
+
+    When creating an identity, you specify an organization level [role](/documentation/platform/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
+    
+    ![identities organization create](/images/platform/identities/identities-org-create.png)
+
+    Now input a few details for your new identity. Here's some guidance for each field:
+
+    - Name (required): A friendly name for the identity.
+    - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
+    
+    Once you've created an identity, you'll be prompted to configure the **Universal Auth** authentication method for it.
+    
+    ![identities organization create auth method](/images/platform/identities/identities-org-create-auth-method.png)
+    
+    Here's some more guidance on each field:
+
+    - Access Token TTL (default is `2592000` equivalent to 30 days): The lifetime for an acccess token in seconds. This value will be referenced at renewal time.
+    - Access Token Max TTL (default is `2592000`  equivalent to 30 days): The maximum lifetime for an acccess token in seconds. This value will be referenced at renewal time.
+    - Access Token Max Number of Uses (default is `0`): The maximum number of times that an access token can be used; a value of `0` implies infinite number of uses.
+    - Client Secret Trusted IPs: The IPs or CIDR ranges that the **Client Secret** can be used from together with the **Client ID** to get back an access token. By default, **Client Secrets** are given the `0.0.0.0/0`, allowing usage from any network address.
+    - Access Token Trusted IPs: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0`, allowing usage from any network address.
+
+    <Warning>
+    Restricting **Client Secret** and access token usage to specific trusted IPs is a paid feature.
+
+    If you’re using Infisical Cloud, then it is available under the Pro Tier. If you’re self-hosting Infisical, then you should contact team@infisical.com to purchase an enterprise license to use it.
+    </Warning>
+
+  </Step>
+  <Step title="Creating a Client Secret">
+    In order to use the identity, you'll need the non-sensitive **Client ID**
+    of the identity and a **Client Secret** for it; you can think of these credentials akin to a username
+    and password used to authenticate with the Infisical API. With that, press on the key icon on the identity to generate a **Client Secret**
+    for it.
+    
+    ![identities client secret create](/images/platform/identities/identities-org-client-secret.png)
+    ![identities client secret create](/images/platform/identities/identities-org-client-secret-create-1.png)
+    ![identities client secret create](/images/platform/identities/identities-org-client-secret-create-2.png)
+    
+    Feel free to input any (optional) details for the **Client Secret** configuration:
+    
+    - Description: A description for the **Client Secret**.
+    - TTL (default is `0`): The time-to-live for the **Client Secret**. By default, the TTL will be set to 0 which implies that the **Client Secret** will never expire; a value of `0` implies an infinite lifetime.
+    - Max Number of Uses (default is `0`): The maximum number of times that the **Client Secret** can be used together with the **Client ID** to get back an access token; a value of `0` implies infinite number of uses.
+  </Step>
+  <Step title="Adding an identity to a project">
+    To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.
+
+    To do this, head over to the project you want to add the identity to and go to Project Settings > Access Control > Machine Identities and press **Add identity**.
+
+    Next, select the identity you want to add to the project and the project level role you want to allow it to assume. The project role assigned will determine what project level resources this identity can have access to.
+
+    ![identities project](/images/platform/identities/identities-project.png)
+    
+    ![identities project create](/images/platform/identities/identities-project-create.png)
+  </Step>
+  <Step title="Accessing the Infisical API with the identity">
+    To access the Infisical API as the identity, you should first perform a login operation
+    that is to exchange the **Client ID** and **Client Secret** of the identity for an access token
+    by making a request to the `/api/v1/auth/universal-auth/login` endpoint.
+    
+    #### Sample request
+
+    ```
+    curl --location --request POST 'https://app.infisical.com/api/v1/auth/universal-auth/login' \
+      --header 'Content-Type: application/x-www-form-urlencoded' \
+      --data-urlencode 'clientSecret=...' \
+      --data-urlencode 'clientId=...'
+    ```
+    
+    #### Sample response
+    
+    ```
+    {
+      "accessToken": "...",
+      "expiresIn": 7200,
+      "accessTokenMaxTTL": 43244
+      "tokenType": "Bearer"
+    }
+    ```
+
+    Next, you can use the access token to authenticate with the [Infisical API](/api-reference/overview/introduction)
+    
+    <Note>
+      Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
+      the default TTL is `7200` seconds which can be adjusted.
+
+      If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
+      a new access token should be obtained by performing another login operation.
+    </Note>
+  </Step>
+</Steps>
+
+**FAQ**
+
+<AccordionGroup>
+<Accordion title="Why is the Infisical API rejecting my identity credentials?">
+  There are a few reasons for why this might happen:
+  
+  - The client secret or access token has expired.
+  - The identity is insufficently permissioned to interact with the resources you wish to access.
+  - You are attempting to access a `/raw` secrets endpoint that requires your project to disable E2EE.
+  - The client secret/access token is being used from an untrusted IP.
+</Accordion>
+<Accordion title="What is access token renewal and TTL/Max TTL?">
+  A identity access token can have a time-to-live (TTL) or incremental lifetime afterwhich it expires.
+  
+  In certain cases, you may want to extend the lifespan of an access token; to do so, you must set a max TTL parameter.
+
+  A token can be renewed any number of time and each call to renew it will extend the toke life by increments of access token TTL. 
+  Regardless of how frequently an access token is renewed, its lifespan remains bound to the maximum TTL determined at its creation
+</Accordion>
+</AccordionGroup>

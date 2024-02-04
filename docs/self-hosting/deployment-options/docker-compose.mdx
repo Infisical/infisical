@@ -1,0 +1,54 @@
+---
+title: "Docker Compose"
+description: "Run Infisical with Docker Compose template"
+---
+
+<Steps>
+  <Step title="Install Docker on your VM">
+    ```bash
+    # Example in ubuntu
+    apt-get update
+    apt-get upgrade
+    apt install docker-compose
+    ```
+  </Step>
+  <Step title="Download required files">
+    2.1. Run the command below to download the `.env` file template.
+    
+    ```bash
+    wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
+    ```
+    
+    2.2. Run the command below to download the docker compose template.
+    
+    ```bash
+    wget -O docker-compose.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.yml
+    ```
+    
+    2.3. Run the command below to download the `nginx` config file.
+    
+    ```bash
+    mkdir nginx && wget -O ./nginx/default.conf https://raw.githubusercontent.com/Infisical/infisical/main/nginx/default.dev.conf
+    ```
+  
+  </Step>
+  <Step title="Update the .env file">
+    Running Infisical requires a few environment variables to be set.
+    At minimum, Infisical requires that you set the variables `ENCRYPTION_KEY`, `AUTH_SECRET`, `MONGO_URL`, and `REDIS_URL` which you can read more about [here](/self-hosting/configuration/envars).
+
+    Tweak the `.env` accordingly.
+
+    ```bash
+    nano .env
+    ```
+  </Step>
+  <Step title="Start Infisical">
+    Finally, run the command below to get Infisical up and running (in detached mode).
+
+    ```bash
+    docker-compose -f docker-compose.yml up -d
+    ```
+
+    Your Infisical installation is complete and should be running on port `80` or `http://localhost:80`.
+  </Step>
+</Steps>

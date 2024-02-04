@@ -1,0 +1,408 @@
+---
+title: "Local development"
+description: "This guide will help you contribute to the Infisical SDK."
+---
+
+## Fork and clone the repo
+
+[Fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) the [repository](https://github.com/Infisical/sdk) to your own GitHub account and then [clone](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) it to your local device.
+
+Once, you've done that, create a new branch:
+
+```console
+git checkout -b MY_BRANCH_NAME
+```
+
+## Set up environment variables
+
+Start by creating a .env file at the root of the Infisical directory then copy the contents of the file below into the .env file.
+
+<Accordion title=".env file content">
+  ```env 
+    # This is required for running tests locally.
+    # Rename this file to ".env" and fill in the values below.
+
+    # Please make sure that the machine identity has access to the project you are testing in.
+    # https://infisical.com/docs/documentation/platform/identities/universal-auth
+    INFISICAL_UNIVERSAL_CLIENT_ID=MACHINE_IDENTITY_CLIENT_ID
+    INFISICAL_UNIVERSAL_CLIENT_SECRET=MACHINE_IDENTITY_CLIENT_SECRET
+
+    # The ID of the Infisical project where we will create the test secrets.
+    # NOTE: The project must have a dev environment. (This is created by default when you create a project.)
+    INFISICAL_PROJECT_ID=INFISICAL_TEST_PROJECT_ID
+
+    # The Infisical site URL. If you are testing with a local Infisical instance, then this should be set to "http://localhost:8080".
+    INFISICAL_SITE_URL=https://app.infisical.com
+
+````
+</Accordion>
+
+<Warning>
+  The above values are required for running tests locally. Before opening a pull request, make sure to run `cargo test` to ensure that all tests pass.
+</Warning>
+
+
+## Guidelines
+
+### Predictable and consistent
+When adding new functionality (such as new functions), it's very important that the functionality is added to _all_ the SDK's. This is to ensure that the SDK's are predictable and consistent across all languages. If you are adding new functionality, please make sure to add it to all the SDK's.
+
+### Handling errors
+Error handling is very important when writing SDK's. We want to make sure that the SDK's are easy to use, and that the user gets a good understanding of what went wrong when something fails. When adding new functionality, please make sure to add proper error handling. [Read more about error handling here](#error-handling).
+
+### Tests
+If you add new functionality or modify existing functionality, please write tests thats properly cover the new functionality. You can run tests locally by running `cargo test` from the root directory. You must always run tests before opening a pull request.
+
+### Code style
+Please follow the default rust styling guide when writing code for the base SDK. [Read more about rust code style here](https://doc.rust-lang.org/nightly/style-guide/#the-default-rust-style).
+
+
+## Prerequisites for contributing
+
+### Understanding the terms
+
+In the guide we use some terms that might be unfamiliar to you. Here's a quick explanation of the terms we use:
+- **Base SDK**: The base SDK is the SDK that all other SDK's are built on top of. The base SDK is written in Rust, and is responsible for executing commands and parsing the input and output to and from JSON.
+- **Commands**: Commands are what's being sent from the target language to the command handler. The command handler uses the command to execute the corresponding function in the base SDK. Commands are in reality just a JSON string that tells the command handler what function to execute, and what input to use.
+- **Command handler**: The command handler is the part of the base SDK that takes care of executing commands. It also takes care of parsing the input and output to and from JSON.
+- **Target language**: The target language refers to the actual SDK code. For example, the [Node.js SDK](https://www.npmjs.com/package/@infisical/sdk) is a "target language", and so is the [Python SDK](https://pypi.org/project/infisical-python/).
+
+
+### Understanding the execution flow
+After the target language SDK is initiated, it uses language-specific bindings to interact with the base SDK.
+These bindings are instantiated, setting up the interface for command execution. A client within the command handler is created, which issues commands to the base SDK.
+When a command is executed, it is first validated. If valid, the command handler locates the corresponding command to perform. If the command executes successfully, the command handler returns the output to the target language SDK, where it is parsed and returned to the user.
+If the command handler fails to validate the input, an error will be returned to the target language SDK.
+
+
+<Frame caption="Execution flow diagram for the SDK from the target language to the base SDK. The execution flow is the same for all target languages.">
+  <img height="640" width="520" src="/images/sdk-flow.png" />
+</Frame>
+
+
+
+### Rust knowledge
+
+Contributing to the SDK requires intermediate to advanced knowledge of Rust concepts such as lifetimes, traits, generics, and async/await _(futures)_, and more.
+
+### Rust setup
+The base SDK is written in rust. Therefore you must have rustc and cargo installed. You can install rustc and cargo by following the instructions [here](https://www.rust-lang.org/tools/install).
+
+You shouldn't have to use the rust cross compilation toolchain, as all compilation is done through a collection of Github Actions. However. If you need to test cross compilation, please do so with Github Actions.
+
+### Tests
+If you add new functionality or modify existing functionality, please write tests thats properly cover the new functionality. You can run tests locally by running `cargo test` from the root directory.
+
+### Language-specific crates
+The language-specific crates should ideally never have to be modified, as they are simply a wrapper for the `infisical-json` crate, which executes "commands" from the base SDK. If you need to create a new target-language specific crate, please try to create native bindings for the target language. Some languages don't have direct support for native bindings (Java as an example). In those cases we can use the C bindings (`crates/infisical-c`) in the target language.
+
+
+
+
+## Generate types
+Having almost seemless type safety from the base SDK to the target language is critical, as writing types for each language has a lot of drawbacks such as duplicated code, and lots of overhead trying to keep the types up-to-date and in sync across a large collection of languages. Therefore we decided to use [QuickType](https://quicktype.io/) and [Serde](https://serde.rs/) to help us generate types for each language. In our Rust base SDK (`crates/infisical`), we define all the inputs/outputs.
+
+If you are interested in reading about QuickType works under the hood, you can [read more here](http://blog.quicktype.io/under-the-hood/).
+
+This is an example of a type defined in Rust (both input and output). For this to become a generated type, you'll need to add it to our schema generator. More on that further down.
+```rust
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+// Input:
+pub struct CreateSecretOptions {
+  pub environment: String,                   // environment
+  pub secret_comment: Option<String>,        // secretComment
+  pub path: Option<String>,                  // secretPath
+  pub secret_value: String,                  // secretValue
+  pub skip_multiline_encoding: Option<bool>, // skipMultilineEncoding
+  pub r#type: Option<String>,                // shared / personal
+  pub project_id: String,                    // workspaceId
+  pub secret_name: String,                   // secretName (PASSED AS PARAMETER IN REQUEST)
+}
+
+// Output:
+#[derive(Serialize, Deserialize, Debug, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSecretResponse {
+  pub secret: Secret, // "Secret" is defined elsewhere.
+}
+````
+
+### Adding input types to the schema generator
+
+You will _only_ have to define outputs in our schema generator, then QuickType will take care of the rest behind the scenes. You can find the Rust crate that takes care of type generation here: `crates/sdk-schemas/src/main.rs`.
+
+Simply add the output _(also called response)_, to the `write_schema_for_response!` macro. This will let QuickType know that it should generate types for the given structs. The main function will look something like this:
+
+```rust
+fn main() -> Result<()> {
+    // Input types for new Client
+    write_schema_for!(infisical_json::client::ClientSettings);
+    // Input types for Client::run_command
+    write_schema_for!(infisical_json::command::Command);
+
+    // Output types for Client::run_command
+    // Only add structs which are direct results of SDK commands.
+    write_schema_for_response! {
+        infisical::manager::secrets::GetSecretResponse,
+        infisical::manager::secrets::ListSecretsResponse,
+        infisical::manager::secrets::UpdateSecretResponse,
+        infisical::manager::secrets::DeleteSecretResponse,
+        infisical::manager::secrets::CreateSecretResponse, // <-- This is the output from the above example!
+        infisical::auth::AccessTokenSuccessResponse
+    };
+
+    Ok(())
+}
+```
+
+### Generating the types for the target language
+
+Once you've added the output to the schema generator, you can generate the types for the target language by running the following command from the root directory:
+
+```console
+$ npm install
+$ npm run schemas
+```
+
+<Warning>If you change any of the structs defined in the base SDK, you will need to run this script to re-generate the types.</Warning>
+
+This command will run the `schemas.ts` file found in the `support/scripts` folder. If you are adding a new language, it's important that you add the language to the code.
+
+This is an example of how how we generate types for Node.js:
+
+```ts
+const ts = await quicktype({
+    inputData,
+    lang: "typescript",
+    rendererOptions: {}
+});
+await ensureDir("./languages/node/src/infisical_client");
+writeToFile("./languages/node/src/infisical_client/schemas.ts", ts.lines);
+```
+
+## Building bindings
+We've tried to streamline the building process as much as possible. So you shouldn't have to worry much about building bindings, as it should just be a few commands.
+
+### Node.js
+Building bindings for Node.js is very straight foward. The command below will generate NAPI bindings for Node.js, and move the bindings to the correct folder. We use [NAPI-RS](https://napi.rs/) to generate the bindings.
+
+```console
+$ cd languages/node
+$ npm run build
+```
+
+### Python
+To generate and use python bindings you will need to run the following commands.
+The Python SDK is located inside the crates folder. This is a limitation of the maturin tool, forcing us to structure the project in this way.
+
+```console
+$ pip install -U pip maturin
+$ cd crates/infisical-py
+$ python3 -m venv .venv
+$ source .venv/bin/activate
+$ maturin develop
+```
+
+<Warning>
+    After running the commands above, it's very important that you rename the generated .so file to `infisical_py.so`. After renaming it you also need to move it into the root of the `crates/infisical-py` folder.
+</Warning>
+
+### Java
+Java uses the C bindings to interact with the base SDK. To build and use the C bindings in Java, please follow the instructions below.
+
+```console
+$ cd crates/infisical-c
+$ cargo build --release
+$ cd ../../languages/java
+```
+<Warning>
+    After generating the C bindings, the generated .so or .dll has been created in the `/target` directory at the root of the project.
+    You have to manually move the generated file into the `languages/java/src/main/resources` directory.
+</Warning>
+
+## Error handling
+
+### Error handling in the base SDK
+
+The base SDK should never panic. If an error occurs, we should return a `Result` with an error message. We have a custom Result type defined in the `error.rs` file in the base SDK.
+
+All our errors are defined in an enum called `Error`. The `Error` enum is defined in the `error.rs` file in the base SDK. The `Error` enum is used in the `Result` type, which is used as the return type for all functions in the base SDK.
+
+```rust
+#[derive(Debug, Error)]
+pub enum Error {
+    // Secret not found
+    #[error("Secret with name '{}' not found.", .secret_name)]
+    SecretNotFound { secret_name: String },
+
+    // .. other errors
+
+    // Errors that are not specific to the base SDK.
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
+    #[error(transparent)]
+    Serde(#[from] serde_json::Error),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+}
+```
+
+### Returning an error
+
+You can find many examples of how we return errors in the SDK code. A relevant example is for creating secrets, which can be found in `crates/infisical/src/api/secrets/create_secret.rs`. When the error happened due to a request error to our API, we have an API error handler. This prevents duplicate code and keeps error handling consistent across the SDK. You can find the api error handler in the `error.rs` file.
+
+### Error handling in the target language SDK's.
+
+All data sent to the target language SDK has the same format. The format is an object with 3 fields: `success (boolean)`, `data (could be anything or nothing)`, and `errorMessage (string or null)`.
+
+The `success` field is used to determine if the request was successful or not. The `data` field is used to return data from the SDK. The `errorMessage` field is used to return an error message if the request was not successful.
+
+This means that if the success if false or if the error message is not null, something went wrong and we should throw an error on the target-language level, with the error message.
+
+## Command handler
+
+### What is the command handler
+
+The command handler (the `infisical-json` crate), takes care of executing commands sent from the target language. It also takes care of parsing the input and output to and from JSON. The command handler is the only part of the base SDK that should be aware of JSON. The rest of the base SDK should be completely unaware of JSON, and only work with the Rust structs defined in the base SDK.
+
+The command handler exposes a function called `run_command`, which is what we use in the target language to execute commands. The function takes a json string as input, and returns a json string as output. We use helper functions generated by QuickType to convert the input and output to and from JSON.
+
+### Creating new SDK methods
+
+Creating new commands is necessary when adding new methods to the SDK's. Defining a new command is a 3-step process in most cases.
+
+#### 1. Define the input and output structs
+
+Earlier in this guide, we defined the input and output structs for the `CreateSecret` command. We will use that as an example here as well.
+
+#### 2. Creating the method in the base SDK
+
+The first step is to create the method in the base SDK. This step will be different depending on what method you are adding. In this example we're going to assume you're adding a function for creating a new secret.
+
+After you created the function for creating the secret, you'll need need to add it to the ClientSecrets implementation. We do it this way to keep the code organized and easy to read. The ClientSecrets struct is located in the `crates/infisical/src/manager/secrets.rs` file.
+
+```rust
+pub struct ClientSecrets<'a> {
+    pub(crate) client: &'a mut crate::Client,
+}
+
+impl<'a> ClientSecrets<'a> {
+    pub async fn create(&mut self, input: &CreateSecretOptions) -> Result<CreateSecretResponse> {
+        create_secret(self.client, input).await // <-- This is the function you created!
+    }
+}
+
+impl<'a> Client {
+    pub fn secrets(&'a mut self) -> ClientSecrets<'a> {
+        ClientSecrets { client: self }
+    }
+}
+```
+
+#### 3. Define a new command
+
+We define new commands in the `crates/infisical-json/src/command.rs` file. The `Command` enum is what we use to define new commands.
+
+In the codesnippet below we define a new command called `CreateSecret`. The `CreateSecret` command takes a `CreateSecretOptions` struct as input. We don't have to define the output, because QuickType's converter helps us with figuring out the return type for each command.
+
+````rust
+```rust
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub enum Command {
+    GetSecret(GetSecretOptions),
+    ListSecrets(ListSecretsOptions),
+    CreateSecret(CreateSecretOptions), // <-- The new command!
+    UpdateSecret(UpdateSecretOptions),
+    DeleteSecret(DeleteSecretOptions),
+}
+````
+
+#### 4. Add the command to the command handler
+
+After defining the command, we need to add it to the command handler itself. This takes place in the `crates/infisical-json/src/client.rs` file. The `run_command` function is what we use to execute commands.
+
+In the Client implementation we try to parse the JSON string into a `Command` enum. If the parsing is successful, we match the command and execute the corresponding function.
+
+```rust
+match cmd {
+    Command::GetSecret(req) => self.0.secrets().get(&req).await.into_string(),
+    Command::ListSecrets(req) => self.0.secrets().list(&req).await.into_string(),
+    Command::UpdateSecret(req) => self.0.secrets().update(&req).await.into_string(),
+    Command::DeleteSecret(req) => self.0.secrets().delete(&req).await.into_string(),
+
+    // This is the new command:
+    Command::CreateSecret(req) => self.0.secrets().create(&req).await.into_string(),
+}
+```
+
+#### 5. Implementing the new command in the target language SDK's
+
+We did it! We've now added a new command to the base SDK. The last step is to implement the new command in the target language SDK's. The process is a little different from language to language, but in this example we're going to assume that we're adding a new command to the Node.js SDK.
+
+First you'll need to generate the new type schemas, we added a new command, input struct, and output struct. [Read more about generating types here](#generating-the-types-for-the-target-language).
+
+Secondly you need to build the new node bindings so we can use the new functionality in the Node.js SDK. You can do this by running the following command from the `languages/node` directory:
+
+```console
+$ npm install
+$ npm run build
+```
+
+The build command will execute a build script in the `infisical-napi` crate, and move the generated bindings to the appropriate folder.
+
+After building the new bindings, you can access the new functionality in the Node.js SDK source.
+
+```ts
+// 'binding' is a js file that makes it easier to access the methods in the bindings. (it's auto generated when running npm run build)
+import * as rust from "../../binding";
+// We can import the newly generated types from the schemas.ts file. (Generated with QuickType!)
+import type { CreateSecretOptions, CreateSecretResponse } from "./schemas";
+// This is the QuickType converter that we use to create commands with! It takes care of all JSON parsing and serialization.
+import { Convert, ClientSettings } from "./schemas";
+
+export class InfisicalClient {
+    #client: rust.Client;
+
+    constructor(settings: ClientSettings) {
+        const settingsJson = settings == null ? null : Convert.clientSettingsToJson(settings);
+        this.#client = new rust.InfisicalClient(settingsJson);
+    }
+
+    // ... getSecret
+    // ... listSecrets
+    // ... updateSecret
+    // ... deleteSecret
+
+    async createSecret(options: CreateSecretOptions): Promise<CreateSecretResponse["secret"]> {
+        // The runCommand will return a JSON string, which we can parse into a CreateSecretResponse.
+        const command = await this.#client.runCommand(
+            Convert.commandToJson({
+                createSecret: options
+            })
+        );
+        const response = Convert.toResponseForCreateSecretResponse(command); // <-- This is the QuickType converter in action!
+
+        // If the response is not successful or the data is null, we throw an error.
+        if (!response.success || response.data == null) {
+            throw new Error(response.errorMessage ?? "Something went wrong");
+        }
+
+        // To make it easier to work with the response, we return the secret directly.
+        return response.data.secret;
+    }
+}
+```
+
+And that's it! We've now added a new command to the base SDK, and implemented it in the Node.js SDK. The process is very similar for all other languages, but the code will look a little different.
+
+## Conclusion
+
+The SDK has a lot of moving parts, and it can be a little overwhelming at first. But once you get the hang of it, it's actually quite simple. If you have any questions, feel free to reach out to us on [Slack](https://infisical.com/slack), or [open an issue](https://github.com/Infisical/sdk/issues) on GitHub.

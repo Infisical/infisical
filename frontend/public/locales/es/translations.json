@@ -1,0 +1,324 @@
+{
+  "activity": {
+    "title": "Historial de eventos",
+    "subtitle": "Historial de eventos para este proyecto de Infisical.",
+    "event": {
+      "readSecrets": "Secrets vistas",
+      "updateSecrets": "Secrets actualizadas",
+      "addSecrets": "Secrets añadidas",
+      "deleteSecrets": "Secrets eliminadas"
+    },
+    "ip-address": "Dirección IP"
+  },
+  "billing": {
+    "title": "Uso & Facturación",
+    "description": "Visualiza y gestiona la suscripción de tu organización",
+    "subscription": "Suscripción",
+    "starter": {
+      "name": "Starter",
+      "price-explanation": "hasta 5 miembros",
+      "text": "¡Hasta 5 personas gratis!",
+      "subtext": "Después, $5 por miembro/mes."
+    },
+    "professional": {
+      "name": "Professional",
+      "price-explanation": "/miembro/mes",
+      "subtext": "Includes unlimited projects & members.",
+      "text": "Mantén la gestión de claves a medida que creces."
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "text": "Mantén la gestión de claves a medida que creces."
+    },
+    "current-usage": "Uso actual",
+    "free": "Gratis",
+    "downgrade": "Reducir",
+    "upgrade": "Mejorar",
+    "learn-more": "Saber más",
+    "custom-pricing": "A medida",
+    "schedule-demo": "Solicitar una demo"
+  },
+  "common": {
+    "head-title": "{{title}} | Infisical",
+    "error_project-already-exists": "Ya existe un proyecto con este nombre.",
+    "no-mobile": "Para usar Infisical, inicia sesión con un dispositivo de mayores dimesiones.",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "first-name": "Nombre",
+    "last-name": "Apellidos",
+    "logout": "Cerrar sesión",
+    "validate-required": "Por favor, introduce tu {{name}}",
+    "maintenance-alert": "Estamos experimentando problemas técnicos. Estamos trabajando para resolverlos. Por favor, vuelve en unos minutos.",
+    "click-to-copy": "Click para copiar",
+    "project-id": "ID de proyecto",
+    "save-changes": "Guardar cambios",
+    "saved": "Guardado",
+    "drop-zone": "Arrastra y suelta un archivo .env, .json o .yml aquí.",
+    "drop-zone-keys": "Arrastra y suelta un archivo .env, .json, or .yml aquí para añadir más secrets.",
+    "role": "Rol",
+    "role_admin": "admin",
+    "display-name": "Nombre visible",
+    "environment": "Entorno",
+    "expired-in": "Expira en",
+    "language": "Idioma",
+    "search": "Buscar...",
+    "note": "Nota",
+    "view-more": "Ver más",
+    "end-of-history": "Fin del historial",
+    "select-event": "Selecciona un evento",
+    "event": "Evento",
+    "user": "Usuario",
+    "source": "Fuente",
+    "time": "Hora",
+    "timestamp": "Marca temporal"
+  },
+  "dashboard": {
+    "title": "Secrets",
+    "og-title": "Gestiona tus archivos .env en segundos",
+    "og-description": "Infisical es una solución cifrada de extremo a extremo que habilita a los equipos a compartir archivos .env de forma sencilla.",
+    "search-keys": "Buscar claves...",
+    "add-key": "Añadir clave",
+    "personal": "Personal",
+    "personal-description": "Las claves personales solo son visibles para ti",
+    "shared": "Compartido",
+    "shared-description": "Claves compartidas son visibles para todo tu equipo",
+    "make-shared": "Hacer compartida",
+    "make-personal": "Hacer personal",
+    "add-secret": "Añadir una nueva clave",
+    "check-docs": {
+      "button": "Comprueba la documentación",
+      "title": "¡Buen trabajo!",
+      "line1": "Enhorabuena por añadir claves.",
+      "line2": "Averigua como usarlo desde tu código."
+    },
+    "sidebar": {
+      "secret": "Secret",
+      "key": "Clave",
+      "value": "valor",
+      "override": "Sobreescribir valor con el valor personal",
+      "version-history": "Historial de versiones",
+      "comments": "Comentarios & Notas",
+      "personal-explanation": "Esta clave es personal. No será compartida con ninguno de tus compañeros.",
+      "generate-random-hex": "Generar Hex aleatorio",
+      "digits": "dígitos",
+      "delete-key-dialog": {
+        "title": "Eliminar clave",
+        "confirm-delete-message": "¿Estás seguro de que quieres eliminar esta clave? Esta operación no se puede deshacer."
+      }
+    }
+  },
+  "integrations": {
+    "title": "Integraciones del proyecto",
+    "description": "Gestiona tus integraciones de Infisical con aplicaciones de terceros.",
+    "no-integrations1": "No tienes ninguna integración configurada. Cuando las tengas, aparecerán aquí.",
+    "no-integrations2": "Para empezar haz click en cualquiera de las opciones siguientes. Se necesitan tan solo 5 pasos.",
+    "available": "Integraciones con la nube",
+    "available-text1": "Haz click en la integración que quieras conectar. Esto hará que las variables de entorno se configuren automáticamente en los servicios de terceros seleccionados.",
+    "available-text2": "Nota: en la integración con Heroku, por motivos de seguridad, es imposible mantener el cifrado de extremo a extremo. En teoría, esto permite a Infisical descifrar tus variables de entorno. En la práctica, te podemos asegurar que esto nunca va a suceder. El núcleo del servicio Infisical siempre estará cifrado de extremo a extremo. Si tienes dudas, escríbenos a support@infisical.com.",
+    "cloud-integrations": "Integraciones con la nube",
+    "framework-integrations": "Integraciones con frameworks",
+    "click-to-start": "Haz click en una integración para empezar a sincronizar las claves.",
+    "click-to-setup": "Haz click en un framework para ver las instrucciones de uso.",
+    "grant-access-to-secrets": "Autorizar Infisical el acceso a tus claves",
+    "why-infisical-needs-access": "La mayoría de las integraciones en la nube requieren a Infisical tener permiso para descifrar tus claves, para que puedan ser enviadas.",
+    "grant-access-button": "Autorizar acceso"
+  },
+  "login": {
+    "title": "Iniciar sesión",
+    "og-title": "Iniciar sesión en Infisical",
+    "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files.",
+    "login": "Iniciar sesión",
+    "need-account": "¿Necesitas una cuenta de Infisical?",
+    "create-account": "Crea una cuenta",
+    "forgot-password": "¿Has olvidado tu contraseña?",
+    "error-login": "Datos incorrectos."
+  },
+  "mfa": {
+    "title": "Registrarse",
+    "og-title": "Reemplaza los archivos .env con una línea de código. Regístrate en Infisical en solo 3 minutos.",
+    "og-description": "Infisical es una plataforma sencilla cifrada de extremo a extremo que permite a equipos sincronizar y gestionar API-keys y variables de entorno. Funciona con Node.js, Next.js, Gatsby, Nest.js...",
+    "signup": "Registrarse",
+    "already-have-account": "¿Ya tienes una cuenta? Inicia sesión",
+    "forgot-password": "¿Has olvidado tu contraseña?",
+    "verify": "Verificar",
+    "step1-start": "Vamos a empezar",
+    "step1-privacy": "Al crear la cuenta, aceptas nuestros Términos y has leído y comprendido nuestra Política de privacidad.",
+    "step1-submit": "Empezar",
+    "step2-message": "Hemos enviado un código a",
+    "step2-code-error": "Oops. Tu código es incorrecto. Intentos restantes:",
+    "step2-resend-alert": "¿No ves el código?",
+    "step2-resend-submit": "Volver a enviar",
+    "step2-resend-progress": "Reenviando...",
+    "step2-spam-alert": "Asegúrate de comprobar la carpeta de spam.",
+    "step3-message": "¡Casi hemos terminado!",
+    "step4-message": "Guarda tu Kit de emergencia",
+    "step4-description1": "Si pierdes el acceso a tu cuenta, tu Kit de emergencia es la única forma de iniciar sesión.",
+    "step4-description2": "Te recomendamos que lo descargues y lo guardes en un sitio seguro.",
+    "step4-description3": "Contiene tu Clave secreta, a la que no tenemos acceso y tampoco podemos recuperar si la pierdes.",
+    "step4-download": "Descargar PDF",
+    "step5-send-invites": "Enviar invitaciones",
+    "step5-invite-team": "Invita a tu equipo",
+    "step5-subtitle": "Infisical está pensado para usarlo con tus compañeros. Invítalos a probarlo.",
+    "step5-skip": "Saltar"
+  },
+  "nav": {
+    "support": {
+      "slack": "Unirse al Slack",
+      "docs": "Leer documentación",
+      "issue": "Abrir una Github Issue",
+      "email": "Envíanos un correo electrónico"
+    },
+    "user": {
+      "signed-in-as": "INICIADO COMO",
+      "current-organization": "ORGANIZACIÓN ACTUAL",
+      "usage-billing": "Uso & Facturación",
+      "invite": "Invitar miembros",
+      "other-organizations": "OTRA ORGANIZACIÓN"
+    },
+    "menu": {
+      "project": "PROYECTO",
+      "secrets": "Claves",
+      "members": "Miembros",
+      "integrations": "Integraciones",
+      "project-settings": "Configuración del proyecto"
+    }
+  },
+  "section": {
+    "api-key": {
+      "api-keys": "Tokens de servicio",
+      "api-keys-description": "Cada token de servicio es específico para ti, para cada proyecto y para cada entorno en este proyecto.",
+      "add-new": "Añadir nuevo token",
+      "add-dialog": {
+        "title": "Añadir una API Key",
+        "description": "Especifica el nombre y el período de expiración. Cuando una API key es generada, solo podrás verla una vez hasta que desaparezca. Asegúrate de guardarla en algún lado.",
+        "name": "Nombre de la API Key",
+        "add": "Añadir API Key",
+        "copy-service-token": "Copia tu API key",
+        "copy-service-token-description": "Una vez que cierres esta ventana, no volverás a ver tu API key"
+      }
+    },
+    "incident": {
+      "incident-contacts": "Contactos de incidencias",
+      "incident-contacts-description": "Estos contactos serán notificados en caso de una incidencia grave.",
+      "no-incident-contacts": "No se han encontrado contactos para incidencias.",
+      "add-contact": "Añadir contacto",
+      "add-dialog": {
+        "title": "Añadir un contacto de incidencias",
+        "description": "Este contacto será notificado en el caso de una incidencia grave.",
+        "add-incident": "Añadir contacto de incidencias"
+      }
+    },
+    "members": {
+      "add-member": "Añadir miembro",
+      "org-members": "Miembros de la organización",
+      "org-members-description": "Gestiona los miembros de tu organización. Estos usuarios podrán ser agrupados en proyectos más tarde.",
+      "search-members": "Buscar miembros...",
+      "add-dialog": {
+        "add-member-to-project": "Añadir un miembro al proyecto",
+        "already-all-invited": "Todos los uaurios en tu organización han sido invitados.",
+        "add-user-org-first": "Añadir primero más usuarios a la organización.",
+        "user-will-email": "El usuario recibirá un correo electrónico con la invitación.",
+        "looking-add": "<0>Si quieres añadir usuarios a tu organización, haz</0><1>click aquí</1>",
+        "add-user-to-org": "Añadir usuarios a la organización"
+      }
+    },
+    "password": {
+      "password": "Contraseña",
+      "change": "Cambiar contraseña",
+      "current": "Contraseña actual",
+      "current-wrong": "La contraseña actual puede puede que sea incorrecta",
+      "new": "Nueva contraseña",
+      "validate-base": "La contraseña debe contener:",
+      "validate-tooShort": "al menos 14 caracteres",
+      "validate-tooLong": "como máximo 100 caracteres",
+      "validate-noLetterChar": "al menos 1 carácter alfabético",
+      "validate-noNumOrSpecialChar": "al menos 1 número o carácter especial",
+      "validate-repeatedChar": "como máximo 3 caracteres repetidos y consecutivos",
+      "validate-escapeChar": "No se permiten caracteres de escape.",
+      "validate-lowEntropy": "La contraseña contiene datos sensibles.",
+      "validate-breached": "La contraseña se encontró en una violación de datos."
+    },
+    "token": {
+      "service-tokens": "Tokens de servicio",
+      "service-tokens-description": "Cada token de servicio es específico para ti, para cada proyecto y para cada entorno en este proyectos.",
+      "add-new": "Añadir nuevo token",
+      "add-dialog": {
+        "title": "Añade un nuevo token de servicio para {{target}}",
+        "description": "Cuando se genera un token, solo podrás verlo una vez antes de que desaparezca. Asegúrate de guardarlo en algún lugar.",
+        "name": "Nombre del token de servicio",
+        "add": "Añadir token de servicio",
+        "copy-service-token": "Copiar tu token de servicio",
+        "copy-service-token-description": "Una vez cierres esta ventana, no volverás a ver tu token de nuevo"
+      }
+    }
+  },
+  "settings": {
+    "members": {
+      "title": "Miembros del proyecto",
+      "description": "Esta página muestra los miembros del proyecto seleccionado, y permite modificar sus permisos."
+    },
+    "org": {
+      "title": "Configuración de la organización",
+      "description": "Gestiona los miembros de tu organización. Estos usuarios podrán ser gestionados en proyectos más adelante."
+    },
+    "personal": {
+      "title": "Preferencias personales",
+      "description": "Visualiza y gestiona aquí tu información personal.",
+      "emergency": {
+        "name": "Kit de emergencia",
+        "text1": "Tu Kit de emergencia contiene la información que necesitarás para iniciar sesión en tu cuenta de Infisical.",
+        "text2": "Solo el último Kit de emergencia descargado es válido. Para conseguir uno nuevo, introduce tu contraseña.",
+        "download": "Descargar Kit de emergencia"
+      },
+      "change-language": "Cambiar idioma",
+      "api-keys": {
+        "title": "API Keys",
+        "description": "Gestiona tus API Keys personales para acceder a la API de Infisical.",
+        "add-new": "Añadir"
+      }
+    },
+    "project": {
+      "title": "Configuración de proyecto",
+      "description": "Esta configuración solo afecta al proyecto seleccionado.",
+      "danger-zone": "Zona de peligro",
+      "delete-project": "Eliminar proyecto",
+      "project-to-delete": "Proyecto a eliminar",
+      "danger-zone-note": "Tan pronto como elimines el proyecto, no podrás volver atrás. Esto eliminará todas las claves. Si aún quieres hacerlo, introduce el nombre del proyecto a continuación.",
+      "delete-project-note": "Nota: Solo puedes eliminar un proyecto si tienes más de uno",
+      "project-id-description": "Para integrar Infisical en tu aplicación y obtener la inyección automática de variables de entorno, debes usar el siguiente ID de Proyecto.",
+      "project-id-description2": "Para más guías, incluyendo ejemplos de código en diferentes lenguajes y frameworks, visita ",
+      "auto-generated": "Este es el ID único y autogenerado de proyecto. No se puede modificar.",
+      "docs": "Documentación de Infisical",
+      "auto-capitalization": "Mayúsculas automáticas",
+      "auto-capitalization-description": "De acuerdo con los estándares, Infisical pondrá en mayúsculas tus claves. Si quieres desactivar esta funcionalidad, lo puedes hacer aquí."
+    }
+  },
+  "signup": {
+    "title": "Registrarse",
+    "og-title": "Reemplaza los archivos .env con una línea de código. Regístrate en Infisical en solo 3 minutos.",
+    "og-description": "Infisical es una plataforma sencilla cifrada de extremo a extremo que permite a equipos sincronizar y gestionar API-keys y variables de entorno. Funciona con Node.js, Next.js, Gatsby, Nest.js...",
+    "signup": "Registrarse",
+    "already-have-account": "¿Ya tienes una cuenta? Inicia sesión",
+    "forgot-password": "¿Has olvidado tu contraseña?",
+    "verify": "Verificar",
+    "step1-start": "Vamos a empezar",
+    "step1-privacy": "Al crear la cuenta, aceptas nuestros Términos y has leído y comprendido nuestra Política de privacidad.",
+    "step1-submit": "Empezar",
+    "step2-message": "Hemos enviado un código a",
+    "step2-code-error": "Oops. Tu código es incorrecto. Intentos restantes:",
+    "step2-resend-alert": "¿No ves el código?",
+    "step2-resend-submit": "Volver a enviar",
+    "step2-resend-progress": "Reenviando...",
+    "step2-spam-alert": "Asegúrate de comprobar la carpeta de spam.",
+    "step3-message": "¡Casi hemos terminado!",
+    "step4-message": "Guarda tu Kit de emergencia",
+    "step4-description1": "Si pierdes el acceso a tu cuenta, tu Kit de emergencia es la única forma de iniciar sesión.",
+    "step4-description2": "Te recomendamos que lo descargues y lo guardes en un sitio seguro.",
+    "step4-description3": "Contiene tu Clave secreta, a la que no tenemos acceso y tampoco podemos recuperar si la pierdes.",
+    "step4-download": "Descargar PDF",
+    "step5-send-invites": "Enviar invitaciones",
+    "step5-invite-team": "Invita a tu equipo",
+    "step5-subtitle": "Infisical está pensado para usarlo con tus compañeros. Invítalos a probarlo.",
+    "step5-skip": "Saltar"
+  }
+}

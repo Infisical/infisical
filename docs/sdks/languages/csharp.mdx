@@ -1,0 +1,394 @@
+---
+title: "Infisical .NET SDK"
+icon: "C#"
+---
+
+If you're working with C#, the official [Infisical C# SDK](https://github.com/Infisical/sdk/tree/main/languages/csharp) package is the easiest way to fetch and work with secrets for your application.
+
+- [Nuget Package](https://www.nuget.org/packages/Infisical.Sdk)
+- [Github Repository](https://github.com/Infisical/sdk/tree/main/languages/csharp)
+
+## Basic Usage
+
+```cs
+using Infisical.Sdk;
+
+namespace Example
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var settings = new ClientSettings
+            {
+                ClientId = "CLIENT_ID",
+                ClientSecret = "CLIENT_SECRET",
+                // SiteUrl = "http://localhost:8080", <-- This line can be omitted if you're using Infisical Cloud.
+            };
+            var infisical = new InfisicalClient(settings);
+
+            var options = new GetSecretOptions
+            {
+                SecretName = "TEST",
+                ProjectId = "PROJECT_ID",
+                Environment = "dev",
+            };
+            var secret = infisical.GetSecret(options);
+
+
+            Console.WriteLine($"The value of secret '{secret.SecretKey}', is: {secret.SecretValue}");
+        }
+    }
+}
+```
+
+This example demonstrates how to use the Infisical C# SDK in a C# application. The application retrieves a secret named `TEST` from the `dev` environment of the `PROJECT_ID` project.
+
+<Warning>
+    We do not recommend hardcoding your [Machine Identity Tokens](/platform/identities/overview). Setting it as an environment variable would be best.
+</Warning>
+
+# Installation
+
+Run `npm` to add `@infisical/sdk` to your project.
+
+```console
+$ dotnet add package Infisical.Sdk
+```
+# Configuration
+
+Import the SDK and create a client instance with your [Machine Identity](/platform/identities/universal-auth).
+
+```cs
+using Infisical.Sdk;
+
+namespace Example
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var settings = new ClientSettings
+            {
+                ClientId = "CLIENT_ID",
+                ClientSecret = "CLIENT_SECRET",
+            };
+
+            var infisical = new InfisicalClient(settings); // <-- Your SDK instance!
+        }
+    }
+}
+```
+
+### ClientSettings methods
+
+<ParamField query="options" type="object">
+    <Expandable title="properties">
+        <ParamField query="ClientId" type="string" optional>
+            Your machine identity client ID.
+        </ParamField>
+          <ParamField query="ClientSecret" type="string" optional>
+            Your machine identity client secret.
+        </ParamField>
+
+         <ParamField query="AccessToken" type="string" optional>
+            An access token obtained from the machine identity login endpoint.
+        </ParamField>
+
+        <ParamField query="CacheTtl" type="number" default="300" optional>
+            Time-to-live (in seconds) for refreshing cached secrets.
+            If manually set to 0, caching will be disabled, this is not recommended.
+        </ParamField>
+
+        <ParamField query="SiteUrl()" type="string" default="https://app.infisical.com" optional>
+            Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`)
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### Caching
+
+To reduce the number of API requests, the SDK temporarily stores secrets it retrieves. By default, a secret remains cached for 5 minutes after it's first fetched. Each time it's fetched again, this 5-minute timer resets. You can adjust this caching duration by setting the "cacheTTL" option when creating the client.
+
+## Working with Secrets
+
+### client.ListSecrets(options)
+
+```cs
+var options = new ListSecretsOptions
+{
+    ProjectId = "PROJECT_ID",
+    Environment = "dev",
+    Path = "/foo/bar",
+    AttachToProcessEnv = false,
+};
+
+var secrets = infisical.ListSecrets(options);
+```
+
+Retrieve all secrets within the Infisical project and environment that client is connected to
+
+#### Parameters
+
+<ParamField query="Parameters" type="object">
+    <Expandable title="properties">
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+
+        <ParamField query="ProjectId" type="string">
+            The project ID where the secret lives in.
+        </ParamField>
+
+         <ParamField query="Path" type="string" optional>
+            The path from where secrets should be fetched from.
+        </ParamField>
+
+        <ParamField query="AttachToProcessEnv" type="boolean" default="false" optional>
+             Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `System.getenv("SECRET_NAME")`.
+        </ParamField>
+
+        <ParamField query="IncludeImports" type="boolean" default="false" optional>
+             Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### client.GetSecret(options)
+
+```cs
+var options = new GetSecretOptions
+    {
+        SecretName = "AAAA",
+        ProjectId = "659c781eb2d4fe3e307b77bd",
+        Environment = "dev",
+    };
+var secret = infisical.GetSecret(options);
+```
+
+Retrieve a secret from Infisical.
+
+By default, `GetSecret()` fetches and returns a shared secret.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="SecretName" type="string" required>
+            The key of the secret to retrieve.
+        </ParamField>
+        <ParamField query="ProjectId" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path from where secret should be fetched from.
+        </ParamField>
+        <ParamField query="Type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.CreateSecret(options)
+
+```cs
+var options = new CreateSecretOptions {
+    Environment = "dev",
+    ProjectId = "PROJECT_ID",
+
+    SecretName = "NEW_SECRET",
+    SecretValue = "NEW_SECRET_VALUE",
+    SecretComment = "This is a new secret",
+};
+
+var newSecret = infisical.CreateSecret(options);
+```
+
+Create a new secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="SecretName" type="string" required>
+            The key of the secret to create.
+        </ParamField>
+        <ParamField query="SecretValue" type="string" required>
+            The value of the secret.
+        </ParamField>
+        <ParamField query="ProjectId" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path from where secret should be created.
+        </ParamField>
+        <ParamField query="Type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.UpdateSecret(options)
+
+```cs
+var options = new UpdateSecretOptions {
+    Environment = "dev",
+    ProjectId = "PROJECT_ID",
+
+    SecretName = "SECRET_TO_UPDATE",
+    SecretValue = "NEW VALUE"
+};
+
+var updatedSecret = infisical.UpdateSecret(options);
+```
+
+Update an existing secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="SecretName" type="string" required>
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="SecretValue" type="string" required>
+            The new value of the secret.
+        </ParamField>
+        <ParamField query="ProjectId" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path from where secret should be updated.
+        </ParamField>
+        <ParamField query="Type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.DeleteSecret(options)
+
+```cs
+var options = new DeleteSecretOptions
+{
+    Environment = "dev",
+    ProjectId = "PROJECT_ID",
+    SecretName = "NEW_SECRET",
+};
+
+var deletedSecret = infisical.DeleteSecret(options);
+```
+
+Delete a secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="SecretName" type="string">
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="ProjectId" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path from where secret should be deleted.
+        </ParamField>
+        <ParamField query="Type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+## Cryptography
+
+### Create a symmetric key
+
+Create a base64-encoded, 256-bit symmetric key to be used for encryption/decryption.
+
+```cs
+var key = infisical.CreateSymmetricKey();
+```
+
+#### Returns (string)
+`key` (string): A base64-encoded, 256-bit symmetric key, that can be used for encryption/decryption purposes.
+
+### Encrypt symmetric
+```cs
+var options = new EncryptSymmetricOptions
+{
+    Plaintext = "Infisical is awesome!",
+    Key = key,
+};
+
+var encryptedData = infisical.EncryptSymmetric(options);
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="Plaintext" type="string">
+            The plaintext you want to encrypt.
+        </ParamField>
+        <ParamField query="Key" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (object)
+`Tag` (string): A base64-encoded, 128-bit authentication tag.
+`Iv` (string): A base64-encoded, 96-bit initialization vector.
+`CipherText` (string): A base64-encoded, encrypted ciphertext.
+
+### Decrypt symmetric
+```cs
+var decryptOptions = new DecryptSymmetricOptions
+{
+    Key = key,
+    Ciphertext = encryptedData.Ciphertext,
+    Iv = encryptedData.Iv,
+    Tag = encryptedData.Tag,
+};
+
+var decryptedPlaintext = infisical.DecryptSymmetric(decryptOptions);
+```
+
+#### Parameters
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="Ciphertext" type="string">
+            The ciphertext you want to decrypt.
+        </ParamField>
+        <ParamField query="Key" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+        <ParamField query="Iv" type="string" required>
+            The initialization vector to use for decryption.
+        </ParamField>
+        <ParamField query="Tag" type="string" required>
+            The authentication tag to use for decryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (string)
+`Plaintext` (string): The decrypted plaintext.
+

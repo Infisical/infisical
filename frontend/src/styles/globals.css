@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+
+html {
+  @apply overflow-hidden;
+}
+
+.rdp-day,
+.rdp-nav_button {
+  @apply rounded-md hover:text-mineshaft-500;
+}
+
+.rdp-button:hover:not([disabled]):not(.rdp-day_selected),
+.rdp-nav_button:hover {
+  @apply bg-primary;
+}
+
+.rdp-day_today {
+  @apply bg-primary/50 text-mineshaft-500 hover:bg-primary-600;
+}
+
+@tailwind utilities;
+
+@layer utilities {
+  .flex-0 {
+    flex: 0;
+  }
+  .flex-2 {
+    flex-grow: 2;
+  }
+
+  .flex-3 {
+    flex-grow: 3;
+  }
+
+  .min-table-row {
+    width: 1%;
+    white-space: nowrap;
+  }
+}
+
+@layer components {
+  .secret-table {
+    @apply w-full bg-mineshaft-800 text-left text-bunker-300;
+  }
+
+  /* padding except for comment column */
+  .secret-table th {
+    @apply py-2 px-4 font-medium;
+  }
+
+  .secret-table td {
+    @apply py-1 px-1 pr-2 text-sm;
+  }
+
+  .secret-table th:not(:last-child),
+  .secret-table td:not(:last-child) {
+    @apply border-r border-mineshaft-600;
+  }
+
+  .secret-table tr {
+    @apply border-b border-mineshaft-600;
+  }
+
+  .breadcrumb::after,
+  .breadcrumb::before {
+    content: "";
+    height: 60%;
+    width: 100%;
+    z-index: -1;
+    display: block;
+    position: absolute;
+    @apply bg-mineshaft-800;
+  }
+
+  .breadcrumb:hover::before {
+    @apply bg-mineshaft-600;
+  }
+
+  .breadcrumb:hover::after {
+    @apply bg-mineshaft-600;
+  }
+
+  .breadcrumb::after {
+    left: 4px;
+    bottom: -2.5px;
+    transform: skew(-30deg);
+  }
+
+  .breadcrumb::before {
+    left: 4px;
+    top: -2.5px;
+    transform: skew(30deg);
+  }
+
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 0.25rem;
+    background-color: transparent;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background-color: gray;
+  }
+
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: gray transparent;
+  }
+
+  #nprogress .bar {
+    @apply bg-primary-400;
+  }
+}
+.tags-conic-bg {
+  background: conic-gradient(
+    rgb(235, 87, 87),
+    rgb(242, 201, 76),
+    rgb(76, 183, 130),
+    rgb(78, 167, 252),
+    rgb(250, 96, 122)
+  );
+}
+
+.show-tags {
+  transform: translateY(10px);
+  transition: all 0.2s;
+  opacity: 1;
+}
+.hide-tags {
+  transform: translateY(-20px);
+  transition: all 0.2s;
+  opacity: 0;
+}
+
+.show-hex-input {
+  transform: translateY(-33px);
+  transition: all 0.2s;
+  opacity: 1;
+}
+.hide-hex-input {
+  transform: translateY(20px);
+  transition: all 0.2s;
+  opacity: 0;
+}
+
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/700.css";

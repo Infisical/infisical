@@ -1,6 +1,6 @@
 ---
 title: "Linux VM"
-description: "Deploy with Docker-Compose"
+description: "How to deploy Infisical with Docker-Compose"
 ---
 
 <Info>
@@ -33,8 +33,7 @@ wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.exa
 wget -O docker-compose.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.yml
 
 # Download nginx config
-mkdir nginx && cd nginx && wget -O default.conf https://raw.githubusercontent.com/Infisical/infisical/main/nginx/default.dev.conf
-cd ..
+mkdir nginx && wget -O ./nginx/default.conf https://raw.githubusercontent.com/Infisical/infisical/main/nginx/default.dev.conf
 ```
 
 3. Tweak the `.env` according to your preferences. Refer to the available [environment variables](../../self-hosting/configuration/envars)
@@ -51,4 +50,4 @@ nano .env
 docker-compose -f docker-compose.yml up -d
 ```
 
-5. Your Infisical installation is complete and should be running on [http://localhost:8080](http://localhost:8080). Please note that the containers are not exposed to the internet and only bind to the localhost. It's up to you to configure a firewall, SSL certificates, and implement any additional security measures.
+5. Your Infisical installation is complete and should be running on [http://localhost:80](http://localhost:80). Please note that the containers are not exposed to the internet and only bind to the localhost. It's up to you to configure a firewall, SSL certificates, and implement any additional security measures.

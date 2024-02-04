@@ -1,0 +1,34 @@
+---
+title: "FAQ"
+description: "Frequently Asked Questions about Infisical CLI"
+---
+
+Frequently asked questions about the CLI can be found on this page. 
+If you can't find the answer you are looking for, please create an issue on our GitHub repository or join our Slack channel for additional support.
+
+<Accordion title="I'm getting a Keyring related error message when trying to login" defaultOpen="true">
+By default, the CLI will choose the most suitable store available on your system. 
+If you experience issues with the default store, you can switch to a different one. 
+If none of the available stores work for you, you can try using the `file` store type by running `infisical vault set file`, which should work in most cases. 
+If you are still experiencing trouble, please seek support. 
+
+[Learn more about vault command](./commands/vault)
+</Accordion>
+
+<Accordion title="Can I fetch secrets with Infisical if I am offline?">
+Yes. If you have previously retrieved secrets for a specific project and environment (such as dev, staging, or prod), the  `run`/`secret` command will utilize the saved secrets, even when offline, on subsequent fetch attempts.
+
+</Accordion>
+
+<Accordion title="Can I upload the .infisical.json file that was generated?">
+Yes. This is simply a configuration file and contains no sensitive data.
+</Accordion>
+
+<Accordion title="Where can I find my Project ID?">
+
+  Visit the Infisical website and navigate to a project of your choice. Once on the project page, access the **Project Settings** from the sidebar. Within the Project name section, click the "Copy Project ID" button for copying the current Project ID to clipboard, or simply obtain it from the URL of the current page.
+  
+  ```
+    https://app.infisical.com/project/<your_project_id>/settings
+  ```
+</Accordion>

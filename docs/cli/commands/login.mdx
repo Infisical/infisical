@@ -1,5 +1,6 @@
 ---
 title: "infisical login"
+description: "Login into Infisical from the CLI"
 ---
 
 ```bash
@@ -7,7 +8,8 @@ infisical login
 ```
 
 ## Description
+The CLI uses authentication to verify your identity. When you enter the correct email and password for your account, a token is generated and saved in your system Keyring to allow you to make future interactions with the CLI. 
 
-Verify a user and save credentials to the system keyring.
+To change where the login credentials are stored, visit the [vaults command](./vault).
 
-To change the logged in user, run the command again to overwrite the previous login.
+If you have added multiple users, you can switch between the users by using the [user command](./user).

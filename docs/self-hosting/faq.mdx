@@ -1,0 +1,27 @@
+---
+title: "FAQ"
+description: "Frequently Asked Questions about Infisical self hosting"
+---
+
+Frequently asked questions about self hosted instance of Infisical can be found on this page. 
+If you can't find the answer you are looking for, please create an issue on our GitHub repository or join our Slack channel for additional support.
+
+<Accordion title="When I refresh any page, it logs me out" defaultOpen="true">
+This issue is typically seen when you haven't set up SSL for your self hosted instance of Infisical. When SSL is not enabled, you can't receive secure cookies, preventing the session data to not be saved.
+
+To fix this, we highly recommend that you set up SSL for your instance. 
+However, in the event you choose to use Infisical without SSL, you can do so by setting the `HTTPS_ENABLED` environment variable to `"false"` for the backend application.
+
+[Learn more about secure cookies](https://really-simple-ssl.com/definition/what-are-secure-cookies/)
+</Accordion>
+
+<Accordion title="Is self hosted Infisical HA?">
+ Infisical leverages the robust container orchestration capabilities of Kubernetes and the inherent high availability features of Bitnami MongoDB to ensure resilience and fault tolerance. 
+ By deploying multiple replicas of Infisical application on Kubernetes, operations can continue even if a single instance fails. 
+
+ Additionally, Bitnami MongoDB supports replica sets, which provide data redundancy and automatic failover for the underlying database. 
+ Kubernetes Services facilitate load balancing, effectively distributing traffic across your application's instances and ensuring optimal performance. 
+ The combination of Kubernetes' self-healing mechanisms and Bitnami MongoDB's failover capabilities work together to create a highly available and fault-tolerant application capable of recovering gracefully from unexpected failures.
+
+ To further increase data redundancy, we recommend that you use a managed MongoDB service for your self hosted instance of Infisical.
+</Accordion>

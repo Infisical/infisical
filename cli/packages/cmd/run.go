@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright (c) 2023 Infisical Inc.
 */
 package cmd
 
@@ -8,82 +8,245 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
-	log "github.com/sirupsen/logrus"
+	"github.com/fatih/color"
+	"github.com/posthog/posthog-go"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
+	Example: `
+	infisical run --env=dev -- npm run dev
+	infisical run --command "first-command && second-command; more-commands..."
+	`,
 	Use:                   "run [any infisical run command flags] -- [your application start command]",
 	Short:                 "Used to inject environments variables into your application process",
 	DisableFlagsInUseLine: true,
-	Example:               "infisical run --env=prod -- npm run dev",
-	Args:                  cobra.MinimumNArgs(1),
-	PreRun:                toggleDebug,
+	Args: func(cmd *cobra.Command, args []string) error {
+		// Check if the --command flag has been set
+		commandFlagSet := cmd.Flags().Changed("command")
+
+		// If the --command flag has been set, check if a value was provided
+		if commandFlagSet {
+			command := cmd.Flag("command").Value.String()
+			if command == "" {
+				return fmt.Errorf("you need to provide a command after the flag --command")
+			}
+
+			// If the --command flag has been set, args should not be provided
+			if len(args) > 0 {
+				return fmt.Errorf("you cannot set any arguments after --command flag. --command only takes a string command")
+			}
+		} else {
+			// If the --command flag has not been set, at least one arg should be provided
+			if len(args) == 0 {
+				return fmt.Errorf("at least one argument is required after the run command, received %d", len(args))
+			}
+		}
+
+		return nil
+	},
 	Run: func(cmd *cobra.Command, args []string) {
-		envName, err := cmd.Flags().GetString("env")
+		environmentName, _ := cmd.Flags().GetString("env")
+		if !cmd.Flags().Changed("env") {
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
+			if environmentFromWorkspace != "" {
+				environmentName = environmentFromWorkspace
+			}
+		}
+
+		infisicalToken, err := cmd.Flags().GetString("token")
 		if err != nil {
-			log.Errorln("Unable to parse the environment flag")
-			log.Debugln(err)
-			return
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		projectConfigDir, err := cmd.Flags().GetString("project-config-dir")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
 		}
 
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
 		if err != nil {
-			log.Errorln("Unable to parse the substitute flag")
-			log.Debugln(err)
-			return
+			util.HandleError(err, "Unable to parse flag")
 		}
 
-		projectId, err := cmd.Flags().GetString("projectId")
+		tagSlugs, err := cmd.Flags().GetString("tags")
 		if err != nil {
-			log.Errorln("Unable to parse the project id flag")
-			log.Debugln(err)
-			return
+			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(projectId, envName)
+		secretsPath, err := cmd.Flags().GetString("path")
 		if err != nil {
-			log.Debugln(err)
-			return
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		includeImports, err := cmd.Flags().GetBool("include-imports")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports}, projectConfigDir)
+
+		if err != nil {
+			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
+		}
+
+		if secretOverriding {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
+		} else {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
 		}
 
 		if shouldExpandSecrets {
-			secretsWithSubstitutions := util.SubstituteSecrets(secrets)
-			execCmd(args[0], args[1:], secretsWithSubstitutions)
-		} else {
-			execCmd(args[0], args[1:], secrets)
+			secrets = util.ExpandSecrets(secrets, infisicalToken, projectConfigDir)
 		}
 
+		secretsByKey := getSecretsByKeys(secrets)
+		environmentVariables := make(map[string]string)
+
+		// add all existing environment vars
+		for _, s := range os.Environ() {
+			kv := strings.SplitN(s, "=", 2)
+			key := kv[0]
+			value := kv[1]
+			environmentVariables[key] = value
+		}
+
+		// check to see if there are any reserved key words in secrets to inject
+		filterReservedEnvVars(secretsByKey)
+
+		// now add infisical secrets
+		for k, v := range secretsByKey {
+			environmentVariables[k] = v.Value
+		}
+
+		// turn it back into a list of envs
+		var env []string
+		for key, value := range environmentVariables {
+			s := key + "=" + value
+			env = append(env, s)
+		}
+
+		log.Debug().Msgf("injecting the following environment variables into shell: %v", env)
+
+		Telemetry.CaptureEvent("cli-command:run", posthog.NewProperties().Set("secretsCount", len(secrets)).Set("environment", environmentName).Set("isUsingServiceToken", infisicalToken != "").Set("single-command", strings.Join(args, " ")).Set("multi-command", cmd.Flag("command").Value.String()).Set("version", util.CLI_VERSION))
+
+		if cmd.Flags().Changed("command") {
+			command := cmd.Flag("command").Value.String()
+
+			err = executeMultipleCommandWithEnvs(command, len(secretsByKey), env)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+		} else {
+			err = executeSingleCommandWithEnvs(args, len(secretsByKey), env)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
 	},
+}
+
+var (
+	reservedEnvVars = []string{
+		"HOME", "PATH", "PS1", "PS2",
+		"PWD", "EDITOR", "XAUTHORITY", "USER",
+		"TERM", "TERMINFO", "SHELL", "MAIL",
+	}
+
+	reservedEnvVarPrefixes = []string{
+		"XDG_",
+		"LC_",
+	}
+)
+
+func filterReservedEnvVars(env map[string]models.SingleEnvironmentVariable) {
+	for _, reservedEnvName := range reservedEnvVars {
+		if _, ok := env[reservedEnvName]; ok {
+			delete(env, reservedEnvName)
+			util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it is a reserved secret name", reservedEnvName))
+		}
+	}
+
+	for _, reservedEnvPrefix := range reservedEnvVarPrefixes {
+		for envName := range env {
+			if strings.HasPrefix(envName, reservedEnvPrefix) {
+				delete(env, envName)
+				util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it contains a reserved prefix", envName))
+			}
+		}
+	}
 }
 
 func init() {
 	rootCmd.AddCommand(runCmd)
+	runCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
-	runCmd.Flags().String("projectId", "", "The project ID from which your secrets should be pulled from")
 	runCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
+	runCmd.Flags().Bool("include-imports", true, "Import linked secrets ")
+	runCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
+	runCmd.Flags().StringP("command", "c", "", "chained commands to execute (e.g. \"npm install && npm run dev; echo ...\")")
+	runCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs ")
+	runCmd.Flags().String("path", "/", "get secrets within a folder path")
+	runCmd.Flags().String("project-config-dir", "", "explicitly set the directory where the .infisical.json resides")
 }
 
-// Credit: inspired by AWS Valut
-func execCmd(command string, args []string, envs []models.SingleEnvironmentVariable) error {
-	numberOfSecretsInjected := fmt.Sprintf("\u2713 Injected %v Infisical secrets into your application process successfully", len(envs))
+// Will execute a single command and pass in the given secrets into the process
+func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string) error {
+	command := args[0]
+	argsForCommand := args[1:]
 
-	log.Infof("\x1b[%dm%s\x1b[0m", 32, numberOfSecretsInjected)
-	log.Debugf("executing command: %s %s \n", command, strings.Join(args, " "))
-	log.Debugln("Secrets injected:", envs)
+	log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
 
-	cmd := exec.Command(command, args...)
+	cmd := exec.Command(command, argsForCommand...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = getAllEnvs(envs)
+	cmd.Env = env
 
+	return execCmd(cmd)
+}
+
+func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []string) error {
+	shell := [2]string{"sh", "-c"}
+	if runtime.GOOS == "windows" {
+		shell = [2]string{"cmd", "/C"}
+	} else {
+		currentShell := os.Getenv("SHELL")
+		if currentShell != "" {
+			shell[0] = currentShell
+		}
+	}
+
+	cmd := exec.Command(shell[0], shell[1], fullCommand)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = env
+
+	log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
+	log.Debug().Msgf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
+
+	return execCmd(cmd)
+}
+
+// Credit: inspired by AWS Valut
+func execCmd(cmd *exec.Cmd) error {
 	sigChannel := make(chan os.Signal, 1)
 	signal.Notify(sigChannel)
 
@@ -100,30 +263,10 @@ func execCmd(command string, args []string, envs []models.SingleEnvironmentVaria
 
 	if err := cmd.Wait(); err != nil {
 		_ = cmd.Process.Signal(os.Kill)
-		return fmt.Errorf("Failed to wait for command termination: %v", err)
+		return fmt.Errorf("failed to wait for command termination: %v", err)
 	}
 
 	waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
 	os.Exit(waitStatus.ExitStatus())
 	return nil
-}
-
-func getAllEnvs(envsToInject []models.SingleEnvironmentVariable) []string {
-	env_map := make(map[string]string)
-
-	for _, env := range os.Environ() {
-		splitEnv := strings.Split(env, "=")
-		env_map[splitEnv[0]] = splitEnv[1]
-	}
-
-	for _, env := range envsToInject {
-		env_map[env.Key] = env.Value // overrite any envs with ones to inject if they clash
-	}
-
-	var allEnvs []string
-	for key, value := range env_map {
-		allEnvs = append(allEnvs, fmt.Sprintf("%s=%s", key, value))
-	}
-
-	return allEnvs
 }

@@ -1,0 +1,15 @@
+dependencies:
+- name: mongodb
+  repository: https://charts.bitnami.com/bitnami
+  version: 13.9.4
+- name: mailhog
+  repository: https://codecentric.github.io/helm-charts
+  version: 5.2.3
+- name: redis
+  repository: https://charts.bitnami.com/bitnami
+  version: 17.15.0
+- name: ingress-nginx
+  repository: https://kubernetes.github.io/ingress-nginx
+  version: 4.0.13
+digest: sha256:1762132c45000bb6d410c6da2291ac5c65f91331550a473b370374ba042d0744
+generated: "2023-08-10T15:03:12.219788-04:00"

@@ -1,10 +1,17 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright (c) 2023 Infisical Inc.
 */
 package main
 
-import "github.com/Infisical/infisical-merge/packages/cmd"
+import (
+	"os"
+
+	"github.com/Infisical/infisical-merge/packages/cmd"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+)
 
 func main() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	cmd.Execute()
 }

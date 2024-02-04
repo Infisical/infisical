@@ -1,0 +1,48 @@
+---
+title: "Docker Run"
+description: "Pass secrets to your docker container at run time"
+---
+
+This method allows you to feed secrets from Infisical into your container using the `--env-file` flag of `docker run` command. 
+Rather than giving the flag a file path to your env file, you'll use the Infisical CLI to create a virtual file path.
+
+For this method to function as expected, you must have a bash shell (for processing substitution) and the [Infisical CLI](../../cli/overview) installed in the environment where you will be running the `docker run` command.
+
+## 1. Authentication
+
+If you are already logged in via the CLI you can skip this step. Otherwise, head to your project settings in Infisical Cloud to generate an [Infisical Token](/documentation/platform/token). The service token will allow you to authenticate and fetch secrets from Infisical. 
+Once you have created a service token with the required permissions, you'll need to feed the token to the CLI. 
+
+#### Pass as flag
+You may use the --token flag to set the token 
+
+```bash
+infisical export --token=<>
+```
+
+#### Pass via shell environment variable
+The CLI is configured to look for an environment variable named `INFISICAL_TOKEN`. If set, it'll attempt to use it for authentication.
+
+```bash
+export INFISICAL_TOKEN=<>
+```
+
+<Warning>
+  In production scenarios, please to avoid using the `infisical login` command and instead use a [service token](/documentation/platform/token).
+</Warning>
+
+## 2. Run your docker command with Infisical 
+Next, use the --env-file flag of the `docker run` command with Infisical CLI to point to your secrets. 
+Under the hood, this command will fetch secrets from Infisical and serve them as a file to the `--env-file` flag. 
+
+```bash
+# In this example, executing a docker run command will initiate an empty Alpine container and display the environment variables passed to it by Infisical.
+docker run --rm --env-file <(infisical export --format=dotenv) alpine printenv
+```
+
+To view all options of the `export` command, click [here](../../cli/commands/export)
+
+
+<Warning>
+  When using the --env-file option, Docker does not have the capability to support secrets that span multiple lines.
+</Warning>

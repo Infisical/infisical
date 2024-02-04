@@ -1,0 +1,390 @@
+---
+title: "Infisical Node.js SDK"
+icon: "node"
+---
+
+If you're working with Node.js, the official [infisical-node](https://github.com/Infisical/sdk/tree/main/languages/node) package is the easiest way to fetch and work with secrets for your application.
+
+- [NPM Package](https://www.npmjs.com/package/@infisical/sdk)
+- [Github Repository](https://github.com/Infisical/sdk/tree/main/languages/node)
+
+## Basic Usage
+
+```js
+import express from "express";
+
+import { InfisicalClient, LogLevel } from "@infisical/sdk";
+
+const app = express();
+
+const PORT = 3000;
+
+const client = new InfisicalClient({
+    clientId: "YOUR_CLIENT_ID",
+    clientSecret: "YOUR_CLIENT_SECRET",
+    logLevel: LogLevel.Error
+});
+
+app.get("/", async (req, res) => {
+    // access value
+
+    const name = await client.getSecret({
+        environment: "dev",
+        projectId: "PROJECT_ID",
+        path: "/",
+        type: "shared",
+        secretName: "NAME"
+    });
+
+    res.send(`Hello! My name is: ${name.secretValue}`);
+});
+
+app.listen(PORT, async () => {
+    // initialize client
+
+    console.log(`App listening on port ${port}`);
+});
+```
+
+This example demonstrates how to use the Infisical Node SDK with an Express application. The application retrieves a secret named "NAME" and responds to requests with a greeting that includes the secret value.
+
+<Warning>
+    We do not recommend hardcoding your [Machine Identity Tokens](/documentation/platform/identities/overview). Setting it as an environment variable
+    would be best.
+</Warning>
+
+## Installation
+
+Run `npm` to add `@infisical/sdk` to your project.
+
+```console
+$ npm install @infisical/sdk
+```
+
+## Configuration
+
+Import the SDK and create a client instance with your [Machine Identity](/documentation/platform/identities/overview).
+
+<Tabs>
+  <Tab title="ES6">
+    ```js
+    import { InfisicalClient, LogLevel } from "@infisical/sdk";
+
+    const client = new InfisicalClient({
+        clientId: "YOUR_CLIENT_ID",
+        clientSecret: "YOUR_CLIENT_SECRET",
+        logLevel: LogLevel.Error
+    });
+    ```
+
+  </Tab>
+  <Tab title="ES5">
+    ```js
+    const { InfisicalClient, LogLevel } = require("@infisical/sdk");
+
+    const client = new InfisicalClient({
+        clientId: "YOUR_CLIENT_ID",
+        clientSecret: "YOUR_CLIENT_SECRET",
+        logLevel: LogLevel.Error
+    });
+    ```
+
+  </Tab>
+</Tabs>
+
+#### Parameters
+
+<ParamField query="options" type="object">
+    <Expandable title="properties">
+        <ParamField query="clientId" type="string" optional>
+            Your machine identity client ID.
+        </ParamField>
+          <ParamField query="clientSecret" type="string" optional>
+            Your machine identity client secret.
+        </ParamField>
+
+         <ParamField query="accessToken" type="string" optional>
+            An access token obtained from the machine identity login endpoint.
+        </ParamField>
+
+        <ParamField query="cacheTtl" type="number" default="300" optional>
+            Time-to-live (in seconds) for refreshing cached secrets.
+            If manually set to 0, caching will be disabled, this is not recommended.
+        </ParamField>
+
+        <ParamField query="siteUrl" type="string" default="https://app.infisical.com" optional>
+            Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`)
+        </ParamField>
+        <ParamField query="logLevel" type="enum" default="Error" optional>
+            The level of logs you wish to log The logs are derived from Rust, as we have written our base SDK in Rust.
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### Caching
+
+To reduce the number of API requests, the SDK temporarily stores secrets it retrieves. By default, a secret remains cached for 5 minutes after it's first fetched. Each time it's fetched again, this 5-minute timer resets. You can adjust this caching duration by setting the "cacheTtl" option when creating the client.
+
+## Working with Secrets
+
+### client.listSecrets(options)
+
+```js
+const secrets = await client.listSecrets({
+    environment: "dev",
+    projectId: "PROJECT_ID",
+    path: "/foo/bar/",
+    includeImports: false
+});
+```
+
+Retrieve all secrets within the Infisical project and environment that client is connected to
+
+#### Parameters
+
+<ParamField query="Parameters" type="object">
+    <Expandable title="properties">
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+          <ParamField query="projectId" type="string" required>
+            The project ID where the secret lives in. 
+        </ParamField>
+
+         <ParamField query="path" type="string" optional>
+            The path from where secrets should be fetched from.
+        </ParamField>
+
+        <ParamField query="attachToProcessEnv" type="boolean" default="false" optional>
+            Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `process.env["SECRET_NAME"]`.
+        </ParamField>
+
+        <ParamField query="includeImports" type="false" default="boolean" optional>
+             Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### client.getSecret(options)
+
+```js
+const secret = await client.getSecret({
+    environment: "dev",
+    projectId: "PROJECT_ID",
+    secretName: "API_KEY",
+    path: "/",
+    type: "shared"
+});
+```
+
+Retrieve a secret from Infisical.
+
+By default, `getSecret()` fetches and returns a shared secret.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secretName" type="string" required>
+            The key of the secret to retrieve.
+        </ParamField>
+        <ParamField query="projectId" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be fetched from.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.createSecret(options)
+
+```js
+const newApiKey = await client.createSecret({
+    projectId: "PROJECT_ID",
+    environment: "dev",
+    secretName: "API_KEY",
+    secretValue: "SECRET VALUE",
+    path: "/",
+    type: "shared"
+});
+```
+
+Create a new secret in Infisical.
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secretName" type="string" required>
+            The key of the secret to create.
+        </ParamField>
+        <ParamField query="secretValue" type="string" required>
+            The value of the secret.
+        </ParamField>
+        <ParamField query="projectId" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be created.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.updateSecret(options)
+
+```js
+const updatedApiKey = await client.updateSecret({
+    secretName: "API_KEY",
+    secretValue: "NEW SECRET VALUE",
+    projectId: "PROJECT_ID",
+    environment: "dev",
+    path: "/",
+    type: "shared"
+});
+```
+
+Update an existing secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secretName" type="string" required>
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="secretValue" type="string" required>
+            The new value of the secret.
+        </ParamField>
+        <ParamField query="projectId" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be updated.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.deleteSecret(options)
+
+```js
+const deletedSecret = await client.deleteSecret({
+    secretName: "API_KEY",
+
+    environment: "dev",
+    projectId: "PROJECT_ID",
+    path: "/",
+
+    type: "shared"
+});
+```
+
+Delete a secret in Infisical.
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secretName" type="string">
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="projectId" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be deleted.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+## Cryptography
+
+### Create a symmetric key
+
+Create a base64-encoded, 256-bit symmetric key to be used for encryption/decryption.
+
+```js
+const key = client.createSymmetricKey();
+```
+
+#### Returns (string)
+`key` (string): A base64-encoded, 256-bit symmetric key, that can be used for encryption/decryption purposes.
+
+### Encrypt symmetric
+```js
+const { iv, tag, ciphertext } = await client.encryptSymmetric({
+    key: key,
+    plaintext: "Infisical is awesome!",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="plaintext" type="string">
+            The plaintext you want to encrypt.
+        </ParamField>
+        <ParamField query="key" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (object)
+`tag` (string): A base64-encoded, 128-bit authentication tag.
+`iv` (string): A base64-encoded, 96-bit initialization vector.
+`ciphertext` (string): A base64-encoded, encrypted ciphertext.
+
+### Decrypt symmetric
+```js
+const decryptedString = await client.decryptSymmetric({
+    key: key,
+    iv: iv,
+    tag: tag,
+    ciphertext: ciphertext,
+});
+```
+
+#### Parameters
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="ciphertext" type="string">
+            The ciphertext you want to decrypt.
+        </ParamField>
+        <ParamField query="key" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+        <ParamField query="iv" type="string" required>
+            The initialization vector to use for decryption.
+        </ParamField>
+        <ParamField query="tag" type="string" required>
+            The authentication tag to use for decryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (string)
+`plaintext` (string): The decrypted plaintext.

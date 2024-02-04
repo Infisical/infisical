@@ -1,0 +1,41 @@
+name: "Backend Test Report"
+
+on:
+  workflow_run:
+    workflows: ["Check Backend Pull Request"]
+    types:
+      - completed
+
+jobs:
+  be-report:
+    name: Backend test report
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: 📁 Download test results
+        id: download-artifact
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          name: be-test-results
+          path: backend
+          workflow: check-be-pull-request.yml
+          workflow_conclusion: success
+      - name: 📋 Publish test results
+        uses: dorny/test-reporter@v1
+        with:
+          name: Test Results
+          path: reports/jest-*.xml
+          reporter: jest-junit
+          working-directory: backend
+      - name: 📋 Publish coverage
+        uses: ArtiomTr/jest-coverage-report-action@v2
+        id: coverage
+        with:
+          output: comment, report-markdown
+          coverage-file: coverage/report.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: backend
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: ${{ steps.coverage.outputs.report }}

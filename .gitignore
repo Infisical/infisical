@@ -1,7 +1,9 @@
 # backend
 node_modules
 .env
+.env.test
 .env.dev
+.env.gamma
 .env.prod
 .env.infisical
 
@@ -12,6 +14,8 @@ node_modules
 .DS_Store
 
 /dist
+/completions/
+/manpages/
 
 # frontend
 
@@ -25,10 +29,12 @@ node_modules
 .env
 
 # testing
-/coverage
+coverage
+reports
+junit.xml
 
 # next.js
-/.next/
+.next/
 /out/
 
 # production
@@ -52,3 +58,8 @@ yarn-error.log*
 
 # Infisical init
 .infisical.json
+
+# Editor specific
+.vscode/*
+
+frontend-build

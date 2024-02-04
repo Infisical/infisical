@@ -1,0 +1,57 @@
+---
+title: "Machine identities"
+description: "Understanding machine identities and their best practices"
+---
+​
+Many clients use machine identities (MIs) to authenticate and read/write secrets from/to Infisical; they can be created in your organization settings.
+
+On this page, we discuss MIs, the new and improved authentication method.
+
+## Anatomy
+
+A MI in Infisical comes with a JWT-based refresh token authentication credential. The refresh token can be exchanged for an access token
+with a time-to-live (TTL) to access the Infisical API.
+
+### Database model
+
+The storage backend model for a MI contains the following notable data:
+
+- ID: The internal ID of the MI.
+- Name: The name of the MI.
+- Organization: The organization that the MI belongs to.
+- Refresh/Access Token last used: The last used dates of the MI refresh and access tokens.
+- Refresh/Access Token usage count: The number of times the MI refresh and access tokens have been used.
+- Refresh Token Rotation Enabled: Whether or not a new MI refresh token should be returned when exchanging an existing refresh token for an access token; if enabled, the old refresh token is invalidated at each refresh operation.
+- Token Version: The token version used to keep track of old/current refresh and access tokens.
+- Expiration: The date at which point the MI refresh token credential can no longer be used.
+- Access Token TTL: the time-to-live of each access token issued at each refresh token exchange.
+- Trusted IPs: The specific (IPv4 or IPv6) IPs or CIDR ranges that the token can be used from.
+
+Separately, another model stores the mapping of a MI and the organization or project-role it is bound to.
+​
+## Recommendations
+
+### Permissions
+
+You should consider the [principle of least privilege(PoLP)](https://en.wikipedia.org/wiki/Principle_of_least_privilege) when
+creating and assigning roles to MIs.
+
+For example, if an MI only requires `read` access to the secrets in the `/config` path of the staging environment, then you should scope the role of the MI to the `/config` path of that environment only with `read` permission.
+
+### Status & Expiration
+
+We recommend considering whether or not a MI should be able to access secrets indefinitely or within a finite lifetime such as until 6 months or 1 year from now
+
+### Network access
+
+We recommend configuring the IP allowlist configuration of each MI to restrict its usage to specific IP addresses or CIDR-notated range of addresses.
+
+### Storage
+
+Since MIs grant access to your secrets, we recommend storing the refresh token credential securely across your development cycle whether it be in a .env file in local development or as an environment variable of your deployment platform.
+
+### Rotation
+
+We recommend periodically rotating the MI refresh token, even in the absence of compromise. If using the Infisical Agent, we recommend enabling the **Refresh Token Rotation** option
+on your MI; this will issue a new refresh token and invalidate the old one upon a refresh token exchange operation — In doing so, the refresh token is kept as a moving target
+and secret zero risk is mitigated.

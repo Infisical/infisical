@@ -1,0 +1,264 @@
+{
+  "billing": {
+    "title": "요금제 & 결제",
+    "description": "이곳에서 조직의 구독을 확인하고 관리할 수 있어요.",
+    "subscription": "구독",
+    "starter": {
+      "name": "스타터",
+      "price-explanation": "5명의 팀 맴버까지",
+      "text": "어떤 프로젝트든 다섯명의 맴버까지 무료로 이용할 수 있어요!",
+      "subtext": "$5명/달 로 바뀔 예정입니다."
+    },
+    "professional": {
+      "name": "전문가",
+      "price-explanation": "/맴버/달",
+      "subtext": "무제한의 프로젝트와 맴버",
+      "text": "조직의 성장에 따라 유연하게 시크릿을 관리하세요."
+    },
+    "enterprise": {
+      "name": "엔터프라이즈",
+      "text": "조직의 성장에 따라 유연하게 시크릿을 관리하세요."
+    },
+    "current-usage": "현재 요금제",
+    "free": "무료",
+    "downgrade": "다운그레이드",
+    "upgrade": "업그레이드",
+    "learn-more": "자세히 알아보기",
+    "custom-pricing": "커스텀 가격",
+    "schedule-demo": "데모 예약하기"
+  },
+  "common": {
+    "head-title": "{{title}} | Infisical",
+    "error_project-already-exists": "동일한 이름을 가진 프로젝트가 이미 존재해요.",
+    "no-mobile": " Infisical을 사용하려면, 큰 화면을 가진 디바이스로 로그인하여 주세요.",
+    "email": "메일",
+    "password": "비밀번호",
+    "first-name": "이름",
+    "last-name": "성",
+    "logout": "로그아웃",
+    "validate-required": "{{name}} 을/를 입력하세요.",
+    "maintenance-alert": "We are experiencing minor technical difficulties. We are working on solving it right now. Please come back in a few minutes.",
+    "click-to-copy": "클릭하여 복사하기",
+    "project-id": "프로젝트 ID",
+    "save-changes": "변경사항 저장하기",
+    "saved": "저장됨",
+    "drop-zone": ".env 파일을 이곳에 드래그 & 드롭 하세요.",
+    "drop-zone-keys": "이곳에 .env 파일을 드래그 & 드롭 하여 더 많은 키들을 추가하세요.",
+    "role": "Role",
+    "role_admin": "admin",
+    "display-name": "표시 이름",
+    "environment": "환경",
+    "expired-in": "만료 기한:",
+    "language": "언어",
+    "search": "검색하기...",
+    "note": "Note"
+  },
+  "dashboard": {
+    "title": "시크릿",
+    "og-title": "빠르게 .env 파일을 관리하세요",
+    "og-description": "Infisical은 팀원과 .env파일을 공유할 수 있는 심플한 end-to-end 암호화 플렛폼입니다.",
+    "search-keys": "키 검색하기...",
+    "add-key": "키 추가하기",
+    "personal": "개인",
+    "personal-description": "개인 키는 오직 본인만 볼 수 있어요",
+    "shared": "공유",
+    "shared-description": "공유 키는 팀 전체가 볼 수 있어요",
+    "make-shared": "공유로 만들기",
+    "make-personal": "개인으로 만들기",
+    "check-docs": {
+      "button": "문서 확인하기",
+      "title": "좋았어요!",
+      "line1": "더 많은 시크릿들을 추가한 것을 축하합니다.",
+      "line2": "코드와 연결하는 사용하는 방법을 한번 알아보지 않을래요?"
+    },
+    "sidebar": {
+      "secret": "Secret",
+      "key": "Key",
+      "value": "Value",
+      "override": "Override value with a personal value",
+      "version-history": "Version History",
+      "comments": "Comments & Notes",
+      "personal-explanation": "This secret is personal. It is not shared with any of your teammates.",
+      "generate-random-hex": "Generate Random Hex",
+      "digits": "digits"
+    }
+  },
+  "integrations": {
+    "available": "사용 가능한 연동",
+    "available-text1": "연결하고 싶은 서비스를 클릭하세요. 환경 변수가 선택한 외부 서비스와 자동으로 연동됩니다.",
+    "available-text2": "참고: Heroku와의 연동에서는 보안상의 이유로 End-To-End 암호화를 유지하는 것이 불가능합니다. 이론적으로는 Infisical이 시크릿을 읽는것이 가능하지만, 절대 그러지 않는다고 확신할 수 있습니다. 핵심 Infisical 서비스는 항상 End-To-End 암호화 상태를 유지합니다. 질문이 있으면 support@infisical.com으로 문의하세요.",
+    "description": "외부 서비스와 함께 Infisical을 연동하고 관리하세요",
+    "no-integrations1": "연동된 서비스가 없어요. 연동하게 된다면 이곳에서 표시돼요.",
+    "no-integrations2": "시작하려면, 아래의 옵션을 클릭하세요. 대체로 5분 이내로 가능해요.",
+    "title": "프로젝트 연동",
+    "cloud-integrations": "Cloud Integrations",
+    "framework-integrations": "Framework Integrations",
+    "click-to-start": "Click on an integration to begin syncing secrets to it.",
+    "click-to-setup": "Click on a framework to get the setup instructions.",
+    "grant-access-to-secrets": "Grant Infisical access to your secrets",
+    "why-infisical-needs-access": "Most cloud integrations require Infisical to be able to decrypt your secrets so they can be forwarded over.",
+    "grant-access-button": "Grant access"
+  },
+  "login": {
+    "title": "로그인",
+    "og-title": "Infisical에 로그인하기",
+    "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files.",
+    "login": "로그인",
+    "need-account": "Infisical계정이 필요하신가요?",
+    "create-account": "회원가입 하기"
+  },
+  "mfa": {
+    "title": "회원가입",
+    "og-title": "한줄의 코드르 .env파일을 교체하세요. 3분이면 가입할 수 있어요.",
+    "og-description": "Infisical은 팀원과 .env파일을 공유하고 연동할 수 있는 심플한 end-to-end 암호화 플렛폼입니다. Node.js, Next.js, Gatsby, Nest.js 와 같은 다양한 플렛폼에서 작동해요.",
+    "signup": "회원가입",
+    "already-have-account": "이미 계정이 있나요? 로그인하기",
+    "forgot-password": "비밀번호를 잊으셨나요?",
+    "verify": "인증",
+    "step1-start": "시작하기",
+    "step1-privacy": "회원가입시 약관과 개인 정보 보호 정책을 읽고 동의한 것으로 간주합니다.",
+    "step1-submit": "시작하기",
+    "step2-message": "<email>{{email}}</email><wrapper>로 인증 메일을 전송하였습니다</wrapper><email>{{email}}</email>",
+    "step2-code-error": "코드가 잘못된 것 같아요. 남은 시도:",
+    "step2-spam-alert": "스팸함에 메일이 있지는 않은지 확인하세요",
+    "step3-message": "거의다 끝났어요!",
+    "step4-message": "긴급복구 키트 저장하기",
+    "step4-description1": "계정이 잠겼을 경우 비상 키트를 사용하여 로그인할 수 있어요.",
+    "step4-description2": "다운로드 후 안전한 곳에 보관하는 것을 추천합니다.",
+    "step4-description3": "분실시 접근하거나 복구할 수 없는 시크릿 키가 포함되어 있어요.",
+    "step4-download": "PDF 다운로드"
+  },
+  "nav": {
+    "support": {
+      "slack": "[NEW] 슬랙 포럼에 가입하기",
+      "docs": "문서 보기",
+      "issue": "깃허브 이슈 열기",
+      "email": "Infisical팀에게 메일 보내기"
+    },
+    "user": {
+      "signed-in-as": "다음으로 로그인됨",
+      "current-organization": "현재 조직",
+      "usage-billing": "요금제 & 결제",
+      "invite": "맴버 초대하기",
+      "other-organizations": "다른 조직"
+    },
+    "menu": {
+      "project": "프로젝트",
+      "secrets": "시크릿",
+      "members": "맴버",
+      "integrations": "연동",
+      "project-settings": "프로젝트 설정"
+    }
+  },
+  "section": {
+    "incident": {
+      "add-contact": "연락처 추가하기",
+      "add-dialog": {
+        "add-incident": "비상 연락처 추가하기",
+        "description": "중대한 일이 생길 경우, 이 연락처로 알림이 전송됩니다.",
+        "title": "비상 연락처 추가하기"
+      },
+      "incident-contacts": "비상 연락망",
+      "incident-contacts-description": "중대한 일이 생길 경우, 아래의 연락처로 알림이 전송됩니다.",
+      "no-incident-contacts": "비상 연락망이 존재하지 않아요."
+    },
+    "members": {
+      "add-member": "맴버 추가하기",
+      "org-members": "조직 맴버",
+      "search-members": "맴버를 검색하기...",
+      "add-dialog": {
+        "add-member-to-project": "프로젝트에 맴버 추가하기",
+        "already-all-invited": "조직의 모든 유저가 이미 초대되었습니다.",
+        "add-user-org-first": "유저를 먼저 조직에 추가해 주세요.",
+        "user-will-email": "유저는 안내가 포함된 메일을 받게 됩니다.",
+        "looking-add": "<0>조직에 유저를 추가하고 싶다면,</0><1>여기를 클릭하세요</1>",
+        "add-user-to-org": "조직에 유저 추가하기"
+      },
+      "org-members-description": "조직의 맴버들을 관리하세요."
+    },
+    "password": {
+      "password": "비밀번호",
+      "change": "비밀번호 변경",
+      "current": "현재 비밀번호",
+      "new": "새 비밀번호",
+      "current-wrong": "현재 비밀번호가 잘못되었어요",
+      "validate-base": "비밀번호는 다음을 포함해야 합니다:",
+      "validate-tooShort": "최소 14자",
+      "validate-tooLong": "최대 100자",
+      "validate-noLetterChar": "최소 1개의 문자를 포함해야 합니다.",
+      "validate-noNumOrSpecialChar": "최소 1개의 숫자 또는 특수 문자를 포함해야 합니다.",
+      "validate-repeatedChar": "연속으로 최대 3개의 반복된 문자를 포함할 수 있습니다.",
+      "validate-escapeChar": "이스케이프 문자는 허용되지 않습니다.",
+      "validate-lowEntropy": "비밀번호에 민감한 데이터가 포함되어 있습니다.",
+      "validate-breached": "비밀번호가 데이터 유출에 포함되었습니다."
+    },
+    "token": {
+      "add-dialog": {
+        "add": "서비스 토큰 추가하기",
+        "copy-service-token": "서비스 토큰 복사하기",
+        "copy-service-token-description": "팝업을 닫을 시 다시는 토큰을 확인할 수 없어요.",
+        "description": "이름, 환경, 만료일을 지정하세요. 토큰이 생성되면 최초 한번만 볼 수 있어요. 안전한 곳에 저장하세요.",
+        "name": "서비스 토큰 이름",
+        "title": "{{target}}의 토큰 추가하기"
+      },
+      "add-new": "새 토큰 추가하기",
+      "service-tokens": "서비스 토큰",
+      "service-tokens-description": "모든 서비스 토큰은 프로젝트 및 환경에 따라 다릅니다."
+    }
+  },
+  "settings": {
+    "members": {
+      "title": "맴버 설정",
+      "description": "선택한 프로젝트의 맴버를 확인하세요."
+    },
+    "org": {
+      "title": "조직 설정",
+      "description": "조직의 맴버를 관리하세요."
+    },
+    "personal": {
+      "title": "개인 설정",
+      "description": "계정 및 기본적인 설정을 확인하고 변경하세요.",
+      "emergency": {
+        "name": "긴급복구 키트",
+        "text1": "긴급복구 키트는 Infisical계정에 로그인 할 수 있는 정보를 가지고 있어요.",
+        "text2": "오직 마지막으로 발급한 긴급복구 키트만 사용 가능해요. 새로운 긴급복구 키트를 받으려면, 비밀번호를 입력하세요.",
+        "download": "긴급복구 키트 다운로드"
+      },
+      "change-language": "언어 변경하기"
+    },
+    "project": {
+      "title": "프로젝트 설정",
+      "description": "현재 선택한 프로젝트에 대해서 설정해요.",
+      "auto-generated": "자동으로 생성된 고유한 키 입니다. 변경할 수 없어요.",
+      "danger-zone": "위험존",
+      "danger-zone-note": "프로젝트를 삭제한다면 모든 키가 즉시 삭제되며 다시는 되돌릴 수 없어요. 삭제를 원한다면 프로젝트 이름을 아래에 적어주세요.",
+      "delete-project": "프로젝트 삭제",
+      "delete-project-note": "노트: 최소 한개 이상의 프로젝트는 조직에 존재해야 해요.",
+      "docs": "Infisical 문서",
+      "project-id-description": "다른 코드에서 Infisical과 환경변수를 연동하기 위해서는 프로젝트 ID가 필요해요.",
+      "project-id-description2": "다양한 언어 및 프레임워크에 대한 가이드를 확인하고 싶다면, 다음을 확인하세요. ",
+      "project-to-delete": "삭제할 프로젝트"
+    }
+  },
+  "signup": {
+    "title": "회원가입",
+    "og-title": "한줄의 코드르 .env파일을 교체하세요. 3분이면 가입할 수 있어요.",
+    "og-description": "Infisical은 팀원과 .env파일을 공유하고 연동할 수 있는 심플한 end-to-end 암호화 플렛폼입니다. Node.js, Next.js, Gatsby, Nest.js 와 같은 다양한 플렛폼에서 작동해요.",
+    "signup": "회원가입",
+    "already-have-account": "이미 계정이 있나요? 로그인하기",
+    "forgot-password": "비밀번호를 잊으셨나요?",
+    "verify": "인증",
+    "step1-start": "시작하기",
+    "step1-privacy": "회원가입시 약관과 개인 정보 보호 정책을 읽고 동의한 것으로 간주합니다.",
+    "step1-submit": "시작하기",
+    "step2-message": "<email>{{email}}</email><wrapper>로 인증 메일을 전송하였습니다</wrapper><email>{{email}}</email>",
+    "step2-code-error": "코드가 잘못된 것 같아요. 다시 시도해주세요.",
+    "step2-spam-alert": "스팸함에 메일이 있지는 않은지 확인하세요",
+    "step3-message": "거의다 끝났어요!",
+    "step4-message": "긴급복구 키트 저장하기",
+    "step4-description1": "계정이 잠겼을 경우 비상 키트를 사용하여 로그인할 수 있어요.",
+    "step4-description2": "다운로드 후 안전한 곳에 보관하는 것을 추천합니다.",
+    "step4-description3": "분실시 접근하거나 복구할 수 없는 시크릿 키가 포함되어 있어요.",
+    "step4-download": "PDF 다운로드"
+  }
+}

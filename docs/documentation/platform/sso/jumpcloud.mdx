@@ -1,0 +1,86 @@
+---
+title: "JumpCloud SAML"
+description: "Configure JumpCloud SAML for Infisical SSO"
+---
+
+<Info>
+   JumpCloud SAML SSO feature is a paid feature.
+   
+   If you're using Infisical Cloud, then it is available under the **Pro Tier**. If you're self-hosting Infisical,
+   then you should contact team@infisical.com to purchase an enterprise license to use it.
+</Info>
+
+<Steps>
+   <Step title="Prepare the SAML SSO configuration in Infisical">
+      In Infisical, head over to your organization Settings > Authentication > SAML SSO Configuration and select **Set up SAML SSO**.
+
+      Next, copy the **ACS URL** and **SP Entity ID** to use when configuring the JumpCloud SAML application.
+
+      ![JumpCloud SAML initial configuration](../../../images/sso/jumpcloud/init-config.png)
+   </Step>
+   <Step title="Create a SAML application in JumpCloud">
+      2.1. In the JumpCloud Admin Portal, navigate to User Authentication > SSO and create an application. If this is your first application, select **Get Started**; if not, select **+Add New Application**
+
+      ![JumpCloud SAML new application](../../../images/sso/jumpcloud/new-application.png)
+
+      2.2. Next, select **Custom SAML App** to open up the **New SSO** dialog.
+
+      ![JumpCloud custom SAML app](../../../images/sso/jumpcloud/custom-saml-app.png)
+
+      2.3. In the **General Info** tab, give the application a unique name like Infisical.
+
+      ![JumpCloud general info](../../../images/sso/jumpcloud/general-info.png)
+
+      2.4. In the **SSO** tab, set the **SP Entity ID** and **ACS URL** from step 1; set the **IdP Entity ID** to the same value as the **SP Entity ID**.
+
+      ![JumpCloud edit basic config](../../../images/sso/jumpcloud/edit-basic-config.png)
+
+      2.5. On the same tab, check the **Sign Assertion** checkbox and fill the **IDP URL** to something unique.
+         Copy the **IDP URL** to use when finishing configuring the JumpCloud SAML in Infisical.
+
+      ![JumpCloud edit basic config 2](../../../images/sso/jumpcloud/edit-basic-config-2.png)
+
+      2.6. On the same tab, in the **Attributes** section, configure the following map:
+
+      - `email -> email`
+      - `firstName -> firstname`
+      - `lastName -> lastname`
+
+      ![JumpCloud attribute statements](../../../images/sso/jumpcloud/attribute-statements.png)
+
+      Finally press activate to create the SAML application.
+
+      2.7. Next, select the newly created SAML application and select **Download certificate** under the **IDP Certificate Valid** dropdown
+
+      ![JumpCloud download certificate](../../../images/sso/jumpcloud/download-saml-certificate.png)
+   </Step>
+   <Step title="Finish configuring SAML in Infisical">
+      Back in Infisical, set the **IDP URL** from step 2.5 and the **IdP Entity ID** from step 2.4. Also, paste the certificate from the previous step.
+
+      ![JumpCloud IdP values](../../../images/sso/jumpcloud/idp-values.png)
+
+      <Note>
+         When pasting the certificate into Infisical, you'll want to retain `-----BEGIN
+         CERTIFICATE-----` and `-----END CERTIFICATE-----` at the first and last line
+         of the text area respectively.
+      </Note>
+   </Step>
+   <Step title="Assign users in JumpCloud to the application">
+      Back in JumpCloud, navigate to the **User Groups** tab and assign users to the newly created application.
+
+      ![JumpCloud SAML assignment](../../../images/sso/jumpcloud/assignment.png)
+   </Step>
+   <Step title="Enable SAML SSO in Infisical">
+      Enabling SAML SSO enforces all members in your organization to only be able to log into Infisical via JumpCloud.
+
+      ![JumpCloud SAML assignment](../../../images/sso/jumpcloud/enable-saml.png)
+   </Step>
+</Steps>
+
+<Note>
+   If you're configuring SAML SSO on a self-hosted instance of Infisical, make sure to
+   set the `AUTH_SECRET` and `SITE_URL` environment variable for it to work:
+   
+   - `AUTH_SECRET`: A secret key used for signing and verifying JWT. This can be a random 32-byte base64 string generated with `openssl rand -base64 32`.
+   - `SITE_URL`: The URL of your self-hosted instance of Infisical - should be an absolute URL including the protocol (e.g. https://app.infisical.com)
+</Note>

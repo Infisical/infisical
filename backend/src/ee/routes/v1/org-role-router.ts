@@ -123,13 +123,6 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  /**
-   * actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
-        orgId: req.params.organizationId
-   */
-
   server.route({
     method: "GET",
     url: "/:organizationId/permissions",

@@ -21,6 +21,7 @@ services:
     depends_on:
       - mongo
       - smtp-server
+      - redis
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -28,12 +29,17 @@ services:
       - ./backend/src:/app/src
       - ./backend/nodemon.json:/app/nodemon.json
       - /app/node_modules
+      - ./backend/api-documentation.json:/app/api-documentation.json
+      - ./backend/swagger.ts:/app/swagger.ts
     command: npm run dev
     env_file: .env
     environment:
       - NODE_ENV=development
+      - MONGO_URL=mongodb://root:example@mongo:27017/?authSource=admin
     networks:
       - infisical-dev
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
     container_name: infisical-dev-frontend
@@ -44,15 +50,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     volumes:
-      - ./frontend/pages:/app/pages
+      - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
       - ./frontend/public:/app/public
-      - ./frontend/styles:/app/styles
-      - ./frontend/components:/app/components
     env_file: .env
     environment:
       - NEXT_PUBLIC_ENV=development
-      - NEXT_PUBLIC_STRIPE_PRODUCT_PRO=${STRIPE_PRODUCT_PRO}
-      - NEXT_PUBLIC_STRIPE_PRODUCT_STARTER=${STRIPE_PRODUCT_STARTER}
+      - INFISICAL_TELEMETRY_ENABLED=${TELEMETRY_ENABLED}
     networks:
       - infisical-dev
 
@@ -62,8 +65,8 @@ services:
     restart: always
     env_file: .env
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
     volumes:
       - mongo-data:/data/db
     networks:
@@ -77,9 +80,9 @@ services:
       - mongo
     env_file: .env
     environment:
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USERNAME}
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASSWORD}
-      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017/
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=root
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=example
+      - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongo:27017/
     ports:
       - 8081:8081
     networks:
@@ -87,7 +90,7 @@ services:
 
   smtp-server:
     container_name: infisical-dev-smtp-server
-    image: mailhog/mailhog
+    image: lytrax/mailhog:latest # https://github.com/mailhog/MailHog/issues/353#issuecomment-821137362
     restart: always
     logging:
       driver: 'none' # disable saving logs
@@ -97,8 +100,35 @@ services:
     networks:
       - infisical-dev
 
+  redis:
+    image: redis
+    container_name: infisical-dev-redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - 6379:6379
+    volumes:
+        - redis_data:/data
+    networks:
+      - infisical-dev
+
+  redis-commander:
+    container_name: infisical-dev-redis-commander
+    image: rediscommander/redis-commander
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8085:8081"
+    networks:
+      - infisical-dev
+
 volumes:
   mongo-data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:

@@ -1,0 +1,10 @@
+backend/node_modules
+frontend/node_modules
+backend/frontend-build
+**/node_modules
+**/.next
+.dockerignore
+.git
+README.md
+.dockerignore
+**/Dockerfile

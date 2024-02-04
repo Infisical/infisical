@@ -1,0 +1,9 @@
+FROM alpine
+RUN apk add --no-cache tini
+
+## Upgrade OpenSSL libraries to mitigate known vulnerabilities as the current Alpine image has not been patched yet.
+RUN apk update && apk upgrade --no-cache libcrypto3 libssl3
+
+
+COPY infisical /bin/infisical
+ENTRYPOINT ["/sbin/tini", "--", "/bin/infisical"]

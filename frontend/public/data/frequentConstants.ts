@@ -1,82 +1,89 @@
-const envMapping = {
+interface Mapping {
+  [key: string]: string;
+}
+
+const integrationSlugNameMapping: Mapping = {
+  "azure-key-vault": "Azure Key Vault",
+  "aws-parameter-store": "AWS Parameter Store",
+  "aws-secret-manager": "AWS Secrets Manager",
+  heroku: "Heroku",
+  vercel: "Vercel",
+  netlify: "Netlify",
+  github: "GitHub",
+  gitlab: "GitLab",
+  render: "Render",
+  "laravel-forge": "Laravel Forge",
+  railway: "Railway",
+  flyio: "Fly.io",
+  circleci: "CircleCI",
+  travisci: "TravisCI",
+  supabase: "Supabase",
+  checkly: "Checkly",
+  qovery: "Qovery",
+  "terraform-cloud": "Terraform Cloud",
+  teamcity: "TeamCity",
+  "hashicorp-vault": "Vault",
+  "cloudflare-pages": "Cloudflare Pages",
+  "cloudflare-workers": "Cloudflare Workers",
+  codefresh: "Codefresh",
+  "digital-ocean-app-platform": "Digital Ocean App Platform",
+  bitbucket: "BitBucket",
+  "cloud-66": "Cloud 66",
+  northflank: "Northflank",
+  windmill: "Windmill",
+  "gcp-secret-manager": "GCP Secret Manager",
+  "hasura-cloud": "Hasura Cloud"
+};
+
+const envMapping: Mapping = {
   Development: "dev",
   Staging: "staging",
   Production: "prod",
-  Testing: "test",
+  Testing: "test"
 };
-  
-const reverseEnvMapping = {
+
+const reverseEnvMapping: Mapping = {
   dev: "Development",
   staging: "Staging",
   prod: "Production",
-  test: "Testing",
+  test: "Testing"
 };
 
-const frameworks = [{
-    "name": "Docker",
-    "image": "Docker",
-    "link": "https://infisical.com/docs/integrations/platforms/docker"
-  }, {
-    "name": "Docker Compose",
-    "image": "Docker Compose",
-    "link": "https://infisical.com/docs/integrations/platforms/docker-compose"
-  }, {
-    "name": "React",
-    "image": "React",
-    "link": "https://infisical.com/docs/integrations/frameworks/react"
-  }, {
-    "name": "Vue",
-    "image": "Vue",
-    "link": "https://infisical.com/docs/integrations/frameworks/vue"
-  }, {
-    "image": "Express",
-    "link": "https://infisical.com/docs/integrations/frameworks/express"
-  },{
-    "image": "Next.js",
-    "link": "https://infisical.com/docs/integrations/frameworks/nextjs"
-  }, {
-    "name": "Django",
-    "image": "Django",
-    "link": "https://infisical.com/docs/integrations/frameworks/django"
-  }, {
-    "name": "NestJS",
-    "image": "NestJS",
-    "link": "https://infisical.com/docs/integrations/frameworks/nestjs"
-  }, {
-    "name": "Nuxt",
-    "image": "Nuxt",
-    "link": "https://infisical.com/docs/integrations/frameworks/nuxt"
-  }, {
-    "name": "Gatsby",
-    "image": "Gatsby",
-    "link": "https://infisical.com/docs/integrations/frameworks/gatsby"
-  }, {
-    "name": "Remix",
-    "image": "Remix",
-    "link": "https://infisical.com/docs/integrations/frameworks/remix"
-  }, {
-    "name": "Vite",
-    "image": "Vite",
-    "link": "https://infisical.com/docs/integrations/frameworks/vite"
-  }, {
-    "image": "Fiber",
-    "link": "https://infisical.com/docs/integrations/frameworks/fiber"
-  }, {
-    "name": "Flask",
-    "image": "Flask",
-    "link": "https://infisical.com/docs/integrations/frameworks/flask"
-  }, {
-    "name": "Laravel",
-    "image": "Laravel",
-    "link": "https://infisical.com/docs/integrations/frameworks/laravel"
-  }, {
-    "image": "Rails",
-    "link": "https://infisical.com/docs/integrations/frameworks/rails"
-  }
-]
+const contextNetlifyMapping: Mapping = {
+  dev: "Local development",
+  "branch-deploy": "Branch deploys",
+  "deploy-preview": "Deploy Previews",
+  production: "Production"
+};
+
+const reverseContextNetlifyMapping: Mapping = {
+  "Local development": "dev",
+  "Branch deploys": "branch-deploy",
+  "Deploy Previews": "deploy-preview",
+  Production: "production"
+};
+
+const plansDev: Mapping = {
+  starter: "prod_Mb4ATFT5QAHoPM",
+  team: "prod_NEpD2WMXUS2eDn",
+  professional: "prod_Mb4CetZ2jE7jdl",
+  enterprise: "licence_key_required"
+};
+
+const plansProd: Mapping = {
+  starter: "prod_Mb8oR5XNwyFTul",
+  team: "prod_NEp7fAB3UJWK6A",
+  professional: "prod_Mb8pUIpA0OUi5N",
+  enterprise: "licence_key_required"
+};
+
+const plans = plansProd || plansDev;
 
 export {
+  contextNetlifyMapping,
   envMapping,
-  frameworks,
+  integrationSlugNameMapping,
+  plans,
+  reverseContextNetlifyMapping,
   reverseEnvMapping
 };

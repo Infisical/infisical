@@ -1,0 +1,248 @@
+---
+title: "Next.js + Vercel"
+---
+
+
+This guide demonstrates how to use Infisical to manage secrets for your Next.js + Vercel stack from local development to production. It uses:
+
+- Infisical (you can use [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance of Infisical](https://infisical.com/docs/self-hosting/overview)) to store your secrets.
+
+## Project Setup
+
+To begin, we need to set up a project in Infisical and add secrets to an environment in it.
+
+### Create a project
+
+1. Create a new project in [Infisical](https://app.infisical.com/).
+
+2. Add a secret to the development environment of this project so we can pull it back for local development. In the **Secrets Overview** page, press **Explore Development** and add a secret with the key `NEXT_PUBLIC_NAME` and value `YOUR_NAME`.
+
+3. Add a secret to the production environment of this project so we can sync it to Vercel. Switch to the **Production** environment and add a secret with the key `NEXT_PUBLIC_NAME` and value `ANOTHER_NAME`.
+
+## Create a Next.js app
+
+Initialize a new Node.js app.
+
+We can use `create-next-app` to initialize an app called `infisical-nextjs`.
+
+<Tabs>
+    <Tab title="JavaScript">
+        ```console
+        npx create-next-app@latest --use-npm infisical-nextjs
+        cd infisical-nextjs
+        ```
+    </Tab>
+    <Tab title="TypeScript">
+        ```console
+        npx create-next-app@latest --ts --use-npm infisical-nextjs
+        cd infisical-nextjs
+        ```
+    </Tab>
+</Tabs>
+
+Next, inside `pages/_app.js`, lets add a `console.log()` to print out the environment variable in the browser console.
+
+<Tabs>
+    <Tab title="JavaScript">
+    ```js
+    import '@/styles/globals.css'
+
+    export default function App({ Component, pageProps }) {
+        console.log('Hello, ', process.env.NEXT_PUBLIC_NAME);
+        return <Component {...pageProps} />
+    }
+    ```
+    </Tab>
+    <Tab title="TypeScript">
+    ```tsx
+    import '@/styles/globals.css'
+    import type { AppProps } from 'next/app'
+
+    export default function App({ Component, pageProps }: AppProps) {
+        console.log('Hello, ', process.env.NEXT_PUBLIC_NAME);
+        return <Component {...pageProps} />
+    }
+    ```
+    </Tab>
+</Tabs>
+
+## Infisical CLI for local development environment variables
+
+We'll now use the Infisical CLI to fetch secrets from Infisical into your Next.js app for local development.
+
+### CLI Installation
+
+Follow the instructions for your operating system to install the Infisical CLI.
+
+<Tabs>
+   <Tab title="MacOS">
+  	Use [brew](https://brew.sh/) package manager
+
+    	```console
+    	$ brew install infisical/get-cli/infisical
+    	```
+   </Tab>
+   <Tab title="Windows">
+      Use [Scoop](https://scoop.sh/) package manager
+
+        ```console
+        $ scoop bucket add org https://github.com/Infisical/scoop-infisical.git
+        ```
+
+        ```console
+        $ scoop install infisical
+        ```
+   </Tab>
+	 <Tab title="Alpine">
+	 Install prerequisite
+		```console
+		$ apk add --no-cache bash sudo
+		```
+
+    	Add Infisical repository
+    	```console
+    	$ curl -1sLf \
+    		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
+    		| bash
+    	```
+
+    	Then install CLI
+    	```console
+    	$ apk update && sudo apk add infisical
+    	```
+
+   </Tab>
+	 <Tab title="RedHat/CentOs/Amazon">
+	 Add Infisical repository
+		```console
+		$ curl -1sLf \
+		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' \
+		| sudo -E bash
+		```
+
+    	Then install CLI
+    	```console
+    	$ sudo yum install infisical
+    	```
+
+   </Tab>
+	 <Tab title="Debian/Ubuntu">
+	 	Add Infisical repository 
+			
+		```console
+		$ curl -1sLf \
+		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' \
+		| sudo -E bash
+		```
+
+    	Then install CLI
+    	```console
+    	$ sudo apt-get update && sudo apt-get install -y infisical
+    	```
+
+   </Tab>
+	<Tab title="Arch Linux">
+		Use the `yay` package manager to install from the [Arch User Repository](https://aur.archlinux.org/packages/infisical-bin)
+			
+		```console
+		$ yay -S infisical-bin
+		```
+
+   </Tab>
+</Tabs>
+
+### Login
+
+Authenticate the CLI with the Infisical platform using your email and password.
+
+```console
+$ infisical login
+```
+
+### Initialization
+
+Run the `init` command at the root of the Next.js app. This step connects your local project to the project on the Infisical platform and creates a `infisical.json` file containing a reference to that latter project.
+
+```console
+$ infisical init
+```
+
+### Start the Next.js app with secrets injected as environment variables
+
+```console
+$ infisical run -- npm run dev
+```
+
+If you open your browser console, **Hello, YOUR_NAME** should be printed out.
+
+Here, the CLI fetched the secret from Infisical and injected it into the Next.js app upon starting up. By default,
+the CLI fetches secrets from the development environment which has the slug `dev`; you can inject secrets from different
+environments by modifying the `env` flag as per the [CLI documentation](/cli/usage).
+
+At this stage, you know how to use the Infisical CLI to inject secrets into your Next.js app for local development.
+
+## Infisical-Vercel integration for production environment variables
+
+We'll now use the Infisical-Vercel integration send secrets from Infisical to Vercel as production environment variables.
+
+### Infisical-Vercel integration
+
+To begin we have to import the Next.js app into Vercel as a project. [Follow these instructions](https://nextjs.org/learn/basics/deploying-nextjs-app/deploy) to deploy the Next.js app to Vercel.
+
+Next, navigate to your project's integrations tab in Infisical and press on the Vercel tile to grant Infisical access to your Vercel account.
+
+![integrations](../../images/integrations.png)
+
+![integrations vercel authorization](../../images/integrations-vercel-auth.png)
+
+<Note>
+    Opting in for the Infisical-Vercel integration will break end-to-end encryption since Infisical will be able to read
+    your secrets. This is, however, necessary for Infisical to sync the secrets to Vercel.
+
+    Your secrets remain encrypted at rest following our [security guide mechanics](/security/mechanics).
+</Note>
+
+Now select **Production** for (the source) **Environment** and sync it to the **Production Environment** of the (target) application in Vercel.
+Lastly, press create integration to start syncing secrets to Vercel.
+
+![integrations vercel](../../images/integrations-vercel-create.png)
+![integrations vercel](../../images/integrations-vercel.png)
+
+You should now see your secret from Infisical appear as production environment variables in your Vercel project.
+
+At this stage, you know how to use the Infisical-Vercel integration to sync production secrets from Infisical to Vercel.
+
+<Warning>
+  The following environment variable names are reserved by Vercel and cannot be
+  synced: `AWS_SECRET_KEY`, `AWS_EXECUTION_ENV`, `AWS_LAMBDA_LOG_GROUP_NAME`,
+  `AWS_LAMBDA_LOG_STREAM_NAME`, `AWS_LAMBDA_FUNCTION_NAME`,
+  `AWS_LAMBDA_FUNCTION_MEMORY_SIZE`, `AWS_LAMBDA_FUNCTION_VERSION`,
+  `NOW_REGION`, `TZ`, `LAMBDA_TASK_ROOT`, `LAMBDA_RUNTIME_DIR`,
+  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`,
+  `AWS_REGION`, and `AWS_DEFAULT_REGION`.
+</Warning>
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Why should I use Infisical if I can centralize all my Next.js + Vercel environment variables across all environments directly in Vercel?">
+        Vercel does not specialize in secret management which means it lacks many useful features for effectively managing environment variables.
+        Here are some features that teams benefit from by using Infisical together with Vercel:
+
+        - Audit logs: See which team members are creating, reading, updating, and deleting environment variables across all environments.
+        - Versioning and point in time recovery: Rolling back secrets and an entire project state.
+        - Overriding secrets that should be unique amongst team members.
+
+        And much more.
+    </Accordion>
+    <Accordion title="Is opting out of end-to-end encryption for the Infisical-Vercel integration safe?">
+        Yes. Your secrets are still encrypted at rest. To note, most secret managers actually don't support end-to-end encryption.
+        
+        Check out the [security guide](/security/overview).
+    </Accordion>
+</AccordionGroup>
+
+See also:
+
+- [Documentation for the Infisical CLI](/cli/overview)
+- [Documentation for the Vercel integration](/integrations/cloud/vercel)

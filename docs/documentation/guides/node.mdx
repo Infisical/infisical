@@ -1,0 +1,124 @@
+---
+title: "Node"
+---
+
+This guide demonstrates how to use Infisical to manage secrets for your Node stack from local development to production. It uses:
+
+- Infisical (you can use [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance of Infisical](https://infisical.com/docs/self-hosting/overview)) to store your secrets.
+- The [@infisical/sdk](https://github.com/Infisical/sdk/tree/main/languages/node) Node.js client SDK to fetch secrets back to your Node application on demand.
+
+## Project Setup
+
+To begin, we need to set up a project in Infisical and add secrets to an environment in it.
+
+### Create a project
+
+1. Create a new project in [Infisical](https://app.infisical.com/).
+
+2. Add a secret to the development environment of this project so we can pull it back for local development. In the **Secrets Overview** page, press **Explore Development** and add a secret with the key `NAME` and value `YOUR_NAME`.
+
+### Create a Machine Identity
+
+Now that we've created a project and added a secret to its development environment, we need to configure an Infisical Machine Identity that our Node application can use to access the secret.
+
+- [How to setup machine identities](/documentation/platform/identities/overview)
+
+
+## Create a Node app
+
+For this demonstration, we use a minimal Express application. However, the same principles will apply to any Node application such as those built on Koa or Fastify.
+
+### Create an Express app
+
+Initialize a new Node.js project with a default `package.json` file.
+
+```console
+npm init -y
+```
+
+Install `express` and [infisical-node](https://github.com/Infisical/infisical-node), the client Node SDK for Infisical.
+
+```console
+npm install express @infisical/sdk
+```
+
+Finally, create an index.js file containing the application code.
+
+```js
+const express = require('express');
+const { InfisicalClient, LogLevel } = require("@infisical/sdk");
+
+const app = express();
+
+const PORT = 3000;
+
+const client = new InfisicalClient({
+    clientId: "YOUR_CLIENT_ID",
+    clientSecret: "YOUR_CLIENT_SECRET",
+    logLevel: LogLevel.Error
+});
+
+app.get("/", async (req, res) => {
+    // access value
+
+    const name = await client.getSecret({
+        environment: "dev",
+        projectId: "PROJECT_ID",
+        path: "/",
+        type: "shared",
+        secretName: "NAME"
+    });
+
+    res.send(`Hello! My name is: ${name.secretValue}`);
+});
+
+app.listen(PORT, async () => {
+    // initialize client
+
+    console.log(`App listening on port ${port}`);
+});
+```
+
+Here, we initialized a `client` instance of the Infisical Node SDK with the Infisical Token
+that we created earlier, giving access to the secrets in the development environment of the
+project in Infisical that we created earlier.
+
+Finally, start the app and head to `http://localhost:3000` to see the message **Hello, Your Name**.
+
+```console
+node index.js
+```
+
+The client fetched the secret with the key `NAME` from Infisical that we returned in the response of the endpoint.
+
+At this stage, you know how to fetch secrets from Infisical back to your Node application. By using Infisical Tokens scoped to different environments, you can easily manage secrets across various stages of your project in Infisical, from local development to production.
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Isn't it inefficient if my app makes a request every time it needs a secret?">
+        The client SDK caches every secret and implements a 5-minute waiting period before
+        re-requesting it. The waiting period can be controlled by setting the `cacheTTL` parameter at
+        the time of initializing the client.
+    </Accordion>
+    <Accordion title="What if a request for a secret fails?">
+        The SDK caches every secret and falls back to the cached value if a request fails. If no cached
+        value ever-existed, the SDK falls back to whatever value is on `process.env`.
+    </Accordion>
+    <Accordion title="What's the point if I still have to manage a token for the SDK?">
+        The token enables the SDK to authenticate with Infisical to fetch back your secrets.
+        Although the SDK requires you to pass in a token, it enables greater efficiency and security
+        than if you managed dozens of secrets yourself without it. Here're some benefits:
+
+        - You always pull in the right secrets because they're fetched on demand from a centralized source that is Infisical.
+        - You can use the Infisical which comes with tons of benefits like secret versioning, access controls, audit logs, etc.
+        - You now risk leaking one token that can be revoked instead of dozens of raw secrets.
+        
+        And much more.
+    </Accordion>
+    
+</AccordionGroup>
+
+See also:
+
+- Explore the [Node SDK](https://github.com/Infisical/sdk/tree/main/languages/node)

@@ -1,0 +1,36 @@
+---
+title: "Authentication"
+description: "How to authenticate with the Infisical Public API"
+---
+
+You can authenticate with the Infisical API using [Identities](/documentation/platform/identities/overview) paired with authentication modes such as [Universal Auth](/documentation/platform/identities/universal-auth).
+
+To interact with the Infisical API, you will need to obtain an access token. Follow the step by [step guide](/documentation/platform/identities/universal-auth) to get an access token via Universal Auth.
+
+
+**FAQ**
+
+<AccordionGroup>
+<Accordion title="What happened to the Service Token and API Key authentication modes?">
+    The Service Token and API Key authentication modes are being deprecated out in favor of [Identities](/documentation/platform/identity).
+    We expect to make a deprecation notice in the coming months alongside a larger deprecation initiative planned for Q1/Q2 2024.
+
+    With identities, we're improving significantly over the shortcomings of Service Tokens and API Keys. Amongst many differences, identities provide broader access over the Infisical API, utilizes the same role-based
+    permission system used by users, and comes with ample more configurable security measures.
+</Accordion>
+<Accordion title="Why can I not create, read, update, or delete an identity?">
+  There are a few reasons for why this might happen:
+  
+  - You have insufficient organization permissions to create, read, update, delete identities.
+  - The identity you are trying to read, update, or delete is more privileged than yourself.
+  - The role you are trying to create an identity for or update an identity to is more privileged than yours.
+</Accordion>
+<Accordion title="Why is the Infisical API rejecting my identity credentials?">
+  There are a few reasons for why this might happen:
+  
+  - The client secret or access token has expired.
+  - The identity is insufficently permissioned to interact with the resources you wish to access.
+  - You are attempting to access a `/raw` secrets endpoint that requires your project to disable E2EE.
+  - The client secret/access token is being used from an untrusted IP.
+</Accordion>
+</AccordionGroup>

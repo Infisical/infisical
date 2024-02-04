@@ -1,0 +1,34 @@
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: infisicalsecret-sample
+  labels:
+    label-to-be-passed-to-managed-secret: sample-value
+  annotations:
+    example.com/annotation-to-be-passed-to-managed-secret: "sample-value"
+spec:
+  hostAPI: https://app.infisical.com/api
+  resyncInterval: 10
+  authentication:
+    serviceAccount:
+      serviceAccountSecretReference:
+        secretName: service-account
+        secretNamespace: default
+      projectId: "6439ec224cfbf7ea2a95b651"
+      environmentName: "dev"
+    serviceToken:
+      serviceTokenSecretReference:
+        secretName: service-token
+        secretNamespace: default
+      secretsScope:
+        envSlug: dev
+        secretsPath: "/"
+  managedSecretReference:
+    secretName: managed-secret
+    secretNamespace: default
+    # secretType: kubernetes.io/dockerconfigjson
+
+  # # To be depreciated soon
+  # tokenSecretReference:
+  #   secretName: service-token
+  #   secretNamespace: default

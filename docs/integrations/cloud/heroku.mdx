@@ -1,26 +1,67 @@
 ---
 title: "Heroku"
-description: "With this integration, you can automatically sync your secrets to Heroku as soon as you update secrets in Infisical."
+description: "How to sync secrets from Infisical to Heroku"
 ---
 
-## Instructions
+<Tabs>
+  <Tab title="Usage">
+    Prerequisites:
 
-### Step 1: Open the integrations console
+    - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
-Open the Infisical Dashboard. Choose the project in which you want to set up the intergation. Go to the integrations tab in the left sidebar.
+    <Steps>
+      <Step title="Authorize Infisical for Heroku">
+        Navigate to your project's integrations tab in Infisical.
 
-### Step 2: Authenticate with Heroku
+        ![integrations](../../images/integrations.png)
 
-Click on "Heroku" tile. Log in if required and provide the necessary permissions to Infisical. You will afterwards be redirected back to the integrations page.
+        Press on the Heroku tile and grant Infisical access to your Heroku account.
 
-Note: during an integration with Heroku, for security reasons, it is impossible to maintain end-to-end encryption. In theory, this lets Infisical decrypt yor environment variables. In practice, we can assure you that this will never be done, and it allows us to protect your secrets from bad actors online. With any questions, reach out support@infisical.com.
+        ![integrations heroku authorization](../../images/integrations/heroku/integrations-heroku-auth.png)
 
-### Step 3: Start integration
+        <Info>
+          If this is your project's first cloud integration, then you'll have to grant
+          Infisical access to your project's environment variables. Although this step
+          breaks E2EE, it's necessary for Infisical to sync the environment variables to
+          the cloud platform.
+        </Info>
+      </Step>
+      <Step title="Start integration">
+        Select which Infisical environment secrets you want to sync to which Heroku app and press create integration to start syncing secrets to Heroku.
+        
+        ![integrations heroku](../../images/integrations/heroku/integrations-heroku-create.png)
+        ![integrations heroku](../../images/integrations/heroku/integrations-heroku.png)
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Self-Hosted Setup">
+    Using the Heroku integration on a self-hosted instance of Infisical requires configuring an API client in Heroku
+    and registering your instance with it.
+    <Steps>
+      <Step title="Create an API client in Heroku">
+        Navigate to your user Account settings > Applications to create a new API client.
 
-Choose a Heroku App that you want to sync the secrets to, and the Infisical project environment that you want to sync the secrets from. Start the integration.
+        ![integrations Heroku config](../../images/integrations/heroku/integrations-heroku-config-settings.png) 
+        ![integrations Heroku config](../../images/integrations/heroku/integrations-heroku-config-applications.png) 
+        ![integrations Heroku config](../../images/integrations/heroku/integrations-heroku-config-new-app.png) 
+        
+          Create the API client. As part of the form, set the **OAuth callback URL** to `https://your-domain.com/integrations/heroku/oauth2/callback`.
 
-The integration should now show status 'In Sync'. Every time you edit secrets, they will be automatically pushed to Heroku. 
+        ![integrations Heroku config](../../images/integrations/heroku/integrations-heroku-config-new-app-form.png) 
+      </Step>
+      <Step title="Add your Heroku API client credentials to Infisical">
+        Obtain the **Client ID** and **Client Secret** for your Heroku API client.
+        
+        ![integrations Heroku config](../../images/integrations/heroku/integrations-heroku-config-credentials.png) 
+        
+        Back in your Infisical instance, add two new environment variables for the credentials of your Heroku API client.
 
-<Info> 
-  If you need to update your integration, you will have to delete the current one and create a new one.
-</Info>
+        - `CLIENT_ID_HEROKU`: The **Client ID** of your Heroku API client.
+        - `CLIENT_SECRET_HEROKU`: The **Client Secret** of your Heroku API client.
+        
+        Once added, restart your Infisical instance and use the Heroku integration.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+

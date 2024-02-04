@@ -1,0 +1,1 @@
+export { withPermission } from "./withPermission";

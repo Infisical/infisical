@@ -1,16 +1,25 @@
 {{ if .Values.ingress.enabled }}
+{{- $ingress := .Values.ingress }}
+{{- if and $ingress.ingressClassName (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey $ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set $ingress.annotations "kubernetes.io/ingress.class" $ingress.ingressClassName}}
+  {{- end }}
+{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: infisical-ingress
-  {{- with .Values.ingress.annotations }}
+  {{- with $ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-{{- if .Values.ingress.tls }}
+  {{- if and $ingress.ingressClassName (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ $ingress.ingressClassName | default "nginx" }}
+  {{- end }}
+{{- if $ingress.tls }}
   tls:
-  {{- range .Values.ingress.tls }}
+  {{- range $ingress.tls }}
     - hosts:
       {{- range .hosts }}
         - {{ . | quote }}
@@ -19,21 +28,23 @@ spec:
   {{- end }}
 {{- end }}
   rules:
-  - host: {{ .Values.ingress.hostName}}
-    http: 
-      paths:
-      - path: {{ .Values.ingress.frontend.path }}
-        pathType: {{ .Values.ingress.frontend.pathType }}
-        backend:
-          service:
-            name: infisical-frontend-service 
-            port:
-              number: 3000
-      - path: {{ .Values.ingress.backend.path }}
-        pathType: {{ .Values.ingress.backend.pathType }}
-        backend:
-          service:
-            name: infisical-backend-service 
-            port:
-              number: 4000
+    - http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: {{ include "infisical.backend.fullname" . }}
+              port:
+                number: 8080
+        - path: /ss-webhook
+          pathType: Exact
+          backend:
+            service:
+              name: {{ include "infisical.backend.fullname" . }}
+              port:
+                number: 8080
+      {{- if $ingress.hostName }}
+      host: {{ $ingress.hostName }}
+      {{- end }}
 {{ end }}

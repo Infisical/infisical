@@ -1,10 +1,10 @@
 ---
 title: 'Install'
+description: "Infisical's CLI is one of the best way to manage environments and secrets. Install it here"
 ---
 
-Prerequisite: Set up an account with [Infisical Cloud](https://app.infisical.com) or via a [self-hosted installation](/self-hosting/overview).
-
-The Infisical CLI provides a way to inject environment variables from the platform into your apps and infrastructure.
+The Infisical CLI is powerful command line tool that can be used to retrieve, modify, export and inject secrets into any process or application as environment variables. 
+You can use it across various environments, whether it's local development, CI/CD, staging, or production.
 
 ## Installation
 
@@ -16,10 +16,10 @@ The Infisical CLI provides a way to inject environment variables from the platfo
     	brew install infisical/get-cli/infisical
     	```
 
-    	## Updates
+    	### Updates
 
     	```bash
-    	brew upgrade infisical
+    	brew update && brew upgrade infisical
     	```
 
    </Tab>
@@ -34,7 +34,7 @@ The Infisical CLI provides a way to inject environment variables from the platfo
     			scoop install infisical
     			```
 
-    		## Updates
+    		### Updates
 
     		```bash
     		scoop update infisical
@@ -44,21 +44,24 @@ The Infisical CLI provides a way to inject environment variables from the platfo
 	 <Tab title="Alpine">
 	 Install prerequisite
 		```bash
-		sudo apk add --no-cache bash sudo
+		apk add --no-cache bash sudo
 		```
 
     	Add Infisical repository
     	```bash
     	curl -1sLf \
     		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
-    		| sudo -E bash
+    		| bash
     	```
 
     	Then install CLI
     	```bash
-    	sudo apk update && sudo apk add infisical
+    	apk update && sudo apk add infisical
     	```
-
+		###
+		<Tip>
+			If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+		</Tip>
    </Tab>
 	 <Tab title="RedHat/CentOs/Amazon">
 	 Add Infisical repository
@@ -72,7 +75,10 @@ The Infisical CLI provides a way to inject environment variables from the platfo
     	```bash
     	sudo yum install infisical
     	```
-
+		###
+		<Tip>
+			If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+		</Tip>
    </Tab>
 	 <Tab title="Debian/Ubuntu">
 	 	Add Infisical repository 
@@ -87,12 +93,26 @@ The Infisical CLI provides a way to inject environment variables from the platfo
     	```bash
     	sudo apt-get update && sudo apt-get install -y infisical
     	```
+	###
+	<Tip>
+		If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+	</Tip>
+   </Tab>
+	<Tab title="Arch Linux">
+		Use the `yay` package manager to install from the [Arch User Repository](https://aur.archlinux.org/packages/infisical-bin)
+			
+		```bash
+		yay -S infisical-bin
+		```
 
+	###
+	<Tip>
+		If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+	</Tip>
    </Tab>
 </Tabs>
 
-## Log in to the Infisical CLI
-
-```bash
-infisical login
-```
+## Quick Usage Guide
+<Card color="#00A300" href="./usage">
+  Now that you have the CLI installed on your system, follow this guide to make the best use of it
+</Card>

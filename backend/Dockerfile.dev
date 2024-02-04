@@ -1,0 +1,18 @@
+FROM node:20-alpine
+
+RUN apk add --no-cache bash curl && curl -1sLf \
+  'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+  && apk add infisical=0.8.1 && apk add --no-cache git
+
+WORKDIR /app
+
+COPY package.json package.json
+COPY package-lock.json package-lock.json
+
+RUN npm install
+
+COPY . .
+
+ENV HOST=0.0.0.0
+
+CMD ["npm", "run", "dev:docker"]

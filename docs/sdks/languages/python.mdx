@@ -1,0 +1,364 @@
+---
+title: "Infisical Python SDK"
+icon: "python"
+---
+
+If you're working with Python, the official [infisical-python](https://github.com/Infisical/sdk/edit/main/crates/infisical-py) package is the easiest way to fetch and work with secrets for your application.
+
+- [PyPi Package](https://pypi.org/project/infisical-python/)
+- [Github Repository](https://github.com/Infisical/sdk/edit/main/crates/infisical-py)
+
+## Basic Usage
+
+```py
+from flask import Flask
+from infisical_client import ClientSettings, InfisicalClient, GetSecretOptions
+
+app = Flask(__name__)
+
+client = InfisicalClient(ClientSettings(
+    client_id="MACHINE_IDENTITY_CLIENT_ID",
+    client_secret="MACHINE_IDENTITY_CLIENT_SECRET",
+))
+
+@app.route("/")
+def hello_world():
+    # access value
+
+    name = client.getSecret(options=GetSecretOptions(
+       environment="dev",
+       project_id="PROJECT_ID",
+       secret_name="NAME"
+    ))
+
+    return f"Hello! My name is: {name.secret_value}"
+```
+
+This example demonstrates how to use the Infisical Python SDK with a Flask application. The application retrieves a secret named "NAME" and responds to requests with a greeting that includes the secret value.
+
+<Warning>
+    We do not recommend hardcoding your [Machine Identity Tokens](/platform/identities/overview). Setting it as an environment variable would be best.
+</Warning>
+
+## Installation
+
+Run `pip` to add `infisical-python` to your project
+
+```console
+$ pip install infisical-python
+```
+
+Note: You need Python 3.7+.
+
+## Configuration
+
+Import the SDK and create a client instance with your [Machine Identity](/api-reference/overview/authentication).
+
+```py
+from infisical_client import ClientSettings, InfisicalClient
+
+client = InfisicalClient(ClientSettings(
+    client_id="MACHINE_IDENTITY_CLIENT_ID",
+    client_secret="MACHINE_IDENTITY_CLIENT_SECRET",
+))
+```
+
+#### Parameters
+
+<ParamField query="options" type="object">
+    <Expandable title="properties">
+        <ParamField query="client_id" type="string" optional>
+            Your Infisical Client ID.
+        </ParamField>
+        <ParamField query="client_secret" type="string" optional>
+            Your Infisical Client Secret.
+        </ParamField>
+        <ParamField query="access_token" type="string" optional>
+            If you want to directly pass an access token obtained from the authentication endpoints, you can do so.
+        </ParamField>
+
+        <ParamField query="cache_ttl" type="number" default="300" optional>
+            Time-to-live (in seconds) for refreshing cached secrets.
+            If manually set to 0, caching will be disabled, this is not recommended.
+        </ParamField>
+
+
+        <ParamField
+        query="site_url"
+        type="string"
+        default="https://app.infisical.com"
+        optional
+        >
+        Your self-hosted absolute site URL including the protocol (e.g.
+        `https://app.infisical.com`)
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### Caching
+
+To reduce the number of API requests, the SDK temporarily stores secrets it retrieves. By default, a secret remains cached for 5 minutes after it's first fetched. Each time it's fetched again, this 5-minute timer resets. You can adjust this caching duration by setting the "cache_ttl" option when creating the client.
+
+## Working with Secrets
+
+### client.listSecrets(options)
+
+```py
+client.listSecrets(options=ListSecretsOptions(
+    environment="dev",
+    project_id="PROJECT_ID"
+))
+```
+
+Retrieve all secrets within the Infisical project and environment that client is connected to
+
+#### Parameters
+
+<ParamField query="Parameters" type="object">
+    <Expandable title="properties">
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+          <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in. 
+        </ParamField>
+
+         <ParamField query="path" type="string" optional>
+            The path from where secrets should be fetched from.
+        </ParamField>
+
+        <ParamField query="attach_to_process_env" type="boolean" default="false" optional>
+            Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `process.env["SECRET_NAME"]`.
+        </ParamField>
+
+        <ParamField query="include_imports" type="boolean" default="false" optional>
+             Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### client.getSecret(options)
+
+```py
+secret = client.getSecret(options=GetSecretOptions(
+    environment="dev",
+    project_id="PROJECT_ID",
+    secret_name="API_KEY"
+))
+value = secret.secret_value # get its value
+```
+
+By default, `getSecret()` fetches and returns a shared secret. If not found, it returns a personal secret.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secret_name" type="string" required>
+            The key of the secret to retrieve
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be fetched from.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "personal".
+        </ParamField>
+        <ParamField query="include_imports" type="boolean" default="false" optional>
+            Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.createSecret(options)
+
+```py
+api_key = client.createSecret(options=CreateSecretOptions(
+    secret_name="API_KEY",
+    secret_value="Some API Key",
+    environment="dev",
+    project_id="PROJECT_ID"
+))
+```
+
+Create a new secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secret_name" type="string" required>
+            The key of the secret to create.
+        </ParamField>
+        <ParamField query="secret_value" type="string" required>
+            The value of the secret.
+        </ParamField>
+        <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be created.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.updateSecret(options)
+
+```py
+client.updateSecret(options=UpdateSecretOptions(
+    secret_name="API_KEY",
+    secret_value="NEW_VALUE",
+    environment="dev",
+    project_id="PROJECT_ID"
+))
+```
+
+Update an existing secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secret_name" type="string" required>
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="secret_value" type="string" required>
+            The new value of the secret.
+        </ParamField>
+        <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be updated.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.deleteSecret(options)
+
+```py
+client.deleteSecret(options=DeleteSecretOptions(
+    environment="dev",
+    project_id="PROJECT_ID",
+    secret_name="API_KEY"
+))
+```
+
+Delete a secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secret_name" type="string">
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be deleted.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+## Cryptography
+
+### Create a symmetric key
+
+Create a base64-encoded, 256-bit symmetric key to be used for encryption/decryption.
+
+```py
+key = client.createSymmetricKey()
+```
+
+#### Returns (string)
+`key` (string): A base64-encoded, 256-bit symmetric key, that can be used for encryption/decryption purposes.
+
+### Encrypt symmetric
+```py
+encryptOptions = EncryptSymmetricOptions(
+    key=key,
+    plaintext="Infisical is awesome!"
+)
+
+encryptedData = client.encryptSymmetric(encryptOptions)
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="plaintext" type="string">
+            The plaintext you want to encrypt.
+        </ParamField>
+        <ParamField query="key" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (object)
+`tag` (string): A base64-encoded, 128-bit authentication tag.
+`iv` (string): A base64-encoded, 96-bit initialization vector.
+`ciphertext` (string): A base64-encoded, encrypted ciphertext.
+
+### Decrypt symmetric
+```py
+decryptOptions = DecryptSymmetricOptions(
+    ciphertext=encryptedData.ciphertext,
+    iv=encryptedData.iv,
+    tag=encryptedData.tag,
+    key=key
+)
+
+decryptedString = client.decryptSymmetric(decryptOptions)
+
+
+```
+
+#### Parameters
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="ciphertext" type="string">
+            The ciphertext you want to decrypt.
+        </ParamField>
+        <ParamField query="key" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+        <ParamField query="iv" type="string" required>
+            The initialization vector to use for decryption.
+        </ParamField>
+        <ParamField query="tag" type="string" required>
+            The authentication tag to use for decryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (string)
+`plaintext` (string): The decrypted plaintext.

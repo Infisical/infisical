@@ -1,0 +1,1 @@
+export { withProjectPermission } from "./withProjectPermission";

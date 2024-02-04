@@ -1,0 +1,115 @@
+---
+title: "Python"
+---
+
+This guide demonstrates how to use Infisical to manage secrets for your Python stack from local development to production. It uses:
+
+- Infisical (you can use [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance of Infisical](https://infisical.com/docs/self-hosting/overview)) to store your secrets.
+- The [infisical-python](https://github.com/Infisical/sdk/tree/main/crates/infisical-py) Python client SDK to fetch secrets back to your Python application on demand.
+
+## Project Setup
+
+To begin, we need to set up a project in Infisical and add secrets to an environment in it.
+
+### Create a project
+
+1. Create a new project in [Infisical](https://app.infisical.com/).
+
+2. Add a secret to the development environment of this project so we can pull it back for local development. In the **Secrets Overview** page, press **Explore Development** and add a secret with the key `NAME` and value `YOUR_NAME`.
+
+### Create a Machine Identity
+
+Now that we've created a project and added a secret to its development environment, we need to configure an Infisical Machine Identity that our Python application can use to access the secret.
+
+- [How to setup machine identities](/documentation/platform/identities/overview)
+
+## Create a Python app
+
+For this demonstration, we use a minimal Flask application. However, the same principles will apply to any Python application such as those built with Django.
+
+### Create a Flask app
+
+First, create a virtual environment and activate it.
+
+```console
+python3 -m venv env
+source env/bin/activate
+```
+
+Install Flask and [infisical-python](https://github.com/Infisical/sdk/tree/main/crates/infisical-py), the client Python SDK for Infisical.
+
+```console
+pip install Flask infisical-python
+```
+
+Finally, create an `app.py` file containing the application code.
+
+```py
+from flask import Flask
+from infisical_client import ClientSettings, InfisicalClient, GetSecretOptions
+
+app = Flask(__name__)
+
+client = InfisicalClient(ClientSettings(
+    client_id="MACHINE_IDENTITY_CLIENT_ID",
+    client_secret="MACHINE_IDENTITY_CLIENT_SECRET",
+))
+
+@app.route("/")
+def hello_world():
+    # access value
+
+    name = client.getSecret(options=GetSecretOptions(
+       environment="dev",
+       project_id="PROJECT_ID",
+       secret_name="NAME"
+    ))
+
+    return f"Hello! My name is: {name.secret_value}"
+```
+
+Here, we initialized a `client` instance of the Infisical Python SDK with the Infisical Token
+that we created earlier, giving access to the secrets in the development environment of the
+project in Infisical that we created earlier.
+
+Finally, start the app and head to `http://localhost:5000` to see the message **Hello, Your Name**.
+
+```console
+flask run
+```
+
+The client fetched the secret with the key `NAME` from Infisical that we returned in the response of the endpoint.
+
+At this stage, you know how to fetch secrets from Infisical back to your Python application. By using Infisical Tokens scoped to different environments, you can easily manage secrets across various stages of your project in Infisical, from local development to production.
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Isn't it inefficient if my app makes a request every time it needs a secret?">
+        The client SDK caches every secret and implements a 5-minute waiting period before
+        re-requesting it. The waiting period can be controlled by setting the `cacheTTL` parameter at
+        the time of initializing the client.
+    </Accordion>
+    <Accordion title="What if a request for a secret fails?">
+        The SDK caches every secret and falls back to the cached value if a request fails. If no cached
+        value ever-existed, the SDK falls back to whatever value is on `process.env`.
+    </Accordion>
+    <Accordion title="What's the point if I still have to manage a token for the SDK?">
+        The token enables the SDK to authenticate with Infisical to fetch back your secrets.
+        Although the SDK requires you to pass in a token, it enables greater efficiency and security
+        than if you managed dozens of secrets yourself without it. Here're some benefits:
+
+        - You always pull in the right secrets because they're fetched on demand from a centralized source that is Infisical.
+        - You can use the Infisical which comes with tons of benefits like secret versioning, access controls, audit logs, etc.
+        - You now risk leaking one token that can be revoked instead of dozens of raw secrets.
+        
+        And much more.
+    </Accordion>
+    
+</AccordionGroup>
+
+See also:
+
+- Explore the [Python SDK](https://github.com/Infisical/sdk/tree/main/crates/infisical-py)
+
+

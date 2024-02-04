@@ -1,44 +1,38 @@
 ---
 title: "Docker Compose"
+description: "How to use Infisical to inject environment variables into services defined in your Docker Compose file."
 ---
 
-The Docker Compose integration enables you to inject environment variables from Infisical into the containers defined in your compose file.
+Prerequisites:
 
-## Add the CLI to your Dockerfile(s) start command
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
-Follow the [guide to configure Infisical CLI](./docker) in your your Dockerfile first.
+## Configure the Infisical CLI for each service
 
-## Generate Infisical Token
+Follow this [guide](./docker) to configure the Infisical CLI for each service that you wish to inject environment variables into; you'll have to update the Dockerfile of each service.
 
-In order for Infisical CLI to authenticate and retrieve your project's secrets without exposing your login credentials, you must generate a Infisical Token.
-To learn how, visit [Infisical Token](../../getting-started/dashboard/token). Once you have generated the token, keep it handy.
+## Generate service token 
 
-<Info>
-  If you have multiple services and they do not use the same secrets, you will
-  have to generate a Infisical Token for each service.
-</Info>
+Generate a unique [Infisical Token](/documentation/platform/token) for each service.
 
-## Tell Docker Compose your Infisical Token
+## Feed service token to your Docker Compose file
 
-For each service you want to inject secrets into, set an environment variable called `INFISICAL_TOKEN` equal to a helpful identifier variable.
-This will ensure that you can set Infisical Tokens for multiple services.
+For each service you want to inject secrets into, set an environment variable called `INFISICAL_TOKEN` equal to a unique identifier variable.
 
-For the example below, we have set `INFISICAL_TOKEN_FOR_WEB` and `INFISICAL_TOKEN_FOR_API` as the `INFISICAL_TOKEN` for the corresponding service.
+In the example below, we set `INFISICAL_TOKEN_FOR_WEB` and `INFISICAL_TOKEN_FOR_API` as the `INFISICAL_TOKEN` for the services.
 
 ```yaml
 # Example Docker Compose file
 services:
   web:
     build: .
-    image: auledge-frontend
-    container_name: auledge-frontend
+    image: example-service-1
     environment:
       - INFISICAL_TOKEN=${INFISICAL_TOKEN_FOR_WEB}
 
   api:
     build: .
-    image: auledge-backend
-    container_name: auledge-backend
+    image: example-service-2
     environment:
       - INFISICAL_TOKEN=${INFISICAL_TOKEN_FOR_API}
 ```

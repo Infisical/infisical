@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 ### Feature description
-A clear and concise description of what the the feature should be.
+A clear and concise description of what the feature should be.
 
 ### Why would it be useful?
 Why would this feature be useful for Infisical users? 

@@ -1,0 +1,37 @@
+---
+title: "infisical vault"
+description: "Change the vault type in Infisical"
+---
+
+<Tabs>
+  <Tab title="View current Vault">
+    ```bash
+    infisical vault 
+
+    # Example output
+    Vaults are used to securely store your login details locally. Available vaults:
+    - auto (automatically select native vault on system)
+    - file (encrypted file vault)
+
+    You are currently using [file] vault to store your login credentials
+    ```
+  </Tab>
+
+  <Tab title="Switch vault">
+    ```bash
+    infisical vault set <name-of-vault>
+
+    # Example 
+    infisical vault set keychain
+    ```
+  </Tab>
+</Tabs>
+
+
+## Description
+
+To safeguard your login details when using the CLI, Infisical places them in a system vault or an encrypted text file, protected by a passphrase that only the user knows.
+
+<Tip>To avoid constantly entering your passphrase when using the `file` vault type, set the `INFISICAL_VAULT_FILE_PASSPHRASE` environment variable with your password in your shell</Tip>
+
+

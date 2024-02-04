@@ -1,33 +1,188 @@
 ---
-title: "Environment Variables"
-description: ""
+title: "All environment variables"
+description: "Configure your environment variables when self-hosting Infisical."
 ---
 
-## The .env file
+## Environment variables
 
-Configuring Infisical requires setting some environment variables. There is a file called `.env.example` at the root directory of our main repo that you can use to create a `.env` before you start the server.
+Depending on your chosen self hosted deployment method, you may need to configured at least the required environment variable listed below.
+Other environment variables are listed below to increase the functionality of your self hosted instance based on your use case.
 
-| Variable                     | Description                                                                                                 | Default Value    |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------- |
-| `PRIVATE_KEY`                | ❗️ NaCl-generated server secret key                                                                         | `None`           |
-| `PUBLIC_KEY`                 | ❗️ NaCl-generated server public key                                                                         | `None`           |
-| `ENCRYPTION_KEY`             | ❗️ Strong hex encryption key                                                                                | `None`           |
-| `JWT_SIGNUP_SECRET`          | ❗️ JWT token secret                                                                                         | `None`           |
-| `JWT_REFRESH_SECRET`         | ❗️ JWT token secret                                                                                         | `None`           |
-| `JWT_AUTH_SECRET`            | ❗️ JWT token secret                                                                                         | `None`           |
-| `JWT_SIGNUP_LIFETIME`        | JWT token lifetime expressed in seconds or a string describing a time span (e.g. 60, "2 days", "10h", "7d") | `15m`            |
-| `JWT_REFRESH_LIFETIME`       | JWT token lifetime expressed in seconds or a string describing a time span (e.g. 60, "2 days", "10h", "7d") | `90d`            |
-| `JWT_AUTH_LIFETIME`          | JWT token lifetime expressed in seconds or a string describing a time span (e.g. 60, "2 days", "10h", "7d") | `10d`            |
-| `EMAIL_TOKEN_LIFETIME`       | Email OTP/magic-link lifetime expressed in seconds                                                          | `86400`          |
-| `MONGO_URL`                  | ❗️ MongoDB instance connection string either to container instance or MongoDB Cloud                         | `None`           |
-| `MONGO_USERNAME`             | MongoDB username if using container                                                                         | `None`           |
-| `MONGO_PASSWORD`             | MongoDB password if using container                                                                         | `None`           |
-| `SITE_URL`                   | ❗️ Site URL - should be an absolute URL including the protocol (e.g. `https://app.infisical.com`)           | `None`           |
-| `SMTP_HOST`                  | Hostname to connect to for establishing SMTP connections                                                    | `smtp.gmail.com` |
-| `SMTP_NAME`                  | Name label to be used in From field (e.g. `Team`)                                                           | `None`           |
-| `SMTP_USERNAME`              | ❗️ Credential to connect to host (e.g. `team@infisical.com`)                                                | `None`           |
-| `SMTP_PASSWORD`              | ❗️ Credential to connect to host                                                                            | `None`           |
-| `TELEMETRY_ENABLED`          | `true` or `false`. [More](../overview).                                                                     | `true`           |
-| `OAUTH_CLIENT_SECRET_HEROKU` | OAuth client secret for Heroku integration                                                                  | `None`           |
-| `OAUTH_TOKEN_URL_HEROKU`     | OAuth token URL for Heroku integration                                                                      | `None`           |
-| `SENTRY_DSN`                 | DSN for error-monitoring with Sentry                                                                        | `None`           |
+<Tabs>
+  <Tab title="Required">
+    <ParamField query="ENCRYPTION_KEY" type="string" default="none" required>
+      Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+    </ParamField>
+
+    <ParamField query="AUTH_SECRET" type="string" default="none" required>
+      Must be a random 32 byte base64 string. Can be generated with `openssl rand -base64 32`
+    </ParamField>
+
+    <ParamField query="MONGO_URL" type="string" default="none" required>
+      Mongo connection string. *TLS based connection string is not yet supported
+    </ParamField>
+
+    <ParamField query="REDIS_URL" type="string" default="none" required>
+      Redis connection string
+    </ParamField>
+  </Tab>
+  <Tab title="Email service">
+    <Info>When email service is not configured, Infisical will have limited functionality</Info>
+
+    <ParamField query="SMTP_HOST" type="string" default="none" optional>
+      Hostname to connect to for establishing SMTP connections
+    </ParamField>
+
+    <ParamField query="SMTP_USERNAME" type="string" default="none" optional>
+      Credential to connect to host (e.g. team@infisical.com)
+    </ParamField>
+
+    <ParamField query="SMTP_PASSWORD" type="string" default="none" optional>
+      Credential to connect to host
+    </ParamField>
+
+    <ParamField query="SMTP_PORT" type="string" default="587" optional>
+        Port to connect to for establishing SMTP connections
+    </ParamField>
+
+    <ParamField query="SMTP_SECURE" type="string" default="none" optional>
+    If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported
+    </ParamField>
+
+    <ParamField query="SMTP_FROM_ADDRESS" type="string" default="none" optional>
+      Email address to be used for sending emails
+    </ParamField>
+
+    <ParamField query="SMTP_FROM_NAME" type="string" default="none" optional>
+      Name label to be used in From field (e.g. Team)
+    </ParamField>
+
+  </Tab>
+  <Tab title="Secret Integrations">
+    To sync secret to third party services, provide value for the related services
+
+    <ParamField query="CLIENT_ID_HEROKU" type="string" default="none" optional>
+      OAuth2 client ID for Heroku integration
+    </ParamField>
+
+    <ParamField query="CLIENT_SECRET_HEROKU" type="string" default="none" optional>
+      OAuth2 client secret for Heroku integration
+    </ParamField>
+
+    <ParamField query="CLIENT_ID_VERCEL" type="string" default="none" optional>
+      OAuth2 client ID for Vercel integration
+    </ParamField>
+
+    <ParamField query="CLIENT_SECRET_VERCEL" type="string" default="none" optional>
+      OAuth2 client secret for Vercel integration
+    </ParamField>
+
+    <ParamField query="CLIENT_ID_NETLIFY" type="string" default="none" optional>
+      OAuth2 client ID for Netlify integration
+    </ParamField>
+
+    <ParamField query="CLIENT_SECRET_NETLIFY" type="string" default="none" optional>
+      OAuth2 client secret for Netlify integration
+    </ParamField>
+
+    <ParamField query="CLIENT_ID_GITHUB" type="string" default="none" optional>
+      OAuth2 client ID for GitHub integration
+    </ParamField>
+
+    <ParamField query="CLIENT_SECRET_GITHUB" type="string" default="none" optional>
+      OAuth2 client secret for GitHub integration
+    </ParamField>
+
+    <ParamField query="CLIENT_SLUG_VERCEL" type="string" default="none" optional>
+      OAuth2 slug for Vercel integration
+    </ParamField>
+
+    <ParamField query="CLIENT_ID_BITBUCKET" type="string" default="none" optional>
+      OAuth2 client ID for BitBucket integration
+    </ParamField>
+
+    <ParamField query="CLIENT_SECRET_BITBUCKET" type="string" default="none" optional>
+      OAuth2 client secret for BitBucket integration
+    </ParamField>
+
+  </Tab>
+  <Tab title="Auth Integrations">
+    To integrate with external auth providers, provide value for the related keys
+    <ParamField query="CLIENT_ID_GOOGLE_LOGIN" type="string" default="none" optional>
+      OAuth2 client ID for Google login
+    </ParamField>
+    <ParamField query="CLIENT_SECRET_GOOGLE_LOGIN" type="string" default="none" optional>
+      OAuth2 client secret for Google login
+    </ParamField>
+    <ParamField query="CLIENT_ID_GITHUB_LOGIN" type="string" default="none" optional>
+      OAuth2 client ID for GitHub login
+    </ParamField>
+    <ParamField query="CLIENT_SECRET_GITHUB_LOGIN" type="string" default="none" optional>
+      OAuth2 client secret for GitHub login
+    </ParamField>
+    <ParamField query="CLIENT_ID_GITLAB_LOGIN" type="string" default="none" optional>
+      OAuth2 client ID for GitLab login
+    </ParamField>
+    <ParamField query="CLIENT_SECRET_GITLAB_LOGIN" type="string" default="none" optional>
+      OAuth2 client secret for GitLab login
+    </ParamField>
+    <ParamField query="URL_GITLAB_LOGIN" type="string" default="https://gitlab.com" optional>
+      URL of your self-hosted instance of GitLab where the OAuth application is registered
+    </ParamField>
+  </Tab>
+  <Tab title="Others">
+    #### JWT
+    <ParamField query="JWT_SIGNUP_LIFETIME" type="string" default="15m" optional>
+      JWT token lifetime expressed in seconds or a string describing a time span
+    </ParamField>
+
+    <ParamField query="JWT_REFRESH_LIFETIME" type="string" default="90d" optional>
+      JWT token lifetime expressed in seconds or a string describing a time span
+    </ParamField>
+
+    <ParamField query="JWT_AUTH_LIFETIME" type="string" default="10d" optional>
+      JWT token lifetime expressed in seconds or a string describing a time span
+    </ParamField>
+
+    <ParamField query="JWT_MFA_LIFETIME" type="string" default="5m" optional>
+      JWT token lifetime expressed in seconds or a string describing a time span
+    </ParamField>
+
+    <ParamField query="JWT_PROVIDER_AUTH_LIFETIME" type="string" default="5m" optional>
+      JWT token lifetime expressed in seconds or a string describing a time span
+    </ParamField>
+
+#### Logging
+
+Infisical uses Sentry to report error logs
+
+<ParamField
+  query="PINO_LOG_LEVEL"
+  type="string"
+  default="info"
+  optional
+>
+  The minimum log level for application logging; can be one of `trace`, `debug`, `info`, `warn`, `error`, or `fatal`.
+</ParamField>
+
+<ParamField
+  query="SENTRY_DSN"
+  type="string"
+  default="none"
+  optional
+></ParamField>
+
+#### Settings
+
+{" "}
+
+<ParamField query="INVITE_ONLY_SIGNUP" type="string" default="false" optional>
+  Only allow users who are invited to sign up
+</ParamField>
+
+  <ParamField query="SITE_URL" type="string" default="none" optional>
+    Site URL - should be an absolute URL including the protocol (e.g. https://app.infisical.com)
+  </ParamField>
+  <ParamField query="TELEMETRY_ENABLED" type="string" default="true" optional></ParamField>
+  </Tab>
+</Tabs>

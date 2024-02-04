@@ -1,9 +1,8 @@
 {
   "name": "Infisical",
-  "basePath": "/docs",
   "logo": {
-    "dark": "/docs/logo/dark.svg",
-    "light": "/docs/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg",
     "href": "https://infisical.com"
   },
   "favicon": "/favicon.png",
@@ -21,26 +20,44 @@
       "to": "#F8B7BD"
     }
   },
-  "topbarLinks": [{ "name": "Log In", "url": "https://app.infisical.com/login" }],
+  "feedback": {
+    "suggestEdit": true,
+    "raiseIssue": true,
+    "thumbsRating": true
+  },
+  "api": {
+    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
+  },
+  "topbarLinks": [
+    {
+      "name": "Log In",
+      "url": "https://app.infisical.com/login"
+    }
+  ],
   "topbarCtaButton": {
     "name": "Start for Free",
     "url": "https://app.infisical.com/signup"
   },
   "anchors": [
     {
-      "name": "Security",
-      "icon": "shield-halved",
-      "url": "security"
+      "name": "Internals",
+      "icon": "sitemap",
+      "url": "internals"
     },
     {
-      "name": "Self-hosting",
-      "icon": "server",
-      "url": "self-hosting"
+      "name": "SDKs",
+      "icon": "puzzle-piece",
+      "url": "sdks"
     },
     {
-      "name": "Integrations",
-      "icon": "plug",
-      "url": "integrations"
+      "name": "API Reference",
+      "icon": "cloud",
+      "url": "api-reference"
+    },
+    {
+      "name": "Changelog",
+      "icon": "timer",
+      "url": "changelog"
     },
     {
       "name": "Contributing",
@@ -50,12 +67,12 @@
     {
       "name": "Blog",
       "icon": "newspaper",
-      "url": "https://blog.infisical.com/"
+      "url": "https://infisical.com/blog"
     },
     {
       "name": "Slack",
       "icon": "slack",
-      "url": "https://join.slack.com/t/infisical-users/shared_invite/zt-1kovn1q6p-p5fvJo7o083naouDkOzgZQ"
+      "url": "https://infisical.com/slack"
     },
     {
       "name": "GitHub",
@@ -67,81 +84,217 @@
     {
       "group": "Overview",
       "pages": [
-        "getting-started/introduction",
-        "getting-started/quickstart",
-        "getting-started/features"
+        {
+          "group": "Getting Started",
+          "pages": [
+            "documentation/getting-started/introduction",
+            "documentation/getting-started/platform",
+            "documentation/getting-started/sdks",
+            "integrations/platforms/kubernetes",
+            "integrations/platforms/docker-intro",
+            "documentation/getting-started/api"
+          ]
+        },
+        {
+          "group": "Guides",
+          "pages": [
+            "documentation/guides/introduction",
+            "documentation/guides/node",
+            "documentation/guides/python",
+            "documentation/guides/nextjs-vercel"
+          ]
+        }
       ]
     },
     {
       "group": "Platform",
       "pages": [
-        "getting-started/dashboard/organization",
-        "getting-started/dashboard/project",
-        "getting-started/dashboard/integrations",
-        "getting-started/dashboard/token"
+        "documentation/platform/organization",
+        "documentation/platform/project",
+        "documentation/platform/folder",
+        "documentation/platform/secret-reference",
+        "documentation/platform/webhooks",
+        "documentation/platform/pit-recovery",
+        "documentation/platform/audit-logs",
+        {
+          "group": "Identities",
+          "pages": [
+            "documentation/platform/identities/overview",
+            "documentation/platform/identities/universal-auth"
+          ]
+        },
+        "documentation/platform/token",
+        "documentation/platform/mfa",
+        "documentation/platform/pr-workflows",
+        "documentation/platform/role-based-access-controls",
+        {
+          "group": "Secret Rotation",
+          "pages": [
+            "documentation/platform/secret-rotation/overview",
+            "documentation/platform/secret-rotation/sendgrid",
+            "documentation/platform/secret-rotation/postgres",
+            "documentation/platform/secret-rotation/mysql"
+          ]
+        },
+        {
+          "group": "SSO",
+          "pages": [
+            "documentation/platform/sso/overview",
+            "documentation/platform/sso/google",
+            "documentation/platform/sso/github",
+            "documentation/platform/sso/gitlab",
+            "documentation/platform/sso/okta",
+            "documentation/platform/sso/azure",
+            "documentation/platform/sso/jumpcloud"
+          ]
+        }
       ]
     },
     {
-      "group": "CLI",
+      "group": "Self-host Infisical",
+      "pages": [
+        {
+          "group": "Deployment options",
+          "pages": [
+            "self-hosting/overview",
+            "self-hosting/deployment-options/standalone-infisical",
+            "self-hosting/deployment-options/docker-compose",
+            "self-hosting/deployment-options/kubernetes-helm",
+            "self-hosting/deployment-options/aws-ec2",
+            "self-hosting/deployment-options/aws-lightsail",
+            "self-hosting/deployment-options/gcp-cloud-run",
+            "self-hosting/deployment-options/azure-app-services",
+            "self-hosting/deployment-options/azure-container-instances",
+            "self-hosting/deployment-options/digital-ocean-marketplace",
+            "self-hosting/deployment-options/fly.io",
+            "self-hosting/deployment-options/railway"
+          ]
+        },
+        "self-hosting/configuration/envars",
+        "self-hosting/configuration/email",
+        "self-hosting/configuration/redis",
+        "self-hosting/configuration/sso",
+        "self-hosting/faq"
+      ]
+    },
+    {
+      "group": "Command line",
       "pages": [
         "cli/overview",
         "cli/usage",
         {
-          "group": "Commands",
+          "group": "Core commands",
           "pages": [
             "cli/commands/login",
             "cli/commands/init",
             "cli/commands/run",
-            "cli/commands/export"
+            "cli/commands/secrets",
+            "cli/commands/export",
+            "cli/commands/service-token",
+            "cli/commands/vault",
+            "cli/commands/user",
+            "cli/commands/reset",
+            {
+              "group": "infisical scan",
+              "pages": [
+                "cli/commands/scan",
+                "cli/commands/scan-git-changes",
+                "cli/commands/scan-install"
+              ]
+            }
           ]
-        }
+        },
+        "cli/scanning-overview",
+        "cli/project-config",
+        "cli/faq"
       ]
     },
     {
-      "group": "Self-hosting",
+      "group": "Agent",
       "pages": [
-        "self-hosting/overview",
+        "infisical-agent/overview"
+      ]
+    },
+    {
+      "group": "Integrations",
+      "pages": ["integrations/overview"]
+    },
+    {
+      "group": "Infrastructure Integrations",
+      "pages": [
         {
-          "group": "Deployments options",
+          "group": "Docker",
           "pages": [
-            "self-hosting/deployments/linux",
-            "self-hosting/deployments/kubernetes"
+            "integrations/platforms/docker-intro",
+            "integrations/platforms/docker",
+            "integrations/platforms/docker-pass-envs",
+            "integrations/platforms/docker-compose"
+          ]
+        },
+        "integrations/platforms/kubernetes",
+        "integrations/frameworks/terraform",
+        "integrations/platforms/ansible"
+      ]
+    },
+    {
+      "group": "3rd-party Integrations",
+      "pages": [
+        {
+          "group": "AWS",
+          "pages": [
+            "integrations/cloud/aws-parameter-store",
+            "integrations/cloud/aws-secret-manager"
           ]
         },
         {
-          "group": "Configuration",
-          "pages": ["self-hosting/configuration/envars"]
-        }
-      ]
-    }, 
-    {
-      "group": "Integrations",
-      "pages": [
-        "integrations/overview"
-      ]
-    },
-    {
-      "group": "Platforms",
-      "pages": [
-        "integrations/platforms/docker",
-        "integrations/platforms/docker-compose"
-      ]
-    },
-    {
-      "group": "Cloud",
-      "pages": [
+          "group": "Digital Ocean",
+          "pages": ["integrations/cloud/digital-ocean-app-platform"]
+        },
         "integrations/cloud/heroku",
-        "integrations/cloud/vercel"
+        "integrations/cloud/vercel",
+        "integrations/cloud/netlify",
+        "integrations/cloud/render",
+        "integrations/cloud/railway",
+        "integrations/cloud/flyio",
+        "integrations/cloud/laravel-forge",
+        "integrations/cloud/supabase",
+        "integrations/cloud/northflank",
+        "integrations/cloud/hasura-cloud",
+        "integrations/cloud/terraform-cloud",
+        "integrations/cloud/cloudflare-pages",
+        "integrations/cloud/cloudflare-workers",
+        "integrations/cloud/qovery",
+        "integrations/cloud/hashicorp-vault",
+        "integrations/cloud/azure-key-vault",
+        "integrations/cloud/gcp-secret-manager",
+        "integrations/cloud/cloud-66",
+        "integrations/cloud/windmill"
       ]
     },
     {
-      "group": "Frameworks",
+      "group": "CI/CD Integrations",
       "pages": [
+        "integrations/cloud/teamcity",
+        "integrations/cloud/checkly",
+        "integrations/cicd/githubactions",
+        "integrations/cicd/gitlab",
+        "integrations/cicd/circleci",
+        "integrations/cicd/travisci",
+        "integrations/cicd/bitbucket",
+        "integrations/cicd/codefresh",
+        "integrations/cicd/jenkins"
+      ]
+    },
+    {
+      "group": "Framework Integrations",
+      "pages": [
+        "integrations/frameworks/spring-boot-maven",
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
         "integrations/frameworks/express",
         "integrations/frameworks/nextjs",
         "integrations/frameworks/nestjs",
+        "integrations/frameworks/sveltekit",
         "integrations/frameworks/nuxt",
         "integrations/frameworks/gatsby",
         "integrations/frameworks/remix",
@@ -150,26 +303,178 @@
         "integrations/frameworks/django",
         "integrations/frameworks/flask",
         "integrations/frameworks/laravel",
-        "integrations/frameworks/rails"
+        "integrations/frameworks/rails",
+        "integrations/frameworks/dotnet",
+        "integrations/platforms/pm2"
       ]
     },
     {
-      "group": "Security",
+      "group": "Build Tool Integrations",
+      "pages": ["integrations/build-tools/gradle"]
+    },
+    {
+      "group": "Overview",
+      "pages": ["sdks/overview"]
+    },
+    {
+      "group": "Overview",
       "pages": [
-        "security/overview",
-        "security/data-model",
-        "security/mechanics"
+        "api-reference/overview/introduction",
+        "api-reference/overview/authentication",
+        {
+          "group": "Examples",
+          "pages": [
+            "api-reference/overview/examples/note",
+            "api-reference/overview/examples/e2ee-disabled",
+            "api-reference/overview/examples/e2ee-enabled"
+          ]
+        }
       ]
     },
     {
-      "group": "Contributing",
+      "group": "Endpoints",
       "pages": [
-        "contributing/overview",
-        "contributing/code-of-conduct",
-        "contributing/developing",
-        "contributing/FAQ"
+        {
+          "group": "Users",
+          "pages": [
+            "api-reference/endpoints/users/me",
+            "api-reference/endpoints/users/my-organizations"
+          ]
+        },
+        {
+          "group": "Identities",
+          "pages": [
+            "api-reference/endpoints/identities/create",
+            "api-reference/endpoints/identities/update",
+            "api-reference/endpoints/identities/delete"
+          ]
+        },
+        {
+          "group": "Universal Auth",
+          "pages": [
+            "api-reference/endpoints/universal-auth/login",
+            "api-reference/endpoints/universal-auth/attach",
+            "api-reference/endpoints/universal-auth/retrieve",
+            "api-reference/endpoints/universal-auth/update",
+            "api-reference/endpoints/universal-auth/create-client-secret",
+            "api-reference/endpoints/universal-auth/list-client-secrets",
+            "api-reference/endpoints/universal-auth/revoke-client-secret",
+            "api-reference/endpoints/universal-auth/renew-access-token"
+          ]
+        },
+        {
+          "group": "Organizations",
+          "pages": [
+            "api-reference/endpoints/organizations/memberships",
+            "api-reference/endpoints/organizations/update-membership",
+            "api-reference/endpoints/organizations/delete-membership",
+            "api-reference/endpoints/organizations/list-identity-memberships",
+            "api-reference/endpoints/organizations/workspaces"
+          ]
+        },
+        {
+          "group": "Projects",
+          "pages": [
+            "api-reference/endpoints/workspaces/memberships",
+            "api-reference/endpoints/workspaces/update-membership",
+            "api-reference/endpoints/workspaces/delete-membership",
+            "api-reference/endpoints/workspaces/list-identity-memberships",
+            "api-reference/endpoints/workspaces/update-identity-membership",
+            "api-reference/endpoints/workspaces/delete-identity-membership",
+            "api-reference/endpoints/workspaces/workspace-key",
+            "api-reference/endpoints/workspaces/secret-snapshots",
+            "api-reference/endpoints/workspaces/rollback-snapshot"
+          ]
+        },
+        {
+          "group": "Environments",
+          "pages": [
+            "api-reference/endpoints/environments/create",
+            "api-reference/endpoints/environments/update",
+            "api-reference/endpoints/environments/delete"
+          ]
+        },
+        {
+          "group": "Folders",
+          "pages": [
+            "api-reference/endpoints/folders/list",
+            "api-reference/endpoints/folders/create",
+            "api-reference/endpoints/folders/update",
+            "api-reference/endpoints/folders/delete"
+          ]
+        },
+        {
+          "group": "Secrets",
+          "pages": [
+            "api-reference/endpoints/secrets/list",
+            "api-reference/endpoints/secrets/create",
+            "api-reference/endpoints/secrets/read",
+            "api-reference/endpoints/secrets/update",
+            "api-reference/endpoints/secrets/delete"
+          ]
+        },
+        {
+          "group": "Secret imports",
+          "pages": [
+            "api-reference/endpoints/secret-imports/list",
+            "api-reference/endpoints/secret-imports/create",
+            "api-reference/endpoints/secret-imports/update",
+            "api-reference/endpoints/secret-imports/delete"
+          ]
+        },
+        {
+          "group": "Service Tokens",
+          "pages": ["api-reference/endpoints/service-tokens/get"]
+        },
+        {
+          "group": "Audit Logs",
+          "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+        }
+      ]
+    },
+    {
+      "group": "Internals",
+      "pages": [
+        "internals/overview",
+        "internals/components",
+        "internals/flows",
+        "internals/security",
+        "internals/service-tokens"
+      ]
+    },
+    {
+      "group": "Overview",
+      "pages": ["changelog/overview"]
+    },
+    {
+      "group": "",
+      "pages": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "contributing/getting-started/overview",
+              "contributing/getting-started/code-of-conduct",
+              "contributing/getting-started/pull-requests",
+              "contributing/getting-started/faq"
+    
+            ]
+          },
+        {
+          "group": "Contributing to platform",
+          "pages": [
+            "contributing/platform/developing"
+          ]
+        },
+        {
+            "group": "Contributing to SDK",
+            "pages": [
+              "contributing/sdk/developing"
+            ]
+          }
       ]
     }
   ],
-  "backgroundImage": "/images/background.png"
+  "integrations": {
+    "intercom": "hsg644ru"
+  }
 }

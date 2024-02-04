@@ -1,0 +1,49 @@
+---
+title: 'Pull requests'
+description: 'This guide walks through the code submission process for Infisical.'
+---
+
+## Making a pull request
+
+Once you are done making changes in local development, you can submit a pull request (PR) to the main repository branch.
+
+We require a few considerations on your part to ensure that PRs are easy to review and up to standard with the code.
+
+### Title and content
+
+Start by providing a concise title addressing what your PR achieves such as "add pagination to retrieve environment variables for GitLab integration."
+
+You should follow the automatically-generated PR template to fill in the PR description. This includes a more detailed description of the changes in the PR, the type of PR, and an acknowledgement that you've read and agreed to the contributing guidelines.
+
+### Feature PRs
+
+Give a functional overview of how your feature works, including how the user can use the feature. Then share any technical details in an overview of how the PR works.
+
+As of `06-01-2023`, all PRs created after this date are required to attach a video of you performing the described functionality. 
+
+### Bug Fix PRs
+
+Give an overview of the bug at hand and how your PR fixes the it at both a high and low level.
+
+Feel free to add a short video or screenshots of what your PR achieves.
+
+## Getting your PR reviewed
+
+Once your PR is reviewed, one or two relevant members of the Infisical team should review and approve the PR before it is merged. You should coordinate and ping the team member closest to the submitted functionality via our [Slack](https://infisical.com/slack) to review your PR.
+
+- Vlad: Frontend, Web UI
+- Tony: Backend, SDKs, Security
+- Maidul: Backend, CI/CD, CLI, Kubernetes Operator
+- Daniel: Frontend, UI/UX, Backend, SDKs
+
+
+The team member(s) will start by enabling baseline checks to ensure that there are no leaked secrets, new dependencies are clear, and the frontend/backend services start up. Afterward, they will review your PR thoroughly by testing the code and leave any feedback or work in with you to revise the PR up to standard.
+
+Once everything is good, the team member(s) will approve the PR to be merged into the `main` branch; all changes will be tested in CI/CD and our staging environment first before being deployed to production.
+
+<Note>
+    Due to the high volume of issues, PRs, etc. from the community, and limited bandwidth on our end to address everything instantly, we prefer
+    reviewing PRs once they are fully complete and well-tested.
+
+    In the past, we've often had to review low-quality PRs up to 10 times which severely restricts our capacity to address other issues, PRs, and initiatives in the pipeline. As such, we ask of the community to submit higher-quality PRs that, for example, don't break existing code; in return we'll prioritize the first 3 reviews for PRs.
+</Note>

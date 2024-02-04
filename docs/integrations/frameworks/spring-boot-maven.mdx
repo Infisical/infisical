@@ -1,0 +1,80 @@
+---
+title: "Spring Boot with Maven"
+description: "How to use Infisical to inject environment variables into Java Spring Boot"
+---
+
+Prerequisites:
+
+- Set up and add your environment variables to [Infisical Cloud](https://app.infisical.com)
+- [Install the CLI](/cli/overview)
+
+## Initialize Infisical 
+In order for Infisical to know which secrets to fetch, you'll need to first initialize Infisical at the root of your project. 
+
+```bash
+# navigate to the root of your of your project 
+cd /path/to/project
+
+# then initialize Infisical
+infisical init
+```
+
+
+## Start your application with Maven wrapper
+To pass in Infisical secrets into your application, we will utilize the Infisical CLI to inject the secrets into the Maven wrapper executable, which is used to launch your application. 
+The Maven wrapper executable should already be present in the root directory of your project.
+
+```bash 
+infisical run -- ./mvnw spring-boot:run --quiet
+```
+
+#### Accessing injected secrets 
+```java example.java
+  ...
+  import org.springframework.core.env.Environment;
+
+  @SpringBootApplication
+  public class DemoApplication {
+    @Autowired
+    private Environment env;
+
+    @Bean
+    public void someMethod() {
+        System.out.println(env.getProperty("SOME_SECRET_NAME"));
+      };
+  }
+```
+
+
+## Debugging with secrets 
+During the process of debugging your code, it may be necessary to have certain environment variables available. To inject these variables for the purpose of debugging, please follow the instructions provided below.
+Note that these instructions are currently only available for IntelliJ.
+
+**Step 1:** On the main tool bar, choose Edit Configuration
+
+<img height="200" src="../../images/spring-maven-debug-1.png" />
+
+**Step 2:** Click the plus icon
+
+<img height="200" src="../../images/spring-maven-debug-2.png" />
+
+**Step 3:** Select Shell Script
+
+<img height="200" src="../../images/spring-maven-debug-3.png" />
+
+**Step 4:** Choose Script Text and then paste in the command below.
+
+<img height="200" src="../../images/spring-maven-debug-4.png" />
+
+```
+infisical run -- ./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=*:5005"
+```
+
+**Step 5:** When you need to run a block of code in debug mode, select the Infisical script
+
+<img height="200" src="../../images/spring-maven-debug-5.png" />
+
+
+
+
+

@@ -1,0 +1,1 @@
+export { AutoCapitalizationSection } from "./AutoCapitalizationSection";

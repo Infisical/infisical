@@ -1,0 +1,185 @@
+---
+title: "Docker"
+---
+
+The [Infisical CLI](/cli/overview) can be added to Dockerfiles to fetch secrets from Infisical and make them available as environment variables within containers at runtime.
+
+Prerequisites:
+
+- Have a project with secrets ready in [Infisical Cloud](https://app.infisical.com).
+- Create an [Infisical Token](/documentation/platform/token) scoped to an environment in your project in Infisical.
+
+
+<Tabs>
+    <Tab title="Docker">
+    
+    ## Dockerfile Modification
+
+    Follow the instructions for your specific Linux distribution to add the Infisical CLI to your Dockerfile.
+
+    <Tabs>
+        <Tab title="Alpine">
+                ```dockerfile
+                RUN apk add --no-cache bash curl && curl -1sLf \
+            'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+            && apk add infisical
+                ```
+
+        </Tab>
+        <Tab title="RedHat/CentOs/Amazon-linux">
+                ```dockerfile
+            RUN curl -1sLf \
+            'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' | sh \ 
+            && yum install -y infisical
+                ```
+        </Tab>
+        <Tab title="Debian/Ubuntu">
+            ```dockerfile
+            RUN apt-get update && apt-get install -y bash curl && curl -1sLf \
+            'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash \
+            && apt-get update && apt-get install -y infisical
+                ```
+        </Tab>
+    </Tabs>
+    
+    Next, modify the start command of your Dockerfile:
+
+    ```dockerfile
+    CMD ["infisical", "run", "--", "[your service start command]"]
+    ```
+
+    ## Launch
+    
+    Spin up your container with the `docker run` command and feed in your Infisical Token.
+
+    ```console
+    docker run --env INFISICAL_TOKEN=<your_infisical_token> <DOCKER-IMAGE>
+    ```
+    
+    Your containerized application should now be up and running with secrets from Infisical exposed as environment variables within your application's process.
+    
+    ## Example Dockerfile
+    
+    ```dockerfile
+    # Select your base image (based on your Linux distribution, e.g., Alpine, Debian, Ubuntu, etc.)
+    FROM alpine
+
+    # Add the Infisical CLI to your Dockerfile (choose the appropriate block based on your base image)
+    RUN apk add --no-cache bash curl && curl -1sLf \
+        'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+        && apk add infisical
+
+    # Install any additional dependencies or packages your service requires
+    # RUN <additional commands for your service>
+
+    # Copy your service files to the container
+    COPY . /app
+
+    # Set the working directory
+    WORKDIR /app
+
+    # Modify the start command of your Dockerfile
+    CMD ["infisical", "run", "--", "npm run start"]
+    ```
+    
+    </Tab>
+    <Tab title="Docker Compose">
+    
+    ## Dockerfile Modifications
+
+    Follow the instructions for your specific Linux distributions to add the Infisical CLI to your Dockerfiles.
+
+    <Tabs>
+        <Tab title="Alpine">
+                ```dockerfile
+                RUN apk add --no-cache bash curl && curl -1sLf \
+            'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+            && apk add infisical
+                ```
+
+        </Tab>
+        <Tab title="RedHat/CentOs/Amazon-linux">
+                ```dockerfile
+            RUN curl -1sLf \
+            'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' | sh \ 
+            && yum install -y infisical
+                ```
+        </Tab>
+        <Tab title="Debian/Ubuntu">
+            ```dockerfile
+            RUN apt-get update && apt-get install -y bash curl && curl -1sLf \
+            'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash \
+            && apt-get update && apt-get install -y infisical
+                ```
+        </Tab>
+    </Tabs>
+    
+    Next, modify the start commands of your Dockerfiles:
+
+    ```dockerfile
+    CMD ["infisical", "run", "--", "[your service start command]"]
+    ```
+    
+    ## Example Dockerfile
+    
+    ```dockerfile
+    # Select your base image (based on your Linux distribution, e.g., Alpine, Debian, Ubuntu, etc.)
+    FROM alpine
+
+    # Add the Infisical CLI to your Dockerfile (choose the appropriate block based on your base image)
+    RUN apk add --no-cache bash curl && curl -1sLf \
+        'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+        && apk add infisical
+
+    # Install any additional dependencies or packages your service requires
+    # RUN <additional commands for your service>
+
+    # Copy your service files to the container
+    COPY . /app
+
+    # Set the working directory
+    WORKDIR /app
+
+    # Modify the start command of your Dockerfile
+    CMD ["infisical", "run", "--", "[your service start command]"]
+    ```
+    
+    ## Docker Compose File Modification
+    
+    For each service you want to inject secrets into, set an environment variable called `INFISICAL_TOKEN` equal to a unique identifier variable. For example:
+    
+    ```yaml
+    services:
+        api:
+            build: .
+            image: example-service-2
+            environment:
+            - INFISICAL_TOKEN=${INFISICAL_TOKEN_FOR_API}
+    ...
+    ```
+
+    ## Export shell variables
+    
+    Next, set the shell variables you defined in your compose file. Continuing from the previous example:
+
+    ```console
+    export INFISICAL_TOKEN_FOR_API=<your_infisical_token>
+    ```
+    
+    ## Launch
+
+    Spin up your containers with the `docker-compose up` command.
+
+    ```console
+    docker-compose up
+    ```
+    
+    Your containers should now be running with the secrets from Infisical available inside as environment variables.
+
+    </Tab>
+</Tabs>
+
+See also:
+
+- [Documentation for Docker](/integrations/platforms/docker)
+- [Documentation for Docker Compose](/integrations/platforms/docker-compose)

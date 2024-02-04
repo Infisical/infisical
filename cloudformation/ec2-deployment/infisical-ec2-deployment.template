@@ -1,0 +1,178 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  CloudFormation template to deploy Infisical on a EC2 instance with a
+  DocumentDB instance
+Parameters:
+  KeyPairName:
+    Description: The name of the EC2 Key Pair to enable SSH access to the instance
+    Type: "AWS::EC2::KeyPair::KeyName"
+  VpcId:
+    Description: The ID of the VPC in which to launch the instance
+    Type: "AWS::EC2::VPC::Id"
+  DocumentDBUsername:
+    Description: The username for the DocumentDB instance
+    Type: String
+    MinLength: 5
+  DocumentDBPassword:
+    Description: The password for the DocumentDB instance (minimum 8 characters)
+    Type: String
+    MinLength: 8
+    NoEcho: true
+Resources:
+  DocumentDBCluster:
+    Type: "AWS::DocDB::DBCluster"
+    Properties:
+      EngineVersion: 5.0.0
+      StorageEncrypted: true
+      MasterUsername: !Ref DocumentDBUsername
+      MasterUserPassword: !Ref DocumentDBPassword
+      VpcSecurityGroupIds:
+        - !Ref DocumentDBClusterSecurityGroup
+      DBClusterParameterGroupName: !Ref DBClusterParameterGroup
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 73b974cf-eed3-4f7d-8657-6a6746bac169
+    DependsOn:
+      - DBClusterParameterGroup
+  DBClusterParameterGroup:
+    Type: "AWS::DocDB::DBClusterParameterGroup"
+    Properties:
+      Description: "description"
+      Family: "docdb5.0"
+      Parameters:
+        tls: "disabled"
+        ttl_monitor: "disabled"
+      Tags:
+        - Key: "String"
+          Value: "String"
+  DocumentDBInstance:
+    Type: "AWS::DocDB::DBInstance"
+    Properties:
+      DBInstanceClass: db.t4g.medium
+      DBClusterIdentifier: !Ref DocumentDBCluster
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: f04cee38-175e-4432-9ad7-62ca28bbf935
+  DocumentDBClusterSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow inbound traffic for DocumentDB cluster
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 27017
+          ToPort: 27017
+          SourceSecurityGroupId: !Ref InstanceSecurityGroup
+  EC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: ami-0557a15b87f6559cf
+      InstanceType: t2.medium
+      KeyName: !Ref KeyPairName
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          cd /home/ubuntu
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          sh get-docker.sh
+          sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          git clone https://github.com/Infisical/infisical.git
+          cd infisical
+
+          DOCUMENT_DB_CONNECTION_URL="mongodb://${DocumentDBUsername}:${DocumentDBPassword}@${DocumentDBCluster.Endpoint}:${DocumentDBCluster.Port}/infisical?replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false"
+
+          ENCRYPTION_KEY=$(openssl rand -hex 16)
+          JWT_SIGNUP_SECRET=$(openssl rand -hex 16)
+          JWT_REFRESH_SECRET=$(openssl rand -hex 16)
+          JWT_AUTH_SECRET=$(openssl rand -hex 16)
+          JWT_SERVICE_SECRET=$(openssl rand -hex 16)
+
+          touch .env 
+
+          echo "ENCRYPTION_KEY=${!ENCRYPTION_KEY}" >> .env
+          echo "JWT_SIGNUP_SECRET=${!JWT_SIGNUP_SECRET}" >> .env
+          echo "JWT_REFRESH_SECRET=${!JWT_REFRESH_SECRET}" >> .env
+          echo "JWT_AUTH_SECRET=${!JWT_AUTH_SECRET}" >> .env
+          echo "JWT_SERVICE_SECRET=${!JWT_SERVICE_SECRET}" >> .env
+          echo "MONGO_URL=${!DOCUMENT_DB_CONNECTION_URL}" >> .env
+          echo "HTTPS_ENABLED=false" >> .env
+          echo "REDIS_URL=redis://redis:6379" >> .env
+
+          docker-compose up -d
+
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      Tags:
+        - Key: Name
+          Value: infisical
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 2c0a771c-5002-4785-9848-0377e33cd0e9
+    DependsOn:
+      - DocumentDBInstance
+
+  InstanceSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Allow SSH and HTTP traffic
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref VpcId
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 1fd6856a-11e5-4369-84fa-d18d4011b3de
+
+Outputs:
+  InstanceIP:
+    Value: !GetAtt EC2Instance.PublicIp
+Metadata:
+  "AWS::CloudFormation::Designer":
+    1fd6856a-11e5-4369-84fa-d18d4011b3de:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 60
+        "y": 90
+      z: 1
+      embeds: []
+    2c0a771c-5002-4785-9848-0377e33cd0e9:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 180
+        "y": 90
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 1fd6856a-11e5-4369-84fa-d18d4011b3de
+      dependson:
+        - 2cabaada-fbdb-4945-bf95-a0406704dd5a
+        - f04cee38-175e-4432-9ad7-62ca28bbf935
+    73b974cf-eed3-4f7d-8657-6a6746bac169:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 390
+        "y": 210
+      z: 1
+      embeds: []
+    f04cee38-175e-4432-9ad7-62ca28bbf935:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 270
+        "y": 90
+      z: 1
+      embeds: []

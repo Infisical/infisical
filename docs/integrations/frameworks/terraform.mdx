@@ -1,0 +1,98 @@
+---
+title: "Terraform"
+description: "Fetch Secrets From Infisical With Terraform"
+---
+
+This guide provides step-by-step guidance on how to fetch secrets from Infisical using Terraform.
+
+## Prerequisites
+
+- Basic understanding of Terraform
+- Install [Terraform](https://www.terraform.io/downloads.html)
+
+## Steps
+
+### 1. Define Required Providers
+
+Specify `infisical` in the `required_providers` block within the `terraform` block of your configuration file. If you would like to use a specific version of the provider, uncomment and replace `<latest version>` with the version of the Infisical provider that you want to use.
+
+```hcl main.tf
+terraform {
+  required_providers {
+    infisical = {
+      # version = <latest version>
+      source = "infisical/infisical"
+    }
+  }
+}
+```
+
+### 2. Configure the Infisical Provider
+
+Set up the Infisical provider by specifying the `host` and `service_token`. Replace `<>` in `service_token` with your actual token. The `host` is only required if you are using a self-hosted instance of Infisical.
+
+```hcl main.tf
+provider "infisical" {
+  host          = "https://app.infisical.com" # Only required if using self hosted instance of Infisical, default is https://app.infisical.com
+  service_token = "<>" # Get token https://infisical.com/docs/documentation/platform/token
+}
+```
+
+<Warning>
+  It is recommended to use Terraform variables to pass your service token dynamically to avoid hard coding it
+</Warning>
+
+### 3. Fetch Infisical Secrets
+
+Use the `infisical_secrets` data source to fetch your secrets. In this block, you must set the `env_slug` and `folder_path` to scope the secrets you want. 
+
+`env_slug` is the slug of the environment name. This slug name can be found under the project settings page on the Infisical dashboard. 
+
+`folder_path` is the path to the folder in a given environment. The path `/` for root of the environment where as `/folder1` is the folder at the root of the environment.
+
+```hcl main.tf
+data "infisical_secrets" "my-secrets" {
+  env_slug    = "dev"
+  folder_path = "/some-folder/another-folder"
+}
+```
+
+### 4. Define Outputs
+
+As an example, we are going to output your fetched secrets. Replace `SECRET-NAME` with the actual name of your secret.
+
+For a single secret:
+
+```hcl main.tf
+output "single-secret" {
+  value = data.infisical_secrets.my-secrets.secrets["SECRET-NAME"]
+}
+```
+
+For all secrets:
+
+```hcl
+output "all-secrets" {
+  value = data.infisical_secrets.my-secrets.secrets
+}
+```
+
+### 5. Run Terraform
+
+Once your configuration is complete, initialize your Terraform working directory:
+
+```bash
+$ terraform init
+```
+
+Then, run the plan command to view the fetched secrets:
+
+```bash
+$ terraform plan
+```
+
+Terraform will now fetch your secrets from Infisical and display them as output according to your configuration.
+
+## Conclusion
+
+You have now successfully set up and used the Infisical provider with Terraform to fetch secrets. For more information, visit the [Infisical documentation](https://registry.terraform.io/providers/Infisical/infisical/latest/docs).

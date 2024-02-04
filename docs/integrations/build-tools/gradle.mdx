@@ -1,0 +1,91 @@
+---
+title: "Gradle"
+description: "How to use Infisical to inject environment variables with Gradle"
+---
+
+# Using Infisical with Gradle
+
+By integrating [Infisical CLI](../../cli/overview) with Gradle, you can configure your builds and scripts to different environments, CI/CD pipelines, and more without explicitly setting variables in the command line.
+
+This documentation provides an overview of how to use Infisical with [Gradle](https://gradle.org/).
+
+## Basic Usage
+
+To run a Gradle task with Infisical, you can use the `run` command. The basic structure is:
+
+```
+infisical run -- [Your command here]
+```
+
+For example, to run the `generateFile` task in Gradle:
+
+```groovy build.gradle
+task generateFile {
+    doLast {
+        String content = System.getenv('ENV_NAME_FROM_INFISICAL') ?: 'Default Content'
+        file('output.txt').text = content
+        println "Generated output.txt with content: $content"
+    }
+}
+```
+
+```
+infisical run -- gradle generateFile
+```
+
+With this command, Infisical will automatically inject the environment variables associated with the current Infisical project into the Gradle process. 
+Your Gradle script can then access these variables using `System.getenv('VARIABLE_NAME')`.
+
+## More Examples
+
+### 1. Building a Project with a Specific Profile
+
+Assuming you have different build profiles (e.g., 'development', 'production'), you can use Infisical to switch between them:
+
+```
+infisical run -- gradle build
+```
+
+Inside your `build.gradle`, you might have:
+
+```groovy build.gradle
+if (System.getenv('PROFILE') == 'production') {
+    // production-specific configurations
+}
+```
+
+### 2. Running Tests with Different Database Configurations
+
+If you want to run tests against different database configurations:
+
+```
+infisical run -- gradle test
+```
+
+Your test configuration in `build.gradle` can then adjust the database URL accordingly:
+
+```groovy build.gradle
+test {
+    systemProperty 'db.url', System.getenv('DB_URL')
+}
+```
+
+### 3. Generating Artifacts with Versioning
+
+For automated CI/CD pipelines, you might want to inject a build number or version:
+
+```
+infisical run -- gradle assemble
+```
+
+And in `build.gradle`:
+
+```groovy build.gradle
+version = System.getenv('BUILD_NUMBER') ?: '1.0.0-SNAPSHOT'
+```
+
+## Advantages of Using Infisical with Gradle
+
+1. **Flexibility**: Easily adapt your Gradle builds to different environments without modifying the build scripts or setting environment variables manually.
+2. **Reproducibility**: Ensure consistent builds by leveraging the environment variables from the related Infisical project.
+3. **Security**: Protect sensitive information by using Infisical's secrets management without exposing them in scripts or logs.

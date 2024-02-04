@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright (c) 2023 Infisical Inc.
 */
 package cmd
 
@@ -11,15 +11,16 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
 const (
-	FormatDotenv string = "dotenv"
-	FormatJson   string = "json"
-	FormatCSV    string = "csv"
-	FormatYaml   string = "yaml"
+	FormatDotenv       string = "dotenv"
+	FormatJson         string = "json"
+	FormatCSV          string = "csv"
+	FormatYaml         string = "yaml"
+	FormatDotEnvExport string = "dotenv-export"
 )
 
 // exportCmd represents the export command
@@ -29,68 +30,91 @@ var exportCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Example:               "infisical export --env=prod --format=json > secrets.json",
 	Args:                  cobra.NoArgs,
-	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
-		envName, err := cmd.Flags().GetString("env")
-		if err != nil {
-			log.Errorln("Unable to parse the environment flag")
-			log.Debugln(err)
-			return
+		environmentName, _ := cmd.Flags().GetString("env")
+		if !cmd.Flags().Changed("env") {
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
+			if environmentFromWorkspace != "" {
+				environmentName = environmentFromWorkspace
+			}
 		}
 
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
 		if err != nil {
-			log.Errorln("Unable to parse the substitute flag")
-			log.Debugln(err)
-			return
+			util.HandleError(err)
 		}
 
 		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
-			log.Errorln("Unable to parse the project id flag")
-			log.Debugln(err)
-			return
+			util.HandleError(err)
 		}
 
 		format, err := cmd.Flags().GetString("format")
 		if err != nil {
-			log.Errorln("Unable to parse the format flag")
-			log.Debugln(err)
-			return
+			util.HandleError(err)
 		}
 
-		envsFromApi, err := util.GetAllEnvironmentVariables(projectId, envName)
+		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
 		if err != nil {
-			log.Errorln("Something went wrong when pulling secrets using your Infisical token. Double check the token, project id or environment name (dev, prod, ect.)")
-			log.Debugln(err)
-			return
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		infisicalToken, err := cmd.Flags().GetString("token")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		tagSlugs, err := cmd.Flags().GetString("tags")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		secretsPath, err := cmd.Flags().GetString("path")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, WorkspaceId: projectId, SecretsPath: secretsPath}, "")
+		if err != nil {
+			util.HandleError(err, "Unable to fetch secrets")
+		}
+
+		if secretOverriding {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
+		} else {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
 		}
 
 		var output string
 		if shouldExpandSecrets {
-			substitutions := util.SubstituteSecrets(envsFromApi)
+			substitutions := util.ExpandSecrets(secrets, infisicalToken, "")
 			output, err = formatEnvs(substitutions, format)
 			if err != nil {
-				log.Errorln(err)
-				return
+				util.HandleError(err)
 			}
 		} else {
-			output, err = formatEnvs(envsFromApi, format)
+			output, err = formatEnvs(secrets, format)
 			if err != nil {
-				log.Errorln(err)
-				return
+				util.HandleError(err)
 			}
 		}
+
 		fmt.Print(output)
+
+		// Telemetry.CaptureEvent("cli-command:export", posthog.NewProperties().Set("secretsCount", len(secrets)).Set("version", util.CLI_VERSION))
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(exportCmd)
 	exportCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
-	exportCmd.Flags().String("projectId", "", "The project ID from which your secrets should be pulled from")
 	exportCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
+	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
+	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
+	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
+	exportCmd.Flags().String("path", "/", "get secrets within a folder path")
 }
 
 // Format according to the format flag
@@ -98,6 +122,8 @@ func formatEnvs(envs []models.SingleEnvironmentVariable, format string) (string,
 	switch strings.ToLower(format) {
 	case FormatDotenv:
 		return formatAsDotEnv(envs), nil
+	case FormatDotEnvExport:
+		return formatAsDotEnvExport(envs), nil
 	case FormatJson:
 		return formatAsJson(envs), nil
 	case FormatCSV:
@@ -105,7 +131,7 @@ func formatEnvs(envs []models.SingleEnvironmentVariable, format string) (string,
 	case FormatYaml:
 		return formatAsYaml(envs), nil
 	default:
-		return "", fmt.Errorf("invalid format type: %s. Available format types are [%s]", format, []string{FormatDotenv, FormatJson, FormatCSV, FormatYaml})
+		return "", fmt.Errorf("invalid format type: %s. Available format types are [%s]", format, []string{FormatDotenv, FormatJson, FormatCSV, FormatYaml, FormatDotEnvExport})
 	}
 }
 
@@ -130,6 +156,15 @@ func formatAsDotEnv(envs []models.SingleEnvironmentVariable) string {
 	return dotenv
 }
 
+// Format environment variables as a dotenv file with export at the beginning
+func formatAsDotEnvExport(envs []models.SingleEnvironmentVariable) string {
+	var dotenv string
+	for _, env := range envs {
+		dotenv += fmt.Sprintf("export %s='%s'\n", env.Key, env.Value)
+	}
+	return dotenv
+}
+
 func formatAsYaml(envs []models.SingleEnvironmentVariable) string {
 	var dotenv string
 	for _, env := range envs {
@@ -143,8 +178,7 @@ func formatAsJson(envs []models.SingleEnvironmentVariable) string {
 	// Dump as a json array
 	json, err := json.Marshal(envs)
 	if err != nil {
-		log.Errorln("Unable to marshal environment variables to JSON")
-		log.Debugln(err)
+		log.Err(err).Msgf("Unable to marshal environment variables to JSON")
 		return ""
 	}
 	return string(json)

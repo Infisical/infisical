@@ -1,0 +1,385 @@
+---
+title: "Infisical Java SDK"
+icon: "java"
+---
+
+If you're working with Java, the official [Infisical Java SDK](https://github.com/Infisical/sdk/tree/main/languages/java) package is the easiest way to fetch and work with secrets for your application.
+
+- [Maven Package](https://github.com/Infisical/sdk/packages/2019741)
+- [Github Repository](https://github.com/Infisical/sdk/tree/main/languages/java)
+
+## Basic Usage
+
+```java
+package com.example.app;
+
+import com.infisical.sdk.InfisicalClient;
+import com.infisical.sdk.schema.*;
+
+public class Example {
+    public static void main(String[] args) {
+        // Create a new Infisical Client
+        ClientSettings settings = new ClientSettings();
+        settings.setClientID("MACHINE_IDENTITY_CLIENT_ID");
+        settings.setClientSecret("MACHINE_IDENTITY_CLIENT_SECRET");
+        settings.setCacheTTL(Long.valueOf(300)); // 300 seconds, 5 minutes
+
+        InfisicalClient client = new InfisicalClient(settings);
+
+        // Create the options for fetching the secret
+        GetSecretOptions options = new GetSecretOptions();
+        options.setSecretName("TEST");
+        options.setEnvironment("dev");
+        options.setProjectID("PROJECT_ID");
+
+        // Fetch the sercret with the provided options
+        GetSecretResponseSecret secret = client.getSecret(options);
+
+        // Print the value
+        System.out.println(secret.getSecretValue());
+
+        // Important to avoid memory leaks!
+        // If you intend to use the client throughout your entire application, you can omit this line.
+        client.close();
+    }
+}
+```
+
+This example demonstrates how to use the Infisical Java SDK in a Java application. The application retrieves a secret named `TEST` from the `dev` environment of the `PROJECT_ID` project.
+
+<Warning>
+    We do not recommend hardcoding your [Machine Identity Tokens](/platform/identities/overview). Setting it as an environment variable would be best.
+</Warning>
+
+# Installation
+
+The Infisical Java SDK is hosted on the GitHub Packages Apache Maven registry. Because of this you need to configure your environment properly so it's able to pull dependencies from the GitHub registry. Please check [this guide from GitHub](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-apache-maven-registry) on how to achieve this.
+
+Our package is [located here](https://github.com/Infisical/sdk/packages/2019741). Please follow the installation guide on the page.
+
+# Configuration
+
+Import the SDK and create a client instance with your [Machine Identity](/platform/identities/universal-auth).
+
+```java
+import com.infisical.sdk.InfisicalClient;
+import com.infisical.sdk.schema.*;
+
+public class App {
+    public static void main(String[] args) {
+
+        ClientSettings settings = new ClientSettings();
+        settings.setClientID("MACHINE_IDENTITY_CLIENT_ID");
+        settings.setClientSecret("MACHINE_IDENTITY_CLIENT_SECRET");
+
+        InfisicalClient client = new InfisicalClient(settings); // Your client!
+    }
+}
+```
+
+### ClientSettings methods
+
+<ParamField query="options" type="object">
+    <Expandable title="properties">
+        <ParamField query="setClientID()" type="string" optional>
+            Your machine identity client ID.
+        </ParamField>
+          <ParamField query="setClientSecret()" type="string" optional>
+            Your machine identity client secret.
+        </ParamField>
+
+         <ParamField query="setAccessToken()" type="string" optional>
+            An access token obtained from the machine identity login endpoint.
+        </ParamField>
+
+        <ParamField query="setCacheTTL()" type="number" default="300" optional>
+            Time-to-live (in seconds) for refreshing cached secrets.
+            If manually set to 0, caching will be disabled, this is not recommended.
+        </ParamField>
+
+        <ParamField query="setSiteURL()" type="string" default="https://app.infisical.com" optional>
+            Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`)
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### Caching
+
+To reduce the number of API requests, the SDK temporarily stores secrets it retrieves. By default, a secret remains cached for 5 minutes after it's first fetched. Each time it's fetched again, this 5-minute timer resets. You can adjust this caching duration by setting the "cacheTTL" option when creating the client.
+
+## Working with Secrets
+
+### client.listSecrets(options)
+
+```java
+ListSecretsOptions options = new ListSecretsOptions();
+options.setEnvironment("dev");
+options.setProjectID("PROJECT_ID");
+options.setPath("/foo/bar");
+options.setIncludeImports(false);
+
+SecretElement[] secrets = client.listSecrets(options);
+```
+
+Retrieve all secrets within the Infisical project and environment that client is connected to
+
+#### Methods
+
+<ParamField query="Parameters" type="object">
+    <Expandable title="properties">
+        <ParamField query="setEnvironment()" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+
+        <ParamField query="setProjectID()" type="string">
+            The project ID where the secret lives in.
+        </ParamField>
+
+         <ParamField query="setPath()" type="string" optional>
+            The path from where secrets should be fetched from.
+        </ParamField>
+
+        <ParamField query="setAttachToProcessEnv()" type="boolean" default="false" optional>
+             Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `System.getenv("SECRET_NAME")`.
+        </ParamField>
+
+        <ParamField query="setIncludeImports()" type="boolean" default="false" optional>
+             Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### client.getSecret(options)
+
+```java
+GetSecretOptions options = new GetSecretOptions();
+options.setSecretName("TEST");
+options.setEnvironment("dev");
+options.setProjectID("PROJECT_ID");
+
+GetSecretResponseSecret secret = client.getSecret(options);
+
+String secretValue = secret.getSecretValue();
+```
+
+Retrieve a secret from Infisical.
+
+By default, `getSecret()` fetches and returns a shared secret.
+
+#### Methods
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="setSecretName()" type="string" required>
+            The key of the secret to retrieve.
+        </ParamField>
+        <ParamField query="setProjectID()" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="setEnvironment()" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="setPath()" type="string" optional>
+            The path from where secret should be fetched from.
+        </ParamField>
+        <ParamField query="setType()" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.createSecret(options)
+
+```java
+CreateSecretOptions createOptions = new CreateSecretOptions();
+createOptions.setSecretName("NEW_SECRET");
+createOptions.setEnvironment("dev");
+createOptions.setProjectID("PROJECT_ID");
+createOptions.setSecretValue("SOME SECRET VALUE");
+createOptions.setPath("/"); // Default
+createOptions.setType("shared"); // Default
+
+CreateSecretResponseSecret newSecret = client.createSecret(createOptions);
+```
+
+Create a new secret in Infisical.
+
+#### Methods
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="setSecretName()" type="string" required>
+            The key of the secret to create.
+        </ParamField>
+        <ParamField query="setSecretValue()" type="string" required>
+            The value of the secret.
+        </ParamField>
+        <ParamField query="setProjectID()" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="setEnvironment()" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="setPath()" type="string" optional>
+            The path from where secret should be created.
+        </ParamField>
+        <ParamField query="setType()" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.updateSecret(options)
+
+```java
+UpdateSecretOptions options = new UpdateSecretOptions();
+
+options.setSecretName("SECRET_TO_UPDATE");
+options.setSecretValue("NEW SECRET VALUE");
+options.setEnvironment("dev");
+options.setProjectID("PROJECT_ID");
+options.setPath("/"); // Default
+options.setType("shared"); // Default
+
+UpdateSecretResponseSecret updatedSecret = client.updateSecret(options);
+```
+
+Update an existing secret in Infisical.
+
+#### Methods
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="setSecretName()" type="string" required>
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="setSecretValue()" type="string" required>
+            The new value of the secret.
+        </ParamField>
+        <ParamField query="setProjectID()" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="setEnvironment()" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="setPath()" type="string" optional>
+            The path from where secret should be updated.
+        </ParamField>
+        <ParamField query="setType()" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.deleteSecret(options)
+
+```java
+DeleteSecretOptions options = new DeleteSecretOptions();
+
+options.setSecretName("SECRET_TO_DELETE");
+options.setEnvironment("dev");
+options.setProjectID("PROJECT_ID");
+options.setPath("/"); // Default
+options.setType("shared"); // Default
+
+DeleteSecretResponseSecret deletedSecret = client.deleteSecret(options);
+```
+
+Delete a secret in Infisical.
+
+#### Methods
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="setSecretName()" type="string">
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="setProjectID()" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="setEnvironment()" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="setPath()" type="string" optional>
+            The path from where secret should be deleted.
+        </ParamField>
+        <ParamField query="setType()" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+## Cryptography
+
+### Create a symmetric key
+
+Create a base64-encoded, 256-bit symmetric key to be used for encryption/decryption.
+
+```java
+String key = client.createSymmetricKey();
+```
+
+#### Returns (string)
+`key` (string): A base64-encoded, 256-bit symmetric key, that can be used for encryption/decryption purposes.
+
+### Encrypt symmetric
+```java
+EncryptSymmetricOptions options = new EncryptSymmetricOptions();
+options.setKey(key);
+options.setPlaintext("Infisical is awesome!");
+
+EncryptSymmetricResponse encryptedData = client.encryptSymmetric(options);
+```
+
+#### Methods
+
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="setPlaintext()" type="string">
+            The plaintext you want to encrypt.
+        </ParamField>
+        <ParamField query="setKey()" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (object)
+`tag (getTag())` (string): A base64-encoded, 128-bit authentication tag.
+`iv (getIv())` (string): A base64-encoded, 96-bit initialization vector.
+`ciphertext (getCipherText())` (string): A base64-encoded, encrypted ciphertext.
+
+
+### Decrypt symmetric
+```java
+DecryptSymmetricOptions decryptOptions = new DecryptSymmetricOptions();
+decryptOptions.setKey(key);
+decryptOptions.setCiphertext(encryptedData.getCiphertext());
+decryptOptions.setIv(encryptedData.getIv());
+decryptOptions.setTag(encryptedData.getTag());
+
+String decryptedString = client.decryptSymmetric(decryptOptions);
+```
+
+#### Methods
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="setCiphertext()" type="string">
+            The ciphertext you want to decrypt.
+        </ParamField>
+        <ParamField query="setKey()" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+        <ParamField query="setIv()" type="string" required>
+            The initialization vector to use for decryption.
+        </ParamField>
+        <ParamField query="setTag()" type="string" required>
+            The authentication tag to use for decryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (string)
+`Plaintext` (string): The decrypted plaintext.
