@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/telemetry"
@@ -38,7 +39,9 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initLog)
 	rootCmd.PersistentFlags().StringP("log-level", "l", "info", "log level (trace, debug, info, warn, error, fatal)")
-	rootCmd.PersistentFlags().Bool("telemetry", true, "Infisical collects non-sensitive telemetry data to enhance features and improve user experience. Participation is voluntary")
+	rootCmd.PersistentFlags().BoolVar(&config.INFISICAL_DISABLE_TELEMETRY, "no-telemetry", config.INFISICAL_DISABLE_TELEMETRY, "Infisical collects non-sensitive telemetry data to enhance features and improve user experience. Participation is voluntary.")
+	viper.BindPFlag("INFISICAL_DISABLE_TELEMETRY", rootCmd.PersistentFlags().Lookup("no-telemetry"))
+	viper.AutomaticEnv()
 	rootCmd.PersistentFlags().StringVar(&config.INFISICAL_URL, "domain", util.INFISICAL_DEFAULT_API_URL, "Point the CLI to your own backend [can also set via environment variable name: INFISICAL_API_URL]")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		if !util.IsRunningInDocker() {
@@ -54,8 +57,8 @@ func init() {
 		}
 	}
 
-	isTelemetryOn, _ := rootCmd.PersistentFlags().GetBool("telemetry")
-	Telemetry = telemetry.NewTelemetry(isTelemetryOn)
+	isTelemetryOn, _ := rootCmd.PersistentFlags().GetBool("no-telemetry")
+	Telemetry = telemetry.NewTelemetry(!isTelemetryOn)
 }
 
 func initLog() {
