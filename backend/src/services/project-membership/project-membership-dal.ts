@@ -1,7 +1,7 @@
 import { TDbClient } from "@app/db";
 import { TableName, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TProjectMembershipDALFactory = ReturnType<typeof projectMembershipDALFactory>;
 
@@ -31,6 +31,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId")
         );
+      // .where({ ghost: false });
       return members.map(({ email, firstName, lastName, publicKey, ghost, ...data }) => ({
         ...data,
         user: { email, firstName, lastName, id: data.userId, publicKey, ghost }
@@ -40,5 +41,20 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...projectMemberOrm, findAllProjectMembers };
+  const findProjectGhostUser = async (projectId: string) => {
+    try {
+      const ghostUser = await db(TableName.ProjectMembership)
+        .where({ projectId })
+        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .select(selectAllTableCols(TableName.Users))
+        .where({ ghost: true })
+        .first();
+
+      return ghostUser;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project ghost user" });
+    }
+  };
+
+  return { ...projectMemberOrm, findAllProjectMembers, findProjectGhostUser };
 };
