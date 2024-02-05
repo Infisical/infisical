@@ -7,12 +7,12 @@ import {
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace/queries";
-import { AddUserToWsDTO } from "./types";
+import { AddUserToWsDTOE2EE, AddUserToWsDTONonE2EE } from "./types";
 
-export const useAddUserToWs = () => {
+export const useAddUserToWsE2EE = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, AddUserToWsDTO>({
+  return useMutation<{}, {}, AddUserToWsDTOE2EE>({
     mutationFn: async ({ workspaceId, members, decryptKey, userPrivateKey }) => {
       // assymmetrically decrypt symmetric key with local private key
       const key = decryptAssymmetric({
@@ -42,6 +42,22 @@ export const useAddUserToWs = () => {
     },
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(workspaceId));
+    }
+  });
+};
+
+export const useAddUserToWsNonE2EE = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, AddUserToWsDTONonE2EE>({
+    mutationFn: async ({ projectId, emails }) => {
+      const { data } = await apiRequest.post(`/api/v3/projects/${projectId}/memberships`, {
+        emails
+      });
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(projectId));
     }
   });
 };

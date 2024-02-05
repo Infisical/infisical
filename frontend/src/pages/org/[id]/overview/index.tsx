@@ -53,7 +53,7 @@ import {
   // fetchOrgUsers,
   // useAddUserToWs,
   useCreateWorkspace,
-  useRegisterUserAction,
+  useRegisterUserAction
 } from "@app/hooks/api";
 // import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -471,7 +471,7 @@ const OrganizationPage = withPermission(
     const currentOrg = String(router.query.id);
     const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === currentOrg) || [];
     const { createNotification } = useNotificationContext();
-   // const addWsUser = useAddUserToWs();
+    // const addWsUser = useAddUserToWs();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "addNewWs",
@@ -501,35 +501,32 @@ const OrganizationPage = withPermission(
       try {
         const {
           data: {
-            workspace: { id: newWorkspaceId }
+            project: { id: newWorkspaceId }
           }
         } = await createWs.mutateAsync({
           organizationId: currentOrg,
-          inviteAllOrgMembers: addMembers,
           projectName: name
         });
 
-        /*
         if (addMembers) {
           // not using hooks because need at this point only
-          const orgUsers = await fetchOrgUsers(currentOrg);
-          const decryptKey = await fetchUserWsKey(newWorkspaceId);
-
-          await addWsUser.mutateAsync({
-            workspaceId: newWorkspaceId,
-            decryptKey,
-            userPrivateKey: PRIVATE_KEY,
-            members: orgUsers
-              .filter(
-                ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
-              )
-              .map(({ user: orgUser, id: orgMembershipId }) => ({
-                userPublicKey: orgUser.publicKey,
-                orgMembershipId
-              }))
-          });
+          //   const orgUsers = await fetchOrgUsers(currentOrg);
+          //   const decryptKey = await fetchUserWsKey(newWorkspaceId);
+          //   await addWsUser.mutateAsync({
+          //     workspaceId: newWorkspaceId,
+          //     decryptKey,
+          //     userPrivateKey: PRIVATE_KEY,
+          //     members: orgUsers
+          //       .filter(
+          //         ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
+          //       )
+          //       .map(({ user: orgUser, id: orgMembershipId }) => ({
+          //         userPublicKey: orgUser.publicKey,
+          //         orgMembershipId
+          //       }))
+          //   });
         }
-        */
+
         createNotification({ text: "Workspace created", type: "success" });
         handlePopUpClose("addNewWs");
         router.push(`/project/${newWorkspaceId}/secrets/overview`);

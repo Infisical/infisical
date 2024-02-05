@@ -62,7 +62,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import {
   fetchOrgUsers,
-  useAddUserToWs,
+  useAddUserToWsE2EE,
   useCreateWorkspace,
   useGetOrgTrialUrl,
   useGetSecretApprovalRequestCount,
@@ -130,7 +130,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const createWs = useCreateWorkspace();
   const uploadWsKey = useUploadWsKey();
-  const addWsUser = useAddUserToWs();
+  const addWsUser = useAddUserToWsE2EE();
   const infisicalPlatformVersion = process.env.NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -224,11 +224,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
     try {
       const {
         data: {
-          workspace: { id: newWorkspaceId }
+          project: { id: newWorkspaceId }
         }
       } = await createWs.mutateAsync({
         organizationId: currentOrg?.id,
-        workspaceName: name
+        projectName: name
       });
 
       const randomBytes = crypto.randomBytes(16).toString("hex");

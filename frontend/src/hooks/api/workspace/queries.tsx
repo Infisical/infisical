@@ -158,21 +158,19 @@ export const useGetWorkspaceIntegrations = (workspaceId: string) =>
 
 export const createWorkspace = ({
   organizationId,
-  projectName,
-  inviteAllOrgMembers
-}: CreateWorkspaceDTO): Promise<{ data: { workspace: Workspace } }> => {
-  return apiRequest.post("/api/v3/projects", { projectName, inviteAllOrgMembers, organizationId });
+  projectName
+}: CreateWorkspaceDTO): Promise<{ data: { project: Workspace } }> => {
+  return apiRequest.post("/api/v3/projects", { projectName, organizationId });
 };
 
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ data: { workspace: Workspace } }, {}, CreateWorkspaceDTO>({
-    mutationFn: async ({ organizationId, projectName, inviteAllOrgMembers }) =>
+  return useMutation<{ data: { project: Workspace } }, {}, CreateWorkspaceDTO>({
+    mutationFn: async ({ organizationId, projectName }) =>
       createWorkspace({
         organizationId,
-        projectName,
-        inviteAllOrgMembers
+        projectName
       }),
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
@@ -287,11 +285,13 @@ export const useAddUserToWorkspace = () => {
   return useMutation({
     mutationFn: async ({ email, workspaceId }: { email: string; workspaceId: string }) => {
       const {
-        data: { invitee, latestKey }
-      } = await apiRequest.post(`/api/v1/workspace/${workspaceId}/invite-signup`, { email });
+        data: { invitees, latestKey }
+      } = await apiRequest.post(`/api/v1/workspace/${workspaceId}/invite-signup`, {
+        emails: [email]
+      });
 
       return {
-        invitee,
+        invitees,
         latestKey
       };
     },

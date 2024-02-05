@@ -44,7 +44,8 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
-  useAddUserToWs,
+  useAddUserToWsE2EE,
+  useAddUserToWsNonE2EE,
   useDeleteUserFromWorkspace,
   useGetOrgUsers,
   useGetProjectRoles,
@@ -95,12 +96,14 @@ export const MemberListTab = () => {
     formState: { isSubmitting }
   } = useForm<TAddMemberForm>({ resolver: zodResolver(addMemberFormSchema) });
 
-  const { mutateAsync: addUserToWorkspace } = useAddUserToWs();
+  const { mutateAsync: addUserToWorkspace } = useAddUserToWsE2EE();
+  const { mutateAsync: addUserToWorkspaceNonE2EE } = useAddUserToWsNonE2EE();
   const { mutateAsync: uploadWsKey } = useUploadWsKey();
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
   const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
 
   const onAddMember = async ({ orgMembershipId }: TAddMemberForm) => {
+    if (!currentWorkspace) return;
     if (!currentOrg?.id) return;
     // TODO(akhilmhdh): Move to memory storage
     const userPrivateKey = localStorage.getItem("PRIVATE_KEY");
@@ -114,12 +117,19 @@ export const MemberListTab = () => {
     if (!orgUser) return;
 
     try {
-      await addUserToWorkspace({
-        workspaceId,
-        userPrivateKey,
-        decryptKey: wsKey,
-        members: [{ orgMembershipId, userPublicKey: orgUser.user.publicKey }]
-      });
+      if (currentWorkspace.e2ee) {
+        await addUserToWorkspace({
+          workspaceId,
+          userPrivateKey,
+          decryptKey: wsKey,
+          members: [{ orgMembershipId, userPublicKey: orgUser.user.publicKey }]
+        });
+      } else {
+        await addUserToWorkspaceNonE2EE({
+          projectId: workspaceId,
+          emails: [orgUser.user.email]
+        });
+      }
       createNotification({
         text: "Successfully added user to the project",
         type: "success"
