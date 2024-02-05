@@ -1,6 +1,7 @@
+/* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 
-import { OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import { OrgMembershipStatus, ProjectMembershipRole, TableName, TUsers } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -27,7 +28,7 @@ type TProjectMembershipServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
-  userDAL: Pick<TUserDALFactory, "findById" | "findOne">;
+  userDAL: Pick<TUserDALFactory, "findById" | "findOne" | "findUserByProjectMembershipId">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -55,64 +56,78 @@ export const projectMembershipServiceFactory = ({
     return projectMembershipDAL.findAllProjectMembers(projectId);
   };
 
-  const inviteUserToProject = async ({ actorId, actor, actorOrgId, projectId, email }: TInviteUserToProjectDTO) => {
+  const inviteUserToProject = async ({ actorId, actor, actorOrgId, projectId, emails }: TInviteUserToProjectDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
 
-    const invitee = await userDAL.findOne({ email });
-    if (!invitee || !invitee.isAccepted)
-      throw new BadRequestError({
-        message: "Faield to validate invitee",
-        name: "Invite user to project"
+    const invitees: TUsers[] = [];
+
+    for (const email of emails) {
+      const invitee = await userDAL.findOne({ email });
+      if (!invitee || !invitee.isAccepted)
+        throw new BadRequestError({
+          message: "Faield to validate invitee",
+          name: "Invite user to project"
+        });
+
+      const inviteeMembership = await projectMembershipDAL.findOne({
+        userId: invitee.id,
+        projectId
+      });
+      if (inviteeMembership)
+        throw new BadRequestError({
+          message: "Existing member of project",
+          name: "Invite user to project"
+        });
+
+      const project = await projectDAL.findById(projectId);
+      const inviteeMembershipOrg = await orgDAL.findMembership({
+        userId: invitee.id,
+        orgId: project.orgId,
+        status: OrgMembershipStatus.Accepted
+      });
+      if (!inviteeMembershipOrg)
+        throw new BadRequestError({
+          message: "Failed to validate invitee org membership",
+          name: "Invite user to project"
+        });
+
+      await projectMembershipDAL.create({
+        userId: invitee.id,
+        projectId,
+        role: ProjectMembershipRole.Member
       });
 
-    const inviteeMembership = await projectMembershipDAL.findOne({
-      userId: invitee.id,
-      projectId
-    });
-    if (inviteeMembership)
-      throw new BadRequestError({
-        message: "Existing member of project",
-        name: "Invite user to project"
+      const sender = await userDAL.findById(actorId);
+      const appCfg = getConfig();
+      await smtpService.sendMail({
+        template: SmtpTemplates.WorkspaceInvite,
+        subjectLine: "Infisical workspace invitation",
+        recipients: [invitee.email],
+        substitutions: {
+          inviterFirstName: sender.firstName,
+          inviterEmail: sender.email,
+          workspaceName: project.name,
+          callback_url: `${appCfg.SITE_URL}/login`
+        }
       });
 
-    const project = await projectDAL.findById(projectId);
-    const inviteeMembershipOrg = await orgDAL.findMembership({
-      userId: invitee.id,
-      orgId: project.orgId,
-      status: OrgMembershipStatus.Accepted
-    });
-    if (!inviteeMembershipOrg)
-      throw new BadRequestError({
-        message: "Failed to validate invitee org membership",
-        name: "Invite user to project"
-      });
+      invitees.push(invitee);
+    }
 
     const latestKey = await projectKeyDAL.findLatestProjectKey(actorId, projectId);
-    await projectMembershipDAL.create({
-      userId: invitee.id,
-      projectId,
-      role: ProjectMembershipRole.Member
-    });
 
-    const sender = await userDAL.findById(actorId);
-    const appCfg = getConfig();
-    await smtpService.sendMail({
-      template: SmtpTemplates.WorkspaceInvite,
-      subjectLine: "Infisical workspace invitation",
-      recipients: [invitee.email],
-      substitutions: {
-        inviterFirstName: sender.firstName,
-        inviterEmail: sender.email,
-        workspaceName: project.name,
-        callback_url: `${appCfg.SITE_URL}/login`
-      }
-    });
-
-    return { invitee, latestKey };
+    return { invitees, latestKey };
   };
 
-  const addUsersToProject = async ({ projectId, actorId, actor, actorOrgId, members }: TAddUsersToWorkspaceDTO) => {
+  const addUsersToProject = async ({
+    projectId,
+    actorId,
+    actor,
+    actorOrgId,
+    members,
+    sendEmails = true
+  }: TAddUsersToWorkspaceDTO) => {
     const project = await projectDAL.findById(projectId);
     if (!project) throw new BadRequestError({ message: "Project not found" });
 
@@ -158,19 +173,22 @@ export const projectMembershipServiceFactory = ({
         tx
       );
     });
-    const sender = await userDAL.findById(actorId);
-    const appCfg = getConfig();
-    await smtpService.sendMail({
-      template: SmtpTemplates.WorkspaceInvite,
-      subjectLine: "Infisical workspace invitation",
-      recipients: orgMembers.map(({ email }) => email).filter(Boolean),
-      substitutions: {
-        inviterFirstName: sender.firstName,
-        inviterEmail: sender.email,
-        workspaceName: project.name,
-        callback_url: `${appCfg.SITE_URL}/login`
-      }
-    });
+
+    if (sendEmails) {
+      const sender = await userDAL.findById(actorId);
+      const appCfg = getConfig();
+      await smtpService.sendMail({
+        template: SmtpTemplates.WorkspaceInvite,
+        subjectLine: "Infisical workspace invitation",
+        recipients: orgMembers.map(({ email }) => email).filter(Boolean),
+        substitutions: {
+          inviterFirstName: sender.firstName,
+          inviterEmail: sender.email,
+          workspaceName: project.name,
+          callback_url: `${appCfg.SITE_URL}/login`
+        }
+      });
+    }
     return orgMembers;
   };
 
@@ -184,6 +202,15 @@ export const projectMembershipServiceFactory = ({
   }: TUpdateProjectMembershipDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
+
+    const membershipUser = await userDAL.findUserByProjectMembershipId(membershipId);
+
+    if (membershipUser?.ghost) {
+      throw new BadRequestError({
+        message: "Unauthorized member update",
+        name: "Update project membership"
+      });
+    }
 
     const isCustomRole = !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole);
     if (isCustomRole) {
@@ -219,6 +246,15 @@ export const projectMembershipServiceFactory = ({
   }: TDeleteProjectMembershipDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
+
+    const membershipUser = await userDAL.findUserByProjectMembershipId(membershipId);
+
+    if (membershipUser?.ghost) {
+      throw new BadRequestError({
+        message: "Cannot delete ghost",
+        name: "Delete project membership"
+      });
+    }
 
     const membership = await projectMembershipDAL.transaction(async (tx) => {
       const [deletedMembership] = await projectMembershipDAL.delete({ projectId, id: membershipId }, tx);

@@ -13,10 +13,9 @@ import {
 } from "@app/lib/crypto";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
-import { TProjectPermission } from "@app/lib/types";
 
 import { TProjectBotDALFactory } from "./project-bot-dal";
-import { TGetPrivateKeyDTO, TSetActiveStateDTO } from "./project-bot-types";
+import { TFindBotByProjectIdDTO, TGetPrivateKeyDTO, TSetActiveStateDTO } from "./project-bot-types";
 
 type TProjectBotServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -26,12 +25,12 @@ type TProjectBotServiceFactoryDep = {
 export type TProjectBotServiceFactory = ReturnType<typeof projectBotServiceFactory>;
 
 export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: TProjectBotServiceFactoryDep) => {
-  const getBotPrivateKey = async ({ encoding, nonce, tag, encryptedPrivateKey }: TGetPrivateKeyDTO) =>
+  const getBotPrivateKey = ({ bot }: TGetPrivateKeyDTO) =>
     infisicalSymmetricDecrypt({
-      keyEncoding: encoding,
-      iv: nonce,
-      tag,
-      ciphertext: encryptedPrivateKey
+      keyEncoding: bot.keyEncoding as SecretKeyEncoding,
+      iv: bot.iv,
+      tag: bot.tag,
+      ciphertext: bot.encryptedPrivateKey
     });
 
   const getBotKey = async (projectId: string) => {
@@ -41,24 +40,24 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
     if (!bot.encryptedProjectKeyNonce || !bot.encryptedProjectKey)
       throw new BadRequestError({ message: "Encryption key missing" });
 
-    const privateKeyBot = await getBotPrivateKey({
-      nonce: bot.iv,
-      tag: bot.tag,
-      encryptedPrivateKey: bot.encryptedPrivateKey,
-      encoding: bot.keyEncoding as SecretKeyEncoding
-    });
-
-    console.log("privateKeyBot", privateKeyBot);
+    const botPrivateKey = getBotPrivateKey({ bot });
 
     return decryptAsymmetric({
       ciphertext: bot.encryptedProjectKey,
-      privateKey: privateKeyBot,
+      privateKey: botPrivateKey,
       nonce: bot.encryptedProjectKeyNonce,
       publicKey: bot.sender.publicKey
     });
   };
 
-  const findBotByProjectId = async ({ actorId, actor, actorOrgId, projectId }: TProjectPermission) => {
+  const findBotByProjectId = async ({
+    actorId,
+    actor,
+    projectId,
+    actorOrgId,
+    privateKey,
+    publicKey
+  }: TFindBotByProjectIdDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const appCfg = getConfig();
@@ -67,9 +66,10 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
       const doc = await projectBotDAL.findOne({ projectId }, tx);
       if (doc) return doc;
 
-      const { publicKey, privateKey } = generateAsymmetricKeyPair();
+      const keys = privateKey && publicKey ? { privateKey, publicKey } : generateAsymmetricKeyPair();
+
       if (appCfg.ROOT_ENCRYPTION_KEY) {
-        const { iv, tag, ciphertext } = encryptSymmetric(privateKey, appCfg.ROOT_ENCRYPTION_KEY);
+        const { iv, tag, ciphertext } = encryptSymmetric(keys.privateKey, appCfg.ROOT_ENCRYPTION_KEY);
         return projectBotDAL.create(
           {
             name: "Infisical Bot",
@@ -78,7 +78,7 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
             iv,
             encryptedPrivateKey: ciphertext,
             isActive: false,
-            publicKey,
+            publicKey: keys.publicKey,
             algorithm: SecretEncryptionAlgo.AES_256_GCM,
             keyEncoding: SecretKeyEncoding.BASE64
           },
@@ -86,7 +86,7 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
         );
       }
       if (appCfg.ENCRYPTION_KEY) {
-        const { iv, tag, ciphertext } = encryptSymmetric128BitHexKeyUTF8(privateKey, appCfg.ENCRYPTION_KEY);
+        const { iv, tag, ciphertext } = encryptSymmetric128BitHexKeyUTF8(keys.privateKey, appCfg.ENCRYPTION_KEY);
         return projectBotDAL.create(
           {
             name: "Infisical Bot",
@@ -95,7 +95,7 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
             iv,
             encryptedPrivateKey: ciphertext,
             isActive: false,
-            publicKey,
+            publicKey: keys.publicKey,
             algorithm: SecretEncryptionAlgo.AES_256_GCM,
             keyEncoding: SecretKeyEncoding.UTF8
           },
@@ -105,6 +105,15 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
       throw new BadRequestError({ message: "Failed to create bot due to missing encryption key" });
     });
     return bot;
+  };
+
+  const findProjectByBotId = async (botId: string) => {
+    try {
+      const bot = await projectBotDAL.findProjectByBotId(botId);
+      return bot;
+    } catch (e) {
+      throw new BadRequestError({ message: "Failed to find bot by ID" });
+    }
   };
 
   const setBotActiveState = async ({ actor, botId, botKey, actorId, actorOrgId, isActive }: TSetActiveStateDTO) => {
@@ -145,6 +154,7 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
     findBotByProjectId,
     setBotActiveState,
     getBotPrivateKey,
+    findProjectByBotId,
     getBotKey
   };
 };

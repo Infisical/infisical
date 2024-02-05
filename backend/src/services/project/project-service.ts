@@ -11,6 +11,7 @@ import { createSecretBlindIndex } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
@@ -28,7 +29,8 @@ type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "insertMany">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser">;
+  orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -40,6 +42,7 @@ export const projectServiceFactory = ({
   projectDAL,
   permissionService,
   folderDAL,
+  orgService,
   secretBlindIndexDAL,
   projectMembershipDAL,
   projectEnvDAL,
@@ -64,7 +67,9 @@ export const projectServiceFactory = ({
       });
     }
 
-    const newProject = projectDAL.transaction(async (tx) => {
+    const results = await projectDAL.transaction(async (tx) => {
+      const ghostUser = await orgService.addGhostUser(orgId, tx);
+
       const project = await projectDAL.create(
         {
           name: workspaceName,
@@ -74,10 +79,10 @@ export const projectServiceFactory = ({
         },
         tx
       );
-      // set user as admin member for project
+      // set ghost user as admin of project
       await projectMembershipDAL.create(
         {
-          userId: actorId,
+          userId: ghostUser.user.id,
           role: ProjectMembershipRole.Admin,
           projectId: project.id
         },
@@ -106,10 +111,23 @@ export const projectServiceFactory = ({
         tx
       );
       // _id for backward compat
-      return { ...project, environments: envs, _id: project.id };
+      return {
+        project: {
+          ...project,
+          environments: envs,
+          _id: project.id
+        },
+        ghostUser
+      };
     });
 
-    return newProject;
+    return results;
+  };
+
+  const findProjectGhostUser = async (projectId: string) => {
+    const user = await projectMembershipDAL.findProjectGhostUser(projectId);
+
+    return user;
   };
 
   const deleteProject = async ({ actor, actorId, actorOrgId, projectId }: TDeleteProjectDTO) => {
@@ -156,6 +174,7 @@ export const projectServiceFactory = ({
     createProject,
     deleteProject,
     getProjects,
+    findProjectGhostUser,
     getAProject,
     toggleAutoCapitalization,
     updateName

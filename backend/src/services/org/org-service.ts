@@ -2,6 +2,8 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import { Knex } from "knex";
+import { nanoid } from "nanoid";
 
 import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
 import { TProjects } from "@app/db/schemas/projects";
@@ -30,6 +32,7 @@ import { TOrgRoleDALFactory } from "./org-role-dal";
 import {
   TDeleteOrgMembershipDTO,
   TFindAllWorkspacesDTO,
+  TFindOrgMembersByEmailDTO,
   TInviteUserToOrgDTO,
   TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
@@ -95,6 +98,15 @@ export const orgServiceFactory = ({
     return members;
   };
 
+  const findOrgMembersByEmail = async ({ actor, actorId, orgId, emails }: TFindOrgMembersByEmailDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+
+    const members = await orgDAL.findOrgMembersByEmail(orgId, emails);
+
+    return members;
+  };
+
   const findAllWorkspaces = async ({ actor, actorId, actorOrgId, orgId }: TFindAllWorkspacesDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
@@ -120,31 +132,38 @@ export const orgServiceFactory = ({
     return workspaces.filter((workspace) => organizationWorkspaceIds.has(workspace.id));
   };
 
-  const addGhostUser = async (orgId: string) => {
-    const email = `ghost@${orgId}.com`;
+  const addGhostUser = async (orgId: string, tx?: Knex) => {
+    const email = `ghost@${nanoid(8)}-${orgId}.com`; // We add a nanoid because the email is unique. And we have to create a new ghost user each time, so we can have access to the private key.
     const password = crypto.randomBytes(128).toString("hex");
 
-    const user = await userDAL.create({
-      ghost: true,
-      authMethods: [AuthMethod.EMAIL],
-      email: `ghost@${orgId}.com`,
-      isAccepted: true
-    });
+    const user = await userDAL.create(
+      {
+        ghost: true,
+        authMethods: [AuthMethod.EMAIL],
+        email,
+        isAccepted: true
+      },
+      tx
+    );
 
     const encKeys = await generateUserSrpKeys(email, password);
 
-    await userDAL.upsertUserEncryptionKey(user.id, {
-      encryptionVersion: 2,
-      protectedKey: encKeys.protectedKey,
-      protectedKeyIV: encKeys.protectedKeyIV,
-      protectedKeyTag: encKeys.protectedKeyTag,
-      publicKey: encKeys.publicKey,
-      encryptedPrivateKey: encKeys.encryptedPrivateKey,
-      iv: encKeys.encryptedPrivateKeyIV,
-      tag: encKeys.encryptedPrivateKeyTag,
-      salt: encKeys.salt,
-      verifier: encKeys.verifier
-    });
+    await userDAL.upsertUserEncryptionKey(
+      user.id,
+      {
+        encryptionVersion: 2,
+        protectedKey: encKeys.protectedKey,
+        protectedKeyIV: encKeys.protectedKeyIV,
+        protectedKeyTag: encKeys.protectedKeyTag,
+        publicKey: encKeys.publicKey,
+        encryptedPrivateKey: encKeys.encryptedPrivateKey,
+        iv: encKeys.encryptedPrivateKeyIV,
+        tag: encKeys.encryptedPrivateKeyTag,
+        salt: encKeys.salt,
+        verifier: encKeys.verifier
+      },
+      tx
+    );
 
     const createMembershipData = {
       orgId,
@@ -153,9 +172,7 @@ export const orgServiceFactory = ({
       status: OrgMembershipStatus.Accepted
     };
 
-    console.log("createMembershipData", createMembershipData);
-
-    await orgDAL.createMembership(createMembershipData);
+    await orgDAL.createMembership(createMembershipData, tx);
 
     return {
       user,
@@ -533,6 +550,7 @@ export const orgServiceFactory = ({
     inviteUserToOrganization,
     verifyUserToOrg,
     updateOrg,
+    findOrgMembersByEmail,
     createOrganization,
     deleteOrganizationById,
     deleteOrgMembership,
