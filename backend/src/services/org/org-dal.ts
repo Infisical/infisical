@@ -121,6 +121,39 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOrgMembersByEmail = async (orgId: string, emails: string[]) => {
+    try {
+      const members = await db(TableName.OrgMembership)
+        .where({ orgId })
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin<TUserEncryptionKeys>(
+          TableName.UserEncryptionKey,
+          `${TableName.UserEncryptionKey}.userId`,
+          `${TableName.Users}.id`
+        )
+        .select(
+          db.ref("id").withSchema(TableName.OrgMembership),
+          db.ref("inviteEmail").withSchema(TableName.OrgMembership),
+          db.ref("orgId").withSchema(TableName.OrgMembership),
+          db.ref("role").withSchema(TableName.OrgMembership),
+          db.ref("roleId").withSchema(TableName.OrgMembership),
+          db.ref("status").withSchema(TableName.OrgMembership),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
+        )
+        .whereIn("email", emails);
+      return members.map(({ email, firstName, lastName, userId, publicKey, ...data }) => ({
+        ...data,
+        user: { email, firstName, lastName, id: userId, publicKey }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all org members" });
+    }
+  };
+
   const findOrgGhostUser = async (orgId: string) => {
     try {
       const member = await db(TableName.OrgMembership)
