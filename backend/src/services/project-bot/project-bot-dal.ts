@@ -27,5 +27,19 @@ export const projectBotDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...projectBotOrm, findOne };
+  const findProjectByBotId = async (botId: string) => {
+    try {
+      const project = await db(TableName.ProjectBot)
+        .where({ [`${TableName.ProjectBot}.id` as "id"]: botId })
+        .join(TableName.Project, `${TableName.ProjectBot}.projectId`, `${TableName.Project}.id`)
+        .select(selectAllTableCols(TableName.Project))
+        .first();
+
+      return project || null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project by bot id" });
+    }
+  };
+
+  return { ...projectBotOrm, findOne, findProjectByBotId };
 };
