@@ -12,7 +12,7 @@ type AddUserToWsDTO = {
   }[];
 };
 
-export const createWsMembers = async ({ members, decryptKey, userPrivateKey }: AddUserToWsDTO) => {
+export const createWsMembers = ({ members, decryptKey, userPrivateKey }: AddUserToWsDTO) => {
   const key = decryptAsymmetric({
     ciphertext: decryptKey.encryptedKey,
     nonce: decryptKey.nonce,
