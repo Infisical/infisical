@@ -261,33 +261,36 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          invitee: UsersSchema,
+          invitees: UsersSchema.array(),
           latestKey: ProjectKeysSchema.optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { invitee, latestKey } = await server.services.projectMembership.inviteUserToProject({
+      const { invitees, latestKey } = await server.services.projectMembership.inviteUserToProject({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
-        email: req.body.email
+        emails: [req.body.email]
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
-        event: {
-          type: EventType.ADD_WORKSPACE_MEMBER,
-          metadata: {
-            userId: invitee.id,
-            email: invitee.email
+      for (const invitee of invitees) {
+        // eslint-disable-next-line no-await-in-loop
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: req.params.workspaceId,
+          event: {
+            type: EventType.ADD_WORKSPACE_MEMBER,
+            metadata: {
+              userId: invitee.id,
+              email: invitee.email
+            }
           }
-        }
-      });
-      return { invitee, latestKey };
+        });
+      }
+      return { invitees, latestKey };
     }
   });
 
