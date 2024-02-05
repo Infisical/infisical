@@ -4,7 +4,7 @@ import { TProjectPermission } from "@app/lib/types";
 export type TGetProjectMembershipDTO = TProjectPermission;
 
 export type TInviteUserToProjectDTO = {
-  email: string;
+  emails: string[];
 } & TProjectPermission;
 
 export type TUpdateProjectMembershipDTO = {
@@ -17,6 +17,7 @@ export type TDeleteProjectMembershipDTO = {
 } & TProjectPermission;
 
 export type TAddUsersToWorkspaceDTO = {
+  sendEmails?: boolean;
   members: {
     orgMembershipId: string;
     workspaceEncryptedKey: string;

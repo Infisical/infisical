@@ -1,4 +1,5 @@
-import { SecretKeyEncoding } from "@app/db/schemas";
+// import { SecretKeyEncoding } from "@app/db/schemas";
+import { TProjectBots } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TSetActiveStateDTO = {
@@ -10,9 +11,16 @@ export type TSetActiveStateDTO = {
   botId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TFindBotByProjectIdDTO = {
+  privateKey?: string;
+  publicKey?: string;
+} & TProjectPermission;
+
 export type TGetPrivateKeyDTO = {
-  encoding: SecretKeyEncoding;
-  nonce: string;
-  tag: string;
-  encryptedPrivateKey: string;
+  //   encoding: SecretKeyEncoding;
+  //   nonce: string;
+  //   tag: string;
+  //   encryptedPrivateKey: string;
+
+  bot: TProjectBots;
 };
