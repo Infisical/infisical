@@ -63,7 +63,7 @@ export type TProjectMembership = {
 
 export type TWorkspaceUser = OrgUser;
 
-export type AddUserToWsDTO = {
+export type AddUserToWsDTOE2EE = {
   workspaceId: string;
   decryptKey: UserWsKeyPair;
   userPrivateKey: string;
@@ -71,6 +71,11 @@ export type AddUserToWsDTO = {
     orgMembershipId: string;
     userPublicKey: string;
   }[];
+};
+
+export type AddUserToWsDTONonE2EE = {
+  projectId: string;
+  emails: string[];
 };
 
 export type UpdateOrgUserRoleDTO = {
