@@ -39,7 +39,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const organization = await server.services.org.findOrganizationById(
         req.permission.id,
-        req.params.organizationId.
+        req.params.organizationId,
         req.permission.orgId
       );
       return { organization };
@@ -73,8 +73,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const users = await server.services.org.findAllOrgMembers(
-        req.permission.id, 
-        req.params.organizationId, 
+        req.permission.id,
+        req.params.organizationId,
         req.permission.orgId
       );
       return { users };

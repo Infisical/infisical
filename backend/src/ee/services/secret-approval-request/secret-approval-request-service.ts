@@ -73,10 +73,15 @@ export const secretApprovalRequestServiceFactory = ({
   secretVersionDAL,
   secretQueueService
 }: TSecretApprovalRequestServiceFactoryDep) => {
-  const requestCount = async ({ projectId, actor, actorId }: TApprovalRequestCountDTO) => {
+  const requestCount = async ({ projectId, actor, actorId, actorOrgScope }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { membership } = await permissionService.getProjectPermission(actor as ActorType.USER, actorId, projectId);
+    const { membership } = await permissionService.getProjectPermission(
+      actor as ActorType.USER,
+      actorId,
+      projectId,
+      actorOrgScope
+    );
 
     const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, membership.id);
     return count;
@@ -86,6 +91,7 @@ export const secretApprovalRequestServiceFactory = ({
     projectId,
     actorId,
     actor,
+    actorOrgScope,
     status,
     environment,
     committer,
@@ -94,7 +100,7 @@ export const secretApprovalRequestServiceFactory = ({
   }: TListApprovalsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     const approvals = await secretApprovalRequestDAL.findByProjectId({
       projectId,
       committer,
@@ -107,7 +113,7 @@ export const secretApprovalRequestServiceFactory = ({
     return approvals;
   };
 
-  const getSecretApprovalDetails = async ({ actor, actorId, id }: TSecretApprovalDetailsDTO) => {
+  const getSecretApprovalDetails = async ({ actor, actorId, actorOrgScope, id }: TSecretApprovalDetailsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(id);
@@ -117,7 +123,8 @@ export const secretApprovalRequestServiceFactory = ({
     const { membership } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      secretApprovalRequest.projectId
+      secretApprovalRequest.projectId,
+      actorOrgScope
     );
     if (
       membership.role !== ProjectMembershipRole.Admin &&
@@ -134,7 +141,7 @@ export const secretApprovalRequestServiceFactory = ({
     return { ...secretApprovalRequest, secretPath: secretPath?.[0]?.path || "/", commits: secrets };
   };
 
-  const reviewApproval = async ({ approvalId, actor, status, actorId }: TReviewRequestDTO) => {
+  const reviewApproval = async ({ approvalId, actor, status, actorId, actorOrgScope }: TReviewRequestDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
@@ -143,7 +150,8 @@ export const secretApprovalRequestServiceFactory = ({
     const { membership } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
-      secretApprovalRequest.projectId
+      secretApprovalRequest.projectId,
+      actorOrgScope
     );
     if (
       membership.role !== ProjectMembershipRole.Admin &&
@@ -175,7 +183,7 @@ export const secretApprovalRequestServiceFactory = ({
     return reviewStatus;
   };
 
-  const updateApprovalStatus = async ({ actorId, status, approvalId, actor }: TStatusChangeDTO) => {
+  const updateApprovalStatus = async ({ actorId, status, approvalId, actor, actorOrgScope }: TStatusChangeDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
@@ -184,7 +192,8 @@ export const secretApprovalRequestServiceFactory = ({
     const { membership } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
-      secretApprovalRequest.projectId
+      secretApprovalRequest.projectId,
+      actorOrgScope
     );
     if (
       membership.role !== ProjectMembershipRole.Admin &&
@@ -207,13 +216,23 @@ export const secretApprovalRequestServiceFactory = ({
     return { ...secretApprovalRequest, ...updatedRequest };
   };
 
-  const mergeSecretApprovalRequest = async ({ approvalId, actor, actorId }: TMergeSecretApprovalRequestDTO) => {
+  const mergeSecretApprovalRequest = async ({
+    approvalId,
+    actor,
+    actorId,
+    actorOrgScope
+  }: TMergeSecretApprovalRequestDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const { policy, folderId, projectId } = secretApprovalRequest;
-    const { membership } = await permissionService.getProjectPermission(ActorType.USER, actorId, projectId);
+    const { membership } = await permissionService.getProjectPermission(
+      ActorType.USER,
+      actorId,
+      projectId,
+      actorOrgScope
+    );
     if (
       membership.role !== ProjectMembershipRole.Admin &&
       secretApprovalRequest.committerId !== membership.id &&
@@ -401,6 +420,7 @@ export const secretApprovalRequestServiceFactory = ({
     data,
     actorId,
     actor,
+    actorOrgScope,
     policy,
     projectId,
     secretPath,
@@ -408,7 +428,12 @@ export const secretApprovalRequestServiceFactory = ({
   }: TGenerateSecretApprovalRequestDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { permission, membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission, membership } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorOrgScope
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })

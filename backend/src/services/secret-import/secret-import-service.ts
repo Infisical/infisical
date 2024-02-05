@@ -36,8 +36,16 @@ export const secretImportServiceFactory = ({
   folderDAL,
   secretDAL
 }: TSecretImportServiceFactoryDep) => {
-  const createImport = async ({ environment, data, actor, actorId, projectId, path }: TCreateSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const createImport = async ({
+    environment,
+    data,
+    actor,
+    actorId,
+    actorOrgScope,
+    projectId,
+    path
+  }: TCreateSecretImportDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
 
     // check if user has permission to import into destination  path
     ForbiddenError.from(permission).throwUnlessCan(
@@ -77,8 +85,17 @@ export const secretImportServiceFactory = ({
     return { ...secImport, importEnv };
   };
 
-  const updateImport = async ({ path, environment, projectId, actor, actorId, data, id }: TUpdateSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const updateImport = async ({
+    path,
+    environment,
+    projectId,
+    actor,
+    actorId,
+    actorOrgScope,
+    data,
+    id
+  }: TUpdateSecretImportDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -115,8 +132,16 @@ export const secretImportServiceFactory = ({
     return { ...updatedSecImport, importEnv: importedEnv };
   };
 
-  const deleteImport = async ({ path, environment, projectId, actor, actorId, id }: TDeleteSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const deleteImport = async ({
+    path,
+    environment,
+    projectId,
+    actor,
+    actorId,
+    actorOrgScope,
+    id
+  }: TDeleteSecretImportDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -137,8 +162,8 @@ export const secretImportServiceFactory = ({
     return secImport;
   };
 
-  const getImports = async ({ path, environment, projectId, actor, actorId }: TGetSecretImportsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getImports = async ({ path, environment, projectId, actor, actorId, actorOrgScope }: TGetSecretImportsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -151,8 +176,15 @@ export const secretImportServiceFactory = ({
     return secImports;
   };
 
-  const getSecretsFromImports = async ({ path, environment, projectId, actor, actorId }: TGetSecretsFromImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getSecretsFromImports = async ({
+    path,
+    environment,
+    projectId,
+    actor,
+    actorId,
+    actorOrgScope
+  }: TGetSecretsFromImportDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })

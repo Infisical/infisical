@@ -71,8 +71,8 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
     });
   };
 
-  const findBotByProjectId = async ({ actorId, actor, projectId }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const findBotByProjectId = async ({ actorId, actor, actorOrgScope, projectId }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const appCfg = getConfig();
 
@@ -120,11 +120,11 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
     return bot;
   };
 
-  const setBotActiveState = async ({ actor, botId, botKey, actorId, isActive }: TSetActiveStateDTO) => {
+  const setBotActiveState = async ({ actor, botId, botKey, actorId, actorOrgScope, isActive }: TSetActiveStateDTO) => {
     const bot = await projectBotDAL.findById(botId);
     if (!bot) throw new BadRequestError({ message: "Bot not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, bot.projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, bot.projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
     if (isActive) {

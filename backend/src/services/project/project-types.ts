@@ -11,11 +11,13 @@ export type TCreateProjectDTO = {
 export type TDeleteProjectDTO = {
   actor: ActorType;
   actorId: string;
+  actorOrgScope?: string;
   projectId: string;
 };
 
 export type TGetProjectDTO = {
   actor: ActorType;
   actorId: string;
+  actorOrgScope?: string;
   projectId: string;
 };

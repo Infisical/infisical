@@ -10,18 +10,19 @@ import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-to
 
 export type TAuthMode =
   | {
+      orgId?: string;
       authMode: AuthMode.JWT;
       actor: ActorType.USER;
       userId: string;
       tokenVersionId: string; // the session id of token used
       user: TUsers;
-      orgId?: string;
     }
   | {
       authMode: AuthMode.API_KEY;
       actor: ActorType.USER;
       userId: string;
       user: TUsers;
+      orgId?: string;
     }
   | {
       authMode: AuthMode.SERVICE_TOKEN;

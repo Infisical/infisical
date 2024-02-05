@@ -148,11 +148,14 @@ export const permissionServiceFactory = ({
   };
 
   // user permission for a project in an organization
-  const getUserProjectPermission = async (userId: string, projectId: string) => {
+  const getUserProjectPermission = async (userId: string, projectId: string, orgScope?: string) => {
     const membership = await permissionDAL.getProjectPermission(userId, projectId);
     if (!membership) throw new UnauthorizedError({ name: "User not in project" });
     if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
+    }
+    if (membership.orgAuthEnabled && membership.orgId !== orgScope) {
+      throw new BadRequestError({ name: "Cannot access org-scoped resource" });
     }
     return {
       permission: buildProjectPermission(membership.role, membership.permissions),
@@ -194,17 +197,19 @@ export const permissionServiceFactory = ({
         };
       };
 
+  // TODO: add support for org scope here
   const getProjectPermission = async <T extends ActorType>(
     type: T,
     id: string,
-    projectId: string
+    projectId: string,
+    orgScope?: string
   ): Promise<TProjectPermissionRT<T>> => {
     switch (type) {
       case ActorType.USER:
-        return getUserProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
-      case ActorType.SERVICE:
+        return getUserProjectPermission(id, projectId, orgScope) as Promise<TProjectPermissionRT<T>>;
+      case ActorType.SERVICE: // how to handle org-scope case here?
         return getServiceTokenProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
-      case ActorType.IDENTITY:
+      case ActorType.IDENTITY: // how to handle org-scope case here?
         return getIdentityProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
       default:
         throw new UnauthorizedError({

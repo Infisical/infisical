@@ -106,8 +106,8 @@ export const projectServiceFactory = ({
     return newProject;
   };
 
-  const deleteProject = async ({ actor, actorId, projectId }: TDeleteProjectDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const deleteProject = async ({ actor, actorId, actorOrgScope, projectId }: TDeleteProjectDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
     const deletedProject = await projectDAL.deleteById(projectId);
@@ -119,8 +119,8 @@ export const projectServiceFactory = ({
     return workspaces;
   };
 
-  const getAProject = async ({ actorId, projectId, actor }: TGetProjectDTO) => {
-    await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getAProject = async ({ actorId, actorOrgScope, projectId, actor }: TGetProjectDTO) => {
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     return projectDAL.findProjectById(projectId);
   };
 
@@ -128,17 +128,18 @@ export const projectServiceFactory = ({
     projectId,
     actor,
     actorId,
+    actorOrgScope,
     autoCapitalization
   }: TGetProjectDTO & { autoCapitalization: boolean }) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
     const updatedProject = await projectDAL.updateById(projectId, { autoCapitalization });
     return updatedProject;
   };
 
-  const updateName = async ({ projectId, actor, actorId, name }: TGetProjectDTO & { name: string }) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const updateName = async ({ projectId, actor, actorId, actorOrgScope, name }: TGetProjectDTO & { name: string }) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
     const updatedProject = await projectDAL.updateById(projectId, { name });

@@ -27,8 +27,8 @@ export const projectEnvServiceFactory = ({
   projectDAL,
   folderDAL
 }: TProjectEnvServiceFactoryDep) => {
-  const createEnvironment = async ({ projectId, actorId, actor, name, slug }: TCreateEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const createEnvironment = async ({ projectId, actorId, actor, actorOrgScope, name, slug }: TCreateEnvDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Environments);
 
     const envs = await projectEnvDAL.find({ projectId });
@@ -59,8 +59,17 @@ export const projectEnvServiceFactory = ({
     return env;
   };
 
-  const updateEnvironment = async ({ projectId, slug, actor, actorId, name, id, position }: TUpdateEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const updateEnvironment = async ({
+    projectId,
+    slug,
+    actor,
+    actorId,
+    actorOrgScope,
+    name,
+    id,
+    position
+  }: TUpdateEnvDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Environments);
 
     const oldEnv = await projectEnvDAL.findOne({ id, projectId });
@@ -85,8 +94,8 @@ export const projectEnvServiceFactory = ({
     return { environment: env, old: oldEnv };
   };
 
-  const deleteEnvironment = async ({ projectId, actor, actorId, id }: TDeleteEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const deleteEnvironment = async ({ projectId, actor, actorId, actorOrgScope, id }: TDeleteEnvDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
 
     const env = await projectEnvDAL.transaction(async (tx) => {

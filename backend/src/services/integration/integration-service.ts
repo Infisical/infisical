@@ -31,6 +31,7 @@ export const integrationServiceFactory = ({
   const createIntegration = async ({
     app,
     actor,
+    actorOrgScope,
     path,
     appId,
     owner,
@@ -50,7 +51,12 @@ export const integrationServiceFactory = ({
     const integrationAuth = await integrationAuthDAL.findById(integrationAuthId);
     if (!integrationAuth) throw new BadRequestError({ message: "Integration auth not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgScope
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
     const folder = await folderDAL.findBySecretPath(integrationAuth.projectId, sourceEnvironment, secretPath);
@@ -86,6 +92,7 @@ export const integrationServiceFactory = ({
   const updateIntegration = async ({
     actorId,
     actor,
+    actorOrgScope,
     targetEnvironment,
     app,
     id,
@@ -98,7 +105,12 @@ export const integrationServiceFactory = ({
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new BadRequestError({ message: "Integration auth not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integration.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integration.projectId,
+      actorOrgScope
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
     const folder = await folderDAL.findBySecretPath(integration.projectId, environment, secretPath);
@@ -117,19 +129,24 @@ export const integrationServiceFactory = ({
     return updatedIntegration;
   };
 
-  const deleteIntegration = async ({ actorId, id, actor }: TDeleteIntegrationDTO) => {
+  const deleteIntegration = async ({ actorId, id, actor, actorOrgScope }: TDeleteIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new BadRequestError({ message: "Integration auth not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integration.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integration.projectId,
+      actorOrgScope
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
 
     const deletedIntegration = await integrationDAL.deleteById(id);
     return { ...integration, ...deletedIntegration };
   };
 
-  const listIntegrationByProject = async ({ actor, actorId, projectId }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const listIntegrationByProject = async ({ actor, actorId, actorOrgScope, projectId }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     const integrations = await integrationDAL.findByProjectId(projectId);

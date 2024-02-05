@@ -27,6 +27,7 @@ export const registerSecretVersionRouter = async (server: FastifyZodProvider) =>
       const secretVersions = await server.services.secret.getSecretVersions({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgScope: req.permission.orgId,
         limit: req.query.limit,
         offset: req.query.offset,
         secretId: req.params.secretId

@@ -29,6 +29,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
       const bot = await server.services.projectBot.findBotByProjectId({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgScope: req.permission.orgId,
         projectId: req.params.projectId
       });
       return { bot };
@@ -68,6 +69,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
       const bot = await server.services.projectBot.setBotActiveState({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgScope: req.permission.orgId,
         botId: req.params.botId,
         botKey: req.body.botKey,
         isActive: req.body.isActive
