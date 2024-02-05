@@ -509,7 +509,6 @@ const OrganizationPage = withPermission(
           projectName: name
         });
 
-        /*
         if (addMembers) {
           const orgUsers = await fetchOrgUsers(currentOrg);
 
@@ -524,23 +523,6 @@ const OrganizationPage = withPermission(
         // eslint-disable-next-line no-promise-executor-return -- We do this because the function returns too fast, which sometimes causes an error when the user is redirected.
         await new Promise((resolve) => setTimeout(resolve, 2_000));
 
-          const decryptKey = await fetchUserWsKey(newWorkspaceId);
-
-          await addWsUser.mutateAsync({
-            workspaceId: newWorkspaceId,
-            decryptKey,
-            userPrivateKey: PRIVATE_KEY,
-            members: orgUsers
-              .filter(
-                ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
-              )
-              .map(({ user: orgUser, id: orgMembershipId }) => ({
-                userPublicKey: orgUser.publicKey,
-                orgMembershipId
-              }))
-          });
-        }
-        */
         createNotification({ text: "Workspace created", type: "success" });
         handlePopUpClose("addNewWs");
         createNotification({ text: "Workspace created", type: "success" });

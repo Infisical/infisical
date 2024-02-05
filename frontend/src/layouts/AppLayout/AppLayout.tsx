@@ -238,7 +238,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           projectId: newProjectId
         });
       }
-      
+
       // eslint-disable-next-line no-promise-executor-return -- We do this because the function returns too fast, which sometimes causes an error when the user is redirected.
       await new Promise((resolve) => setTimeout(resolve, 2_000));
 
@@ -250,7 +250,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       createNotification({ text: "Failed to create workspace", type: "error" });
     }
   };
-  
+
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
@@ -288,41 +288,43 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
                         <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.email}</div>
-                        {orgs?.map((org) => { 
+                        {orgs?.map((org) => {
                           return (
-                          <DropdownMenuItem key={org.id}>
-                            <Button
-                              onClick={async () => {
-                                if (currentOrg?.id === org.id) return;
-                                
-                                if (org.authEnforced) {
-                                  // org has an org-level auth method enabled (e.g. SAML)
-                                  // -> logout + redirect to SAML SSO
+                            <DropdownMenuItem key={org.id}>
+                              <Button
+                                onClick={async () => {
+                                  if (currentOrg?.id === org.id) return;
 
-                                  await logout.mutateAsync();
-                                  window.open(`/api/v1/sso/redirect/saml2/organizations/${org.slug}`);
-                                  window.close();
-                                  return;
+                                  if (org.authEnforced) {
+                                    // org has an org-level auth method enabled (e.g. SAML)
+                                    // -> logout + redirect to SAML SSO
+
+                                    await logout.mutateAsync();
+                                    window.open(
+                                      `/api/v1/sso/redirect/saml2/organizations/${org.slug}`
+                                    );
+                                    window.close();
+                                    return;
+                                  }
+
+                                  changeOrg(org?.id);
+                                }}
+                                variant="plain"
+                                colorSchema="secondary"
+                                size="xs"
+                                className="flex w-full items-center justify-start p-0 font-normal"
+                                leftIcon={
+                                  currentOrg?.id === org.id && (
+                                    <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
+                                  )
                                 }
-                                
-                                changeOrg(org?.id)
-                              }}
-                              variant="plain"
-                              colorSchema="secondary"
-                              size="xs"
-                              className="flex w-full items-center justify-start p-0 font-normal"
-                              leftIcon={
-                                currentOrg?.id === org.id && (
-                                  <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
-                                )
-                              }
-                            >
-                              <div className="flex w-full items-center justify-between">
-                                {org.name}
-                              </div>
-                            </Button>
-                          </DropdownMenuItem>
-                         )
+                              >
+                                <div className="flex w-full items-center justify-between">
+                                  {org.name}
+                                </div>
+                              </Button>
+                            </DropdownMenuItem>
+                          );
                         })}
                         {/* <DropdownMenuItem key="add-org">
                           <Button
@@ -598,7 +600,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      {(window.location.origin.includes("https://app.infisical.com")) && (
+                      {window.location.origin.includes("https://app.infisical.com") && (
                         <Link href={`/org/${currentOrg?.id}/billing`} passHref>
                           <a>
                             <MenuItem

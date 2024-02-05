@@ -135,6 +135,8 @@ export const MemberListTab = () => {
           text: "Failed to add user to project, unknown project type",
           type: "error"
         });
+
+        return;
       }
       createNotification({
         text: "Successfully added user to the project",
