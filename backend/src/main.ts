@@ -12,7 +12,11 @@ dotenv.config();
 const run = async () => {
   const logger = await initLogger();
   const appCfg = initEnvConfig(logger);
-  const db = initDbConnection(appCfg.DB_CONNECTION_URI);
+  const db = initDbConnection({
+    dbConnectionUri: appCfg.DB_CONNECTION_URI,
+    dbRootCert: appCfg.DB_ROOT_CERT
+  });
+  
   const smtp = smtpServiceFactory(formatSmtpConfig());
   const queue = queueServiceFactory(appCfg.REDIS_URL);
 
