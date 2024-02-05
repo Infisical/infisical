@@ -129,32 +129,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/",
-    method: "POST",
-    schema: {
-      body: z.object({
-        workspaceName: z.string().trim(),
-        organizationId: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          workspace: projectWithEnv
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const workspace = await server.services.project.createProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        orgId: req.body.organizationId,
-        workspaceName: req.body.workspaceName
-      });
-      return { workspace };
-    }
-  });
-
-  server.route({
     url: "/:workspaceId",
     method: "DELETE",
     schema: {
@@ -254,32 +228,35 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          invitee: UsersSchema,
+          invitees: UsersSchema.array(),
           latestKey: ProjectKeysSchema.optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { invitee, latestKey } = await server.services.projectMembership.inviteUserToProject({
+      const { invitees, latestKey } = await server.services.projectMembership.inviteUserToProject({
         actorId: req.permission.id,
         actor: req.permission.type,
         projectId: req.params.workspaceId,
-        email: req.body.email
+        emails: [req.body.email]
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
-        event: {
-          type: EventType.ADD_WORKSPACE_MEMBER,
-          metadata: {
-            userId: invitee.id,
-            email: invitee.email
+      for (const invitee of invitees) {
+        // eslint-disable-next-line no-await-in-loop
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: req.params.workspaceId,
+          event: {
+            type: EventType.ADD_WORKSPACE_MEMBER,
+            metadata: {
+              userId: invitee.id,
+              email: invitee.email
+            }
           }
-        }
-      });
-      return { invitee, latestKey };
+        });
+      }
+      return { invitees, latestKey };
     }
   });
 
