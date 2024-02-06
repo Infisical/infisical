@@ -17,6 +17,7 @@ import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { createWsMembers } from "@app/lib/project";
 
 import { ActorType } from "../auth/auth-type";
 import { TOrgDALFactory } from "../org/org-dal";
