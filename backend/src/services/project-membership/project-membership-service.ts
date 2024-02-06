@@ -79,7 +79,7 @@ export const projectMembershipServiceFactory = ({
       const invitee = await userDAL.findOne({ email });
       if (!invitee || !invitee.isAccepted)
         throw new BadRequestError({
-          message: "Faield to validate invitee",
+          message: "Failed to validate invitee",
           name: "Invite user to project"
         });
 
