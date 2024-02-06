@@ -14,7 +14,7 @@ export const OrganizationsSchema = z.object({
   slug: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  authEnabled: z.boolean().default(false).nullable().optional(),
+  authEnforced: z.boolean().default(false).nullable().optional()
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

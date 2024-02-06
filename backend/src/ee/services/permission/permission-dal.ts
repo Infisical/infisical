@@ -13,7 +13,7 @@ export const permissionDALFactory = (db: TDbClient) => {
         .join(TableName.Organization, `${TableName.OrgMembership}.orgId`, `${TableName.Organization}.id`)
         .where("userId", userId)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
-        .select(db.ref("authEnabled").withSchema(TableName.Organization).as("orgAuthEnabled"))
+        .select(db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"))
         .select("permissions")
         .select(selectAllTableCols(TableName.OrgMembership))
         .first();
@@ -32,7 +32,7 @@ export const permissionDALFactory = (db: TDbClient) => {
         .where("identityId", identityId)
         .where(`${TableName.IdentityOrgMembership}.orgId`, orgId)
         .select(selectAllTableCols(TableName.IdentityOrgMembership))
-        .select(db.ref("authEnabled").withSchema(TableName.Organization).as("orgAuthEnabled"))
+        .select(db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"))
         .select("permissions")
         .first();
       return membership;
@@ -51,7 +51,7 @@ export const permissionDALFactory = (db: TDbClient) => {
         .where(`${TableName.ProjectMembership}.projectId`, projectId)
         .select(selectAllTableCols(TableName.ProjectMembership))
         .select(
-          db.ref("authEnabled").withSchema(TableName.Organization).as("orgAuthEnabled"),
+          db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
           db.ref("orgId").withSchema(TableName.Project)
         )
         .select("permissions")

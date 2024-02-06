@@ -1,3 +1,5 @@
+import { TOrgPermission } from "@app/lib/types";
+
 import { ActorType } from "../auth/auth-type";
 
 export type TUpdateOrgMembershipDTO = {
@@ -34,3 +36,7 @@ export type TFindAllWorkspacesDTO = {
   actorOrgScope?: string;
   orgId: string;
 };
+
+export type TUpdateOrgDTO = {
+  data: Partial<{ name: string; slug: string; authEnforced: boolean }>;
+} & TOrgPermission;

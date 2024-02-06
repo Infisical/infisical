@@ -100,20 +100,17 @@ export const permissionServiceFactory = ({
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
-    if (membership.orgAuthEnabled && membership.orgId !== orgScope) {
+    if (membership.orgAuthEnforced && membership.orgId !== orgScope) {
       throw new BadRequestError({ name: "Cannot access org-scoped resource" });
     }
     return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
   };
 
-  const getIdentityOrgPermission = async (identityId: string, orgId: string, orgScope?: string) => {
+  const getIdentityOrgPermission = async (identityId: string, orgId: string) => {
     const membership = await permissionDAL.getOrgIdentityPermission(identityId, orgId);
     if (!membership) throw new UnauthorizedError({ name: "Identity not in org" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
-    }
-    if (membership.orgAuthEnabled && membership.orgId !== orgScope) {
-      throw new BadRequestError({ name: "Cannot access org-scoped resource" });
     }
     return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
   };
@@ -123,7 +120,7 @@ export const permissionServiceFactory = ({
       case ActorType.USER:
         return getUserOrgPermission(id, orgId, orgScope);
       case ActorType.IDENTITY:
-        return getIdentityOrgPermission(id, orgId, orgScope);
+        return getIdentityOrgPermission(id, orgId);
       default:
         throw new UnauthorizedError({
           message: "Permission not defined",
@@ -154,9 +151,11 @@ export const permissionServiceFactory = ({
     if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
-    if (membership.orgAuthEnabled && membership.orgId !== orgScope) {
+
+    if (membership.orgAuthEnforced && membership.orgId !== orgScope) {
       throw new BadRequestError({ name: "Cannot access org-scoped resource" });
     }
+
     return {
       permission: buildProjectPermission(membership.role, membership.permissions),
       membership
@@ -169,6 +168,7 @@ export const permissionServiceFactory = ({
     if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
+
     return {
       permission: buildProjectPermission(membership.role, membership.permissions),
       membership
@@ -193,11 +193,12 @@ export const permissionServiceFactory = ({
     : {
         permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
         membership: (T extends ActorType.USER ? TProjectMemberships : TIdentityProjectMemberships) & {
+          orgAuthEnforced: boolean;
+          orgId: string;
           permissions?: unknown;
         };
       };
 
-  // TODO: add support for org scope here
   const getProjectPermission = async <T extends ActorType>(
     type: T,
     id: string,
@@ -207,9 +208,9 @@ export const permissionServiceFactory = ({
     switch (type) {
       case ActorType.USER:
         return getUserProjectPermission(id, projectId, orgScope) as Promise<TProjectPermissionRT<T>>;
-      case ActorType.SERVICE: // how to handle org-scope case here?
+      case ActorType.SERVICE:
         return getServiceTokenProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
-      case ActorType.IDENTITY: // how to handle org-scope case here?
+      case ActorType.IDENTITY:
         return getIdentityProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
       default:
         throw new UnauthorizedError({

@@ -127,6 +127,7 @@ export const identityUaServiceFactory = ({
         expiresIn: identityAccessToken.accessTokenMaxTTL === 0 ? undefined : identityAccessToken.accessTokenMaxTTL
       }
     );
+
     return { accessToken, identityUa, validClientSecretInfo, identityAccessToken };
   };
 
@@ -152,7 +153,12 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityMembershipOrg.orgId, actorOrgScope);
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorOrgScope
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
@@ -241,7 +247,12 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityMembershipOrg.orgId, actorOrgScope);
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorOrgScope
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
@@ -302,7 +313,12 @@ export const identityUaServiceFactory = ({
 
     const uaIdentityAuth = await identityUaDAL.findOne({ identityId });
 
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityMembershipOrg.orgId, actorOrgScope);
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorOrgScope
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
     return { ...uaIdentityAuth, orgId: identityMembershipOrg.orgId };
   };
@@ -322,7 +338,12 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({
         message: "The identity does not have universal auth"
       });
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityMembershipOrg.orgId, actorOrgScope);
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorOrgScope
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
@@ -369,7 +390,12 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({
         message: "The identity does not have universal auth"
       });
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityMembershipOrg.orgId, actorOrgScope);
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorOrgScope
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
@@ -395,14 +421,25 @@ export const identityUaServiceFactory = ({
     return { clientSecrets, orgId: identityMembershipOrg.orgId };
   };
 
-  const revokeUaClientSecret = async ({ identityId, actorId, actor, actorOrgScope, clientSecretId }: TRevokeUaClientSecretDTO) => {
+  const revokeUaClientSecret = async ({
+    identityId,
+    actorId,
+    actor,
+    actorOrgScope,
+    clientSecretId
+  }: TRevokeUaClientSecretDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
         message: "The identity does not have universal auth"
       });
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityMembershipOrg.orgId, actorOrgScope);
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorOrgScope
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(

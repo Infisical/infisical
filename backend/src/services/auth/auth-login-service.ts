@@ -56,13 +56,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
    * Private
    * Send mfa code via email
    * */
-  const sendUserMfaCode = async ({
-    userId,
-    email
-  }: {
-    userId: string;
-    email: string;
-  }) => {
+  const sendUserMfaCode = async ({ userId, email }: { userId: string; email: string }) => {
     const code = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_MFA,
       userId
@@ -171,6 +165,10 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
       const { orgId } = validateProviderAuthToken(providerAuthToken as string, email);
       organizationId = orgId;
+    } else if (providerAuthToken) {
+      // SAML SSO
+      const { orgId } = validateProviderAuthToken(providerAuthToken, email);
+      organizationId = orgId;
     }
 
     if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey) throw new Error("Failed to authenticate. Try again?");
@@ -189,22 +187,26 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     });
     // send multi factor auth token if they it enabled
     if (userEnc.isMfaEnabled) {
-      const mfaToken = jwt.sign({ 
-        authTokenType: AuthTokenType.MFA_TOKEN, 
-        userId: userEnc.userId,
-        organizationId
-      }, cfg.AUTH_SECRET, {
-        expiresIn: cfg.JWT_MFA_LIFETIME
-      });
-      
+      const mfaToken = jwt.sign(
+        {
+          authTokenType: AuthTokenType.MFA_TOKEN,
+          userId: userEnc.userId,
+          organizationId
+        },
+        cfg.AUTH_SECRET,
+        {
+          expiresIn: cfg.JWT_MFA_LIFETIME
+        }
+      );
+
       await sendUserMfaCode({
-        userId: userEnc.userId, 
+        userId: userEnc.userId,
         email: userEnc.email
       });
 
       return { isMfaEnabled: true, token: mfaToken } as const;
     }
-  
+
     const token = await generateUserTokens({
       user: {
         ...userEnc,
@@ -214,7 +216,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       userAgent,
       organizationId
     });
-    
+
     return { token, isMfaEnabled: false, user: userEnc } as const;
   };
 
@@ -227,7 +229,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     if (!user) return;
     await sendUserMfaCode({
       userId: user.id,
-      email: user.email,
+      email: user.email
     });
   };
 

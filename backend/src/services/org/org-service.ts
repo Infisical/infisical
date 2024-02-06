@@ -29,6 +29,7 @@ import {
   TDeleteOrgMembershipDTO,
   TFindAllWorkspacesDTO,
   TInviteUserToOrgDTO,
+  TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
   TVerifyUserToOrgDTO
 } from "./org-types";
@@ -40,7 +41,7 @@ type TOrgServiceFactoryDep = {
   userDAL: TUserDALFactory;
   projectDAL: TProjectDALFactory;
   incidentContactDAL: TIncidentContactsDALFactory;
-  samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
+  samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne" | "findEnforceableSamlCfg">;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
@@ -118,12 +119,22 @@ export const orgServiceFactory = ({
   };
 
   /*
-   * Update organization settings
+   * Update organization details
    * */
-  const updateOrgName = async (userId: string, orgId: string, name: string, actorOrgScope?: string) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgScope);
+  const updateOrg = async ({ actor, actorId, actorOrgScope, orgId, data }: TUpdateOrgDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
-    const org = await orgDAL.updateById(orgId, { name });
+
+    if (data.authEnforced) {
+      const samlCfg = await samlConfigDAL.findEnforceableSamlCfg(orgId);
+      if (!samlCfg)
+        throw new BadRequestError({
+          name: "No enforceable SAML config found",
+          message: "No enforceable SAML config found"
+        });
+    }
+
+    const org = await orgDAL.updateById(orgId, data);
     if (!org) throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
     return org;
   };
@@ -443,7 +454,7 @@ export const orgServiceFactory = ({
     findAllOrganizationOfUser,
     inviteUserToOrganization,
     verifyUserToOrg,
-    updateOrgName,
+    updateOrg,
     createOrganization,
     deleteOrganizationById,
     deleteOrgMembership,

@@ -45,19 +45,19 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         getSamlOptions: async (req, done) => {
           try {
             const { samlConfigId, orgSlug } = req.params;
-          
+
             let ssoLookupDetails: TGetSamlCfgDTO;
-            
+
             if (orgSlug) {
               ssoLookupDetails = {
                 type: "orgSlug",
                 orgSlug
-              }
+              };
             } else if (samlConfigId) {
               ssoLookupDetails = {
                 type: "ssoId",
                 id: samlConfigId
-              }
+              };
             } else {
               throw new BadRequestError({ message: "Missing sso identitier or org slug" });
             }
@@ -215,7 +215,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             isActive: z.boolean(),
             entryPoint: z.string(),
             issuer: z.string(),
-            cert: z.string()
+            cert: z.string(),
+            lastUsed: z.date().nullable().optional()
           })
           .optional()
       }

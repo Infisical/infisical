@@ -83,10 +83,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "PATCH",
-    url: "/:organizationId/name",
+    url: "/:organizationId",
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
-      body: z.object({ name: z.string().trim() }),
+      body: z.object({
+        name: z.string().trim().optional(),
+        slug: z.string().trim().optional(),
+        authEnforced: z.boolean().optional()
+      }),
       response: {
         200: z.object({
           message: z.string(),
@@ -96,12 +100,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const organization = await server.services.org.updateOrgName(
-        req.permission.id,
-        req.params.organizationId,
-        req.body.name,
-        req.permission.orgId
-      );
+      const organization = await server.services.org.updateOrg({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgScope: req.permission.orgId,
+        orgId: req.params.organizationId,
+        data: req.body
+      });
+
       return {
         message: "Successfully changed organization name",
         organization

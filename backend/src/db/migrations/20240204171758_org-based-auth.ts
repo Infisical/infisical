@@ -1,24 +1,23 @@
 import { Knex } from "knex";
+
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-    await knex.schema.alterTable(TableName.Organization, (t) => {
-        t.boolean("authEnabled").defaultTo(false);
-    });
+  await knex.schema.alterTable(TableName.Organization, (t) => {
+    t.boolean("authEnforced").defaultTo(false);
+  });
 
-    await knex(TableName.Organization)
-        .whereIn(
-        "id",
-        knex(TableName.SamlConfig)
-            .select("orgId")
-            .where("isActive", true)
-        )
-        .update({ authEnabled: true });
+  await knex.schema.alterTable(TableName.SamlConfig, (t) => {
+    t.datetime("lastUsed");
+  });
 }
 
 export async function down(knex: Knex): Promise<void> {
-    await knex.schema.alterTable(TableName.Organization, (t) => {
-      t.dropColumn("authEnabled");
-    });
-}
+  await knex.schema.alterTable(TableName.Organization, (t) => {
+    t.dropColumn("authEnforced");
+  });
 
+  await knex.schema.alterTable(TableName.SamlConfig, (t) => {
+    t.dropColumn("lastUsed");
+  });
+}

@@ -18,7 +18,7 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
-import { AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -27,18 +27,15 @@ import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TSamlConfigDALFactory } from "./saml-config-dal";
-import {
-  SamlProviders,
-  TCreateSamlCfgDTO,
-  TGetSamlCfgDTO,
-  TSamlLoginDTO,
-  TUpdateSamlCfgDTO
-} from "./saml-config-types";
+import { TCreateSamlCfgDTO, TGetSamlCfgDTO, TSamlLoginDTO, TUpdateSamlCfgDTO } from "./saml-config-types";
 
 type TSamlConfigServiceFactoryDep = {
   samlConfigDAL: TSamlConfigDALFactory;
   userDAL: Pick<TUserDALFactory, "create" | "findUserByEmail" | "transaction" | "updateById">;
-  orgDAL: Pick<TOrgDALFactory, "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById">;
+  orgDAL: Pick<
+    TOrgDALFactory,
+    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
+  >;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -141,7 +138,6 @@ export const samlConfigServiceFactory = ({
       certIV,
       certTag
     });
-    await orgDAL.updateById(orgId, { authEnabled: isActive });
 
     return samlConfig;
   };
@@ -166,7 +162,7 @@ export const samlConfigServiceFactory = ({
           "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
       });
 
-    const updateQuery: TSamlConfigsUpdate = { authProvider, isActive };
+    const updateQuery: TSamlConfigsUpdate = { authProvider, isActive, lastUsed: null };
     const orgBot = await orgBotDAL.findOne({ orgId });
     if (!orgBot) throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
     const key = infisicalSymmetricDecrypt({
@@ -199,8 +195,8 @@ export const samlConfigServiceFactory = ({
       updateQuery.certTag = certTag;
     }
     const [ssoConfig] = await samlConfigDAL.update({ orgId }, updateQuery);
-    await orgDAL.updateById(orgId, { authEnabled: isActive });
-    
+    await orgDAL.updateById(orgId, { authEnforced: false });
+
     return ssoConfig;
   };
 
@@ -237,7 +233,12 @@ export const samlConfigServiceFactory = ({
 
     // when dto is type id means it's internally used
     if (dto.type === "org") {
-      const { permission } = await permissionService.getOrgPermission(dto.actor, dto.actorId, ssoConfig.orgId, dto.actorOrgScope);
+      const { permission } = await permissionService.getOrgPermission(
+        dto.actor,
+        dto.actorId,
+        ssoConfig.orgId,
+        dto.actorOrgScope
+      );
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
     }
     const {
@@ -294,7 +295,8 @@ export const samlConfigServiceFactory = ({
       isActive: ssoConfig.isActive,
       entryPoint,
       issuer,
-      cert
+      cert,
+      lastUsed: ssoConfig.lastUsed
     };
   };
 
@@ -316,13 +318,7 @@ export const samlConfigServiceFactory = ({
     if (!organization) throw new BadRequestError({ message: "Org not found" });
 
     if (user) {
-      const hasSamlEnabled = (user.authMethods || []).some((method) =>
-        Object.values(SamlProviders).includes(method as SamlProviders)
-      );
       await userDAL.transaction(async (tx) => {
-        if (!hasSamlEnabled) {
-          await userDAL.updateById(user.id, { authMethods: [authProvider] }, tx);
-        }
         const [orgMembership] = await orgDAL.findMembership({ userId: user.id, orgId }, { tx });
         if (!orgMembership) {
           await orgDAL.createMembership(
@@ -352,7 +348,7 @@ export const samlConfigServiceFactory = ({
             email,
             firstName,
             lastName,
-            authMethods: [authProvider]
+            authMethods: [AuthMethod.EMAIL]
           },
           tx
         );
@@ -388,6 +384,9 @@ export const samlConfigServiceFactory = ({
         expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
       }
     );
+
+    await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
+
     return { isUserCompleted, providerAuthToken };
   };
 

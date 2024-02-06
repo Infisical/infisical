@@ -310,10 +310,22 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
                         <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.email}</div>
-                        {orgs?.map((org) => (
+                        {orgs?.map((org) => { 
+                          return (
                           <DropdownMenuItem key={org.id}>
                             <Button
-                              onClick={() => changeOrg(org?.id)}
+                              onClick={() => {
+                                if (currentOrg?.id === org.id) return;
+                                
+                                if (org.authEnforced) {
+                                  // org has an org-level auth method enabled (e.g. SAML)
+                                  // -> logout + redirect to SAML SSO
+                                  logOutUser();
+                                  return;
+                                }
+                                
+                                changeOrg(org?.id)
+                              }}
                               variant="plain"
                               colorSchema="secondary"
                               size="xs"
@@ -329,7 +341,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
                               </div>
                             </Button>
                           </DropdownMenuItem>
-                        ))}
+                         )
+                        })}
                         {/* <DropdownMenuItem key="add-org">
                           <Button
                             onClick={() => handlePopUpOpen("createOrg")}
