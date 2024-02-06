@@ -9,11 +9,11 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   _id: null,
   slug: null,
   tier: -1,
-  workspaceLimit: 5000,
+  workspaceLimit: null,
   workspacesUsed: 0,
-  memberLimit: 5000,
+  memberLimit: null,
   membersUsed: 0,
-  environmentLimit: 5000,
+  environmentLimit: null,
   environmentsUsed: 0,
   secretVersioning: true,
   pitRecovery: false,
@@ -28,7 +28,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   status: null,
   trial_end: null,
   has_used_trial: true,
-  secretApproval: true,
+  secretApproval: false,
   secretRotation: true
 });
 
