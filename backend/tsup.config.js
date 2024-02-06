@@ -5,13 +5,13 @@ import fs from "fs/promises";
 import { replaceTscAliasPaths } from "tsc-alias";
 import { defineConfig } from "tsup";
 
-// what you need tsup to build instead of tsx or tsc
-// tsx is a drop in replacement for nodejs - rather build on top of nodejs runtime
-// it works exactly like node only catch is it doesn't have a final build step else prod should be started with tsx
-// tsc is great for final build issue is we need to then do a manual copy of all static files like handlebar email etc
-// another issue is commonjs. final output needs to be esm because more and more packages are migrating to esm
-// if the final output is commonjs it will just throw an error
-// the below configuration is best of both worlds
+// Instead of using tsx or tsc for building, consider using tsup.
+// TSX serves as an alternative to Node.js, allowing you to build directly on the Node.js runtime.
+// Its functionality mirrors Node.js, with the only difference being the absence of a final build step. Production should ideally be launched with TSX.
+// TSC is effective for creating a final build, but it requires manual copying of all static files such as handlebars, emails, etc.
+// A significant challenge is the shift towards ESM, as more packages are adopting ESM. If the output is in CommonJS, it may lead to errors.
+// The suggested configuration offers a balance, accommodating both ESM and CommonJS requirements.
+
 export default defineConfig({
   shims: true,
   clean: true,
