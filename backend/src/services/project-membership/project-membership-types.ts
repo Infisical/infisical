@@ -25,3 +25,8 @@ export type TAddUsersToWorkspaceDTO = {
     projectRole: ProjectMembershipRole;
   }[];
 } & TProjectPermission;
+
+export type TAddUsersToWorkspaceNonE2EEDTO = {
+  sendEmails?: boolean;
+  emails: string[];
+} & TProjectPermission;

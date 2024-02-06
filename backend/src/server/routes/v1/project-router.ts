@@ -249,6 +249,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // Is this actually used..?
   server.route({
     url: "/:workspaceId/invite-signup",
     method: "POST",

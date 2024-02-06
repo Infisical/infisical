@@ -6,6 +6,7 @@ export type Workspace = {
   e2ee: boolean;
   autoCapitalization: boolean;
   environments: WorkspaceEnv[];
+  slug: string;
 };
 
 export type WorkspaceEnv = {

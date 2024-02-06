@@ -50,8 +50,8 @@ import {
 } from "@app/context";
 import { withPermission } from "@app/hoc";
 import {
-  // fetchOrgUsers,
-  // useAddUserToWs,
+  fetchOrgUsers,
+  useAddUserToWsNonE2EE,
   useCreateWorkspace,
   useRegisterUserAction
 } from "@app/hooks/api";
@@ -471,7 +471,7 @@ const OrganizationPage = withPermission(
     const currentOrg = String(router.query.id);
     const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === currentOrg) || [];
     const { createNotification } = useNotificationContext();
-    // const addWsUser = useAddUserToWs();
+    const addUsersToProject = useAddUserToWsNonE2EE();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "addNewWs",
@@ -498,10 +498,11 @@ const OrganizationPage = withPermission(
     const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
       // type check
       if (!currentOrg) return;
+      if (!user) return;
       try {
         const {
           data: {
-            project: { id: newWorkspaceId }
+            project: { id: newProjectId }
           }
         } = await createWs.mutateAsync({
           organizationId: currentOrg,
@@ -509,27 +510,19 @@ const OrganizationPage = withPermission(
         });
 
         if (addMembers) {
-          // not using hooks because need at this point only
-          //   const orgUsers = await fetchOrgUsers(currentOrg);
-          //   const decryptKey = await fetchUserWsKey(newWorkspaceId);
-          //   await addWsUser.mutateAsync({
-          //     workspaceId: newWorkspaceId,
-          //     decryptKey,
-          //     userPrivateKey: PRIVATE_KEY,
-          //     members: orgUsers
-          //       .filter(
-          //         ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
-          //       )
-          //       .map(({ user: orgUser, id: orgMembershipId }) => ({
-          //         userPublicKey: orgUser.publicKey,
-          //         orgMembershipId
-          //       }))
-          //   });
+          const orgUsers = await fetchOrgUsers(currentOrg);
+
+          await addUsersToProject.mutateAsync({
+            emails: orgUsers
+              .map((member) => member.user.email)
+              .filter((email) => email !== user.email),
+            projectId: newProjectId
+          });
         }
 
         createNotification({ text: "Workspace created", type: "success" });
         handlePopUpClose("addNewWs");
-        router.push(`/project/${newWorkspaceId}/secrets/overview`);
+        router.push(`/project/${newProjectId}/secrets/overview`);
       } catch (err) {
         console.error(err);
         createNotification({ text: "Failed to create workspace", type: "error" });

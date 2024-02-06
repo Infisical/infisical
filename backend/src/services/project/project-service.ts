@@ -6,16 +6,25 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
 import { createSecretBlindIndex } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { createWorkspaceKey, createWsMembers } from "@app/lib/project";
 
+import { ActorType } from "../auth/auth-type";
+import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
+import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
 import { TOrgServiceFactory } from "../org/org-service";
+import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
 import { TCreateProjectDTO, TDeleteProjectDTO, TGetProjectDTO } from "./project-types";
 
@@ -27,8 +36,13 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
+  userDAL: TUserDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "insertMany">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany">;
+  identityOrgMembershipDAL: TIdentityOrgDALFactory;
+  identityProjectDAL: TIdentityProjectDALFactory;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "create">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
@@ -40,9 +54,14 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
 export const projectServiceFactory = ({
   projectDAL,
+  projectKeyDAL,
   permissionService,
+  userDAL,
   folderDAL,
   orgService,
+  identityProjectDAL,
+  projectBotDAL,
+  identityOrgMembershipDAL,
   secretBlindIndexDAL,
   projectMembershipDAL,
   projectEnvDAL,
@@ -52,7 +71,12 @@ export const projectServiceFactory = ({
    * Create workspace. Make user the admin
    * */
   const createProject = async ({ orgId, actor, actorId, actorOrgId, workspaceName }: TCreateProjectDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+    const { permission, membership: orgMembership } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      orgId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
 
     const appCfg = getConfig();
@@ -110,14 +134,141 @@ export const projectServiceFactory = ({
         envs.map(({ id }) => ({ name: ROOT_FOLDER_NAME, envId: id, version: 1 })),
         tx
       );
-      // _id for backward compat
-      return {
-        project: {
-          ...project,
-          environments: envs,
-          _id: project.id
+
+      // 3. Create a random key that we'll use as the project key.
+      const { key: encryptedProjectKey, iv: encryptedProjectKeyIv } = createWorkspaceKey({
+        publicKey: ghostUser.keys.publicKey,
+        privateKey: ghostUser.keys.plainPrivateKey
+      });
+
+      // 4. Save the project key for the ghost user.
+      await projectKeyDAL.create(
+        {
+          projectId: project.id,
+          receiverId: ghostUser.user.id,
+          encryptedKey: encryptedProjectKey,
+          nonce: encryptedProjectKeyIv,
+          senderId: ghostUser.user.id
         },
-        ghostUser
+        tx
+      );
+
+      const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(ghostUser.keys.plainPrivateKey);
+
+      // 5. Create & a bot for the project
+      await projectBotDAL.create(
+        {
+          name: "Infisical Bot (Ghost)",
+          projectId: project.id,
+          tag,
+          iv,
+          encryptedPrivateKey: ciphertext,
+          isActive: true,
+          publicKey: ghostUser.keys.publicKey,
+          algorithm,
+          keyEncoding: encoding
+        },
+        tx
+      );
+
+      // Find the ghost users latest key
+      const latestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.user.id, project.id, tx);
+
+      if (!latestKey) {
+        throw new Error("Latest key not found for user");
+      }
+
+      // If the project is being created by a user, add the user to the project as an admin
+      if (actor === ActorType.USER) {
+        // Find public key of user
+        const user = await userDAL.findUserEncKeyByUserId(actorId);
+
+        if (!user) {
+          throw new Error("User not found");
+        }
+
+        const [projectAdmin] = createWsMembers({
+          decryptKey: latestKey,
+          userPrivateKey: ghostUser.keys.plainPrivateKey,
+          members: [
+            {
+              userPublicKey: user.publicKey,
+              orgMembershipId: orgMembership.id,
+              projectMembershipRole: ProjectMembershipRole.Admin
+            }
+          ]
+        });
+
+        // Create a membership for the user
+        await projectMembershipDAL.create(
+          {
+            projectId: project.id,
+            userId: user.id,
+            role: projectAdmin.projectRole
+          },
+          tx
+        );
+
+        // Create a project key for the user
+        await projectKeyDAL.create(
+          {
+            encryptedKey: projectAdmin.workspaceEncryptedKey,
+            nonce: projectAdmin.workspaceEncryptedNonce,
+            senderId: ghostUser.user.id,
+            receiverId: user.id,
+            projectId: project.id
+          },
+          tx
+        );
+      }
+
+      // If the project is being created by an identity, add the identity to the project as an admin
+      else if (actor === ActorType.IDENTITY) {
+        // Find identity org membership
+        const identityOrgMembership = await identityOrgMembershipDAL.findOne(
+          {
+            identityId: actorId,
+            orgId: project.orgId
+          },
+          tx
+        );
+
+        // If identity org membership not found, throw error
+        if (!identityOrgMembership) {
+          throw new BadRequestError({
+            message: `Failed to find identity with id ${actorId}`
+          });
+        }
+
+        // Get the role permission for the identity
+        // IS THIS CORRECT?
+        const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
+          ProjectMembershipRole.Admin,
+          orgId
+        );
+
+        const hasPrivilege = isAtLeastAsPrivileged(permission, rolePermission);
+        if (!hasPrivilege)
+          throw new ForbiddenRequestError({
+            message: "Failed to add identity to project with more privileged role"
+          });
+        const isCustomRole = Boolean(customRole);
+
+        await identityProjectDAL.create(
+          {
+            identityId: actorId,
+            projectId: project.id,
+            role: isCustomRole ? ProjectMembershipRole.Custom : ProjectMembershipRole.Admin,
+            roleId: customRole?.id
+          },
+          tx
+        );
+      }
+
+      return {
+        ...project,
+        environments: envs,
+        _id: project.id
       };
     });
 

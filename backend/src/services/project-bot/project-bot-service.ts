@@ -1,17 +1,11 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { SecretKeyEncoding } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
-import {
-  decryptAsymmetric,
-  encryptSymmetric,
-  encryptSymmetric128BitHexKeyUTF8,
-  generateAsymmetricKeyPair
-} from "@app/lib/crypto";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { decryptAsymmetric, generateAsymmetricKeyPair } from "@app/lib/crypto";
+import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectBotDALFactory } from "./project-bot-dal";
@@ -60,7 +54,6 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
   }: TFindBotByProjectIdDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const appCfg = getConfig();
 
     const bot = await projectBotDAL.transaction(async (tx) => {
       const doc = await projectBotDAL.findOne({ projectId }, tx);
@@ -68,41 +61,22 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
 
       const keys = privateKey && publicKey ? { privateKey, publicKey } : generateAsymmetricKeyPair();
 
-      if (appCfg.ROOT_ENCRYPTION_KEY) {
-        const { iv, tag, ciphertext } = encryptSymmetric(keys.privateKey, appCfg.ROOT_ENCRYPTION_KEY);
-        return projectBotDAL.create(
-          {
-            name: "Infisical Bot",
-            projectId,
-            tag,
-            iv,
-            encryptedPrivateKey: ciphertext,
-            isActive: false,
-            publicKey: keys.publicKey,
-            algorithm: SecretEncryptionAlgo.AES_256_GCM,
-            keyEncoding: SecretKeyEncoding.BASE64
-          },
-          tx
-        );
-      }
-      if (appCfg.ENCRYPTION_KEY) {
-        const { iv, tag, ciphertext } = encryptSymmetric128BitHexKeyUTF8(keys.privateKey, appCfg.ENCRYPTION_KEY);
-        return projectBotDAL.create(
-          {
-            name: "Infisical Bot",
-            projectId,
-            tag,
-            iv,
-            encryptedPrivateKey: ciphertext,
-            isActive: false,
-            publicKey: keys.publicKey,
-            algorithm: SecretEncryptionAlgo.AES_256_GCM,
-            keyEncoding: SecretKeyEncoding.UTF8
-          },
-          tx
-        );
-      }
-      throw new BadRequestError({ message: "Failed to create bot due to missing encryption key" });
+      const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(keys.privateKey);
+
+      return projectBotDAL.create(
+        {
+          name: "Infisical Bot",
+          projectId,
+          tag,
+          iv,
+          encryptedPrivateKey: ciphertext,
+          isActive: false,
+          publicKey: keys.publicKey,
+          algorithm,
+          keyEncoding: encoding
+        },
+        tx
+      );
     });
     return bot;
   };
