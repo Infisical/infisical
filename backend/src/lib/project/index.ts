@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 import { ProjectMembershipRole, TProjectKeys } from "@app/db/schemas";
 
 import { decryptAsymmetric, encryptAsymmetric } from "../crypto";
@@ -36,4 +38,23 @@ export const createWsMembers = ({ members, decryptKey, userPrivateKey }: AddUser
   });
 
   return newWsMembers;
+};
+
+type TCreateWorkspaceKeyDTO = {
+  publicKey: string;
+  privateKey: string;
+};
+
+export const createWorkspaceKey = ({ publicKey, privateKey }: TCreateWorkspaceKeyDTO) => {
+  // 3. Create a random key that we'll use as the project key.
+  const randomBytes = crypto.randomBytes(16).toString("hex");
+
+  // 4. Encrypt the project key with the users key pair.
+  const { ciphertext: encryptedProjectKey, nonce: encryptedProjectKeyIv } = encryptAsymmetric(
+    randomBytes,
+    publicKey,
+    privateKey
+  );
+
+  return { key: encryptedProjectKey, iv: encryptedProjectKeyIv };
 };

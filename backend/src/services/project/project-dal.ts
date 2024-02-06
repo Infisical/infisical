@@ -48,6 +48,20 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findProjectGhostUser = async (projectId: string) => {
+    try {
+      const ghostUser = await db(TableName.ProjectMembership)
+        .where({ projectId })
+        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .select(selectAllTableCols(TableName.Users))
+        .where({ ghost: true })
+        .first();
+      return ghostUser;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project ghost user" });
+    }
+  };
+
   const findAllProjectsByIdentity = async (identityId: string) => {
     try {
       const workspaces = await db(TableName.IdentityProjectMembership)
@@ -128,6 +142,7 @@ export const projectDALFactory = (db: TDbClient) => {
     ...projectOrm,
     findAllProjects,
     findAllProjectsByIdentity,
+    findProjectGhostUser,
     findProjectById
   };
 };
