@@ -44,7 +44,7 @@ type TLicenseServiceFactoryDep = {
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
 
 const LICENSE_SERVER_CLOUD_LOGIN = "/api/auth/v1/license-server-login";
-const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/licence-login";
+const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/license-login";
 
 const FEATURE_CACHE_KEY = (orgId: string, projectId?: string) => `${orgId}-${projectId || ""}`;
 export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }: TLicenseServiceFactoryDep) => {
@@ -92,7 +92,7 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
       // else it would reach catch statement
       isValidLicense = true;
     } catch (error) {
-      logger.error(`init-license: encountered an error when init license [error]`, error);
+      logger.error(error, `init-license: encountered an error when init license`);
     }
   };
 
