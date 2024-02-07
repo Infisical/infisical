@@ -30,35 +30,35 @@ export const AdminDashboardPage = () => {
 
   return (
     <div className="container mx-auto max-w-7xl pb-12 text-white dark:[color-scheme:dark]">
-      <div className="mb-8">
-        <div className="mb-4 mt-6 flex flex-col items-start justify-between text-xl">
+      <div className="mx-auto mb-6 w-full max-w-7xl py-6 px-6">
+        <div className="mb-8 flex flex-col items-start justify-between text-xl">
           <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
-          <p className="text-base text-bunker-300">Manage your Infisical</p>
+          <p className="text-base text-bunker-300">Manage your Infisical instance.</p>
         </div>
+        {isUserLoading || isNotAllowed ? (
+          <ContentLoader text={isNotAllowed ? "Redirecting to org page..." : undefined} />
+        ) : (
+          <div>
+            <Tabs defaultValue={TabSections.Settings}>
+              <TabList>
+                <div className="flex w-full flex-row border-b border-mineshaft-600">
+                  <Tab value={TabSections.Settings}>General</Tab>
+                </div>
+              </TabList>
+              <TabPanel value={TabSections.Settings}>
+                <div className="flex items-center space-x-4">
+                  <Switch
+                    id="disable-invite"
+                    isChecked={Boolean(config?.allowSignUp)}
+                    onCheckedChange={(isChecked) => updateServerConfig({ allowSignUp: isChecked })}
+                  />
+                  <div className="flex-grow">Enable signup or invite</div>
+                </div>
+              </TabPanel>
+            </Tabs>
+          </div>
+        )}
       </div>
-      {isUserLoading || isNotAllowed ? (
-        <ContentLoader text={isNotAllowed ? "Redirecting to org page..." : undefined} />
-      ) : (
-        <div>
-          <Tabs defaultValue={TabSections.Settings}>
-            <TabList>
-              <div className="flex w-full flex-row border-b border-mineshaft-600">
-                <Tab value={TabSections.Settings}>General</Tab>
-              </div>
-            </TabList>
-            <TabPanel value={TabSections.Settings}>
-              <div className="flex items-center space-x-4">
-                <Switch
-                  id="disable-invite"
-                  isChecked={Boolean(config?.allowSignUp)}
-                  onCheckedChange={(isChecked) => updateServerConfig({ allowSignUp: isChecked })}
-                />
-                <div className="flex-grow">Enable signup or invite</div>
-              </div>
-            </TabPanel>
-          </Tabs>
-        </div>
-      )}
     </div>
   );
 };
