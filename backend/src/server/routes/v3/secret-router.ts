@@ -606,8 +606,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
               z.object({
                 _id: z.string(),
-                workspace: z.string(),
-                environment: z.string()
+                workspace: z.string()
               })
             )
           }),
