@@ -543,6 +543,9 @@ export const secretServiceFactory = ({
     // Mongo backend check: https://github.com/Infisical/infisical-mongo/blob/main/backend/src/helpers/secrets.ts#L658
     let secretType = type;
     if (actor === ActorType.SERVICE) {
+      logger.info(
+        `secretServiceFactory: overriding secret type for service token [projectId=${projectId}] [factoryFunctionName=getSecretByName]`
+      );
       secretType = SecretType.Shared;
     }
 
