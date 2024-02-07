@@ -1,4 +1,4 @@
-name: "Check Backend API Changes"
+name: "Check Backend Breaking API Changes"
 
 on:
   pull_request:
