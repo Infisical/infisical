@@ -569,18 +569,30 @@ export const secretServiceFactory = ({
 
     const secretBlindIndex = await interalGenSecBlindIndexByName(projectId, secretName);
 
-    const secret = await (typeof version !== undefined
+    // Case: The old python SDK uses incorrect logic https://github.com/Infisical/infisical-python/blob/main/infisical/client/infisicalclient.py#L89.
+    // Fetch secrets using service tokens cannot fetch personal secrets, only shared.
+    // The mongo backend used to correct this mistake, this line also adds it to current backend
+    // Mongo backend check: https://github.com/Infisical/infisical-mongo/blob/main/backend/src/helpers/secrets.ts#L658
+    let secretType = type;
+    if (actor === ActorType.SERVICE) {
+      logger.info(
+        `secretServiceFactory: overriding secret type for service token [projectId=${projectId}] [factoryFunctionName=getSecretByName]`
+      );
+      secretType = SecretType.Shared;
+    }
+
+    const secret = await (typeof version === undefined
       ? secretDAL.findOne({
           folderId,
-          type,
-          userId: type === SecretType.Personal ? actorId : null,
+          type: secretType,
+          userId: secretType === SecretType.Personal ? actorId : null,
           secretBlindIndex
         })
       : secretVersionDAL
           .findOne({
             folderId,
-            type,
-            userId: type === SecretType.Personal ? actorId : null,
+            type: secretType,
+            userId: secretType === SecretType.Personal ? actorId : null,
             secretBlindIndex
           })
           .then((el) => SecretsSchema.parse({ ...el, id: el.secretId })));

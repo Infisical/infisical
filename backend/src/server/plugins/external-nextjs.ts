@@ -45,6 +45,9 @@ export const registerExternalNextjs = async (
     server.route({
       method: ["GET", "PUT", "PATCH", "POST", "DELETE"],
       url: "/*",
+      schema: {
+        hide: true
+      },
       handler: (req, res) =>
         nextApp
           .getRequestHandler()(req.raw, res.raw)

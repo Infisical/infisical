@@ -61,7 +61,7 @@ export const SignUpPage = () => {
         router.push("/login");
       }
     }
-  }, [config?.initialized]);
+  }, []);
 
   const { mutateAsync: createAdminUser } = useCreateAdminUser();
 
