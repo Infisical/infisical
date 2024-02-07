@@ -549,7 +549,7 @@ export const secretServiceFactory = ({
       secretType = SecretType.Shared;
     }
 
-    const secret = await (typeof version === undefined
+    const secret = await (version === undefined
       ? secretDAL.findOne({
           folderId,
           type: secretType,
