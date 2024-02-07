@@ -12,9 +12,9 @@ type BootstrapOpt = {
   db: Knex;
 };
 
-const bootstrapCb = () => {
+const bootstrapCb = async () => {
   const appCfg = getConfig();
-  const serverCfg = getServerCfg();
+  const serverCfg = await getServerCfg();
   if (!serverCfg.initialized) {
     console.info(`Welcome to Infisical
 

@@ -17,11 +17,8 @@ type TSuperAdminServiceFactoryDep = {
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
-let serverCfg: TSuperAdmin;
-export const getServerCfg = () => {
-  if (!serverCfg) throw new BadRequestError({ name: "Get server cfg", message: "Server cfg not initialized" });
-  return serverCfg;
-};
+// eslint-disable-next-line
+export let getServerCfg: () => Promise<TSuperAdmin>;
 
 export const superAdminServiceFactory = ({
   serverCfgDAL,
@@ -30,18 +27,18 @@ export const superAdminServiceFactory = ({
   orgService
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
-    serverCfg = await serverCfgDAL.findOne({});
-    if (!serverCfg) {
-      const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true });
-      serverCfg = newCfg;
-      return newCfg;
-    }
-    return serverCfg;
+    // TODO(akhilmhdh): bad  pattern time less change this later to me itself
+    getServerCfg = () => serverCfgDAL.findOne({});
+
+    const serverCfg = await serverCfgDAL.findOne({});
+    if (serverCfg) return;
+    const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true });
+    return newCfg;
   };
 
   const updateServerCfg = async (data: TSuperAdminUpdate) => {
+    const serverCfg = await getServerCfg();
     const cfg = await serverCfgDAL.updateById(serverCfg.id, data);
-    serverCfg = cfg;
     return cfg;
   };
 

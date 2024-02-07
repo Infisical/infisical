@@ -16,7 +16,7 @@ const run = async () => {
     dbConnectionUri: appCfg.DB_CONNECTION_URI,
     dbRootCert: appCfg.DB_ROOT_CERT
   });
-  
+
   const smtp = smtpServiceFactory(formatSmtpConfig());
   const queue = queueServiceFactory(appCfg.REDIS_URL);
 
@@ -40,7 +40,7 @@ const run = async () => {
     port: appCfg.PORT,
     host: appCfg.HOST,
     listenTextResolver: (address) => {
-      bootstrap();
+      void bootstrap();
       return address;
     }
   });
