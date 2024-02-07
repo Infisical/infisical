@@ -1,4 +1,5 @@
 import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
@@ -58,6 +59,7 @@ export const superAdminServiceFactory = ({
     ip,
     userAgent
   }: TAdminSignUpDTO) => {
+    const appCfg = getConfig();
     const existingUser = await userDAL.findOne({ email });
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
 
@@ -91,7 +93,10 @@ export const superAdminServiceFactory = ({
       );
       return { user: newUser, enc: userEnc };
     });
-    await orgService.createOrganization(userInfo.user.id, userInfo.user.email, "Admin Org");
+
+    const initialOrganizationName = appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
+
+    await orgService.createOrganization(userInfo.user.id, userInfo.user.email, initialOrganizationName);
 
     await updateServerCfg({ initialized: true });
     const token = await authService.generateUserTokens(userInfo.user, ip, userAgent);
