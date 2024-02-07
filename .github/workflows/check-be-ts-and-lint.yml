@@ -1,0 +1,35 @@
+name: "Check Backend PR types and lint"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "backend/**"
+      - "!backend/README.md"
+      - "!backend/.*"
+      - "backend/.eslintrc.js"
+
+jobs:
+  check-be-pr:
+    name: Check TS and Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: ☁️ Checkout source
+        uses: actions/checkout@v3
+      - name: 🔧 Setup Node 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+      - name: Install dependencies
+        run: npm install
+        working-directory: backend
+      - name: Run type check
+        run: npm run type:check
+        working-directory: backend
+      - name: Run lint check
+        run: npm run lint
+        working-directory: backend
