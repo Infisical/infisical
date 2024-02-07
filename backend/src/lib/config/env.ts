@@ -95,7 +95,7 @@ const envSchema = z
     SECRET_SCANNING_GIT_APP_ID: zpStr(z.string().optional()),
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
     // LICENCE
-    LICENSE_SERVER_URL: zpStr(z.string().optional()),
+    LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
     STANDALONE_MODE: z
