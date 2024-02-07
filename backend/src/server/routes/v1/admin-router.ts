@@ -20,8 +20,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    handler: () => {
-      const config = getServerCfg();
+    handler: async () => {
+      const config = await getServerCfg();
       return { config };
     }
   });
@@ -78,7 +78,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const appCfg = getConfig();
-      const serverCfg = getServerCfg();
+      const serverCfg = await getServerCfg();
       if (serverCfg.initialized)
         throw new UnauthorizedError({ name: "Admin sign up", message: "Admin has been created" });
       const { user, token } = await server.services.superAdmin.adminSignUp({
