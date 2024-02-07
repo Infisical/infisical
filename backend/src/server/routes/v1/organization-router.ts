@@ -88,7 +88,11 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
         name: z.string().trim().optional(),
-        slug: z.string().trim().optional(),
+        slug: z
+          .string()
+          .trim()
+          .regex(/^[a-zA-Z0-9-]+$/, "Name must only contain alphanumeric characters or hyphens")
+          .optional(),
         authEnforced: z.boolean().optional()
       }),
       response: {

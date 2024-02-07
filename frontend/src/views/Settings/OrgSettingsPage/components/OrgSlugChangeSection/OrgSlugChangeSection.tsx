@@ -10,7 +10,11 @@ import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@a
 import { useUpdateOrg } from "@app/hooks/api";
 
 const formSchema = yup.object({
-    slug: yup.string().required().label("Project Slug")
+    slug: yup
+        .string()
+        .matches(/^[a-zA-Z0-9-]+$/, "Name must only contain alphanumeric characters or hyphens")
+        .required()
+        .label("Project Slug")
 });
 
 type FormData = yup.InferType<typeof formSchema>;

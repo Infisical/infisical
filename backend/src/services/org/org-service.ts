@@ -121,11 +121,17 @@ export const orgServiceFactory = ({
   /*
    * Update organization details
    * */
-  const updateOrg = async ({ actor, actorId, actorOrgScope, orgId, data }: TUpdateOrgDTO) => {
+  const updateOrg = async ({
+    actor,
+    actorId,
+    actorOrgScope,
+    orgId,
+    data: { name, slug, authEnforced }
+  }: TUpdateOrgDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgScope);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
-    if (data.authEnforced) {
+    if (authEnforced) {
       const samlCfg = await samlConfigDAL.findEnforceableSamlCfg(orgId);
       if (!samlCfg)
         throw new BadRequestError({
@@ -134,7 +140,11 @@ export const orgServiceFactory = ({
         });
     }
 
-    const org = await orgDAL.updateById(orgId, data);
+    const org = await orgDAL.updateById(orgId, {
+      name,
+      slug: slug ? slugify(slug) : slug,
+      authEnforced
+    });
     if (!org) throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
     return org;
   };
