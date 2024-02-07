@@ -17,7 +17,7 @@ type TSuperAdminServiceFactoryDep = {
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
-let serverCfg: Readonly<TSuperAdmin>;
+let serverCfg: TSuperAdmin;
 export const getServerCfg = () => {
   if (!serverCfg) throw new BadRequestError({ name: "Get server cfg", message: "Server cfg not initialized" });
   return serverCfg;
@@ -42,7 +42,6 @@ export const superAdminServiceFactory = ({
   const updateServerCfg = async (data: TSuperAdminUpdate) => {
     const cfg = await serverCfgDAL.updateById(serverCfg.id, data);
     serverCfg = cfg;
-    Object.freeze(serverCfg);
     return cfg;
   };
 
