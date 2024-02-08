@@ -610,7 +610,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               })
             )
           }),
-          z.object({ approval: SecretApprovalRequestsSchema }).describe("Whenn secret protection policy is enabled")
+          z.object({ approval: SecretApprovalRequestsSchema }).describe("Whennn secret protection policy is enabled")
         ])
       }
     },
