@@ -32,8 +32,8 @@ jobs:
       - name: Start the server
         run: docker run --name infisical-api -p 4000:4000 -e DB_CONNECTION_URI=$DB_CONNECTION_URI -e REDIS_URL=$REDIS_URL -e JWT_AUTH_SECRET=$JWT_AUTH_SECRET --entrypoint '/bin/sh' infisical-api -c "npm run migration:latest && ls && node dist/main.mjs"
         env:
-          REDIS_URL: redis://host.docker.internal:6379
-          DB_CONNECTION_URI: postgres://infisical:infisical@host.docker.internal:5432/infisical?sslmode=disable
+          REDIS_URL: redis://172.17.0.1:6379
+          DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
           JWT_AUTH_SECRET: something-random
       - name: Install openapi api diff
         run: npm install -g openapi-diff
