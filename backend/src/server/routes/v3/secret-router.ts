@@ -40,7 +40,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim().optional(),
-        environment: z.string().trim().optional(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         include_imports: z
           .enum(["true", "false"])
