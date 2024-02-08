@@ -33,6 +33,10 @@ export type TAuthMode =
       actor: ActorType.IDENTITY;
       identityId: string;
       identityName: string;
+    }
+  | {
+      authMode: AuthMode.SCIM_TOKEN;
+      actor: ActorType.SCIM_IDP;
     };
 
 const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
@@ -53,6 +57,7 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   }
 
   const decodedToken = jwt.verify(authTokenValue, jwtSecret) as JwtPayload;
+
   switch (decodedToken.authTokenType) {
     case AuthTokenType.ACCESS_TOKEN:
       return {
@@ -67,6 +72,12 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
         token: decodedToken as TIdentityAccessTokenJwtPayload,
         actor: ActorType.IDENTITY
+      } as const;
+    case AuthTokenType.SCIM_TOKEN:
+      return {
+        authMode: AuthMode.SCIM_TOKEN,
+        token: decodedToken,
+        actor: ActorType.SCIM_IDP
       } as const;
     default:
       return { authMode: null, token: null } as const;
@@ -109,6 +120,10 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
       case AuthMode.API_KEY: {
         const user = await server.services.apiKey.fnValidateApiKey(token as string);
         req.auth = { authMode: AuthMode.API_KEY as const, userId: user.id, actor, user };
+        break;
+      }
+      case AuthMode.SCIM_TOKEN: {
+        req.auth = { authMode: AuthMode.SCIM_TOKEN, actor };
         break;
       }
       default:

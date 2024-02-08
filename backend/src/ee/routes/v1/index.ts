@@ -3,6 +3,7 @@ import { registerOrgRoleRouter } from "./org-role-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
 import { registerSamlRouter } from "./saml-router";
+import { registerScimRouter } from "./scim-router";
 import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
 import { registerSecretApprovalRequestRouter } from "./secret-approval-request-router";
 import { registerSecretRotationProviderRouter } from "./secret-rotation-provider-router";
@@ -33,6 +34,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     prefix: "/secret-rotation-providers"
   });
   await server.register(registerSamlRouter, { prefix: "/sso" });
+  await server.register(registerScimRouter, { prefix: "/scim" });
   await server.register(registerSecretScanningRouter, { prefix: "/secret-scanning" });
   await server.register(registerSecretRotationRouter, { prefix: "/secret-rotations" });
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
