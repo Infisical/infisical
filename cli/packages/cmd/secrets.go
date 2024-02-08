@@ -68,6 +68,11 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		plainOutput, err := cmd.Flags().GetBool("plain")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports}, "")
 		if err != nil {
 			util.HandleError(err)
@@ -83,7 +88,14 @@ var secretsCmd = &cobra.Command{
 			secrets = util.ExpandSecrets(secrets, infisicalToken, "")
 		}
 
-		visualize.PrintAllSecretDetails(secrets)
+		if plainOutput {
+			for _, secret := range secrets {
+				fmt.Println(secret.Value)
+			}
+		} else {
+			visualize.PrintAllSecretDetails(secrets)
+		}
+
 		Telemetry.CaptureEvent("cli-command:secrets", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 	},
 }
@@ -406,9 +418,28 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse path flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath}, "")
+	plainOutput, err := cmd.Flags().GetBool("plain")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	includeImports, err := cmd.Flags().GetBool("include-imports")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
+	if err != nil {
+		util.HandleError(err)
+	}
+
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports}, "")
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
+	}
+
+	if shouldExpandSecrets {
+		secrets = util.ExpandSecrets(secrets, infisicalToken, "")
 	}
 
 	requestedSecrets := []models.SingleEnvironmentVariable{}
@@ -427,7 +458,13 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	visualize.PrintAllSecretDetails(requestedSecrets)
+	if plainOutput {
+		for _, secret := range requestedSecrets {
+			fmt.Println(secret.Value)
+		}
+	} else {
+		visualize.PrintAllSecretDetails(requestedSecrets)
+	}
 	Telemetry.CaptureEvent("cli-command:secrets get", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 }
 
@@ -661,6 +698,9 @@ func init() {
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsCmd.AddCommand(secretsGetCmd)
 	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
+	secretsGetCmd.Flags().Bool("plain", false, "print values without formatting, one per line")
+	secretsGetCmd.Flags().Bool("include-imports", true, "Imported linked secrets ")
+	secretsGetCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets, and process your referenced secrets")
 
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
@@ -703,9 +743,10 @@ func init() {
 
 	secretsCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
-	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
+	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets, and process your referenced secrets")
 	secretsCmd.Flags().Bool("include-imports", true, "Imported linked secrets ")
 	secretsCmd.PersistentFlags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	secretsCmd.Flags().String("path", "/", "get secrets within a folder path")
+	secretsCmd.Flags().Bool("plain", false, "print values without formatting, one per line")
 	rootCmd.AddCommand(secretsCmd)
 }
