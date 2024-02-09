@@ -41,7 +41,7 @@ jobs:
         run: timeout 60s sh -c 'until docker ps | grep infisical-api | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
       - name: Get changes made in API
         id: openapi-diff
-        run: openapi-diff http://localhost:4000/api/docs/json https://app.infisical.com/api/docs/json
+        run: openapi-diff https://app.infisical.com/api/docs/json http://localhost:4000/api/docs/json
       - name: cleanup
         run: | 
           docker-compose -f "docker-compose.pg.yml" down
