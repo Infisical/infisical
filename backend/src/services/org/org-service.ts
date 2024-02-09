@@ -142,7 +142,7 @@ export const orgServiceFactory = ({
 
     const org = await orgDAL.updateById(orgId, {
       name,
-      slug: slug ? slugify(slug) : slug,
+      slug: slug ? slugify(slug) : undefined,
       authEnforced
     });
     if (!org) throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
