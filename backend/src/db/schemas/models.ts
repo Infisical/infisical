@@ -112,6 +112,11 @@ export enum SecretType {
   Personal = "personal"
 }
 
+export enum ProjectVersion {
+  V1 = "v1",
+  V2 = "v2"
+}
+
 export enum IdentityAuthMethod {
   Univeral = "universal-auth"
 }
