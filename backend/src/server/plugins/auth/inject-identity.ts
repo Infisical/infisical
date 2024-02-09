@@ -10,6 +10,7 @@ import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-to
 
 export type TAuthMode =
   | {
+      orgId?: string;
       authMode: AuthMode.JWT;
       actor: ActorType.USER;
       userId: string;
@@ -21,6 +22,7 @@ export type TAuthMode =
       actor: ActorType.USER;
       userId: string;
       user: TUsers;
+      orgId?: string;
     }
   | {
       authMode: AuthMode.SERVICE_TOKEN;
@@ -82,8 +84,8 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
 
     switch (authMode) {
       case AuthMode.JWT: {
-        const { user, tokenVersionId } = await server.services.authToken.fnValidateJwtIdentity(token);
-        req.auth = { authMode: AuthMode.JWT, user, userId: user.id, tokenVersionId, actor };
+        const { user, tokenVersionId, orgId } = await server.services.authToken.fnValidateJwtIdentity(token);
+        req.auth = { authMode: AuthMode.JWT, user, userId: user.id, tokenVersionId, actor, orgId };
         break;
       }
       case AuthMode.IDENTITY_ACCESS_TOKEN: {

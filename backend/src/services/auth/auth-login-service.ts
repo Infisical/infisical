@@ -56,7 +56,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
    * Private
    * Send mfa code via email
    * */
-  const sendUserMfaCode = async (userId: string, email: string) => {
+  const sendUserMfaCode = async ({ userId, email }: { userId: string; email: string }) => {
     const code = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_MFA,
       userId
@@ -76,7 +76,17 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
    * Check user device and send mail if new device
    * generate the auth and refresh token. fn shared by mfa verification and login verification with mfa disabled
    */
-  const generateUserTokens = async (user: TUsers, ip: string, userAgent: string) => {
+  const generateUserTokens = async ({
+    user,
+    ip,
+    userAgent,
+    organizationId
+  }: {
+    user: TUsers;
+    ip: string;
+    userAgent: string;
+    organizationId?: string;
+  }) => {
     const cfg = getConfig();
     await updateUserDeviceSession(user, ip, userAgent);
     const tokenSession = await tokenService.getUserTokenSession({
@@ -90,7 +100,8 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: user.id,
         tokenVersionId: tokenSession.id,
-        accessVersion: tokenSession.accessVersion
+        accessVersion: tokenSession.accessVersion,
+        organizationId
       },
       cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_AUTH_LIFETIME }
@@ -101,7 +112,8 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: user.id,
         tokenVersionId: tokenSession.id,
-        refreshVersion: tokenSession.refreshVersion
+        refreshVersion: tokenSession.refreshVersion,
+        organizationId
       },
       cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_REFRESH_LIFETIME }
@@ -149,8 +161,14 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     if (!userEnc) throw new Error("Failed to find user");
     const cfg = getConfig();
 
+    let organizationId;
     if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
-      validateProviderAuthToken(providerAuthToken as string, email);
+      const { orgId } = validateProviderAuthToken(providerAuthToken as string, email);
+      organizationId = orgId;
+    } else if (providerAuthToken) {
+      // SAML SSO
+      const { orgId } = validateProviderAuthToken(providerAuthToken, email);
+      organizationId = orgId;
     }
 
     if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey) throw new Error("Failed to authenticate. Try again?");
@@ -169,15 +187,36 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     });
     // send multi factor auth token if they it enabled
     if (userEnc.isMfaEnabled) {
-      const mfaToken = jwt.sign({ authTokenType: AuthTokenType.MFA_TOKEN, userId: userEnc.userId }, cfg.AUTH_SECRET, {
-        expiresIn: cfg.JWT_MFA_LIFETIME
+      const mfaToken = jwt.sign(
+        {
+          authTokenType: AuthTokenType.MFA_TOKEN,
+          userId: userEnc.userId,
+          organizationId
+        },
+        cfg.AUTH_SECRET,
+        {
+          expiresIn: cfg.JWT_MFA_LIFETIME
+        }
+      );
+
+      await sendUserMfaCode({
+        userId: userEnc.userId,
+        email: userEnc.email
       });
-      await sendUserMfaCode(userEnc.userId, userEnc.email);
 
       return { isMfaEnabled: true, token: mfaToken } as const;
     }
 
-    const token = await generateUserTokens({ ...userEnc, id: userEnc.userId }, ip, userAgent);
+    const token = await generateUserTokens({
+      user: {
+        ...userEnc,
+        id: userEnc.userId
+      },
+      ip,
+      userAgent,
+      organizationId
+    });
+
     return { token, isMfaEnabled: false, user: userEnc } as const;
   };
 
@@ -188,14 +227,17 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
   const resendMfaToken = async (userId: string) => {
     const user = await userDAL.findById(userId);
     if (!user) return;
-    await sendUserMfaCode(user.id, user.email);
+    await sendUserMfaCode({
+      userId: user.id,
+      email: user.email
+    });
   };
 
   /*
    * Multi factor authentication verification of code
    * Third step of login in which user completes with mfa
    * */
-  const verifyMfaToken = async ({ userId, mfaToken, ip, userAgent }: TVerifyMfaTokenDTO) => {
+  const verifyMfaToken = async ({ userId, mfaToken, ip, userAgent, orgId }: TVerifyMfaTokenDTO) => {
     await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_MFA,
       userId,
@@ -204,7 +246,16 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
 
-    const token = await generateUserTokens({ ...userEnc, id: userEnc.userId }, ip, userAgent);
+    const token = await generateUserTokens({
+      user: {
+        ...userEnc,
+        id: userEnc.userId
+      },
+      ip,
+      userAgent,
+      organizationId: orgId
+    });
+
     return { token, user: userEnc };
   };
   /*

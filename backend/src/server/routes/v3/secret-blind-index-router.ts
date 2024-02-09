@@ -21,7 +21,8 @@ export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider)
       const count = await server.services.secretBlindIndex.getSecretBlindIndexStatus({
         projectId: req.params.projectId,
         actorId: req.permission.id,
-        actor: req.permission.type
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
       });
       return count === 0;
     }
@@ -52,7 +53,8 @@ export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider)
       const secrets = await server.services.secretBlindIndex.getProjectSecrets({
         projectId: req.params.projectId,
         actorId: req.permission.id,
-        actor: req.permission.type
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
       });
       return { secrets };
     }
@@ -85,7 +87,8 @@ export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider)
         projectId: req.params.projectId,
         secretsToUpdate: req.body.secretsToUpdate,
         actorId: req.permission.id,
-        actor: req.permission.type
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
       });
       return { message: "Successfully named workspace secrets" };
     }

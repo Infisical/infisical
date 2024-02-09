@@ -31,6 +31,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const secretSnapshots = await server.services.snapshot.listSnapshots({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         ...req.query
       });
@@ -60,6 +61,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const count = await server.services.snapshot.projectSecretSnapshotCount({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         environment: req.query.environment,
         path: req.query.path
@@ -112,6 +114,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const auditLogs = await server.services.auditLog.listProjectAuditLogs({
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         ...req.query,
         auditLogActor: req.query.actor,
