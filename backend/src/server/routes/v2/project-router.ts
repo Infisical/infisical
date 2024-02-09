@@ -1,17 +1,26 @@
 import { z } from "zod";
 
-import { ProjectKeysSchema } from "@app/db/schemas";
+import { ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { authRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+const projectWithEnv = ProjectsSchema.merge(
+  z.object({
+    _id: z.string(),
+    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
+  })
+);
+
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
+  /* Get project key */
   server.route({
-    url: "/:workspaceId/encrypted-key",
+    url: "/:projectId/encrypted-key",
     method: "GET",
     schema: {
       params: z.object({
-        workspaceId: z.string().trim()
+        projectId: z.string().trim()
       }),
       response: {
         200: ProjectKeysSchema.merge(
@@ -28,12 +37,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const key = await server.services.projectKey.getLatestProjectKey({
         actor: req.permission.type,
         actorId: req.permission.id,
-        projectId: req.params.workspaceId
+        projectId: req.params.projectId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         event: {
           type: EventType.GET_WORKSPACE_KEY,
           metadata: {
@@ -43,6 +52,62 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return key;
+    }
+  });
+
+  server.route({
+    url: "/:projectId/upgrade",
+    method: "POST",
+    schema: {
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+
+      body: z.object({
+        userPrivateKey: z.string().trim()
+      }),
+      response: {
+        200: z.object({})
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    handler: async (req) => {
+      await server.services.project.upgradeProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        projectId: req.params.projectId,
+        userPrivateKey: req.body.userPrivateKey
+      });
+    }
+  });
+
+  /* Create new project */
+  server.route({
+    method: "POST",
+    url: "/",
+    config: {
+      rateLimit: authRateLimit
+    },
+    schema: {
+      body: z.object({
+        projectName: z.string().trim(),
+        organizationId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          project: projectWithEnv
+        })
+      }
+    },
+    handler: async (req) => {
+      const project = await server.services.project.createProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        orgId: req.body.organizationId,
+        workspaceName: req.body.projectName
+      });
+
+      return { project };
     }
   });
 };

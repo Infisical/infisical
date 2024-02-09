@@ -56,7 +56,6 @@ const encryptSecrets = async ({
         publicKey: wsKey.sender.publicKey,
         privateKey: PRIVATE_KEY
       });
-      
     } else {
       // case: a (shared) key does not exist for the workspace
       randomBytes = crypto.randomBytes(16).toString("hex");
@@ -116,7 +115,6 @@ const encryptSecrets = async ({
 
       return result;
     });
-    
   } catch (error) {
     console.log("Error while encrypting secrets");
   }

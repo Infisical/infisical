@@ -22,7 +22,11 @@ export const secretDALFactory = (db: TDbClient) => {
 
   // the idea is to use postgres specific function
   // insert with id this will cause a conflict then merge the data
-  const bulkUpdate = async (data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>, tx?: Knex) => {
+  const bulkUpdate = async (
+    data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
+
+    tx?: Knex
+  ) => {
     try {
       const secs = await Promise.all(
         data.map(async ({ filter, data: updateData }) => {
@@ -31,6 +35,24 @@ export const secretDALFactory = (db: TDbClient) => {
             .update(updateData)
             .increment("version", 1)
             .returning("*");
+          if (!doc) throw new BadRequestError({ message: "Failed to update document" });
+          return doc;
+        })
+      );
+      return secs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "bulk update secret" });
+    }
+  };
+
+  const bulkUpdateNoVersionIncrement = async (
+    data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
+    tx?: Knex
+  ) => {
+    try {
+      const secs = await Promise.all(
+        data.map(async ({ filter, data: updateData }) => {
+          const [doc] = await (tx || db)(TableName.Secret).where(filter).update(updateData).returning("*");
           if (!doc) throw new BadRequestError({ message: "Failed to update document" });
           return doc;
         })
@@ -139,5 +161,13 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...secretOrm, update, bulkUpdate, deleteMany, findByFolderId, findByBlindIndexes };
+  return {
+    ...secretOrm,
+    update,
+    bulkUpdate,
+    deleteMany,
+    bulkUpdateNoVersionIncrement,
+    findByFolderId,
+    findByBlindIndexes
+  };
 };

@@ -1,8 +1,14 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretApprovalRequestsSecretsSchema, TableName, TSecretTags } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import {
+  SecretApprovalRequestsSecretsSchema,
+  TableName,
+  TSecretApprovalRequestsSecrets,
+  TSecretApprovalRequestsSecretsUpdate,
+  TSecretTags
+} from "@app/db/schemas";
+import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TSecretApprovalRequestSecretDALFactory = ReturnType<typeof secretApprovalRequestSecretDALFactory>;
@@ -10,6 +16,27 @@ export type TSecretApprovalRequestSecretDALFactory = ReturnType<typeof secretApp
 export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   const secretApprovalRequestSecretOrm = ormify(db, TableName.SecretApprovalRequestSecret);
   const secretApprovalRequestSecretTagOrm = ormify(db, TableName.SecretApprovalRequestSecretTag);
+
+  const bulkUpdateNoVersionIncrement = async (
+    data: Array<{ filter: Partial<TSecretApprovalRequestsSecrets>; data: TSecretApprovalRequestsSecretsUpdate }>,
+    tx?: Knex
+  ) => {
+    try {
+      const secs = await Promise.all(
+        data.map(async ({ filter, data: updateData }) => {
+          const [doc] = await (tx || db)(TableName.SecretApprovalRequestSecret)
+            .where(filter)
+            .update(updateData)
+            .returning("*");
+          if (!doc) throw new BadRequestError({ message: "Failed to update document" });
+          return doc;
+        })
+      );
+      return secs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "bulk update secret" });
+    }
+  };
 
   const findByRequestId = async (requestId: string, tx?: Knex) => {
     try {
@@ -190,6 +217,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   return {
     ...secretApprovalRequestSecretOrm,
     findByRequestId,
+    bulkUpdateNoVersionIncrement,
     insertApprovalSecretTags: secretApprovalRequestSecretTagOrm.insertMany
   };
 };

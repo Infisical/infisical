@@ -4,7 +4,6 @@
 /* eslint-disable vars-on-top */
 /* eslint-disable no-var */
 /* eslint-disable func-names */
-import crypto from "crypto";
 
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -34,7 +33,6 @@ import * as yup from "yup";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { tempLocalStorage } from "@app/components/utilities/checks/tempLocalStorage";
-import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   Checkbox,
@@ -62,16 +60,14 @@ import {
 import { usePopUp } from "@app/hooks";
 import {
   fetchOrgUsers,
-  useAddUserToWsE2EE,
+  useAddUserToWsNonE2EE,
   useCreateWorkspace,
   useGetOrgTrialUrl,
   useGetSecretApprovalRequestCount,
   useGetUserAction,
   useLogoutUser,
-  useRegisterUserAction,
-  useUploadWsKey
+  useRegisterUserAction
 } from "@app/hooks/api";
-import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { CreateOrgModal } from "@app/views/Org/components";
 
 interface LayoutProps {
@@ -129,8 +125,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
     : true;
 
   const createWs = useCreateWorkspace();
-  const uploadWsKey = useUploadWsKey();
-  const addWsUser = useAddUserToWsE2EE();
+  const addUsersToProject = useAddUserToWsNonE2EE();
+
   const infisicalPlatformVersion = process.env.NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -220,53 +216,32 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
     // type check
-    if (!currentOrg?.id) return;
+    if (!currentOrg) return;
+    if (!user) return;
     try {
       const {
         data: {
-          project: { id: newWorkspaceId }
+          project: { id: newProjectId }
         }
       } = await createWs.mutateAsync({
-        organizationId: currentOrg?.id,
+        organizationId: currentOrg.id,
         projectName: name
       });
 
-      const randomBytes = crypto.randomBytes(16).toString("hex");
-      const PRIVATE_KEY = String(localStorage.getItem("PRIVATE_KEY"));
-      const { ciphertext, nonce } = encryptAssymmetric({
-        plaintext: randomBytes,
-        publicKey: user.publicKey,
-        privateKey: PRIVATE_KEY
-      });
-
-      await uploadWsKey.mutateAsync({
-        encryptedKey: ciphertext,
-        nonce,
-        userId: user?.id,
-        workspaceId: newWorkspaceId
-      });
-
       if (addMembers) {
-        // not using hooks because need at this point only
         const orgUsers = await fetchOrgUsers(currentOrg.id);
-        const decryptKey = await fetchUserWsKey(newWorkspaceId);
-        await addWsUser.mutateAsync({
-          workspaceId: newWorkspaceId,
-          decryptKey,
-          userPrivateKey: PRIVATE_KEY,
-          members: orgUsers
-            .filter(
-              ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
-            )
-            .map(({ user: orgUser, id: orgMembershipId }) => ({
-              userPublicKey: orgUser.publicKey,
-              orgMembershipId
-            }))
+
+        await addUsersToProject.mutateAsync({
+          emails: orgUsers
+            .map((member) => member.user.email)
+            .filter((email) => email !== user.email),
+          projectId: newProjectId
         });
       }
+
       createNotification({ text: "Workspace created", type: "success" });
       handlePopUpClose("addNewWs");
-      router.push(`/project/${newWorkspaceId}/secrets/overview`);
+      router.push(`/project/${newProjectId}/secrets/overview`);
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create workspace", type: "error" });

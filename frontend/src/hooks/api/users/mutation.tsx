@@ -51,7 +51,7 @@ export const useAddUserToWsNonE2EE = () => {
 
   return useMutation<{}, {}, AddUserToWsDTONonE2EE>({
     mutationFn: async ({ projectId, emails }) => {
-      const { data } = await apiRequest.post(`/api/v3/projects/${projectId}/memberships`, {
+      const { data } = await apiRequest.post(`/api/v2/workspace/${projectId}/memberships`, {
         emails
       });
       return data;

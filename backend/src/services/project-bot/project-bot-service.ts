@@ -44,7 +44,14 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
     });
   };
 
-  const findBotByProjectId = async ({ actorId, actor, projectId, privateKey, publicKey }: TFindBotByProjectIdDTO) => {
+  const findBotByProjectId = async ({
+    actorId,
+    actor,
+    projectId,
+    privateKey,
+    publicKey,
+    botKey
+  }: TFindBotByProjectIdDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
@@ -66,7 +73,11 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
           isActive: false,
           publicKey: keys.publicKey,
           algorithm,
-          keyEncoding: encoding
+          keyEncoding: encoding,
+          ...(botKey && {
+            encryptedProjectKey: botKey.encryptedKey,
+            encryptedProjectKeyNonce: botKey.nonce
+          })
         },
         tx
       );

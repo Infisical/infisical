@@ -21,5 +21,6 @@ export {
   useToggleAutoCapitalization,
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
-  useUpdateWsEnvironment
+  useUpdateWsEnvironment,
+  useUpgradeProject
 } from "./queries";

@@ -117,17 +117,22 @@ export const MemberListTab = () => {
     if (!orgUser) return;
 
     try {
-      if (currentWorkspace.e2ee) {
+      if (currentWorkspace.version === "v1") {
         await addUserToWorkspace({
           workspaceId,
           userPrivateKey,
           decryptKey: wsKey,
           members: [{ orgMembershipId, userPublicKey: orgUser.user.publicKey }]
         });
-      } else {
+      } else if (currentWorkspace.version === "v2") {
         await addUserToWorkspaceNonE2EE({
           projectId: workspaceId,
           emails: [orgUser.user.email]
+        });
+      } else {
+        createNotification({
+          text: "Failed to add user to project, unknown project type",
+          type: "error"
         });
       }
       createNotification({
