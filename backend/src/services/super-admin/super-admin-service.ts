@@ -33,7 +33,7 @@ export const superAdminServiceFactory = ({
 
     const serverCfg = await serverCfgDAL.findOne({});
     if (serverCfg) return;
-    const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true });
+    const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true, inviteOnlySignUp: false });
     return newCfg;
   };
 

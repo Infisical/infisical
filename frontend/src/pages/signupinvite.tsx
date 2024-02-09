@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import crypto from "crypto";
 
-import { useState } from "react";
+import { useEffect,useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -22,6 +22,7 @@ import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import issueBackupKey from "@app/components/utilities/cryptography/issueBackupKey";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
+import { useServerConfig } from "@app/context";
 import { completeAccountSignupInvite, verifySignupInvite } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 
@@ -56,6 +57,13 @@ export default function SignupInvite() {
   const token = parsedUrl.token as string;
   const organizationId = parsedUrl.organization_id as string;
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
+  const { config } = useServerConfig();
+
+  useEffect(() => {
+    if (!config.allowSignUp) {
+      router.push("/login");
+    }
+  }, [config.allowSignUp]);
 
   // Verifies if the information that the users entered (name, workspace) is there, and if the password matched the criteria.
   const signupErrorCheck = async () => {

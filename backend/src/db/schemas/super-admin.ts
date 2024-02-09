@@ -11,6 +11,7 @@ export const SuperAdminSchema = z.object({
   id: z.string().uuid(),
   initialized: z.boolean().default(false).nullable().optional(),
   allowSignUp: z.boolean().default(true).nullable().optional(),
+  inviteOnlySignUp: z.boolean().default(false).nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -105,7 +105,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             email,
             firstName: profile.firstName as string,
             lastName: profile.lastName as string,
-            isSignupAllowed: Boolean(serverCfg.allowSignUp),
+            isSignupAllowed: Boolean(serverCfg.allowSignUp && serverCfg.inviteOnlySignUp),
             relayState: (req.body as { RelayState?: string }).RelayState,
             authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider as string,
             orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId as string
