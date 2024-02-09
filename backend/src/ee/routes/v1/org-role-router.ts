@@ -27,8 +27,8 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const role = await server.services.orgRole.createRole(
-        req.permission.id, 
-        req.params.organizationId, 
+        req.permission.id,
+        req.params.organizationId,
         req.body,
         req.permission.orgId
       );
@@ -115,8 +115,8 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const roles = await server.services.orgRole.listRoles(
-        req.permission.id, 
-        req.params.organizationId, 
+        req.permission.id,
+        req.params.organizationId,
         req.permission.orgId
       );
       return { data: { roles } };

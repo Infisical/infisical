@@ -11,13 +11,13 @@ import {
   TUserEncryptionKeys
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { buildFindFilter, selectAllTableCols, TFindFilter, TFindOpt, withTransaction, ormify } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt, withTransaction } from "@app/lib/knex";
 
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
 
 export const orgDALFactory = (db: TDbClient) => {
   const orgOrm = ormify(db, TableName.Organization);
-  
+
   const findOrgById = async (orgId: string) => {
     try {
       const org = await db(TableName.Organization).where({ id: orgId }).first();
