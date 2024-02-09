@@ -314,13 +314,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           return (
                           <DropdownMenuItem key={org.id}>
                             <Button
-                              onClick={() => {
+                              onClick={async () => {
                                 if (currentOrg?.id === org.id) return;
                                 
                                 if (org.authEnforced) {
                                   // org has an org-level auth method enabled (e.g. SAML)
                                   // -> logout + redirect to SAML SSO
-                                  logOutUser();
+
+                                  await logout.mutateAsync();
+                                  window.open(`/api/v1/sso/redirect/saml2/organizations/${org.slug}`);
+                                  window.close();
                                   return;
                                 }
                                 
