@@ -58,7 +58,7 @@ Prerequisites:
   </Step>
   <Step title="Set secrets for your Fly.io app">
     Running Infisical requires a few environment variables to be set on the Fly.io machine.
-    At minimum, Infisical requires that you set the variables `ENCRYPTION_KEY`, `AUTH_SECRET`, `MONGO_URL`, and `REDIS_URL`
+    At minimum, Infisical requires that you set the variables `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, and `REDIS_URL`
     which you can read more about [here](/self-hosting/configuration/envars).
     
     For this step, we recommend setting the variables as Fly.io [app secrets](https://fly.io/docs/reference/secrets/) which 
@@ -69,7 +69,7 @@ Prerequisites:
         Run the following command (with each `VALUE` replaced) in the source directory of your project to set the required variables:
 
         ```
-        flyctl secrets set ENCRYPTION_KEY=VALUE AUTH_SECRET=VALUE MONGO_URL=VALUE REDIS_URL=VALUE...
+        flyctl secrets set ENCRYPTION_KEY=VALUE AUTH_SECRET=VALUE DB_CONNECTION_URI=VALUE REDIS_URL=VALUE...
         ```
       </Tab>
       <Tab title="Dashboard">

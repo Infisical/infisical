@@ -31,15 +31,12 @@ Start by creating a .env file at the root of the Infisical directory then copy t
     JWT_AUTH_SECRET=4be6ba5602e0fa0ac6ac05c3cd4d247f
     JWT_SERVICE_SECRET=f32f716d70a42c5703f4656015e76200
 
-    # MongoDB
-    # Backend will connect to the MongoDB instance at connection string MONGO_URL which can either be a ref
-    # to the MongoDB container instance or Mongo Cloud
+    # Postgres
+    # Backend will connect to the Postgres instance at connection string DB_CONNECTION_URI which can either be a ref
+    # to the postgres container instance
     # Required
-    MONGO_URL=mongodb://root:example@mongo:27017/?authSource=admin
+    DB_CONNECTION_URI=postgres://<user-name>:<passwowrd>@<host>:<port>/infisical
 
-    # Optional credentials for MongoDB container instance and Mongo-Express
-    MONGO_USERNAME=root
-    MONGO_PASSWORD=example
 
     # Website URL
     # Required

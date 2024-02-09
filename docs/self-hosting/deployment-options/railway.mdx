@@ -18,12 +18,11 @@ Prerequisites:
         
         ![Railway template overview](/images/self-hosting/deployment-options/railway/railway-template-overview.png)
 
-        1.2. At minimum, Infisical requires that you set the variables `ENCRYPTION_KEY`, `AUTH_SECRET`, `MONGO_URL`, and `REDIS_URL`
+        1.2. At minimum, Infisical requires that you set the variables `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, and `REDIS_URL`
         which you can read more about [here](/self-hosting/configuration/envars).
         
-        By default, the Infisical template on Railway pre-configures environment variables on each service in the deployment but requires you to supply two for the Redis and MongoDB services.
+        By default, the Infisical template on Railway pre-configures environment variables on each service in the deployment but requires you to supply two for the Redis and Postgres services.
         
-        On the MongoDB service, supply a value for the `MONGO_INITDB_ROOT_PASSWORD` variable.
         
         ![Railway template MongoDB configuration](/images/self-hosting/deployment-options/railway/railway-template-mongodb.png)
         

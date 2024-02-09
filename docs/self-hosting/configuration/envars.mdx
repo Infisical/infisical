@@ -18,8 +18,8 @@ Other environment variables are listed below to increase the functionality of yo
       Must be a random 32 byte base64 string. Can be generated with `openssl rand -base64 32`
     </ParamField>
 
-    <ParamField query="MONGO_URL" type="string" default="none" required>
-      Mongo connection string. *TLS based connection string is not yet supported
+    <ParamField query="DB_CONNECTION_URI" type="string" default="none" required>
+      Postgres connection url. For SSL connection pass the certificate as Base64 in `DB_ROOT_CERT`
     </ParamField>
 
     <ParamField query="REDIS_URL" type="string" default="none" required>
@@ -131,6 +131,12 @@ Other environment variables are listed below to increase the functionality of yo
     </ParamField>
   </Tab>
   <Tab title="Others">
+  #### DB Connection Settings
+
+<ParamField query="DB_ROOT_CERT" type="string" default="none" optional>
+  SSL CA certificate for Postgres Database connection. Must be base64.
+</ParamField>
+
     #### JWT
     <ParamField query="JWT_SIGNUP_LIFETIME" type="string" default="15m" optional>
       JWT token lifetime expressed in seconds or a string describing a time span
@@ -173,8 +179,6 @@ Infisical uses Sentry to report error logs
 ></ParamField>
 
 #### Settings
-
-{" "}
 
 <ParamField query="INVITE_ONLY_SIGNUP" type="string" default="false" optional>
   Only allow users who are invited to sign up
