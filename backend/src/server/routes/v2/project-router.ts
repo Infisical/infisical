@@ -17,7 +17,7 @@ const projectWithEnv = ProjectsSchema.merge(
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   /* Get project key */
   server.route({
-    url: "/:workspaceId/encrypted-key",
+    url: "/:projectId/encrypted-key",
     method: "GET",
     schema: {
       description: "Return encrypted project key",
@@ -27,7 +27,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim()
+        projectId: z.string().trim()
       }),
       response: {
         200: ProjectKeysSchema.merge(
@@ -50,7 +50,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         event: {
           type: EventType.GET_WORKSPACE_KEY,
           metadata: {

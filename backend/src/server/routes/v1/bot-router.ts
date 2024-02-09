@@ -33,7 +33,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.projectId
       });
 
-      if (!project.e2ee) {
+      if (project.version === "v2") {
         throw new BadRequestError({ message: "Failed to find bot, project has E2EE disabled" });
       }
 
@@ -79,7 +79,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const project = await server.services.projectBot.findProjectByBotId(req.params.botId);
 
-      if (project?.e2ee === false) {
+      if (project?.version === "v2") {
         throw new BadRequestError({ message: "Failed to set bot active, project has E2EE disabled" });
       }
 
