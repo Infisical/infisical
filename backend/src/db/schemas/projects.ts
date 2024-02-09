@@ -15,7 +15,7 @@ export const ProjectsSchema = z.object({
   orgId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  e2ee: z.boolean().default(true)
+  version: z.string().default("v1")
 });
 
 export type TProjects = z.infer<typeof ProjectsSchema>;
