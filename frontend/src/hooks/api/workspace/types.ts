@@ -3,7 +3,7 @@ export type Workspace = {
   id: string;
   name: string;
   orgId: string;
-  e2ee: boolean;
+  version: "v1" | "v2";
   autoCapitalization: boolean;
   environments: WorkspaceEnv[];
   slug: string;

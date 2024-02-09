@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -14,6 +14,8 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import NavHeader from "@app/components/navigation/NavHeader";
 import { PermissionDeniedBanner } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   Button,
   EmptyState,
   IconButton,
@@ -37,7 +39,8 @@ import {
   useGetFoldersByEnv,
   useGetProjectSecretsAllEnv,
   useGetUserWsKey,
-  useUpdateSecretV3
+  useUpdateSecretV3,
+  useUpgradeProject
 } from "@app/hooks/api";
 
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
@@ -104,6 +107,7 @@ export const SecretOverviewPage = () => {
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
 
+  const upgradeProject = useUpgradeProject();
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
@@ -196,6 +200,24 @@ export const SecretOverviewPage = () => {
       });
     }
   };
+
+  const onUpgradeProject = useCallback(async () => {
+    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
+
+    if (!PRIVATE_KEY) {
+      createNotification({
+        type: "error",
+        text: "Private key not found"
+      });
+
+      return;
+    }
+
+    await upgradeProject.mutateAsync({
+      projectId: workspaceId,
+      privateKey: PRIVATE_KEY
+    });
+  }, []);
 
   const handleResetSearch = () => setSearchFilter("");
 
@@ -315,6 +337,23 @@ export const SecretOverviewPage = () => {
           .
         </p>
       </div>
+
+      {currentWorkspace?.version === "v1" && (
+        <div className="mt-8">
+          <Alert variant="danger">
+            <AlertDescription className="prose">
+              Upgrade your project. More filler text More filler text More filler text More filler
+              text More filler text More filler text More filler text More filler text More filler
+              text More filler text More filler text More filler text{" "}
+            </AlertDescription>
+            <div className="mt-2">
+              <Button isLoading={upgradeProject.isLoading} onClick={onUpgradeProject}>
+                Upgrade
+              </Button>
+            </div>
+          </Alert>
+        </div>
+      )}
       <div className="mt-8 flex items-center justify-between">
         <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
         <div className="w-80">

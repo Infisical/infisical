@@ -1,3 +1,5 @@
+import { TProjectPermission } from "@app/lib/types";
+
 import { ActorType } from "../auth/auth-type";
 
 export type TCreateProjectDTO = {
@@ -21,3 +23,7 @@ export type TGetProjectDTO = {
   actorOrgId?: string;
   projectId: string;
 };
+
+export type TUpgradeProjectDTO = {
+  userPrivateKey: string;
+} & TProjectPermission;

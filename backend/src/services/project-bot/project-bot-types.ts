@@ -14,6 +14,10 @@ export type TSetActiveStateDTO = {
 export type TFindBotByProjectIdDTO = {
   privateKey?: string;
   publicKey?: string;
+  botKey?: {
+    nonce: string;
+    encryptedKey: string;
+  };
 } & TProjectPermission;
 
 export type TGetPrivateKeyDTO = {

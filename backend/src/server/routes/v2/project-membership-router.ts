@@ -1,47 +1,10 @@
 import { z } from "zod";
 
-import { ProjectMembershipsSchema, ProjectsSchema } from "@app/db/schemas";
+import { ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 
-const projectWithEnv = ProjectsSchema.merge(
-  z.object({
-    _id: z.string(),
-    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
-  })
-);
-
-export const registerProjectRouter = async (server: FastifyZodProvider) => {
-  /* Create new project */
-  server.route({
-    method: "POST",
-    url: "/",
-    config: {
-      rateLimit: authRateLimit
-    },
-    schema: {
-      body: z.object({
-        projectName: z.string().trim(),
-        organizationId: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          project: projectWithEnv
-        })
-      }
-    },
-    handler: async (req) => {
-      const project = await server.services.project.createProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        orgId: req.body.organizationId,
-        workspaceName: req.body.projectName
-      });
-
-      return { project };
-    }
-  });
-
+export const registerProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:projectId/memberships",

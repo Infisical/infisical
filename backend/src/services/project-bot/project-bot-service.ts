@@ -50,6 +50,7 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
     projectId,
     actorOrgId,
     privateKey,
+    botKey,
     publicKey
   }: TFindBotByProjectIdDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
@@ -73,7 +74,11 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
           isActive: false,
           publicKey: keys.publicKey,
           algorithm,
-          keyEncoding: encoding
+          keyEncoding: encoding,
+          ...(botKey && {
+            encryptedProjectKey: botKey.encryptedKey,
+            encryptedProjectKeyNonce: botKey.nonce
+          })
         },
         tx
       );

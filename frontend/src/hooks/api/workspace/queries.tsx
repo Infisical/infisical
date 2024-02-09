@@ -61,6 +61,21 @@ export const fetchWorkspaceSecrets = async (workspaceId: string) => {
   return secrets;
 };
 
+export const useUpgradeProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, { projectId: string; privateKey: string }>({
+    mutationFn: ({ projectId, privateKey }) => {
+      return apiRequest.post(`/api/v2/workspace/${projectId}/upgrade`, {
+        userPrivateKey: privateKey
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+    }
+  });
+};
+
 const fetchUserWorkspaces = async () => {
   const { data } = await apiRequest.get<{ workspaces: Workspace[] }>("/api/v1/workspace");
   return data.workspaces;
@@ -160,7 +175,7 @@ export const createWorkspace = ({
   organizationId,
   projectName
 }: CreateWorkspaceDTO): Promise<{ data: { project: Workspace } }> => {
-  return apiRequest.post("/api/v3/projects", { projectName, organizationId });
+  return apiRequest.post("/api/v2/workspace", { projectName, organizationId });
 };
 
 export const useCreateWorkspace = () => {
