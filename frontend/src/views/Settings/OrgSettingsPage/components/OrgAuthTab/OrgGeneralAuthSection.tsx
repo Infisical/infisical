@@ -1,31 +1,20 @@
-import { useRouter } from "next/router";
-
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Switch } from "@app/components/v2";
-import {     OrgPermissionActions,
+import {
+    OrgPermissionActions,
     OrgPermissionSubjects,
-useOrganization } from "@app/context";
+    useOrganization 
+} from "@app/context";
 import { useLogoutUser,useUpdateOrg } from "@app/hooks/api";
 
 export const OrgGeneralAuthSection = () => {
-    const router = useRouter();
     const { createNotification } = useNotificationContext();
     const { currentOrg } = useOrganization();
     
     const { mutateAsync } = useUpdateOrg();
     
     const logout = useLogoutUser();
-    
-    const logOutUser = async () => {
-        try {
-        console.log("Logging out...");
-        await logout.mutateAsync();
-        router.push("/login");
-        } catch (error) {
-        console.error(error);
-        }
-    };
     
     const handleEnforceOrgAuthToggle = async (value: boolean) => {
         try {
@@ -42,7 +31,10 @@ export const OrgGeneralAuthSection = () => {
             });
             
             if (value) {
-                logOutUser();
+                await logout.mutateAsync();
+                window.open(`/api/v1/sso/redirect/saml2/organizations/${currentOrg.slug}`);
+                window.close();
+                return;
             }
             
         } catch (err) {
