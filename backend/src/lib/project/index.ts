@@ -40,12 +40,12 @@ export const createWsMembers = ({ members, decryptKey, userPrivateKey }: AddUser
   return newWsMembers;
 };
 
-type TCreateWorkspaceKeyDTO = {
+type TCreateProjectKeyDTO = {
   publicKey: string;
   privateKey: string;
 };
 
-export const createWorkspaceKey = ({ publicKey, privateKey }: TCreateWorkspaceKeyDTO) => {
+export const createProjectKey = ({ publicKey, privateKey }: TCreateProjectKeyDTO) => {
   // 3. Create a random key that we'll use as the project key.
   const randomBytes = crypto.randomBytes(16).toString("hex");
 
