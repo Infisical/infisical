@@ -30,7 +30,7 @@ export const registerSecretRotationProviderRouter = async (server: FastifyZodPro
       const providers = await server.services.secretRotation.getProviderTemplates({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId
       });
       return providers;

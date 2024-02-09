@@ -225,7 +225,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       const saml = await server.services.saml.getSaml({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         orgId: req.query.organizationId,
         type: "org"
       });
@@ -254,7 +254,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       const saml = await server.services.saml.createSamlCfg({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         orgId: req.body.organizationId,
         ...req.body
       });
@@ -285,7 +285,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       const saml = await server.services.saml.updateSamlCfg({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         orgId: req.body.organizationId,
         ...req.body
       });

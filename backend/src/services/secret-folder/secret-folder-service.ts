@@ -34,12 +34,12 @@ export const secretFolderServiceFactory = ({
     projectId,
     actor,
     actorId,
-    actorOrgScope,
+    actorOrgId,
     name,
     environment,
     path: secretPath
   }: TCreateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -113,13 +113,13 @@ export const secretFolderServiceFactory = ({
     projectId,
     actor,
     actorId,
-    actorOrgScope,
+    actorOrgId,
     name,
     environment,
     path: secretPath,
     id
   }: TUpdateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -161,12 +161,12 @@ export const secretFolderServiceFactory = ({
     projectId,
     actor,
     actorId,
-    actorOrgScope,
+    actorOrgId,
     environment,
     path: secretPath,
     id
   }: TDeleteFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -192,13 +192,13 @@ export const secretFolderServiceFactory = ({
     projectId,
     actor,
     actorId,
-    actorOrgScope,
+    actorOrgId,
     environment,
     path: secretPath
   }: TGetFolderDTO) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new BadRequestError({ message: "Environment not found", name: "get folders" });

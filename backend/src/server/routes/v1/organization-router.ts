@@ -107,7 +107,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const organization = await server.services.org.updateOrg({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId,
         data: req.body
       });

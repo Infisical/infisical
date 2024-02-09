@@ -28,9 +28,9 @@ export const secretBlindIndexServiceFactory = ({
     actor,
     projectId,
     actorId,
-    actorOrgScope
+    actorOrgId
   }: TGetProjectBlindIndexStatusDTO) => {
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
 
     const secretCount = await secretBlindIndexDAL.countOfSecretsWithNullSecretBlindIndex(projectId);
     return Number(secretCount);
@@ -50,10 +50,10 @@ export const secretBlindIndexServiceFactory = ({
     projectId,
     actor,
     actorId,
-    actorOrgScope,
+    actorOrgId,
     secretsToUpdate
   }: TUpdateProjectSecretNameDTO) => {
-    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     if (membership?.role !== ProjectMembershipRole.Admin) {
       throw new UnauthorizedError({ message: "User must be admin" });
     }

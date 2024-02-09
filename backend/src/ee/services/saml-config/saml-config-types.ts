@@ -24,10 +24,10 @@ export type TUpdateSamlCfgDTO = Partial<{
 }> &
   TOrgPermission;
 
-  export type TGetSamlCfgDTO =
-  | { type: "org"; orgId: string; actor: ActorType; actorId: string, actorOrgScope?: string }
-  | { 
-      type: "orgSlug",
+export type TGetSamlCfgDTO =
+  | { type: "org"; orgId: string; actor: ActorType; actorId: string; actorOrgId?: string }
+  | {
+      type: "orgSlug";
       orgSlug: string;
     }
   | {

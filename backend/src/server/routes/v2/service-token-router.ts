@@ -92,7 +92,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
       const { serviceToken, token } = await server.services.serviceToken.createServiceToken({
         actorId: req.permission.id,
         actor: req.permission.type,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId
       });
@@ -130,7 +130,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
       const serviceTokenData = await server.services.serviceToken.deleteServiceToken({
         actorId: req.permission.id,
         actor: req.permission.type,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         id: req.params.serviceTokenId
       });
 

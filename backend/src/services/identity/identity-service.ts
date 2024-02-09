@@ -25,8 +25,8 @@ export const identityServiceFactory = ({
   identityOrgMembershipDAL,
   permissionService
 }: TIdentityServiceFactoryDep) => {
-  const createIdentity = async ({ name, role, actor, orgId, actorId, actorOrgScope }: TCreateIdentityDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgScope);
+  const createIdentity = async ({ name, role, actor, orgId, actorId, actorOrgId }: TCreateIdentityDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
@@ -54,18 +54,23 @@ export const identityServiceFactory = ({
     return identity;
   };
 
-  const updateIdentity = async ({ id, role, name, actor, actorId, actorOrgScope }: TUpdateIdentityDTO) => {
+  const updateIdentity = async ({ id, role, name, actor, actorId, actorOrgId }: TUpdateIdentityDTO) => {
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership) throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityOrgMembership.orgId, actorOrgScope);
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityOrgMembership.orgId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
 
     const { permission: identityRolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       id,
       identityOrgMembership.orgId,
-      actorOrgScope
+      actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
     if (!hasRequiredPriviledges)
@@ -103,11 +108,16 @@ export const identityServiceFactory = ({
     return { ...identity, orgId: identityOrgMembership.orgId };
   };
 
-  const deleteIdentity = async ({ actorId, actor, actorOrgScope, id }: TDeleteIdentityDTO) => {
+  const deleteIdentity = async ({ actorId, actor, actorOrgId, id }: TDeleteIdentityDTO) => {
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership) throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, identityOrgMembership.orgId, actorOrgScope);
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityOrgMembership.orgId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
     const { permission: identityRolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
@@ -122,8 +132,8 @@ export const identityServiceFactory = ({
     return { ...deletedIdentity, orgId: identityOrgMembership.orgId };
   };
 
-  const listOrgIdentities = async ({ orgId, actor, actorId, actorOrgScope }: TOrgPermission) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgScope);
+  const listOrgIdentities = async ({ orgId, actor, actorId, actorOrgId }: TOrgPermission) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
 
     const identityMemberhips = await identityOrgMembershipDAL.findByOrgId(orgId);

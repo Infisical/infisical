@@ -40,7 +40,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
       const secretRotation = await server.services.secretRotation.createRotation({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId
       });
@@ -74,7 +74,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
       const secretRotation = await server.services.secretRotation.restartById({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         rotationId: req.body.id
       });
       return { secretRotation };
@@ -125,7 +125,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
       const secretRotations = await server.services.secretRotation.getByProjectId({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         projectId: req.query.workspaceId
       });
       return { secretRotations };
@@ -158,7 +158,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
       const secretRotation = await server.services.secretRotation.deleteById({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         rotationId: req.params.id
       });
       return { secretRotation };

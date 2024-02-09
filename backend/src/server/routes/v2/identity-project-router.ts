@@ -32,7 +32,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const identityMembership = await server.services.identityProject.createProjectIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         projectId: req.params.projectId,
         role: req.body.role
@@ -63,7 +63,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const identityMembership = await server.services.identityProject.updateProjectIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         projectId: req.params.projectId,
         role: req.body.role
@@ -91,7 +91,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const identityMembership = await server.services.identityProject.deleteProjectIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         projectId: req.params.projectId
       });
@@ -128,7 +128,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const identityMemberships = await server.services.identityProject.listProjectIdentities({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.projectId
       });
       return { identityMemberships };

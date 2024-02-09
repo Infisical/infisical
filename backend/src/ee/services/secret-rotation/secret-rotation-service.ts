@@ -39,8 +39,8 @@ export const secretRotationServiceFactory = ({
   folderDAL,
   secretDAL
 }: TSecretRotationServiceFactoryDep) => {
-  const getProviderTemplates = async ({ actor, actorId, actorOrgScope, projectId }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+  const getProviderTemplates = async ({ actor, actorId, actorOrgId, projectId }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
 
     return {
@@ -53,7 +53,7 @@ export const secretRotationServiceFactory = ({
     projectId,
     actorId,
     actor,
-    actorOrgScope,
+    actorOrgId,
     inputs,
     outputs,
     interval,
@@ -61,7 +61,7 @@ export const secretRotationServiceFactory = ({
     secretPath,
     environment
   }: TCreateSecretRotationDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretRotation
@@ -139,14 +139,14 @@ export const secretRotationServiceFactory = ({
     return secretRotation;
   };
 
-  const getByProjectId = async ({ actorId, projectId, actor, actorOrgScope }: TListByProjectIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+  const getByProjectId = async ({ actorId, projectId, actor, actorOrgId }: TListByProjectIdDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
     const doc = await secretRotationDAL.find({ projectId });
     return doc;
   };
 
-  const restartById = async ({ actor, actorId, actorOrgScope, rotationId }: TRestartDTO) => {
+  const restartById = async ({ actor, actorId, actorOrgId, rotationId }: TRestartDTO) => {
     const doc = await secretRotationDAL.findById(rotationId);
     if (!doc) throw new BadRequestError({ message: "Rotation not found" });
 
@@ -157,18 +157,18 @@ export const secretRotationServiceFactory = ({
         message: "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
       });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, doc.projectId, actorOrgScope);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, doc.projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretRotation);
     await secretRotationQueue.removeFromQueue(doc.id, doc.interval);
     await secretRotationQueue.addToQueue(doc.id, doc.interval);
     return doc;
   };
 
-  const deleteById = async ({ actor, actorId, actorOrgScope, rotationId }: TDeleteDTO) => {
+  const deleteById = async ({ actor, actorId, actorOrgId, rotationId }: TDeleteDTO) => {
     const doc = await secretRotationDAL.findById(rotationId);
     if (!doc) throw new BadRequestError({ message: "Rotation not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, doc.projectId, actorOrgScope);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, doc.projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretRotation

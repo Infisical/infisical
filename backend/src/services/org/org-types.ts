@@ -7,20 +7,20 @@ export type TUpdateOrgMembershipDTO = {
   orgId: string;
   membershipId: string;
   role: string;
-  actorOrgScope?: string;
+  actorOrgId?: string;
 };
 
 export type TDeleteOrgMembershipDTO = {
   userId: string;
   orgId: string;
   membershipId: string;
-  actorOrgScope?: string;
+  actorOrgId?: string;
 };
 
 export type TInviteUserToOrgDTO = {
   userId: string;
   orgId: string;
-  actorOrgScope?: string;
+  actorOrgId?: string;
   inviteeEmail: string;
 };
 
@@ -33,7 +33,7 @@ export type TVerifyUserToOrgDTO = {
 export type TFindAllWorkspacesDTO = {
   actor: ActorType;
   actorId: string;
-  actorOrgScope?: string;
+  actorOrgId?: string;
   orgId: string;
 };
 

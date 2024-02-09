@@ -23,7 +23,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       const workspaceTags = await server.services.secretTag.getProjectTags({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.projectId
       });
       return { workspaceTags };
@@ -53,7 +53,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       const workspaceTag = await server.services.secretTag.createTag({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.projectId,
         ...req.body
       });
@@ -80,7 +80,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       const workspaceTag = await server.services.secretTag.deleteTag({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         id: req.params.tagId
       });
       return { workspaceTag };

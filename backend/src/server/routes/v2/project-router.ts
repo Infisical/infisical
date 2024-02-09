@@ -29,7 +29,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         projectId: req.params.workspaceId,
-        actorOrgScope: req.permission.orgId
+        actorOrgId: req.permission.orgId
       });
 
       await server.services.auditLog.createAuditLog({

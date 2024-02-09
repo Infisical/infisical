@@ -30,7 +30,7 @@ export const registerProjectKeyRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         nonce: req.body.key.nonce,
         receiverId: req.body.key.userId,
         encryptedKey: req.body.key.encryptedKey

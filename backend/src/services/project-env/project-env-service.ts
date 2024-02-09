@@ -27,8 +27,8 @@ export const projectEnvServiceFactory = ({
   projectDAL,
   folderDAL
 }: TProjectEnvServiceFactoryDep) => {
-  const createEnvironment = async ({ projectId, actorId, actor, actorOrgScope, name, slug }: TCreateEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+  const createEnvironment = async ({ projectId, actorId, actor, actorOrgId, name, slug }: TCreateEnvDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Environments);
 
     const envs = await projectEnvDAL.find({ projectId });
@@ -64,12 +64,12 @@ export const projectEnvServiceFactory = ({
     slug,
     actor,
     actorId,
-    actorOrgScope,
+    actorOrgId,
     name,
     id,
     position
   }: TUpdateEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Environments);
 
     const oldEnv = await projectEnvDAL.findOne({ id, projectId });
@@ -94,8 +94,8 @@ export const projectEnvServiceFactory = ({
     return { environment: env, old: oldEnv };
   };
 
-  const deleteEnvironment = async ({ projectId, actor, actorId, actorOrgScope, id }: TDeleteEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+  const deleteEnvironment = async ({ projectId, actor, actorId, actorOrgId, id }: TDeleteEnvDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
 
     const env = await projectEnvDAL.transaction(async (tx) => {

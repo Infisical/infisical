@@ -34,7 +34,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       if (req.auth.actor !== ActorType.USER) return;
 
       const users = await server.services.org.findAllOrgMembers(
-        req.permission.id, 
+        req.permission.id,
         req.params.organizationId,
         req.permission.orgId
       );
@@ -72,7 +72,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const workspaces = await server.services.org.findAllWorkspaces({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId
       });
 
@@ -103,7 +103,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         role: req.body.role,
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId,
-        actorOrgScope: req.permission.orgId
+        actorOrgId: req.permission.orgId
       });
       return { membership };
     }
@@ -128,7 +128,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         userId: req.permission.id,
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId,
-        actorOrgScope: req.permission.orgId
+        actorOrgId: req.permission.orgId
       });
       return { membership };
     }
@@ -176,7 +176,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
-      
+
       const organization = await server.services.org.deleteOrganizationById(
         req.permission.id,
         req.params.organizationId,

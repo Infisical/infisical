@@ -54,7 +54,7 @@ export const samlConfigServiceFactory = ({
   const createSamlCfg = async ({
     cert,
     actor,
-    actorOrgScope,
+    actorOrgId,
     orgId,
     issuer,
     actorId,
@@ -62,7 +62,7 @@ export const samlConfigServiceFactory = ({
     entryPoint,
     authProvider
   }: TCreateSamlCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgScope);
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
 
     const plan = await licenseService.getPlan(orgId);
@@ -145,7 +145,7 @@ export const samlConfigServiceFactory = ({
   const updateSamlCfg = async ({
     orgId,
     actor,
-    actorOrgScope,
+    actorOrgId,
     cert,
     actorId,
     issuer,
@@ -153,7 +153,7 @@ export const samlConfigServiceFactory = ({
     entryPoint,
     authProvider
   }: TUpdateSamlCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgScope);
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
     const plan = await licenseService.getPlan(orgId);
     if (!plan.samlSSO)
@@ -237,7 +237,7 @@ export const samlConfigServiceFactory = ({
         dto.actor,
         dto.actorId,
         ssoConfig.orgId,
-        dto.actorOrgScope
+        dto.actorOrgId
       );
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
     }

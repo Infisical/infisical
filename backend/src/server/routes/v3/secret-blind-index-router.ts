@@ -22,7 +22,7 @@ export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider)
         projectId: req.params.projectId,
         actorId: req.permission.id,
         actor: req.permission.type,
-        actorOrgScope: req.permission.orgId
+        actorOrgId: req.permission.orgId
       });
       return count === 0;
     }
@@ -54,7 +54,7 @@ export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider)
         projectId: req.params.projectId,
         actorId: req.permission.id,
         actor: req.permission.type,
-        actorOrgScope: req.permission.orgId
+        actorOrgId: req.permission.orgId
       });
       return { secrets };
     }
@@ -88,7 +88,7 @@ export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider)
         secretsToUpdate: req.body.secretsToUpdate,
         actorId: req.permission.id,
         actor: req.permission.type,
-        actorOrgScope: req.permission.orgId
+        actorOrgId: req.permission.orgId
       });
       return { message: "Successfully named workspace secrets" };
     }

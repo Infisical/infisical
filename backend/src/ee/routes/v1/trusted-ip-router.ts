@@ -25,7 +25,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId
+        actorOrgId: req.permission.orgId
       });
       return { trustedIps };
     }
@@ -55,7 +55,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         ...req.body
       });
       await server.services.auditLog.createAuditLog({
@@ -99,7 +99,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         trustedIpId: req.params.trustedIpId,
         ...req.body
       });
@@ -140,7 +140,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         trustedIpId: req.params.trustedIpId
       });
       await server.services.auditLog.createAuditLog({

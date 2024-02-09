@@ -30,11 +30,11 @@ export const auditLogServiceFactory = ({
     startDate,
     actor,
     actorId,
-    actorOrgScope,
+    actorOrgId,
     projectId,
     auditLogActor
   }: TListProjectAuditLogDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgScope);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
     const auditLogs = await auditLogDAL.find({
       startDate,

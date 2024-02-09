@@ -34,7 +34,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       const approval = await server.services.secretApprovalPolicy.createSecretApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         projectId: req.body.workspaceId,
         ...req.body,
         name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`
@@ -72,7 +72,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       const approval = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         secretPolicyId: req.params.sapId
       });
@@ -98,7 +98,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       const approval = await server.services.secretApprovalPolicy.deleteSecretApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         secretPolicyId: req.params.sapId
       });
       return { approval };
@@ -123,7 +123,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       const approvals = await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         projectId: req.query.workspaceId
       });
       return { approvals };
@@ -150,7 +150,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
         actor: req.permission.type,
         actorId: req.permission.id,
-        actorOrgScope: req.permission.orgId,
+        actorOrgId: req.permission.orgId,
         projectId: req.query.workspaceId,
         ...req.query
       });
