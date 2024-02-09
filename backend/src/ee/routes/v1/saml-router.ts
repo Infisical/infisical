@@ -63,7 +63,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             }
 
             const ssoConfig = await server.services.saml.getSaml(ssoLookupDetails);
-            if (!ssoConfig) throw new BadRequestError({ message: "SSO config not found" });
+            if (!ssoConfig || !ssoConfig.isActive)
+              throw new BadRequestError({ message: "Failed to authenticate with SAML SSO" });
 
             const samlConfig: TSAMLConfig = {
               callbackUrl: `${appCfg.SITE_URL}/api/v1/sso/saml2/${samlConfigId}`,
