@@ -131,6 +131,10 @@ export const orgServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
+    if (authEnforced !== undefined) {
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
+    }
+
     if (authEnforced) {
       const samlCfg = await samlConfigDAL.findEnforceableSamlCfg(orgId);
       if (!samlCfg)

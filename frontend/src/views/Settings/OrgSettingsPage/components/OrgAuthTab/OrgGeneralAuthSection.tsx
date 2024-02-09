@@ -34,7 +34,6 @@ export const OrgGeneralAuthSection = () => {
                 await logout.mutateAsync();
                 window.open(`/api/v1/sso/redirect/saml2/organizations/${currentOrg.slug}`);
                 window.close();
-                return;
             }
             
         } catch (err) {
