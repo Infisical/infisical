@@ -67,7 +67,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               throw new BadRequestError({ message: "Failed to authenticate with SAML SSO" });
 
             const samlConfig: TSAMLConfig = {
-              callbackUrl: `${appCfg.SITE_URL}/api/v1/sso/saml2/${samlConfigId}`,
+              callbackUrl: `${appCfg.SITE_URL}/api/v1/sso/saml2/${ssoConfig.id}`,
               entryPoint: ssoConfig.entryPoint,
               issuer: ssoConfig.issuer,
               cert: ssoConfig.cert,
@@ -77,7 +77,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               samlConfig.wantAuthnResponseSigned = false;
             }
             if (ssoConfig.authProvider === SamlProviders.AZURE_SAML) {
-              if (req.body.RelayState && JSON.parse(req.body.RelayState).spIntiaited) {
+              if (req.body?.RelayState && JSON.parse(req.body.RelayState).spInitiated) {
                 samlConfig.audience = `spn:${ssoConfig.issuer}`;
               }
             }
