@@ -23,8 +23,16 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      await server.services.signup.beginEmailSignupProcess(req.body.email);
-      return { message: `Sent an email verification code to ${req.body.email}` };
+      const { email } = req.body;
+      const config = await server.services.superAdmin.initServerCfg();
+
+      if (config?.allowSpecificDomainSignUp) {
+        const domain = email.split("@")[1];
+
+        if (domain !== config.allowSpecificDomainSignUp) throw new Error(`Unsupported email domain (${domain}).`);
+      }
+      await server.services.signup.beginEmailSignupProcess(email);
+      return { message: `Sent an email verification code to ${email}` };
     }
   });
 

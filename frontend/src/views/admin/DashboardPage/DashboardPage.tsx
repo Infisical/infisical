@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import { faAt } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
+  Button,
   ContentLoader,
+  FormControl,
+  Input,
   Select,
   SelectItem,
   Tab,
@@ -24,11 +29,13 @@ export const AdminDashboardPage = () => {
   const router = useRouter();
   const data = useServerConfig();
   const [signUpMode, setSignUpMode] = useState<SignUpMode>("invite-only");
+  const [allowSpecificDomain, setAllowSpecificDomain] = useState<string | undefined>();
 
   const { config } = data;
   const { user, isLoading: isUserLoading } = useUser();
   const { orgs } = useOrganization();
   const { mutate: updateServerConfig } = useUpdateServerConfig();
+
   const { createNotification } = useNotificationContext();
 
   const isNotAllowed = !user?.superAdmin;
@@ -49,22 +56,28 @@ export const AdminDashboardPage = () => {
     }
     if (config.inviteOnlySignUp) {
       setSignUpMode("invite-only");
-      return;
+    } else {
+      setSignUpMode("anyone");
     }
-    setSignUpMode("anyone");
+
+    if (config.allowSpecificDomainSignUp) {
+      setAllowSpecificDomain(config.allowSpecificDomainSignUp);
+    }
   }, [config]);
 
-  function handleSignUpModeChange(newSignUpMode: SignUpMode) {
-    config.allowSignUp = newSignUpMode !== "disabled";
-    config.inviteOnlySignUp = newSignUpMode === "invite-only";
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+
+    config.allowSignUp = signUpMode !== "disabled";
+    config.inviteOnlySignUp = signUpMode === "invite-only";
+    config.allowSpecificDomainSignUp = signUpMode === "anyone" ? allowSpecificDomain : "";
+
+    await updateServerConfig(config);
 
     createNotification({
       text: "Successfully changed sign up mode.",
       type: "success"
     });
-
-    updateServerConfig(config);
-    setSignUpMode(newSignUpMode);
   }
 
   return (
@@ -86,20 +99,49 @@ export const AdminDashboardPage = () => {
               </div>
             </TabList>
             <TabPanel value={TabSections.Settings}>
-              <div className="flex items-center justify-between space-x-4">
-                <div className="label"> Allow user to Sign Up </div>
-                <Select
-                  className="w-36 bg-mineshaft-700"
-                  dropdownContainerClassName="bg-mineshaft-700"
-                  onValueChange={(state) => handleSignUpModeChange(state as SignUpMode)}
-                  value={signUpMode}
-                  isDisabled={isNotAllowed}
-                >
-                  <SelectItem value="disabled">Disabled</SelectItem>
-                  <SelectItem value="invite-only">Invite Only</SelectItem>
-                  <SelectItem value="anyone">Anyone</SelectItem>
-                </Select>
-              </div>
+              <form
+                onSubmit={handleSubmit}
+                className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+              >
+                <div className="flex justify-between">
+                  <div className="mb-4 text-xl font-semibold text-mineshaft-100">
+                    Allow user to Sign Up
+                  </div>
+                  <Select
+                    className="w-60 bg-mineshaft-700"
+                    dropdownContainerClassName="bg-mineshaft-700"
+                    onValueChange={(state) => setSignUpMode(state as SignUpMode)}
+                    value={signUpMode}
+                    isDisabled={isNotAllowed}
+                  >
+                    <SelectItem value="disabled">Disabled</SelectItem>
+                    <SelectItem value="invite-only">Invite Only</SelectItem>
+                    <SelectItem value="anyone">Anyone</SelectItem>
+                  </Select>
+                </div>
+
+                {signUpMode === "anyone" && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="mb-4 flex text-mineshaft-100">
+                      Allow email with only specific domain
+                    </div>
+                    <FormControl label="Leave blank to allow any domain handle">
+                      <div className="w-60">
+                        <Input
+                          placeholder="domain.com"
+                          leftIcon={<FontAwesomeIcon icon={faAt} />}
+                          value={allowSpecificDomain}
+                          onChange={(ev) => setAllowSpecificDomain(ev.target.value)}
+                        />
+                      </div>
+                    </FormControl>
+                  </div>
+                )}
+
+                <Button colorSchema="primary" variant="outline_bg" type="submit">
+                  Save
+                </Button>
+              </form>
             </TabPanel>
           </Tabs>
         </div>

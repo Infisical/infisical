@@ -55,7 +55,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
               lastName: profile?.name?.familyName || "",
               authMethod: AuthMethod.GOOGLE,
               callbackPort: req.query.state as string,
-              isSignupAllowed: Boolean(serverCfg.allowSignUp)
+              serverCfg
             });
             cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
@@ -91,7 +91,8 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
               lastName: "",
               authMethod: AuthMethod.GITHUB,
               callbackPort: req.query.state as string,
-              isSignupAllowed: Boolean(serverCfg.allowSignUp)
+              serverCfg
+              // isSignupAllowed: Boolean(serverCfg.allowSignUp)
             });
             return cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
@@ -127,7 +128,8 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
               lastName: "",
               authMethod: AuthMethod.GITLAB,
               callbackPort: req.query.state as string,
-              isSignupAllowed: Boolean(serverCfg.allowSignUp)
+              serverCfg
+              // isSignupAllowed: Boolean(serverCfg.allowSignUp)
             });
 
             return cb(null, { isUserCompleted, providerAuthToken });

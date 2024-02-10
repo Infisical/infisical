@@ -261,20 +261,25 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
   /*
    * OAuth2 login for google,github, and other oauth2 provider
    * */
-  const oauth2Login = async ({
-    email,
-    firstName,
-    lastName,
-    authMethod,
-    callbackPort,
-    isSignupAllowed
-  }: TOauthLoginDTO) => {
+  const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort, serverCfg }: TOauthLoginDTO) => {
     let user = await userDAL.findUserByEmail(email);
     const appCfg = getConfig();
-    const isOauthSignUpDisabled = !isSignupAllowed && !user;
-    if (isOauthSignUpDisabled) throw new BadRequestError({ message: "User signup disabled", name: "Oauth 2 login" });
 
     if (!user) {
+      // Create a new user based on oAuth
+      if (!serverCfg?.allowSignUp)
+        throw new BadRequestError({ message: "User signup disabled", name: "Oauth 2 login" });
+
+      if (serverCfg?.allowSpecificDomainSignUp) {
+        const domain = email.split("@")[1];
+
+        if (domain !== serverCfg.allowSpecificDomainSignUp)
+          throw new BadRequestError({
+            message: `User email domain (${domain}) is not supported`,
+            name: "Oauth 2 login"
+          });
+      }
+
       user = await userDAL.create({ email, firstName, lastName, authMethods: [authMethod] });
     }
     const isLinkingRequired = !user?.authMethods?.includes(authMethod);
