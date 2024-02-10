@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { faAt } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -65,9 +65,7 @@ export const AdminDashboardPage = () => {
     }
   }, [config]);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     config.allowSignUp = signUpMode !== "disabled";
     config.inviteOnlySignUp = signUpMode === "invite-only";
     config.allowSpecificDomainSignUp = signUpMode === "anyone" ? allowSpecificDomain : "";
@@ -99,16 +97,13 @@ export const AdminDashboardPage = () => {
               </div>
             </TabList>
             <TabPanel value={TabSections.Settings}>
-              <form
-                onSubmit={handleSubmit}
-                className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-              >
+              <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
                 <div className="flex justify-between">
                   <div className="mb-4 text-xl font-semibold text-mineshaft-100">
                     Allow user to Sign Up
                   </div>
                   <Select
-                    className="w-60 bg-mineshaft-700"
+                    className="w-72 bg-mineshaft-700"
                     dropdownContainerClassName="bg-mineshaft-700"
                     onValueChange={(state) => setSignUpMode(state as SignUpMode)}
                     value={signUpMode}
@@ -125,8 +120,8 @@ export const AdminDashboardPage = () => {
                     <div className="mb-4 flex text-mineshaft-100">
                       Allow email with only specific domain
                     </div>
-                    <FormControl label="Leave blank to allow any domain handle">
-                      <div className="w-60">
+                    <FormControl label="Leave blank to allow any domain handle" className="w-72">
+                      <div>
                         <Input
                           placeholder="domain.com"
                           leftIcon={<FontAwesomeIcon icon={faAt} />}
@@ -138,10 +133,10 @@ export const AdminDashboardPage = () => {
                   </div>
                 )}
 
-                <Button colorSchema="primary" variant="outline_bg" type="submit">
+                <Button colorSchema="primary" variant="outline_bg" onClick={handleSubmit}>
                   Save
                 </Button>
-              </form>
+              </div>
             </TabPanel>
           </Tabs>
         </div>
