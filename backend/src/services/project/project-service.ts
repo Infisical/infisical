@@ -20,8 +20,8 @@ import { TCreateProjectDTO, TDeleteProjectDTO, TGetProjectDTO } from "./project-
 
 export const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },
-  { name: "Staging", slug: "staging" },
-  { name: "Production", slug: "prod" }
+  { name: "Staging", slug: "stg" },
+  { name: "Production", slug: "prd" }
 ];
 
 type TProjectServiceFactoryDep = {

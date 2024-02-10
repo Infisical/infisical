@@ -5,8 +5,8 @@ import { seedData1 } from "../seed-data";
 
 export const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },
-  { name: "Staging", slug: "staging" },
-  { name: "Production", slug: "prod" }
+  { name: "Staging", slug: "stg" },
+  { name: "Production", slug: "prd" }
 ];
 
 export async function seed(knex: Knex): Promise<void> {
