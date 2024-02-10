@@ -1,5 +1,3 @@
-import { TSuperAdmin } from "@app/db/schemas/super-admin";
-
 import { AuthMethod } from "./auth-type";
 
 export type TLoginGenServerPublicKeyDTO = {
@@ -30,6 +28,4 @@ export type TOauthLoginDTO = {
   lastName?: string;
   authMethod: AuthMethod;
   callbackPort?: string;
-  isSignupAllowed?: boolean;
-  serverCfg?: TSuperAdmin;
 };

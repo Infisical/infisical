@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -29,7 +30,10 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (config?.allowSpecificDomainSignUp) {
         const domain = email.split("@")[1];
 
-        if (domain !== config.allowSpecificDomainSignUp) throw new Error(`Unsupported email domain (${domain}).`);
+        if (domain !== config.allowSpecificDomainSignUp)
+          throw new BadRequestError({
+            message: `User email domain (@${domain}) is not supported`
+          });
       }
       await server.services.signup.beginEmailSignupProcess(email);
       return { message: `Sent an email verification code to ${email}` };

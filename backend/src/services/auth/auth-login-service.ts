@@ -4,6 +4,7 @@ import { TUsers, UserDeviceSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -261,8 +262,10 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
   /*
    * OAuth2 login for google,github, and other oauth2 provider
    * */
-  const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort, serverCfg }: TOauthLoginDTO) => {
+  const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort }: TOauthLoginDTO) => {
     let user = await userDAL.findUserByEmail(email);
+    const serverCfg = await getServerCfg();
+
     const appCfg = getConfig();
 
     if (!user) {
@@ -275,7 +278,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
 
         if (domain !== serverCfg.allowSpecificDomainSignUp)
           throw new BadRequestError({
-            message: `User email domain (${domain}) is not supported`,
+            message: `User email domain (@${domain}) is not supported`,
             name: "Oauth 2 login"
           });
       }
