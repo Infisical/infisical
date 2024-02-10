@@ -513,9 +513,9 @@ export const registerRoutes = async (
         })
       }
     },
-    handler: () => {
+    handler: async () => {
       const cfg = getConfig();
-      const serverCfg = getServerCfg();
+      const serverCfg = await getServerCfg();
       return {
         date: new Date(),
         message: "Ok" as const,

@@ -26,7 +26,7 @@ infisical:
     pullPolicy: Always
 
   deploymentAnnotations:
-    secrets.infisical.com/auto-reload: "false"
+    secrets.infisical.com/auto-reload: "true"
 
   kubeSecretRef: "infisical-gamma-secrets"
 

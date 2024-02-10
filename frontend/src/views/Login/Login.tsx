@@ -10,7 +10,6 @@ import {
     MFAStep,
     SAMLSSOStep
 } from "./components";
-// import { navigateUserToOrg } from "../../Login.utils";
 import { navigateUserToOrg } from "./Login.utils";
 
 export const Login = () => {

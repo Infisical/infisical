@@ -30,7 +30,8 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.type,
         req.permission.id,
         req.params.projectId,
-        req.body
+        req.body,
+        req.permission.orgId
       );
       return { role };
     }
@@ -63,7 +64,8 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.projectId,
         req.params.roleId,
-        req.body
+        req.body,
+        req.permission.orgId
       );
       return { role };
     }
@@ -89,7 +91,8 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.type,
         req.permission.id,
         req.params.projectId,
-        req.params.roleId
+        req.params.roleId,
+        req.permission.orgId
       );
       return { role };
     }
@@ -117,7 +120,8 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       const roles = await server.services.projectRole.listRoles(
         req.permission.type,
         req.permission.id,
-        req.params.projectId
+        req.params.projectId,
+        req.permission.orgId
       );
       return { data: { roles } };
     }
@@ -143,7 +147,8 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { permissions, membership } = await server.services.projectRole.getUserPermission(
         req.permission.id,
-        req.params.projectId
+        req.params.projectId,
+        req.permission.orgId
       );
       return { data: { permissions, membership } };
     }

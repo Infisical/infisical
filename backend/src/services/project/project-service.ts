@@ -48,8 +48,8 @@ export const projectServiceFactory = ({
   /*
    * Create workspace. Make user the admin
    * */
-  const createProject = async ({ orgId, actor, actorId, workspaceName }: TCreateProjectDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
+  const createProject = async ({ orgId, actor, actorId, actorOrgId, workspaceName }: TCreateProjectDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
 
     const appCfg = getConfig();
@@ -106,8 +106,8 @@ export const projectServiceFactory = ({
     return newProject;
   };
 
-  const deleteProject = async ({ actor, actorId, projectId }: TDeleteProjectDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const deleteProject = async ({ actor, actorId, actorOrgId, projectId }: TDeleteProjectDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
     const deletedProject = await projectDAL.deleteById(projectId);
@@ -119,8 +119,8 @@ export const projectServiceFactory = ({
     return workspaces;
   };
 
-  const getAProject = async ({ actorId, projectId, actor }: TGetProjectDTO) => {
-    await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getAProject = async ({ actorId, actorOrgId, projectId, actor }: TGetProjectDTO) => {
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     return projectDAL.findProjectById(projectId);
   };
 
@@ -128,17 +128,18 @@ export const projectServiceFactory = ({
     projectId,
     actor,
     actorId,
+    actorOrgId,
     autoCapitalization
   }: TGetProjectDTO & { autoCapitalization: boolean }) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
     const updatedProject = await projectDAL.updateById(projectId, { autoCapitalization });
     return updatedProject;
   };
 
-  const updateName = async ({ projectId, actor, actorId, name }: TGetProjectDTO & { name: string }) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const updateName = async ({ projectId, actor, actorId, actorOrgId, name }: TGetProjectDTO & { name: string }) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
     const updatedProject = await projectDAL.updateById(projectId, { name });

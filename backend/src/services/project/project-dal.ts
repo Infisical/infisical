@@ -21,7 +21,11 @@ export const projectDALFactory = (db: TDbClient) => {
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName")
         )
-        .orderBy("createdAt", "asc", "last");
+        .orderBy([
+          { column: `${TableName.Project}.name`, order: "asc" },
+          { column: `${TableName.Environment}.position`, order: "asc" }
+        ]);
+
       const nestedWorkspaces = sqlNestRelationships({
         data: workspaces,
         key: "id",
@@ -102,7 +106,11 @@ export const projectDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName")
-        );
+        )
+        .orderBy([
+          { column: `${TableName.Project}.name`, order: "asc" },
+          { column: `${TableName.Environment}.position`, order: "asc" }
+        ]);
       return sqlNestRelationships({
         data: workspaces,
         key: "id",

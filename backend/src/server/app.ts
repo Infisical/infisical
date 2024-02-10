@@ -14,10 +14,9 @@ import fasitfy from "fastify";
 import { Knex } from "knex";
 import { Logger } from "pino";
 
+import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
-
-import { getConfig } from "@lib/config/env";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { fastifyErrHandler } from "./plugins/error-handler";
@@ -40,6 +39,7 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
   const server = fasitfy({
     logger,
     trustProxy: true,
+    connectionTimeout: 30 * 1000,
     ignoreTrailingSlash: true
   }).withTypeProvider<ZodTypeProvider>();
 
@@ -75,7 +75,7 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
     if (appCfg.isProductionMode) {
       await server.register(registerExternalNextjs, {
         standaloneMode: appCfg.STANDALONE_MODE,
-        dir: path.join(__dirname, "../"),
+        dir: path.join(__dirname, "../../"),
         port: appCfg.PORT
       });
     }

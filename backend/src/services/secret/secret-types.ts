@@ -128,12 +128,6 @@ export type TDeleteBulkSecretDTO = {
   }>;
 } & TProjectPermission;
 
-export type TListSecretVersionDTO = {
-  secretId: string;
-  offset?: number;
-  limit?: number;
-} & Omit<TProjectPermission, "projectId">;
-
 export type TGetSecretsRawDTO = {
   path: string;
   environment: string;

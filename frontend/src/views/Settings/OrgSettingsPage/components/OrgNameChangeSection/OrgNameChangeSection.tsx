@@ -7,7 +7,7 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { useRenameOrg } from "@app/hooks/api";
+import { useUpdateOrg } from "@app/hooks/api";
 
 const formSchema = yup.object({
   name: yup.string().required().label("Project Name")
@@ -21,7 +21,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
   const { handleSubmit, control, reset } = useForm<FormData>({
     resolver: yupResolver(formSchema)
   });
-  const { mutateAsync, isLoading } = useRenameOrg();
+  const { mutateAsync, isLoading } = useUpdateOrg();
 
   useEffect(() => {
     if (currentOrg) {
@@ -34,7 +34,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
       if (!currentOrg?.id) return;
       if (name === "") return;
 
-      await mutateAsync({ orgId: currentOrg?.id, newOrgName: name });
+      await mutateAsync({ orgId: currentOrg?.id, name });
       createNotification({
         text: "Successfully renamed organization",
         type: "success"
@@ -53,7 +53,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
       onSubmit={handleSubmit(onFormSubmit)}
       className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
-      <p className="mb-4 text-xl font-semibold text-mineshaft-100">Name</p>
+      <p className="mb-4 text-xl font-semibold text-mineshaft-100">Organization Name</p>
       <div className="mb-2 max-w-md">
         <Controller
           defaultValue=""

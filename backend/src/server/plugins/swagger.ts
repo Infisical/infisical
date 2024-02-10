@@ -43,6 +43,7 @@ export const fastifySwagger = fp(async (fastify) => {
   });
 
   await fastify.register(swaggerUI, {
-    routePrefix: "/docs"
+    routePrefix: "/api/docs",
+    prefix: "/api/docs"
   });
 });

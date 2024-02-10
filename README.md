@@ -33,7 +33,7 @@
     <img src="https://img.shields.io/github/commit-activity/m/infisical/infisical" alt="git commit activity" />
   </a>
   <a href="https://cloudsmith.io/~infisical/repos/">
-    <img src="https://img.shields.io/badge/Downloads-2.58M-orange" alt="Cloudsmith downloads" />
+    <img src="https://img.shields.io/badge/Downloads-6.95M-orange" alt="Cloudsmith downloads" />
   </a>
   <a href="https://infisical.com/slack">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
@@ -53,17 +53,19 @@ We're on a mission to make secret management more accessible to everyone, not ju
 
 ## Features
 
-- **[User-friendly dashboard](https://infisical.com/docs/documentation/platform/project)** to manage secrets across projects and environments (e.g. development, production, etc.)
-- **[Client SDKs](https://infisical.com/docs/sdks/overview)** to fetch secrets for your apps and infrastructure on demand
-- **[Infisical CLI](https://infisical.com/docs/cli/overview)** to fetch and inject secrets into any framework in local development
-- **[Native integrations](https://infisical.com/docs/integrations/overview)** with platforms like GitHub, Vercel, Netlify, and more
-- [**Automatic Kubernetes deployment secret reloads**](https://infisical.com/docs/documentation/getting-started/kubernetes)
-- **[Complete control over your data](https://infisical.com/docs/self-hosting/overview)** - host it yourself on any infrastructure
-- **[Secret versioning](https://infisical.com/docs/documentation/platform/secret-versioning)** and **[Point-in-Time Recovery]()** to version every secret and project state
-- **[Audit logs](https://infisical.com/docs/documentation/platform/audit-logs)** to record every action taken in a project
-- **Role-based Access Controls** per environment
-- [**Simple on-premise deployments** to AWS, Digital Ocean, and more](https://infisical.com/docs/self-hosting/overview)
-- [**Secret Scanning and Leak Prevention**](https://infisical.com/docs/cli/scanning-overview)
+- **[User-friendly dashboard](https://infisical.com/docs/documentation/platform/project)** to manage secrets across projects and environments (e.g. development, production, etc.). 
+- **[Client SDKs](https://infisical.com/docs/sdks/overview)** to fetch secrets for your apps and infrastructure on demand. 
+- **[Infisical CLI](https://infisical.com/docs/cli/overview)** to fetch and inject secrets into any framework in local development and CI/CD. 
+- **[Infisical API](https://infisical.com/docs/api-reference/overview/introduction)** to perform CRUD operation on secrets, users, projects, and any other resource in Infisical. 
+- **[Native integrations](https://infisical.com/docs/integrations/overview)** with platforms like [GitHub](https://infisical.com/docs/integrations/cicd/githubactions), [Vercel](https://infisical.com/docs/integrations/cloud/vercel), [AWS](https://infisical.com/docs/integrations/cloud/aws-secret-manager), and tools like [Terraform](https://infisical.com/docs/integrations/frameworks/terraform), [Ansible](https://infisical.com/docs/integrations/platforms/ansible), and more. 
+- **[Infisical Kubernetes operator](https://infisical.com/docs/documentation/getting-started/kubernetes)** to managed secrets in k8s, automatically reload deployments, and more.
+- **[Infisical Agent](https://infisical.com/docs/infisical-agent/overview)** to inject secrets into your applications without modifying any code logic. 
+- **[Self-hosting and on-prem](https://infisical.com/docs/self-hosting/overview)** to get complete control over your data.
+- **[Secret versioning](https://infisical.com/docs/documentation/platform/secret-versioning)** and **[Point-in-Time Recovery](https://infisical.com/docs/documentation/platform/pit-recovery)** to version every secret and project state. 
+- **[Audit logs](https://infisical.com/docs/documentation/platform/audit-logs)** to record every action taken in a project. 
+- **[Role-based Access Controls](https://infisical.com/docs/documentation/platform/role-based-access-controls)** to create permission sets on any resource in Infisica and assign those to user or machine identities. 
+- **[Simple on-premise deployments](https://infisical.com/docs/self-hosting/overview)** to AWS, Digital Ocean, and more.
+- **[Secret Scanning and Leak Prevention](https://infisical.com/docs/cli/scanning-overview)** to prevent secrets from leaking to git. 
 
 And much more.
 
@@ -115,9 +117,9 @@ Lean about Infisical's code scanning feature [here](https://infisical.com/docs/c
 
 This repo available under the [MIT expat license](https://github.com/Infisical/infisical/blob/main/LICENSE), with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license.
 
-If you are interested in managed Infisical Cloud of self-hosted Enterprise Offering, take a look at [our website](https://infisical.com/) or [book a meeting with us](https://cal.com/vmatsiiako/infisical-demo):
+If you are interested in managed Infisical Cloud of self-hosted Enterprise Offering, take a look at [our website](https://infisical.com/) or [book a meeting with us](https://infisical.cal.com/vlad/infisical-demo):
 
-<a href="https://cal.com/vmatsiiako/infisical-demo"><img alt="Schedule a meeting" src="https://cal.com/book-with-cal-dark.svg" /></a>
+<a href="[https://infisical.cal.com/vlad/infisical-demo](https://infisical.cal.com/vlad/infisical-demo)"><img alt="Schedule a meeting" src="https://cal.com/book-with-cal-dark.svg" /></a>
 
 ## Security
 

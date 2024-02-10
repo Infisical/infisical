@@ -62,8 +62,11 @@ services:
       dockerfile: Dockerfile.dev
     depends_on:
       - db
+      - redis
     env_file:
       - .env
+    ports:
+      - 4000:4000
     environment:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable

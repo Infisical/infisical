@@ -104,7 +104,6 @@ ENV NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID \
 WORKDIR / 
 
 COPY --from=backend-runner /app /backend
-COPY --from=backend-runner /app/dist/services/smtp/templates /backend/dist/templates
 
 COPY --from=frontend-runner /app ./backend/frontend-build
 

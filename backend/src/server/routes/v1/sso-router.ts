@@ -42,7 +42,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         async (req, _accessToken, _refreshToken, profile, cb) => {
           try {
             const email = profile?.emails?.[0]?.value;
-            const serverCfg = getServerCfg();
+            const serverCfg = await getServerCfg();
             if (!email)
               throw new BadRequestError({
                 message: "Email not found",
@@ -84,7 +84,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           try {
             const ghEmails = await fetchGithubEmails(accessToken);
             const { email } = ghEmails.filter((gitHubEmail) => gitHubEmail.primary)[0];
-            const serverCfg = getServerCfg();
+            const serverCfg = await getServerCfg();
             const { isUserCompleted, providerAuthToken } = await server.services.login.oauth2Login({
               email,
               firstName: profile.displayName,
@@ -120,7 +120,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         async (req: any, _accessToken: string, _refreshToken: string, profile: any, cb: any) => {
           try {
             const email = profile.emails[0].value;
-            const serverCfg = getServerCfg();
+            const serverCfg = await getServerCfg();
             const { isUserCompleted, providerAuthToken } = await server.services.login.oauth2Login({
               email,
               firstName: profile.displayName,
