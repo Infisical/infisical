@@ -4,6 +4,7 @@ import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSignupRouter = async (server: FastifyZodProvider) => {
@@ -25,15 +26,16 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { email } = req.body;
-      const config = await server.services.superAdmin.initServerCfg();
+      const serverCfg = await getServerCfg();
 
-      if (config?.allowSpecificDomainSignUp) {
+      if (serverCfg?.allowSpecificDomainSignUp) {
         const domain = email.split("@")[1];
-
-        if (domain !== config.allowSpecificDomainSignUp)
+        const allowedDomains = serverCfg.allowSpecificDomainSignUp.split(",").map((e) => e.trim());
+        if (!allowedDomains.includes(domain)) {
           throw new BadRequestError({
-            message: `User email domain (@${domain}) is not supported`
+            message: `Email with a domain (@${domain}) is not supported`
           });
+        }
       }
       await server.services.signup.beginEmailSignupProcess(email);
       return { message: `Sent an email verification code to ${email}` };

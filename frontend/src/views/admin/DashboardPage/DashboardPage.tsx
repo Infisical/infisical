@@ -66,17 +66,25 @@ export const AdminDashboardPage = () => {
   }, [config]);
 
   const handleSubmit = async () => {
-    config.allowSignUp = signUpMode !== "disabled";
-    config.inviteOnlySignUp = signUpMode === "invite-only";
-    config.allowSpecificDomainSignUp = signUpMode === "anyone" ? allowSpecificDomain : "";
+    try {
+      config.allowSignUp = signUpMode !== "disabled";
+      config.inviteOnlySignUp = signUpMode === "invite-only";
+      config.allowSpecificDomainSignUp = signUpMode === "anyone" ? allowSpecificDomain : "";
 
-    await updateServerConfig(config);
+      await updateServerConfig(config);
 
-    createNotification({
-      text: "Successfully changed sign up mode.",
-      type: "success"
-    });
-  }
+      createNotification({
+        text: "Successfully changed sign up setting.",
+        type: "success"
+      });
+    } catch (e) {
+      console.error(e);
+      createNotification({
+        type: "error",
+        text: "Failed to update sign up setting."
+      });
+    }
+  };
 
   return (
     <div className="container mx-auto max-w-7xl px-4 pb-12 text-white dark:[color-scheme:dark]">
@@ -118,12 +126,12 @@ export const AdminDashboardPage = () => {
                 {signUpMode === "anyone" && (
                   <div className="mt-4 flex items-center justify-between">
                     <div className="mb-4 flex text-mineshaft-100">
-                      Allow email with only specific domain
+                      Allow email with only specific domain(s)
                     </div>
                     <FormControl label="Leave blank to allow any domain handle" className="w-72">
                       <div>
                         <Input
-                          placeholder="domain.com"
+                          placeholder="domain.com, domain2.com"
                           leftIcon={<FontAwesomeIcon icon={faAt} />}
                           value={allowSpecificDomain}
                           onChange={(ev) => setAllowSpecificDomain(ev.target.value)}
