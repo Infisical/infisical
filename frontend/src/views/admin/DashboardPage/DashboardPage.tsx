@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 import { faAt } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
@@ -23,15 +26,37 @@ enum TabSections {
   Settings = "settings"
 }
 
-type SignUpMode = "disabled" | "invite-only" | "anyone";
+const formSchema = yup.object({
+  signUpMode: yup
+    .string()
+    .oneOf(["disabled", "invite-only", "anyone"])
+    .required(),
+  allowedSignUpDomain: yup.string().optional()
+});
+
+type TDashboardForm = yup.InferType<typeof formSchema>;
 
 export const AdminDashboardPage = () => {
   const router = useRouter();
   const data = useServerConfig();
-  const [signUpMode, setSignUpMode] = useState<SignUpMode>("invite-only");
-  const [allowSpecificDomain, setAllowSpecificDomain] = useState<string | undefined>();
-
   const { config } = data;
+
+  const signUpStatus = config.allowSignUp
+  ? config.inviteOnlySignUp && "invite-only"
+  : "disabled";
+
+  const signUpType = signUpStatus || "anyone";
+  
+  const { control, handleSubmit, watch } = useForm<TDashboardForm>({
+    resolver: yupResolver(formSchema),
+    defaultValues: {
+      signUpMode: signUpType,
+      allowedSignUpDomain: config.allowedSignUpDomain
+    }
+  });
+
+  const signupMode = watch("signUpMode");
+
   const { user, isLoading: isUserLoading } = useUser();
   const { orgs } = useOrganization();
   const { mutate: updateServerConfig } = useUpdateServerConfig();
@@ -49,29 +74,15 @@ export const AdminDashboardPage = () => {
     }
   }, [isNotAllowed, isUserLoading]);
 
-  useEffect(() => {
-    if (!config.allowSignUp) {
-      setSignUpMode("disabled");
-      return;
-    }
-    if (config.inviteOnlySignUp) {
-      setSignUpMode("invite-only");
-    } else {
-      setSignUpMode("anyone");
-    }
-
-    if (config.allowSpecificDomainSignUp) {
-      setAllowSpecificDomain(config.allowSpecificDomainSignUp);
-    }
-  }, [config]);
-
-  const handleSubmit = async () => {
+  const onFormSubmit = async (formData: TDashboardForm) => {
     try {
-      config.allowSignUp = signUpMode !== "disabled";
-      config.inviteOnlySignUp = signUpMode === "invite-only";
-      config.allowSpecificDomainSignUp = signUpMode === "anyone" ? allowSpecificDomain : "";
+      const { signUpMode, allowedSignUpDomain } = formData;
 
-      await updateServerConfig(config);
+      await updateServerConfig({
+        allowSignUp: signUpMode !== "disabled",
+        inviteOnlySignUp: signUpMode === "invite-only",
+        allowedSignUpDomain: signUpMode === "anyone" ? allowedSignUpDomain : ""
+      });
 
       createNotification({
         text: "Successfully changed sign up setting.",
@@ -85,6 +96,8 @@ export const AdminDashboardPage = () => {
       });
     }
   };
+
+
 
   return (
     <div className="container mx-auto max-w-7xl px-4 pb-12 text-white dark:[color-scheme:dark]">
@@ -105,46 +118,70 @@ export const AdminDashboardPage = () => {
               </div>
             </TabList>
             <TabPanel value={TabSections.Settings}>
-              <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+              <form
+                className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+                onSubmit={handleSubmit(onFormSubmit)}
+              >
                 <div className="flex justify-between">
                   <div className="mb-4 text-xl font-semibold text-mineshaft-100">
                     Allow user to Sign Up
                   </div>
-                  <Select
-                    className="w-72 bg-mineshaft-700"
-                    dropdownContainerClassName="bg-mineshaft-700"
-                    onValueChange={(state) => setSignUpMode(state as SignUpMode)}
-                    value={signUpMode}
-                    isDisabled={isNotAllowed}
-                  >
-                    <SelectItem value="disabled">Disabled</SelectItem>
-                    <SelectItem value="invite-only">Invite Only</SelectItem>
-                    <SelectItem value="anyone">Anyone</SelectItem>
-                  </Select>
+                  <Controller
+                    control={control}
+                    name="signUpMode"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                      <FormControl
+                        className="max-w-72 w-72"
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <Select
+                          className="w-72 bg-mineshaft-700"
+                          dropdownContainerClassName="bg-mineshaft-700"
+                          defaultValue={field.value}
+                          onValueChange={(e) => onChange(e)}
+                          {...field}
+                        >
+                          <SelectItem value="disabled">Disabled</SelectItem>
+                          <SelectItem value="invite-only">Invite Only</SelectItem>
+                          <SelectItem value="anyone">Anyone</SelectItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
                 </div>
 
-                {signUpMode === "anyone" && (
+                {signupMode === "anyone" && (
                   <div className="mt-4 flex items-center justify-between">
                     <div className="mb-4 flex text-mineshaft-100">
                       Allow email with only specific domain(s)
                     </div>
-                    <FormControl label="Leave blank to allow any domain handle" className="w-72">
-                      <div>
-                        <Input
-                          placeholder="domain.com, domain2.com"
-                          leftIcon={<FontAwesomeIcon icon={faAt} />}
-                          value={allowSpecificDomain}
-                          onChange={(ev) => setAllowSpecificDomain(ev.target.value)}
-                        />
-                      </div>
-                    </FormControl>
+                    <Controller
+                      control={control}
+                      defaultValue=""
+                      name="allowedSignUpDomain"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Leave blank to allow any domain handle"
+                          className="w-72"
+                          isError={Boolean(error)}
+                          errorText={error?.message}
+                        >
+                          <Input
+                            {...field}
+                            placeholder="domain.com, domain2.com"
+                            leftIcon={<FontAwesomeIcon icon={faAt} />}
+                          />
+                        </FormControl>
+                      )}
+                    />
                   </div>
                 )}
 
-                <Button colorSchema="primary" variant="outline_bg" onClick={handleSubmit}>
+                <Button colorSchema="primary" variant="outline_bg" type="submit">
                   Save
                 </Button>
-              </div>
+              </form>
             </TabPanel>
           </Tabs>
         </div>

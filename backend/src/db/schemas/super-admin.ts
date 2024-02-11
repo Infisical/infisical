@@ -12,7 +12,7 @@ export const SuperAdminSchema = z.object({
   initialized: z.boolean().default(false).nullable().optional(),
   allowSignUp: z.boolean().default(true).nullable().optional(),
   inviteOnlySignUp: z.boolean().default(false).nullable().optional(),
-  allowSpecificDomainSignUp: z.string().nullable().optional(),
+  allowedSignUpDomain: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

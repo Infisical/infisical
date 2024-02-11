@@ -226,7 +226,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
         </Button>
       </div>
       {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
-      {config.allowSignUp ? (
+      {config.allowSignUp && !config.inviteOnlySignUp ? (
         <div className="mt-6 flex flex-row text-sm text-bunker-400">
           <Link href="/signup">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">

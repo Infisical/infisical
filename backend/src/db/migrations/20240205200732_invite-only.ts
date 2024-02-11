@@ -7,7 +7,7 @@ export async function up(knex: Knex): Promise<void> {
   if (isTablePresent) {
     await knex.schema.alterTable(TableName.SuperAdmin, (t) => {
       t.boolean("inviteOnlySignUp").defaultTo(false);
-      t.string("allowSpecificDomainSignUp");
+      t.string("allowedSignUpDomain");
     });
   }
 }
@@ -19,9 +19,9 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
-  if (await knex.schema.hasColumn(TableName.SuperAdmin, "allowSpecificDomainSignUp")) {
+  if (await knex.schema.hasColumn(TableName.SuperAdmin, "allowedSignUpDomain")) {
     await knex.schema.alterTable(TableName.SuperAdmin, (t) => {
-      t.dropColumn("allowSpecificDomainSignUp");
+      t.dropColumn("allowedSignUpDomain");
     });
   }
 }

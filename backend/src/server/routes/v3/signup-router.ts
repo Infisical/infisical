@@ -28,9 +28,9 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       const { email } = req.body;
       const serverCfg = await getServerCfg();
 
-      if (serverCfg?.allowSpecificDomainSignUp) {
+      if (serverCfg?.allowedSignUpDomain) {
         const domain = email.split("@")[1];
-        const allowedDomains = serverCfg.allowSpecificDomainSignUp.split(",").map((e) => e.trim());
+        const allowedDomains = serverCfg.allowedSignUpDomain.split(",").map((e) => e.trim());
         if (!allowedDomains.includes(domain)) {
           throw new BadRequestError({
             message: `Email with a domain (@${domain}) is not supported`
