@@ -5,13 +5,13 @@ description: "How to deliver secrets to Amazon Elastic Container Service"
 
 ![ecs diagram](/images/guides/agent-with-ecs/ecs-diagram.png)
 
-This guide will go over the steps needed to access secrets stored in Infisical from within Amazon Elastic Container Service (ECS). 
+This guide will go over the steps needed to access secrets stored in Infisical from Amazon Elastic Container Service (ECS). 
 
-At a high level, the steps involve setting up an ECS task with a [Infisical Agent](/) sidecar container. This sidecar container uses Universal Auth to communicate with Infisical to fetch secrets/access tokens.
-Once the secrets/access tokens are retrieved, they are then stored in a shared Amazon Elastic File System (EFS) volume. This volume is then made accessible to your application and all of its replicas.
+At a high level, the steps involve setting up an ECS task with a [Infisical Agent](/infisical-agent/overview) as a sidecar container. This sidecar container uses [Universal Auth](/documentation/platform/identities/universal-auth) to authenticate with Infisical to fetch secrets/access tokens.
+Once the secrets/access tokens are retrieved, they are then stored in a shared [Amazon Elastic File System](https://aws.amazon.com/efs/) (EFS) volume. This volume is then made accessible to your application and all of its replicas.
 
 This guide primarily focuses on integrating Infisical Cloud with Amazon ECS on AWS Fargate and Amazon EFS.
-However, the principles and steps can be adapted for use with any instance of Infisical (on premise or cloud) and different ECS configurations.
+However, the principles and steps can be adapted for use with any instance of Infisical (on premise or cloud) and different ECS launch configurations.
 
 ## Prerequisites
 This guide requires the following prerequisites:
@@ -19,13 +19,18 @@ This guide requires the following prerequisites:
 - Git installed
 - Terraform v1.0 or later installed
 - Access to AWS credentials
-- Understanding of [Infisical Agent](/)
+- Understanding of [Infisical Agent](/infisical-agent/overview)
 
 ## What we will deploy
+For this demonstration, we'll deploy the [File Browser](https://github.com/filebrowser/filebrowser) application on our ECS cluster.
+Although this guide focuses on File Browser, the principles outlined here can be applied to any application of your choice.
 
-For the purpose of this demonstration, we will deploy [File Browser](https://github.com/filebrowser/filebrowser) to our ECS cluster.
-This will enable us to easily confirm that the Infisical agent is indeed depositing the credentials into the specified volume accessible to file browser deployed. 
-Of course, in production the volumes where your secrets reside should never be exposed to the public.
+File Browser plays a key role in this context because it enables us to view all files attached to a specific volume.
+This feature is important for our demonstration, as it allows us to verify whether the Infisical agent is depositing the expected files into the designated file volume and if those files are accessible to the application.
+
+<Warning>
+Volumes that contain sensitive secrets should not be publicly accessible. The use of File Browser here is solely for demonstration and verification purposes.
+</Warning>
 
 
 ## Configure Authentication with Infisical
@@ -42,8 +47,7 @@ The guide will assume that `aws-ecs-with-agent` is your working directory going 
 
 ## Deploy example application
 
-Before we can deploy our full application and its related infrastructure with Terraform, we'll need to make a few changes.
-Mainly, we'll need to configure our Infisical agent config file.
+Before we can deploy our full application and its related infrastructure with Terraform, we'll need to first configure our Infisical agent.
 
 ### Agent configuration overview
 The agent config file defines what authentication method will be used when connecting with Infisical along with where the fetched secrets/access tokens should be saved to.
@@ -69,14 +73,17 @@ This template will transform our secrets from Infisical project with the ID `62f
 {{- end }}
 ```
 
-Next, we need encode this template file in `base64` so it can be set in your agent configuration file.
+Next, we need encode this template file in `base64` so it can be set in the agent configuration file.
 
 ```bash
 cat secrets.template | base64 
-e3stIHdpdGggc2VjcmV0ICI2MmZkOTJhYThiNjM5NzNmZWUyM2RlYzciICJkZXYiICIvIiB9fQp7ey0gcmFuZ2UgLiB9fQp7eyAuS2V5IH19PXt7IC5WYWx1ZSB9fQp7ey0gZW5kIH19Cnt7LSBlbmQgfX0=
+Cnt7LSB3aXRoIHNlY3JldCAiMWVkMjk2MWQtNDM5NS00MmNlLTlkNzQtYjk2ZGQwYmYzMDg0IiAiZGV2IiAiLyIgfX0Ke3stIHJhbmdlIC4gfX0Ke3sgLktleSB9fT17eyAuVmFsdWUgfX0Ke3stIGVuZCB9fQp7ey0gZW5kIH19
 ```
 
 #### Full agent configuration file
+This agent config file will connect with Infisical Cloud using Universal Auth and deposit access tokens at path `/infisical-agent/access-token` and render secrets to file `/infisical-agent/secrets`.
+
+You'll notice that instead of passing the path to the secret template file as we normally would, we set the base64 encoded template from the previous step under `base64-template-content` property.
 
 ```yaml agent-config.yaml
 infisical:
@@ -95,18 +102,19 @@ templates:
     destination-path: /infisical-agent/secrets
 ```
 
+Again, we'll need to encode the full configuration file in `base64` so it can be easily delivered via Terraform.
+
 ```bash
 cat agent-config.yaml | base64 
 aW5maXNpY2FsOgogIGFkZHJlc3M6IGh0dHBzOi8vYXBwLmluZmlzaWNhbC5jb20KICBleGl0LWFmdGVyLWF1dGg6IHRydWUKYXV0aDoKICB0eXBlOiB1bml2ZXJzYWwtYXV0aAogIGNvbmZpZzoKICAgIHJlbW92ZV9jbGllbnRfc2VjcmV0X29uX3JlYWQ6IGZhbHNlCnNpbmtzOgogIC0gdHlwZTogZmlsZQogICAgY29uZmlnOgogICAgICBwYXRoOiAvaW5maXNpY2FsLWFnZW50L2FjY2Vzcy10b2tlbgp0ZW1wbGF0ZXM6CiAgLSBiYXNlNjQtdGVtcGxhdGUtY29udGVudDogQ250N0xTQjNhWFJvSUhObFkzSmxkQ0FpTVdWa01qazJNV1F0TkRNNU5TMDBNbU5sTFRsa056UXRZamsyWkdRd1ltWXpNRGcwSWlBaVpHVjJJaUFpTHlJZ2ZYMEtlM3N0SUhKaGJtZGxJQzRnZlgwS2Uzc2dMa3RsZVNCOWZUMTdleUF1Vm1Gc2RXVWdmWDBLZTNzdElHVnVaQ0I5ZlFwN2V5MGdaVzVrSUgxOQogICAgZGVzdGluYXRpb24tcGF0aDogL2luZmlzaWNhbC1hZ2VudC9zZWNyZXRzCg==
 ```
 
 ## Add auth credentials & agent config
-Before we can execute our Terraform configuration files, we need to set the previously created Universal Auth credentials and the base64 encoded agent configuration file in our Terraform. 
+With the base64 encoded agent config file and Universal Auth credentials in hand, it's time to assign them as values in our Terraform config file.
 
 To configure these values, navigate to the `ecs.tf` file in your preferred code editor and assign values to `auth_client_id`, `auth_client_secret`, and `agent_config`. 
-You should already have these values from the previous steps. 
 
-```terraform ecs.tf
+```hcl ecs.tf
 ...snip...
 data "template_file" "cb_app" {
   template = file("./templates/ecs/cb_app.json.tpl")
@@ -118,52 +126,24 @@ data "template_file" "cb_app" {
     fargate_cpu        = var.fargate_cpu
     fargate_memory     = var.fargate_memory
     aws_region         = var.aws_region
-    auth_client_id     = "faf7da54-75e1-43aa-84be-06453f0b8fc4"
-    auth_client_secret = "cb8597f1d5bee779a657e863e5f73c8d4761f3e0c3f6d05c9c2820bc96a0a6f1"
-    agent_config       = "aW5maXNpY2FsOgogIGFkZHJlc3M6IGh0dHBzOi8vYXBwLmluZmlzaWNhbC5jb20KICBleGl0LWFmdGVyLWF1dGg6IHRydWUKYXV0aDoKICB0eXBlOiB1bml2ZXJzYWwtYXV0aAogIGNvbmZpZzoKICAgIHJlbW92ZV9jbGllbnRfc2VjcmV0X29uX3JlYWQ6IGZhbHNlCnNpbmtzOgogIC0gdHlwZTogZmlsZQogICAgY29uZmlnOgogICAgICBwYXRoOiAvaW5maXNpY2FsLWFnZW50L2FjY2Vzcy10b2tlbgp0ZW1wbGF0ZXM6CiAgLSBiYXNlNjQtdGVtcGxhdGUtY29udGVudDogQ250N0xTQjNhWFJvSUhObFkzSmxkQ0FpTVdWa01qazJNV1F0TkRNNU5TMDBNbU5sTFRsa056UXRZamsyWkdRd1ltWXpNRGcwSWlBaVpHVjJJaUFpTHlJZ2ZYMEtlM3N0SUhKaGJtZGxJQzRnZlgwS2Uzc2dMa3RsZVNCOWZUMTdleUF1Vm1Gc2RXVWdmWDBLZTNzdElHVnVaQ0I5ZlFwN2V5MGdaVzVrSUgxOQogICAgZGVzdGluYXRpb24tcGF0aDogL2luZmlzaWNhbC1hZ2VudC9zZWNyZXRzCg=="
+    auth_client_id     = "<paste-client-id-string>"
+    auth_client_secret = "<paset-client-secret-string>"
+    agent_config       = "<paste-base64-encoded-agent-config-string>"
   }
 }
 ...snip...
 ```
 
+<Warning>
+  To keep this guide simple, `auth_client_id`, `auth_client_secret` have been added directly into the ECS container definition. 
+  However, in production, you should securely fetch these values from AWS Secrets Manager or AWS Parameter store and feed them directly to agent sidecar. 
+</Warning>
+
 After these values have been set, they will be passed to the Infisical agent during startup through environment variables, as configured in the `infisical-sidecar` container below.
 
 ```terraform templates/ecs/cb_app.json.tpl
 [
-  {
-    "name": "cb-app",
-    "image": "hurlenko/filebrowser:latest",
-    "cpu": ${fargate_cpu},
-    "memory": ${fargate_memory},
-    "networkMode": "awsvpc",
-    "logConfiguration": {
-        "logDriver": "awslogs",
-        "options": {
-          "awslogs-group": "/ecs/cb-app",
-          "awslogs-region": "${aws_region}",
-          "awslogs-stream-prefix": "ecs"
-        }
-    },
-    "dependsOn": [
-      {
-        "containerName": "infisical-sidecar",
-        "condition": "SUCCESS"
-      }
-    ],
-    "portMappings": [
-      {
-        "containerPort": ${app_port},
-        "hostPort": ${app_port}
-      }
-    ],
-    "mountPoints": [
-      {
-          "sourceVolume": "infisical-efs",
-          "containerPath": "/data",
-          "readOnly": true
-      }
-    ]
-  },
+...snip...
   {
     "name": "infisical-sidecar",
     "image": "${sidecar_image}",
@@ -211,13 +191,27 @@ After these values have been set, they will be passed to the Infisical agent dur
 ]
 ```
 
-<Warning>
-  To keep this guide simple, `auth_client_id`, `auth_client_secret` have been added directly into the ECS container definition. 
-  However, in production you should securely fetch these values from AWS Secrets Manager or AWS Parameter store and feed them directly to agent sidecar. 
-</Warning>
+In the above container definition, you'll notice that that the Infisical agent has a `mountPoints` defined. 
+This mount point is referencing to the already configured EFS volume as shown below. 
+`containerPath` is set to `/infisical-agent` because that is that the folder we have instructed the agent to deposit the credentials to. 
+
+```hcl terraform/efs.tf
+resource "aws_efs_file_system" "infisical_efs" {
+  tags = {
+    Name = "INFISICAL-ECS-EFS"
+  }
+}
+
+resource "aws_efs_mount_target" "mount" {
+  count           = length(aws_subnet.private.*.id)
+  file_system_id  = aws_efs_file_system.infisical_efs.id
+  subnet_id       = aws_subnet.private[count.index].id
+  security_groups = [aws_security_group.efs_sg.id]
+}
+```
 
 ## Configure AWS credentials
-Because we'll be deploying the example application to AWS via Terraform, you will need to obtain a set of `AWS Access Key` and `Secret Key`.
+Because we'll be deploying the example file browser application to AWS via Terraform, you will need to obtain a set of `AWS Access Key` and `Secret Key`.
 Once you have generated these credentials, export them to your terminal. 
 
 1. Export the AWS Access Key ID:
@@ -232,16 +226,10 @@ Once you have generated these credentials, export them to your terminal.
    export AWS_SECRET_ACCESS_KEY=<your AWS secret access key>
    ```
 
-3. Export the AWS Session Token:
-
-   ```bash
-   export AWS_SESSION_TOKEN=<your AWS session token>
-   ```
-
 ## Deploy terraform configuration
-Now that we have completed the necessary configuration for the agent to be used as a sidecar, we are ready to deploy our changes to AWS via Terraform.
+With the agent's sidecar configuration complete, we can now deploy our changes to AWS via Terraform.
 
-1. Make sure your current directory is set to `aws-ecs-with-agent`. Once there, change your directory to `terraform`
+1. Change your directory to `terraform`
 ```sh 
 cd terraform
 ```
@@ -276,23 +264,24 @@ Outputs:
 alb_hostname = "cb-load-balancer-1675475779.us-east-1.elb.amazonaws.com:8080"
 ```
 
-Once the resources have been successfully deloyed, Terrafrom will output the host address where our application will be accessible.
-It may take a few minutes for the application to become fully ready ready. 
+Once the resources have been successfully deployed, Terrafrom will output the host address where the file browser application will be accessible.
+It may take a few minutes for the application to become fully ready. 
 
 
 ## Verify secrets/tokens in EFS volume
-To verify that the agent is depositing access tokens and rendering secrets to files, visit the web address from the previous step.
+To verify that the agent is depositing access tokens and rendering secrets to the paths specified in the agent config, navigate to the web address from the previous step.
 Once you visit the address, you'll be prompted to login. Enter the credentials shown below.
 
 ![file browser main login page](/images/guides/agent-with-ecs/file_browser_main.png)
 
-Since our EFS volume is mounted to the path of the file browser, we should see the access token and rendered secret file we configured via the agent config file. 
-While secrets should never be shown in this fashion, the file browser allows us to demonstrate how credentials can be delivered to applications of any kind within ECS.
+Since our EFS volume is mounted to the path of the file browser application, we should see the access token and rendered secret file we defined via the agent config file. 
 
 ![file browswer dashbaord](/images/guides/agent-with-ecs/filebrowser_afterlogin.png)
 
+As expected, two files are present: `access-token` and `secrets`. 
+The `access-token` file should hold a valid `Bearer` token, which can be used to make HTTP requests to Infisical. 
+The `secrets` file should contain secrets, formatted according to the specifications in our secret template file (presented in key=value format).
 
 ![file browser access token deposit](/images/guides/agent-with-ecs/access-token-deposit.png)
 
 ![file browser secrets render](/images/guides/agent-with-ecs/secrets-deposit.png)
-
