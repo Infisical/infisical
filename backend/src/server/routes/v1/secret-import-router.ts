@@ -11,6 +11,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     url: "/",
     method: "POST",
     schema: {
+      description: "Create secret imports",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -64,6 +71,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     url: "/:secretImportId",
     method: "PATCH",
     schema: {
+      description: "Update secret imports",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         secretImportId: z.string().trim()
       }),
@@ -126,6 +140,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     url: "/:secretImportId",
     method: "DELETE",
     schema: {
+      description: "Delete secret imports",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         secretImportId: z.string().trim()
       }),
@@ -178,6 +199,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     url: "/",
     method: "GET",
     schema: {
+      description: "Get secret imports",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),

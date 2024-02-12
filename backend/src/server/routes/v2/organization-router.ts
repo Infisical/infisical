@@ -9,6 +9,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:organizationId/memberships",
     schema: {
+      description: "Return organization user memberships",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         organizationId: z.string().trim()
       }),
@@ -42,6 +49,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:organizationId/workspaces",
     schema: {
+      description: "Return projects in organization that user is part of",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         organizationId: z.string().trim()
       }),
@@ -79,6 +93,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     url: "/:organizationId/memberships/:membershipId",
     schema: {
+      description: "Update organization user memberships",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({ organizationId: z.string().trim(), membershipId: z.string().trim() }),
       body: z.object({
         role: z.string().trim()
@@ -107,6 +128,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "DELETE",
     url: "/:organizationId/memberships/:membershipId",
     schema: {
+      description: "Delete organization user memberships",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({ organizationId: z.string().trim(), membershipId: z.string().trim() }),
       response: {
         200: z.object({

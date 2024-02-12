@@ -10,6 +10,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     url: "/:workspaceId/encrypted-key",
     method: "GET",
     schema: {
+      description: "Return encrypted project key",
+      security: [
+        {
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim()
       }),

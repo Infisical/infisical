@@ -45,6 +45,12 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     url: "/:projectId/identity-memberships/:identityId",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Update project identity memberships",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         projectId: z.string().trim(),
         identityId: z.string().trim()
@@ -75,6 +81,12 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     url: "/:projectId/identity-memberships/:identityId",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Delete project identity memberships",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         projectId: z.string().trim(),
         identityId: z.string().trim()
@@ -101,6 +113,12 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     url: "/:projectId/identity-memberships",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Return project identity memberships",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         projectId: z.string().trim()
       }),

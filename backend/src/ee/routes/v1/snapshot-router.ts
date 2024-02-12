@@ -56,6 +56,13 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/:secretSnapshotId/rollback",
     schema: {
+      description: "Roll back project secrets to those captured in a secret snapshot version.",
+      security: [
+        {
+          apiKeyAuth: [],
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         secretSnapshotId: z.string().trim()
       }),

@@ -11,6 +11,12 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     url: "/",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      description: "Create identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
         name: z.string().trim(),
         organizationId: z.string().trim(),
@@ -51,6 +57,12 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     url: "/:identityId",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      description: "Update identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         identityId: z.string()
       }),
@@ -93,6 +105,12 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     url: "/:identityId",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      description: "Delete identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         identityId: z.string()
       }),
