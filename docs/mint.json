@@ -233,7 +233,8 @@
         },
         "integrations/platforms/kubernetes",
         "integrations/frameworks/terraform",
-        "integrations/platforms/ansible"
+        "integrations/platforms/ansible",
+        "integrations/platforms/ecs-with-agent"
       ]
     },
     {
