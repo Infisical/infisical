@@ -28,6 +28,7 @@ type TSAMLConfig = {
   cert: string;
   audience: string;
   wantAuthnResponseSigned?: boolean;
+  disableRequestedAuthnContext?: boolean;
 };
 
 export const registerSamlRouter = async (server: FastifyZodProvider) => {
@@ -77,6 +78,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               samlConfig.wantAuthnResponseSigned = false;
             }
             if (ssoConfig.authProvider === SamlProviders.AZURE_SAML) {
+              samlConfig.disableRequestedAuthnContext = true;
               if (req.body?.RelayState && JSON.parse(req.body.RelayState).spInitiated) {
                 samlConfig.audience = `spn:${ssoConfig.issuer}`;
               }
