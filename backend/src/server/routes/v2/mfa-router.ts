@@ -26,7 +26,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
 
     const user = await server.store.user.findById(decodedToken.userId);
     if (!user) throw new Error("User not found");
-    req.mfa = { userId: user.id, user };
+    req.mfa = { userId: user.id, user, orgId: decodedToken.organizationId };
   });
 
   server.route({
@@ -75,6 +75,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
         userAgent,
         ip: req.realIp,
         userId: req.mfa.userId,
+        orgId: req.mfa.orgId,
         mfaToken: req.body.mfaToken
       });
 

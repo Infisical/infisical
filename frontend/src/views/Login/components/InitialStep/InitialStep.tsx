@@ -180,7 +180,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
           className="mx-0 h-10 w-full"
         >
-          Continue with SSO
+          Continue with SAML SSO
         </Button>
       </div>
       <div className="my-4 flex w-1/4 min-w-[20rem] flex-row items-center py-2 lg:w-1/6">

@@ -1,5 +1,6 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -135,6 +136,10 @@ export const OrgSSOSection = (): JSX.Element => {
       <div className="mb-4">
         <h3 className="text-sm text-mineshaft-400">Issuer</h3>
         <p className="text-md text-gray-400">{data && data.issuer !== "" ? data.issuer : "-"}</p>
+      </div>
+      <div className="mb-4">
+        <h3 className="text-sm text-mineshaft-400">Last Logged In</h3>
+        <p className="text-md text-gray-400">{data?.lastUsed ? format(new Date(data?.lastUsed), "yyyy-MM-dd HH:mm:ss") : "-"}</p>
       </div>
       <SSOModal
         popUp={popUp}

@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 // import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 // import { OrgPermissionCan } from "@app/components/permissions";
 import { 
-    // Button,
+    Button,
     IconButton,
     Switch
 } from "@app/components/v2";
@@ -21,7 +21,7 @@ import { useGetScimToken } from "@app/hooks/api";
 
 // TODO: add permissioning for enteprise SCIM
 
-export const OrgSCIMSection = () => {
+export const OrgScimSection = () => {
     const { currentOrg } = useOrganization();
     // const { createNotification } = useNotificationContext();
     // const { subscription } = useSubscription();
@@ -35,6 +35,10 @@ export const OrgSCIMSection = () => {
     const [isAPIKeyCopied, setIsAPIKeyCopied] = useToggle(false);
     
     // TODO: get SCIM stuf
+    
+    const addScimTokenBtnClick = () => {
+
+    }
     
     const handleSCIMToggle = (value: boolean) => {
         // TODO
@@ -52,7 +56,17 @@ export const OrgSCIMSection = () => {
     
     return (
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-            <h2 className="flex-1 text-xl font-semibold text-white mb-8">SCIM Configuration</h2>
+            <div className="mb-8 flex items-center">
+                <h2 className="flex-1 text-xl font-semibold text-white">SCIM Configuration</h2>
+                <Button
+                    onClick={addScimTokenBtnClick}
+                    colorSchema="secondary"
+                    // isDisabled={!isAllowed}
+                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                >
+                    Add SCIM Token
+                </Button>
+            </div>
             <Switch
                 id="enable-scim"
                 onCheckedChange={(value) => handleSCIMToggle(value)}

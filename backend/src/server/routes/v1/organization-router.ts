@@ -37,7 +37,11 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const organization = await server.services.org.findOrganizationById(req.permission.id, req.params.organizationId);
+      const organization = await server.services.org.findOrganizationById(
+        req.permission.id,
+        req.params.organizationId,
+        req.permission.orgId
+      );
       return { organization };
     }
   });
@@ -68,17 +72,29 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const users = await server.services.org.findAllOrgMembers(req.permission.id, req.params.organizationId);
+      const users = await server.services.org.findAllOrgMembers(
+        req.permission.id,
+        req.params.organizationId,
+        req.permission.orgId
+      );
       return { users };
     }
   });
 
   server.route({
     method: "PATCH",
-    url: "/:organizationId/name",
+    url: "/:organizationId",
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
-      body: z.object({ name: z.string().trim() }),
+      body: z.object({
+        name: z.string().trim().optional(),
+        slug: z
+          .string()
+          .trim()
+          .regex(/^[a-zA-Z0-9-]+$/, "Name must only contain alphanumeric characters or hyphens")
+          .optional(),
+        authEnforced: z.boolean().optional()
+      }),
       response: {
         200: z.object({
           message: z.string(),
@@ -88,11 +104,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const organization = await server.services.org.updateOrgName(
-        req.permission.id,
-        req.params.organizationId,
-        req.body.name
-      );
+      const organization = await server.services.org.updateOrg({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        orgId: req.params.organizationId,
+        data: req.body
+      });
+
       return {
         message: "Successfully changed organization name",
         organization
@@ -115,7 +134,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const incidentContactsOrg = await req.server.services.org.findIncidentContacts(
         req.permission.id,
-        req.params.organizationId
+        req.params.organizationId,
+        req.permission.orgId
       );
       return { incidentContactsOrg };
     }
@@ -138,7 +158,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const incidentContactsOrg = await req.server.services.org.createIncidentContact(
         req.permission.id,
         req.params.organizationId,
-        req.body.email
+        req.body.email,
+        req.permission.orgId
       );
       return { incidentContactsOrg };
     }
@@ -160,7 +181,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const incidentContactsOrg = await req.server.services.org.deleteIncidentContact(
         req.permission.id,
         req.params.organizationId,
-        req.params.incidentContactId
+        req.params.incidentContactId,
+        req.permission.orgId
       );
       return { incidentContactsOrg };
     }

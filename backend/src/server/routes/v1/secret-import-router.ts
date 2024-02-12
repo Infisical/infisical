@@ -36,6 +36,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       const secretImport = await server.services.secretImport.createImport({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
         data: req.body.import
@@ -97,6 +98,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       const secretImport = await server.services.secretImport.updateImport({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         id: req.params.secretImportId,
         ...req.body,
         projectId: req.body.workspaceId,
@@ -150,6 +152,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       const secretImport = await server.services.secretImport.deleteImport({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         id: req.params.secretImportId,
         ...req.body,
         projectId: req.body.workspaceId
@@ -201,6 +204,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       const secretImports = await server.services.secretImport.getImports({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.query,
         projectId: req.query.workspaceId
       });
@@ -253,6 +257,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       const importedSecrets = await server.services.secretImport.getSecretsFromImports({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.query,
         projectId: req.query.workspaceId
       });

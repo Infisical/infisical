@@ -141,7 +141,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL }: TAuthTokenServiceFact
     const user = await userDAL.findById(session.userId);
     if (!user || !user.isAccepted) throw new UnauthorizedError({ name: "Token user not found" });
 
-    return { user, tokenVersionId: token.tokenVersionId };
+    return { user, tokenVersionId: token.tokenVersionId, orgId: token.organizationId };
   };
 
   return {

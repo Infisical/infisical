@@ -1,15 +1,17 @@
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
 
-import { OrgSCIMSection } from "./OrgSCIMSection";
+import { OrgScimSection } from "./OrgScimSection";
+import { OrgGeneralAuthSection } from "./OrgGeneralAuthSection";
 import { OrgSSOSection } from "./OrgSSOSection";
 
 export const OrgAuthTab = withPermission(
   () => {
     return (
       <div>
+        <OrgGeneralAuthSection />
         <OrgSSOSection />
-        <OrgSCIMSection />
+        <OrgScimSection />
       </div>
     );
   },

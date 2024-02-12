@@ -22,6 +22,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
       const session = await server.services.secretScanning.createInstallationSession({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         orgId: req.body.organizationId
       });
       return session;
@@ -45,6 +46,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
       const { installatedApp } = await server.services.secretScanning.linkInstallationToOrg({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         ...req.body
       });
       return installatedApp;
@@ -65,6 +67,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
       const appInstallationCompleted = await server.services.secretScanning.getOrgInstallationStatus({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId
       });
       return { appInstallationCompleted };
@@ -85,6 +88,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
       const { risks } = await server.services.secretScanning.getRisksByOrg({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId
       });
       return { risks };
@@ -106,6 +110,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
       const { risk } = await server.services.secretScanning.updateRiskStatus({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId,
         riskId: req.params.riskId,
         ...req.body

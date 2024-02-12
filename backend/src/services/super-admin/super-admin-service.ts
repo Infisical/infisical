@@ -99,7 +99,12 @@ export const superAdminServiceFactory = ({
     await orgService.createOrganization(userInfo.user.id, userInfo.user.email, initialOrganizationName);
 
     await updateServerCfg({ initialized: true });
-    const token = await authService.generateUserTokens(userInfo.user, ip, userAgent);
+    const token = await authService.generateUserTokens({
+      user: userInfo.user,
+      ip,
+      userAgent,
+      organizationId: undefined
+    });
     // TODO(akhilmhdh-pg): telemetry service
     return { token, user: userInfo };
   };

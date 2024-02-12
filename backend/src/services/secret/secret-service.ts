@@ -37,7 +37,6 @@ import {
   TGetSecretsDTO,
   TGetSecretsRawDTO,
   TGetSecretVersionsDTO,
-  TListSecretVersionDTO,
   TUpdateBulkSecretDTO,
   TUpdateSecretDTO,
   TUpdateSecretRawDTO
@@ -267,8 +266,16 @@ export const secretServiceFactory = ({
     return { secsGroupedByBlindIndex, secrets };
   };
 
-  const createSecret = async ({ path, actor, actorId, environment, projectId, ...inputSecret }: TCreateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const createSecret = async ({
+    path,
+    actor,
+    actorId,
+    actorOrgId,
+    environment,
+    projectId,
+    ...inputSecret
+  }: TCreateSecretDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -337,8 +344,16 @@ export const secretServiceFactory = ({
     return { ...secret[0], environment, workspace: projectId, tags };
   };
 
-  const updateSecret = async ({ path, actor, actorId, environment, projectId, ...inputSecret }: TUpdateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const updateSecret = async ({
+    path,
+    actor,
+    actorId,
+    actorOrgId,
+    environment,
+    projectId,
+    ...inputSecret
+  }: TUpdateSecretDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -429,8 +444,16 @@ export const secretServiceFactory = ({
     return { ...updatedSecret[0], workspace: projectId, environment };
   };
 
-  const deleteSecret = async ({ path, actor, actorId, environment, projectId, ...inputSecret }: TDeleteSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const deleteSecret = async ({
+    path,
+    actor,
+    actorId,
+    actorOrgId,
+    environment,
+    projectId,
+    ...inputSecret
+  }: TDeleteSecretDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -476,8 +499,16 @@ export const secretServiceFactory = ({
     return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment };
   };
 
-  const getSecrets = async ({ actorId, path, environment, projectId, actor, includeImports }: TGetSecretsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getSecrets = async ({
+    actorId,
+    path,
+    environment,
+    projectId,
+    actor,
+    actorOrgId,
+    includeImports
+  }: TGetSecretsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -518,6 +549,7 @@ export const secretServiceFactory = ({
   const getSecretByName = async ({
     actorId,
     actor,
+    actorOrgId,
     projectId,
     environment,
     path,
@@ -526,7 +558,7 @@ export const secretServiceFactory = ({
     version,
     includeImports
   }: TGetASecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -607,11 +639,12 @@ export const secretServiceFactory = ({
     path,
     actor,
     actorId,
+    actorOrgId,
     environment,
     projectId,
     secrets: inputSecrets
   }: TCreateBulkSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -661,11 +694,12 @@ export const secretServiceFactory = ({
     path,
     actor,
     actorId,
+    actorOrgId,
     environment,
     projectId,
     secrets: inputSecrets
   }: TUpdateBulkSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -733,9 +767,10 @@ export const secretServiceFactory = ({
     environment,
     projectId,
     actor,
-    actorId
+    actorId,
+    actorOrgId
   }: TDeleteBulkSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -774,20 +809,15 @@ export const secretServiceFactory = ({
     return secretsDeleted;
   };
 
-  const listSecretVersionsBySecretId = async ({ actorId, actor, limit, offset, secretId }: TListSecretVersionDTO) => {
-    const secret = await secretDAL.findById(secretId);
-    if (!secret) throw new BadRequestError({ message: "Failed to find secret" });
-
-    const folder = await folderDAL.findById(secret.folderId);
-    if (!folder) throw new BadRequestError({ message: "Folder not found" });
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, folder.projectId);
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
-
-    const secretVersions = await secretVersionDAL.find({ secretId }, { limit, offset, sort: [["createdAt", "desc"]] });
-    return secretVersions;
-  };
-
-  const getSecretsRaw = async ({ projectId, path, actor, actorId, environment, includeImports }: TGetSecretsRawDTO) => {
+  const getSecretsRaw = async ({
+    projectId,
+    path,
+    actor,
+    actorId,
+    actorOrgId,
+    environment,
+    includeImports
+  }: TGetSecretsRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
@@ -796,6 +826,7 @@ export const secretServiceFactory = ({
       projectId,
       environment,
       actor,
+      actorOrgId,
       path,
       includeImports
     });
@@ -818,6 +849,7 @@ export const secretServiceFactory = ({
     environment,
     projectId,
     actorId,
+    actorOrgId,
     secretName,
     includeImports,
     version
@@ -830,6 +862,7 @@ export const secretServiceFactory = ({
       projectId,
       environment,
       actor,
+      actorOrgId,
       path,
       secretName,
       type,
@@ -845,6 +878,7 @@ export const secretServiceFactory = ({
     projectId,
     environment,
     actor,
+    actorOrgId,
     type,
     secretPath,
     secretValue,
@@ -866,6 +900,7 @@ export const secretServiceFactory = ({
       path: secretPath,
       actor,
       actorId,
+      actorOrgId,
       secretKeyCiphertext: secretKeyEncrypted.ciphertext,
       secretKeyIV: secretKeyEncrypted.iv,
       secretKeyTag: secretKeyEncrypted.tag,
@@ -890,6 +925,7 @@ export const secretServiceFactory = ({
     projectId,
     environment,
     actor,
+    actorOrgId,
     type,
     secretPath,
     secretValue,
@@ -908,6 +944,7 @@ export const secretServiceFactory = ({
       path: secretPath,
       actor,
       actorId,
+      actorOrgId,
       secretValueCiphertext: secretValueEncrypted.ciphertext,
       secretValueIV: secretValueEncrypted.iv,
       secretValueTag: secretValueEncrypted.tag,
@@ -926,6 +963,7 @@ export const secretServiceFactory = ({
     projectId,
     environment,
     actor,
+    actorOrgId,
     type,
     secretPath
   }: TDeleteSecretRawDTO) => {
@@ -939,7 +977,8 @@ export const secretServiceFactory = ({
       type,
       path: secretPath,
       actor,
-      actorId
+      actorId,
+      actorOrgId
     });
 
     await snapshotService.performSnapshot(secret.folderId);
@@ -948,14 +987,21 @@ export const secretServiceFactory = ({
     return decryptSecretRaw(secret, botKey);
   };
 
-  const getSecretVersions = async ({ actorId, actor, limit = 20, offset = 0, secretId }: TGetSecretVersionsDTO) => {
+  const getSecretVersions = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    limit = 20,
+    offset = 0,
+    secretId
+  }: TGetSecretVersionsDTO) => {
     const secret = await secretDAL.findById(secretId);
     if (!secret) throw new BadRequestError({ message: "Failed to find secret" });
 
     const folder = await folderDAL.findById(secret.folderId);
     if (!folder) throw new BadRequestError({ message: "Failed to find secret" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, folder.projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, folder.projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
     const secretVersions = await secretVersionDAL.find({ secretId }, { offset, limit, sort: [["createdAt", "desc"]] });
@@ -976,7 +1022,6 @@ export const secretServiceFactory = ({
     createSecretRaw,
     updateSecretRaw,
     deleteSecretRaw,
-    listSecretVersionsBySecretId,
     getSecretVersions,
     // external services function
     fnSecretBulkDelete,

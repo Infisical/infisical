@@ -4,12 +4,14 @@ export type TOrgPermission = {
   actor: ActorType;
   actorId: string;
   orgId: string;
+  actorOrgId?: string;
 };
 
 export type TProjectPermission = {
   actor: ActorType;
   actorId: string;
   projectId: string;
+  actorOrgId?: string;
 };
 
 export type RequiredKeys<T> = {

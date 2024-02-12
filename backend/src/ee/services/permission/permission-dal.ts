@@ -10,8 +10,10 @@ export const permissionDALFactory = (db: TDbClient) => {
     try {
       const membership = await db(TableName.OrgMembership)
         .leftJoin(TableName.OrgRoles, `${TableName.OrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
+        .join(TableName.Organization, `${TableName.OrgMembership}.orgId`, `${TableName.Organization}.id`)
         .where("userId", userId)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .select(db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"))
         .select("permissions")
         .select(selectAllTableCols(TableName.OrgMembership))
         .first();
@@ -26,9 +28,11 @@ export const permissionDALFactory = (db: TDbClient) => {
     try {
       const membership = await db(TableName.IdentityOrgMembership)
         .leftJoin(TableName.OrgRoles, `${TableName.IdentityOrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
+        .join(TableName.Organization, `${TableName.IdentityOrgMembership}.orgId`, `${TableName.Organization}.id`)
         .where("identityId", identityId)
         .where(`${TableName.IdentityOrgMembership}.orgId`, orgId)
         .select(selectAllTableCols(TableName.IdentityOrgMembership))
+        .select(db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"))
         .select("permissions")
         .first();
       return membership;
@@ -41,9 +45,15 @@ export const permissionDALFactory = (db: TDbClient) => {
     try {
       const membership = await db(TableName.ProjectMembership)
         .leftJoin(TableName.ProjectRoles, `${TableName.ProjectMembership}.roleId`, `${TableName.ProjectRoles}.id`)
+        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .join(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
         .where("userId", userId)
         .where(`${TableName.ProjectMembership}.projectId`, projectId)
         .select(selectAllTableCols(TableName.ProjectMembership))
+        .select(
+          db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
+          db.ref("orgId").withSchema(TableName.Project)
+        )
         .select("permissions")
         .first();
 
