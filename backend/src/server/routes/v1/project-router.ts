@@ -263,7 +263,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           invitee: UsersSchema,
           latestKey: ProjectKeysSchema.optional()
-        }) //
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
