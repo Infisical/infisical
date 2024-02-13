@@ -14,7 +14,7 @@ export const DEFAULT_PROJECT_ENVS = [
 ];
 
 export async function seed(knex: Knex): Promise<void> {
-  initEnvConfig();
+  initEnvConfig(await initLogger());
   const appCfg = getConfig();
   // Deletes ALL existing entries
   await knex(TableName.Project).del();
