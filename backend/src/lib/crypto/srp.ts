@@ -2,11 +2,15 @@ import argon2 from "argon2";
 import crypto from "crypto";
 import jsrp from "jsrp";
 import nacl from "tweetnacl";
-import { encodeBase64 } from "tweetnacl-util";
+import * as tweetnacl from "tweetnacl-util";
 
 import { TUserEncryptionKeys } from "@app/db/schemas";
 
 import { decryptSymmetric, encryptAsymmetric, encryptSymmetric } from "./encryption";
+
+// Importing the argon2 constants from the argon2 module fails due to an issue with importing commonjs modules.
+// Read more: https://stackoverflow.com/questions/70605320/named-export-types-not-found-the-requested-module-mongoose-is-a-commonjs-mo
+const ARGON_2_ID = 2;
 
 export const generateSrpServerKey = async (salt: string, verifier: string) => {
   // eslint-disable-next-line new-cap
@@ -38,8 +42,8 @@ export const generateUserSrpKeys = async (email: string, password: string) => {
   const pair = nacl.box.keyPair();
   const secretKeyUint8Array = pair.secretKey;
   const publicKeyUint8Array = pair.publicKey;
-  const privateKey = encodeBase64(secretKeyUint8Array);
-  const publicKey = encodeBase64(publicKeyUint8Array);
+  const privateKey = tweetnacl.encodeBase64(secretKeyUint8Array);
+  const publicKey = tweetnacl.encodeBase64(publicKeyUint8Array);
 
   // eslint-disable-next-line
   const client = new jsrp.client();
@@ -58,7 +62,7 @@ export const generateUserSrpKeys = async (email: string, password: string) => {
     timeCost: 3,
     parallelism: 1,
     hashLength: 32,
-    type: 2,
+    type: ARGON_2_ID,
     raw: true
   });
   if (!derivedKey) throw new Error("Failed to derive key from password");
@@ -102,7 +106,7 @@ export const getUserPrivateKey = async (password: string, user: TUserEncryptionK
     timeCost: 3,
     parallelism: 1,
     hashLength: 32,
-    type: 2,
+    type: ARGON_2_ID,
     raw: true
   });
   if (!derivedKey) throw new Error("Failed to derive key from password");
