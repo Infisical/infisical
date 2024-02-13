@@ -30,8 +30,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId")
-        );
-      // .where({ ghost: false });
+        )
+        .where({ ghost: false });
       return members.map(({ email, firstName, lastName, publicKey, ghost, ...data }) => ({
         ...data,
         user: { email, firstName, lastName, id: data.userId, publicKey, ghost }
