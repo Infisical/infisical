@@ -1,7 +1,6 @@
-# Folder structure
+# Backend Folder Structure Guide
 
 ```
-.
 ├── scripts
 ├── e2e-test
 └── src/
@@ -35,47 +34,46 @@
         └── services
 ```
 
-The above contains the backend folder structure. All the contribution towards backend must follow the rules
 
-- **scripts**: Contains all the reusable scripts used in backend automation like running migration, generating SQL schemas
-- **e2e-test**: The integration test for the APIs
-- **src**: Source code of backend
+The following outlines the backend folder structure. All contributions to the backend should adhere to these guidelines:
+
+- **scripts**: This folder contains all reusable scripts for backend automation, such as running migrations and generating SQL schemas.
+- **e2e-test**: Here you'll find integration tests for the APIs.
+- **src**: This is the main directory for the source code of the backend.
 
 ## SRC
 
-- **@types**: The type definition of some libraries like fastify, knex
-- **db**: Knexjs configuration required for database. Includes migration, seed files and sql type schemas
-- **lib**: Stateless reusable functions used through code base
-- **queue**: Infisical queue system based on bullmq
+- **@types**: This directory holds the type definitions for certain libraries, such as Fastify and Knex.
+- **db**: In this folder, you'll find the Knex.js configuration necessary for database operations, including migration, seed files, and SQL type schemas.
+- **lib**: This directory is for stateless, reusable functions used throughout the codebase.
+- **queue**: This folder contains the Infisical queue system, which is based on BullMQ.
 
 ### Server
 
-- Anything related to fastify/service should be scoped inside here.
-- It contains the routes, fastify plugins, server configurations
-- Routes folder contains various version of routes separate into v1,v2
+- This section is dedicated to anything related to Fastify/service and should be contained within this scope.
+- It includes routes, Fastify plugins, and server configurations.
+- The routes folder is organized into various versions, separated into v1, v2, etc.
 
 ### Services
 
-- Core business logic for all operations
-- Each service component follows co-location principle that is related things should be kept together
-- Each service component contains
-
-1. **dal**: The Database Access Layer function that contains all the db operations
-2. **service**: The service layer containing all the business logic
-3. **type**: The type definition used inside the service component
-4. **fns**: Optional component to share reusable functions from a service related to another
-5. **queue**: Optional component to put queue specific logic for a component like `secret-queue.ts`
+- This area handles the core business logic for all operations.
+- Each service component adheres to the co-location principle, meaning related components are grouped together.
+- Within each service component, you will find:
+  1. **dal**: The Database Access Layer, containing all database operations.
+  2. **service**: This is the service layer where all the business logic resides.
+  3. **type**: Type definitions used within the service component.
+  4. **fns**: An optional component for sharing reusable functions related to the service.
+  5. **queue**: An optional component for queue-specific logic, such as `secret-queue.ts`.
 
 ## EE
 
-- Follows same pattern as above with an exception of license change from MIT -> Infisical Proprietary License
+- This follows the same organizational pattern as above, but with a notable change from the MIT License to the Infisical Proprietary License.
 
 ### Notes
 
-- All the services are interconnected at `/src/server/routes/index.ts`. We follow simple dependency injection principle
-- All files should be in dashcases.
-- Classes should not be used in codebase. Use simple functions to keep it simple
-- All committed code must be linted properly by running `npm run lint:fix` and type checked using `npm run type:check`
-- Try to avoid inter service shared logic as much as possible
-- A controller inside a router component should try to keep it calling only one service layer. This rule could have exception when another service
-  like `audit-log` needs access to request object data. Then controller will call both the functions
+- All services are interconnected at `/src/server/routes/index.ts`, where we employ a straightforward dependency injection principle.
+- File naming should use dash-case.
+- Instead of classes, the codebase relies on simple functions to maintain simplicity.
+- All code committed must be thoroughly linted using `npm run lint:fix` and type-checked with `npm run type:check`.
+- Efforts should be made to minimize shared logic between services.
+- Controllers within a router component should generally invoke only one service layer. Exceptions may occur, such as when a service like `audit-log` requires access to request object data, necessitating calls to multiple functions.
