@@ -15,7 +15,6 @@ import {
   infisicalSymmetricDecrypt,
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
-import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { createProjectKey, createWsMembers } from "@app/lib/project";
 import { decryptSecrets, SecretDocType, TPartialSecret } from "@app/lib/secret";
@@ -83,21 +82,21 @@ export const projectQueueFactory = ({
     try {
       const [project] = await projectDAL.find({
         id: data.projectId,
-        version: ProjectVersion.V1,
-        $in: {
-          upgradeStatus: [ProjectUpgradeStatus.Failed, null]
-        }
+        version: ProjectVersion.V1
       });
 
       const oldProjectKey = await projectKeyDAL.findLatestProjectKey(data.startedByUserId, data.projectId);
 
       if (!project || !oldProjectKey) {
-        throw new BadRequestError({
-          message: "Project or project key not found"
-        });
+        throw new Error("Project or project key not found");
       }
 
-      await projectDAL.setProjectUpgradeStatus(data.projectId, ProjectUpgradeStatus.InProgress);
+      if (project.upgradeStatus !== ProjectUpgradeStatus.Failed && project.upgradeStatus !== null) {
+        throw new Error("Project upgrade status is not valid");
+      }
+
+      await projectDAL.setProjectUpgradeStatus(data.projectId, ProjectUpgradeStatus.InProgress); // Set the status to in progress. This is important to prevent multiple upgrades at the same time.
+
       const userPrivateKey = infisicalSymmetricDecrypt({
         keyEncoding: data.encryptedPrivateKey.keyEncoding,
         ciphertext: data.encryptedPrivateKey.encryptedKey,
@@ -384,10 +383,18 @@ export const projectQueueFactory = ({
           throw new Error("Failed to update some secret approvals");
         }
 
-        throw new Error("Transaction was successful!");
+        await projectDAL.setProjectUpgradeStatus(data.projectId, null, tx);
+
+        // throw new Error("Transaction was successful!");
       });
     } catch (err) {
-      const project = await projectDAL.findOne({ id: data.projectId, version: ProjectVersion.V1 }).catch(() => null);
+      console.log(err);
+      const [project] = await projectDAL
+        .find({
+          id: data.projectId,
+          version: ProjectVersion.V1
+        })
+        .catch(() => [null]);
 
       if (!project) {
         logger.error("Failed to upgrade project, because no project was found", data);
