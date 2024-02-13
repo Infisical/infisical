@@ -2,7 +2,7 @@
 title: "Backend development guide"
 ---
 
-Suppose you're interested in implementing a new feature, let's call it "feature-x." Here are the steps you should follow:
+Suppose you're interested in implementing a new feature in Infisical's backend, let's call it "feature-x." Here are the general steps you should follow.
 
 ## Database schema migration
 In order to run [schema migrations](https://en.wikipedia.org/wiki/Schema_migration#:~:text=A%20schema%20migration%20is%20performed,some%20newer%20or%20older%20version) you need to expose your database connection string. Create a `.env.migration` file to set the database connection URI for migration scripts, or alternatively, export the `DB_CONNECTION_URI` environment variable.
