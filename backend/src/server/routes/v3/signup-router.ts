@@ -4,7 +4,7 @@ import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
-// test
+// tes
 export const registerSignupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/email/signup",
