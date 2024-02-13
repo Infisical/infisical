@@ -56,5 +56,31 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...projectMemberOrm, findAllProjectMembers, findProjectGhostUser };
+  const findMembershipsByEmail = async (projectId: string, emails: string[]) => {
+    try {
+      const members = await db(TableName.ProjectMembership)
+        .where({ projectId })
+        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .join<TUserEncryptionKeys>(
+          TableName.UserEncryptionKey,
+          `${TableName.UserEncryptionKey}.userId`,
+          `${TableName.Users}.id`
+        )
+        .select(
+          selectAllTableCols(TableName.ProjectMembership),
+          db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("email").withSchema(TableName.Users)
+        )
+        .whereIn("email", emails)
+        .where({ ghost: false });
+      return members.map(({ userId, email, ...data }) => ({
+        ...data,
+        user: { id: userId, email }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find members by email" });
+    }
+  };
+
+  return { ...projectMemberOrm, findAllProjectMembers, findProjectGhostUser, findMembershipsByEmail };
 };
