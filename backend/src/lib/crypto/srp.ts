@@ -1,4 +1,4 @@
-import argon2, { argon2id } from "argon2";
+import argon2 from "argon2";
 import crypto from "crypto";
 import jsrp from "jsrp";
 import nacl from "tweetnacl";
@@ -58,7 +58,7 @@ export const generateUserSrpKeys = async (email: string, password: string) => {
     timeCost: 3,
     parallelism: 1,
     hashLength: 32,
-    type: argon2id,
+    type: 2,
     raw: true
   });
   if (!derivedKey) throw new Error("Failed to derive key from password");
@@ -102,7 +102,7 @@ export const getUserPrivateKey = async (password: string, user: TUserEncryptionK
     timeCost: 3,
     parallelism: 1,
     hashLength: 32,
-    type: argon2id,
+    type: 2,
     raw: true
   });
   if (!derivedKey) throw new Error("Failed to derive key from password");
