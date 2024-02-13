@@ -128,7 +128,7 @@ export const projectDALFactory = (db: TDbClient) => {
         ]
       })?.[0];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find all projects" });
+      throw new DatabaseError({ error, name: "Find project by ID" });
     }
   };
 
