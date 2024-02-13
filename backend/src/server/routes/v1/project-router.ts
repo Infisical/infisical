@@ -249,7 +249,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Is this actually used..?
   server.route({
     url: "/:workspaceId/invite-signup",
     method: "POST",
@@ -279,7 +278,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
       const invitee = invitees[0];
 
-      // eslint-disable-next-line no-await-in-loop
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.params.workspaceId,
