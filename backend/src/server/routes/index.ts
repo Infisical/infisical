@@ -281,7 +281,7 @@ export const registerRoutes = async (
     secretScanningDAL,
     secretScanningQueue
   });
-  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL });
+  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
 
   const projectMembershipService = projectMembershipServiceFactory({
     projectMembershipDAL,

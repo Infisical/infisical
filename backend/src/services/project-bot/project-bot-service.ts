@@ -113,6 +113,16 @@ export const projectBotServiceFactory = ({
     const { permission } = await permissionService.getProjectPermission(actor, actorId, bot.projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
+    const project = await projectBotDAL.findProjectByBotId(botId);
+
+    if (!project) {
+      throw new BadRequestError({ message: "Failed to find project by bot ID" });
+    }
+
+    if (project.version === "v2") {
+      throw new BadRequestError({ message: "Failed to set bot active, project has a default bot enabled" });
+    }
+
     if (isActive) {
       if (!botKey?.nonce || !botKey?.encryptedKey) {
         throw new BadRequestError({ message: "Failed to set bot active - missing bot key" });
