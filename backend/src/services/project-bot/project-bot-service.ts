@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import { Knex } from "knex";
 
 import { SecretKeyEncoding } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -106,16 +105,12 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
       if (!botKey?.nonce || !botKey?.encryptedKey) {
         throw new BadRequestError({ message: "Failed to set bot active - missing bot key" });
       }
-      const doc = await projectBotDAL.updateById(
-        botId,
-        {
-          isActive: true,
-          encryptedProjectKey: botKey.encryptedKey,
-          encryptedProjectKeyNonce: botKey.nonce,
-          senderId: actorId
-        },
-        tx
-      );
+      const doc = await projectBotDAL.updateById(botId, {
+        isActive: true,
+        encryptedProjectKey: botKey.encryptedKey,
+        encryptedProjectKeyNonce: botKey.nonce,
+        senderId: actorId
+      });
       if (!doc) throw new BadRequestError({ message: "Failed to update bot active state" });
       return doc;
     }
