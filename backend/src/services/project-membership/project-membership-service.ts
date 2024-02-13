@@ -18,6 +18,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { createWsMembers } from "@app/lib/project";
 
+import { ActorType } from "../auth/auth-type";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
@@ -29,7 +30,8 @@ import { TProjectMembershipDALFactory } from "./project-membership-dal";
 import {
   TAddUsersToWorkspaceDTO,
   TAddUsersToWorkspaceNonE2EEDTO,
-  TDeleteProjectMembershipDTO,
+  TDeleteProjectMembershipOldDTO,
+  TDeleteProjectMembershipsDTO,
   TGetProjectMembershipDTO,
   TInviteUserToProjectDTO,
   TUpdateProjectMembershipDTO
@@ -355,21 +357,22 @@ export const projectMembershipServiceFactory = ({
     return membership;
   };
 
+  // This is old and should be removed later. Its not used anywhere, but it is exposed in our API. So to avoid breaking changes, we are keeping it for now.
   const deleteProjectMembership = async ({
     actorId,
     actor,
     actorOrgId,
     projectId,
     membershipId
-  }: TDeleteProjectMembershipDTO) => {
+  }: TDeleteProjectMembershipOldDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
 
-    const membershipUser = await userDAL.findUserByProjectMembershipId(membershipId);
+    const member = await userDAL.findUserByProjectMembershipId(membershipId);
 
-    if (membershipUser?.ghost) {
+    if (member?.ghost) {
       throw new BadRequestError({
-        message: "Cannot delete ghost",
+        message: "Unauthorized member delete",
         name: "Delete project membership"
       });
     }
@@ -382,12 +385,65 @@ export const projectMembershipServiceFactory = ({
     return membership;
   };
 
+  const deleteProjectMemberships = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    projectId,
+    emails
+  }: TDeleteProjectMembershipsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
+
+    const projectMembers = await projectMembershipDAL.findMembershipsByEmail(projectId, emails);
+
+    if (projectMembers.length !== emails.length) {
+      throw new BadRequestError({
+        message: "Some users are not part of project",
+        name: "Delete project membership"
+      });
+    }
+
+    if (actor === ActorType.USER && projectMembers.some(({ user }) => user.id === actorId)) {
+      throw new BadRequestError({
+        message: "Cannot remove yourself from project",
+        name: "Delete project membership"
+      });
+    }
+
+    const memberships = await projectMembershipDAL.transaction(async (tx) => {
+      const deletedMemberships = await projectMembershipDAL.delete(
+        {
+          projectId,
+          $in: {
+            id: projectMembers.map(({ id }) => id)
+          }
+        },
+        tx
+      );
+
+      await projectKeyDAL.delete(
+        {
+          projectId,
+          $in: {
+            receiverId: projectMembers.map(({ user }) => user.id).filter(Boolean)
+          }
+        },
+        tx
+      );
+
+      return deletedMemberships;
+    });
+    return memberships;
+  };
+
   return {
     getProjectMemberships,
     inviteUserToProject,
     updateProjectMembership,
     addUsersToProjectNonE2EE,
-    deleteProjectMembership,
+    deleteProjectMemberships,
+    deleteProjectMembership, // TODO: Remove this
     addUsersToProject
   };
 };
