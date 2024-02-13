@@ -8,6 +8,10 @@ import { TUserEncryptionKeys } from "@app/db/schemas";
 
 import { decryptSymmetric, encryptAsymmetric, encryptSymmetric } from "./encryption";
 
+// Importing the argon2 constants from the argon2 module fails due to an issue with importing commonjs modules.
+// Read more: https://stackoverflow.com/questions/70605320/named-export-types-not-found-the-requested-module-mongoose-is-a-commonjs-mo
+const ARGON_2_ID = 2;
+
 export const generateSrpServerKey = async (salt: string, verifier: string) => {
   // eslint-disable-next-line new-cap
   const server = new jsrp.server();
