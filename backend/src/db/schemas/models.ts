@@ -125,7 +125,7 @@ export enum ProjectUpgradeStatus {
 
 export enum ProjectUpgradeStatus {
   InProgress = "IN_PROGRESS",
-  //   Completed = "Project upgrade completed.", // Will be null if completed. So a completed status is not needed
+  // Completed -> Will be null if completed. So a completed status is not needed
   Failed = "FAILED"
 }
 
