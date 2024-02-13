@@ -12,8 +12,12 @@ export type TUpdateProjectMembershipDTO = {
   role: string;
 } & TProjectPermission;
 
-export type TDeleteProjectMembershipDTO = {
+export type TDeleteProjectMembershipOldDTO = {
   membershipId: string;
+} & TProjectPermission;
+
+export type TDeleteProjectMembershipsDTO = {
+  emails: string[];
 } & TProjectPermission;
 
 export type TAddUsersToWorkspaceDTO = {
