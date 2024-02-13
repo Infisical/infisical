@@ -9,6 +9,7 @@ import {
   faXmarkCircle
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { cx } from "cva";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, ContentLoader, EmptyState, IconButton, Tooltip } from "@app/components/v2";
@@ -170,9 +171,18 @@ export const SecretApprovalRequestChanges = ({
           <IconButton variant="outline_bg" ariaLabel="go-back" onClick={onGoBack}>
             <FontAwesomeIcon icon={faArrowLeft} />
           </IconButton>
-          <div className="flex items-center space-x-2 rounded-3xl bg-red-600 px-4 py-2 text-white">
+          <div
+            className={cx(
+              "flex items-center space-x-2 rounded-3xl px-4 py-2 text-white",
+              secretApprovalRequestDetails.status === "close" ? "bg-red-600" : "bg-green-600"
+            )}
+          >
             <FontAwesomeIcon icon={faCodeBranch} size="sm" />
-            <span>{secretApprovalRequestDetails.status}</span>
+            <span className="capitalize">
+              {secretApprovalRequestDetails.status === "close"
+                ? "closed"
+                : secretApprovalRequestDetails.status}
+            </span>
           </div>
           <div className="flex flex-grow flex-col">
             <div className="mb-1 text-lg">
