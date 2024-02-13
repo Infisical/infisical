@@ -44,6 +44,10 @@ export type TIntegrationAuthChecklyGroupsDTO = {
   accountId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TIntegrationAuthGithubOrgsDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TIntegrationAuthQoveryOrgsDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;

@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Octokit } from "@octokit/rest";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TIntegrationAuths, TIntegrationAuthsInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -23,6 +24,7 @@ import {
   TIntegrationAuthAppsDTO,
   TIntegrationAuthBitbucketWorkspaceDTO,
   TIntegrationAuthChecklyGroupsDTO,
+  TIntegrationAuthGithubOrgsDTO,
   TIntegrationAuthNorthflankSecretGroupDTO,
   TIntegrationAuthQoveryEnvironmentsDTO,
   TIntegrationAuthQoveryOrgsDTO,
@@ -379,6 +381,33 @@ export const integrationAuthServiceFactory = ({
       return data.map(({ name, id: groupId }) => ({ name, groupId }));
     }
     return [];
+  };
+
+  const getGithubOrgs = async ({ actorId, actor, actorOrgId, id }: TIntegrationAuthGithubOrgsDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+
+    const octokit = new Octokit({
+      auth: accessToken
+    });
+
+    const { data } = await octokit.request("GET /organizations", {
+      headers: {
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
+    });
+    if (!data) return [];
+    return data.map(({ login: name, id: orgId }) => ({ name, orgId }));
   };
 
   const getQoveryOrgs = async ({ actorId, actor, actorOrgId, id }: TIntegrationAuthQoveryOrgsDTO) => {
@@ -911,6 +940,7 @@ export const integrationAuthServiceFactory = ({
     getIntegrationApps,
     getVercelBranches,
     getApps,
+    getGithubOrgs,
     getChecklyGroups,
     getQoveryApps,
     getQoveryEnvs,

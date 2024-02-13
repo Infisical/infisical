@@ -1869,6 +1869,18 @@ paths:
       responses:
         '200':
           description: OK
+  /api/v1/integration-auth/{integrationAuthId}/github/orgs:
+    get:
+      description: ''
+      parameters:
+        - name: integrationAuthId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
   /api/v1/integration-auth/{integrationAuthId}/qovery/orgs:
     get:
       description: ''

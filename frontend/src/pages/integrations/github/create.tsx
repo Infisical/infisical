@@ -20,8 +20,6 @@ import queryString from "query-string";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { useCreateIntegration } from "@app/hooks/api";
-
 import {
   Button,
   Card,
@@ -38,26 +36,50 @@ import {
   TabList,
   TabPanel,
   Tabs
-} from "../../../components/v2";
+} from "@app/components/v2";
 import {
+  useCreateIntegration,
   useGetIntegrationAuthApps,
-  useGetIntegrationAuthById
-} from "../../../hooks/api/integrationAuth";
-import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+  useGetIntegrationAuthById,
+  useGetIntegrationAuthGithubOrgs,
+  useGetWorkspaceById
+} from "@app/hooks/api";
 
 enum TabSections {
   Connection = "connection",
   Options = "options"
 }
 
+const targetEnv = [
+  "github-repo",
+  "github-org",
+  "github-env"
+] as const;
+type TargetEnv = typeof targetEnv[number];
+
+
 const schema = yup.object({
   selectedSourceEnvironment: yup.string().trim().required("Project Environment is required"),
   secretPath: yup.string().trim().required("Secrets Path is required"),
-  targetAppIds: yup
+  secretSuffix: yup.string().trim().optional(),
+
+  scope: yup.mixed<TargetEnv>().oneOf(targetEnv.slice()).required(),
+  repoIds: yup
     .array(yup.string().required())
     .min(1, "Select atleast one repo") // .min() not working showing error for empty array
-    .required("Select atleast one repo"),
-  secretSuffix: yup.string().trim().optional()
+    .optional(),
+  repoId: yup
+    .string()
+    .optional(),
+  
+  envId: yup
+    .string()
+    .optional(),
+  
+  orgId: yup
+    .string()
+    .optional(),
+  
 });
 
 type FormData = yup.InferType<typeof schema>;
@@ -75,19 +97,25 @@ export default function GitHubCreateIntegrationPage() {
     useGetIntegrationAuthApps({
       integrationAuthId: (integrationAuthId as string) ?? ""
     });
+  
+  const { data: integrationAuthOrgs } =
+    useGetIntegrationAuthGithubOrgs(integrationAuthId as string);
 
   const { control, handleSubmit, watch, setValue } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
       selectedSourceEnvironment: "",
       secretPath: "/",
-      targetAppIds: [],
-      secretSuffix: ""
+      repoIds: [],
+      secretSuffix: "",
+      scope: "github-repo"
     }
   });
 
-  const targetAppIds = watch("targetAppIds");
+  const scope = watch("scope");
 
+  const repoIds = watch("repoIds");
+  
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -99,9 +127,9 @@ export default function GitHubCreateIntegrationPage() {
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
-        setValue("targetAppIds", [String(integrationAuthApps[0].appId)]);
+        setValue("repoIds", [String(integrationAuthApps[0].appId)]);
       } else {
-        setValue("targetAppIds", ["none"]);
+        setValue("repoIds", ["none"]);
       }
     }
   }, [integrationAuthApps]);
@@ -113,7 +141,7 @@ export default function GitHubCreateIntegrationPage() {
       if (!integrationAuth?.id) return;
 
       const targetApps = integrationAuthApps?.filter((integrationAuthApp) =>
-        data.targetAppIds.includes(String(integrationAuthApp.appId))
+        data.repoIds?.includes(String(integrationAuthApp.appId))
       );
 
       if (!targetApps) return;
@@ -217,7 +245,7 @@ export default function GitHubCreateIntegrationPage() {
                         {workspace?.environments.map((sourceEnvironment) => (
                           <SelectItem
                             value={sourceEnvironment.slug}
-                            key={`github-environment-${sourceEnvironment.slug}`}
+                            key={`source-environment-${sourceEnvironment.slug}`}
                           >
                             {sourceEnvironment.name}
                           </SelectItem>
@@ -226,7 +254,6 @@ export default function GitHubCreateIntegrationPage() {
                     </FormControl>
                   )}
                 />
-
                 <Controller
                   control={control}
                   name="secretPath"
@@ -243,81 +270,192 @@ export default function GitHubCreateIntegrationPage() {
 
                 <Controller
                   control={control}
-                  name="targetAppIds"
-                  render={({ field: { onChange }}) => (
+                  name="scope"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                     <FormControl
-                      label="GitHub Repo"
-                      // BUG: yup.min() not working as expected needs to be fixed
-                      errorText="Atleast one repo is required"
-                      isError={targetAppIds?.length === 0}
+                      label="Scope"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
                     >
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          {integrationAuthApps.length > 0 ? (
-                            <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                              {targetAppIds.length === 1
-                                ? integrationAuthApps?.find(
-                                    (integrationAuthApp) =>
-                                      targetAppIds[0] === String(integrationAuthApp.appId)
-                                  )?.name
-                                : `${targetAppIds.length} repositories selected`}
-                              <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
-                            </div>
-                          ) : (
-                            <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                              No repositories found
-                            </div>
-                          )}
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="start"
-                          className="thin-scrollbar z-[100] max-h-80 overflow-y-scroll"
-                        >
-                          {integrationAuthApps.length > 0 ? (
-                            integrationAuthApps.map((integrationAuthApp) => {
-                              const isSelected = targetAppIds.includes(
-                                String(integrationAuthApp.appId)
-                              );
-
-                              return (
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    if (targetAppIds.includes(String(integrationAuthApp.appId))) {
-                                      onChange(
-                                        targetAppIds.filter(
-                                          (appId) => appId !== String(integrationAuthApp.appId)
-                                        )
-                                      );
-                                    } else {
-                                      onChange([...targetAppIds, String(integrationAuthApp.appId)]);
-                                    }
-                                  }}
-                                  key={integrationAuthApp.appId}
-                                  icon={
-                                    isSelected ? (
-                                      <FontAwesomeIcon
-                                        icon={faCheckCircle}
-                                        className="pr-0.5 text-primary"
-                                      />
-                                    ) : (
-                                      <div className="pl-[1.01rem]" />
-                                    )
-                                  }
-                                  iconPos="left"
-                                  className="w-[28.4rem] text-sm"
-                                >
-                                  {integrationAuthApp.name}
-                                </DropdownMenuItem>
-                              );
-                            })
-                          ) : (
-                            <div />
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Select
+                        defaultValue={field.value}
+                        onValueChange={(e) => onChange(e)}
+                        className="w-full border border-mineshaft-500"
+                      >
+                        <SelectItem value="github-repo">Github Repositories</SelectItem>
+                        <SelectItem value="github-org">Github Organization</SelectItem>
+                        <SelectItem value="github-env">Github Environment</SelectItem>
+                      </Select>
                     </FormControl>
                   )}
                 />
+
+                {scope === "github-repo" && repoIds && (
+                  <Controller
+                    control={control}
+                    name="repoIds"
+                    render={({ field: { onChange }}) => (
+                      <FormControl
+                        label="GitHub Repo"
+                        // BUG: yup.min() not working as expected needs to be fixed
+                        errorText="Atleast one repo is required"
+                        isError={repoIds?.length === 0}
+                      >
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            {integrationAuthApps.length > 0 ? (
+                              <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                                {repoIds.length === 1
+                                  ? integrationAuthApps?.find(
+                                      (integrationAuthApp) =>
+                                        repoIds[0] === String(integrationAuthApp.appId)
+                                    )?.name
+                                  : `${repoIds.length} repositories selected`}
+                                <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
+                              </div>
+                            ) : (
+                              <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                                No repositories found
+                              </div>
+                            )}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="start"
+                            className="thin-scrollbar z-[100] max-h-80 overflow-y-scroll"
+                          >
+                            {integrationAuthApps.length > 0 ? (
+                              integrationAuthApps.map((integrationAuthApp) => {
+                                const isSelected = repoIds.includes(
+                                  String(integrationAuthApp.appId)
+                                );
+
+                                return (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      if (repoIds.includes(String(integrationAuthApp.appId))) {
+                                        onChange(
+                                          repoIds.filter(
+                                            (appId) => appId !== String(integrationAuthApp.appId)
+                                          )
+                                        );
+                                      } else {
+                                        onChange([...repoIds, String(integrationAuthApp.appId)]);
+                                      }
+                                    }}
+                                    key={`repos-id-${integrationAuthApp.appId}`}
+                                    icon={
+                                      isSelected ? (
+                                        <FontAwesomeIcon
+                                          icon={faCheckCircle}
+                                          className="pr-0.5 text-primary"
+                                        />
+                                      ) : (
+                                        <div className="pl-[1.01rem]" />
+                                      )
+                                    }
+                                    iconPos="left"
+                                    className="w-[28.4rem] text-sm"
+                                  >
+                                    {integrationAuthApp.name}
+                                  </DropdownMenuItem>
+                                );
+                              })
+                            ) : (
+                              <div />
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </FormControl>
+                    )}
+                  />
+
+                )}
+                {scope === "github-org" && (
+                  <Controller
+                  control={control}
+                  name="orgId"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Organization"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Select
+                        defaultValue={field.value}
+                        onValueChange={(e) => onChange(e)}
+                        className="w-full border border-mineshaft-500"
+                      >
+                        {integrationAuthOrgs && integrationAuthOrgs.map(({name, orgId}) => (
+                          <SelectItem
+                            key={`github-organization-${orgId}`}
+                            value={orgId}
+                          >
+                            {name}
+                          </SelectItem>
+
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+                )}
+                {scope === "github-env" && (
+                  <Controller
+                    control={control}
+                    name="repoId"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                      <FormControl
+                        label="Repositories"
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <Select
+                          defaultValue={field.value}
+                          onValueChange={(e) => onChange(e)}
+                          className="w-full border border-mineshaft-500"
+                        >
+                          {integrationAuthApps.length > 0 ? (
+                              integrationAuthApps.map((integrationAuthApp) => {
+                                return (
+                                  <SelectItem
+                                    value={integrationAuthApp.appId as string}
+                                    key={`repos-id-${integrationAuthApp.appId}`}
+                                    className="w-[28.4rem] text-sm"
+                                  >
+                                    {integrationAuthApp.name}
+                                  </SelectItem>
+                                );
+                              })
+                            ) : (
+                              <div />
+                          )
+                  }
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                )}
+                {scope === "github-env" && (
+                  <Controller
+                    control={control}
+                    name="envId"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                      <FormControl
+                        label="Environment"
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <Select
+                          defaultValue={field.value}
+                          onValueChange={(e) => onChange(e)}
+                          className="w-full border border-mineshaft-500"
+                        >
+                          <SelectItem value="github-repo">Select Environment</SelectItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                )}
               </motion.div>
             </TabPanel>
             <TabPanel value={TabSections.Options}>
@@ -355,7 +493,7 @@ export default function GitHubCreateIntegrationPage() {
               variant="outline_bg"
               className="mb-6"
               isLoading={isLoading}
-              isDisabled={integrationAuthApps.length === 0 || targetAppIds.length === 0}
+              isDisabled={integrationAuthApps.length === 0 || repoIds?.length === 0}
             >
               Create Integration
             </Button>

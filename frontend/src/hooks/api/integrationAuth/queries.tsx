@@ -38,6 +38,8 @@ const integrationAuthKeys = {
     integrationAuthId: string;
     accountId: string;
   }) => [{ integrationAuthId, accountId }, "integrationAuthChecklyGroups"] as const,
+  getIntegrationAuthGithubOrgs: (integrationAuthId: string) =>
+    [{ integrationAuthId }, "integrationAuthGithubOrgs"] as const,
   getIntegrationAuthQoveryOrgs: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuthQoveryOrgs"] as const,
   getIntegrationAuthQoveryProjects: ({
@@ -172,6 +174,16 @@ const fetchIntegrationAuthVercelBranches = async ({
   );
 
   return branches;
+};
+
+const fetchIntegrationAuthGithubOrgs = async (integrationAuthId: string) => {
+  const {
+    data: { orgs }
+  } = await apiRequest.get<{ orgs: Org[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/github/orgs`
+  );
+
+  return orgs;
 };
 
 const fetchIntegrationAuthQoveryOrgs = async (integrationAuthId: string) => {
@@ -461,6 +473,14 @@ export const useGetIntegrationAuthChecklyGroups = ({
         integrationAuthId,
         accountId
       }),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthGithubOrgs = (integrationAuthId: string) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthGithubOrgs(integrationAuthId),
+    queryFn: () => fetchIntegrationAuthGithubOrgs(integrationAuthId),
     enabled: true
   });
 };

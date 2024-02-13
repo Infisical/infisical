@@ -344,6 +344,38 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
+    url: "/:integrationAuthId/github/orgs",
+    method: "GET",
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          orgs: z.object({ name: z.string(), orgId: z.string() }).array()
+        })
+      }
+    },
+    handler: async (req) => {
+      try {
+        const orgs = await server.services.integrationAuth.getGithubOrgs({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          id: req.params.integrationAuthId
+        });
+        if (!orgs) throw new Error("No organization found.");
+
+        return { orgs: orgs || [] };
+      } catch (e) {
+        console.error(e);
+        return { orgs: [] };
+      }
+    }
+  });
+
+  server.route({
     url: "/:integrationAuthId/qovery/orgs",
     method: "GET",
     onRequest: verifyAuth([AuthMode.JWT]),
