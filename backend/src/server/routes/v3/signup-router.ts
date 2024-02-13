@@ -159,6 +159,17 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         userAgent
       });
 
+      void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.UserSignedUp,
+        distinctId: user.email,
+        properties: {
+          email: user.email,
+          attributionSource: "Team Invite"
+        }
+      });
+
       void res.setCookie("jid", refreshToken, {
         httpOnly: true,
         path: "/",
