@@ -49,7 +49,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { token, user } = await server.services.signup.verifyEmailSignup(req.body.email, req.body.code);
-      return { message: "Successfuly verified email", token, user };
+      return { message: "Successfully verified email", token, user };
     }
   });
 
