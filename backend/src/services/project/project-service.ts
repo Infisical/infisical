@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-redeclare */
 /* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
@@ -8,18 +9,10 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
-import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
 import { createSecretBlindIndex } from "@app/lib/crypto";
-import {
-  decryptAsymmetric,
-  encryptSymmetric128BitHexKeyUTF8,
-  infisicalSymmetricDecrypt,
-  infisicalSymmetricEncypt
-} from "@app/lib/crypto/encryption";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
@@ -27,14 +20,11 @@ import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
-import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TSecretDALFactory } from "../secret/secret-dal";
-import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -78,18 +68,13 @@ export const projectServiceFactory = ({
   projectDAL,
   projectQueue,
   projectKeyDAL,
-  secretApprovalRequestDAL,
-  secretApprovalSecretDAL,
   permissionService,
   userDAL,
   folderDAL,
   orgService,
-  orgDAL,
   identityProjectDAL,
-  secretVersionDAL,
   projectBotDAL,
   identityOrgMembershipDAL,
-  secretDAL,
   secretBlindIndexDAL,
   projectMembershipDAL,
   projectEnvDAL,
