@@ -52,7 +52,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
 
       return ghostUser;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find project ghost user" });
+      throw new DatabaseError({ error, name: "Find project top-level user" });
     }
   };
 

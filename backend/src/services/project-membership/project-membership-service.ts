@@ -228,7 +228,7 @@ export const projectMembershipServiceFactory = ({
 
     if (!ghostUser) {
       throw new BadRequestError({
-        message: "Failed to find ghost user"
+        message: "Failed to find top-level user"
       });
     }
 
@@ -236,7 +236,7 @@ export const projectMembershipServiceFactory = ({
 
     if (!ghostUserLatestKey) {
       throw new BadRequestError({
-        message: "Failed to find ghost user latest key"
+        message: "Failed to find top-level latest key"
       });
     }
 
@@ -269,16 +269,11 @@ export const projectMembershipServiceFactory = ({
 
     await projectMembershipDAL.transaction(async (tx) => {
       const result = await projectMembershipDAL.insertMany(
-        orgMembers.map(({ user, id: membershipId }) => {
-          const role =
-            orgMembers.find((membership) => membership.id === membershipId)?.role || ProjectMembershipRole.Member;
-
-          return {
-            projectId,
-            userId: user.id,
-            role
-          };
-        }),
+        orgMembers.map(({ user }) => ({
+          projectId,
+          userId: user.id,
+          role: ProjectMembershipRole.Member
+        })),
         tx
       );
 
