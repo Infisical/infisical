@@ -251,7 +251,6 @@ export const projectServiceFactory = ({
         }
 
         // Get the role permission for the identity
-        // IS THIS CORRECT?
         const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
           ProjectMembershipRole.Admin,
           orgId
@@ -341,43 +340,6 @@ export const projectServiceFactory = ({
         message: "User must be admin"
       });
     }
-
-    /*
-    1. Get the existing project 
-    2. Get the existing project keys
-    4. Get all the project envs & folders
-    5. Get ALL secrets within the project
-    6. Create a new ghost user
-    7. Create a project membership for the ghost user
-    8. Get the existing bot, and the existing project keys for the members of the project
-    9. IF a bot already exists for the project, delete it!
-    10. Delete all the existing project keys
-    11. Create a project key for the ghost user
-    12. Find the newly created ghost user's latest key
-    
-
-    FOR EACH OF THE OLD PROJECT KEYS (loop):
-    	13. Find the user based on the key.receiverId.
-    	14. Find the org membership for the user.
-    	15. Create a new project key for the user.
-    
-
-		16. Encrypt the ghost user's private key
-		17. Create a new bot, and set the public/private key of the bot, to the ghost user's public/private key.
-		18. Add the workspace key to the bot
-		19. Decrypt the secrets with the old project key
-		20. Get the newly created bot's private key, and workspace key (we do it this way to test as many steps of the bot process as possible)
-		21. Get the workspace key from the bot
-
-
-		FOR EACH DECRYPTED SECRET (loop):
-			22. Re-encrypt the secret value, secret key, and secret comment with the NEW project key from the bot.
-			23. Update the secret in the database with the new encrypted values.
-   
-		
-		24. Transaction ends. If there were no errors. All changes are applied.
-		25. API route returns 200 OK.
-		*/
 
     const encryptedPrivateKey = infisicalSymmetricEncypt(userPrivateKey);
 
