@@ -7,6 +7,7 @@ export {
   useDeleteUserFromWorkspace,
   useDeleteWorkspace,
   useDeleteWsEnvironment,
+  useGetUpgradeProjectStatus,
   useGetUserWorkspaceMemberships,
   useGetUserWorkspaces,
   useGetWorkspaceAuthorizations,

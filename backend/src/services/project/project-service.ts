@@ -1,45 +1,36 @@
+/* eslint-disable @typescript-eslint/no-redeclare */
 /* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { ProjectMembershipRole, ProjectVersion, SecretKeyEncoding, TSecrets } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
-import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
 import { createSecretBlindIndex } from "@app/lib/crypto";
-import {
-  decryptAsymmetric,
-  encryptSymmetric128BitHexKeyUTF8,
-  infisicalSymmetricDecrypt,
-  infisicalSymmetricEncypt
-} from "@app/lib/crypto/encryption";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { createProjectKey, createWsMembers } from "@app/lib/project";
-import { decryptSecrets, SecretDocType, TPartialSecret } from "@app/lib/secret";
+import { TProjectPermission } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
-import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TSecretDALFactory } from "../secret/secret-dal";
-import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
+import { TProjectQueueFactory } from "./project-queue";
 import { TCreateProjectDTO, TDeleteProjectDTO, TGetProjectDTO, TUpgradeProjectDTO } from "./project-types";
 
 export const DEFAULT_PROJECT_ENVS = [
@@ -50,22 +41,18 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
+  projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
-  secretVersionDAL: TSecretVersionDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   identityProjectDAL: TIdentityProjectDALFactory;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey" | "delete" | "find" | "insertMany">;
   projectBotDAL: Pick<TProjectBotDALFactory, "create" | "findById" | "delete" | "findOne">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne">;
-  orgDAL: TOrgDALFactory;
-  secretApprovalRequestDAL: TSecretApprovalRequestDALFactory;
-  secretApprovalSecretDAL: TSecretApprovalRequestSecretDALFactory;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
-  secretDAL: TSecretDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
@@ -73,19 +60,15 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
 export const projectServiceFactory = ({
   projectDAL,
+  projectQueue,
   projectKeyDAL,
-  secretApprovalRequestDAL,
-  secretApprovalSecretDAL,
   permissionService,
   userDAL,
   folderDAL,
   orgService,
-  orgDAL,
   identityProjectDAL,
-  secretVersionDAL,
   projectBotDAL,
   identityOrgMembershipDAL,
-  secretDAL,
   secretBlindIndexDAL,
   projectMembershipDAL,
   projectEnvDAL,
@@ -396,303 +379,33 @@ export const projectServiceFactory = ({
 		25. API route returns 200 OK.
 		*/
 
-    const project = await projectDAL.findOne({ id: projectId, version: ProjectVersion.V1 });
-    const oldProjectKey = await projectKeyDAL.findLatestProjectKey(actorId, projectId);
-    if (!project || !oldProjectKey) {
+    const encryptedPrivateKey = infisicalSymmetricEncypt(userPrivateKey);
+
+    await projectQueue.upgradeProject({
+      projectId,
+      startedByUserId: actorId,
+      encryptedPrivateKey: {
+        encryptedKey: encryptedPrivateKey.ciphertext,
+        encryptedKeyIv: encryptedPrivateKey.iv,
+        encryptedKeyTag: encryptedPrivateKey.tag,
+        keyEncoding: encryptedPrivateKey.encoding
+      }
+    });
+  };
+
+  const getProjectUpgradeStatus = async ({ projectId, actor, actorId }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
+
+    const project = await projectDAL.findProjectById(projectId);
+
+    if (!project) {
       throw new BadRequestError({
-        message: "Project or project key not found"
+        message: `Project with id ${projectId} not found`
       });
     }
 
-    const projectEnvs = await projectEnvDAL.find({
-      projectId: project.id
-    });
-
-    console.log(
-      "projectEnvs",
-      projectEnvs.map((e) => e.name)
-    );
-
-    const projectFolders = await folderDAL.find({
-      $in: {
-        envId: projectEnvs.map((env) => env.id)
-      }
-    });
-
-    // Get all the secrets within the project (as encrypted)
-    const secrets: TPartialSecret[] = [];
-    for (const folder of projectFolders) {
-      const folderSecrets = await secretDAL.find({ folderId: folder.id });
-
-      const folderSecretVersions = await secretVersionDAL.find({
-        folderId: folder.id
-      });
-      const approvalRequests = await secretApprovalRequestDAL.find({
-        status: RequestState.Open,
-        folderId: folder.id
-      });
-      const approvalSecrets = await secretApprovalSecretDAL.find({
-        $in: {
-          requestId: approvalRequests.map((el) => el.id)
-        }
-      });
-
-      secrets.push(...folderSecrets.map((el) => ({ ...el, docType: SecretDocType.Secret })));
-      secrets.push(...folderSecretVersions.map((el) => ({ ...el, docType: SecretDocType.SecretVersion })));
-      secrets.push(...approvalSecrets.map((el) => ({ ...el, docType: SecretDocType.ApprovalSecret })));
-    }
-
-    const decryptedSecrets = decryptSecrets(secrets, userPrivateKey, oldProjectKey);
-
-    if (secrets.length !== decryptedSecrets.length) {
-      throw new Error("Failed to decrypt some secret versions");
-    }
-
-    // Get the existing bot and the existing project keys for the members of the project
-    const existingBot = await projectBotDAL.findOne({ projectId: project.id }).catch(() => null);
-    const existingProjectKeys = await projectKeyDAL.find({ projectId: project.id });
-
-    // TRANSACTION START
-    await projectDAL.transaction(async (tx) => {
-      await projectDAL.updateById(project.id, { version: ProjectVersion.V2 }, tx);
-
-      // Create a ghost user
-      const ghostUser = await orgService.addGhostUser(project.orgId, tx);
-
-      // Create a project key
-      const { key: newEncryptedProjectKey, iv: newEncryptedProjectKeyIv } = createProjectKey({
-        publicKey: ghostUser.keys.publicKey,
-        privateKey: ghostUser.keys.plainPrivateKey
-      });
-
-      console.log("Creating new project key for ghost user");
-      // Create a new project key for the GHOST
-      await projectKeyDAL.create(
-        {
-          projectId: project.id,
-          receiverId: ghostUser.user.id,
-          encryptedKey: newEncryptedProjectKey,
-          nonce: newEncryptedProjectKeyIv,
-          senderId: ghostUser.user.id
-        },
-        tx
-      );
-
-      // Create a membership for the ghost user
-      await projectMembershipDAL.create(
-        {
-          projectId: project.id,
-          userId: ghostUser.user.id,
-          role: ProjectMembershipRole.Admin
-        },
-        tx
-      );
-
-      // If a bot already exists, delete it
-      if (existingBot) {
-        console.log("Deleting existing bot");
-        await projectBotDAL.delete({ id: existingBot.id }, tx);
-      }
-
-      console.log("Deleting old project keys");
-      // Delete all the existing project keys
-      await projectKeyDAL.delete(
-        {
-          projectId: project.id,
-          $in: {
-            id: existingProjectKeys.map((key) => key.id)
-          }
-        },
-        tx
-      );
-
-      console.log("Finding latest key for ghost user");
-      const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.user.id, project.id, tx);
-
-      if (!ghostUserLatestKey) {
-        throw new Error("User latest key not found (V2 Upgrade)");
-      }
-
-      console.log("Creating new project keys for old members");
-
-      const newProjectMembers: {
-        encryptedKey: string;
-        nonce: string;
-        senderId: string;
-        receiverId: string;
-        projectId: string;
-      }[] = [];
-
-      for (const key of existingProjectKeys) {
-        const user = await userDAL.findUserEncKeyByUserId(key.receiverId);
-        const [orgMembership] = await orgDAL.findMembership({ userId: key.receiverId, orgId: project.orgId });
-
-        if (!user || !orgMembership) {
-          throw new Error(`User with ID ${key.receiverId} was not found during upgrade, or user is not in org.`);
-        }
-
-        const [newMember] = createWsMembers({
-          decryptKey: ghostUserLatestKey,
-          userPrivateKey: ghostUser.keys.plainPrivateKey,
-          members: [
-            {
-              userPublicKey: user.publicKey,
-              orgMembershipId: orgMembership.id,
-              projectMembershipRole: ProjectMembershipRole.Admin
-            }
-          ]
-        });
-
-        newProjectMembers.push({
-          encryptedKey: newMember.workspaceEncryptedKey,
-          nonce: newMember.workspaceEncryptedNonce,
-          senderId: ghostUser.user.id,
-          receiverId: user.id,
-          projectId: project.id
-        });
-      }
-
-      // Create project keys for all the old members
-      await projectKeyDAL.insertMany(newProjectMembers, tx);
-
-      // Encrypt the bot private key (which is the same as the ghost user)
-      const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(ghostUser.keys.plainPrivateKey);
-
-      // 5. Create a bot for the project
-      const newBot = await projectBotDAL.create(
-        {
-          name: "Infisical Bot (Ghost)",
-          projectId: project.id,
-          tag,
-          iv,
-          encryptedPrivateKey: ciphertext,
-          isActive: true,
-          publicKey: ghostUser.keys.publicKey,
-          senderId: ghostUser.user.id,
-          encryptedProjectKey: newEncryptedProjectKey,
-          encryptedProjectKeyNonce: newEncryptedProjectKeyIv,
-          algorithm,
-          keyEncoding: encoding
-        },
-        tx
-      );
-
-      console.log("Updating secrets with new project key");
-      console.log("Got decrypted secrets");
-
-      const botPrivateKey = infisicalSymmetricDecrypt({
-        keyEncoding: newBot.keyEncoding as SecretKeyEncoding,
-        iv: newBot.iv,
-        tag: newBot.tag,
-        ciphertext: newBot.encryptedPrivateKey
-      });
-
-      const botKey = decryptAsymmetric({
-        ciphertext: newBot.encryptedProjectKey!,
-        privateKey: botPrivateKey,
-        nonce: newBot.encryptedProjectKeyNonce!,
-        publicKey: ghostUser.keys.publicKey
-      });
-
-      type TPartialSecret = Pick<
-        TSecrets,
-        | "id"
-        | "secretKeyCiphertext"
-        | "secretKeyIV"
-        | "secretKeyTag"
-        | "secretValueCiphertext"
-        | "secretValueIV"
-        | "secretValueTag"
-        | "secretCommentCiphertext"
-        | "secretCommentIV"
-        | "secretCommentTag"
-      >;
-
-      const updatedSecrets: TPartialSecret[] = [];
-      const updatedSecretVersions: TPartialSecret[] = [];
-      const updatedSecretApprovals: TPartialSecret[] = [];
-      for (const rawSecret of decryptedSecrets) {
-        const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(rawSecret.secretKey, botKey);
-        const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(rawSecret.secretValue || "", botKey);
-        const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(rawSecret.secretComment || "", botKey);
-
-        const payload = {
-          id: rawSecret.id,
-          secretKeyCiphertext: secretKeyEncrypted.ciphertext,
-          secretKeyIV: secretKeyEncrypted.iv,
-          secretKeyTag: secretKeyEncrypted.tag,
-          secretValueCiphertext: secretValueEncrypted.ciphertext,
-          secretValueIV: secretValueEncrypted.iv,
-          secretValueTag: secretValueEncrypted.tag,
-          secretCommentCiphertext: secretCommentEncrypted.ciphertext,
-          secretCommentIV: secretCommentEncrypted.iv,
-          secretCommentTag: secretCommentEncrypted.tag
-        } as const;
-
-        if (rawSecret.docType === SecretDocType.Secret) {
-          updatedSecrets.push(payload);
-        } else if (rawSecret.docType === SecretDocType.SecretVersion) {
-          updatedSecretVersions.push(payload);
-        } else if (rawSecret.docType === SecretDocType.ApprovalSecret) {
-          updatedSecretApprovals.push(payload);
-        } else {
-          throw new Error("Unknown secret type");
-        }
-      }
-
-      const secretUpdates = await secretDAL.bulkUpdateNoVersionIncrement(
-        [
-          ...updatedSecrets.map((secret) => ({
-            filter: { id: secret.id },
-            data: {
-              ...secret,
-              id: undefined
-            }
-          }))
-        ],
-        tx
-      );
-
-      const secretVersionUpdates = await secretVersionDAL.bulkUpdateNoVersionIncrement(
-        [
-          ...updatedSecretVersions.map((version) => ({
-            filter: { id: version.id },
-            data: {
-              ...version,
-              id: undefined
-            }
-          }))
-        ],
-        tx
-      );
-
-      const secretApprovalUpdates = await secretApprovalSecretDAL.bulkUpdateNoVersionIncrement(
-        [
-          ...updatedSecretApprovals.map((approval) => ({
-            filter: {
-              id: approval.id
-            },
-            data: {
-              ...approval,
-              id: undefined
-            }
-          }))
-        ],
-        tx
-      );
-
-      if (secretUpdates.length !== updatedSecrets.length) {
-        throw new Error("Failed to update some secrets");
-      }
-      if (secretVersionUpdates.length !== updatedSecretVersions.length) {
-        throw new Error("Failed to update some secret versions");
-      }
-      if (secretApprovalUpdates.length !== updatedSecretApprovals.length) {
-        throw new Error("Failed to update some secret approvals");
-      }
-
-      throw new Error("Transaction was successful");
-    });
+    return project.upgradeStatus || null;
   };
 
   return {
@@ -700,6 +413,7 @@ export const projectServiceFactory = ({
     deleteProject,
     getProjects,
     findProjectGhostUser,
+    getProjectUpgradeStatus,
     getAProject,
     toggleAutoCapitalization,
     updateName,

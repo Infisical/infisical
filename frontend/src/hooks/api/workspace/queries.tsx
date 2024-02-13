@@ -24,6 +24,7 @@ export const workspaceKeys = {
   getWorkspaceSecrets: (workspaceId: string) => [{ workspaceId }, "workspace-secrets"] as const,
   getWorkspaceIndexStatus: (workspaceId: string) =>
     [{ workspaceId }, "workspace-index-status"] as const,
+  getProjectUpgradeStatus: (workspaceId: string) => [{ workspaceId }, "workspace-upgrade-status"],
   getWorkspaceMemberships: (orgId: string) => [{ orgId }, "workspace-memberships"],
   getWorkspaceAuthorization: (workspaceId: string) => [{ workspaceId }, "workspace-authorizations"],
   getWorkspaceIntegrations: (workspaceId: string) => [{ workspaceId }, "workspace-integrations"],
@@ -51,6 +52,14 @@ const fetchWorkspaceIndexStatus = async (workspaceId: string) => {
   return data;
 };
 
+const fetchProjectUpgradeStatus = async (projectId: string) => {
+  const { data } = await apiRequest.get<{ status: string }>(
+    `/api/v2/workspace/${projectId}/upgrade/status`
+  );
+
+  return data;
+};
+
 export const fetchWorkspaceSecrets = async (workspaceId: string) => {
   const {
     data: { secrets }
@@ -73,6 +82,14 @@ export const useUpgradeProject = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
+  });
+};
+
+export const useGetUpgradeProjectStatus = (projectId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getProjectUpgradeStatus(projectId),
+    queryFn: () => fetchProjectUpgradeStatus(projectId),
+    enabled: true
   });
 };
 

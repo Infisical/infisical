@@ -74,7 +74,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         userPrivateKey: z.string().trim()
       }),
       response: {
-        200: z.object({})
+        200: z.void()
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
@@ -85,6 +85,31 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.projectId,
         userPrivateKey: req.body.userPrivateKey
       });
+    }
+  });
+
+  server.route({
+    url: "/:projectId/upgrade/status",
+    method: "GET",
+    schema: {
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          status: z.string().nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    handler: async (req) => {
+      const status = await server.services.project.getProjectUpgradeStatus({
+        projectId: req.params.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id
+      });
+
+      return { status };
     }
   });
 

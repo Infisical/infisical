@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { ProjectsSchema, TableName } from "@app/db/schemas";
+import { ProjectsSchema, ProjectUpgradeStatus, TableName, TProjectsUpdate } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
@@ -63,6 +63,18 @@ export const projectDALFactory = (db: TDbClient) => {
       return ghostUser;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find project ghost user" });
+    }
+  };
+
+  const setProjectUpgradeStatus = async (projectId: string, status: ProjectUpgradeStatus) => {
+    try {
+      const data: TProjectsUpdate = {
+        upgradeStatus: status
+      } as const;
+
+      await db(TableName.Project).where({ id: projectId }).update(data);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Set project upgrade status" });
     }
   };
 
@@ -149,6 +161,7 @@ export const projectDALFactory = (db: TDbClient) => {
   return {
     ...projectOrm,
     findAllProjects,
+    setProjectUpgradeStatus,
     findAllProjectsByIdentity,
     findProjectGhostUser,
     findProjectById

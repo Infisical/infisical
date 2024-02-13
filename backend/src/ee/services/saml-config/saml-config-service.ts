@@ -338,7 +338,8 @@ export const samlConfigServiceFactory = ({
             email,
             firstName,
             lastName,
-            authMethods: [AuthMethod.EMAIL]
+            authMethods: [AuthMethod.EMAIL],
+            ghost: false
           },
           tx
         );

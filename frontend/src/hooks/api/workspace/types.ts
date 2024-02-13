@@ -4,6 +4,7 @@ export type Workspace = {
   name: string;
   orgId: string;
   version: "v1" | "v2";
+  upgradeStatus: string | null;
   autoCapitalization: boolean;
   environments: WorkspaceEnv[];
   slug: string;

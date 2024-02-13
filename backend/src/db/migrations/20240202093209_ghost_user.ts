@@ -15,6 +15,7 @@ export async function up(knex: Knex): Promise<void> {
   if (!hasProjectVersionColumn) {
     await knex.schema.alterTable(TableName.Project, (t) => {
       t.string("version").defaultTo(ProjectVersion.V1).notNullable();
+      t.text("upgradeStatus").nullable();
     });
   }
 }
@@ -32,6 +33,7 @@ export async function down(knex: Knex): Promise<void> {
   if (hasProjectVersionColumn) {
     await knex.schema.alterTable(TableName.Project, (t) => {
       t.dropColumn("version");
+      t.dropColumn("upgradeStatus");
     });
   }
 }

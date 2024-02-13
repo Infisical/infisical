@@ -65,6 +65,7 @@ import { orgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { projectDALFactory } from "@app/services/project/project-dal";
+import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
 import { projectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -299,19 +300,33 @@ export const registerRoutes = async (
     projectKeyDAL,
     projectMembershipDAL
   });
+
+  const projectQueueService = projectQueueFactory({
+    queueService,
+    secretDAL,
+    folderDAL,
+    projectDAL,
+    orgDAL,
+    orgService,
+    projectEnvDAL,
+    userDAL,
+    secretVersionDAL,
+    projectKeyDAL,
+    projectBotDAL,
+    projectMembershipDAL,
+    secretApprovalRequestDAL,
+    secretApprovalSecretDAL: sarSecretDAL
+  });
+
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
+    projectQueue: projectQueueService,
     secretBlindIndexDAL,
     identityProjectDAL,
     identityOrgMembershipDAL,
     projectBotDAL,
-    secretDAL,
-    orgDAL,
-    secretApprovalRequestDAL,
-    secretApprovalSecretDAL: sarSecretDAL,
     projectKeyDAL,
-    secretVersionDAL,
     userDAL,
     projectEnvDAL,
     orgService,
