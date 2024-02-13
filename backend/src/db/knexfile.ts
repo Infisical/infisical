@@ -7,7 +7,7 @@ import path from "path";
 
 // Update with your config settings.
 dotenv.config({
-  path: path.join(__dirname, "../../.env"),
+  path: path.join(__dirname, "../../../.env.migration"),
   debug: true
 });
 export default {

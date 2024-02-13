@@ -463,7 +463,9 @@
         {
           "group": "Contributing to platform",
           "pages": [
-            "contributing/platform/developing"
+            "contributing/platform/developing",
+            "contributing/platform/backend/how-to-create-a-feature",
+            "contributing/platform/backend/folder-structure"
           ]
         },
         {
