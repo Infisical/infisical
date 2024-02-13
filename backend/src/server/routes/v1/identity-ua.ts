@@ -24,6 +24,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     url: "/universal-auth/login",
     method: "POST",
     schema: {
+      description: "Login with Universal Auth",
       body: z.object({
         clientId: z.string().trim(),
         clientSecret: z.string().trim()
@@ -67,6 +68,12 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Attach Universal Auth configuration onto identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         identityId: z.string().trim()
       }),
@@ -141,6 +148,12 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Update Universal Auth configuration on identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         identityId: z.string()
       }),
@@ -209,6 +222,12 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Retrieve Universal Auth configuration on identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         identityId: z.string()
       }),
@@ -246,6 +265,12 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Create Universal Auth Client Secret for identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         identityId: z.string()
       }),
@@ -291,6 +316,12 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "List Universal Auth Client Secrets for identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         identityId: z.string()
       }),
@@ -327,6 +358,12 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Revoke Universal Auth Client Secrets for identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         identityId: z.string(),
         clientSecretId: z.string()
