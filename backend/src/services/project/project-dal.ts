@@ -80,18 +80,6 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const setProjectUpgradeStatus = async (projectId: string, status: ProjectUpgradeStatus | null, tx?: Knex) => {
-    try {
-      const data: TProjectsUpdate = {
-        upgradeStatus: status
-      } as const;
-
-      await (tx || db)(TableName.Project).where({ id: projectId }).update(data);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Set project upgrade status" });
-    }
-  };
-
   const findAllProjectsByIdentity = async (identityId: string) => {
     try {
       const workspaces = await db(TableName.IdentityProjectMembership)
