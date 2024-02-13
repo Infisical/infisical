@@ -27,16 +27,6 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const project = await server.services.project.getAProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        projectId: req.params.projectId
-      });
-
-      if (project.version === "v2") {
-        throw new BadRequestError({ message: "Failed to find bot, project has E2EE disabled" });
-      }
-
       const bot = await server.services.projectBot.findBotByProjectId({
         actor: req.permission.type,
         actorId: req.permission.id,

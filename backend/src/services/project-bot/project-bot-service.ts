@@ -1,23 +1,29 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { SecretKeyEncoding } from "@app/db/schemas";
+import { ProjectVersion, SecretKeyEncoding } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { decryptAsymmetric, generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotDALFactory } from "./project-bot-dal";
 import { TFindBotByProjectIdDTO, TGetPrivateKeyDTO, TSetActiveStateDTO } from "./project-bot-types";
 
 type TProjectBotServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   projectBotDAL: TProjectBotDALFactory;
 };
 
 export type TProjectBotServiceFactory = ReturnType<typeof projectBotServiceFactory>;
 
-export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: TProjectBotServiceFactoryDep) => {
+export const projectBotServiceFactory = ({
+  projectBotDAL,
+  projectDAL,
+  permissionService
+}: TProjectBotServiceFactoryDep) => {
   const getBotPrivateKey = ({ bot }: TGetPrivateKeyDTO) =>
     infisicalSymmetricDecrypt({
       keyEncoding: bot.keyEncoding as SecretKeyEncoding,
@@ -62,6 +68,12 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
       const keys = privateKey && publicKey ? { privateKey, publicKey } : generateAsymmetricKeyPair();
 
       const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(keys.privateKey);
+
+      const project = await projectDAL.findById(projectId, tx);
+
+      if (project.version === ProjectVersion.V2) {
+        throw new BadRequestError({ message: "Failed to create bot, project is upgraded." });
+      }
 
       return projectBotDAL.create(
         {
