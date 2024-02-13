@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { ProjectBotsSchema } from "@app/db/schemas";
-import { BadRequestError } from "@app/lib/errors";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -67,12 +66,6 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const project = await server.services.projectBot.findProjectByBotId(req.params.botId);
-
-      if (project?.version === "v2") {
-        throw new BadRequestError({ message: "Failed to set bot active, project has E2EE disabled" });
-      }
-
       const bot = await server.services.projectBot.setBotActiveState({
         actor: req.permission.type,
         actorId: req.permission.id,
