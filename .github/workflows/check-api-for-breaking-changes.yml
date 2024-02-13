@@ -37,7 +37,7 @@ jobs:
             docker run --name infisical-api -d -p 4000:4000 -e DB_CONNECTION_URI=$DB_CONNECTION_URI -e REDIS_URL=$REDIS_URL -e JWT_AUTH_SECRET=$JWT_AUTH_SECRET --env-file .env --entrypoint '/bin/sh' infisical-api -c "npm run migration:latest && ls && node dist/main.mjs"
         env:
           REDIS_URL: redis://172.17.0.1:6379
-          # DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
+          DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
           JWT_AUTH_SECRET: something-random
       - uses: actions/setup-go@v5
         with:
@@ -53,7 +53,10 @@ jobs:
               break
             fi
             echo "Waiting for container to be healthy... ($SECONDS seconds elapsed)"
-            docker logs infisical-api
+
+            CONTAINER_LOGS=$(docker logs infisical-api)
+            echo "$CONTAINER_LOGS"
+
             sleep 2
             SECONDS=$((SECONDS+2))
           done
