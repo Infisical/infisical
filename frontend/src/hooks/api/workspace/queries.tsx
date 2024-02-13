@@ -337,16 +337,12 @@ export const useDeleteUserFromWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      membershipId,
-      workspaceId
-    }: {
-      workspaceId: string;
-      membershipId: string;
-    }) => {
+    mutationFn: async ({ emails, workspaceId }: { workspaceId: string; emails: string[] }) => {
       const {
         data: { deletedMembership }
-      } = await apiRequest.delete(`/api/v1/workspace/${workspaceId}/memberships/${membershipId}`);
+      } = await apiRequest.delete(`/api/v2/workspace/${workspaceId}/memberships`, {
+        data: { emails }
+      });
       return deletedMembership;
     },
     onSuccess: (_, { workspaceId }) => {

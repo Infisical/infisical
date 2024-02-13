@@ -151,11 +151,11 @@ export const MemberListTab = () => {
   };
 
   const handleRemoveUser = async () => {
-    const membershipId = (popUp?.removeMember?.data as { id: string })?.id;
+    const email = (popUp?.removeMember?.data as { email: string })?.email;
     if (!currentOrg?.id) return;
 
     try {
-      await removeUserFromWorkspace({ workspaceId, membershipId });
+      await removeUserFromWorkspace({ workspaceId, emails: [email] });
       createNotification({
         text: "Successfully removed user from project",
         type: "success"
@@ -372,7 +372,7 @@ export const MemberListTab = () => {
                                   className="ml-4"
                                   isDisabled={userId === u?.id || !isAllowed}
                                   onClick={() =>
-                                    handlePopUpOpen("removeMember", { id: membershipId })
+                                    handlePopUpOpen("removeMember", { email: u.email })
                                   }
                                 >
                                   <FontAwesomeIcon icon={faXmark} />
@@ -456,7 +456,7 @@ export const MemberListTab = () => {
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
         deleteKey="remove"
-        title="Do you want to remove this user from the org?"
+        title="Do you want to remove this user from the project?"
         onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
         onDeleteApproved={handleRemoveUser}
       />
