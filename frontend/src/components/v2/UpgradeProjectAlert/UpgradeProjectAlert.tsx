@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/router";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { useProjectPermission } from "@app/context";
 import { useGetUpgradeProjectStatus, useUpgradeProject } from "@app/hooks/api";
 import { Workspace } from "@app/hooks/api/types";
 
@@ -13,6 +15,8 @@ export type UpgradeProjectAlertProps = {
 
 export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.Element | null => {
   const { createNotification } = useNotificationContext();
+  const router = useRouter();
+  const { membership } = useProjectPermission();
   const upgradeProject = useUpgradeProject();
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
   const {
@@ -41,26 +45,36 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
   }, []);
 
   useEffect(() => {
-    if (project.version === "v1") {
-      getLatestProjectStatus();
-    }
+    let interval: NodeJS.Timeout | null = null;
 
-    if (projectStatus && projectStatus?.status !== null) {
-      if (projectStatus.status === "IN_PROGRESS") {
-        setCurrentStatus("Your upgrade is being processed.");
-      } else if (projectStatus.status === "FAILED") {
-        setCurrentStatus("Upgrade failed, please try again.");
-      }
-    }
-
-    const interval = setInterval(() => {
+    if (membership.role === "admin") {
       if (project.version === "v1") {
         getLatestProjectStatus();
       }
-    }, 5_000);
+
+      if (projectStatus && projectStatus?.status !== null) {
+        if (projectStatus.status === "IN_PROGRESS") {
+          setCurrentStatus("Your upgrade is being processed.");
+        } else if (projectStatus.status === "FAILED") {
+          setCurrentStatus("Upgrade failed, please try again.");
+        }
+      }
+
+      if (currentStatus !== null && projectStatus?.status === null) {
+        router.reload();
+      }
+
+      interval = setInterval(() => {
+        if (project.version === "v1") {
+          getLatestProjectStatus();
+        }
+      }, 5_000);
+    }
 
     return () => {
-      clearInterval(interval);
+      if (interval) {
+        clearInterval(interval);
+      }
     };
   }, [projectStatus]);
 
@@ -71,6 +85,7 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
     projectStatus?.status !== "FAILED";
 
   if (project.version !== "v1") return null;
+  if (membership.role !== "admin") return null;
 
   return (
     <div className="my-8">
