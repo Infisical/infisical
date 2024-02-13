@@ -20,6 +20,7 @@ export const E2EESection = () => {
    * 3. Encrypt project key with bot's public key
    * 4. Send encrypted project key to backend and set bot status to active
    */
+
   const toggleBotActivate = async () => {
     let botKey;
     try {
@@ -75,7 +76,9 @@ export const E2EESection = () => {
     }
   };
 
-  return bot ? (
+  if (!currentWorkspace) return null;
+
+  return bot && currentWorkspace.version === "v1" ? (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <p className="mb-3 text-xl font-semibold">End-to-End Encryption</p>
       <p className="mb-8 text-gray-400">

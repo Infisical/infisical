@@ -92,7 +92,7 @@ export const IntegrationsPage = withProjectPermission(
         isIntegrationsAuthorizedEmpty &&
         isIntegrationsEmpty
       ) {
-        if (bot?.id)
+        if (bot?.id && currentWorkspace?.version === "v1")
           updateBotActiveStatusSync({
             isActive: false,
             botId: bot.id,
@@ -113,7 +113,7 @@ export const IntegrationsPage = withProjectPermission(
       if (!selectedCloudIntegration) return;
 
       try {
-        if (bot && !bot.isActive) {
+        if (bot && !bot.isActive && currentWorkspace?.version === "v1") {
           const botKey = generateBotKey(bot.publicKey, latestWsKey!);
           await updateBotActiveStatus({
             workspaceId,
