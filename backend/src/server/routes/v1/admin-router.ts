@@ -71,8 +71,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          user: UsersSchema,
-          token: z.string()
+          hello: z.number(),
+          user: UsersSchema
         })
       }
     },
@@ -107,7 +107,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       return {
         message: "Successfully set up admin account",
         user: user.user,
-        token: token.access
+        hello: 123
       };
     }
   });
