@@ -62,6 +62,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  /* Start upgrade of a project */
   server.route({
     url: "/:projectId/upgrade",
     method: "POST",
@@ -88,6 +89,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  /* Get upgrade status of project */
   server.route({
     url: "/:projectId/upgrade/status",
     method: "GET",
@@ -131,6 +133,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.createProject({
         actorId: req.permission.id,
