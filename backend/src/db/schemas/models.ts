@@ -117,21 +117,9 @@ export enum ProjectVersion {
   V2 = "v2"
 }
 
-// Case study:
-/*
-
-Q: If the upgrade status is null and the project version is V1:
-A: It would mean that the project has not been attempted to be upgraded
-
-Q: If the upgrade status is not null (FAILED or IN_PROGRESS), we a status
-
-Q: if the project status is null, and the project version is v2, we should display nothing cuz its upgraded!
-
-*/
-
 export enum ProjectUpgradeStatus {
   InProgress = "IN_PROGRESS",
-  Completed = "Project upgrade completed.", // Will be null if completed. So a completed status is not needed
+  //   Completed = "Project upgrade completed.", // Will be null if completed. So a completed status is not needed
   Failed = "FAILED"
 }
 
