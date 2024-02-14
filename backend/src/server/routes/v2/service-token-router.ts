@@ -21,6 +21,12 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     onRequest: verifyAuth([AuthMode.SERVICE_TOKEN]),
     schema: {
+      description: "Return Infisical Token data",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       response: {
         200: ServiceTokensSchema.merge(
           z.object({

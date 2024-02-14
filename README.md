@@ -84,13 +84,13 @@ To set up and run Infisical locally, make sure you have Git and Docker installed
 Linux/macOS:
 
 ```console
-git clone https://github.com/Infisical/infisical && cd "$(basename $_ .git)" && cp .env.example .env && docker-compose -f docker-compose.yml up
+git clone https://github.com/Infisical/infisical && cd "$(basename $_ .git)" && cp .env.example .env && docker-compose -f docker-compose.prod.yml up
 ```
 
 Windows Command Prompt:
 
 ```console
-git clone https://github.com/Infisical/infisical && cd infisical && copy .env.example .env && docker-compose -f docker-compose.yml up
+git clone https://github.com/Infisical/infisical && cd infisical && copy .env.example .env && docker-compose -f docker-compose.prod.yml up
 ```
 
 Create an account at `http://localhost:80`

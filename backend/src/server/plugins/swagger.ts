@@ -25,13 +25,13 @@ export const fastifySwagger = fp(async (fastify) => {
       ],
       components: {
         securitySchemes: {
-          bearer: {
+          bearerAuth: {
             type: "http",
             scheme: "bearer",
             bearerFormat: "JWT",
-            description: "A service token in Infisical"
+            description: "An access token in Infisical"
           },
-          apiKey: {
+          apiKeyAuth: {
             type: "apiKey",
             in: "header",
             name: "X-API-Key",

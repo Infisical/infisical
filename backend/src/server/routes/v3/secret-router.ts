@@ -38,6 +38,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     url: "/raw",
     method: "GET",
     schema: {
+      description: "List secrets",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       querystring: z.object({
         workspaceId: z.string().trim().optional(),
         environment: z.string().trim().optional(),
@@ -121,6 +128,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     url: "/raw/:secretName",
     method: "GET",
     schema: {
+      description: "Get a secret by name",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         secretName: z.string().trim()
       }),
@@ -204,6 +218,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     url: "/raw/:secretName",
     method: "POST",
     schema: {
+      description: "Create secret",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         secretName: z.string().trim()
       }),
@@ -274,6 +295,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     url: "/raw/:secretName",
     method: "PATCH",
     schema: {
+      description: "Update secret",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         secretName: z.string().trim()
       }),
@@ -341,6 +369,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     url: "/raw/:secretName",
     method: "DELETE",
     schema: {
+      description: "Delete secret",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         secretName: z.string().trim()
       }),
