@@ -70,6 +70,6 @@ jobs:
         run: oasdiff breaking https://app.infisical.com/api/docs/json http://localhost:4000/api/docs/json --fail-on ERR
       - name: cleanup
         run: |
-          docker-compose -f "docker-compose.pg.yml" down
+          docker-compose -f "docker-compose.dev.yml" down
           docker stop infisical-api
           docker remove infisical-api
