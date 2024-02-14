@@ -5,9 +5,9 @@ import dotenv from "dotenv";
 import type { Knex } from "knex";
 import path from "path";
 
-// Update with your config settings.
+// Update with your config settings. .
 dotenv.config({
-  path: path.join(__dirname, "../../.env"),
+  path: path.join(__dirname, "../../../.env.migration"),
   debug: true
 });
 export default {

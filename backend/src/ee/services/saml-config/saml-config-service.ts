@@ -300,19 +300,9 @@ export const samlConfigServiceFactory = ({
     };
   };
 
-  const samlLogin = async ({
-    firstName,
-    email,
-    lastName,
-    authProvider,
-    orgId,
-    relayState,
-    isSignupAllowed
-  }: TSamlLoginDTO) => {
+  const samlLogin = async ({ firstName, email, lastName, authProvider, orgId, relayState }: TSamlLoginDTO) => {
     const appCfg = getConfig();
     let user = await userDAL.findUserByEmail(email);
-    const isSamlSignUpDisabled = !isSignupAllowed && !user;
-    if (isSamlSignUpDisabled) throw new BadRequestError({ message: "User signup disabled", name: "Saml SSO login" });
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new BadRequestError({ message: "Org not found" });

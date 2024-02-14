@@ -11,6 +11,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:workspaceId/secret-snapshots",
     schema: {
+      description: "Return project secret snapshots ids",
+      security: [
+        {
+          apiKeyAuth: [],
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim()
       }),
@@ -74,6 +81,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:workspaceId/audit-logs",
     schema: {
+      description: "Return audit logs",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim()
       }),

@@ -11,6 +11,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     url: "/",
     method: "POST",
     schema: {
+      description: "Create folders",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -57,6 +64,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     url: "/:folderId",
     method: "PATCH",
     schema: {
+      description: "Update folder",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         // old way this was name
         folderId: z.string()
@@ -109,6 +123,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     url: "/:folderId",
     method: "DELETE",
     schema: {
+      description: "Delete a folder",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         folderId: z.string()
       }),
@@ -158,6 +179,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     url: "/",
     method: "GET",
     schema: {
+      description: "Get folders",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),

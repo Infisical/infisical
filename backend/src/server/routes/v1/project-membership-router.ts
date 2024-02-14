@@ -10,6 +10,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     url: "/:workspaceId/memberships",
     method: "GET",
     schema: {
+      description: "Return project user memberships",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim()
       }),
@@ -96,6 +103,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     url: "/:workspaceId/memberships/:membershipId",
     method: "PATCH",
     schema: {
+      description: "Update project user membership",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim(),
         membershipId: z.string().trim()
@@ -141,6 +155,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     url: "/:workspaceId/memberships/:membershipId",
     method: "DELETE",
     schema: {
+      description: "Delete project user membership",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim(),
         membershipId: z.string().trim()

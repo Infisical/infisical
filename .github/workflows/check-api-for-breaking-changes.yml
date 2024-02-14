@@ -42,8 +42,28 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.21.5'
-      - name: Wait for containers to be stable
-        run: timeout 60s sh -c 'until docker ps | grep infisical-api | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
+      - name: Wait for container to be stable and check logs
+        run: |
+          SECONDS=0
+          HEALTHY=0
+          while [ $SECONDS -lt 60 ]; do
+            if docker ps | grep infisical-api | grep -q healthy; then
+              echo "Container is healthy."
+              HEALTHY=1
+              break
+            fi
+            echo "Waiting for container to be healthy... ($SECONDS seconds elapsed)"
+
+            docker logs infisical-api
+
+            sleep 2
+            SECONDS=$((SECONDS+2))
+          done
+      
+          if [ $HEALTHY -ne 1 ]; then
+            echo "Container did not become healthy in time"
+            exit 1
+          fi
       - name: Install openapi-diff
         run: go install github.com/tufin/oasdiff@latest
       - name: Running OpenAPI Spec diff action

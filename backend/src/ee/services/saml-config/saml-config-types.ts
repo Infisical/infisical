@@ -41,7 +41,6 @@ export type TSamlLoginDTO = {
   lastName?: string;
   authProvider: string;
   orgId: string;
-  isSignupAllowed: boolean;
   // saml thingy
   relayState?: string;
 };

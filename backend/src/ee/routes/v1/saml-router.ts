@@ -19,7 +19,6 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 type TSAMLConfig = {
   callbackUrl: string;
@@ -28,6 +27,7 @@ type TSAMLConfig = {
   cert: string;
   audience: string;
   wantAuthnResponseSigned?: boolean;
+  disableRequestedAuthnContext?: boolean;
 };
 
 export const registerSamlRouter = async (server: FastifyZodProvider) => {
@@ -77,6 +77,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               samlConfig.wantAuthnResponseSigned = false;
             }
             if (ssoConfig.authProvider === SamlProviders.AZURE_SAML) {
+              samlConfig.disableRequestedAuthnContext = true;
               if (req.body?.RelayState && JSON.parse(req.body.RelayState).spInitiated) {
                 samlConfig.audience = `spn:${ssoConfig.issuer}`;
               }
@@ -92,7 +93,6 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       // eslint-disable-next-line
       async (req, profile, cb) => {
         try {
-          const serverCfg = await getServerCfg();
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
           const { firstName } = profile;
           const email = profile?.email ?? (profile?.emailAddress as string); // emailRippling is added because in Rippling the field `email` reserved
@@ -105,7 +105,6 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             email,
             firstName: profile.firstName as string,
             lastName: profile.lastName as string,
-            isSignupAllowed: Boolean(serverCfg.allowSignUp),
             relayState: (req.body as { RelayState?: string }).RelayState,
             authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider as string,
             orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId as string
