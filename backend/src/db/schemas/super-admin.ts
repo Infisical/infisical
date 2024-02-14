@@ -11,10 +11,10 @@ export const SuperAdminSchema = z.object({
   id: z.string().uuid(),
   initialized: z.boolean().default(false).nullable().optional(),
   allowSignUp: z.boolean().default(true).nullable().optional(),
-  inviteOnlySignUp: z.boolean().default(false).nullable().optional(),
-  allowedSignUpDomain: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  inviteOnlySignUp: z.boolean().default(false).nullable().optional(),
+  allowedSignUpDomain: z.string().nullable().optional()
 });
 
 export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;
