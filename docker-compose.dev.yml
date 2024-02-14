@@ -55,14 +55,30 @@ services:
       POSTGRES_USER: infisical
       POSTGRES_DB: infisical-test
 
+  db-migration:
+    container_name: infisical-db-migration
+    depends_on:
+      - db
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    env_file: .env
+    environment:
+      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+    command: npm run migration:latest
+
   backend:
     container_name: infisical-dev-api
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+      db-migration:
+        condition: service_completed_successfully
     env_file:
       - .env
     ports:
