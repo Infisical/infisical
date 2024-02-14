@@ -26,7 +26,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { email } = req.body;
+
       const serverCfg = await getServerCfg();
+      if (!serverCfg.allowSignUp) {
+        throw new BadRequestError({
+          message: "Sign up is disabled!"
+        });
+      }
 
       if (serverCfg?.allowedSignUpDomain) {
         const domain = email.split("@")[1];
@@ -62,6 +68,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
+      const serverCfg = await getServerCfg();
+      if (!serverCfg.allowSignUp) {
+        throw new BadRequestError({
+          message: "Sign up is disabled!"
+        });
+      }
+
       const { token, user } = await server.services.signup.verifyEmailSignup(req.body.email, req.body.code);
       return { message: "Successfuly verified email", token, user };
     }
@@ -103,6 +116,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       const userAgent = req.headers["user-agent"];
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
+
+      const serverCfg = await getServerCfg();
+      if (!serverCfg.allowSignUp) {
+        throw new BadRequestError({
+          message: "Sign up is disabled!"
+        });
+      }
 
       const { user, accessToken, refreshToken } = await server.services.signup.completeEmailAccountSignup({
         ...req.body,
@@ -166,6 +186,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       const userAgent = req.headers["user-agent"];
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
+
+      const serverCfg = await getServerCfg();
+      if (!serverCfg.allowSignUp) {
+        throw new BadRequestError({
+          message: "Sign up is disabled!"
+        });
+      }
 
       const { user, accessToken, refreshToken } = await server.services.signup.completeAccountInvite({
         ...req.body,

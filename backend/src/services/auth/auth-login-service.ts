@@ -270,8 +270,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
 
     if (!user) {
       // Create a new user based on oAuth
-      if (!serverCfg?.allowSignUp)
-        throw new BadRequestError({ message: "User signup disabled", name: "Oauth 2 login" });
+      if (!serverCfg?.allowSignUp) throw new BadRequestError({ message: "Sign Up disabled", name: "Oauth 2 login" });
 
       if (serverCfg?.allowedSignUpDomain) {
         const domain = email.split("@")[1];
