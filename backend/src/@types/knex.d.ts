@@ -83,6 +83,9 @@ import {
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
+  TScimTokens,
+  TScimTokensInsert,
+  TScimTokensUpdate,
   TSecretApprovalPolicies,
   TSecretApprovalPoliciesApprovers,
   TSecretApprovalPoliciesApproversInsert,
@@ -261,6 +264,11 @@ declare module "knex/types/tables" {
       TIdentityProjectMemberships,
       TIdentityProjectMembershipsInsert,
       TIdentityProjectMembershipsUpdate
+    >;
+    [TableName.ScimToken]: Knex.CompositeTableType<
+      TScimTokens,
+      TScimTokensInsert,
+      TScimTokensUpdate
     >;
     [TableName.SecretApprovalPolicy]: Knex.CompositeTableType<
       TSecretApprovalPolicies,

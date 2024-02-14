@@ -7,15 +7,15 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.ScimToken))) {
     await knex.schema.createTable(TableName.ScimToken, (t) => {
       t.string("id", 36).primary().defaultTo(knex.fn.uuid());
-      t.bigInteger("tokenTTL").defaultTo(15552000).notNullable(); // 180 days second
-      t.datetime("tokenLastUsedAt");
+      t.bigInteger("ttl").defaultTo(15552000).notNullable(); // 180 days second
+      t.string("description").notNullable();
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
   }
 
-  await createOnUpdateTrigger(knex, TableName.IdentityAccessToken);
+  await createOnUpdateTrigger(knex, TableName.ScimToken);
 }
 
 export async function down(knex: Knex): Promise<void> {

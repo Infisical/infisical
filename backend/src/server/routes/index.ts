@@ -32,6 +32,8 @@ import { snapshotFolderDALFactory } from "@app/ee/services/secret-snapshot/snaps
 import { snapshotSecretDALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
+import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
+import { scimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
@@ -155,6 +157,7 @@ export const registerRoutes = async (
 
   const auditLogDAL = auditLogDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
+  const scimDAL = scimDALFactory(db);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -186,6 +189,13 @@ export const registerRoutes = async (
     licenseService,
     projectDAL,
     trustedIpDAL,
+    permissionService
+  });
+  const scimService = scimServiceFactory({ 
+    licenseService,
+    scimDAL,
+    userDAL,
+    orgDAL,
     permissionService
   });
   const auditLogQueue = auditLogQueueServiceFactory({
@@ -486,6 +496,7 @@ export const registerRoutes = async (
     secretScanning: secretScanningService,
     license: licenseService,
     trustedIp: trustedIpService,
+    scim: scimService,
     secretBlindIndex: secretBlindIndexService,
     telemetry: telemetryService
   });

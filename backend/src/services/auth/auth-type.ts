@@ -34,7 +34,7 @@ export enum ActorType { // would extend to AWS, Azure, ...
   SERVICE = "service",
   IDENTITY = "identity",
   Machine = "machine",
-  SCIM_IDP = "scimIdp"
+  SCIM_CLIENT = "scimClient"
 }
 
 export type AuthModeJwtTokenPayload = {

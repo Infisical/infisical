@@ -1,23 +1,22 @@
-import { useQuery } from "@tanstack/react-query";
-
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
+import { ScimTokenData } from "./types";
 
-import { GetScimTokenRes } from "./types";
-
-const scimKeys = {
-    getScimToken: (orgId: string) => [{ orgId }, "organization-scim-token"] as const,
+export const scimKeys = {
+    getScimTokens: (orgId: string) => [{ orgId }, "organization-scim-token"] as const,
 };
 
-export const useGetScimToken = (organizationId: string) => {
+export const useGetScimTokens = (organizationId: string) => {
     return useQuery({
-        queryKey: scimKeys.getScimToken(organizationId),
+        queryKey: scimKeys.getScimTokens(organizationId),
         queryFn: async () => {
             if (organizationId === "") {
                 return undefined;
             }
             
-            const { data: { scimToken } } = await apiRequest.get<GetScimTokenRes>(`/api/v1/scim/token/organizations/${organizationId}`);
-            return scimToken;
+            const { data: { scimTokens } } = await apiRequest.get<{ scimTokens: ScimTokenData[] }>(`/api/v1/scim/scim-tokens?organizationId=${organizationId}`);
+            
+            return scimTokens;
         },
         enabled: true
     });

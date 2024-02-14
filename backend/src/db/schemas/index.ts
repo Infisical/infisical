@@ -26,6 +26,7 @@ export * from "./project-memberships";
 export * from "./project-roles";
 export * from "./projects";
 export * from "./saml-configs";
+export * from "./scim-tokens";
 export * from "./secret-approval-policies";
 export * from "./secret-approval-policies-approvers";
 export * from "./secret-approval-request-secret-tags";

@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import fastifyPlugin from "fastify-plugin";
 import { ZodError } from "zod";
 
-import { BadRequestError, DatabaseError, InternalServerError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, InternalServerError, UnauthorizedError, ScimRequestError } from "@app/lib/errors";
 
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
   server.setErrorHandler((error, req, res) => {
@@ -20,6 +20,12 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         statusCode: 401,
         error: "PermissionDenied",
         message: `You are not allowed to ${error.action} on ${error.subjectType}`
+      });
+    } else if (error instanceof ScimRequestError) {
+      void res.status(error.status).send({
+        schemas: error.schemas,
+        status: error.status,
+        detail: error.detail
       });
     } else {
       void res.send(error);

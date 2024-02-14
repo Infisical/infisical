@@ -7,6 +7,7 @@ import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { ActorType, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
+import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 
 export type TAuthMode =
   | {
@@ -38,7 +39,9 @@ export type TAuthMode =
     }
   | {
       authMode: AuthMode.SCIM_TOKEN;
-      actor: ActorType.SCIM_IDP;
+      actor: ActorType.SCIM_CLIENT;
+      scimTokenId: string;
+      orgId: string;
     };
 
 const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
@@ -78,8 +81,8 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
     case AuthTokenType.SCIM_TOKEN:
       return {
         authMode: AuthMode.SCIM_TOKEN,
-        token: decodedToken,
-        actor: ActorType.SCIM_IDP
+        token: decodedToken as TScimTokenJwtPayload,
+        actor: ActorType.SCIM_CLIENT
       } as const;
     default:
       return { authMode: null, token: null } as const;
@@ -125,7 +128,8 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
         break;
       }
       case AuthMode.SCIM_TOKEN: {
-        req.auth = { authMode: AuthMode.SCIM_TOKEN, actor };
+        const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
+        req.auth = { authMode: AuthMode.SCIM_TOKEN, actor, scimTokenId, orgId };
         break;
       }
       default:
