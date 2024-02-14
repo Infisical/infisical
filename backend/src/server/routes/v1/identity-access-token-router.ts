@@ -5,6 +5,7 @@ export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvid
     url: "/token/renew",
     method: "POST",
     schema: {
+      description: "Renew access token",
       body: z.object({
         accessToken: z.string().trim()
       }),

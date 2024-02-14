@@ -14,36 +14,62 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
-      - name: Setup Node 20
-        uses: actions/setup-node@v3
-        with:
-          node-version: "20"
-      # uncomment this when testing locally using nektos/act
-      # - uses: KengoTODA/actions-setup-docker-compose@v1
-      #   if: ${{ env.ACT }}
-      #   name: Install `docker-compose` for local simulations
+      # - name: Setup Node 20
+      #   uses: actions/setup-node@v3
       #   with:
-      #     version: "2.14.2"
+      #     node-version: "20"
+      # uncomment this when testing locally using nektos/act
+      - uses: KengoTODA/actions-setup-docker-compose@v1
+        if: ${{ env.ACT }}
+        name: Install `docker-compose` for local simulations
+        with:
+          version: "2.14.2"
       - name: 📦Build the latest image
         run: docker build --tag infisical-api .
         working-directory: backend
       - name: Start postgres and redis
         run: touch .env && docker-compose -f docker-compose.pg.yml up -d db redis
       - name: Start the server
-        run: docker run --name infisical-api -d -p 4000:4000 -e DB_CONNECTION_URI=$DB_CONNECTION_URI -e REDIS_URL=$REDIS_URL -e JWT_AUTH_SECRET=$JWT_AUTH_SECRET --entrypoint '/bin/sh' infisical-api -c "npm run migration:latest && ls && node dist/main.mjs"
+        run: |
+            echo "SECRET_SCANNING_GIT_APP_ID=793712" >> .env
+            echo "SECRET_SCANNING_PRIVATE_KEY=some-random" >> .env
+            echo "SECRET_SCANNING_WEBHOOK_SECRET=some-random" >> .env
+            docker run --name infisical-api -d -p 4000:4000 -e DB_CONNECTION_URI=$DB_CONNECTION_URI -e REDIS_URL=$REDIS_URL -e JWT_AUTH_SECRET=$JWT_AUTH_SECRET --env-file .env --entrypoint '/bin/sh' infisical-api -c "npm run migration:latest && ls && node dist/main.mjs"
         env:
           REDIS_URL: redis://172.17.0.1:6379
           DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
           JWT_AUTH_SECRET: something-random
-      - name: Install openapi api diff
-        run: npm install -g openapi-diff
-      - name: Wait for containers to be stable
-        run: timeout 60s sh -c 'until docker ps | grep infisical-api | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
-      - name: Get changes made in API
-        id: openapi-diff
-        run: openapi-diff https://app.infisical.com/api/docs/json http://localhost:4000/api/docs/json
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21.5'
+      - name: Wait for container to be stable and check logs
+        run: |
+          SECONDS=0
+          HEALTHY=0
+          while [ $SECONDS -lt 60 ]; do
+            if docker ps | grep infisical-api | grep -q healthy; then
+              echo "Container is healthy."
+              HEALTHY=1
+              break
+            fi
+            echo "Waiting for container to be healthy... ($SECONDS seconds elapsed)"
+
+            docker logs infisical-api
+
+            sleep 2
+            SECONDS=$((SECONDS+2))
+          done
+      
+          if [ $HEALTHY -ne 1 ]; then
+            echo "Container did not become healthy in time"
+            exit 1
+          fi
+      - name: Install openapi-diff
+        run: go install github.com/tufin/oasdiff@latest
+      - name: Running OpenAPI Spec diff action
+        run: oasdiff breaking https://app.infisical.com/api/docs/json http://localhost:4000/api/docs/json --fail-on ERR
       - name: cleanup
-        run: | 
+        run: |
           docker-compose -f "docker-compose.pg.yml" down
           docker stop infisical-api
           docker remove infisical-api

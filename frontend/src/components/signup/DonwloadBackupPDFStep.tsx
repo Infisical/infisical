@@ -58,8 +58,8 @@ export default function DonwloadBackupPDFStep({
 
   return (
     <div className="flex flex-col items-center w-full h-full md:px-6 mx-auto mb-36 md:mb-16">
-      <p className="text-xl text-center font-medium flex justify-center text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
-        <FontAwesomeIcon icon={faWarning} className="ml-2 mr-3 pt-1 text-2xl text-bunker-200" />
+      <p className="text-xl text-center font-medium flex flex-col justify-center items-center text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
+        <FontAwesomeIcon icon={faWarning} className="ml-2 mr-3 pt-1 mb-6 text-6xl text-bunker-200" />
         {t("signup.step4-message")}
       </p>
       <div className="flex flex-col pb-2 bg-mineshaft-800 border border-mineshaft-600 items-center justify-center text-center lg:w-1/6 w-full md:min-w-[24rem] mt-8 max-w-md text-bunker-300 text-md rounded-md">
