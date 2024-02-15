@@ -137,6 +137,16 @@ export default function GitHubCreateIntegrationPage() {
     }
   }, [workspace]);
 
+
+  useEffect(() => {
+    if (integrationAuthGithubEnvs && integrationAuthGithubEnvs?.length > 0) {   
+      setValue("envId", integrationAuthGithubEnvs[0].envId);
+    }
+    else {
+      setValue("envId", undefined);
+    }
+  }, [integrationAuthGithubEnvs])
+
   const onFormSubmit = async (data: FormData) => {
     try {
       setIsLoading(true);
@@ -422,7 +432,7 @@ export default function GitHubCreateIntegrationPage() {
                         isError={Boolean(integrationAuthOrgs?.length && error?.message)}
                       >
                         <Select
-                          defaultValue={field.value}
+                          value={field.value}
                           onValueChange={onChange}
                           className="w-full border border-mineshaft-500"
                         >
@@ -448,7 +458,7 @@ export default function GitHubCreateIntegrationPage() {
                         isError={Boolean(error)}
                       >
                         <Select
-                          defaultValue={field.value}
+                          value={field.value}
                           onValueChange={(e) => {
                             setValue("repoName", e);
                             setValue(
@@ -495,7 +505,7 @@ export default function GitHubCreateIntegrationPage() {
                         isError={Boolean(integrationAuthGithubEnvs?.length || error?.message)}
                       >
                         <Select
-                          defaultValue={field.value}
+                          value={field.value}
                           onValueChange={onChange}
                           className="w-full border border-mineshaft-500"
                         >
