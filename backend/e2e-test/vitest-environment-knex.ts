@@ -15,7 +15,7 @@ import { AuthTokenType } from "@app/services/auth/auth-type";
 import { mockQueue } from "./mocks/queue";
 import { mockSmtpServer } from "./mocks/smtp";
 
-dotenv.config({ path: path.join(__dirname, "../.env.test") });
+dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 export default {
   name: "knex-env",
   transformMode: "ssr",
