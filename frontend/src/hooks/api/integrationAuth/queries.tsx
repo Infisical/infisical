@@ -40,6 +40,8 @@ const integrationAuthKeys = {
   }) => [{ integrationAuthId, accountId }, "integrationAuthChecklyGroups"] as const,
   getIntegrationAuthGithubOrgs: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuthGithubOrgs"] as const,
+  getIntegrationAuthGithubEnvs: (integrationAuthId: string, repoName: string, repoOwner: string) =>
+    [{ integrationAuthId, repoName, repoOwner }, "integrationAuthGithubOrgs"] as const,
   getIntegrationAuthQoveryOrgs: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuthQoveryOrgs"] as const,
   getIntegrationAuthQoveryProjects: ({
@@ -184,6 +186,22 @@ const fetchIntegrationAuthGithubOrgs = async (integrationAuthId: string) => {
   );
 
   return orgs;
+};
+
+const fetchIntegrationAuthGithubEnvs = async (
+  integrationAuthId: string,
+  repoName: string,
+  repoOwner: string
+) => {
+  if (!repoName || !repoOwner) return [];
+
+  const {
+    data: { envs }
+  } = await apiRequest.get<{ envs: Array<{ name: string; envId: string }> }>(
+    `/api/v1/integration-auth/${integrationAuthId}/github/envs?repoName=${repoName}&repoOwner=${repoOwner}`
+  );
+
+  return envs;
 };
 
 const fetchIntegrationAuthQoveryOrgs = async (integrationAuthId: string) => {
@@ -481,6 +499,22 @@ export const useGetIntegrationAuthGithubOrgs = (integrationAuthId: string) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthGithubOrgs(integrationAuthId),
     queryFn: () => fetchIntegrationAuthGithubOrgs(integrationAuthId),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthGithubEnvs = (
+  integrationAuthId: string,
+  repoName: string,
+  repoOwner: string
+) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthGithubEnvs(
+      integrationAuthId,
+      repoName,
+      repoOwner
+    ),
+    queryFn: () => fetchIntegrationAuthGithubEnvs(integrationAuthId, repoName, repoOwner),
     enabled: true
   });
 };

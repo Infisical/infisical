@@ -24,6 +24,7 @@ import {
   TIntegrationAuthAppsDTO,
   TIntegrationAuthBitbucketWorkspaceDTO,
   TIntegrationAuthChecklyGroupsDTO,
+  TIntegrationAuthGithubEnvsDTO,
   TIntegrationAuthGithubOrgsDTO,
   TIntegrationAuthNorthflankSecretGroupDTO,
   TIntegrationAuthQoveryEnvironmentsDTO,
@@ -401,13 +402,51 @@ export const integrationAuthServiceFactory = ({
       auth: accessToken
     });
 
-    const { data } = await octokit.request("GET /organizations", {
+    const { data } = await octokit.request("GET /user/orgs", {
       headers: {
         "X-GitHub-Api-Version": "2022-11-28"
       }
     });
     if (!data) return [];
-    return data.map(({ login: name, id: orgId }) => ({ name, orgId }));
+    return data.map(({ login: name, id: orgId }) => ({ name, orgId: String(orgId) }));
+  };
+
+  const getGithubEnvs = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    id,
+    repoOwner,
+    repoName
+  }: TIntegrationAuthGithubEnvsDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+
+    const octokit = new Octokit({
+      auth: accessToken
+    });
+
+    const {
+      data: { environments }
+    } = await octokit.request("GET /repos/{owner}/{repo}/environments", {
+      headers: {
+        "X-GitHub-Api-Version": "2022-11-28"
+      },
+      owner: repoOwner,
+      repo: repoName
+    });
+    if (!environments) return [];
+    return environments.map(({ id: envId, name }) => ({ name, envId: String(envId) }));
   };
 
   const getQoveryOrgs = async ({ actorId, actor, actorOrgId, id }: TIntegrationAuthQoveryOrgsDTO) => {
@@ -762,9 +801,7 @@ export const integrationAuthServiceFactory = ({
 
     while (hasNextPage) {
       // eslint-disable-next-line
-      const { data }: { data: { values: TBitbucketWorkspace[]; next: string } } = await request.get(
-        workspaceUrl,
-        {
+      const { data }: { data: { values: TBitbucketWorkspace[]; next: string } } = await request.get(workspaceUrl, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Accept-Encoding": "application/json"
@@ -941,6 +978,7 @@ export const integrationAuthServiceFactory = ({
     getVercelBranches,
     getApps,
     getGithubOrgs,
+    getGithubEnvs,
     getChecklyGroups,
     getQoveryApps,
     getQoveryEnvs,

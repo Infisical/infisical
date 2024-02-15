@@ -48,6 +48,12 @@ export type TIntegrationAuthGithubOrgsDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TIntegrationAuthGithubEnvsDTO = {
+  id: string;
+  repoName: string;
+  repoOwner: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TIntegrationAuthQoveryOrgsDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;

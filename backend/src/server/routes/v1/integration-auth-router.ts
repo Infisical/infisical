@@ -358,20 +358,48 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      try {
-        const orgs = await server.services.integrationAuth.getGithubOrgs({
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          id: req.params.integrationAuthId
-        });
-        if (!orgs) throw new Error("No organization found.");
+      const orgs = await server.services.integrationAuth.getGithubOrgs({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationAuthId
+      });
+      if (!orgs) throw new Error("No organization found.");
 
-        return { orgs: orgs || [] };
-      } catch (e) {
-        console.error(e);
-        return { orgs: [] };
+      return { orgs };
+    }
+  });
+
+  server.route({
+    url: "/:integrationAuthId/github/envs",
+    method: "GET",
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      querystring: z.object({
+        repoOwner: z.string().trim(),
+        repoName: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          envs: z.object({ name: z.string(), envId: z.string() }).array()
+        })
       }
+    },
+    handler: async (req) => {
+      const envs = await server.services.integrationAuth.getGithubEnvs({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationAuthId,
+        repoName: req.query.repoName,
+        repoOwner: req.query.repoOwner
+      });
+      if (!envs) throw new Error("No organization found.");
+
+      return { envs };
     }
   });
 
