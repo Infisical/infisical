@@ -1048,12 +1048,18 @@ const syncSecretsGitHub = async ({
   interface GitHubRepoKey {
     key_id: string;
     key: string;
+    id?: number | undefined;
+    url?: string | undefined;
+    title?: string | undefined;
+    created_at?: string | undefined;
   }
 
   interface GitHubSecret {
     name: string;
     created_at: string;
     updated_at: string;
+    visibility?: "all" | "private" | "selected";
+    selected_repositories_url?: string | undefined;
   }
 
   interface GitHubSecretRes {
@@ -1064,21 +1070,75 @@ const syncSecretsGitHub = async ({
     auth: accessToken
   });
 
-  // const user = (await octokit.request('GET /user', {})).data;
-  const repoPublicKey: GitHubRepoKey = (
-    await octokit.request("GET /repos/{owner}/{repo}/actions/secrets/public-key", {
-      owner: integration.owner as string,
-      repo: integration.app as string
-    })
-  ).data;
+  enum GithubScope {
+    Repo = "github-repo",
+    Org = "github-org",
+    Env = "github-env"
+  }
+
+  let repoPublicKey: GitHubRepoKey;
+
+  switch (integration.scope) {
+    case GithubScope.Org: {
+      const { data } = await octokit.request("GET /orgs/{org}/actions/secrets/public-key", {
+        org: integration.owner as string
+      });
+      repoPublicKey = data;
+      break;
+    }
+    case GithubScope.Env: {
+      const { data } = await octokit.request(
+        "GET /repositories/{repository_id}/environments/{environment_name}/secrets/public-key",
+        {
+          repository_id: Number(integration.targetServiceId),
+          environment_name: integration.targetEnvironmentId as string
+        }
+      );
+      repoPublicKey = data;
+      break;
+    }
+    default: {
+      const { data } = await octokit.request("GET /repos/{owner}/{repo}/actions/secrets/public-key", {
+        owner: integration.owner as string,
+        repo: integration.app as string
+      });
+      repoPublicKey = data;
+      break;
+    }
+  }
 
   // Get local copy of decrypted secrets. We cannot decrypt them as we dont have access to GH private key
-  let encryptedSecrets: GitHubSecretRes = (
-    await octokit.request("GET /repos/{owner}/{repo}/actions/secrets", {
-      owner: integration.owner as string,
-      repo: integration.app as string
-    })
-  ).data.secrets.reduce(
+  let encryptedSecrets: GitHubSecret[];
+
+  switch (integration.scope) {
+    case GithubScope.Org:
+      encryptedSecrets = (
+        await octokit.request("GET /orgs/{org}/actions/secrets", {
+          org: integration.owner as string
+        })
+      ).data.secrets;
+      break;
+
+    case GithubScope.Env:
+      encryptedSecrets = (
+        await octokit.request("GET /repositories/{repository_id}/environments/{environment_name}/secrets", {
+          repository_id: Number(integration.targetServiceId),
+          environment_name: integration.targetEnvironmentId as string
+        })
+      ).data.secrets;
+      break;
+
+    default:
+      encryptedSecrets = (
+        await octokit.request("GET /repos/{owner}/{repo}/actions/secrets", {
+          owner: integration.owner as string,
+          repo: integration.app as string
+        })
+      ).data.secrets;
+      break;
+  }
+
+  let encryptedSecretsMap: GitHubSecretRes = encryptedSecrets.reduce(
     (obj, secret) => ({
       ...obj,
       [secret.name]: secret
@@ -1086,7 +1146,8 @@ const syncSecretsGitHub = async ({
     {}
   );
 
-  encryptedSecrets = Object.keys(encryptedSecrets).reduce(
+  // filter out secrets based on prefix or suffix
+  encryptedSecretsMap = Object.keys(encryptedSecretsMap).reduce(
     (
       result: {
         [key: string]: GitHubSecret;
@@ -1097,7 +1158,7 @@ const syncSecretsGitHub = async ({
         (appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) &&
         (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)
       ) {
-        result[key] = encryptedSecrets[key];
+        result[key] = encryptedSecretsMap[key];
       }
       return result;
     },
@@ -1105,13 +1166,31 @@ const syncSecretsGitHub = async ({
   );
 
   await Promise.all(
-    Object.keys(encryptedSecrets).map(async (key) => {
-      if (!(key in secrets)) {
-        return octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
-          owner: integration.owner as string,
-          repo: integration.app as string,
-          secret_name: key
-        });
+    Object.keys(encryptedSecretsMap).map(async (key) => {
+      if (key in secrets) return;
+
+      switch (integration.scope) {
+        case GithubScope.Org:
+          return octokit.request("DELETE /orgs/{org}/actions/secrets/{secret_name}", {
+            org: integration.owner as string,
+            secret_name: key
+          });
+
+        case GithubScope.Env:
+          return octokit.request(
+            "DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
+            {
+              repository_id: Number(integration.targetServiceId),
+              environment_name: integration.targetEnvironmentId as string,
+              secret_name: key
+            }
+          );
+        default:
+          return octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+            owner: integration.owner as string,
+            repo: integration.app as string,
+            secret_name: key
+          });
       }
     })
   );
@@ -1130,13 +1209,35 @@ const syncSecretsGitHub = async ({
         // convert encrypted Uint8Array to base64
         const encryptedSecret = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
 
-        await octokit.request("PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
-          owner: integration.owner as string,
-          repo: integration.app as string,
-          secret_name: key,
-          encrypted_value: encryptedSecret,
-          key_id: repoPublicKey.key_id
-        });
+        switch (integration.scope) {
+          case GithubScope.Org:
+            return octokit.request("PUT /orgs/{org}/actions/secrets/{secret_name}", {
+              org: integration.owner as string,
+              secret_name: key,
+              visibility: "all",
+              encrypted_value: encryptedSecret,
+              key_id: repoPublicKey.key_id
+            });
+          case GithubScope.Env:
+            return octokit.request(
+              "PUT /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
+              {
+                repository_id: Number(integration.targetServiceId),
+                environment_name: integration.targetEnvironmentId as string,
+                secret_name: key,
+                encrypted_value: encryptedSecret,
+                key_id: repoPublicKey.key_id
+              }
+            );
+          default:
+            return octokit.request("PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+              owner: integration.owner as string,
+              repo: integration.app as string,
+              secret_name: key,
+              encrypted_value: encryptedSecret,
+              key_id: repoPublicKey.key_id
+            });
+        }
       });
     })
   );
