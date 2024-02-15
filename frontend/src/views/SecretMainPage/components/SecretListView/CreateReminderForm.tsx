@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faClock } from "@fortawesome/free-solid-svg-icons";
+import { faClock, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
@@ -9,20 +9,28 @@ import { z } from "zod";
 import { Button, FormControl, Input, Modal, ModalContent, TextArea } from "@app/components/v2";
 
 const ReminderFormSchema = z.object({
-  note: z.string().optional(),
+  note: z.string().optional().nullable(),
   days: z
     .number()
     .min(1, { message: "Must be at least 1 day" })
     .max(365, { message: "Must be less than 365 days" })
+    .nullable()
 });
 export type TReminderFormSchema = z.infer<typeof ReminderFormSchema>;
 
 interface ReminderFormProps {
   isOpen: boolean;
+  repeatDays?: number | null;
+  note?: string | null;
   onOpenChange: (isOpen: boolean, data?: TReminderFormSchema) => void;
 }
 
-export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) => {
+export const CreateReminderForm = ({
+  isOpen,
+  onOpenChange,
+  repeatDays,
+  note
+}: ReminderFormProps) => {
   const {
     register,
     control,
@@ -31,32 +39,31 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
     handleSubmit,
     formState: { isSubmitting }
   } = useForm<TReminderFormSchema>({
+    defaultValues: {
+      days: repeatDays || undefined,
+      note: note || ""
+    },
     resolver: zodResolver(ReminderFormSchema)
   });
 
   const handleFormSubmit = async (data: TReminderFormSchema) => {
-    console.log(data);
     onOpenChange(false, data);
   };
 
   useEffect(() => {
     if (isOpen) {
-      reset();
+      reset({
+        days: repeatDays || undefined,
+        note: note || ""
+      });
     }
   }, [isOpen]);
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
-        title="Create secret reminder"
-        // ? QUESTION: Should this specifically say its for secret rotation?
-        // ? Or should we be call it something more generic?
-        subTitle={
-          <div>
-            Set up a reminder for when this secret should be rotated. Everyone with access to this
-            project will be notified when the reminder is triggered.
-          </div>
-        }
+        title={`${repeatDays ? "Update" : "Create"} reminder`}
+        subTitle="Set up a reminder for when this secret should be rotated. Everyone with access to this project will be notified when the reminder is triggered."
       >
         <form onSubmit={handleSubmit(handleFormSubmit)}>
           <div className="space-y-2">
@@ -76,6 +83,7 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
                         onChange={(el) => setValue("days", parseInt(el.target.value, 10))}
                         type="number"
                         placeholder="31"
+                        value={field.value || undefined}
                       />
                     </FormControl>
                     <div
@@ -84,7 +92,8 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
                         field.value ? "opacity-60" : "opacity-0"
                       )}
                     >
-                      Every {field.value > 1 ? `${field.value} days` : "day"}
+                      A reminder will be sent every{" "}
+                      {field.value && field.value > 1 ? `${field.value} days` : "day"}
                     </div>
                   </>
                 )}
@@ -102,17 +111,27 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
               />
             </FormControl>
           </div>
-          <div className="mt-7 flex items-center">
+          <div className="mt-7 flex items-center space-x-4">
             <Button
               isDisabled={isSubmitting}
               isLoading={isSubmitting}
               key="layout-create-project-submit"
-              className="mr-4"
+              className=""
               leftIcon={<FontAwesomeIcon icon={faClock} />}
               type="submit"
             >
-              Create reminder
+              {repeatDays ? "Update" : "Create"} reminder
             </Button>
+            {repeatDays && (
+              <Button
+                key="layout-cancel-create-project"
+                onClick={() => onOpenChange(false, { days: null, note: null })}
+                colorSchema="danger"
+                leftIcon={<FontAwesomeIcon icon={faTrash} />}
+              >
+                Delete reminder
+              </Button>
+            )}
             <Button
               key="layout-cancel-create-project"
               onClick={() => onOpenChange(false)}
