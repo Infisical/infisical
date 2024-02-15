@@ -111,12 +111,11 @@ export const SecretItem = memo(
       resolver: zodResolver(formSchema)
     });
 
-    const overrideAction = watch("overrideAction");
-    const hasComment = Boolean(watch("comment"));
-    const hasReminder = Boolean(watch("reminderRepeatDays"));
-
     const secretReminderRepeatDays = watch("reminderRepeatDays");
     const secretReminderNote = watch("reminderNote");
+
+    const overrideAction = watch("overrideAction");
+    const hasComment = Boolean(watch("comment"));
 
     const selectedTags = watch("tags", []);
     const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
@@ -385,7 +384,7 @@ export const SecretItem = memo(
                     <IconButton
                       className={twMerge(
                         "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6",
-                        hasReminder && "w-5 text-primary"
+                        Boolean(secretReminderRepeatDays) && "w-5 text-primary"
                       )}
                       variant="plain"
                       size="md"
@@ -393,7 +392,7 @@ export const SecretItem = memo(
                     >
                       <Tooltip
                         content={
-                          hasReminder
+                          secretReminderRepeatDays && secretReminderRepeatDays > 0
                             ? `Every ${secretReminderRepeatDays} day${
                                 Number(secretReminderRepeatDays) > 1 ? "s" : ""
                               }
