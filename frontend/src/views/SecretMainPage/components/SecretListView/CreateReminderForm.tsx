@@ -75,7 +75,7 @@ export const CreateReminderForm = ({
                   <>
                     <FormControl
                       className="mb-0"
-                      label="How many days between"
+                      label="Reminder Interval (in days)"
                       isError={Boolean(fieldState.error)}
                       errorText={fieldState.error?.message || ""}
                     >
