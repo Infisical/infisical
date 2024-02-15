@@ -45,4 +45,4 @@ jobs:
           ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
       - name: cleanup
         run: |
-          docker-compose -f "docker-compose.pg.yml" down
+          docker-compose -f "docker-compose.dev.yml" down
