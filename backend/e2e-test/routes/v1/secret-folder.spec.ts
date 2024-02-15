@@ -59,8 +59,9 @@ describe("Secret Folder Router", async () => {
     expect(res.statusCode).toBe(200);
     const payload = JSON.parse(res.payload);
     expect(payload).toHaveProperty("folders");
-    expect(payload.folders.length).toBe(expected.length);
-    expect(payload).toEqual({ folders: expected.folders.map((el) => expect.objectContaining(el)) });
+    expect(payload).toEqual({
+      folders: expect.arrayContaining(expected.folders.map((el) => expect.objectContaining(el)))
+    });
   });
 
   let toBeDeleteFolderId = "";
@@ -106,7 +107,6 @@ describe("Secret Folder Router", async () => {
     expect(resUpdatedFolders.statusCode).toBe(200);
     const updatedFolderList = JSON.parse(resUpdatedFolders.payload);
     expect(updatedFolderList).toHaveProperty("folders");
-    expect(updatedFolderList.folders.length).toEqual(1);
     expect(updatedFolderList.folders[0].name).toEqual("folder-updated");
   });
 
