@@ -66,6 +66,11 @@ const schema = yup.object({
     then: yup.array(yup.string().required()).min(1, "Select at least one repositories")
   }),
 
+  repoId: yup.mixed().when("scope", {
+    is: "github-env",
+    then: yup.string().required("Repository is required")
+  }),
+
   repoName: yup.mixed().when("scope", {
     is: "github-env",
     then: yup.string().required("Repository is required")
@@ -137,15 +142,13 @@ export default function GitHubCreateIntegrationPage() {
     }
   }, [workspace]);
 
-
   useEffect(() => {
-    if (integrationAuthGithubEnvs && integrationAuthGithubEnvs?.length > 0) {   
+    if (integrationAuthGithubEnvs && integrationAuthGithubEnvs?.length > 0) {
       setValue("envId", integrationAuthGithubEnvs[0].envId);
-    }
-    else {
+    } else {
       setValue("envId", undefined);
     }
-  }, [integrationAuthGithubEnvs])
+  }, [integrationAuthGithubEnvs]);
 
   const onFormSubmit = async (data: FormData) => {
     try {
@@ -187,8 +190,7 @@ export default function GitHubCreateIntegrationPage() {
             secretPath: data.secretPath,
             sourceEnvironment: data.selectedSourceEnvironment,
             scope: data.scope,
-            owner: integrationAuthOrgs?.find(e=>e.orgId === data.orgId)?.name, // repo owner
-            targetServiceId: data.orgId, // github org id
+            owner: integrationAuthOrgs?.find((e) => e.orgId === data.orgId)?.name,
             metadata: {
               secretSuffix: data.secretSuffix
             }
@@ -202,9 +204,11 @@ export default function GitHubCreateIntegrationPage() {
             secretPath: data.secretPath,
             sourceEnvironment: data.selectedSourceEnvironment,
             scope: data.scope,
-            app: repoName, // repo name // TODO: CHANGE THIS STATE INTO YUP
-            owner: repoOwner, // repo owner
-            targetEnvironmentId: data.envId, // github environment id
+            app: repoName,
+            owner: repoOwner,
+            targetService: "Repository",
+            targetServiceId: data.repoId, // github repo id is needed for sync secret
+            targetEnvironmentId: data.envId,
             metadata: {
               secretSuffix: data.secretSuffix
             }
@@ -356,7 +360,10 @@ export default function GitHubCreateIntegrationPage() {
                               <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
                                 {repoIds.length === 1
                                   ? integrationAuthApps?.reduce(
-                                    (acc, { appId, name, owner }) => repoIds[0] === appId ? `${owner}/${name}`: acc, "")
+                                      (acc, { appId, name, owner }) =>
+                                        repoIds[0] === appId ? `${owner}/${name}` : acc,
+                                      ""
+                                    )
                                   : `${repoIds.length} repositories selected`}
                                 <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
                               </div>
@@ -448,7 +455,7 @@ export default function GitHubCreateIntegrationPage() {
                 {scope === "github-env" && (
                   <Controller
                     control={control}
-                    name="repoName"
+                    name="repoId"
                     render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                       <FormControl
                         label="Repository"
@@ -458,12 +465,9 @@ export default function GitHubCreateIntegrationPage() {
                         <Select
                           value={field.value}
                           onValueChange={(e) => {
-                            setValue("repoName", e);
-                            setValue(
-                              "repoOwner",
-                              (integrationAuthApps.find((app) => app.name === e)
-                                ?.owner as string) || ""
-                            );
+                            const selectedRepo = integrationAuthApps.find((app) => app.appId === e);
+                            setValue("repoName", selectedRepo?.name);
+                            setValue("repoOwner", selectedRepo?.owner);
                             onChange(e);
                           }}
                           className="w-full border border-mineshaft-500"
@@ -472,7 +476,7 @@ export default function GitHubCreateIntegrationPage() {
                             integrationAuthApps.map((app) => {
                               return (
                                 <SelectItem
-                                  value={app.name as string}
+                                  value={app.appId as string}
                                   key={`repo-id-${app.appId}`}
                                   className="w-[28.4rem] text-sm"
                                 >
@@ -597,7 +601,7 @@ export default function GitHubCreateIntegrationPage() {
         />
       ) : (
         <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
-          <FontAwesomeIcon icon={faBugs} className="inline li my-2 text-6xl" />
+          <FontAwesomeIcon icon={faBugs} className="li my-2 inline text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
