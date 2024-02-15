@@ -1,3 +1,4 @@
+// eslint-disable-next-line
 import "ts-node/register";
 
 import dotenv from "dotenv";
