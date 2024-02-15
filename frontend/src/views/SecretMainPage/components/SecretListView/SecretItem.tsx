@@ -115,6 +115,9 @@ export const SecretItem = memo(
     const hasComment = Boolean(watch("comment"));
     const hasReminder = Boolean(watch("reminderRepeatDays"));
 
+    const secretReminderRepeatDays = watch("reminderRepeatDays");
+    const secretReminderNote = watch("reminderNote");
+
     const selectedTags = watch("tags", []);
     const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
       (prev, curr) => ({ ...prev, [curr.id]: true }),
@@ -191,6 +194,8 @@ export const SecretItem = memo(
     return (
       <>
         <CreateReminderForm
+          repeatDays={secretReminderRepeatDays}
+          note={secretReminderNote}
           isOpen={createReminderFormOpen}
           onOpenChange={(_, data) => {
             setCreateReminderFormOpen.toggle();
@@ -386,16 +391,18 @@ export const SecretItem = memo(
                       size="md"
                       ariaLabel="add-reminder"
                     >
-                      <Tooltip content="Reminder">
+                      <Tooltip
+                        content={
+                          hasReminder
+                            ? `Every ${secretReminderRepeatDays} day${
+                                Number(secretReminderRepeatDays) > 1 ? "s" : ""
+                              }
+                          `
+                            : "Reminder"
+                        }
+                      >
                         <FontAwesomeIcon
-                          onClick={() => {
-                            if (!hasReminder) {
-                              setCreateReminderFormOpen.on();
-                            } else {
-                              setValue("reminderRepeatDays", null, { shouldDirty: true });
-                              setValue("reminderNote", null, { shouldDirty: true });
-                            }
-                          }}
+                          onClick={() => setCreateReminderFormOpen.on()}
                           icon={faClock}
                         />
                       </Tooltip>
