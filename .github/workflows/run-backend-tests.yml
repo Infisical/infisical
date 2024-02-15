@@ -42,6 +42,7 @@ jobs:
           REDIS_URL: redis://172.17.0.1:6379
           DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
           AUTH_SECRET: something-random
+          ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
       - name: cleanup
         run: |
           docker-compose -f "docker-compose.pg.yml" down
