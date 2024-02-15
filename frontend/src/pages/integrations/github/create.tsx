@@ -355,10 +355,8 @@ export default function GitHubCreateIntegrationPage() {
                             {integrationAuthApps.length > 0 ? (
                               <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
                                 {repoIds.length === 1
-                                  ? integrationAuthApps?.find(
-                                      (integrationAuthApp) =>
-                                        repoIds[0] === String(integrationAuthApp.appId)
-                                    )?.name
+                                  ? integrationAuthApps?.reduce(
+                                    (acc, { appId, name, owner }) => repoIds[0] === appId ? `${owner}/${name}`: acc, "")
                                   : `${repoIds.length} repositories selected`}
                                 <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
                               </div>
@@ -406,7 +404,7 @@ export default function GitHubCreateIntegrationPage() {
                                     iconPos="left"
                                     className="w-[28.4rem] text-sm"
                                   >
-                                    {integrationAuthApp.name}
+                                    {integrationAuthApp.owner}/{integrationAuthApp.name}
                                   </DropdownMenuItem>
                                 );
                               })
@@ -478,7 +476,7 @@ export default function GitHubCreateIntegrationPage() {
                                   key={`repo-id-${app.appId}`}
                                   className="w-[28.4rem] text-sm"
                                 >
-                                  {app.name}
+                                  {app.owner}/{app.name}
                                 </SelectItem>
                               );
                             })
