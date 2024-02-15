@@ -1,2 +1,3 @@
 vitest-environment-infisical.ts
 vitest.config.ts
+vitest.e2e.config.ts

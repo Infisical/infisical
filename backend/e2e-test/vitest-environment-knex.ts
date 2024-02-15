@@ -1,26 +1,29 @@
-// import { main } from "@app/server/app";
-import { initEnvConfig } from "@app/lib/config/env";
+import "ts-node/register";
+
 import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
 import knex from "knex";
 import path from "path";
-import { mockSmtpServer } from "./mocks/smtp";
-import { initLogger } from "@app/lib/logger";
-import jwt from "jsonwebtoken";
 
-import "ts-node/register";
-import { main } from "@app/server/app";
-import { mockQueue } from "./mocks/queue";
-import { AuthTokenType } from "@app/services/auth/auth-type";
 import { seedData1 } from "@app/db/seed-data";
+import { initEnvConfig } from "@app/lib/config/env";
+import { initLogger } from "@app/lib/logger";
+import { main } from "@app/server/app";
+import { AuthTokenType } from "@app/services/auth/auth-type";
+
+import { mockQueue } from "./mocks/queue";
+import { mockSmtpServer } from "./mocks/smtp";
 
 dotenv.config({ path: path.join(__dirname, "../.env.test") });
 export default {
   name: "knex-env",
   transformMode: "ssr",
   async setup() {
+    const logger = await initLogger();
+    const cfg = initEnvConfig(logger);
     const db = knex({
       client: "pg",
-      connection: process.env.DB_CONNECTION_URI,
+      connection: cfg.DB_CONNECTION_URI,
       migrations: {
         directory: path.join(__dirname, "../src/db/migrations"),
         extension: "ts",
@@ -37,8 +40,6 @@ export default {
       await db.seed.run();
       const smtp = mockSmtpServer();
       const queue = mockQueue();
-      const logger = await initLogger();
-      const cfg = initEnvConfig(logger);
       const server = await main({ db, smtp, logger, queue });
       // @ts-expect-error type
       globalThis.testServer = server;
