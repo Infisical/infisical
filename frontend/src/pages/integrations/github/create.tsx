@@ -63,7 +63,7 @@ const schema = yup.object({
 
   repoIds: yup.mixed().when("scope", {
     is: "github-repo",
-    then: yup.array(yup.string().required()).min(1, "Select atleast one repositories")
+    then: yup.array(yup.string().required()).min(1, "Select at least one repositories")
   }),
 
   repoName: yup.mixed().when("scope", {
@@ -177,6 +177,7 @@ export default function GitHubCreateIntegrationPage() {
             secretPath: data.secretPath,
             sourceEnvironment: data.selectedSourceEnvironment,
             scope: data.scope,
+            owner: integrationAuthOrgs?.find(e=>e.orgId === data.orgId)?.name, // repo owner
             targetServiceId: data.orgId, // github org id
             metadata: {
               secretSuffix: data.secretSuffix
@@ -588,7 +589,7 @@ export default function GitHubCreateIntegrationPage() {
         />
       ) : (
         <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
-          <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
+          <FontAwesomeIcon icon={faBugs} className="inline li my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a

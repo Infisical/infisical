@@ -11,31 +11,23 @@ export type TCloudIntegration = {
 
 export type TIntegration = {
   id: string;
-  projectId: string;
-  envId: string;
-  environment: { slug: string; name: string; id: string };
   isActive: boolean;
-  url: any;
-  app: string;
-  appId: string;
-  targetEnvironment: string;
-  targetEnvironmentId: string;
-  targetService: string;
-  targetServiceId: string;
-  owner: string;
-  path: string;
-  region: string;
+  url?: string;
+  app?: string;
+  appId?: string;
+  targetEnvironment?: string;
+  targetEnvironmentId?: string;
+  targetService?: string;
+  targetServiceId?: string;
+  owner?: string;
+  path?: string;
+  region?: string;
+  scope?: string;
   integration: string;
-  integrationAuth: string;
+  metadata?: Record<string, any>;
+  integrationAuthId: string;
+  envId: string;
   secretPath: string;
   createdAt: string;
   updatedAt: string;
-  __v: number;
-  metadata?: {
-    secretSuffix?: string;
-    scope: string;
-    org: string;
-    project: string;
-    environment: string;
-  };
 };
