@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { z } from "zod";
 
 import { SecretKeyEncoding, TProjectKeys } from "@app/db/schemas";
@@ -50,16 +51,30 @@ const symmetricDecrypt = ({
   key,
   isApprovalSecret
 }: TDecryptSymmetricInput & { keyEncoding: SecretKeyEncoding; isApprovalSecret: boolean }) => {
-  if (keyEncoding === SecretKeyEncoding.UTF8 || isApprovalSecret) {
-    const data = decryptSymmetric128BitHexKeyUTF8({ key, iv, tag, ciphertext });
-    return data;
-  }
-  if (keyEncoding === SecretKeyEncoding.BASE64) {
-    const data = decryptSymmetric({ key, iv, tag, ciphertext });
-    return data;
-  }
+  try {
+    if (keyEncoding === SecretKeyEncoding.UTF8 || isApprovalSecret) {
+      const data = decryptSymmetric128BitHexKeyUTF8({ key, iv, tag, ciphertext });
+      return data;
+    }
+    if (keyEncoding === SecretKeyEncoding.BASE64) {
+      const data = decryptSymmetric({ key, iv, tag, ciphertext });
+      return data;
+    }
+    throw new Error("BAD_ENCODING");
+  } catch (err) {
+    if (err instanceof Error && err.message === "BAD_ENCODING") {
+      throw new Error("Invalid key encoding, cannot decrypt secret!");
+    }
 
-  throw new Error("Missing both encryption keys");
+    // This is taken directly from our frontend secret decryption logic.
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"));
+    decipher.setAuthTag(Buffer.from(tag, "base64"));
+
+    let data = decipher.update(ciphertext, "base64", "utf8");
+    data += decipher.final("utf8");
+
+    return data;
+  }
 };
 
 export const decryptSecrets = (
