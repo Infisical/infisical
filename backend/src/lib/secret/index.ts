@@ -2,9 +2,9 @@ import crypto from "crypto";
 import { z } from "zod";
 
 import { TProjectKeys } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 
 import { decryptAsymmetric } from "../crypto";
-// import { decryptSymmetric128BitHexKeyUTF8, TDecryptSymmetricInput } from "../crypto/encryption";
 
 export enum SecretDocType {
   Secret = "secret",
@@ -12,24 +12,23 @@ export enum SecretDocType {
   ApprovalSecret = "approvalSecret"
 }
 
-const PartialSecretSchema = z.object({
-  id: z.string(),
-  secretKeyCiphertext: z.string(),
-  secretKeyIV: z.string(),
-  secretKeyTag: z.string(),
+export interface TPartialSecret {
+  id: string;
+  secretKeyCiphertext: string;
+  secretKeyIV: string;
+  secretKeyTag: string;
 
-  secretValueCiphertext: z.string(),
-  secretValueIV: z.string(),
-  secretValueTag: z.string(),
+  secretValueCiphertext: string;
+  secretValueIV: string;
+  secretValueTag: string;
 
-  secretCommentCiphertext: z.string().nullish(),
-  secretCommentIV: z.string().nullish(),
-  secretCommentTag: z.string().nullish(),
+  secretCommentCiphertext?: string | null;
+  secretCommentIV?: string | null;
+  secretCommentTag?: string | null;
 
-  docType: z.nativeEnum(SecretDocType),
-
-  keyEncoding: z.string()
-});
+  docType: SecretDocType;
+  keyEncoding: string;
+}
 
 const PartialDecryptedSecretSchema = z.object({
   id: z.string(),
@@ -39,45 +38,7 @@ const PartialDecryptedSecretSchema = z.object({
 
   docType: z.nativeEnum(SecretDocType)
 });
-
-export type TPartialSecret = z.infer<typeof PartialSecretSchema>;
 export type TPartialDecryptedSecret = z.infer<typeof PartialDecryptedSecretSchema>;
-
-// const symmetricDecrypt = ({
-//   keyEncoding,
-//   ciphertext,
-//   tag,
-//   iv,
-//   key,
-//   isApprovalSecret
-// }: TDecryptSymmetricInput & { keyEncoding: SecretKeyEncoding; isApprovalSecret: boolean }) => {
-//   try {
-//     if (keyEncoding === SecretKeyEncoding.UTF8 || isApprovalSecret) {
-//       const data = decryptSymmetric128BitHexKeyUTF8({ key, iv, tag, ciphertext });
-//       return data;
-//     }
-//     if (keyEncoding === SecretKeyEncoding.BASE64) {
-//       const data = decryptSymmetric({ key, iv, tag, ciphertext });
-//       return data;
-//     }
-//     throw new Error("BAD_ENCODING");
-//   } catch (err) {
-//     if (err instanceof Error && err.message === "BAD_ENCODING") {
-//       throw new Error("Invalid key encoding, cannot decrypt secret!");
-//     }
-
-//     // This is taken directly from our frontend secret decryption logic.
-//     const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"));
-//     decipher.setAuthTag(Buffer.from(tag, "base64"));
-
-//     let data = decipher.update(ciphertext, "base64", "utf8");
-//     data += decipher.final("utf8");
-
-//     console.log(data);
-
-//     return data;
-//   }
-// };
 
 const decryptSecret = ({
   ciphertext,
@@ -115,19 +76,15 @@ export const decryptSecrets = (
     privateKey
   });
 
-  const secrets: TPartialDecryptedSecret[] = [];
+  const decryptedSecrets: TPartialDecryptedSecret[] = [];
 
   encryptedSecrets.forEach((encSecret) => {
     try {
-      console.log(encSecret.keyEncoding);
-
       const secretKey = decryptSecret({
         ciphertext: encSecret.secretKeyCiphertext,
         iv: encSecret.secretKeyIV,
         tag: encSecret.secretKeyTag,
         key
-        //   keyEncoding: encSecret.keyEncoding as SecretKeyEncoding,
-        //   isApprovalSecret: encSecret.docType === SecretDocType.ApprovalSecret
       });
 
       const secretValue = decryptSecret({
@@ -135,8 +92,6 @@ export const decryptSecrets = (
         iv: encSecret.secretValueIV,
         tag: encSecret.secretValueTag,
         key
-        //   keyEncoding: encSecret.keyEncoding as SecretKeyEncoding,
-        //   isApprovalSecret: encSecret.docType === SecretDocType.ApprovalSecret
       });
 
       const secretComment =
@@ -146,8 +101,6 @@ export const decryptSecrets = (
               iv: encSecret.secretCommentIV,
               tag: encSecret.secretCommentTag,
               key
-              // keyEncoding: encSecret.keyEncoding as SecretKeyEncoding,
-              // isApprovalSecret: encSecret.docType === SecretDocType.ApprovalSecret
             })
           : "";
 
@@ -159,12 +112,12 @@ export const decryptSecrets = (
         docType: encSecret.docType
       };
 
-      secrets.push(decryptedSecret);
+      decryptedSecrets.push(PartialDecryptedSecretSchema.parse(decryptedSecret));
     } catch (err) {
-      // This is ok, because we check that the decrypted secrets array length is the same as the encrypted secrets array length.
-      console.log(`[${encSecret.id}] - failed to decrypt`, err);
+      // This is ok, because we check that the decrypted secrets array length is the same as the encrypted secrets input array length.
+      logger.error(`[${encSecret.id}] - failed to decrypt`, err);
     }
   });
 
-  return secrets;
+  return decryptedSecrets;
 };
