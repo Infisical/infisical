@@ -143,7 +143,12 @@ export const projectQueueFactory = ({
         secrets.push(...approvalSecrets.map((el) => ({ ...el, docType: SecretDocType.ApprovalSecret })));
       }
 
-      const decryptedSecrets = decryptSecrets(secrets, userPrivateKey, oldProjectKey);
+      const decryptedSecrets = decryptSecrets(
+        // secrets.filter((s) => s.keyEncoding === "base64"),
+        secrets,
+        userPrivateKey,
+        oldProjectKey
+      );
 
       console.log(
         decryptedSecrets
