@@ -4,6 +4,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -21,6 +22,7 @@ type TSecretImportServiceFactoryDep = {
   secretImportDAL: TSecretImportDALFactory;
   folderDAL: TSecretFolderDALFactory;
   secretDAL: Pick<TSecretDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "isProjectBeingUpgraded">;
   projectEnvDAL: TProjectEnvDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
@@ -34,6 +36,7 @@ export const secretImportServiceFactory = ({
   projectEnvDAL,
   permissionService,
   folderDAL,
+  projectDAL,
   secretDAL
 }: TSecretImportServiceFactoryDep) => {
   const createImport = async ({
@@ -61,6 +64,14 @@ export const secretImportServiceFactory = ({
         secretPath: data.path
       })
     );
+
+    const isProjectBeingUpgraded = await projectDAL.isProjectBeingUpgraded(projectId);
+
+    if (isProjectBeingUpgraded) {
+      throw new BadRequestError({
+        message: "Project is currently being upgraded, and secrets cannot be written. Please try again"
+      });
+    }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Create import" });

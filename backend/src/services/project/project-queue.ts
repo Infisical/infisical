@@ -150,12 +150,6 @@ export const projectQueueFactory = ({
         oldProjectKey
       );
 
-      console.log(
-        decryptedSecrets
-          .filter((s) => s.docType === SecretDocType.ApprovalSecret)
-          .map((s) => `${s.secretKey} - ${s.secretValue}`)
-      );
-
       if (secrets.length !== decryptedSecrets.length) {
         throw new Error("Failed to decrypt some secret versions");
       }
@@ -396,10 +390,10 @@ export const projectQueueFactory = ({
 
         await projectDAL.setProjectUpgradeStatus(data.projectId, null, tx);
 
-        throw new Error("Transaction was successful!");
+        // await new Promise((resolve) => setTimeout(resolve, 60_000));
+        // throw new Error("Transaction was successful!");
       });
     } catch (err) {
-      console.log(err);
       const [project] = await projectDAL
         .find({
           id: data.projectId,

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { ProjectsSchema, ProjectUpgradeStatus, TableName, TProjectsUpdate } from "@app/db/schemas";
+import { ProjectsSchema, ProjectUpgradeStatus, ProjectVersion, TableName, TProjectsUpdate } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
@@ -160,12 +160,18 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const isProjectBeingUpgraded = async (projectId: string) => {
+    const project = await projectOrm.findById(projectId);
+    return project.upgradeStatus === ProjectUpgradeStatus.InProgress && project.version === ProjectVersion.V1;
+  };
+
   return {
     ...projectOrm,
     findAllProjects,
     setProjectUpgradeStatus,
     findAllProjectsByIdentity,
     findProjectGhostUser,
-    findProjectById
+    findProjectById,
+    isProjectBeingUpgraded
   };
 };
