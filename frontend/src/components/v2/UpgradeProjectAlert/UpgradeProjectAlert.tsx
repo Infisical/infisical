@@ -92,7 +92,6 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
       (currentStatus === null && statusIsLoading)) &&
     projectStatus?.status !== "FAILED";
 
-  if (process.env.NEXT_PUBLIC_SHOW_UPGRADE_PROJECT !== "true") return null;
   if (project.version !== "v1") return null;
   if (membership.role !== "admin") return null;
 
