@@ -38,7 +38,8 @@ export const auditLogDALFactory = (db: TDbClient) => {
           })
         )
         .limit(limit)
-        .offset(offset);
+        .offset(offset)
+        .orderBy("createdAt", "desc");
       if (startDate) {
         void sqlQuery.where("createdAt", ">=", startDate);
       }

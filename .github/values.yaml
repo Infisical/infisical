@@ -19,11 +19,11 @@ infisical:
   ## @param backend.name Backend name
   ##
   name: infisical
-  replicaCount: 2
+  replicaCount: 3
   image:
-    repository: infisical/infisical
-    tag: "latest-postgres"
-    pullPolicy: IfNotPresent
+    repository: infisical/staging_infisical
+    tag: "latest"
+    pullPolicy: Always
 
   deploymentAnnotations:
     secrets.infisical.com/auto-reload: "true"

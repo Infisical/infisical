@@ -32,8 +32,15 @@ export const identityProjectServiceFactory = ({
   identityOrgMembershipDAL,
   projectDAL
 }: TIdentityProjectServiceFactoryDep) => {
-  const createProjectIdentity = async ({ identityId, actor, actorId, projectId, role }: TCreateProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const createProjectIdentity = async ({
+    identityId,
+    actor,
+    actorId,
+    actorOrgId,
+    projectId,
+    role
+  }: TCreateProjectIdentityDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Identity);
 
     const existingIdentity = await identityProjectDAL.findOne({ identityId, projectId });
@@ -72,8 +79,15 @@ export const identityProjectServiceFactory = ({
     return projectIdentity;
   };
 
-  const updateProjectIdentity = async ({ projectId, identityId, role, actor, actorId }: TUpdateProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const updateProjectIdentity = async ({
+    projectId,
+    identityId,
+    role,
+    actor,
+    actorId,
+    actorOrgId
+  }: TUpdateProjectIdentityDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
 
     const projectIdentity = await identityProjectDAL.findOne({ identityId, projectId });
@@ -85,7 +99,8 @@ export const identityProjectServiceFactory = ({
     const { permission: identityRolePermission } = await permissionService.getProjectPermission(
       ActorType.IDENTITY,
       projectIdentity.identityId,
-      projectIdentity.projectId
+      projectIdentity.projectId,
+      actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
     if (!hasRequiredPriviledges)
@@ -115,7 +130,13 @@ export const identityProjectServiceFactory = ({
     return updatedProjectIdentity;
   };
 
-  const deleteProjectIdentity = async ({ identityId, actorId, actor, projectId }: TDeleteProjectIdentityDTO) => {
+  const deleteProjectIdentity = async ({
+    identityId,
+    actorId,
+    actor,
+    actorOrgId,
+    projectId
+  }: TDeleteProjectIdentityDTO) => {
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
     if (!identityProjectMembership)
       throw new BadRequestError({ message: `Failed to find identity with id ${identityId}` });
@@ -123,13 +144,15 @@ export const identityProjectServiceFactory = ({
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      identityProjectMembership.projectId
+      identityProjectMembership.projectId,
+      actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Identity);
     const { permission: identityRolePermission } = await permissionService.getProjectPermission(
       ActorType.IDENTITY,
       identityId,
-      identityProjectMembership.projectId
+      identityProjectMembership.projectId,
+      actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
     if (!hasRequiredPriviledges)
@@ -139,8 +162,8 @@ export const identityProjectServiceFactory = ({
     return deletedIdentity;
   };
 
-  const listProjectIdentities = async ({ projectId, actor, actorId }: TListProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const listProjectIdentities = async ({ projectId, actor, actorId, actorOrgId }: TListProjectIdentityDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
 
     const identityMemberhips = await identityProjectDAL.findByProjectId(projectId);

@@ -272,7 +272,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       createNotification({ text: "Failed to create workspace", type: "error" });
     }
   };
-
+  
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
@@ -310,10 +310,25 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
                         <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.email}</div>
-                        {orgs?.map((org) => (
+                        {orgs?.map((org) => { 
+                          return (
                           <DropdownMenuItem key={org.id}>
                             <Button
-                              onClick={() => changeOrg(org?.id)}
+                              onClick={async () => {
+                                if (currentOrg?.id === org.id) return;
+                                
+                                if (org.authEnforced) {
+                                  // org has an org-level auth method enabled (e.g. SAML)
+                                  // -> logout + redirect to SAML SSO
+
+                                  await logout.mutateAsync();
+                                  window.open(`/api/v1/sso/redirect/saml2/organizations/${org.slug}`);
+                                  window.close();
+                                  return;
+                                }
+                                
+                                changeOrg(org?.id)
+                              }}
                               variant="plain"
                               colorSchema="secondary"
                               size="xs"
@@ -329,7 +344,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
                               </div>
                             </Button>
                           </DropdownMenuItem>
-                        ))}
+                         )
+                        })}
                         {/* <DropdownMenuItem key="add-org">
                           <Button
                             onClick={() => handlePopUpOpen("createOrg")}
@@ -604,16 +620,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/org/${currentOrg?.id}/billing`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?.id}/billing`}
-                            icon="system-outline-103-coin-cash-monetization"
-                          >
-                            Usage & Billing
-                          </MenuItem>
-                        </a>
-                      </Link>
+                      {(window.location.origin.includes("https://app.infisical.com")) && (
+                        <Link href={`/org/${currentOrg?.id}/billing`} passHref>
+                          <a>
+                            <MenuItem
+                              isSelected={router.asPath === `/org/${currentOrg?.id}/billing`}
+                              icon="system-outline-103-coin-cash-monetization"
+                            >
+                              Usage & Billing
+                            </MenuItem>
+                          </a>
+                        </Link>
+                      )}
                       <Link href={`/org/${currentOrg?.id}/settings`} passHref>
                         <a>
                           <MenuItem

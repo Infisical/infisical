@@ -9,6 +9,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:organizationId/memberships",
     schema: {
+      description: "Return organization user memberships",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         organizationId: z.string().trim()
       }),
@@ -33,7 +40,11 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
-      const users = await server.services.org.findAllOrgMembers(req.permission.id, req.params.organizationId);
+      const users = await server.services.org.findAllOrgMembers(
+        req.permission.id,
+        req.params.organizationId,
+        req.permission.orgId
+      );
       return { users };
     }
   });
@@ -42,6 +53,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:organizationId/workspaces",
     schema: {
+      description: "Return projects in organization that user is part of",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         organizationId: z.string().trim()
       }),
@@ -68,6 +86,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const workspaces = await server.services.org.findAllWorkspaces({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId
       });
 
@@ -79,6 +98,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     url: "/:organizationId/memberships/:membershipId",
     schema: {
+      description: "Update organization user memberships",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({ organizationId: z.string().trim(), membershipId: z.string().trim() }),
       body: z.object({
         role: z.string().trim()
@@ -97,7 +123,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         userId: req.permission.id,
         role: req.body.role,
         orgId: req.params.organizationId,
-        membershipId: req.params.membershipId
+        membershipId: req.params.membershipId,
+        actorOrgId: req.permission.orgId
       });
       return { membership };
     }
@@ -107,6 +134,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "DELETE",
     url: "/:organizationId/memberships/:membershipId",
     schema: {
+      description: "Delete organization user memberships",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({ organizationId: z.string().trim(), membershipId: z.string().trim() }),
       response: {
         200: z.object({
@@ -121,7 +155,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const membership = await server.services.org.deleteOrgMembership({
         userId: req.permission.id,
         orgId: req.params.organizationId,
-        membershipId: req.params.membershipId
+        membershipId: req.params.membershipId,
+        actorOrgId: req.permission.orgId
       });
       return { membership };
     }
@@ -172,7 +207,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
       const organization = await server.services.org.deleteOrganizationById(
         req.permission.id,
-        req.params.organizationId
+        req.params.organizationId,
+        req.permission.orgId
       );
       return { organization };
     }

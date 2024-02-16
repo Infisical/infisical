@@ -12,6 +12,12 @@ export const validateProviderAuthToken = (providerToken: string, email: string) 
 
   if (decodedToken.authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw new UnauthorizedError();
   if (decodedToken.email !== email) throw new Error("Invalid auth credentials");
+
+  if (decodedToken.organizationId) {
+    return { orgId: decodedToken.organizationId };
+  }
+
+  return {};
 };
 
 export const validateSignUpAuthorization = (token: string, userId: string, validate = true) => {

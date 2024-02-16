@@ -17,6 +17,6 @@ export {
     useGetOrgPmtMethods,
     useGetOrgTaxIds,
     useGetOrgTrialUrl,
-    useRenameOrg, 
+    useUpdateOrg, 
     useUpdateOrgBillingDetails
 } from "./queries";

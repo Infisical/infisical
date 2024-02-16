@@ -1,9 +1,7 @@
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
-import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button } from "../v2";
@@ -14,7 +12,6 @@ export default function InitialSignupStep({
   setIsSignupWithEmail: (value: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const router = useRouter();
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
@@ -74,17 +71,6 @@ export default function InitialSignupStep({
           className="mx-0 h-12 w-full"
         >
           Continue with Email
-        </Button>
-      </div>
-      <div className="mt-4 w-1/4 min-w-[20rem] rounded-md text-center lg:w-1/6">
-        <Button
-          colorSchema="primary"
-          variant="outline_bg"
-          onClick={() => router.push("/saml-sso")}
-          leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-          className="mx-0 h-12 w-full"
-        >
-          Continue with SSO
         </Button>
       </div>
       <div className="mt-6 w-1/4 min-w-[20rem] px-8 text-center text-xs text-bunker-400 lg:w-1/6">

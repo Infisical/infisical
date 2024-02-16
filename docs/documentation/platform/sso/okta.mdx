@@ -74,9 +74,16 @@ description: "Configure Okta SAML 2.0 for Infisical SSO"
       At this point, you have configured everything you need within the context of the Okta Admin Portal.
    </Step>
    <Step title="Enable SAML SSO in Infisical">
-      Enabling SAML SSO enforces all members in your organization to only be able to log into Infisical via Okta.
+      Enabling SAML SSO allows members in your organization to log into Infisical via Okta.
 
-      ![SAML Okta assignment](../../../images/sso/okta/enable-saml.png)
+      ![SAML Okta enable SAML](../../../images/sso/okta/enable-saml.png)
+   </Step>
+   <Step title="Enforce SAML SSO in Infisical">
+      Enforcing SAML SSO ensures that members in your organization can only access Infisical
+      by logging into the organization via Okta.
+
+      To enforce SAML SSO, you're required to test out the SAML connection by successfully authenticating at least one Okta user with Infisical;
+      Once you've completed this requirement, you can toggle the **Enforce SAML SSO** button to enforce SAML SSO.
    </Step>
 </Steps>
 

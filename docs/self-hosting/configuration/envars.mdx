@@ -18,8 +18,8 @@ Other environment variables are listed below to increase the functionality of yo
       Must be a random 32 byte base64 string. Can be generated with `openssl rand -base64 32`
     </ParamField>
 
-    <ParamField query="MONGO_URL" type="string" default="none" required>
-      Mongo connection string. *TLS based connection string is not yet supported
+    <ParamField query="DB_CONNECTION_URI" type="string" default="none" required>
+      Postgres database connection string.
     </ParamField>
 
     <ParamField query="REDIS_URL" type="string" default="none" required>

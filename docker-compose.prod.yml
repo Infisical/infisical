@@ -1,12 +1,27 @@
 version: "3"
 
 services:
+  db-migration:
+    container_name: infisical-db-migration
+    depends_on:
+      - db
+    image: infisical/infisical:latest-postgres
+    env_file: .env
+    command: npm run migration:latest
+    networks:
+      - infisical
+
   backend:
     container_name: infisical-backend
     restart: unless-stopped
     depends_on:
-      - mongo
-    image: infisical/infisical:latest
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+      db-migration:
+        condition: service_completed_successfully
+    image: infisical/infisical:latest-postgres
     env_file: .env
     ports:
       - 80:8080
@@ -28,21 +43,18 @@ services:
     volumes:
       - redis_data:/data
 
-  mongo:
-    container_name: infisical-mongo
-    image: mongo
+  db:
+    container_name: infisical-db
+    image: postgres:14-alpine
     restart: always
     env_file: .env
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
     volumes:
-      - mongo-data:/data/db
+      - pg_data:/data/db
     networks:
       - infisical
 
 volumes:
-  mongo-data:
+  pg_data:
     driver: local
   redis_data:
     driver: local

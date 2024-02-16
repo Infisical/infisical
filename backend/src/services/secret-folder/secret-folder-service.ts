@@ -30,8 +30,16 @@ export const secretFolderServiceFactory = ({
   projectEnvDAL,
   folderVersionDAL
 }: TSecretFolderServiceFactoryDep) => {
-  const createFolder = async ({ projectId, actor, actorId, name, environment, path: secretPath }: TCreateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const createFolder = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    name,
+    environment,
+    path: secretPath
+  }: TCreateFolderDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -105,12 +113,13 @@ export const secretFolderServiceFactory = ({
     projectId,
     actor,
     actorId,
+    actorOrgId,
     name,
     environment,
     path: secretPath,
     id
   }: TUpdateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -148,8 +157,16 @@ export const secretFolderServiceFactory = ({
     return { folder: newFolder, old: folder };
   };
 
-  const deleteFolder = async ({ projectId, actor, actorId, environment, path: secretPath, id }: TDeleteFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const deleteFolder = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    environment,
+    path: secretPath,
+    id
+  }: TDeleteFolderDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -171,10 +188,17 @@ export const secretFolderServiceFactory = ({
     return folder;
   };
 
-  const getFolders = async ({ projectId, actor, actorId, environment, path: secretPath }: TGetFolderDTO) => {
+  const getFolders = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    environment,
+    path: secretPath
+  }: TGetFolderDTO) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission(actor, actorId, projectId);
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new BadRequestError({ message: "Environment not found", name: "get folders" });
