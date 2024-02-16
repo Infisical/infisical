@@ -70,7 +70,8 @@
     "vitest": "^1.2.2"
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.502.0",
+    "@aws-sdk/client-secrets-manager": "^3.515.0",
+    "@aws-sdk/client-ssm": "^3.515.0",
     "@casl/ability": "^6.5.0",
     "@fastify/cookie": "^9.2.0",
     "@fastify/cors": "^8.4.1",
@@ -90,7 +91,6 @@
     "@ucast/mongo2js": "^1.3.4",
     "ajv": "^8.12.0",
     "argon2": "^0.31.2",
-    "aws-sdk": "^2.1545.0",
     "axios": "^1.6.4",
     "axios-retry": "^4.0.0",
     "bcrypt": "^5.1.1",
