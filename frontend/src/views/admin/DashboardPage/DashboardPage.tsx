@@ -3,8 +3,8 @@ import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 import { faAt } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
@@ -26,31 +26,42 @@ enum TabSections {
   Settings = "settings"
 }
 
-const formSchema = yup.object({
-  signUpMode: yup
-    .string()
-    .oneOf(["disabled", "invite-only", "anyone"])
-    .required(),
-  allowedSignUpDomain: yup.string().optional()
+enum SignUpModes {
+  Disabled = "disabled",
+  InviteOnly = "invite-only",
+  Anyone = "anyone"
+}
+
+const getSignUpMode = (isSignUpEnabled: boolean, isInviteOnly: boolean) => {
+  if (isSignUpEnabled) {
+    if (isInviteOnly) return SignUpModes.InviteOnly;
+    return SignUpModes.Anyone;
+  }
+  return SignUpModes.Disabled;
+};
+
+const formSchema = z.object({
+  signUpMode: z.nativeEnum(SignUpModes),
+  allowedSignUpDomain: z.string().optional()
 });
 
-type TDashboardForm = yup.InferType<typeof formSchema>;
-
+type TDashboardForm = z.infer<typeof formSchema>;
 export const AdminDashboardPage = () => {
   const router = useRouter();
   const data = useServerConfig();
   const { config } = data;
 
-  const signUpStatus = config.allowSignUp
-  ? config.inviteOnlySignUp && "invite-only"
-  : "disabled";
-
-  const signUpType = signUpStatus || "anyone";
-  
-  const { control, handleSubmit, watch } = useForm<TDashboardForm>({
-    resolver: yupResolver(formSchema),
-    defaultValues: {
-      signUpMode: signUpType,
+  const {
+    control,
+    handleSubmit,
+    watch,
+    getValues,
+    formState: { isSubmitting, isDirty }
+  } = useForm<TDashboardForm>({
+    resolver: zodResolver(formSchema),
+    values: {
+      // eslint-disable-next-line
+      signUpMode: getSignUpMode(config.allowSignUp, config.inviteOnlySignUp),
       allowedSignUpDomain: config.allowedSignUpDomain
     }
   });
@@ -59,12 +70,13 @@ export const AdminDashboardPage = () => {
 
   const { user, isLoading: isUserLoading } = useUser();
   const { orgs } = useOrganization();
-  const { mutate: updateServerConfig } = useUpdateServerConfig();
+  const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
 
   const { createNotification } = useNotificationContext();
 
   const isNotAllowed = !user?.superAdmin;
 
+  // TODO(akhilmhdh): on nextjs 14 roadmap this will be properly addressed with context split
   useEffect(() => {
     if (isNotAllowed && !isUserLoading) {
       if (orgs?.length) {
@@ -77,13 +89,11 @@ export const AdminDashboardPage = () => {
   const onFormSubmit = async (formData: TDashboardForm) => {
     try {
       const { signUpMode, allowedSignUpDomain } = formData;
-
       await updateServerConfig({
-        allowSignUp: signUpMode !== "disabled",
-        inviteOnlySignUp: signUpMode === "invite-only",
-        allowedSignUpDomain: signUpMode === "anyone" ? allowedSignUpDomain : ""
+        allowSignUp: signUpMode !== SignUpModes.Disabled,
+        inviteOnlySignUp: signUpMode === SignUpModes.InviteOnly,
+        allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : ""
       });
-
       createNotification({
         text: "Successfully changed sign up setting.",
         type: "success"
@@ -97,8 +107,7 @@ export const AdminDashboardPage = () => {
     }
   };
 
-
-
+  console.log(isDirty,getValues());
   return (
     <div className="container mx-auto max-w-7xl px-4 pb-12 text-white dark:[color-scheme:dark]">
       <div className="mx-auto mb-6 w-full max-w-7xl pt-6">
@@ -142,15 +151,14 @@ export const AdminDashboardPage = () => {
                           onValueChange={(e) => onChange(e)}
                           {...field}
                         >
-                          <SelectItem value="disabled">Disabled</SelectItem>
-                          <SelectItem value="invite-only">Invite Only</SelectItem>
-                          <SelectItem value="anyone">Anyone</SelectItem>
+                          <SelectItem value={SignUpModes.Disabled}>Disabled</SelectItem>
+                          <SelectItem value={SignUpModes.InviteOnly}>Invite Only</SelectItem>
+                          <SelectItem value={SignUpModes.Anyone}>Anyone</SelectItem>
                         </Select>
                       </FormControl>
                     )}
                   />
                 </div>
-
                 {signupMode === "anyone" && (
                   <div className="mt-4 flex items-center justify-between">
                     <div className="mb-4 flex text-mineshaft-100">
@@ -177,8 +185,11 @@ export const AdminDashboardPage = () => {
                     />
                   </div>
                 )}
-
-                <Button colorSchema="primary" variant="outline_bg" type="submit">
+                <Button
+                  type="submit"
+                  isLoading={isSubmitting}
+                  isDisabled={isSubmitting || !isDirty}
+                >
                   Save
                 </Button>
               </form>
