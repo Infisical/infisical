@@ -14,7 +14,6 @@ import {
   UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
 import { Octokit } from "@octokit/rest";
-import AWS from "aws-sdk";
 import { Parameter, SSM } from "@aws-sdk/client-ssm";
 import { AxiosError } from "axios";
 import sodium from "libsodium-wrappers";
