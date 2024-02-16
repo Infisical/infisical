@@ -12,16 +12,16 @@ export const UserEncryptionKeysSchema = z.object({
   clientPublicKey: z.string().nullable().optional(),
   serverPrivateKey: z.string().nullable().optional(),
   encryptionVersion: z.number().default(2).nullable().optional(),
-  protectedKey: z.string().nullable(),
-  protectedKeyIV: z.string().nullable(),
-  protectedKeyTag: z.string().nullable(),
+  protectedKey: z.string().nullable().optional(),
+  protectedKeyIV: z.string().nullable().optional(),
+  protectedKeyTag: z.string().nullable().optional(),
   publicKey: z.string(),
   encryptedPrivateKey: z.string(),
   iv: z.string(),
   tag: z.string(),
   salt: z.string(),
   verifier: z.string(),
-  userId: z.string().uuid(),
+  userId: z.string().uuid()
 });
 
 export type TUserEncryptionKeys = z.infer<typeof UserEncryptionKeysSchema>;

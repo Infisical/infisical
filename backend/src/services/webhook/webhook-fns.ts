@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 
+import { AxiosError } from "axios";
 import picomatch from "picomatch";
 
 import { SecretKeyEncoding, TWebhooks } from "@app/db/schemas";
@@ -43,10 +44,7 @@ export const triggerWebhookRequest = async (
       });
     }
     if (secretKey) {
-      const webhookSign = crypto
-        .createHmac("sha256", secretKey)
-        .update(JSON.stringify(payload))
-        .digest("hex");
+      const webhookSign = crypto.createHmac("sha256", secretKey).update(JSON.stringify(payload)).digest("hex");
       headers["x-infisical-signature"] = `t=${payload.timestamp};${webhookSign}`;
     }
   }
@@ -97,10 +95,7 @@ export const fnTriggerWebhook = async ({
   logger.info("Secret webhook job started", { environment, secretPath, projectId });
   const webhooksTriggered = await Promise.allSettled(
     toBeTriggeredHooks.map((hook) =>
-      triggerWebhookRequest(
-        hook,
-        getWebhookPayload("secrets.modified", projectId, environment, secretPath)
-      )
+      triggerWebhookRequest(hook, getWebhookPayload("secrets.modified", projectId, environment, secretPath))
     )
   );
   // filter hooks by status
@@ -111,7 +106,7 @@ export const fnTriggerWebhook = async ({
     .filter(({ status }) => status === "rejected")
     .map((data, i) => ({
       id: toBeTriggeredHooks[i].id,
-      error: data.status === "rejected" && data.reason.message
+      error: data.status === "rejected" ? (data.reason as AxiosError).message : ""
     }));
 
   await webhookDAL.transaction(async (tx) => {

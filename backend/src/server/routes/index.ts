@@ -109,13 +109,9 @@ import { registerV3Routes } from "./v3";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
-  {
-    db,
-    smtp: smtpService,
-    queue: queueService
-  }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory }
+  { db, smtp: smtpService, queue: queueService }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory }
 ) => {
-  server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
+  await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
 
   // db layers
   const userDAL = userDALFactory(db);
@@ -233,6 +229,7 @@ export const registerRoutes = async (
     orgDAL,
     incidentContactDAL,
     tokenService,
+    projectDAL,
     smtpService,
     userDAL,
     orgBotDAL
@@ -420,6 +417,7 @@ export const registerRoutes = async (
   const serviceTokenService = serviceTokenServiceFactory({
     projectEnvDAL,
     serviceTokenDAL,
+    userDAL,
     permissionService
   });
 
@@ -446,6 +444,7 @@ export const registerRoutes = async (
   });
 
   await superAdminService.initServerCfg();
+  await auditLogQueue.startAuditLogPruneJob();
   // setup the communication with license key server
   await licenseService.init();
   // inject all services
@@ -514,16 +513,16 @@ export const registerRoutes = async (
         })
       }
     },
-    handler: () => {
+    handler: async () => {
       const cfg = getConfig();
-      const serverCfg = getServerCfg() 
+      const serverCfg = await getServerCfg();
       return {
         date: new Date(),
         message: "Ok" as const,
         emailConfigured: cfg.isSmtpConfigured,
         inviteOnlySignup: Boolean(serverCfg.allowSignUp),
         redisConfigured: cfg.isRedisConfigured,
-        secretScanningConfigured: cfg.isSecretScanningConfigured,
+        secretScanningConfigured: cfg.isSecretScanningConfigured
       };
     }
   });

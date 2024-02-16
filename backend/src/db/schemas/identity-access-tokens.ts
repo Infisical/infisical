@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityAccessTokensSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
   accessTokenTTL: z.coerce.number().default(2592000),
   accessTokenMaxTTL: z.coerce.number().default(2592000),
   accessTokenNumUses: z.coerce.number().default(0),
@@ -19,7 +19,7 @@ export const IdentityAccessTokensSchema = z.object({
   identityUAClientSecretId: z.string().nullable().optional(),
   identityId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TIdentityAccessTokens = z.infer<typeof IdentityAccessTokensSchema>;

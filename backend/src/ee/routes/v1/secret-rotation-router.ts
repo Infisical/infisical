@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SecretRotationOutputsSchema, SecretRotationsSchema, SecretsSchema } from "@app/db/schemas";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -11,7 +12,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
     schema: {
       body: z.object({
         workspaceId: z.string().trim(),
-        secretPath: z.string().trim(),
+        secretPath: z.string().trim().transform(removeTrailingSlash),
         environment: z.string().trim(),
         interval: z.number().min(1),
         provider: z.string().trim(),
@@ -39,6 +40,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
       const secretRotation = await server.services.secretRotation.createRotation({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId
       });
@@ -72,6 +74,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
       const secretRotation = await server.services.secretRotation.restartById({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         rotationId: req.body.id
       });
       return { secretRotation };
@@ -122,6 +125,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
       const secretRotations = await server.services.secretRotation.getByProjectId({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         projectId: req.query.workspaceId
       });
       return { secretRotations };
@@ -154,6 +158,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
       const secretRotation = await server.services.secretRotation.deleteById({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         rotationId: req.params.id
       });
       return { secretRotation };

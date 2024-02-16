@@ -27,12 +27,10 @@ export const secretBlindIndexServiceFactory = ({
   const getSecretBlindIndexStatus = async ({
     actor,
     projectId,
-    actorId
+    actorId,
+    actorOrgId
   }: TGetProjectBlindIndexStatusDTO) => {
-    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    if (membership?.role !== ProjectMembershipRole.Admin) {
-      throw new UnauthorizedError({ message: "User must be admin" });
-    }
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
 
     const secretCount = await secretBlindIndexDAL.countOfSecretsWithNullSecretBlindIndex(projectId);
     return Number(secretCount);
@@ -52,23 +50,22 @@ export const secretBlindIndexServiceFactory = ({
     projectId,
     actor,
     actorId,
+    actorOrgId,
     secretsToUpdate
   }: TUpdateProjectSecretNameDTO) => {
-    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     if (membership?.role !== ProjectMembershipRole.Admin) {
       throw new UnauthorizedError({ message: "User must be admin" });
     }
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg)
-      throw new BadRequestError({ message: "Blind index not found", name: "CreateSecret" });
+    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "CreateSecret" });
 
     const secrets = await secretBlindIndexDAL.findSecretsByProjectId(
       projectId,
       secretsToUpdate.map(({ secretId }) => secretId)
     );
-    if (secrets.length !== secretsToUpdate.length)
-      throw new BadRequestError({ message: "Secret not found" });
+    if (secrets.length !== secretsToUpdate.length) throw new BadRequestError({ message: "Secret not found" });
 
     const operations = await Promise.all(
       secretsToUpdate.map(async ({ secretName, secretId: id }) => {

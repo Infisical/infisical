@@ -120,8 +120,10 @@ export const authSignupServiceFactory = ({
       throw new Error("Failed to complete account for complete user");
     }
 
+    let organizationId;
     if (providerAuthToken) {
-      validateProviderAuthToken(providerAuthToken, user.email);
+      const { orgId } = validateProviderAuthToken(providerAuthToken, user.email);
+      organizationId = orgId;
     } else {
       validateSignUpAuthorization(authorization, user.id);
     }
@@ -147,13 +149,7 @@ export const authSignupServiceFactory = ({
       return { info: us, key: userEncKey };
     });
 
-    const hasSamlEnabled = user?.authMethods?.some((authMethod) =>
-      [AuthMethod.OKTA_SAML, AuthMethod.AZURE_SAML, AuthMethod.JUMPCLOUD_SAML].includes(
-        authMethod as AuthMethod
-      )
-    );
-
-    if (!hasSamlEnabled) {
+    if (!organizationId) {
       await orgService.createOrganization(user.id, user.email, organizationName);
     }
 
@@ -162,9 +158,7 @@ export const authSignupServiceFactory = ({
       { userId: user.id, status: OrgMembershipStatus.Accepted }
     );
     const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
-    await Promise.allSettled(
-      uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId))
-    );
+    await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
 
     const tokenSession = await tokenService.getUserTokenSession({
       userAgent,
@@ -179,7 +173,8 @@ export const authSignupServiceFactory = ({
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
-        accessVersion: tokenSession.accessVersion
+        accessVersion: tokenSession.accessVersion,
+        organizationId
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_AUTH_LIFETIME }
@@ -190,7 +185,8 @@ export const authSignupServiceFactory = ({
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
-        refreshVersion: tokenSession.refreshVersion
+        refreshVersion: tokenSession.refreshVersion,
+        organizationId
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_REFRESH_LIFETIME }
@@ -216,12 +212,15 @@ export const authSignupServiceFactory = ({
     protectedKeyTag,
     encryptedPrivateKey,
     encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag
+    encryptedPrivateKeyTag,
+    authorization
   }: TCompleteAccountInviteDTO) => {
     const user = await userDAL.findUserByEmail(email);
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
+
+    validateSignUpAuthorization(authorization, user.id);
 
     const [orgMembership] = await orgDAL.findMembership({
       inviteEmail: email,
@@ -259,9 +258,7 @@ export const authSignupServiceFactory = ({
         tx
       );
       const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
-      await Promise.allSettled(
-        uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId))
-      );
+      await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
 
       return { info: us, key: userEncKey };
     });

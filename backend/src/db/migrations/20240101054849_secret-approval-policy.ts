@@ -21,15 +21,9 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.SecretApprovalPolicyApprover, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("approverId").notNullable();
-      t.foreign("approverId")
-        .references("id")
-        .inTable(TableName.ProjectMembership)
-        .onDelete("CASCADE");
+      t.foreign("approverId").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
       t.uuid("policyId").notNullable();
-      t.foreign("policyId")
-        .references("id")
-        .inTable(TableName.SecretApprovalPolicy)
-        .onDelete("CASCADE");
+      t.foreign("policyId").references("id").inTable(TableName.SecretApprovalPolicy).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
   }

@@ -11,17 +11,9 @@ export type TSecretDALFactory = ReturnType<typeof secretDALFactory>;
 export const secretDALFactory = (db: TDbClient) => {
   const secretOrm = ormify(db, TableName.Secret);
 
-  const update = async (
-    filter: Partial<TSecrets>,
-    data: Omit<TSecretsUpdate, "version">,
-    tx?: Knex
-  ) => {
+  const update = async (filter: Partial<TSecrets>, data: Omit<TSecretsUpdate, "version">, tx?: Knex) => {
     try {
-      const sec = await (tx || db)(TableName.Secret)
-        .where(filter)
-        .update(data)
-        .increment("version", 1)
-        .returning("*");
+      const sec = await (tx || db)(TableName.Secret).where(filter).update(data).increment("version", 1).returning("*");
       return sec;
     } catch (error) {
       throw new DatabaseError({ error, name: "update secret" });
@@ -30,10 +22,7 @@ export const secretDALFactory = (db: TDbClient) => {
 
   // the idea is to use postgres specific function
   // insert with id this will cause a conflict then merge the data
-  const bulkUpdate = async (
-    data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
-    tx?: Knex
-  ) => {
+  const bulkUpdate = async (data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>, tx?: Knex) => {
     try {
       const secs = await Promise.all(
         data.map(async ({ filter, data: updateData }) => {
@@ -63,7 +52,7 @@ export const secretDALFactory = (db: TDbClient) => {
         .where({ folderId })
         .where((bd) => {
           data.forEach((el) => {
-            bd.orWhere({
+            void bd.orWhere({
               secretBlindIndex: el.blindIndex,
               type: el.type,
               ...(el.type === SecretType.Personal ? { userId } : {})
@@ -89,27 +78,20 @@ export const secretDALFactory = (db: TDbClient) => {
       const secs = await (tx || db)(TableName.Secret)
         .where({ folderId })
         .where((bd) => {
-          bd.whereNull("userId").orWhere({ userId: userId || null });
+          void bd.whereNull("userId").orWhere({ userId: userId || null });
         })
-        .leftJoin(
-          TableName.JnSecretTag,
-          `${TableName.Secret}.id`,
-          `${TableName.JnSecretTag}.${TableName.Secret}Id`
-        )
-        .leftJoin(
-          TableName.SecretTag,
-          `${TableName.JnSecretTag}.${TableName.SecretTag}Id`,
-          `${TableName.SecretTag}.id`
-        )
+        .leftJoin(TableName.JnSecretTag, `${TableName.Secret}.id`, `${TableName.JnSecretTag}.${TableName.Secret}Id`)
+        .leftJoin(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
         .select(selectAllTableCols(TableName.Secret))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"));
+        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"))
+        .orderBy("id", "asc");
       const data = sqlNestRelationships({
         data: secs,
         key: "id",
-        parentMapper: (el) => SecretsSchema.parse(el),
+        parentMapper: (el) => ({ _id: el.id, ...SecretsSchema.parse(el) }),
         childrenMapper: [
           {
             key: "tagId",
@@ -144,7 +126,7 @@ export const secretDALFactory = (db: TDbClient) => {
             if (el.type === SecretType.Personal && !userId) {
               throw new BadRequestError({ message: "Missing personal user id" });
             }
-            bd.orWhere({
+            void bd.orWhere({
               secretBlindIndex: el.blindIndex,
               type: el.type,
               userId: el.type === SecretType.Personal ? userId : null

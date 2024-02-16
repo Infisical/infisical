@@ -23,15 +23,7 @@ export const MYSQL_TEMPLATE = {
       },
       ca: { type: "string", desc: "SSL certificate for db auth(string)" }
     },
-    required: [
-      "admin_username",
-      "admin_password",
-      "host",
-      "database",
-      "username1",
-      "username2",
-      "port"
-    ],
+    required: ["admin_username", "admin_password", "host", "database", "username1", "username2", "port"],
     additionalProperties: false
   },
   outputs: {

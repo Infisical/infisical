@@ -2,10 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import {
   decryptAsymmetric,
@@ -28,10 +25,7 @@ type TProjectBotServiceFactoryDep = {
 
 export type TProjectBotServiceFactory = ReturnType<typeof projectBotServiceFactory>;
 
-export const projectBotServiceFactory = ({
-  projectBotDAL,
-  permissionService
-}: TProjectBotServiceFactoryDep) => {
+export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: TProjectBotServiceFactoryDep) => {
   const getBotKey = async (projectId: string) => {
     const appCfg = getConfig();
     const encryptionKey = appCfg.ENCRYPTION_KEY;
@@ -43,7 +37,7 @@ export const projectBotServiceFactory = ({
     if (!bot.encryptedProjectKeyNonce || !bot.encryptedProjectKey)
       throw new BadRequestError({ message: "Encryption key missing" });
 
-    if (rootEncryptionKey && bot.keyEncoding === SecretKeyEncoding.BASE64) {
+    if (rootEncryptionKey && (bot.keyEncoding as SecretKeyEncoding) === SecretKeyEncoding.BASE64) {
       const privateKeyBot = decryptSymmetric({
         iv: bot.iv,
         tag: bot.tag,
@@ -57,7 +51,7 @@ export const projectBotServiceFactory = ({
         publicKey: bot.sender.publicKey
       });
     }
-    if (encryptionKey && bot.keyEncoding === SecretKeyEncoding.UTF8) {
+    if (encryptionKey && (bot.keyEncoding as SecretKeyEncoding) === SecretKeyEncoding.UTF8) {
       const privateKeyBot = decryptSymmetric128BitHexKeyUTF8({
         iv: bot.iv,
         tag: bot.tag,
@@ -77,12 +71,9 @@ export const projectBotServiceFactory = ({
     });
   };
 
-  const findBotByProjectId = async ({ actorId, actor, projectId }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.Integrations
-    );
+  const findBotByProjectId = async ({ actorId, actor, actorOrgId, projectId }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const appCfg = getConfig();
 
     const bot = await projectBotDAL.transaction(async (tx) => {
@@ -108,10 +99,7 @@ export const projectBotServiceFactory = ({
         );
       }
       if (appCfg.ENCRYPTION_KEY) {
-        const { iv, tag, ciphertext } = encryptSymmetric128BitHexKeyUTF8(
-          privateKey,
-          appCfg.ENCRYPTION_KEY
-        );
+        const { iv, tag, ciphertext } = encryptSymmetric128BitHexKeyUTF8(privateKey, appCfg.ENCRYPTION_KEY);
         return projectBotDAL.create(
           {
             name: "Infisical Bot",
@@ -132,25 +120,12 @@ export const projectBotServiceFactory = ({
     return bot;
   };
 
-  const setBotActiveState = async ({
-    actor,
-    botId,
-    botKey,
-    actorId,
-    isActive
-  }: TSetActiveStateDTO) => {
+  const setBotActiveState = async ({ actor, botId, botKey, actorId, actorOrgId, isActive }: TSetActiveStateDTO) => {
     const bot = await projectBotDAL.findById(botId);
     if (!bot) throw new BadRequestError({ message: "Bot not found" });
 
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      bot.projectId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      ProjectPermissionSub.Integrations
-    );
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, bot.projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
     if (isActive) {
       if (!botKey?.nonce || !botKey?.encryptedKey) {

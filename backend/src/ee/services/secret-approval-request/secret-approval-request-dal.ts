@@ -1,15 +1,14 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretApprovalRequestsSchema, TableName, TSecretApprovalRequests } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
 import {
-  ormify,
-  selectAllTableCols,
-  sqlNestRelationships,
-  stripUndefinedInWhere,
-  TFindFilter
-} from "@app/lib/knex";
+  SecretApprovalRequestsSchema,
+  TableName,
+  TSecretApprovalRequests,
+  TSecretApprovalRequestsSecrets
+} from "@app/db/schemas";
+import { DatabaseError } from "@app/lib/errors";
+import { ormify, selectAllTableCols, sqlNestRelationships, stripUndefinedInWhere, TFindFilter } from "@app/lib/knex";
 
 import { RequestState } from "./secret-approval-request-types";
 
@@ -31,11 +30,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
   const findQuery = (filter: TFindFilter<TSecretApprovalRequests>, tx: Knex) =>
     tx(TableName.SecretApprovalRequest)
       .where(filter)
-      .join(
-        TableName.SecretFolder,
-        `${TableName.SecretApprovalRequest}.folderId`,
-        `${TableName.SecretFolder}.id`
-      )
+      .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .join(
         TableName.SecretApprovalPolicy,
@@ -87,8 +82,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           {
             key: "reviewerMemberId",
             label: "reviewers" as const,
-            mapper: ({ reviewerMemberId: member, reviewerStatus: status }) =>
-              member ? { member, status } : undefined
+            mapper: ({ reviewerMemberId: member, reviewerStatus: status }) => (member ? { member, status } : undefined)
           },
           { key: "approverId", label: "approvers" as const, mapper: ({ approverId }) => approverId }
         ]
@@ -109,26 +103,19 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .with(
           "temp",
           (tx || db)(TableName.SecretApprovalRequest)
-            .join(
-              TableName.SecretFolder,
-              `${TableName.SecretApprovalRequest}.folderId`,
-              `${TableName.SecretFolder}.id`
-            )
-            .join(
-              TableName.Environment,
-              `${TableName.SecretFolder}.envId`,
-              `${TableName.Environment}.id`
-            )
+            .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
+            .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
             .join(
               TableName.SecretApprovalPolicyApprover,
               `${TableName.SecretApprovalRequest}.policyId`,
               `${TableName.SecretApprovalPolicyApprover}.policyId`
             )
             .where({ projectId })
-            .andWhere((bd) =>
-              bd
-                .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
-                .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
+            .andWhere(
+              (bd) =>
+                void bd
+                  .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
+                  .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
             )
             .select("status", `${TableName.SecretApprovalRequest}.id`)
             .groupBy(`${TableName.SecretApprovalRequest}.id`, "status")
@@ -141,11 +128,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
 
       return {
         open: parseInt(
-          (docs.find(({ status }) => status === RequestState.Open)?.count as string) || "0",
+          (docs.find(({ status }) => status === RequestState.Open) as { count: string })?.count || "0",
           10
         ),
         closed: parseInt(
-          (docs.find(({ status }) => status === RequestState.Closed)?.count as string) || "0",
+          (docs.find(({ status }) => status === RequestState.Closed) as { count: string })?.count || "0",
           10
         )
       };
@@ -155,31 +142,15 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
   };
 
   const findByProjectId = async (
-    {
-      status,
-      limit = 20,
-      offset = 0,
-      projectId,
-      committer,
-      environment,
-      membershipId
-    }: TFindQueryFilter,
+    { status, limit = 20, offset = 0, projectId, committer, environment, membershipId }: TFindQueryFilter,
     tx?: Knex
   ) => {
     try {
       // akhilmhdh: If ever u wanted a 1 to so many relationship connected with pagination
       // this is the place u wanna look at.
       const query = (tx || db)(TableName.SecretApprovalRequest)
-        .join(
-          TableName.SecretFolder,
-          `${TableName.SecretApprovalRequest}.folderId`,
-          `${TableName.SecretFolder}.id`
-        )
-        .join(
-          TableName.Environment,
-          `${TableName.SecretFolder}.envId`,
-          `${TableName.Environment}.id`
-        )
+        .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(
           TableName.SecretApprovalPolicy,
           `${TableName.SecretApprovalRequest}.policyId`,
@@ -195,7 +166,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalRequest}.id`,
           `${TableName.SecretApprovalRequestReviewer}.requestId`
         )
-        .leftJoin(
+        .leftJoin<TSecretApprovalRequestsSecrets>(
           TableName.SecretApprovalRequestSecret,
           `${TableName.SecretApprovalRequestSecret}.requestId`,
           `${TableName.SecretApprovalRequest}.id`
@@ -208,10 +179,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             committerId: committer
           })
         )
-        .andWhere((bd) =>
-          bd
-            .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
-            .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
+        .andWhere(
+          (bd) =>
+            void bd
+              .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
+              .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
         )
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
@@ -257,8 +229,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           {
             key: "reviewerMemberId",
             label: "reviewers" as const,
-            mapper: ({ reviewerMemberId: member, reviewerStatus: s }) =>
-              member ? { member, status: s } : undefined
+            mapper: ({ reviewerMemberId: member, reviewerStatus: s }) => (member ? { member, status: s } : undefined)
           },
           {
             key: "approverId",

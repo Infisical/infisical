@@ -62,7 +62,7 @@ export const SecretRotationPage = withProjectPermission(
   () => {
     const { currentWorkspace } = useWorkspace();
     const { t } = useTranslation();
-    const permission = useProjectPermission();
+    const { permission } = useProjectPermission();
     const { createNotification } = useNotificationContext();
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
       "createRotation",

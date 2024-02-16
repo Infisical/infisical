@@ -26,12 +26,9 @@ export const trustedIpServiceFactory = ({
   licenseService,
   projectDAL
 }: TTrustedIpServiceFactoryDep) => {
-  const listIpsByProjectId = async ({ projectId, actor, actorId }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.IpAllowList
-    );
+  const listIpsByProjectId = async ({ projectId, actor, actorId, actorOrgId }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
     const trustedIps = await trustedIpDAL.find({
       projectId
     });
@@ -42,22 +39,19 @@ export const trustedIpServiceFactory = ({
     projectId,
     actorId,
     actor,
+    actorOrgId,
     ipAddress: ip,
     comment,
     isActive
   }: TCreateIpDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.IpAllowList
-    );
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
     const project = await projectDAL.findById(projectId);
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.ipAllowlisting)
       throw new BadRequestError({
-        message:
-          "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
+        message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
       });
 
     const isValidIp = isValidIpOrCidr(ip);
@@ -83,22 +77,19 @@ export const trustedIpServiceFactory = ({
     projectId,
     actorId,
     actor,
+    actorOrgId,
     ipAddress: ip,
     comment,
     trustedIpId
   }: TUpdateIpDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.IpAllowList
-    );
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
     const project = await projectDAL.findById(projectId);
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.ipAllowlisting)
       throw new BadRequestError({
-        message:
-          "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
+        message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
       });
 
     const isValidIp = isValidIpOrCidr(ip);
@@ -122,19 +113,15 @@ export const trustedIpServiceFactory = ({
     return { trustedIp, project }; // for audit log
   };
 
-  const deleteProjectIp = async ({ projectId, actorId, actor, trustedIpId }: TDeleteIpDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.IpAllowList
-    );
+  const deleteProjectIp = async ({ projectId, actorId, actor, actorOrgId, trustedIpId }: TDeleteIpDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
     const project = await projectDAL.findById(projectId);
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.ipAllowlisting)
       throw new BadRequestError({
-        message:
-          "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
+        message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
       });
 
     const [trustedIp] = await trustedIpDAL.delete({ projectId, id: trustedIpId });

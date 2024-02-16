@@ -50,10 +50,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("integration").notNullable();
       t.jsonb("metadata");
       t.uuid("integrationAuthId").notNullable();
-      t.foreign("integrationAuthId")
-        .references("id")
-        .inTable(TableName.IntegrationAuth)
-        .onDelete("CASCADE");
+      t.foreign("integrationAuthId").references("id").inTable(TableName.IntegrationAuth).onDelete("CASCADE");
       t.uuid("envId").notNullable();
       t.string("secretPath").defaultTo("/").notNullable();
       t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");

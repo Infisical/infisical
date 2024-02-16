@@ -16,7 +16,7 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
-import { useDeleteOrgMembership, useGetSSOConfig } from "@app/hooks/api";
+import { useDeleteOrgMembership } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddOrgMemberModal } from "./AddOrgMemberModal";
@@ -27,10 +27,9 @@ export const OrgMembersSection = () => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id ?? "";
-
+  
   const [completeInviteLink, setCompleteInviteLink] = useState<string>("");
 
-  const { data: ssoConfig, isLoading: isLoadingSSOConfig } = useGetSSOConfig(orgId);
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addMember",
     "removeMember",
@@ -45,9 +44,9 @@ export const OrgMembersSection = () => {
     : false;
 
   const handleAddMemberModal = () => {
-    if (!isLoadingSSOConfig && ssoConfig && ssoConfig.isActive) {
+    if (currentOrg?.authEnforced) {
       createNotification({
-        text: "You cannot invite users when SAML SSO is configured for your organization",
+        text: "You cannot invite users when org-level auth is configured for your organization",
         type: "error"
       });
       return;

@@ -63,21 +63,16 @@ export const webhookDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findAllWebhooks = async (
-    projectId: string,
-    environment?: string,
-    secretPath?: string,
-    tx?: Knex
-  ) => {
+  const findAllWebhooks = async (projectId: string, environment?: string, secretPath?: string, tx?: Knex) => {
     try {
       const webhooks = await (tx || db)(TableName.Webhook)
         .where(`${TableName.Environment}.projectId`, projectId)
         .where((qb) => {
           if (environment) {
-            qb.where("slug", environment);
+            void qb.where("slug", environment);
           }
           if (secretPath) {
-            qb.where("secretPath", secretPath);
+            void qb.where("secretPath", secretPath);
           }
         })
         .join(TableName.Environment, `${TableName.Webhook}.envId`, `${TableName.Environment}.id`)
@@ -85,7 +80,8 @@ export const webhookDALFactory = (db: TDbClient) => {
         .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
         .select(db.ref("id").withSchema(TableName.Environment).as("envId"))
         .select(db.ref("projectId").withSchema(TableName.Environment))
-        .select(selectAllTableCols(TableName.Webhook));
+        .select(selectAllTableCols(TableName.Webhook))
+        .orderBy(`${TableName.Webhook}.createdAt`, "asc");
 
       return webhooks.map(({ envId, envSlug, envName, ...el }) => ({
         ...el,
@@ -103,9 +99,7 @@ export const webhookDALFactory = (db: TDbClient) => {
 
   const bulkUpdate = async (data: Array<TWebhooksUpdate & { id: string }>, tx?: Knex) => {
     try {
-      const queries = data.map(({ id, ...el }) =>
-        (tx || db)(TableName.Webhook).where({ id }).update(el)
-      );
+      const queries = data.map(({ id, ...el }) => (tx || db)(TableName.Webhook).where({ id }).update(el));
       const docs = await Promise.all(queries);
       return docs;
     } catch (error) {

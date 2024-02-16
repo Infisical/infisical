@@ -111,13 +111,7 @@ export type TIp = {
 /**
  * Validates the IP address [ipAddress] against the trusted IPs [trustedIps].
  */
-export const checkIPAgainstBlocklist = ({
-  ipAddress,
-  trustedIps
-}: {
-  ipAddress: string;
-  trustedIps: TIp[];
-}) => {
+export const checkIPAgainstBlocklist = ({ ipAddress, trustedIps }: { ipAddress: string; trustedIps: TIp[] }) => {
   const blockList = new net.BlockList();
 
   for (const trustedIp of trustedIps) {

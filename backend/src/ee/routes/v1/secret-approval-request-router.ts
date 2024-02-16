@@ -9,10 +9,7 @@ import {
   SecretVersionsSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import {
-  ApprovalStatus,
-  RequestState
-} from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -41,9 +38,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                 approvers: z.string().array(),
                 secretPath: z.string().optional().nullable()
               }),
-              commits: z
-                .object({ op: z.string(), secretId: z.string().nullable().optional() })
-                .array(),
+              commits: z.object({ op: z.string(), secretId: z.string().nullable().optional() }).array(),
               environment: z.string(),
               reviewers: z.object({ member: z.string(), status: z.string() }).array(),
               approvers: z.string().array()
@@ -57,6 +52,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const approvals = await server.services.secretApprovalRequest.getSecretApprovals({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         ...req.query,
         projectId: req.query.workspaceId
       });
@@ -85,6 +81,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const approvals = await server.services.secretApprovalRequest.requestCount({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         projectId: req.query.workspaceId
       });
       return { approvals };
@@ -109,6 +106,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const { approval } = await server.services.secretApprovalRequest.mergeSecretApprovalRequest({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         approvalId: req.params.id
       });
       return { approval };
@@ -136,6 +134,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const review = await server.services.secretApprovalRequest.reviewApproval({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         approvalId: req.params.id,
         status: req.body.status
       });
@@ -164,6 +163,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const approval = await server.services.secretApprovalRequest.updateApprovalStatus({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         approvalId: req.params.id,
         status: req.body.status
       });
@@ -174,11 +174,12 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         ...req.auditLogInfo,
         event: {
           type: isClosing ? EventType.SECRET_APPROVAL_CLOSED : EventType.SECRET_APPROVAL_REOPENED,
+          // eslint-disable-next-line
           metadata: {
-            [isClosing ? ("closedBy" as const) : ("reopenedBy" as const)]:
-              approval.statusChangeBy as string,
+            [isClosing ? ("closedBy" as const) : ("reopenedBy" as const)]: approval.statusChangeBy as string,
             secretApprovalRequestId: approval.id,
             secretApprovalRequestSlug: approval.slug
+            // eslint-disable-next-line
           } as any
           // akhilmhdh: had to apply any to avoid ts issue with this
         }
@@ -270,6 +271,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const approval = await server.services.secretApprovalRequest.getSecretApprovalDetails({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         id: req.params.id
       });
       return { approval };

@@ -18,7 +18,7 @@ export const BackupPrivateKeySchema = z.object({
   verifier: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  userId: z.string().uuid(),
+  userId: z.string().uuid()
 });
 
 export type TBackupPrivateKey = z.infer<typeof BackupPrivateKeySchema>;

@@ -46,6 +46,7 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
       const secretSnapshot = await server.services.snapshot.getSnapshotData({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         id: req.params.secretSnapshotId
       });
       return { secretSnapshot };
@@ -56,6 +57,13 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/:secretSnapshotId/rollback",
     schema: {
+      description: "Roll back project secrets to those captured in a secret snapshot version.",
+      security: [
+        {
+          apiKeyAuth: [],
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         secretSnapshotId: z.string().trim()
       }),
@@ -70,6 +78,7 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
       const secretSnapshot = await server.services.snapshot.rollbackSnapshot({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         id: req.params.secretSnapshotId
       });
       return { secretSnapshot };

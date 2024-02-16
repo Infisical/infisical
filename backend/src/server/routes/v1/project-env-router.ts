@@ -10,6 +10,13 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
     url: "/:workspaceId/environments",
     method: "POST",
     schema: {
+      description: "Create environment",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim()
       }),
@@ -30,6 +37,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       const environment = await server.services.projectEnv.createEnvironment({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         ...req.body
       });
@@ -57,6 +65,13 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
     url: "/:workspaceId/environments/:id",
     method: "PATCH",
     schema: {
+      description: "Update environment",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim(),
         id: z.string().trim()
@@ -79,6 +94,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       const { environment, old } = await server.services.projectEnv.updateEnvironment({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         id: req.params.id,
         ...req.body
@@ -112,6 +128,13 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
     url: "/:workspaceId/environments/:id",
     method: "DELETE",
     schema: {
+      description: "Delete environment",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim(),
         id: z.string().trim()
@@ -129,6 +152,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       const environment = await server.services.projectEnv.deleteEnvironment({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         id: req.params.id
       });

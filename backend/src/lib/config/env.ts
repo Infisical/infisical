@@ -15,9 +15,11 @@ const envSchema = z
     PORT: z.coerce.number().default(4000),
     REDIS_URL: zpStr(z.string()),
     HOST: zpStr(z.string().default("localhost")),
-    DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database conntection string")),
+    DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")),
+    DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
+    INITIAL_ORGANIZATION_NAME: zpStr(z.string().optional()),
     // TODO(akhilmhdh): will be changed to one
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
@@ -38,9 +40,7 @@ const envSchema = z
     // Telemetry
     TELEMETRY_ENABLED: zodStrBool.default("true"),
     POSTHOG_HOST: zpStr(z.string().optional().default("https://app.posthog.com")),
-    POSTHOG_PROJECT_API_KEY: zpStr(
-      z.string().optional().default("phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE")
-    ),
+    POSTHOG_PROJECT_API_KEY: zpStr(z.string().optional().default("phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE")),
     LOOPS_API_KEY: zpStr(z.string().optional()),
     // jwt options
     AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
@@ -56,7 +56,12 @@ const envSchema = z
     CLIENT_SECRET_GITHUB_LOGIN: zpStr(z.string().optional()),
     CLIENT_ID_GITLAB_LOGIN: zpStr(z.string().optional()),
     CLIENT_SECRET_GITLAB_LOGIN: zpStr(z.string().optional()),
-    CLIENT_GITLAB_LOGIN_URL: zpStr(z.string().optional().default(process.env.URL_GITLAB_LOGIN ?? GITLAB_URL)), // fallback since URL_GITLAB_LOGIN has been renamed
+    CLIENT_GITLAB_LOGIN_URL: zpStr(
+      z
+        .string()
+        .optional()
+        .default(process.env.URL_GITLAB_LOGIN ?? GITLAB_URL)
+    ), // fallback since URL_GITLAB_LOGIN has been renamed
     // integration client secrets
     // heroku
     CLIENT_ID_HEROKU: zpStr(z.string().optional()),
@@ -90,7 +95,7 @@ const envSchema = z
     SECRET_SCANNING_GIT_APP_ID: zpStr(z.string().optional()),
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
     // LICENCE
-    LICENSE_SERVER_URL: zpStr(z.string().optional()),
+    LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
     STANDALONE_MODE: z
@@ -121,7 +126,7 @@ export const initEnvConfig = (logger: Logger) => {
     logger.error(parsedEnv.error.issues);
     process.exit(-1);
   }
-  
+
   envCfg = Object.freeze(parsedEnv.data);
   return envCfg;
 };

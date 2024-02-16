@@ -21,7 +21,7 @@ export const withProjectPermission = <T extends {}, J extends TProjectPermission
   { action, subject, className, containerClassName }: Props<Generics<J>["abilities"]>
 ) => {
   const HOC = (hocProps: T) => {
-    const permission = useProjectPermission();
+    const { permission } = useProjectPermission();
 
     // akhilmhdh: Set as any due to casl/react ts type bug
     // REASON: casl due to its type checking can't seem to union even if union intersection is applied
@@ -29,13 +29,13 @@ export const withProjectPermission = <T extends {}, J extends TProjectPermission
       return (
         <div
           className={twMerge(
-            "container h-full mx-auto flex justify-center items-center",
+            "container mx-auto flex h-full items-center justify-center",
             containerClassName
           )}
         >
           <div
             className={twMerge(
-              "rounded-md bg-mineshaft-800 text-bunker-300 p-16 flex space-x-12 items-end",
+              "flex items-end space-x-12 rounded-md bg-mineshaft-800 p-16 text-bunker-300",
               className
             )}
           >
@@ -43,7 +43,7 @@ export const withProjectPermission = <T extends {}, J extends TProjectPermission
               <FontAwesomeIcon icon={faLock} size="6x" />
             </div>
             <div>
-              <div className="text-4xl font-medium mb-2">Permission Denied</div>
+              <div className="mb-2 text-4xl font-medium">Permission Denied</div>
               <div className="text-sm">
                 You do not have permission to this page. <br /> Kindly contact your organization
                 administrator

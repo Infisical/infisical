@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { IntegrationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { shake } from "@app/lib/fn";
+import { removeTrailingSlash, shake } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -16,7 +16,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         app: z.string().trim().optional(),
         isActive: z.boolean(),
         appId: z.string().trim().optional(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         sourceEnvironment: z.string().trim(),
         targetEnvironment: z.string().trim().optional(),
         targetEnvironmentId: z.string().trim().optional(),
@@ -50,6 +50,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       const { integration, integrationAuth } = await server.services.integration.createIntegration({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.body
       });
       await server.services.auditLog.createAuditLog({
@@ -57,6 +58,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         projectId: integrationAuth.projectId,
         event: {
           type: EventType.CREATE_INTEGRATION,
+          // eslint-disable-next-line
           metadata: shake({
             integrationId: integration.id.toString(),
             integration: integration.integration,
@@ -71,6 +73,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             targetServiceId: integration.targetServiceId,
             path: integration.path,
             region: integration.region
+            // eslint-disable-next-line
           }) as any
         }
       });
@@ -89,7 +92,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         app: z.string().trim(),
         appId: z.string().trim(),
         isActive: z.boolean(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         targetEnvironment: z.string().trim(),
         owner: z.string().trim(),
         environment: z.string().trim()
@@ -105,6 +108,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       const integration = await server.services.integration.updateIntegration({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         id: req.params.integrationId,
         ...req.body
       });
@@ -130,6 +134,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       const integration = await server.services.integration.deleteIntegration({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         id: req.params.integrationId
       });
 
@@ -138,6 +143,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         projectId: integration.projectId,
         event: {
           type: EventType.DELETE_INTEGRATION,
+          // eslint-disable-next-line
           metadata: shake({
             integrationId: integration.id,
             integration: integration.integration,
@@ -152,6 +158,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             targetServiceId: integration.targetServiceId,
             path: integration.path,
             region: integration.region
+            // eslint-disable-next-line
           }) as any
         }
       });

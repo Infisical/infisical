@@ -1,20 +1,11 @@
 import { Knex } from "knex";
 
-import {
-  SecretType,
-  TSecretBlindIndexes,
-  TSecrets,
-  TSecretsInsert,
-  TSecretsUpdate
-} from "@app/db/schemas";
+import { SecretType, TSecretBlindIndexes, TSecrets, TSecretsInsert, TSecretsUpdate } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 type TPartialSecret = Pick<TSecrets, "id" | "secretReminderRepeatDays" | "secretReminderNote">;
 
-type TPartialInputSecret = Pick<
-  TSecrets,
-  "type" | "secretReminderNote" | "secretReminderRepeatDays" | "id"
->;
+type TPartialInputSecret = Pick<TSecrets, "type" | "secretReminderNote" | "secretReminderRepeatDays" | "id">;
 
 export type TCreateSecretDTO = {
   secretName: string;
@@ -136,12 +127,6 @@ export type TDeleteBulkSecretDTO = {
     secretName: string;
   }>;
 } & TProjectPermission;
-
-export type TListSecretVersionDTO = {
-  secretId: string;
-  offset?: number;
-  limit?: number;
-} & Omit<TProjectPermission, "projectId">;
 
 export type TGetSecretsRawDTO = {
   path: string;

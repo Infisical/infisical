@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { IntegrationAuthsSchema, SecretApprovalPoliciesSchema } from "@app/db/schemas";
+import { IntegrationAuthsSchema, SecretApprovalPoliciesSchema, UsersSchema } from "@app/db/schemas";
 
 // sometimes the return data must be santizied to avoid leaking important values
 // always prefer pick over omit in zod
@@ -25,6 +25,23 @@ export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
       slug: z.string()
     }),
     projectId: z.string()
+  })
+);
+
+export const sanitizedServiceTokenUserSchema = UsersSchema.pick({
+  authMethods: true,
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  devices: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  mfaMethods: true
+}).merge(
+  z.object({
+    __v: z.number().default(0),
+    _id: z.string()
   })
 );
 

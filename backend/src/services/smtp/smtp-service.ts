@@ -41,8 +41,8 @@ export const getTlsOption = (host?: SmtpHost | string, secure?: boolean) => {
   if (!secure) return { secure: false };
   if (!host) return { secure: true };
 
-  if (host === SmtpHost.Sendgrid) {
-    return { secure: true, port: 465}; // more details here https://nodemailer.com/smtp/
+  if ((host as SmtpHost) === SmtpHost.Sendgrid) {
+    return { secure: true, port: 465 }; // more details here https://nodemailer.com/smtp/
   }
   if (host.includes("amazonaws.com")) {
     return { tls: { ciphers: "TLSv1.2" } };

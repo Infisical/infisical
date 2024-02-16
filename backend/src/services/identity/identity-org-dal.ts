@@ -14,11 +14,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     try {
       const [data] = await (tx || db)(TableName.IdentityOrgMembership)
         .where(filter)
-        .join(
-          TableName.Identity,
-          `${TableName.IdentityOrgMembership}.identityId`,
-          `${TableName.Identity}.id`
-        )
+        .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
         .select(selectAllTableCols(TableName.IdentityOrgMembership))
         .select(db.ref("name").withSchema(TableName.Identity))
         .select(db.ref("authMethod").withSchema(TableName.Identity));
@@ -35,16 +31,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db)(TableName.IdentityOrgMembership)
         .where(`${TableName.IdentityOrgMembership}.orgId`, orgId)
-        .join(
-          TableName.Identity,
-          `${TableName.IdentityOrgMembership}.identityId`,
-          `${TableName.Identity}.id`
-        )
-        .leftJoin(
-          TableName.OrgRoles,
-          `${TableName.IdentityOrgMembership}.roleId`,
-          `${TableName.OrgRoles}.id`
-        )
+        .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
+        .leftJoin(TableName.OrgRoles, `${TableName.IdentityOrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
         .select(selectAllTableCols(TableName.IdentityOrgMembership))
         // cr stands for custom role
         .select(db.ref("id").as("crId").withSchema(TableName.OrgRoles))

@@ -25,9 +25,9 @@ export const IntegrationsSchema = z.object({
   metadata: z.unknown().nullable().optional(),
   integrationAuthId: z.string().uuid(),
   envId: z.string().uuid(),
-  secretPath: z.string().default('/'),
+  secretPath: z.string().default("/"),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TIntegrations = z.infer<typeof IntegrationsSchema>;

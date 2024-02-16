@@ -25,7 +25,11 @@ export type TUpdateSamlCfgDTO = Partial<{
   TOrgPermission;
 
 export type TGetSamlCfgDTO =
-  | { type: "org"; orgId: string; actor: ActorType; actorId: string }
+  | { type: "org"; orgId: string; actor: ActorType; actorId: string; actorOrgId?: string }
+  | {
+      type: "orgSlug";
+      orgSlug: string;
+    }
   | {
       type: "ssoId";
       id: string;
@@ -37,7 +41,6 @@ export type TSamlLoginDTO = {
   lastName?: string;
   authProvider: string;
   orgId: string;
-  isSignupAllowed: boolean;
   // saml thingy
   relayState?: string;
 };

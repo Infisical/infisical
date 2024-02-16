@@ -23,7 +23,7 @@ export const OrgBotsSchema = z.object({
   privateKeyKeyEncoding: z.string(),
   orgId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TOrgBots = z.infer<typeof OrgBotsSchema>;

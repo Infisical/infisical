@@ -2,8 +2,11 @@ import { z } from "zod";
 
 import { ServiceTokensSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+import { sanitizedServiceTokenUserSchema } from "../sanitizedSchemas";
 
 export const sanitizedServiceTokenSchema = ServiceTokensSchema.omit({
   secretHash: true,
@@ -18,16 +21,48 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     onRequest: verifyAuth([AuthMode.SERVICE_TOKEN]),
     schema: {
+      description: "Return Infisical Token data",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       response: {
-        200: ServiceTokensSchema.merge(z.object({ workspace: z.string() }))
+        200: ServiceTokensSchema.merge(
+          z.object({
+            workspace: z.string(),
+            user: sanitizedServiceTokenUserSchema.merge(
+              z.object({
+                _id: z.string(),
+                __v: z.number().default(0)
+              })
+            ),
+            _id: z.string(),
+            __v: z.number().default(0)
+          })
+        )
       }
     },
     handler: async (req) => {
-      const serviceTokenData = await server.services.serviceToken.getServiceToken({
+      const { serviceToken, user } = await server.services.serviceToken.getServiceToken({
         actorId: req.permission.id,
         actor: req.permission.type
       });
-      return { ...serviceTokenData, workspace: serviceTokenData.projectId };
+
+      const formattedUser = {
+        ...user,
+        _id: user.id,
+        __v: 0
+      } as const;
+
+      const formattedServiceToken = {
+        ...serviceToken,
+        _id: serviceToken.id,
+        __v: 0
+      } as const;
+
+      // We return the user here because older versions of the deprecated Python SDK depend on it to properly parse the API response.
+      return { ...formattedServiceToken, workspace: serviceToken.projectId, user: formattedUser };
     }
   });
 
@@ -42,7 +77,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
         scopes: z
           .object({
             environment: z.string().trim(),
-            secretPath: z.string().trim()
+            secretPath: z.string().trim().transform(removeTrailingSlash)
           })
           .array()
           .min(1),
@@ -63,6 +98,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
       const { serviceToken, token } = await server.services.serviceToken.createServiceToken({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId
       });
@@ -100,6 +136,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
       const serviceTokenData = await server.services.serviceToken.deleteServiceToken({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         id: req.params.serviceTokenId
       });
 

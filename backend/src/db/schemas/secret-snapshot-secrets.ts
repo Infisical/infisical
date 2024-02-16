@@ -13,7 +13,7 @@ export const SecretSnapshotSecretsSchema = z.object({
   secretVersionId: z.string().uuid(),
   snapshotId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TSecretSnapshotSecrets = z.infer<typeof SecretSnapshotSecretsSchema>;

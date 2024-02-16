@@ -14,7 +14,7 @@ export const ProjectEnvironmentsSchema = z.object({
   position: z.number(),
   projectId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TProjectEnvironments = z.infer<typeof ProjectEnvironmentsSchema>;

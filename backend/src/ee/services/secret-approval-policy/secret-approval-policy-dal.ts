@@ -3,13 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TSecretApprovalPolicies } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import {
-  buildFindFilter,
-  mergeOneToManyRelation,
-  ormify,
-  selectAllTableCols,
-  TFindFilter
-} from "@app/lib/knex";
+import { buildFindFilter, mergeOneToManyRelation, ormify, selectAllTableCols, TFindFilter } from "@app/lib/knex";
 
 export type TSecretApprovalPolicyDALFactory = ReturnType<typeof secretApprovalPolicyDALFactory>;
 
@@ -18,12 +12,9 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
 
   const sapFindQuery = (tx: Knex, filter: TFindFilter<TSecretApprovalPolicies>) =>
     tx(TableName.SecretApprovalPolicy)
+      // eslint-disable-next-line
       .where(buildFindFilter(filter))
-      .join(
-        TableName.Environment,
-        `${TableName.SecretApprovalPolicy}.envId`,
-        `${TableName.Environment}.id`
-      )
+      .join(TableName.Environment, `${TableName.SecretApprovalPolicy}.envId`, `${TableName.Environment}.id`)
       .join(
         TableName.SecretApprovalPolicyApprover,
         `${TableName.SecretApprovalPolicy}.id`,
@@ -59,10 +50,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const find = async (
-    filter: TFindFilter<TSecretApprovalPolicies & { projectId: string }>,
-    tx?: Knex
-  ) => {
+  const find = async (filter: TFindFilter<TSecretApprovalPolicies & { projectId: string }>, tx?: Knex) => {
     try {
       const docs = await sapFindQuery(tx || db, filter);
       const formatedDoc = mergeOneToManyRelation(

@@ -6,6 +6,7 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -17,11 +18,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TSecretRotationDALFactory } from "../secret-rotation-dal";
 import { rotationTemplates } from "../templates";
-import {
-  TDbProviderClients,
-  TProviderFunctionTypes,
-  TSecretRotationProviderTemplate
-} from "../templates/types";
+import { TDbProviderClients, TProviderFunctionTypes, TSecretRotationProviderTemplate } from "../templates/types";
 import {
   getDbSetQuery,
   secretRotationDbFn,
@@ -29,11 +26,7 @@ import {
   secretRotationHttpSetFn,
   secretRotationPreSetFn
 } from "./secret-rotation-queue-fn";
-import {
-  TSecretRotationData,
-  TSecretRotationDbFn,
-  TSecretRotationEncData
-} from "./secret-rotation-queue-types";
+import { TSecretRotationData, TSecretRotationDbFn, TSecretRotationEncData } from "./secret-rotation-queue-types";
 
 export type TSecretRotationQueueFactory = ReturnType<typeof secretRotationQueueFactory>;
 
@@ -69,7 +62,7 @@ export const secretRotationQueueFactory = ({
 }: TSecretRotationQueueFactoryDep) => {
   const addToQueue = async (rotationId: string, interval: number) => {
     const appCfg = getConfig();
-    queue.queue(
+    await queue.queue(
       QueueName.SecretRotation,
       QueueJobs.SecretRotation,
       { rotationId },
@@ -77,10 +70,7 @@ export const secretRotationQueueFactory = ({
         jobId: rotationId,
         repeat: {
           // on prod it this will be in days, in development this will be second
-          every:
-            appCfg.NODE_ENV === "development"
-              ? secondsToMillis(interval)
-              : daysToMillisecond(interval),
+          every: appCfg.NODE_ENV === "development" ? secondsToMillis(interval) : daysToMillisecond(interval),
           immediately: true
         }
       }
@@ -94,10 +84,7 @@ export const secretRotationQueueFactory = ({
       QueueJobs.SecretRotation,
       {
         // on prod it this will be in days, in development this will be second
-        every:
-          appCfg.NODE_ENV === "development"
-            ? secondsToMillis(interval)
-            : daysToMillisecond(interval)
+        every: appCfg.NODE_ENV === "development" ? secondsToMillis(interval) : daysToMillisecond(interval)
       },
       rotationId
     );
@@ -107,22 +94,16 @@ export const secretRotationQueueFactory = ({
     const { rotationId } = job.data;
     logger.info(`secretRotationQueue.process: [rotationDocument=${rotationId}]`);
     const secretRotation = await secretRotationDAL.findById(rotationId);
-    const rotationProvider = rotationTemplates.find(
-      ({ name }) => name === secretRotation?.provider
-    );
+    const rotationProvider = rotationTemplates.find(({ name }) => name === secretRotation?.provider);
 
     try {
-      if (!rotationProvider || !secretRotation)
-        throw new DisableRotationErrors({ message: "Provider not found" });
+      if (!rotationProvider || !secretRotation) throw new DisableRotationErrors({ message: "Provider not found" });
 
       const rotationOutputs = await secretRotationDAL.findRotationOutputsByRotationId(rotationId);
-      if (!rotationOutputs.length)
-        throw new DisableRotationErrors({ message: "Secrets not found" });
+      if (!rotationOutputs.length) throw new DisableRotationErrors({ message: "Secrets not found" });
 
       // deep copy
-      const provider = JSON.parse(
-        JSON.stringify(rotationProvider)
-      ) as TSecretRotationProviderTemplate;
+      const provider = JSON.parse(JSON.stringify(rotationProvider)) as TSecretRotationProviderTemplate;
 
       // now get the encrypted variable values
       // in includes the inputs, the previous outputs
@@ -155,20 +136,11 @@ export const secretRotationQueueFactory = ({
               ? variables.inputs.username2
               : variables.inputs.username1;
         } else {
-          newCredential.internal.username = lastCred
-            ? lastCred.internal.username
-            : variables.inputs.username1;
+          newCredential.internal.username = lastCred ? lastCred.internal.username : variables.inputs.username1;
         }
         // set a random value for new password
         newCredential.internal.rotated_password = alphaNumericNanoId(32);
-        const {
-          admin_username: username,
-          admin_password: password,
-          host,
-          database,
-          port,
-          ca
-        } = newCredential.inputs;
+        const { admin_username: username, admin_password: password, host, database, port, ca } = newCredential.inputs;
         const dbFunctionArg = {
           username,
           password,
@@ -176,10 +148,7 @@ export const secretRotationQueueFactory = ({
           database,
           port,
           ca: ca as string,
-          client:
-            provider.template.client === TDbProviderClients.MySql
-              ? "mysql2"
-              : provider.template.client
+          client: provider.template.client === TDbProviderClients.MySql ? "mysql2" : provider.template.client
         } as TSecretRotationDbFn;
         // set function
         await secretRotationDbFn({
@@ -259,10 +228,14 @@ export const secretRotationQueueFactory = ({
           tx
         );
         await secretVersionDAL.insertMany(
-          updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
-            ...el,
-            secretId: id
-          })),
+          updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => {
+            if (!el.secretBlindIndex) throw new BadRequestError({ message: "Missing blind index" });
+            return {
+              ...el,
+              secretId: id,
+              secretBlindIndex: el.secretBlindIndex
+            };
+          }),
           tx
         );
       });
@@ -283,7 +256,7 @@ export const secretRotationQueueFactory = ({
       logger.error(error);
       if (error instanceof DisableRotationErrors) {
         if (job.id) {
-          queue.stopRepeatableJobByJobId(QueueName.SecretRotation, job.id);
+          await queue.stopRepeatableJobByJobId(QueueName.SecretRotation, job.id);
         }
       }
 

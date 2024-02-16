@@ -13,7 +13,7 @@ export const licenseDALFactory = (db: TDbClient) => {
         .where({ status: OrgMembershipStatus.Accepted })
         .andWhere((bd) => {
           if (orgId) {
-            bd.where({ orgId });
+            void bd.where({ orgId });
           }
         })
         .count();

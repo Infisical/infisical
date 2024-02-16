@@ -7,20 +7,17 @@ import {
   TOrganizationsInsert,
   TOrgMemberships,
   TOrgMembershipsInsert,
-  TOrgMembershipsUpdate
+  TOrgMembershipsUpdate,
+  TUserEncryptionKeys
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import {
-  buildFindFilter,
-  selectAllTableCols,
-  TFindFilter,
-  TFindOpt,
-  withTransaction
-} from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt, withTransaction } from "@app/lib/knex";
 
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
 
 export const orgDALFactory = (db: TDbClient) => {
+  const orgOrm = ormify(db, TableName.Organization);
+
   const findOrgById = async (orgId: string) => {
     try {
       const org = await db(TableName.Organization).where({ id: orgId }).first();
@@ -35,12 +32,8 @@ export const orgDALFactory = (db: TDbClient) => {
     try {
       const org = await db(TableName.OrgMembership)
         .where({ userId })
-        .join(
-          TableName.Organization,
-          `${TableName.OrgMembership}.orgId`,
-          `${TableName.Organization}.id`
-        )
-        .select(`${TableName.Organization}.*`);
+        .join(TableName.Organization, `${TableName.OrgMembership}.orgId`, `${TableName.Organization}.id`)
+        .select(selectAllTableCols(TableName.Organization));
       return org;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org by user id" });
@@ -50,9 +43,9 @@ export const orgDALFactory = (db: TDbClient) => {
   const findOrgByProjectId = async (projectId: string): Promise<TOrganizations> => {
     try {
       const [org] = await db(TableName.Project)
-        .where({ [`${[TableName.Project]}.id`]: projectId })
+        .where({ [`${TableName.Project}.id` as "id"]: projectId })
         .join(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
-        .select(`${TableName.Organization}.*`);
+        .select(selectAllTableCols(TableName.Organization));
 
       return org;
     } catch (error) {
@@ -66,7 +59,7 @@ export const orgDALFactory = (db: TDbClient) => {
       const members = await db(TableName.OrgMembership)
         .where({ orgId })
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(
+        .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
           `${TableName.Users}.id`
@@ -104,10 +97,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const deleteById = async (orgId: string, tx?: Knex) => {
     try {
-      const [org] = await (tx || db)(TableName.Organization)
-        .where({ id: orgId })
-        .delete()
-        .returning("*");
+      const [org] = await (tx || db)(TableName.Organization).where({ id: orgId }).delete().returning("*");
       return org;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update organization" });
@@ -141,26 +131,16 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const updateMembershipById = async (id: string, data: TOrgMembershipsUpdate, tx?: Knex) => {
     try {
-      const [membership] = await (tx || db)(TableName.OrgMembership)
-        .where({ id })
-        .update(data)
-        .returning("*");
+      const [membership] = await (tx || db)(TableName.OrgMembership).where({ id }).update(data).returning("*");
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update org membership" });
     }
   };
 
-  const updateMembership = async (
-    filter: Partial<TOrgMemberships>,
-    data: TOrgMembershipsUpdate,
-    tx?: Knex
-  ) => {
+  const updateMembership = async (filter: Partial<TOrgMemberships>, data: TOrgMembershipsUpdate, tx?: Knex) => {
     try {
-      const membership = await (tx || db)(TableName.OrgMembership)
-        .where(filter)
-        .update(data)
-        .returning("*");
+      const membership = await (tx || db)(TableName.OrgMembership).where(filter).update(data).returning("*");
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update org memberships" });
@@ -169,10 +149,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const deleteMembershipById = async (id: string, orgId: string, tx?: Knex) => {
     try {
-      const [membership] = await (tx || db)(TableName.OrgMembership)
-        .where({ id, orgId })
-        .delete()
-        .returning("*");
+      const [membership] = await (tx || db)(TableName.OrgMembership).where({ id, orgId }).delete().returning("*");
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete org membership" });
@@ -185,18 +162,14 @@ export const orgDALFactory = (db: TDbClient) => {
   ) => {
     try {
       const query = (tx || db)(TableName.OrgMembership)
+        // eslint-disable-next-line
         .where(buildFindFilter(filter))
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
-        .select(
-          selectAllTableCols(TableName.OrgMembership),
-          db.ref("email").withSchema(TableName.Users)
-        );
-      if (limit) query.limit(limit);
-      if (offset) query.offset(offset);
+        .select(selectAllTableCols(TableName.OrgMembership), db.ref("email").withSchema(TableName.Users));
+      if (limit) void query.limit(limit);
+      if (offset) void query.offset(offset);
       if (sort) {
-        query.orderBy(
-          sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls }))
-        );
+        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
       const res = await query;
       return res;
@@ -206,6 +179,7 @@ export const orgDALFactory = (db: TDbClient) => {
   };
 
   return withTransaction(db, {
+    ...orgOrm,
     findOrgByProjectId,
     findAllOrgMembers,
     findOrgById,

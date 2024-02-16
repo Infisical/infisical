@@ -10,6 +10,13 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
     url: "/:orgId/identity-memberships",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Return organization identity memberships",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         orgId: z.string().trim()
       }),
@@ -34,6 +41,7 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
       const identityMemberships = await server.services.identity.listOrgIdentities({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         orgId: req.params.orgId
       });
       return { identityMemberships };

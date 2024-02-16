@@ -1,4 +1,5 @@
 import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
@@ -17,12 +18,8 @@ type TSuperAdminServiceFactoryDep = {
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
-let serverCfg: Readonly<TSuperAdmin>;
-export const getServerCfg = () => {
-  if (!serverCfg)
-    throw new BadRequestError({ name: "Get server cfg", message: "Server cfg not initialized" });
-  return serverCfg;
-};
+// eslint-disable-next-line
+export let getServerCfg: () => Promise<TSuperAdmin>;
 
 export const superAdminServiceFactory = ({
   serverCfgDAL,
@@ -31,19 +28,18 @@ export const superAdminServiceFactory = ({
   orgService
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
-    serverCfg = await serverCfgDAL.findOne({});
-    if (!serverCfg) {
-      const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true });
-      serverCfg = newCfg;
-      return newCfg;
-    }
-    return serverCfg;
+    // TODO(akhilmhdh): bad  pattern time less change this later to me itself
+    getServerCfg = () => serverCfgDAL.findOne({});
+
+    const serverCfg = await serverCfgDAL.findOne({});
+    if (serverCfg) return;
+    const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true });
+    return newCfg;
   };
 
   const updateServerCfg = async (data: TSuperAdminUpdate) => {
+    const serverCfg = await getServerCfg();
     const cfg = await serverCfgDAL.updateById(serverCfg.id, data);
-    serverCfg = cfg;
-    Object.freeze(serverCfg);
     return cfg;
   };
 
@@ -63,9 +59,9 @@ export const superAdminServiceFactory = ({
     ip,
     userAgent
   }: TAdminSignUpDTO) => {
+    const appCfg = getConfig();
     const existingUser = await userDAL.findOne({ email });
-    if (existingUser)
-      throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
+    if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
 
     const userInfo = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.create(
@@ -97,10 +93,18 @@ export const superAdminServiceFactory = ({
       );
       return { user: newUser, enc: userEnc };
     });
-    await orgService.createOrganization(userInfo.user.id, userInfo.user.email, "Admin Org");
+
+    const initialOrganizationName = appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
+
+    await orgService.createOrganization(userInfo.user.id, userInfo.user.email, initialOrganizationName);
 
     await updateServerCfg({ initialized: true });
-    const token = await authService.generateUserTokens(userInfo.user, ip, userAgent);
+    const token = await authService.generateUserTokens({
+      user: userInfo.user,
+      ip,
+      userAgent,
+      organizationId: undefined
+    });
     // TODO(akhilmhdh-pg): telemetry service
     return { token, user: userInfo };
   };

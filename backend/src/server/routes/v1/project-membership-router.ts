@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-import {
-  OrgMembershipsSchema,
-  ProjectMembershipsSchema,
-  UserEncryptionKeysSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { OrgMembershipsSchema, ProjectMembershipsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -15,6 +10,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     url: "/:workspaceId/memberships",
     method: "GET",
     schema: {
+      description: "Return project user memberships",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim()
       }),
@@ -40,6 +42,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const memberships = await server.services.projectMembership.getProjectMemberships({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId
       });
       return { memberships };
@@ -75,6 +78,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const data = await server.services.projectMembership.addUsersToProject({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         members: req.body.members
       });
@@ -99,6 +103,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     url: "/:workspaceId/memberships/:membershipId",
     method: "PATCH",
     schema: {
+      description: "Update project user membership",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim(),
         membershipId: z.string().trim()
@@ -117,6 +128,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const membership = await server.services.projectMembership.updateProjectMembership({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         membershipId: req.params.membershipId,
         role: req.body.role
@@ -143,6 +155,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     url: "/:workspaceId/memberships/:membershipId",
     method: "DELETE",
     schema: {
+      description: "Delete project user membership",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim(),
         membershipId: z.string().trim()
@@ -158,6 +177,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const membership = await server.services.projectMembership.deleteProjectMembership({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         membershipId: req.params.membershipId
       });

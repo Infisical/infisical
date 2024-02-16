@@ -15,7 +15,7 @@ export const OrgRolesSchema = z.object({
   permissions: z.unknown(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid(),
+  orgId: z.string().uuid()
 });
 
 export type TOrgRoles = z.infer<typeof OrgRolesSchema>;

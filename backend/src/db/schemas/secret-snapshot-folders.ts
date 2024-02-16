@@ -13,7 +13,7 @@ export const SecretSnapshotFoldersSchema = z.object({
   folderVersionId: z.string().uuid(),
   snapshotId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TSecretSnapshotFolders = z.infer<typeof SecretSnapshotFoldersSchema>;

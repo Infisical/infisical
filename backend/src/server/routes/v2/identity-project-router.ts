@@ -32,6 +32,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const identityMembership = await server.services.identityProject.createProjectIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         projectId: req.params.projectId,
         role: req.body.role
@@ -45,6 +46,12 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     url: "/:projectId/identity-memberships/:identityId",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Update project identity memberships",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         projectId: z.string().trim(),
         identityId: z.string().trim()
@@ -62,6 +69,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const identityMembership = await server.services.identityProject.updateProjectIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         projectId: req.params.projectId,
         role: req.body.role
@@ -75,6 +83,12 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     url: "/:projectId/identity-memberships/:identityId",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Delete project identity memberships",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         projectId: z.string().trim(),
         identityId: z.string().trim()
@@ -89,6 +103,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const identityMembership = await server.services.identityProject.deleteProjectIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         projectId: req.params.projectId
       });
@@ -101,6 +116,12 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     url: "/:projectId/identity-memberships",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Return project identity memberships",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -125,6 +146,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const identityMemberships = await server.services.identityProject.listProjectIdentities({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.projectId
       });
       return { identityMemberships };

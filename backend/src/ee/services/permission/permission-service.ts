@@ -16,12 +16,7 @@ import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { TProjectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 
-import {
-  orgAdminPermissions,
-  orgMemberPermissions,
-  orgNoAccessPermissions,
-  OrgPermissionSet
-} from "./org-permission";
+import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import {
   buildServiceTokenProjectPermission,
@@ -99,11 +94,14 @@ export const permissionServiceFactory = ({
   /*
    * Get user permission in an organization
    * */
-  const getUserOrgPermission = async (userId: string, orgId: string) => {
+  const getUserOrgPermission = async (userId: string, orgId: string, userOrgId?: string) => {
     const membership = await permissionDAL.getOrgPermission(userId, orgId);
     if (!membership) throw new UnauthorizedError({ name: "User not in org" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
+    }
+    if (membership.orgAuthEnforced && membership.orgId !== userOrgId) {
+      throw new BadRequestError({ name: "Cannot access org-scoped resource" });
     }
     return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
   };
@@ -117,10 +115,10 @@ export const permissionServiceFactory = ({
     return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
   };
 
-  const getOrgPermission = async (type: ActorType, id: string, orgId: string) => {
+  const getOrgPermission = async (type: ActorType, id: string, orgId: string, actorOrgId?: string) => {
     switch (type) {
       case ActorType.USER:
-        return getUserOrgPermission(id, orgId);
+        return getUserOrgPermission(id, orgId, actorOrgId);
       case ActorType.IDENTITY:
         return getIdentityOrgPermission(id, orgId);
       default:
@@ -147,12 +145,17 @@ export const permissionServiceFactory = ({
   };
 
   // user permission for a project in an organization
-  const getUserProjectPermission = async (userId: string, projectId: string) => {
+  const getUserProjectPermission = async (userId: string, projectId: string, userOrgId?: string) => {
     const membership = await permissionDAL.getProjectPermission(userId, projectId);
     if (!membership) throw new UnauthorizedError({ name: "User not in project" });
     if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
+
+    if (membership.orgAuthEnforced && membership.orgId !== userOrgId) {
+      throw new BadRequestError({ name: "Cannot access org-scoped resource" });
+    }
+
     return {
       permission: buildProjectPermission(membership.role, membership.permissions),
       membership
@@ -165,6 +168,7 @@ export const permissionServiceFactory = ({
     if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
+
     return {
       permission: buildProjectPermission(membership.role, membership.permissions),
       membership
@@ -188,19 +192,22 @@ export const permissionServiceFactory = ({
     ? { permission: MongoAbility<ProjectPermissionSet, MongoQuery>; membership: undefined }
     : {
         permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-        membership: (T extends ActorType.USER
-          ? TProjectMemberships
-          : TIdentityProjectMemberships) & { permissions?: unknown };
+        membership: (T extends ActorType.USER ? TProjectMemberships : TIdentityProjectMemberships) & {
+          orgAuthEnforced: boolean;
+          orgId: string;
+          permissions?: unknown;
+        };
       };
 
   const getProjectPermission = async <T extends ActorType>(
     type: T,
     id: string,
-    projectId: string
+    projectId: string,
+    actorOrgId?: string
   ): Promise<TProjectPermissionRT<T>> => {
     switch (type) {
       case ActorType.USER:
-        return getUserProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
+        return getUserProjectPermission(id, projectId, actorOrgId) as Promise<TProjectPermissionRT<T>>;
       case ActorType.SERVICE:
         return getServiceTokenProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
       case ActorType.IDENTITY:
@@ -214,9 +221,7 @@ export const permissionServiceFactory = ({
   };
 
   const getProjectPermissionByRole = async (role: string, projectId: string) => {
-    const isCustomRole = !Object.values(ProjectMembershipRole).includes(
-      role as ProjectMembershipRole
-    );
+    const isCustomRole = !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole);
     if (isCustomRole) {
       const projectRole = await projectRoleDAL.findOne({ slug: role, projectId });
       if (!projectRole) throw new BadRequestError({ message: "Role not found" });

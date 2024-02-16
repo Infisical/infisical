@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { SecretFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -10,13 +11,20 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     url: "/",
     method: "POST",
     schema: {
+      description: "Create folders",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
         name: z.string().trim(),
-        path: z.string().trim().default("/"),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         // backward compatiability with cli
-        directory: z.string().trim().default("/")
+        directory: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
@@ -24,17 +32,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const path = req.body.path || req.body.directory;
       const folder = await server.services.folder.createFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
         path
@@ -60,6 +64,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     url: "/:folderId",
     method: "PATCH",
     schema: {
+      description: "Update folder",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         // old way this was name
         folderId: z.string()
@@ -68,9 +79,9 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
         name: z.string().trim(),
-        path: z.string().trim().default("/"),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         // backward compatiability with cli
-        directory: z.string().trim().default("/")
+        directory: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
@@ -78,17 +89,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const path = req.body.path || req.body.directory;
       const { folder, old } = await server.services.folder.updateFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
         id: req.params.folderId,
@@ -116,15 +123,22 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     url: "/:folderId",
     method: "DELETE",
     schema: {
+      description: "Delete a folder",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         folderId: z.string()
       }),
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        path: z.string().trim().default("/"),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         // keep this here as cli need directory
-        directory: z.string().trim().default("/")
+        directory: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
@@ -132,17 +146,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const path = req.body.path || req.body.directory;
       const folder = await server.services.folder.deleteFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
         id: req.params.folderId,
@@ -169,12 +179,19 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     url: "/",
     method: "GET",
     schema: {
+      description: "Get folders",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        path: z.string().trim().default("/"),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         // backward compatiability with cli
-        directory: z.string().trim().default("/")
+        directory: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
@@ -182,17 +199,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN,
-      AuthMode.IDENTITY_ACCESS_TOKEN
-    ]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const path = req.query.path || req.query.directory;
       const folders = await server.services.folder.getFolders({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.query,
         projectId: req.query.workspaceId,
         path

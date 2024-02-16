@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import * as argon2 from "argon2";
+import argon2 from "argon2";
 import nacl from "tweetnacl";
 import naclUtils from "tweetnacl-util";
 
@@ -20,11 +20,7 @@ export const BLOCK_SIZE_BYTES_16 = 16;
 export const decryptSymmetric = ({ ciphertext, iv, tag, key }: TDecryptSymmetricInput): string => {
   const secretKey = crypto.createSecretKey(key, "base64");
 
-  const decipher = crypto.createDecipheriv(
-    SecretEncryptionAlgo.AES_256_GCM,
-    secretKey,
-    Buffer.from(iv, "base64")
-  );
+  const decipher = crypto.createDecipheriv(SecretEncryptionAlgo.AES_256_GCM, secretKey, Buffer.from(iv, "base64"));
   decipher.setAuthTag(Buffer.from(tag, "base64"));
   let cleartext = decipher.update(ciphertext, "base64", "utf8");
   cleartext += decipher.final("utf8");
@@ -62,17 +58,8 @@ export const encryptSymmetric128BitHexKeyUTF8 = (plaintext: string, key: string)
   };
 };
 
-export const decryptSymmetric128BitHexKeyUTF8 = ({
-  ciphertext,
-  iv,
-  tag,
-  key
-}: TDecryptSymmetricInput): string => {
-  const decipher = crypto.createDecipheriv(
-    SecretEncryptionAlgo.AES_256_GCM,
-    key,
-    Buffer.from(iv, "base64")
-  );
+export const decryptSymmetric128BitHexKeyUTF8 = ({ ciphertext, iv, tag, key }: TDecryptSymmetricInput): string => {
+  const decipher = crypto.createDecipheriv(SecretEncryptionAlgo.AES_256_GCM, key, Buffer.from(iv, "base64"));
 
   decipher.setAuthTag(Buffer.from(tag, "base64"));
 
@@ -104,12 +91,7 @@ export type TDecryptAsymmetricInput = {
   privateKey: string;
 };
 
-export const decryptAsymmetric = ({
-  ciphertext,
-  nonce,
-  publicKey,
-  privateKey
-}: TDecryptAsymmetricInput) => {
+export const decryptAsymmetric = ({ ciphertext, nonce, publicKey, privateKey }: TDecryptAsymmetricInput) => {
   const plaintext: Uint8Array | null = nacl.box.open(
     naclUtils.decodeBase64(ciphertext),
     naclUtils.decodeBase64(nonce),
@@ -223,7 +205,7 @@ export const infisicalSymmetricEncypt = (data: string) => {
   throw new Error("Missing both encryption keys");
 };
 
-export const infisicalSymmetricDecrypt = <T extends any = string>({
+export const infisicalSymmetricDecrypt = <T = string>({
   keyEncoding,
   ciphertext,
   tag,
