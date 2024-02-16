@@ -212,12 +212,15 @@ export const authSignupServiceFactory = ({
     protectedKeyTag,
     encryptedPrivateKey,
     encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag
+    encryptedPrivateKeyTag,
+    authorization
   }: TCompleteAccountInviteDTO) => {
     const user = await userDAL.findUserByEmail(email);
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
+
+    validateSignUpAuthorization(authorization, user.id);
 
     const [orgMembership] = await orgDAL.findMembership({
       inviteEmail: email,
