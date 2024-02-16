@@ -5,6 +5,20 @@ description: "How to use Infisical for secret management in Ansible"
 
 The documentation for using Infisical to manage secrets in Ansible is currently available [here](https://galaxy.ansible.com/ui/repo/published/infisical/vault/).
 
+
+If you get this Python error when you running the lookup plugin:-
+
+```
+objc[72832]: +[__NSCFConstantString initialize] may have been in progress in another thread when fork() was called. We cannot safely call it or ignore it in the fork() child process. Crashing instead. Set a breakpoint on objc_initializeAfterForkError to debug.
+Fatal Python error: Aborted
+```
+
+You will need to add this to your shell environment or ansible wrapper script:-
+
+```
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+```
+
 <Info>
   Have any questions? Join Infisical's [community Slack](https://infisical.com/slack) for quick support.
 </Info>
