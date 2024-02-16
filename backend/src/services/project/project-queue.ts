@@ -145,6 +145,12 @@ export const projectQueueFactory = ({
 
       const decryptedSecrets = decryptSecrets(secrets, userPrivateKey, oldProjectKey);
 
+      console.log(
+        decryptedSecrets
+          .filter((s) => s.docType === SecretDocType.ApprovalSecret)
+          .map((s) => `${s.secretKey} - ${s.secretValue}`)
+      );
+
       if (secrets.length !== decryptedSecrets.length) {
         throw new Error("Failed to decrypt some secret versions");
       }
