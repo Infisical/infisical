@@ -19,6 +19,7 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
   const { membership } = useProjectPermission();
   const upgradeProject = useUpgradeProject();
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
+  const [isUpgrading, setIsUpgrading] = useState(false);
   const {
     data: projectStatus,
     refetch: getLatestProjectStatus,
@@ -26,6 +27,10 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
   } = useGetUpgradeProjectStatus(project.id);
 
   const onUpgradeProject = useCallback(async () => {
+    if (upgradeProject.isLoading) {
+      return;
+    }
+    setIsUpgrading(true);
     const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
 
     if (!PRIVATE_KEY) {
@@ -42,6 +47,8 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
     });
 
     await getLatestProjectStatus();
+
+    setTimeout(() => setIsUpgrading(false), 5_000);
   }, []);
 
   useEffect(() => {
@@ -79,7 +86,8 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
   }, [projectStatus]);
 
   const isLoading =
-    (upgradeProject.isLoading ||
+    (isUpgrading ||
+      upgradeProject.isLoading ||
       currentStatus !== null ||
       (currentStatus === null && statusIsLoading)) &&
     projectStatus?.status !== "FAILED";

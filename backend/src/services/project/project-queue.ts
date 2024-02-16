@@ -385,7 +385,7 @@ export const projectQueueFactory = ({
 
         await projectDAL.setProjectUpgradeStatus(data.projectId, null, tx);
 
-        // throw new Error("Transaction was successful!");
+        throw new Error("Transaction was successful!");
       });
     } catch (err) {
       console.log(err);
