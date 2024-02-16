@@ -10,9 +10,8 @@ import {
   CreateSecretCommand,
   GetSecretValueCommand,
   ResourceNotFoundException,
-  SecretsManager,
   SecretsManagerClient,
-  UpdateSecretCommand,
+  UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
 import { Octokit } from "@octokit/rest";
 import AWS from "aws-sdk";
@@ -443,22 +442,8 @@ const syncSecretsAWSParameterStore = async ({
 }) => {
   if (!accessId) return;
 
-  // JS SDK v3 does not support global configuration.
-  // Codemod has attempted to pass values to each service client in this file.
-  // You may need to update clients outside of this file, if they use global config.
-  AWS.config.update({
-    region: integration.region as string,
-    accessKeyId: accessId,
-    secretAccessKey: accessToken
-  });
-
   const ssm = new SSM({
-    // The key apiVersion is no longer supported in v3, and can be removed.
-    // @deprecated The client uses the "latest" apiVersion.
-    apiVersion: "2014-11-06",
-
     region: integration.region as string,
-
     credentials: {
       accessKeyId: accessId,
       secretAccessKey: accessToken
@@ -524,15 +509,6 @@ const syncSecretsAWSParameterStore = async ({
       }
     })
   );
-
-  // JS SDK v3 does not support global configuration.
-  // Codemod has attempted to pass values to each service client in this file.
-  // You may need to update clients outside of this file, if they use global config.
-  AWS.config.update({
-    region: undefined,
-    accessKeyId: undefined,
-    secretAccessKey: undefined
-  });
 };
 
 /**
@@ -554,15 +530,6 @@ const syncSecretsAWSSecretManager = async ({
   try {
     if (!accessId) return;
 
-    // JS SDK v3 does not support global configuration.
-    // Codemod has attempted to pass values to each service client in this file.
-    // You may need to update clients outside of this file, if they use global config.
-    AWS.config.update({
-      region: integration.region as string,
-      accessKeyId: accessId,
-      secretAccessKey: accessToken
-    });
-
     secretsManager = new SecretsManagerClient({
       region: integration.region as string,
       credentials: {
@@ -577,7 +544,7 @@ const syncSecretsAWSSecretManager = async ({
       })
     );
 
-    let awsSecretManagerSecretObj: { [key: string]: SecretsManager } = {};
+    let awsSecretManagerSecretObj: { [key: string]: SecretsManagerClient } = {};
 
     if (awsSecretManagerSecret?.SecretString) {
       awsSecretManagerSecretObj = JSON.parse(awsSecretManagerSecret.SecretString);
@@ -591,15 +558,6 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
     }
-
-    // JS SDK v3 does not support global configuration.
-    // Codemod has attempted to pass values to each service client in this file.
-    // You may need to update clients outside of this file, if they use global config.
-    AWS.config.update({
-      region: undefined,
-      accessKeyId: undefined,
-      secretAccessKey: undefined
-    });
   } catch (err) {
     if (err instanceof ResourceNotFoundException && secretsManager) {
       await secretsManager.send(
@@ -609,14 +567,6 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
     }
-    // JS SDK v3 does not support global configuration.
-    // Codemod has attempted to pass values to each service client in this file.
-    // You may need to update clients outside of this file, if they use global config.
-    AWS.config.update({
-      region: undefined,
-      accessKeyId: undefined,
-      secretAccessKey: undefined
-    });
   }
 };
 
