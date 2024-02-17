@@ -20,6 +20,8 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { secretRawSchema } from "../sanitizedSchemas";
 
+// trigger workflow
+
 const getDistinctId = (req: FastifyRequest) => {
   if (req.auth.actor === ActorType.USER) {
     return req.auth.user.email;
