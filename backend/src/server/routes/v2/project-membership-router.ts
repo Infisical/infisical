@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { authRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -10,9 +9,6 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
   server.route({
     method: "POST",
     url: "/:projectId/memberships",
-    config: {
-      rateLimit: authRateLimit
-    },
     schema: {
       params: z.object({
         projectId: z.string()
@@ -55,9 +51,6 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
   server.route({
     method: "DELETE",
     url: "/:projectId/memberships",
-    config: {
-      rateLimit: authRateLimit
-    },
     schema: {
       params: z.object({
         projectId: z.string()
