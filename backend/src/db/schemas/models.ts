@@ -123,12 +123,6 @@ export enum ProjectUpgradeStatus {
   Failed = "FAILED"
 }
 
-export enum ProjectUpgradeStatus {
-  InProgress = "IN_PROGRESS",
-  // Completed -> Will be null if completed. So a completed status is not needed
-  Failed = "FAILED"
-}
-
 export enum IdentityAuthMethod {
   Univeral = "universal-auth"
 }
