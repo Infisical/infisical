@@ -46,7 +46,7 @@ export const secretVersionDALFactory = (db: TDbClient) => {
           const [doc] = await (tx || db)(TableName.SecretVersion)
             .where(filter)
             .update(updateData)
-            // .increment("version", 1) // TODO: Is this really needed?
+            .increment("version", 1) // TODO: Is this really needed?
             .returning("*");
           if (!doc) throw new BadRequestError({ message: "Failed to update document" });
           return doc;
