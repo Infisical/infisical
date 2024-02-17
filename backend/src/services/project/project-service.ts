@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-redeclare */
-/* eslint-disable no-console */
-/* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
