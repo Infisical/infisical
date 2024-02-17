@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/router";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -21,11 +21,33 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
   const upgradeProject = useUpgradeProject();
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
   const [isUpgrading, setIsUpgrading] = useState(false);
+
   const {
     data: projectStatus,
-    refetch: getLatestProjectStatus,
-    isLoading: statusIsLoading
-  } = useGetUpgradeProjectStatus(project.id);
+    isLoading: statusIsLoading,
+    refetch: manualProjectStatusRefetch
+  } = useGetUpgradeProjectStatus({
+    projectId: project.id,
+    enabled: membership.role === "admin",
+    refetchInterval: 5_000,
+    onSuccess: (data) => {
+      if (membership.role !== "admin") {
+        return;
+      }
+
+      if (data && data?.status !== null) {
+        if (data.status === "IN_PROGRESS") {
+          setCurrentStatus("Your upgrade is being processed.");
+        } else if (data.status === "FAILED") {
+          setCurrentStatus("Upgrade failed, please try again.");
+        }
+      }
+
+      if (currentStatus !== null && data?.status === null) {
+        router.reload();
+      }
+    }
+  });
 
   const onUpgradeProject = useCallback(async () => {
     if (upgradeProject.isLoading) {
@@ -47,51 +69,17 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
       privateKey: PRIVATE_KEY
     });
 
-    await getLatestProjectStatus();
+    manualProjectStatusRefetch();
 
     setTimeout(() => setIsUpgrading(false), 5_000);
   }, []);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-
-    if (membership.role === "admin") {
-      if (project.version === ProjectVersion.V1) {
-        getLatestProjectStatus();
-      }
-
-      if (projectStatus && projectStatus?.status !== null) {
-        if (projectStatus.status === "IN_PROGRESS") {
-          setCurrentStatus("Your upgrade is being processed.");
-        } else if (projectStatus.status === "FAILED") {
-          setCurrentStatus("Upgrade failed, please try again.");
-        }
-      }
-
-      if (currentStatus !== null && projectStatus?.status === null) {
-        router.reload();
-      }
-
-      interval = setInterval(() => {
-        if (project.version === ProjectVersion.V1) {
-          getLatestProjectStatus();
-        }
-      }, 5_000);
-    }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [projectStatus]);
-
   const isLoading =
-    (isUpgrading ||
-      upgradeProject.isLoading ||
+    isUpgrading ||
+    ((upgradeProject.isLoading ||
       currentStatus !== null ||
       (currentStatus === null && statusIsLoading)) &&
-    projectStatus?.status !== "FAILED";
+      projectStatus?.status !== "FAILED");
 
   if (project.version !== ProjectVersion.V1) return null;
   if (membership.role !== "admin") return null;

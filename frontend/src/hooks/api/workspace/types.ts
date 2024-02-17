@@ -31,6 +31,13 @@ export type NameWorkspaceSecretsDTO = {
   }[];
 };
 
+export type TGetUpgradeProjectStatusDTO = {
+  projectId: string;
+  onSuccess?: (data?: { status: string }) => void;
+  enabled?: boolean;
+  refetchInterval?: number;
+};
+
 // mutation dto
 export type CreateWorkspaceDTO = {
   projectName: string;

@@ -14,6 +14,7 @@ import {
   DeleteWorkspaceDTO,
   NameWorkspaceSecretsDTO,
   RenameWorkspaceDTO,
+  TGetUpgradeProjectStatusDTO,
   ToggleAutoCapitalizationDTO,
   UpdateEnvironmentDTO,
   Workspace
@@ -85,11 +86,18 @@ export const useUpgradeProject = () => {
   });
 };
 
-export const useGetUpgradeProjectStatus = (projectId: string) => {
+export const useGetUpgradeProjectStatus = ({
+  projectId,
+  onSuccess,
+  enabled,
+  refetchInterval
+}: TGetUpgradeProjectStatusDTO) => {
   return useQuery({
     queryKey: workspaceKeys.getProjectUpgradeStatus(projectId),
     queryFn: () => fetchProjectUpgradeStatus(projectId),
-    enabled: true
+    enabled,
+    onSuccess,
+    refetchInterval
   });
 };
 
