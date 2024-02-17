@@ -9,7 +9,7 @@ import {
   faXmarkCircle
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { cx } from "cva";
+import { twMerge } from "tailwind-merge";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, ContentLoader, EmptyState, IconButton, Tooltip } from "@app/components/v2";
@@ -172,7 +172,7 @@ export const SecretApprovalRequestChanges = ({
             <FontAwesomeIcon icon={faArrowLeft} />
           </IconButton>
           <div
-            className={cx(
+            className={twMerge(
               "flex items-center space-x-2 rounded-3xl px-4 py-2 text-white",
               secretApprovalRequestDetails.status === "close" ? "bg-red-600" : "bg-green-600"
             )}
