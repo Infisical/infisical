@@ -1,12 +1,16 @@
-{{ if .Values.metrics.prometheusRule.enabled }}
----
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   labels:
-  {{- include "secrets-operator.labels" . | nindent 4 }}
-  name: {{ include "secrets-operator.fullname" . }}-promrule
-  namespace: {{ .Release.Namespace }}
+    control-plane: controller-manager
+    app.kubernetes.io/name: prometheusrules
+    app.kubernetes.io/instance: controller-manager-prometheusrules
+    app.kubernetes.io/component: prometheusrules
+    app.kubernetes.io/created-by: k8-operator
+    app.kubernetes.io/part-of: k8-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: controller-manager-prometheusrules
+  namespace: system
 spec:
   groups:
   - name: InfisicalmanagerRules
@@ -28,4 +32,3 @@ spec:
       for: 5m
       labels:
         severity: warning
-{{ end }}

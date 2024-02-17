@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "secrets-operator.fullname" . }}-controller-manager-metrics-monitor
+  labels:
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/created-by: k8-operator
+    app.kubernetes.io/part-of: k8-operator
+    control-plane: controller-manager
+  {{- include "secrets-operator.labels" . | nindent 4 }}
+spec:
+  endpoints:
+  - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    path: /metrics
+    port: https
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+  selector:
+    matchLabels:
+      control-plane: controller-manager

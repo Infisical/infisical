@@ -1,0 +1,33 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "secrets-operator.fullname" . }}-controller-manager-prometheusrules
+  labels:
+    app.kubernetes.io/component: prometheusrules
+    app.kubernetes.io/created-by: k8-operator
+    app.kubernetes.io/part-of: k8-operator
+    control-plane: controller-manager
+  {{- include "secrets-operator.labels" . | nindent 4 }}
+spec:
+  groups:
+  - name: InfisicalmanagerRules
+    rules:
+    - alert: InfisicalReconcileErrors
+      annotations:
+        description: '{{`Reconciliation errors for {{ $labels.controller }} is increasing
+          and has now reached {{ humanize $value }}`}}'
+        runbook_url: Check manager logs for reasons why this might happen
+      expr: rate(controller_runtime_reconcile_total{controller="infisicalsecret",result="error"}[5m])
+        > 0
+      for: 5m
+      labels:
+        severity: warning
+    - alert: InfisicalWorkqueueDepth
+      annotations:
+        description: '{{`Queue depth for {{ $labels.name }} has reached {{ $value
+          }}`}}'
+        runbook_url: Check manager logs for reasons why this might happen
+      expr: workqueue_depth{name="infisicalsecret"} > 0
+      for: 5m
+      labels:
+        severity: warning
