@@ -55,6 +55,7 @@ import {
   useUploadWsKey
 } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 const addMemberFormSchema = z.object({
   orgMembershipId: z.string().trim()
@@ -117,14 +118,14 @@ export const MemberListTab = () => {
     if (!orgUser) return;
 
     try {
-      if (currentWorkspace.version === "v1") {
+      if (currentWorkspace.version === ProjectVersion.V1) {
         await addUserToWorkspace({
           workspaceId,
           userPrivateKey,
           decryptKey: wsKey,
           members: [{ orgMembershipId, userPublicKey: orgUser.user.publicKey }]
         });
-      } else if (currentWorkspace.version === "v2") {
+      } else if (currentWorkspace.version === ProjectVersion.V2) {
         await addUserToWorkspaceNonE2EE({
           projectId: workspaceId,
           emails: [orgUser.user.email]

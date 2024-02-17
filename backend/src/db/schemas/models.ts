@@ -113,8 +113,8 @@ export enum SecretType {
 }
 
 export enum ProjectVersion {
-  V1 = "v1",
-  V2 = "v2"
+  V1 = 1,
+  V2 = 2
 }
 
 export enum ProjectUpgradeStatus {

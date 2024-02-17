@@ -60,7 +60,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.Users))
-        .where({ ghost: true })
+        .where({ isGhost: true })
         .first();
       return ghostUser;
     } catch (error) {

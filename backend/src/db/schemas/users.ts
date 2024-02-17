@@ -20,7 +20,7 @@ export const UsersSchema = z.object({
   devices: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  ghost: z.boolean().default(false)
+  isGhost: z.boolean().default(false)
 });
 
 export type TUsers = z.infer<typeof UsersSchema>;

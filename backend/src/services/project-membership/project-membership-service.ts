@@ -16,11 +16,11 @@ import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
-import { createWsMembers } from "@app/lib/project";
 
 import { ActorType } from "../auth/auth-type";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
+import { createWsMembers } from "../project/project-fns";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
@@ -320,7 +320,7 @@ export const projectMembershipServiceFactory = ({
 
     const membershipUser = await userDAL.findUserByProjectMembershipId(membershipId);
 
-    if (membershipUser?.ghost) {
+    if (membershipUser?.isGhost) {
       throw new BadRequestError({
         message: "Unauthorized member update",
         name: "Update project membership"
@@ -365,7 +365,7 @@ export const projectMembershipServiceFactory = ({
 
     const member = await userDAL.findUserByProjectMembershipId(membershipId);
 
-    if (member?.ghost) {
+    if (member?.isGhost) {
       throw new BadRequestError({
         message: "Unauthorized member delete",
         name: "Delete project membership"

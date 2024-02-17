@@ -17,6 +17,7 @@ import {
   useUpdateBotActiveStatus
 } from "@app/hooks/api";
 import { IntegrationAuth } from "@app/hooks/api/types";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { CloudIntegrationSection } from "./components/CloudIntegrationSection";
 import { FrameworkIntegrationSection } from "./components/FrameworkIntegrationSection";
@@ -92,7 +93,7 @@ export const IntegrationsPage = withProjectPermission(
         isIntegrationsAuthorizedEmpty &&
         isIntegrationsEmpty
       ) {
-        if (bot?.id && currentWorkspace?.version === "v1")
+        if (bot?.id && currentWorkspace?.version === ProjectVersion.V1)
           updateBotActiveStatusSync({
             isActive: false,
             botId: bot.id,
@@ -113,7 +114,7 @@ export const IntegrationsPage = withProjectPermission(
       if (!selectedCloudIntegration) return;
 
       try {
-        if (bot && !bot.isActive && currentWorkspace?.version === "v1") {
+        if (bot && !bot.isActive && currentWorkspace?.version === ProjectVersion.V1) {
           const botKey = generateBotKey(bot.publicKey, latestWsKey!);
           await updateBotActiveStatus({
             workspaceId,

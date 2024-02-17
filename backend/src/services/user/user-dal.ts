@@ -23,7 +23,7 @@ export const userDALFactory = (db: TDbClient) => {
   const findUserEncKeyByEmail = async (email: string) => {
     try {
       return await db(TableName.Users)
-        .where({ email, ghost: false })
+        .where({ email, isGhost: false })
         .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .first();
     } catch (error) {

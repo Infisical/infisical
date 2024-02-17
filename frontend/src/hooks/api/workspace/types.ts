@@ -1,9 +1,14 @@
+export enum ProjectVersion {
+  V1 = 1,
+  V2 = 2
+}
+
 export type Workspace = {
   __v: number;
   id: string;
   name: string;
   orgId: string;
-  version: "v1" | "v2";
+  version: ProjectVersion;
   upgradeStatus: string | null;
   autoCapitalization: boolean;
   environments: WorkspaceEnv[];

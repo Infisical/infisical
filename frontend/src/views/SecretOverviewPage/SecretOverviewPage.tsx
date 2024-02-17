@@ -40,6 +40,7 @@ import {
   useGetUserWsKey,
   useUpdateSecretV3
 } from "@app/hooks/api";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
@@ -317,7 +318,9 @@ export const SecretOverviewPage = () => {
         </p>
       </div>
 
-      {currentWorkspace?.version === "v1" && <UpgradeProjectAlert project={currentWorkspace} />}
+      {currentWorkspace?.version === ProjectVersion.V1 && (
+        <UpgradeProjectAlert project={currentWorkspace} />
+      )}
       <div className="mt-8 flex items-center justify-between">
         <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
         <div className="w-80">

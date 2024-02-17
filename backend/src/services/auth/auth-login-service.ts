@@ -275,7 +275,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     if (isOauthSignUpDisabled) throw new BadRequestError({ message: "User signup disabled", name: "Oauth 2 login" });
 
     if (!user) {
-      user = await userDAL.create({ email, firstName, lastName, authMethods: [authMethod], ghost: false });
+      user = await userDAL.create({ email, firstName, lastName, authMethods: [authMethod], isGhost: false });
     }
     const isLinkingRequired = !user?.authMethods?.includes(authMethod);
     const isUserCompleted = user.isAccepted;

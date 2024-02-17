@@ -5,6 +5,7 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { useProjectPermission } from "@app/context";
 import { useGetUpgradeProjectStatus, useUpgradeProject } from "@app/hooks/api";
 import { Workspace } from "@app/hooks/api/types";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { Alert } from "../Alert";
 import { Button } from "../Button";
@@ -55,7 +56,7 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
     let interval: NodeJS.Timeout | null = null;
 
     if (membership.role === "admin") {
-      if (project.version === "v1") {
+      if (project.version === ProjectVersion.V1) {
         getLatestProjectStatus();
       }
 
@@ -72,7 +73,7 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
       }
 
       interval = setInterval(() => {
-        if (project.version === "v1") {
+        if (project.version === ProjectVersion.V1) {
           getLatestProjectStatus();
         }
       }, 5_000);
@@ -92,7 +93,7 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
       (currentStatus === null && statusIsLoading)) &&
     projectStatus?.status !== "FAILED";
 
-  if (project.version !== "v1") return null;
+  if (project.version !== ProjectVersion.V1) return null;
   if (membership.role !== "admin") return null;
 
   return (

@@ -6,6 +6,7 @@ import {
 import { Alert, AlertDescription, Checkbox } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useGetUserWsKey, useGetWorkspaceBot, useUpdateBotActiveStatus } from "@app/hooks/api";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 export const E2EESection = () => {
   const { currentWorkspace } = useWorkspace();
@@ -78,7 +79,7 @@ export const E2EESection = () => {
 
   if (!currentWorkspace) return null;
 
-  return bot && currentWorkspace.version === "v1" ? (
+  return bot && currentWorkspace.version === ProjectVersion.V1 ? (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <p className="mb-3 text-xl font-semibold">End-to-End Encryption</p>
       <p className="mb-8 text-gray-400">

@@ -77,7 +77,7 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         )
-        .where({ ghost: false }); // MAKE SURE USER IS NOT A GHOST USER
+        .where({ isGhost: false }); // MAKE SURE USER IS NOT A GHOST USER
       return members.map(({ email, firstName, lastName, userId, publicKey, ...data }) => ({
         ...data,
         user: { email, firstName, lastName, id: userId, publicKey }
@@ -136,7 +136,7 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         )
-        .where({ ghost: true });
+        .where({ isGhost: true });
       return member;
     } catch (error) {
       return null;
@@ -150,7 +150,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
         .select(db.ref("id").withSchema(TableName.Users).as("userId"))
-        .where({ ghost: true });
+        .where({ isGhost: true });
       return !!member;
     } catch (error) {
       return false;

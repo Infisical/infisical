@@ -24,17 +24,17 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("projectId").withSchema(TableName.ProjectMembership),
           db.ref("role").withSchema(TableName.ProjectMembership),
           db.ref("roleId").withSchema(TableName.ProjectMembership),
-          db.ref("ghost").withSchema(TableName.Users),
+          db.ref("isGhost").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users),
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId")
         )
-        .where({ ghost: false });
-      return members.map(({ email, firstName, lastName, publicKey, ghost, ...data }) => ({
+        .where({ isGhost: false });
+      return members.map(({ email, firstName, lastName, publicKey, isGhost, ...data }) => ({
         ...data,
-        user: { email, firstName, lastName, id: data.userId, publicKey, ghost }
+        user: { email, firstName, lastName, id: data.userId, publicKey, isGhost }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all project members" });
@@ -47,7 +47,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.Users))
-        .where({ ghost: true })
+        .where({ isGhost: true })
         .first();
 
       return ghostUser;
@@ -72,7 +72,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("email").withSchema(TableName.Users)
         )
         .whereIn("email", emails)
-        .where({ ghost: false });
+        .where({ isGhost: false });
       return members.map(({ userId, email, ...data }) => ({
         ...data,
         user: { id: userId, email }

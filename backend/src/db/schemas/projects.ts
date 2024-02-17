@@ -15,7 +15,7 @@ export const ProjectsSchema = z.object({
   orgId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  version: z.string().default("v1"),
+  version: z.number().default(1),
   upgradeStatus: z.string().nullable().optional()
 });
 

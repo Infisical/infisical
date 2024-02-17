@@ -119,7 +119,7 @@ export const projectBotServiceFactory = ({
       throw new BadRequestError({ message: "Failed to find project by bot ID" });
     }
 
-    if (project.version === "v2") {
+    if (project.version === ProjectVersion.V2) {
       throw new BadRequestError({ message: "Failed to set bot active, project has a default bot enabled" });
     }
 
