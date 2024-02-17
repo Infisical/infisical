@@ -385,8 +385,8 @@ export const projectQueueFactory = ({
 
         await projectDAL.setProjectUpgradeStatus(data.projectId, null, tx);
 
-        // await new Promise((resolve) => setTimeout(resolve, 60_000));
-        // throw new Error("Transaction was successful!");
+        //  await new Promise((resolve) => setTimeout(resolve, 15_000));
+        throw new Error("Transaction was successful!");
       });
     } catch (err) {
       const [project] = await projectDAL
