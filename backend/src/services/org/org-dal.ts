@@ -122,7 +122,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const findOrgGhostUser = async (orgId: string) => {
     try {
-      const [member] = await db(TableName.OrgMembership)
+      const member = await db(TableName.OrgMembership)
         .where({ orgId })
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
@@ -136,7 +136,8 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         )
-        .where({ isGhost: true });
+        .where({ isGhost: true })
+        .first();
       return member;
     } catch (error) {
       return null;
@@ -145,13 +146,14 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const ghostUserExists = async (orgId: string) => {
     try {
-      const [member] = await db(TableName.OrgMembership)
+      const member = await db(TableName.OrgMembership)
         .where({ orgId })
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
         .select(db.ref("id").withSchema(TableName.Users).as("userId"))
-        .where({ isGhost: true });
-      return !!member;
+        .where({ isGhost: true })
+        .first();
+      return Boolean(member);
     } catch (error) {
       return false;
     }

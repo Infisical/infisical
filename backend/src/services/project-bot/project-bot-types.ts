@@ -1,4 +1,3 @@
-// import { SecretKeyEncoding } from "@app/db/schemas";
 import { TProjectBots } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
@@ -21,10 +20,5 @@ export type TFindBotByProjectIdDTO = {
 } & TProjectPermission;
 
 export type TGetPrivateKeyDTO = {
-  //   encoding: SecretKeyEncoding;
-  //   nonce: string;
-  //   tag: string;
-  //   encryptedPrivateKey: string;
-
   bot: TProjectBots;
 };
