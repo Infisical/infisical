@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/router";
+import { faWarning } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { useProjectPermission } from "@app/context";
@@ -7,7 +9,6 @@ import { useGetUpgradeProjectStatus, useUpgradeProject } from "@app/hooks/api";
 import { Workspace } from "@app/hooks/api/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
-import { Alert } from "../Alert";
 import { Button } from "../Button";
 
 export type UpgradeProjectAlertProps = {
@@ -85,18 +86,18 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
   if (membership.role !== "admin") return null;
 
   return (
-    <div className="my-8">
-      <Alert title="Upgrade your project" variant="warning">
-        <div className="max-w-md">
-          Upgrade your project version to continue receiving the latest improvements and patches.
-          {currentStatus && <p className="mt-2 opacity-80">Status: {currentStatus}</p>}
-        </div>
-        <div className="mt-2">
+    <div className="mt-4 w-full border rounded-md p-4 text-base border-primary-600/70 bg-primary/[.07] text-white flex flex-row items-center">
+      <FontAwesomeIcon icon={faWarning} className="text-white/80 text-6xl pr-6"/>
+      <div className="text-sm flex flex-col w-full">
+        <span className="text-lg font-semibold mb-2">Upgrade your project</span>
+        Upgrade your project version to continue receiving the latest improvements and patches.
+        {currentStatus && <p className="mt-2 opacity-80">Status: {currentStatus}</p>}
+      </div>
+      <div className="my-2">
           <Button isLoading={isLoading} isDisabled={isLoading} onClick={onUpgradeProject}>
             Upgrade
           </Button>
         </div>
-      </Alert>
     </div>
   );
 };
