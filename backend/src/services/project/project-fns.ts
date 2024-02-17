@@ -1,18 +1,8 @@
 import crypto from "crypto";
 
-import { ProjectMembershipRole, TProjectKeys } from "@app/db/schemas";
+import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
 
-import { decryptAsymmetric, encryptAsymmetric } from "../crypto";
-
-type AddUserToWsDTO = {
-  decryptKey: TProjectKeys & { sender: { publicKey: string } };
-  userPrivateKey: string;
-  members: {
-    orgMembershipId: string;
-    projectMembershipRole: ProjectMembershipRole;
-    userPublicKey: string;
-  }[];
-};
+import { AddUserToWsDTO } from "./project-types";
 
 export const createWsMembers = ({ members, decryptKey, userPrivateKey }: AddUserToWsDTO) => {
   const key = decryptAsymmetric({
