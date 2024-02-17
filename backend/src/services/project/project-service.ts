@@ -15,7 +15,6 @@ import { createSecretBlindIndex } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { createProjectKey, createWsMembers } from "@app/lib/project";
 import { TProjectPermission } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
@@ -30,6 +29,7 @@ import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
+import { createProjectKey, createWsMembers } from "./project-fns";
 import { TProjectQueueFactory } from "./project-queue";
 import { TCreateProjectDTO, TDeleteProjectDTO, TGetProjectDTO, TUpgradeProjectDTO } from "./project-types";
 

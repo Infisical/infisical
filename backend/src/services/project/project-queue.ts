@@ -16,7 +16,6 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { logger } from "@app/lib/logger";
-import { createProjectKey, createWsMembers } from "@app/lib/project";
 import { decryptSecrets, SecretDocType, TPartialSecret } from "@app/lib/secret";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
@@ -31,6 +30,7 @@ import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
+import { createProjectKey, createWsMembers } from "./project-fns";
 
 export type TProjectQueueFactory = ReturnType<typeof projectQueueFactory>;
 
@@ -143,12 +143,7 @@ export const projectQueueFactory = ({
         secrets.push(...approvalSecrets.map((el) => ({ ...el, docType: SecretDocType.ApprovalSecret })));
       }
 
-      const decryptedSecrets = decryptSecrets(
-        // secrets.filter((s) => s.keyEncoding === "base64"),
-        secrets,
-        userPrivateKey,
-        oldProjectKey
-      );
+      const decryptedSecrets = decryptSecrets(secrets, userPrivateKey, oldProjectKey);
 
       if (secrets.length !== decryptedSecrets.length) {
         throw new Error("Failed to decrypt some secret versions");
