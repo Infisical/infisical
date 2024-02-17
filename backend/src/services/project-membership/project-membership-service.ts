@@ -42,10 +42,10 @@ type TProjectMembershipServiceFactoryDep = {
   smtpService: TSmtpService;
   projectBotDAL: TProjectBotDALFactory;
   projectMembershipDAL: TProjectMembershipDALFactory;
-  userDAL: Pick<TUserDALFactory, "findById" | "findOne" | "findUserByProjectMembershipId">;
+  userDAL: Pick<TUserDALFactory, "findById" | "findOne" | "findUserByProjectMembershipId" | "find">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByEmail">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -77,55 +77,70 @@ export const projectMembershipServiceFactory = ({
 
     const invitees: TUsers[] = [];
 
-    for (const email of emails) {
-      const invitee = await userDAL.findOne({ email });
-      if (!invitee || !invitee.isAccepted)
-        throw new BadRequestError({
-          message: "Failed to validate invitee",
-          name: "Invite user to project"
+    const project = await projectDAL.findById(projectId);
+    const users = await userDAL.find({
+      $in: { email: emails }
+    });
+
+    await projectDAL.transaction(async (tx) => {
+      for (const invitee of users) {
+        if (!invitee.isAccepted)
+          throw new BadRequestError({
+            message: "Failed to validate invitee",
+            name: "Invite user to project"
+          });
+
+        const inviteeMembership = await projectMembershipDAL.findOne(
+          {
+            userId: invitee.id,
+            projectId
+          },
+          tx
+        );
+
+        if (inviteeMembership) {
+          throw new BadRequestError({
+            message: "Existing member of project",
+            name: "Invite user to project"
+          });
+        }
+
+        const inviteeMembershipOrg = await orgDAL.findMembership({
+          userId: invitee.id,
+          orgId: project.orgId,
+          status: OrgMembershipStatus.Accepted
         });
 
-      const inviteeMembership = await projectMembershipDAL.findOne({
-        userId: invitee.id,
-        projectId
-      });
-      if (inviteeMembership)
-        throw new BadRequestError({
-          message: "Existing member of project",
-          name: "Invite user to project"
-        });
+        if (!inviteeMembershipOrg) {
+          throw new BadRequestError({
+            message: "Failed to validate invitee org membership",
+            name: "Invite user to project"
+          });
+        }
 
-      const project = await projectDAL.findById(projectId);
-      const inviteeMembershipOrg = await orgDAL.findMembership({
-        userId: invitee.id,
-        orgId: project.orgId,
-        status: OrgMembershipStatus.Accepted
-      });
-      if (!inviteeMembershipOrg)
-        throw new BadRequestError({
-          message: "Failed to validate invitee org membership",
-          name: "Invite user to project"
-        });
+        await projectMembershipDAL.create(
+          {
+            userId: invitee.id,
+            projectId,
+            role: ProjectMembershipRole.Member
+          },
+          tx
+        );
 
-      await projectMembershipDAL.create({
-        userId: invitee.id,
-        projectId,
-        role: ProjectMembershipRole.Member
-      });
+        invitees.push(invitee);
+      }
 
       const appCfg = getConfig();
       await smtpService.sendMail({
         template: SmtpTemplates.WorkspaceInvite,
         subjectLine: "Infisical workspace invitation",
-        recipients: [invitee.email],
+        recipients: invitees.map((i) => i.email),
         substitutions: {
           workspaceName: project.name,
           callback_url: `${appCfg.SITE_URL}/login`
         }
       });
-
-      invitees.push(invitee);
-    }
+    });
 
     const latestKey = await projectKeyDAL.findLatestProjectKey(actorId, projectId);
 
