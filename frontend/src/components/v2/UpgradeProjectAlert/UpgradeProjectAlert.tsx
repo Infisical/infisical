@@ -22,6 +22,7 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
   const upgradeProject = useUpgradeProject();
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
   const [isUpgrading, setIsUpgrading] = useState(false);
+
   const {
     data: projectStatus,
     isLoading: statusIsLoading,
