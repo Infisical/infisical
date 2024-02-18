@@ -31,7 +31,7 @@ describe("Secret V3 Router", async () => {
         authorization: `Bearer ${jwtAuthToken}`
       }
     });
-    const projectKeyEnc = JSON.parse(projectKeyRes.payload);
+    const projectKeyEncryptionDetails = JSON.parse(projectKeyRes.payload);
 
     const userInfoRes = await testServer.inject({
       method: "GET",
@@ -43,9 +43,9 @@ describe("Secret V3 Router", async () => {
     const { user: userInfo } = JSON.parse(userInfoRes.payload);
     const privateKey = await getUserPrivateKey(seedData1.password, userInfo);
     projectKey = decryptAsymmetric({
-      ciphertext: projectKeyEnc.encryptedKey,
-      nonce: projectKeyEnc.nonce,
-      publicKey: projectKeyEnc.sender.publicKey,
+      ciphertext: projectKeyEncryptionDetails.encryptedKey,
+      nonce: projectKeyEncryptionDetails.nonce,
+      publicKey: projectKeyEncryptionDetails.sender.publicKey,
       privateKey
     });
 

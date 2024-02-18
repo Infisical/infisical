@@ -68,8 +68,8 @@ describe("Identity token secret ops", async () => {
       method: "POST",
       url: "/api/v1/auth/universal-auth/login",
       body: {
-        clientSecret: seedData1.machineIdentity.clientCred.secret,
-        clientId: seedData1.machineIdentity.clientCred.id
+        clientSecret: seedData1.machineIdentity.clientCredentials.secret,
+        clientId: seedData1.machineIdentity.clientCredentials.id
       }
     });
     expect(identityLogin.statusCode).toBe(200);

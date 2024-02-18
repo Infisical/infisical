@@ -35,7 +35,7 @@ export const seedData1 = {
   machineIdentity: {
     id: "88fa7aed-9288-401e-a4c9-fa9430be62a0",
     name: "mac1",
-    clientCred: {
+    clientCredentials: {
       id: "3f6135db-f237-421d-af66-a8f4e80d443b",
       secret: "da35a5a5a7b57f977a9a73394506e878a7175d06606df43dc93e1472b10cf339"
     }

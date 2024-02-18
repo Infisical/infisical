@@ -23,7 +23,7 @@ export async function seed(knex: Knex): Promise<void> {
     .insert([
       {
         identityId: seedData1.machineIdentity.id,
-        clientId: seedData1.machineIdentity.clientCred.id,
+        clientId: seedData1.machineIdentity.clientCredentials.id,
         clientSecretTrustedIps: JSON.stringify([
           {
             type: "ipv4",
@@ -54,7 +54,7 @@ export async function seed(knex: Knex): Promise<void> {
       }
     ])
     .returning("*");
-  const clientSecretHash = await bcrypt.hash(seedData1.machineIdentity.clientCred.secret, 10);
+  const clientSecretHash = await bcrypt.hash(seedData1.machineIdentity.clientCredentials.secret, 10);
   await knex(TableName.IdentityUaClientSecret).insert([
     {
       identityUAId: identityUa[0].id,
@@ -62,7 +62,7 @@ export async function seed(knex: Knex): Promise<void> {
       clientSecretTTL: 0,
       clientSecretNumUses: 0,
       clientSecretNumUsesLimit: 0,
-      clientSecretPrefix: seedData1.machineIdentity.clientCred.secret.slice(0, 4),
+      clientSecretPrefix: seedData1.machineIdentity.clientCredentials.secret.slice(0, 4),
       clientSecretHash,
       isClientSecretRevoked: false
     }
