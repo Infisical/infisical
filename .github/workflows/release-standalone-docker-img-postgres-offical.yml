@@ -5,9 +5,17 @@ on:
       - "infisical/v*.*.*-postgres"
 
 jobs:
+  infisical-tests:
+    name: Run tests before deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run backend api integration tests
+        # https://docs.github.com/en/actions/using-workflows/reusing-workflows#overview
+        uses: ./.github/workflows/run-backend-tests.yml
   infisical-standalone:
     name: Build infisical standalone image postgres
     runs-on: ubuntu-latest
+    needs: [infisical-tests]
     steps:
       - name: Extract version from tag
         id: extract_version

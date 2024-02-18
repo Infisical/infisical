@@ -8,9 +8,8 @@ on:
       - "!backend/README.md"
       - "!backend/.*"
       - "backend/.eslintrc.js"
-  push:
-    tags:
-      - "infisical/v*.*.*-postgres"
+  workflow_call:
+
 jobs:
   check-be-pr:
     name: Run integration test
