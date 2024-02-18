@@ -7,7 +7,10 @@ import { faArrowUpRightFromSquare, faBookOpen, faBugs, faCircleInfo } from "@for
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
+import { RadioGroup } from "@app/components/v2/RadioGroup";
 import { useCreateIntegration } from "@app/hooks/api";
+import { useGetIntegrationAuthHerokuPipelines } from "@app/hooks/api/integrationAuth/queries";
+import { App, Pipeline } from "@app/hooks/api/integrationAuth/types";
 
 import {
   Button,
@@ -22,11 +25,12 @@ import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
 } from "../../../hooks/api/integrationAuth";
-import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+import { useCreateWsEnvironment, useGetWorkspaceById } from "../../../hooks/api/workspace";
 
 export default function HerokuCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync: mutateAsyncEnv } = useCreateWsEnvironment();
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
@@ -36,9 +40,17 @@ export default function HerokuCreateIntegrationPage() {
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
 
+  const { data: integrationAuthPipelineCouplings } = useGetIntegrationAuthHerokuPipelines({
+    integrationAuthId: (integrationAuthId as string) ?? ""
+  });
+
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [uniquePipelines, setUniquePipelines] = useState<Pipeline[]>();
+  const [selectedPipeline, setSelectedPipeline] = useState("");
+  const [selectedPipelineApps, setSelectedPipelineApps] = useState<App[]>();
   const [targetApp, setTargetApp] = useState("");
   const [secretPath, setSecretPath] = useState("/");
+  const [integrationType, setIntegrationType] = useState("App");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -47,6 +59,36 @@ export default function HerokuCreateIntegrationPage() {
       setSelectedSourceEnvironment(workspace.environments[0].slug);
     }
   }, [workspace]);
+
+  useEffect(() => {
+    if (integrationAuthPipelineCouplings) {
+        const uniquePipelinesConst = Array.from(
+          new Set(
+            integrationAuthPipelineCouplings
+              .map(({ pipeline: { pipelineId, name } }) => ({
+                name,
+                pipelineId
+              }))
+              .map((obj) => JSON.stringify(obj))
+          )).map((str) => JSON.parse(str)) as { pipelineId: string; name: string }[]
+        setUniquePipelines(uniquePipelinesConst);
+        if (uniquePipelinesConst) {
+          if (uniquePipelinesConst!.length > 0) {
+            setSelectedPipeline(uniquePipelinesConst![0].name);
+          } else {
+            setSelectedPipeline("none");
+          }
+        }
+    }
+  }, [integrationAuthPipelineCouplings]);
+
+  useEffect(() => {
+    if (integrationAuthPipelineCouplings) {
+      setSelectedPipelineApps(integrationAuthApps?.filter(app => integrationAuthPipelineCouplings
+        .filter((pipelineCoupling) => pipelineCoupling.pipeline.name === selectedPipeline)
+        .map(coupling => coupling.app.appId).includes(String(app.appId))))
+    }
+  }, [selectedPipeline]);
 
   useEffect(() => {
     if (integrationAuthApps) {
@@ -64,13 +106,32 @@ export default function HerokuCreateIntegrationPage() {
 
       if (!integrationAuth?.id) return;
 
-      await mutateAsync({
-        integrationAuthId: integrationAuth?.id,
-        isActive: true,
-        app: targetApp,
-        sourceEnvironment: selectedSourceEnvironment,
-        secretPath
-      });
+      if (integrationType === "App") {
+        await mutateAsync({
+          integrationAuthId: integrationAuth?.id,
+          isActive: true,
+          app: targetApp,
+          sourceEnvironment: selectedSourceEnvironment,
+          secretPath
+        });
+      } else if (integrationType === "Pipeline") {
+        selectedPipelineApps?.map(async (app, index) => {
+          setTimeout(async () => {
+            await mutateAsyncEnv({
+              workspaceId: String(localStorage.getItem("projectData.id")),
+              name: app.name,
+              slug: app.name.toLowerCase().replaceAll(" ", "-")
+            });
+            await mutateAsync({
+              integrationAuthId: integrationAuth?.id,
+              isActive: true,
+              app: app.name,
+              sourceEnvironment: app.name.toLowerCase().replaceAll(" ", "-"),
+              secretPath
+            })
+          }, 1000*index)
+        })
+      }
 
       setIsLoading(false);
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
@@ -118,6 +179,36 @@ export default function HerokuCreateIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
+        <RadioGroup 
+          value={integrationType} 
+          onValueChange={(val) => setIntegrationType(val)}
+        />
+        {integrationType === "Pipeline" && <>
+        <FormControl label="Heroku Pipeline" className="px-6">
+          <Select
+            value={selectedPipeline}
+            onValueChange={(val) => setSelectedPipeline(val)}
+            className="w-full border border-mineshaft-500"
+          >
+            {uniquePipelines?.map((pipeline) => (
+              <SelectItem
+                value={pipeline.name}
+                key={`source-environment-${pipeline.name}`}
+              >
+                {pipeline.name}
+              </SelectItem>
+            ))}
+          </Select>
+        </FormControl>
+        <div className="px-6 text-sm mb-4 inline-block text-bunker-300">
+          After creating the integration, the following Heroku apps will be automatically synced to Infisical: 
+          <div className="flex flex-col">
+            {selectedPipelineApps?.map(app => <p key={app.name} className="text-bunker-200 pl-0.5 inline-flex"><span className="text-primary pr-1">-&gt;</span> {app.name}</p>)}
+          </div>
+          From then on, every new app in the selected pipeline will be synced to Infisical, too. 
+        </div>
+        </>}
+        {integrationType === "App" && <>
         <FormControl label="Project Environment" className="px-6">
           <Select
             value={selectedSourceEnvironment}
@@ -163,7 +254,7 @@ export default function HerokuCreateIntegrationPage() {
               </SelectItem>
             )}
           </Select>
-        </FormControl>
+        </FormControl></>}
         <Button
           onClick={handleButtonClick}
           color="mineshaft"
@@ -175,6 +266,7 @@ export default function HerokuCreateIntegrationPage() {
           Create Integration
         </Button>
       </Card>
+      {integrationType === "App" && <>
       <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
       <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
         <div className="flex flex-row items-center">
@@ -185,7 +277,7 @@ export default function HerokuCreateIntegrationPage() {
           After creating an integration, your secrets will start syncing immediately. This might
           cause an unexpected override of current secrets in Heroku with secrets from Infisical.
         </span>
-      </div>
+      </div></>}
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
