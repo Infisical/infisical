@@ -11,12 +11,12 @@ import {
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
-  useSubscription,
-  useOrganization
-} from "@app/context";
-import { usePopUp } from "@app/hooks/usePopUp";
-import { ScimTokenModal } from "./ScimTokenModal";
+  useOrganization,
+  useSubscription} from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
+import { usePopUp } from "@app/hooks/usePopUp";
+
+import { ScimTokenModal } from "./ScimTokenModal";
 
 export const OrgScimSection = () => {
     const { createNotification } = useNotificationContext();
@@ -56,9 +56,8 @@ export const OrgScimSection = () => {
                 type: "success"
             });
         } catch (err) {
-            console.error(err);
             createNotification({
-                text: `Failed to ${value ? "enable" : "disable"} SCIM provisioning`,
+                text: (err as { response: { data: { message: string; }}}).response.data.message,
                 type: "error"
             });
         }
@@ -82,20 +81,22 @@ export const OrgScimSection = () => {
                 </OrgPermissionCan>
             </div>
             <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Scim}>
-                <Switch
-                    id="enable-scim"
-                    onCheckedChange={(value) => {
-                        if (subscription?.scim) {
-                            handleEnableSCIMToggle(value)
-                        } else {
-                            handlePopUpOpen("upgradePlan");
-                        }
-                    }}
-                    isChecked={currentOrg?.scimEnabled ?? false}
-                    isDisabled={false}
-                >
-                    Enable SCIM Provisioning
-                </Switch>
+                {(isAllowed) => (
+                    <Switch
+                        id="enable-scim"
+                        onCheckedChange={(value) => {
+                            if (subscription?.scim) {
+                                handleEnableSCIMToggle(value)
+                            } else {
+                                handlePopUpOpen("upgradePlan");
+                            }
+                        }}
+                        isChecked={currentOrg?.scimEnabled ?? false}
+                        isDisabled={!isAllowed}
+                    >
+                        Enable SCIM Provisioning
+                    </Switch>
+                )}
             </OrgPermissionCan>
             <ScimTokenModal 
                 popUp={popUp}

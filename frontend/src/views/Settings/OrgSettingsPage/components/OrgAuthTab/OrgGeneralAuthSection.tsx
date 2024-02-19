@@ -10,14 +10,14 @@ import {
     useOrganization,
     useSubscription
 } from "@app/context";
-import { usePopUp } from "@app/hooks/usePopUp";
 import { useLogoutUser, useUpdateOrg } from "@app/hooks/api";
+import { usePopUp } from "@app/hooks/usePopUp";
 
 export const OrgGeneralAuthSection = () => {
     const { createNotification } = useNotificationContext();
     const { currentOrg } = useOrganization();
     const { subscription } = useSubscription();
-    const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
         "upgradePlan"
     ] as const);
     
@@ -52,7 +52,7 @@ export const OrgGeneralAuthSection = () => {
         } catch (err) {
             console.error(err);
             createNotification({
-                text: `Failed to ${value ? "enforce" : "un-enforce"} org-level auth`,
+                text: (err as { response: { data: { message: string; }}}).response.data.message,
                 type: "error"
             });
         }

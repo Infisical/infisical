@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { organizationKeys } from "@app/hooks/api/organization/queries";
 
 const ssoConfigKeys = {
   getSSOConfig: (orgId: string) => [{ orgId }, "organization-saml-sso"] as const
@@ -82,8 +83,12 @@ export const useUpdateSSOConfig = () => {
 
       return data;
     },
-    onSuccess(_, dto) {
-      queryClient.invalidateQueries(ssoConfigKeys.getSSOConfig(dto.organizationId));
+    onSuccess(_, { organizationId, isActive }) {
+      if (isActive === false) {
+        queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      }
+    
+      queryClient.invalidateQueries(ssoConfigKeys.getSSOConfig(organizationId));
     }
   });
 };

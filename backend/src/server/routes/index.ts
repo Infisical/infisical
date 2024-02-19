@@ -219,6 +219,8 @@ export const registerRoutes = async (
     scimDAL,
     userDAL,
     orgDAL,
+    projectDAL,
+    projectMembershipDAL,
     permissionService,
     smtpService
   });

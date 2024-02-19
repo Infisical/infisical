@@ -9,7 +9,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     try {
       const strBody = body instanceof Buffer ? body.toString() : body;
 
-      const json: unknown = JSON.parse(strBody); // TODO: update
+      const json: unknown = JSON.parse(strBody);
       done(null, json);
     } catch (err) {
       const error = err as Error;
@@ -294,13 +294,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
           familyName: z.string().trim(),
           givenName: z.string().trim()
         }),
-        // emails: z.array(
-        //   z.object({
-        //     primary: z.boolean(),
-        //     value: z.string().email(),
-        //     type: z.string().trim()
-        //   })
-        // ),
         displayName: z.string().trim(),
         active: z.boolean()
       }),
@@ -335,20 +328,4 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       return user;
     }
   });
-
-  // server.route({
-  //   url: "/Users/:userId",
-  //   method: "DELETE",
-  //   schema: {
-  //     body: z.object({}),
-  //     response: {
-  //       200: z.object({})
-  //     }
-  //   },
-  //   onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
-  //   handler: () => {
-  //     // TODO: update a user's profile
-  //     return {};
-  //   }
-  // });
 };

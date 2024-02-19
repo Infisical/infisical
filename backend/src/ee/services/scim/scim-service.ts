@@ -9,6 +9,8 @@ import { TOrgPermission } from "@app/lib/types";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { deleteOrgMembership } from "@app/services/org/org-fns";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -29,10 +31,14 @@ import {
 } from "./scim-types";
 
 type TScimServiceFactoryDep = {
-  // TODO: pick types
-  scimDAL: TScimDALFactory; // TODO: pick
-  userDAL: TUserDALFactory; // TODO: pick
-  orgDAL: TOrgDALFactory; // TODO: pick
+  scimDAL: Pick<TScimDALFactory, "create" | "find" | "findById" | "deleteById">;
+  userDAL: Pick<TUserDALFactory, "findOne" | "create" | "transaction">;
+  orgDAL: Pick<
+    TOrgDALFactory,
+    "createMembership" | "findById" | "findMembership" | "deleteMembershipById" | "transaction"
+  >;
+  projectDAL: Pick<TProjectDALFactory, "find">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: TSmtpService;
@@ -45,6 +51,8 @@ export const scimServiceFactory = ({
   scimDAL,
   userDAL,
   orgDAL,
+  projectDAL,
+  projectMembershipDAL,
   permissionService,
   smtpService
 }: TScimServiceFactoryDep) => {
@@ -325,7 +333,9 @@ export const scimServiceFactory = ({
       await deleteOrgMembership({
         orgMembershipId: membership.id,
         orgId: membership.orgId,
-        orgDAL
+        orgDAL,
+        projectDAL,
+        projectMembershipDAL
       });
     }
 
@@ -368,7 +378,9 @@ export const scimServiceFactory = ({
       await deleteOrgMembership({
         orgMembershipId: membership.id,
         orgId: membership.orgId,
-        orgDAL
+        orgDAL,
+        projectDAL,
+        projectMembershipDAL
       });
     }
 

@@ -1,21 +1,41 @@
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 
 type TDeleteOrgMembership = {
   orgMembershipId: string;
   orgId: string;
-  orgDAL: TOrgDALFactory;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "deleteMembershipById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "find">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete">;
 };
 
-export const deleteOrgMembership = async ({ orgMembershipId, orgId, orgDAL }: TDeleteOrgMembership) => {
-  // TODO: improve this implementation
+export const deleteOrgMembership = async ({
+  orgMembershipId,
+  orgId,
+  orgDAL,
+  projectDAL,
+  projectMembershipDAL
+}: TDeleteOrgMembership) => {
+  const membership = await orgDAL.transaction(async (tx) => {
+    // delete org membership
+    const orgMembership = await orgDAL.deleteMembershipById(orgMembershipId, orgId, tx);
 
-  // delete
-  const m2 = await orgDAL.transaction(async (tx) => {
-    const m1 = await orgDAL.deleteMembershipById(orgMembershipId, orgId, tx);
-    // const [deletedMembership] = await projectMembershipDAL.delete({ projectId, id: membershipId }, tx);
-    // delete project memberships
-    return m1;
+    const projects = await projectDAL.find({ orgId }, { tx });
+
+    // delete associated project memberships
+    await projectMembershipDAL.delete(
+      {
+        $in: {
+          projectId: projects.map((project) => project.id)
+        },
+        userId: orgMembership.userId as string
+      },
+      tx
+    );
+
+    return orgMembership;
   });
 
-  return m2;
+  return membership;
 };
