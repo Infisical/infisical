@@ -5,14 +5,26 @@ description: "How to sync secrets from Infisical to GitHub Actions"
 
 <Tabs>
   <Tab title="Usage">
-    <Warning>
-        Infisical can sync secrets to GitHub repo secrets only. If your repo uses environment secrets, then stay tuned with this [issue](https://github.com/Infisical/infisical/issues/54).
-    </Warning>
+    Infisical provides a different way to sync secrets to GitHub that can be used in Github Actions workflows.
+    You can sync secrets to the following GitHub scopes:
 
-    Prerequisites:
+    - Repository
+    - Github Organization
+    - Repository Environment
 
-    - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
-    - Ensure you have admin privileges to the repo you want to sync secrets to.
+
+    <Info>
+     To know more about usage and limitation of secrets in GitHub Actions, please visit the [Official Github documentation](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions).
+    </Info>
+
+
+    #### Prerequisites:
+      - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+      - Ensure you have admin privileges to the repository you want to sync secrets to.
+      - For Organizations only,
+        - During the oAuth ensure you gave access to the respective Organization.
+      - For Environment only
+        - Require access to the repository and create the environment under repository settings if it doesn't exist.
 
     <Steps>
       <Step title="Authorize Infisical for GitHub">
@@ -29,12 +41,35 @@ description: "How to sync secrets from Infisical to GitHub Actions"
           Although this step breaks E2EE, it's necessary for Infisical to sync the environment variables to the cloud platform.
         </Info>
       </Step>
-      <Step title="Start integration">
-        Select which Infisical environment secrets you want to sync to which GitHub repo and press start integration to start syncing secrets to the repo.
+      <Step title="Configure Infisical GitHub integration">
+        - Select Source Project Environment that needs to be synced ( Development, Staging or Production )
+        - Enter Secret path ( Default to root folder `/`)
+        - Select a scope ( Repository, Organization, Repository Environment ) based on the scope of the repository you want to sync secrets to.
+
+        <Tabs>
+          <Tab title="Repository">
+            - Select one or more repositories to sync secrets to.
+
+            ![integrations github](../../images/integrations/github/integrations-github-scope-repo.png)
+          </Tab>
+          <Tab title="Organization">
+            - Select the organization to sync secrets to.
+            ![integrations github](../../images/integrations/github/integrations-github-scope-org.png)
+
+          </Tab>
+          <Tab title="Repository Environment">
+          - Select the repository
+          - Select the target environment you want to sync secrets to. if you can't find the environment, create one under repository settings > Environments > New environment and try again.
+          ![integrations github](../../images/integrations/github/integrations-github-scope-env.png)
+          </Tab>
+        </Tabs>
+
+        - Once configured, press on the "Create Integration" button.
 
         ![integrations github](../../images/integrations/github/integrations-github.png)
       </Step>
     </Steps>
+
   </Tab>
   <Tab title="Self-Hosted Setup">
     Using the GitHub integration on a self-hosted instance of Infisical requires configuring an OAuth application in GitHub
@@ -45,13 +80,13 @@ description: "How to sync secrets from Infisical to GitHub Actions"
         
         ![integrations github config](../../images/integrations/github/integrations-github-config-settings.png) 
         ![integrations github config](../../images/integrations/github/integrations-github-config-dev-settings.png) 
-        ![integrations github config](../../images/integrations/github/integrations-github-config-new-app.png) 
+        ![integrations github config](../../images/integrations/github/integrations-github-config-new-app.png)
 
         Create the OAuth application. As part of the form, set the **Homepage URL** to your self-hosted domain `https://your-domain.com`
         and the **Authorization callback URL** to `https://your-domain.com/integrations/github/oauth2/callback`.
 
-        ![integrations github config](../../images/integrations/github/integrations-github-config-new-app-form.png) 
-        
+        ![integrations github config](../../images/integrations/github/integrations-github-config-new-app-form.png)
+
         <Note>
           If you have a GitHub organization, you can create an OAuth application under it
           in your organization Settings > Developer settings > OAuth Apps > New Org OAuth App.
@@ -59,17 +94,17 @@ description: "How to sync secrets from Infisical to GitHub Actions"
       </Step>
       <Step title="Add your OAuth application credentials to Infisical">
         Obtain the **Client ID** and generate a new **Client Secret** for your GitHub OAuth application.
-      
-        ![integrations github config](../../images/integrations/github/integrations-github-config-credentials.png) 
-      
+
+        ![integrations github config](../../images/integrations/github/integrations-github-config-credentials.png)
+
         Back in your Infisical instance, add two new environment variables for the credentials of your GitHub OAuth application:
 
         - `CLIENT_ID_GITHUB`: The **Client ID** of your GitHub OAuth application.
         - `CLIENT_SECRET_GITHUB`: The **Client Secret** of your GitHub OAuth application.
-      
+
         Once added, restart your Infisical instance and use the GitHub integration.
       </Step>
     </Steps>
+
   </Tab>
 </Tabs>
-
