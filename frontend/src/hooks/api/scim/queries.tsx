@@ -1,5 +1,7 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+
 import { apiRequest } from "@app/config/request";
+
 import { ScimTokenData } from "./types";
 
 export const scimKeys = {

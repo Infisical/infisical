@@ -26,14 +26,13 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
-    useGetScimTokens, 
     useCreateScimToken,
-    useDeleteScimToken
-} from "@app/hooks/api";
+    useDeleteScimToken,
+    useGetScimTokens} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { useOrganization } from "@app/context";
 
 const schema = yup.object({
   description: yup.string(),
@@ -162,7 +161,7 @@ export const ScimTokenModal = ({
         setToken("");
       }}
     >
-      <ModalContent title={`Manage SCIM credentials`}>
+      <ModalContent title="Manage SCIM credentials">
         <h2 className="mb-4">SCIM URL</h2>
         <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
           <p className="mr-4 break-all">{scimUrl}</p>
@@ -326,7 +325,7 @@ export const ScimTokenModal = ({
         </TableContainer>
         <DeleteActionModal
           isOpen={popUp.deleteScimToken.isOpen}
-          title={"Are you sure want to delete the SCIM token?"}
+          title="Are you sure want to delete the SCIM token?"
           onChange={(isOpen) => handlePopUpToggle("scimToken", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() => {

@@ -65,7 +65,8 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
       };
     } else if (req.auth.actor === ActorType.SCIM_CLIENT) {
       payload.actor = {
-        type: ActorType.SCIM_CLIENT
+        type: ActorType.SCIM_CLIENT,
+        metadata: {}
       };
     } else {
       throw new BadRequestError({ message: "Missing logic for other actor" });
