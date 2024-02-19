@@ -25,10 +25,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
       // not a relation kept like that to keep it when rolled back
       t.uuid("secretVersionId").notNullable();
-      t.foreign("secretVersionId")
-        .references("id")
-        .inTable(TableName.SecretVersion)
-        .onDelete("CASCADE");
+      t.foreign("secretVersionId").references("id").inTable(TableName.SecretVersion).onDelete("CASCADE");
       t.uuid("snapshotId").notNullable();
       t.foreign("snapshotId").references("id").inTable(TableName.Snapshot).onDelete("CASCADE");
       t.timestamps(true, true, true);
@@ -42,10 +39,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
       // not a relation kept like that to keep it when rolled back
       t.uuid("folderVersionId").notNullable();
-      t.foreign("folderVersionId")
-        .references("id")
-        .inTable(TableName.SecretFolderVersion)
-        .onDelete("CASCADE");
+      t.foreign("folderVersionId").references("id").inTable(TableName.SecretFolderVersion).onDelete("CASCADE");
       t.uuid("snapshotId").notNullable();
       t.foreign("snapshotId").references("id").inTable(TableName.Snapshot).onDelete("CASCADE");
       t.timestamps(true, true, true);

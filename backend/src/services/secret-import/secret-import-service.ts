@@ -1,10 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -44,10 +41,11 @@ export const secretImportServiceFactory = ({
     data,
     actor,
     actorId,
+    actorOrgId,
     projectId,
     path
   }: TCreateSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
 
     // check if user has permission to import into destination  path
     ForbiddenError.from(permission).throwUnlessCan(
@@ -69,8 +67,7 @@ export const secretImportServiceFactory = ({
 
     // TODO(akhilmhdh-pg): updated permission check add here
     const [importEnv] = await projectEnvDAL.findBySlugs(projectId, [data.environment]);
-    if (!importEnv)
-      throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
+    if (!importEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
       const lastPos = await secretImportDAL.findLastImportPosition(folder.id, tx);
@@ -94,10 +91,11 @@ export const secretImportServiceFactory = ({
     projectId,
     actor,
     actorId,
+    actorOrgId,
     data,
     id
   }: TUpdateSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -112,8 +110,7 @@ export const secretImportServiceFactory = ({
     const importedEnv = data.environment // this is get env information of new one or old one
       ? (await projectEnvDAL.findBySlugs(projectId, [data.environment]))?.[0]
       : await projectEnvDAL.findById(secImpDoc.importEnv);
-    if (!importedEnv)
-      throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
+    if (!importedEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
 
     const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
       const secImp = await secretImportDAL.findOne({ folderId: folder.id, id });
@@ -141,9 +138,10 @@ export const secretImportServiceFactory = ({
     projectId,
     actor,
     actorId,
+    actorOrgId,
     id
   }: TDeleteSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -154,26 +152,18 @@ export const secretImportServiceFactory = ({
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
       const [doc] = await secretImportDAL.delete({ folderId: folder.id, id }, tx);
-      if (!doc)
-        throw new BadRequestError({ name: "Sec imp del", message: "Secret import doc not found" });
+      if (!doc) throw new BadRequestError({ name: "Sec imp del", message: "Secret import doc not found" });
       await secretImportDAL.updateAllPosition(folder.id, doc.position, -1, tx);
 
       const importEnv = await projectEnvDAL.findById(doc.importEnv);
-      if (!importEnv)
-        throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
+      if (!importEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
       return { ...doc, importEnv };
     });
     return secImport;
   };
 
-  const getImports = async ({
-    path,
-    environment,
-    projectId,
-    actor,
-    actorId
-  }: TGetSecretImportsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getImports = async ({ path, environment, projectId, actor, actorId, actorOrgId }: TGetSecretImportsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -191,9 +181,10 @@ export const secretImportServiceFactory = ({
     environment,
     projectId,
     actor,
-    actorId
+    actorId,
+    actorOrgId
   }: TGetSecretsFromImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })

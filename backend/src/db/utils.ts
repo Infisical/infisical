@@ -2,12 +2,7 @@ import { Knex } from "knex";
 
 import { TableName } from "./schemas";
 
-export const createJunctionTable = (
-  knex: Knex,
-  tableName: TableName,
-  table1Name: TableName,
-  table2Name: TableName
-) =>
+export const createJunctionTable = (knex: Knex, tableName: TableName, table1Name: TableName, table2Name: TableName) =>
   knex.schema.createTable(tableName, (table) => {
     table.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
     table.uuid(`${table1Name}Id`).unsigned().notNullable(); // Foreign key for table1

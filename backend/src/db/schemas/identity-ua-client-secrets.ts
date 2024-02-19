@@ -19,7 +19,7 @@ export const IdentityUaClientSecretsSchema = z.object({
   isClientSecretRevoked: z.boolean().default(false),
   createdAt: z.date(),
   updatedAt: z.date(),
-  identityUAId: z.string().uuid(),
+  identityUAId: z.string().uuid()
 });
 
 export type TIdentityUaClientSecrets = z.infer<typeof IdentityUaClientSecretsSchema>;

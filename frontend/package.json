@@ -102,7 +102,7 @@
     "yaml": "^2.2.2",
     "yup": "^0.32.11",
     "zod": "^3.22.3",
-    "zustand": "^4.4.1"
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^7.5.2",

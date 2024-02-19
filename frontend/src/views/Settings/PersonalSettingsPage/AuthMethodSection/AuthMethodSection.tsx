@@ -25,8 +25,6 @@ const authMethodOpts: AuthMethodOption[] = [
   { label: "GitLab", value: AuthMethod.GITLAB, icon: faGitlab }
 ];
 
-const samlProviders = [AuthMethod.OKTA_SAML, AuthMethod.JUMPCLOUD_SAML, AuthMethod.AZURE_SAML];
-
 const schema = yup.object({
   authMethods: yup.array().required("Auth method is required")
 });
@@ -56,17 +54,6 @@ export const AuthMethodSection = () => {
   }, [user]);
 
   const onAuthMethodToggle = async (value: boolean, authMethodOpt: AuthMethodOption) => {
-    const hasSamlEnabled = user.authMethods.some((authMethod: AuthMethod) =>
-      samlProviders.includes(authMethod)
-    );
-
-    if (hasSamlEnabled) {
-      createNotification({
-        text: "SAML authentication can only be configured in your organization settings",
-        type: "error"
-      });
-    }
-
     const newAuthMethods = value
       ? [...authMethods, authMethodOpt.value]
       : authMethods.filter((auth) => auth !== authMethodOpt.value);

@@ -1,7 +1,16 @@
+/* eslint-disable @typescript-eslint/ban-types */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+// TODO(akhilmhdh): make this better later
+
 export const mergeOneToManyRelation = <
-  T extends Record<string, any>,
+  T extends Record<string, unknown>,
   Pk extends keyof T,
-  P extends Record<string, any>,
+  P extends Record<string, unknown>,
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint
   C extends any,
   Ck extends string = "child"
 >(
@@ -22,7 +31,7 @@ export const mergeOneToManyRelation = <
       const parent = parentMapper(row) as any;
       parent[childKey] = [];
       groupedRecord.push(parent);
-      prevPkId = pk;
+      prevPkId = pk as string;
       prevPkIndex += 1;
     }
     groupedRecord[prevPkIndex][childKey].push(childMapper(row));
@@ -41,6 +50,7 @@ export type TSqlPackRelationships<
   childrenMapper: C;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint
 export type TChildMapper<T extends {}, U extends string = string, R extends unknown = unknown> = {
   key: keyof T;
   label: U;
@@ -82,7 +92,7 @@ const sqlChildMapper = <
       const ck = `${prefix}-${label}-${doc[childPk]}`;
       const val = mapper(doc);
       if (!lookupTable.has(ck)) {
-        if (typeof val !== "undefined" && val !== null) docsByPk[pk as keyof P][label].push(val);
+        if (typeof val !== "undefined" && val !== null) docsByPk[pk][label].push(val);
         lookupTable.add(ck);
       }
       if (nestedMappers && val) {

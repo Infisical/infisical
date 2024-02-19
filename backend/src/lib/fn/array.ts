@@ -23,13 +23,10 @@ export const groupBy = <T, Key extends string | number | symbol>(
  * to convert each item in the list to a comparable identity
  * value
  */
-export const unique = <T, K extends string | number | symbol>(
-  array: readonly T[],
-  toKey?: (item: T) => K
-): T[] => {
+export const unique = <T, K extends string | number | symbol>(array: readonly T[], toKey?: (item: T) => K): T[] => {
   const valueMap = array.reduce(
     (acc, item) => {
-      const key = toKey ? toKey(item) : (item as any as string | number | symbol);
+      const key = toKey ? toKey(item) : (item as unknown as string | number | symbol);
       if (acc[key]) return acc;
       acc[key] = item;
       return acc;

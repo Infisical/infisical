@@ -10,6 +10,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     url: "/:workspaceId/encrypted-key",
     method: "GET",
     schema: {
+      description: "Return encrypted project key",
+      security: [
+        {
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim()
       }),
@@ -28,7 +34,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const key = await server.services.projectKey.getLatestProjectKey({
         actor: req.permission.type,
         actorId: req.permission.id,
-        projectId: req.params.workspaceId
+        projectId: req.params.workspaceId,
+        actorOrgId: req.permission.orgId
       });
 
       await server.services.auditLog.createAuditLog({
@@ -37,7 +44,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.GET_WORKSPACE_KEY,
           metadata: {
-            keyId: key.id
+            keyId: key?.id as string
           }
         }
       });

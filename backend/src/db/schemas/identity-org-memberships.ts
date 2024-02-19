@@ -14,7 +14,7 @@ export const IdentityOrgMembershipsSchema = z.object({
   orgId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  identityId: z.string().uuid(),
+  identityId: z.string().uuid()
 });
 
 export type TIdentityOrgMemberships = z.infer<typeof IdentityOrgMembershipsSchema>;

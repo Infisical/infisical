@@ -51,6 +51,7 @@ declare module "fastify" {
     // used for mfa session authentication
     mfa: {
       userId: string;
+      orgId?: string;
       user: TUsers;
     };
     // identity injection. depending on which kinda of token the information is filled in auth
@@ -58,6 +59,7 @@ declare module "fastify" {
     permission: {
       type: ActorType;
       id: string;
+      orgId?: string;
     };
     // passport data
     passportUser: {

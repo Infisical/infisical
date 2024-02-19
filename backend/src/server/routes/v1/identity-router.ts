@@ -11,6 +11,12 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     url: "/",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      description: "Create identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
         name: z.string().trim(),
         organizationId: z.string().trim(),
@@ -26,6 +32,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       const identity = await server.services.identity.createIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         orgId: req.body.organizationId
       });
@@ -51,6 +58,12 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     url: "/:identityId",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      description: "Update identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         identityId: z.string()
       }),
@@ -68,6 +81,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       const identity = await server.services.identity.updateIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         id: req.params.identityId,
         ...req.body
       });
@@ -93,6 +107,12 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     url: "/:identityId",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      description: "Delete identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         identityId: z.string()
       }),
@@ -106,6 +126,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       const identity = await server.services.identity.deleteIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         id: req.params.identityId
       });
 

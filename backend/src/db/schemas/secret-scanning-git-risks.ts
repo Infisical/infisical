@@ -38,7 +38,7 @@ export const SecretScanningGitRisksSchema = z.object({
   status: z.string().nullable().optional(),
   orgId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TSecretScanningGitRisks = z.infer<typeof SecretScanningGitRisksSchema>;

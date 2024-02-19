@@ -13,20 +13,12 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
   const countOfSecretsWithNullSecretBlindIndex = async (projectId: string, tx?: Knex) => {
     try {
       const doc = await (tx || db)(TableName.Secret)
-        .leftJoin(
-          TableName.SecretFolder,
-          `${TableName.SecretFolder}.id`,
-          `${TableName.Secret}.folderId`
-        )
-        .leftJoin(
-          TableName.Environment,
-          `${TableName.Environment}.id`,
-          `${TableName.SecretFolder}.envId`
-        )
+        .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
+        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
         .where({ projectId })
         .whereNull("secretBlindIndex")
-        .count(`${TableName.Secret}.id`);
-      return (doc as any)?.[0]?.count || 0;
+        .count(`${TableName.Secret}.id` as "id");
+      return doc?.[0]?.count || 0;
     } catch (error) {
       throw new DatabaseError({ error, name: "CountOfSecretWillNullSecretBlindIndex" });
     }
@@ -35,16 +27,8 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
   const findAllSecretsByProjectId = async (projectId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db)(TableName.Secret)
-        .leftJoin(
-          TableName.SecretFolder,
-          `${TableName.SecretFolder}.id`,
-          `${TableName.Secret}.folderId`
-        )
-        .leftJoin(
-          TableName.Environment,
-          `${TableName.Environment}.id`,
-          `${TableName.SecretFolder}.envId`
-        )
+        .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
+        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
         .where({ projectId })
         .whereNull("secretBlindIndex")
         .select(selectAllTableCols(TableName.Secret))
@@ -61,16 +45,8 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
   const findSecretsByProjectId = async (projectId: string, secretIds: string[], tx?: Knex) => {
     try {
       const docs = await (tx || db)(TableName.Secret)
-        .leftJoin(
-          TableName.SecretFolder,
-          `${TableName.SecretFolder}.id`,
-          `${TableName.Secret}.folderId`
-        )
-        .leftJoin(
-          TableName.Environment,
-          `${TableName.Environment}.id`,
-          `${TableName.SecretFolder}.envId`
-        )
+        .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
+        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
         .where({ projectId })
         .whereIn(`${TableName.Secret}.id`, secretIds)
         .whereNull("secretBlindIndex")

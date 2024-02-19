@@ -1,9 +1,9 @@
 {
   "name": "Infisical",
-  "basePath": "/docs",
+  "openapi": "https://app.infisical.com/api/docs/json",
   "logo": {
-    "dark": "/docs/logo/dark.svg",
-    "light": "/docs/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg",
     "href": "https://infisical.com"
   },
   "favicon": "/favicon.png",
@@ -234,7 +234,8 @@
         },
         "integrations/platforms/kubernetes",
         "integrations/frameworks/terraform",
-        "integrations/platforms/ansible"
+        "integrations/platforms/ansible",
+        "integrations/platforms/ecs-with-agent"
       ]
     },
     {
@@ -463,7 +464,9 @@
         {
           "group": "Contributing to platform",
           "pages": [
-            "contributing/platform/developing"
+            "contributing/platform/developing",
+            "contributing/platform/backend/how-to-create-a-feature",
+            "contributing/platform/backend/folder-structure"
           ]
         },
         {

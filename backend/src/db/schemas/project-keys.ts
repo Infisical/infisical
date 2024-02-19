@@ -15,7 +15,7 @@ export const ProjectKeysSchema = z.object({
   senderId: z.string().uuid().nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TProjectKeys = z.infer<typeof ProjectKeysSchema>;

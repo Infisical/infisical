@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 // logger follows a singleton pattern
 // easier to use it that's all.
 import pino, { Logger } from "pino";
@@ -14,10 +15,10 @@ const logLevelToSeverityLookup: Record<string, string> = {
 
 // eslint-disable-next-line import/no-mutable-exports
 export let logger: Readonly<Logger>;
-// akhilmhdh: 
-// The logger is not placed in the main app config to avoid a circular dependency. 
-// The config requires the logger to display errors when an invalid environment is supplied. 
-// On the other hand, the logger needs the config to obtain credentials for AWS or other transports. 
+// akhilmhdh:
+// The logger is not placed in the main app config to avoid a circular dependency.
+// The config requires the logger to display errors when an invalid environment is supplied.
+// On the other hand, the logger needs the config to obtain credentials for AWS or other transports.
 // By keeping the logger separate, it becomes an independent package.
 
 const loggerConfig = z.object({
@@ -25,14 +26,23 @@ const loggerConfig = z.object({
   AWS_CLOUDWATCH_LOG_REGION: z.string().default("us-east-1"),
   AWS_CLOUDWATCH_LOG_ACCESS_KEY_ID: z.string().min(1).optional(),
   AWS_CLOUDWATCH_LOG_ACCESS_KEY_SECRET: z.string().min(1).optional(),
-  AWS_CLOUDWATCH_LOG_INTERVAL: z.coerce.number().default(1000)
+  AWS_CLOUDWATCH_LOG_INTERVAL: z.coerce.number().default(1000),
+  NODE_ENV: z.enum(["development", "test", "production"]).default("production")
 });
 
 export const initLogger = async () => {
-  const targets: pino.TransportMultiOptions["targets"][number][] = [
-    { level: "info", target: "pino/file", options: {} }
-  ];
   const cfg = loggerConfig.parse(process.env);
+  const targets: pino.TransportMultiOptions["targets"][number][] = [
+    {
+      level: "info",
+      target: "pino/file",
+      options: {
+        destination: 1,
+        mkdir: true
+      }
+    }
+  ];
+
   if (cfg.AWS_CLOUDWATCH_LOG_ACCESS_KEY_ID && cfg.AWS_CLOUDWATCH_LOG_ACCESS_KEY_SECRET) {
     targets.push({
       target: "@serdnam/pino-cloudwatch-transport",
@@ -66,6 +76,7 @@ export const initLogger = async () => {
         })
       }
     },
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     transport
   );
   return logger;

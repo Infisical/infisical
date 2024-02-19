@@ -1,27 +1,39 @@
+/* eslint-env node */
 module.exports = {
-  root: true,
   env: {
-    browser: true,
-    es2021: true
+    es6: true,
+    node: true
   },
-  extends: ["airbnb-base", "airbnb-typescript/base", "prettier"],
-  plugins: ["prettier", "simple-import-sort", "import"],
+  extends: [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended-type-checked",
+    "airbnb-base",
+    "airbnb-typescript/base",
+    "plugin:prettier/recommended",
+    "prettier"
+  ],
+  plugins: ["@typescript-eslint", "simple-import-sort", "import"],
+  parser: "@typescript-eslint/parser",
   parserOptions: {
-    ecmaVersion: "latest",
+    project: true,
     sourceType: "module",
-    project: "./tsconfig.json",
     tsconfigRootDir: __dirname
   },
+  root: true,
   rules: {
     "@typescript-eslint/no-empty-function": "off",
+    "@typescript-eslint/no-unsafe-enum-comparison": "off",
+    "no-void": "off",
     "consistent-return": "off", // my style
     "import/order": "off", // for simple-import-order
     "import/prefer-default-export": "off", // why
     "no-restricted-syntax": "off",
+    // importing rules
+    "simple-import-sort/exports": "error",
     "import/first": "error",
     "import/newline-after-import": "error",
     "import/no-duplicates": "error",
-    "simple-import-sort/exports": "error",
     "simple-import-sort/imports": [
       "warn",
       {
@@ -45,12 +57,5 @@ module.exports = {
         ]
       }
     ]
-  },
-  settings: {
-    "import/resolver": {
-      typescript: {
-        project: ["./tsconfig.json"]
-      }
-    }
   }
 };

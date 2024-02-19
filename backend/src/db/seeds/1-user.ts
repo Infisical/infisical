@@ -14,7 +14,7 @@ export async function seed(knex: Knex): Promise<void> {
   const [user] = await knex(TableName.Users)
     .insert([
       {
-        // @ts-ignore to calculate predefined
+        // @ts-expect-error exluded type id needs to be inserted here to keep it testable
         id: seedData1.id,
         email: seedData1.email,
         superAdmin: true,
@@ -48,7 +48,7 @@ export async function seed(knex: Knex): Promise<void> {
   ]);
 
   await knex(TableName.AuthTokenSession).insert({
-    // @ts-ignore
+    // @ts-expect-error exluded type id needs to be inserted here to keep it testable
     id: seedData1.token.id,
     userId: seedData1.id,
     ip: "151.196.220.213",

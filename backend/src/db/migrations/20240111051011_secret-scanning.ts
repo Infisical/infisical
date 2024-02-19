@@ -15,7 +15,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
   }
-  createOnUpdateTrigger(knex, TableName.GitAppInstallSession);
+  await createOnUpdateTrigger(knex, TableName.GitAppInstallSession);
 
   if (!(await knex.schema.hasTable(TableName.GitAppOrg))) {
     await knex.schema.createTable(TableName.GitAppOrg, (t) => {
@@ -28,7 +28,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
   }
-  createOnUpdateTrigger(knex, TableName.GitAppOrg);
+  await createOnUpdateTrigger(knex, TableName.GitAppOrg);
 
   if (!(await knex.schema.hasTable(TableName.SecretScanningGitRisk))) {
     await knex.schema.createTable(TableName.SecretScanningGitRisk, (t) => {
@@ -66,7 +66,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
   }
-  createOnUpdateTrigger(knex, TableName.SecretScanningGitRisk);
+  await createOnUpdateTrigger(knex, TableName.SecretScanningGitRisk);
 }
 
 export async function down(knex: Knex): Promise<void> {

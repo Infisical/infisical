@@ -50,6 +50,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       const { integration, integrationAuth } = await server.services.integration.createIntegration({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.body
       });
       await server.services.auditLog.createAuditLog({
@@ -57,6 +58,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         projectId: integrationAuth.projectId,
         event: {
           type: EventType.CREATE_INTEGRATION,
+          // eslint-disable-next-line
           metadata: shake({
             integrationId: integration.id.toString(),
             integration: integration.integration,
@@ -71,6 +73,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             targetServiceId: integration.targetServiceId,
             path: integration.path,
             region: integration.region
+            // eslint-disable-next-line
           }) as any
         }
       });
@@ -105,6 +108,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       const integration = await server.services.integration.updateIntegration({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         id: req.params.integrationId,
         ...req.body
       });
@@ -130,6 +134,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       const integration = await server.services.integration.deleteIntegration({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         id: req.params.integrationId
       });
 
@@ -138,6 +143,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         projectId: integration.projectId,
         event: {
           type: EventType.DELETE_INTEGRATION,
+          // eslint-disable-next-line
           metadata: shake({
             integrationId: integration.id,
             integration: integration.integration,
@@ -152,6 +158,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             targetServiceId: integration.targetServiceId,
             path: integration.path,
             region: integration.region
+            // eslint-disable-next-line
           }) as any
         }
       });

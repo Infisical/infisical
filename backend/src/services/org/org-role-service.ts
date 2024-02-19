@@ -21,20 +21,15 @@ type TOrgRoleServiceFactoryDep = {
 
 export type TOrgRoleServiceFactory = ReturnType<typeof orgRoleServiceFactory>;
 
-export const orgRoleServiceFactory = ({
-  orgRoleDAL,
-  permissionService
-}: TOrgRoleServiceFactoryDep) => {
+export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRoleServiceFactoryDep) => {
   const createRole = async (
     userId: string,
     orgId: string,
-    data: Omit<TOrgRolesInsert, "orgId">
+    data: Omit<TOrgRolesInsert, "orgId">,
+    actorOrgId?: string
   ) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
-      OrgPermissionSubjects.Role
-    );
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Role);
     const existingRole = await orgRoleDAL.findOne({ slug: data.slug, orgId });
     if (existingRole) throw new BadRequestError({ name: "Create Role", message: "Duplicate role" });
     const role = await orgRoleDAL.create({
@@ -49,13 +44,11 @@ export const orgRoleServiceFactory = ({
     userId: string,
     orgId: string,
     roleId: string,
-    data: Omit<TOrgRolesUpdate, "orgId">
+    data: Omit<TOrgRolesUpdate, "orgId">,
+    actorOrgId?: string
   ) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Edit,
-      OrgPermissionSubjects.Role
-    );
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Role);
     if (data?.slug) {
       const existingRole = await orgRoleDAL.findOne({ slug: data.slug, orgId });
       if (existingRole && existingRole.id !== roleId)
@@ -69,24 +62,18 @@ export const orgRoleServiceFactory = ({
     return updatedRole;
   };
 
-  const deleteRole = async (userId: string, orgId: string, roleId: string) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Delete,
-      OrgPermissionSubjects.Role
-    );
+  const deleteRole = async (userId: string, orgId: string, roleId: string, actorOrgId?: string) => {
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
     const [deletedRole] = await orgRoleDAL.delete({ id: roleId, orgId });
     if (!deleteRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
 
     return deletedRole;
   };
 
-  const listRoles = async (userId: string, orgId: string) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.Role
-    );
+  const listRoles = async (userId: string, orgId: string, actorOrgId?: string) => {
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
     const customRoles = await orgRoleDAL.find({ orgId });
     const roles = [
       {
@@ -128,8 +115,8 @@ export const orgRoleServiceFactory = ({
     return roles;
   };
 
-  const getUserPermission = async (userId: string, orgId: string) => {
-    const { permission, membership } = await permissionService.getUserOrgPermission(userId, orgId);
+  const getUserPermission = async (userId: string, orgId: string, actorOrgId?: string) => {
+    const { permission, membership } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
     return { permissions: packRules(permission.rules), membership };
   };
 

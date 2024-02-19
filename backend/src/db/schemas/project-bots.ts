@@ -22,7 +22,7 @@ export const ProjectBotsSchema = z.object({
   projectId: z.string(),
   senderId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TProjectBots = z.infer<typeof ProjectBotsSchema>;

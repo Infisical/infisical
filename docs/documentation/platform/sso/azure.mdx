@@ -91,9 +91,16 @@ description: "Configure Azure SAML for Infisical SSO"
       ![Azure SAML assignment](../../../images/sso/azure/assignment.png)
    </Step>   
    <Step title="Enable SAML SSO in Infisical">
-      Enabling SAML SSO enforces all members in your organization to only be able to log into Infisical via Azure.
+      Enabling SAML SSO allows members in your organization to log into Infisical via Azure.
 
       ![Azure SAML assignment](../../../images/sso/azure/enable-saml.png)
+   </Step>
+   <Step title="Enforce SAML SSO in Infisical">
+      Enforcing SAML SSO ensures that members in your organization can only access Infisical
+      by logging into the organization via Azure.
+
+      To enforce SAML SSO, you're required to test out the SAML connection by successfully authenticating at least one Azure user with Infisical;
+      Once you've completed this requirement, you can toggle the **Enforce SAML SSO** button to enforce SAML SSO.
    </Step>
 </Steps>
 

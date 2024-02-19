@@ -1,7 +1,7 @@
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 
-import { Integrations,IntegrationUrls } from "./integration-list";
+import { Integrations, IntegrationUrls } from "./integration-list";
 
 type Team = {
   name: string;
@@ -12,7 +12,7 @@ const getTeamsGitLab = async ({ url, accessToken }: { url: string; accessToken: 
 
   let teams: Team[] = [];
   const res = (
-    await request.get(`${gitLabApiUrl}/v4/groups`, {
+    await request.get<{ name: string; id: string }[]>(`${gitLabApiUrl}/v4/groups`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Accept-Encoding": "application/json"
@@ -20,7 +20,7 @@ const getTeamsGitLab = async ({ url, accessToken }: { url: string; accessToken: 
     })
   ).data;
 
-  teams = res.map((t: any) => ({
+  teams = res.map((t) => ({
     name: t.name,
     teamId: t.id
   }));

@@ -14,21 +14,13 @@ export const secretRotationDALFactory = (db: TDbClient) => {
   const findQuery = (filter: TFindFilter<TSecretRotations & { projectId: string }>, tx: Knex) =>
     tx(TableName.SecretRotation)
       .where(filter)
-      .join(
-        TableName.Environment,
-        `${TableName.SecretRotation}.envId`,
-        `${TableName.Environment}.id`
-      )
+      .join(TableName.Environment, `${TableName.SecretRotation}.envId`, `${TableName.Environment}.id`)
       .leftJoin(
         TableName.SecretRotationOutput,
         `${TableName.SecretRotation}.id`,
         `${TableName.SecretRotationOutput}.rotationId`
       )
-      .join(
-        TableName.Secret,
-        `${TableName.SecretRotationOutput}.secretId`,
-        `${TableName.Secret}.id`
-      )
+      .join(TableName.Secret, `${TableName.SecretRotationOutput}.secretId`, `${TableName.Secret}.id`)
       .select(selectAllTableCols(TableName.SecretRotation))
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
       .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
@@ -102,11 +94,7 @@ export const secretRotationDALFactory = (db: TDbClient) => {
   const findById = async (id: string, tx?: Knex) => {
     try {
       const doc = await (tx || db)(TableName.SecretRotation)
-        .join(
-          TableName.Environment,
-          `${TableName.SecretRotation}.envId`,
-          `${TableName.Environment}.id`
-        )
+        .join(TableName.Environment, `${TableName.SecretRotation}.envId`, `${TableName.Environment}.id`)
         .where({ [`${TableName.SecretRotation}.id` as "id"]: id })
         .select(selectAllTableCols(TableName.SecretRotation))
         .select(
@@ -125,8 +113,7 @@ export const secretRotationDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findRotationOutputsByRotationId = async (rotationId: string) =>
-    secretRotationOutputOrm.find({ rotationId });
+  const findRotationOutputsByRotationId = async (rotationId: string) => secretRotationOutputOrm.find({ rotationId });
 
   return {
     ...secretRotationOrm,

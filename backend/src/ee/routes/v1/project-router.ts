@@ -11,6 +11,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:workspaceId/secret-snapshots",
     schema: {
+      description: "Return project secret snapshots ids",
+      security: [
+        {
+          apiKeyAuth: [],
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim()
       }),
@@ -31,6 +38,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const secretSnapshots = await server.services.snapshot.listSnapshots({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         ...req.query
       });
@@ -60,6 +68,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const count = await server.services.snapshot.projectSecretSnapshotCount({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         environment: req.query.environment,
         path: req.query.path
@@ -72,6 +81,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:workspaceId/audit-logs",
     schema: {
+      description: "Return audit logs",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim()
       }),
@@ -112,6 +128,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const auditLogs = await server.services.auditLog.listProjectAuditLogs({
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         ...req.query,
         auditLogActor: req.query.actor,

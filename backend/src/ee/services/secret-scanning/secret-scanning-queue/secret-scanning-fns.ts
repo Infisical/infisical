@@ -1,3 +1,4 @@
+import { Octokit } from "@octokit/rest";
 import { exec } from "child_process";
 import { mkdir, readFile, rm, writeFile } from "fs";
 import { tmpdir } from "os";
@@ -11,7 +12,7 @@ export function createTempFolder(): Promise<string> {
     const tempFolderName = Math.random().toString(36).substring(2);
     const tempFolderPath = join(tempDir, tempFolderName);
 
-    mkdir(tempFolderPath, (err: any) => {
+    mkdir(tempFolderPath, (err) => {
       if (err) {
         reject(err);
       } else {
@@ -115,7 +116,7 @@ export function convertKeysToLowercase<T>(obj: T): T {
 }
 
 export async function scanFullRepoContentAndGetFindings(
-  octokit: any,
+  octokit: Octokit,
   installationId: string,
   repositoryFullName: string
 ): Promise<SecretMatch[]> {
@@ -125,11 +126,13 @@ export async function scanFullRepoContentAndGetFindings(
   try {
     const {
       data: { token }
-    } = await octokit.apps.createInstallationAccessToken({ installation_id: installationId });
+    } = await octokit.apps.createInstallationAccessToken({
+      installation_id: Number(installationId)
+    });
     await cloneRepo(token, repositoryFullName, repoPath);
     await runInfisicalScanOnRepo(repoPath, findingsPath);
     const findingsData = await readFindingsFile(findingsPath);
-    return JSON.parse(findingsData);
+    return JSON.parse(findingsData) as SecretMatch[];
   } finally {
     await deleteTempFolder(tempFolder);
   }
@@ -144,7 +147,7 @@ export async function scanContentAndGetFindings(textContent: string): Promise<Se
     await writeTextToFile(filePath, textContent);
     await runInfisicalScan(filePath, findingsPath);
     const findingsData = await readFindingsFile(findingsPath);
-    return JSON.parse(findingsData);
+    return JSON.parse(findingsData) as SecretMatch[];
   } finally {
     await deleteTempFolder(tempFolder);
   }

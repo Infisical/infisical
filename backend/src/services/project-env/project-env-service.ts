@@ -2,10 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectDALFactory } from "../project/project-dal";
@@ -30,12 +27,9 @@ export const projectEnvServiceFactory = ({
   projectDAL,
   folderDAL
 }: TProjectEnvServiceFactoryDep) => {
-  const createEnvironment = async ({ projectId, actorId, actor, name, slug }: TCreateEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.Environments
-    );
+  const createEnvironment = async ({ projectId, actorId, actor, actorOrgId, name, slug }: TCreateEnvDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Environments);
 
     const envs = await projectEnvDAL.find({ projectId });
     const existingEnv = envs.find(({ slug: envSlug }) => envSlug === slug);
@@ -70,21 +64,19 @@ export const projectEnvServiceFactory = ({
     slug,
     actor,
     actorId,
+    actorOrgId,
     name,
     id,
     position
   }: TUpdateEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      ProjectPermissionSub.Environments
-    );
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Environments);
 
     const oldEnv = await projectEnvDAL.findOne({ id, projectId });
     if (!oldEnv) throw new BadRequestError({ message: "Environment not found" });
 
     if (slug) {
-      const existingEnv = await projectEnvDAL.findOne({ slug });
+      const existingEnv = await projectEnvDAL.findOne({ slug, projectId });
       if (existingEnv && existingEnv.id !== id) {
         throw new BadRequestError({
           message: "Environment with slug already exist",
@@ -102,12 +94,9 @@ export const projectEnvServiceFactory = ({
     return { environment: env, old: oldEnv };
   };
 
-  const deleteEnvironment = async ({ projectId, actor, actorId, id }: TDeleteEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      ProjectPermissionSub.Environments
-    );
+  const deleteEnvironment = async ({ projectId, actor, actorId, actorOrgId, id }: TDeleteEnvDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
 
     const env = await projectEnvDAL.transaction(async (tx) => {
       const [doc] = await projectEnvDAL.delete({ id, projectId }, tx);

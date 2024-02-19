@@ -26,11 +26,11 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      
       const role = await server.services.orgRole.createRole(
         req.permission.id,
         req.params.organizationId,
-        req.body
+        req.body,
+        req.permission.orgId
       );
       return { role };
     }
@@ -58,12 +58,12 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      
       const role = await server.services.orgRole.updateRole(
         req.permission.id,
         req.params.organizationId,
         req.params.roleId,
-        req.body
+        req.body,
+        req.permission.orgId
       );
       return { role };
     }
@@ -85,11 +85,11 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      
       const role = await server.services.orgRole.deleteRole(
         req.permission.id,
         req.params.organizationId,
-        req.params.roleId
+        req.params.roleId,
+        req.permission.orgId
       );
       return { role };
     }
@@ -114,10 +114,10 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      
       const roles = await server.services.orgRole.listRoles(
         req.permission.id,
-        req.params.organizationId
+        req.params.organizationId,
+        req.permission.orgId
       );
       return { data: { roles } };
     }
@@ -139,10 +139,10 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      
       const { permissions, membership } = await server.services.orgRole.getUserPermission(
         req.permission.id,
-        req.params.organizationId
+        req.params.organizationId,
+        req.permission.orgId
       );
       return { permissions, membership };
     }

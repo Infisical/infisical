@@ -39,6 +39,13 @@ export type AuthModeJwtTokenPayload = {
   userId: string;
   tokenVersionId: string;
   accessVersion: number;
+  organizationId?: string;
+};
+
+export type AuthModeMfaJwtTokenPayload = {
+  authTokenType: AuthTokenType.MFA_TOKEN;
+  userId: string;
+  organizationId?: string;
 };
 
 export type AuthModeRefreshJwtTokenPayload = {
@@ -46,11 +53,13 @@ export type AuthModeRefreshJwtTokenPayload = {
   userId: string;
   tokenVersionId: string;
   refreshVersion: number;
+  organizationId?: string;
 };
 
 export type AuthModeProviderJwtTokenPayload = {
   authTokenType: AuthTokenType.PROVIDER_TOKEN;
   email: string;
+  organizationId?: string;
 };
 
 export type AuthModeProviderSignUpTokenPayload = {

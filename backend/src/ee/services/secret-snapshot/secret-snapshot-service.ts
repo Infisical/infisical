@@ -29,17 +29,11 @@ type TSecretSnapshotServiceFactoryDep = {
   snapshotSecretDAL: TSnapshotSecretDALFactory;
   snapshotFolderDAL: TSnapshotFolderDALFactory;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany" | "findLatestVersionByFolderId">;
-  folderVersionDAL: Pick<
-    TSecretFolderVersionDALFactory,
-    "findLatestVersionByFolderId" | "insertMany"
-  >;
+  folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestVersionByFolderId" | "insertMany">;
   secretDAL: Pick<TSecretDALFactory, "delete" | "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
-  folderDAL: Pick<
-    TSecretFolderDALFactory,
-    "findById" | "findBySecretPath" | "delete" | "insertMany"
-  >;
+  folderDAL: Pick<TSecretFolderDALFactory, "findById" | "findBySecretPath" | "delete" | "insertMany">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "isValidLicense">;
 };
@@ -64,13 +58,11 @@ export const secretSnapshotServiceFactory = ({
     projectId,
     actorId,
     actor,
+    actorOrgId,
     path
   }: TProjectSnapshotCountDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.SecretRollback
-    );
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
@@ -84,45 +76,32 @@ export const secretSnapshotServiceFactory = ({
     projectId,
     actorId,
     actor,
+    actorOrgId,
     path,
     limit = 20,
     offset = 0
   }: TProjectSnapshotListDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.SecretRollback
-    );
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-    const snapshots = await snapshotDAL.find(
-      { folderId: folder.id },
-      { limit, offset, sort: [["createdAt", "desc"]] }
-    );
+    const snapshots = await snapshotDAL.find({ folderId: folder.id }, { limit, offset, sort: [["createdAt", "desc"]] });
     return snapshots;
   };
 
-  const getSnapshotData = async ({ actorId, actor, id }: TGetSnapshotDataDTO) => {
+  const getSnapshotData = async ({ actorId, actor, actorOrgId, id }: TGetSnapshotDataDTO) => {
     const snapshot = await snapshotDAL.findSecretSnapshotDataById(id);
     if (!snapshot) throw new BadRequestError({ message: "Snapshot not found" });
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      snapshot.projectId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.SecretRollback
-    );
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, snapshot.projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
     return snapshot;
   };
 
   const performSnapshot = async (folderId: string) => {
     try {
-      if (!licenseService.isValidLicense)
-        throw new InternalServerError({ message: "Invalid license" });
+      if (!licenseService.isValidLicense) throw new InternalServerError({ message: "Invalid license" });
 
       const snapshot = await snapshotDAL.transaction(async (tx) => {
         const folder = await folderDAL.findById(folderId, tx);
@@ -166,15 +145,11 @@ export const secretSnapshotServiceFactory = ({
     }
   };
 
-  const rollbackSnapshot = async ({ id: snapshotId, actor, actorId }: TRollbackSnapshotDTO) => {
+  const rollbackSnapshot = async ({ id: snapshotId, actor, actorId, actorOrgId }: TRollbackSnapshotDTO) => {
     const snapshot = await snapshotDAL.findById(snapshotId);
     if (!snapshot) throw new BadRequestError({ message: "Snapshot not found" });
 
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      snapshot.projectId
-    );
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, snapshot.projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretRollback
@@ -199,9 +174,7 @@ export const secretSnapshotServiceFactory = ({
             id,
             // this means don't bump up the version if not root folder
             // because below ones can be same version as nothing changed
-            version: deletedTopLevelFolders[folderId]
-              ? latestFolderVersion + 1
-              : latestFolderVersion,
+            version: deletedTopLevelFolders[folderId] ? latestFolderVersion + 1 : latestFolderVersion,
             name,
             parentId: folderId
           }))
@@ -211,22 +184,10 @@ export const secretSnapshotServiceFactory = ({
       const secrets = await secretDAL.insertMany(
         rollbackSnaps.flatMap(({ secretVersions, folderId }) =>
           secretVersions.map(
-            ({
-              latestSecretVersion,
-              version,
-              updatedAt,
-              createdAt,
-              secretId,
-              envId,
-              id,
-              tags,
-              ...el
-            }) => ({
+            ({ latestSecretVersion, version, updatedAt, createdAt, secretId, envId, id, tags, ...el }) => ({
               ...el,
               id: secretId,
-              version: deletedTopLevelSecsGroupById[secretId]
-                ? latestSecretVersion + 1
-                : latestSecretVersion,
+              version: deletedTopLevelSecsGroupById[secretId] ? latestSecretVersion + 1 : latestSecretVersion,
               folderId
             })
           )
@@ -239,8 +200,7 @@ export const secretSnapshotServiceFactory = ({
         secretVersions.forEach((secVer) => {
           secVer.tags.forEach((tag) => {
             secretTagsToBeInsert.push({ secretsId: secVer.secretId, secret_tagsId: tag.id });
-            if (!secretVerTagToBeInsert?.[secVer.secretId])
-              secretVerTagToBeInsert[secVer.secretId] = [];
+            if (!secretVerTagToBeInsert?.[secVer.secretId]) secretVerTagToBeInsert[secVer.secretId] = [];
             secretVerTagToBeInsert[secVer.secretId].push(tag.id);
           });
         });

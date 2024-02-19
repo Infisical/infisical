@@ -111,9 +111,11 @@ export const SecretItem = memo(
       resolver: zodResolver(formSchema)
     });
 
+    const secretReminderRepeatDays = watch("reminderRepeatDays");
+    const secretReminderNote = watch("reminderNote");
+
     const overrideAction = watch("overrideAction");
     const hasComment = Boolean(watch("comment"));
-    const hasReminder = Boolean(watch("reminderRepeatDays"));
 
     const selectedTags = watch("tags", []);
     const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
@@ -191,6 +193,8 @@ export const SecretItem = memo(
     return (
       <>
         <CreateReminderForm
+          repeatDays={secretReminderRepeatDays}
+          note={secretReminderNote}
           isOpen={createReminderFormOpen}
           onOpenChange={(_, data) => {
             setCreateReminderFormOpen.toggle();
@@ -380,22 +384,24 @@ export const SecretItem = memo(
                     <IconButton
                       className={twMerge(
                         "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6",
-                        hasReminder && "w-5 text-primary"
+                        Boolean(secretReminderRepeatDays) && "w-5 text-primary"
                       )}
                       variant="plain"
                       size="md"
                       ariaLabel="add-reminder"
                     >
-                      <Tooltip content="Reminder">
+                      <Tooltip
+                        content={
+                          secretReminderRepeatDays && secretReminderRepeatDays > 0
+                            ? `Every ${secretReminderRepeatDays} day${
+                                Number(secretReminderRepeatDays) > 1 ? "s" : ""
+                              }
+                          `
+                            : "Reminder"
+                        }
+                      >
                         <FontAwesomeIcon
-                          onClick={() => {
-                            if (!hasReminder) {
-                              setCreateReminderFormOpen.on();
-                            } else {
-                              setValue("reminderRepeatDays", null, { shouldDirty: true });
-                              setValue("reminderNote", null, { shouldDirty: true });
-                            }
-                          }}
+                          onClick={() => setCreateReminderFormOpen.on()}
                           icon={faClock}
                         />
                       </Tooltip>

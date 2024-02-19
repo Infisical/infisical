@@ -42,10 +42,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretApprovalRequestDAL: TSecretApprovalRequestDALFactory;
   secretApprovalRequestSecretDAL: TSecretApprovalRequestSecretDALFactory;
   secretApprovalRequestReviewerDAL: TSecretApprovalRequestReviewerDALFactory;
-  folderDAL: Pick<
-    TSecretFolderDALFactory,
-    "findBySecretPath" | "findById" | "findSecretPathByFolderIds"
-  >;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findById" | "findSecretPathByFolderIds">;
   secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
@@ -61,9 +58,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
 };
 
-export type TSecretApprovalRequestServiceFactory = ReturnType<
-  typeof secretApprovalRequestServiceFactory
->;
+export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
 
 export const secretApprovalRequestServiceFactory = ({
   secretApprovalRequestDAL,
@@ -78,14 +73,14 @@ export const secretApprovalRequestServiceFactory = ({
   secretVersionDAL,
   secretQueueService
 }: TSecretApprovalRequestServiceFactoryDep) => {
-  const requestCount = async ({ projectId, actor, actorId }: TApprovalRequestCountDTO) => {
-    if (actor === ActorType.SERVICE)
-      throw new BadRequestError({ message: "Cannot use service token" });
+  const requestCount = async ({ projectId, actor, actorId, actorOrgId }: TApprovalRequestCountDTO) => {
+    if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const { membership } = await permissionService.getProjectPermission(
       actor as ActorType.USER,
       actorId,
-      projectId
+      projectId,
+      actorOrgId
     );
 
     const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, membership.id);
@@ -96,16 +91,16 @@ export const secretApprovalRequestServiceFactory = ({
     projectId,
     actorId,
     actor,
+    actorOrgId,
     status,
     environment,
     committer,
     limit,
     offset
   }: TListApprovalsDTO) => {
-    if (actor === ActorType.SERVICE)
-      throw new BadRequestError({ message: "Cannot use service token" });
+    if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     const approvals = await secretApprovalRequestDAL.findByProjectId({
       projectId,
       committer,
@@ -118,19 +113,18 @@ export const secretApprovalRequestServiceFactory = ({
     return approvals;
   };
 
-  const getSecretApprovalDetails = async ({ actor, actorId, id }: TSecretApprovalDetailsDTO) => {
-    if (actor === ActorType.SERVICE)
-      throw new BadRequestError({ message: "Cannot use service token" });
+  const getSecretApprovalDetails = async ({ actor, actorId, actorOrgId, id }: TSecretApprovalDetailsDTO) => {
+    if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(id);
-    if (!secretApprovalRequest)
-      throw new BadRequestError({ message: "Secret approval request not found" });
+    if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
 
     const { policy } = secretApprovalRequest;
     const { membership } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      secretApprovalRequest.projectId
+      secretApprovalRequest.projectId,
+      actorOrgId
     );
     if (
       membership.role !== ProjectMembershipRole.Admin &&
@@ -147,17 +141,17 @@ export const secretApprovalRequestServiceFactory = ({
     return { ...secretApprovalRequest, secretPath: secretPath?.[0]?.path || "/", commits: secrets };
   };
 
-  const reviewApproval = async ({ approvalId, actor, status, actorId }: TReviewRequestDTO) => {
+  const reviewApproval = async ({ approvalId, actor, status, actorId, actorOrgId }: TReviewRequestDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
-    if (!secretApprovalRequest)
-      throw new BadRequestError({ message: "Secret approval request not found" });
+    if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const { policy } = secretApprovalRequest;
     const { membership } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
-      secretApprovalRequest.projectId
+      secretApprovalRequest.projectId,
+      actorOrgId
     );
     if (
       membership.role !== ProjectMembershipRole.Admin &&
@@ -189,17 +183,17 @@ export const secretApprovalRequestServiceFactory = ({
     return reviewStatus;
   };
 
-  const updateApprovalStatus = async ({ actorId, status, approvalId, actor }: TStatusChangeDTO) => {
+  const updateApprovalStatus = async ({ actorId, status, approvalId, actor, actorOrgId }: TStatusChangeDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
-    if (!secretApprovalRequest)
-      throw new BadRequestError({ message: "Secret approval request not found" });
+    if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const { policy } = secretApprovalRequest;
     const { membership } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
-      secretApprovalRequest.projectId
+      secretApprovalRequest.projectId,
+      actorOrgId
     );
     if (
       membership.role !== ProjectMembershipRole.Admin &&
@@ -209,8 +203,7 @@ export const secretApprovalRequestServiceFactory = ({
       throw new UnauthorizedError({ message: "User has no access" });
     }
 
-    if (secretApprovalRequest.hasMerged)
-      throw new BadRequestError({ message: "Approval request has been merged" });
+    if (secretApprovalRequest.hasMerged) throw new BadRequestError({ message: "Approval request has been merged" });
     if (secretApprovalRequest.status === RequestState.Closed && status === RequestState.Closed)
       throw new BadRequestError({ message: "Approval request is already closed" });
     if (secretApprovalRequest.status === RequestState.Open && status === RequestState.Open)
@@ -226,19 +219,15 @@ export const secretApprovalRequestServiceFactory = ({
   const mergeSecretApprovalRequest = async ({
     approvalId,
     actor,
-    actorId
+    actorId,
+    actorOrgId
   }: TMergeSecretApprovalRequestDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
-    if (!secretApprovalRequest)
-      throw new BadRequestError({ message: "Secret approval request not found" });
+    if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const { policy, folderId, projectId } = secretApprovalRequest;
-    const { membership } = await permissionService.getProjectPermission(
-      ActorType.USER,
-      actorId,
-      projectId
-    );
+    const { membership } = await permissionService.getProjectPermission(ActorType.USER, actorId, projectId, actorOrgId);
     if (
       membership.role !== ProjectMembershipRole.Admin &&
       secretApprovalRequest.committerId !== membership.id &&
@@ -256,28 +245,24 @@ export const secretApprovalRequestServiceFactory = ({
         (approverId) => reviewers[approverId.toString()] === ApprovalStatus.APPROVED
       ).length;
 
-    if (!hasMinApproval)
-      throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
-    const secretApprovalSecrets = await secretApprovalRequestSecretDAL.findByRequestId(
-      secretApprovalRequest.id
-    );
+    if (!hasMinApproval) throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
+    const secretApprovalSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
     if (!secretApprovalSecrets) throw new BadRequestError({ message: "No secrets found" });
 
     const conflicts: Array<{ secretId: string; op: CommitType }> = [];
     let secretCreationCommits = secretApprovalSecrets.filter(({ op }) => op === CommitType.Create);
     if (secretCreationCommits.length) {
-      const { secsGroupedByBlindIndex: conflictGroupByBlindIndex } =
-        await secretService.fnSecretBlindIndexCheckV2({
-          folderId,
-          inputSecrets: secretCreationCommits.map(({ secretBlindIndex }) => {
-            if (!secretBlindIndex) {
-              throw new BadRequestError({
-                message: "Missing secret blind index"
-              });
-            }
-            return { secretBlindIndex };
-          })
-        });
+      const { secsGroupedByBlindIndex: conflictGroupByBlindIndex } = await secretService.fnSecretBlindIndexCheckV2({
+        folderId,
+        inputSecrets: secretCreationCommits.map(({ secretBlindIndex }) => {
+          if (!secretBlindIndex) {
+            throw new BadRequestError({
+              message: "Missing secret blind index"
+            });
+          }
+          return { secretBlindIndex };
+        })
+      });
       secretCreationCommits
         .filter(({ secretBlindIndex }) => conflictGroupByBlindIndex[secretBlindIndex || ""])
         .forEach((el) => {
@@ -290,23 +275,19 @@ export const secretApprovalRequestServiceFactory = ({
 
     let secretUpdationCommits = secretApprovalSecrets.filter(({ op }) => op === CommitType.Update);
     if (secretUpdationCommits.length) {
-      const { secsGroupedByBlindIndex: conflictGroupByBlindIndex } =
-        await secretService.fnSecretBlindIndexCheckV2({
-          folderId,
-          inputSecrets: secretUpdationCommits
-            .filter(
-              ({ secretBlindIndex, secret }) =>
-                secret && secret.secretBlindIndex !== secretBlindIndex
-            )
-            .map(({ secretBlindIndex }) => {
-              if (!secretBlindIndex) {
-                throw new BadRequestError({
-                  message: "Missing secret blind index"
-                });
-              }
-              return { secretBlindIndex };
-            })
-        });
+      const { secsGroupedByBlindIndex: conflictGroupByBlindIndex } = await secretService.fnSecretBlindIndexCheckV2({
+        folderId,
+        inputSecrets: secretUpdationCommits
+          .filter(({ secretBlindIndex, secret }) => secret && secret.secretBlindIndex !== secretBlindIndex)
+          .map(({ secretBlindIndex }) => {
+            if (!secretBlindIndex) {
+              throw new BadRequestError({
+                message: "Missing secret blind index"
+              });
+            }
+            return { secretBlindIndex };
+          })
+      });
       secretUpdationCommits
         .filter(
           ({ secretBlindIndex, secretId }) =>
@@ -318,14 +299,11 @@ export const secretApprovalRequestServiceFactory = ({
 
       secretUpdationCommits = secretUpdationCommits.filter(
         ({ secretBlindIndex, secretId }) =>
-          Boolean(secretId) &&
-          (secretBlindIndex ? !conflictGroupByBlindIndex[secretBlindIndex] : true)
+          Boolean(secretId) && (secretBlindIndex ? !conflictGroupByBlindIndex[secretBlindIndex] : true)
       );
     }
 
-    const secretDeletionCommits = secretApprovalSecrets.filter(
-      ({ op }) => op === CommitType.Delete
-    );
+    const secretDeletionCommits = secretApprovalSecrets.filter(({ op }) => op === CommitType.Delete);
 
     const mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
       const newSecrets = secretCreationCommits.length
@@ -437,18 +415,19 @@ export const secretApprovalRequestServiceFactory = ({
     data,
     actorId,
     actor,
+    actorOrgId,
     policy,
     projectId,
     secretPath,
     environment
   }: TGenerateSecretApprovalRequestDTO) => {
-    if (actor === ActorType.SERVICE)
-      throw new BadRequestError({ message: "Cannot use service token" });
+    if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const { permission, membership } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      projectId
+      projectId,
+      actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
@@ -456,13 +435,11 @@ export const secretApprovalRequestServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder)
-      throw new BadRequestError({ message: "Folder not  found", name: "GenSecretApproval" });
+    if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "GenSecretApproval" });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg)
-      throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
+    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
 
     const commits: Omit<TSecretApprovalRequestsSecretsInsert, "requestId">[] = [];
     const commitTagIds: Record<string, string[]> = {};
@@ -496,38 +473,28 @@ export const secretApprovalRequestServiceFactory = ({
       // get all blind index
       // Find all those secrets
       // if not throw not found
-      const { keyName2BlindIndex, secrets: secretsToBeUpdated } =
-        await secretService.fnSecretBlindIndexCheck({
-          inputSecrets: updatedSecrets,
-          folderId,
-          isNew: false,
-          blindIndexCfg
-        });
+      const { keyName2BlindIndex, secrets: secretsToBeUpdated } = await secretService.fnSecretBlindIndexCheck({
+        inputSecrets: updatedSecrets,
+        folderId,
+        isNew: false,
+        blindIndexCfg
+      });
 
       // now find any secret that needs to update its name
       // same process as above
-      const nameUpdatedSecrets = updatedSecrets.filter(({ newSecretName }) =>
-        Boolean(newSecretName)
-      );
-      const { keyName2BlindIndex: newKeyName2BlindIndex } =
-        await secretService.fnSecretBlindIndexCheck({
-          inputSecrets: nameUpdatedSecrets,
-          folderId,
-          isNew: true,
-          blindIndexCfg
-        });
+      const nameUpdatedSecrets = updatedSecrets.filter(({ newSecretName }) => Boolean(newSecretName));
+      const { keyName2BlindIndex: newKeyName2BlindIndex } = await secretService.fnSecretBlindIndexCheck({
+        inputSecrets: nameUpdatedSecrets,
+        folderId,
+        isNew: true,
+        blindIndexCfg
+      });
 
-      const secsGroupedByBlindIndex = groupBy(
-        secretsToBeUpdated,
-        (el) => el.secretBlindIndex as string
-      );
+      const secsGroupedByBlindIndex = groupBy(secretsToBeUpdated, (el) => el.secretBlindIndex as string);
       const updatedSecretIds = updatedSecrets.map(
         (el) => secsGroupedByBlindIndex[keyName2BlindIndex[el.secretName]][0].id
       );
-      const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
-        folderId,
-        updatedSecretIds
-      );
+      const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(folderId, updatedSecretIds);
       commits.push(
         ...updatedSecrets.map(({ newSecretName, secretName, tagIds, ...el }) => {
           const secretId = secsGroupedByBlindIndex[keyName2BlindIndex[secretName]][0].id;
@@ -562,17 +529,13 @@ export const secretApprovalRequestServiceFactory = ({
         blindIndexCfg
       });
       const secretsGroupedByBlindIndex = groupBy(secrets, (i) => {
-        if (!i.secretBlindIndex)
-          throw new BadRequestError({ message: "Missing secret blind index" });
+        if (!i.secretBlindIndex) throw new BadRequestError({ message: "Missing secret blind index" });
         return i.secretBlindIndex;
       });
       const deletedSecretIds = deletedSecrets.map(
         (el) => secretsGroupedByBlindIndex[keyName2BlindIndex[el.secretName]][0].id
       );
-      const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
-        folderId,
-        deletedSecretIds
-      );
+      const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(folderId, deletedSecretIds);
       commits.push(
         ...deletedSecrets.map((el) => {
           const secretId = secretsGroupedByBlindIndex[keyName2BlindIndex[el.secretName]][0].id;

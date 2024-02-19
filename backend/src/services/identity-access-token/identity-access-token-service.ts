@@ -7,18 +7,13 @@ import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 
 import { AuthTokenType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
-import {
-  TIdentityAccessTokenJwtPayload,
-  TRenewAccessTokenDTO
-} from "./identity-access-token-types";
+import { TIdentityAccessTokenJwtPayload, TRenewAccessTokenDTO } from "./identity-access-token-types";
 
 type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
 };
 
-export type TIdentityAccessTokenServiceFactory = ReturnType<
-  typeof identityAccessTokenServiceFactory
->;
+export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
 
 export const identityAccessTokenServiceFactory = ({
   identityAccessTokenDAL
@@ -40,12 +35,12 @@ export const identityAccessTokenServiceFactory = ({
     }
 
     // ttl check
-    if (accessTokenTTL > 0) {
+    if (Number(accessTokenTTL) > 0) {
       const currentDate = new Date();
       if (accessTokenLastRenewedAt) {
         // access token has been renewed
         const accessTokenRenewed = new Date(accessTokenLastRenewedAt);
-        const ttlInMilliseconds = accessTokenTTL * 1000;
+        const ttlInMilliseconds = Number(accessTokenTTL) * 1000;
         const expirationDate = new Date(accessTokenRenewed.getTime() + ttlInMilliseconds);
 
         if (currentDate > expirationDate)
@@ -55,7 +50,7 @@ export const identityAccessTokenServiceFactory = ({
       } else {
         // access token has never been renewed
         const accessTokenCreated = new Date(accessTokenCreatedAt);
-        const ttlInMilliseconds = accessTokenTTL * 1000;
+        const ttlInMilliseconds = Number(accessTokenTTL) * 1000;
         const expirationDate = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
 
         if (currentDate > expirationDate)
@@ -66,9 +61,9 @@ export const identityAccessTokenServiceFactory = ({
     }
 
     // max ttl checks
-    if (accessTokenMaxTTL > 0) {
+    if (Number(accessTokenMaxTTL) > 0) {
       const accessTokenCreated = new Date(accessTokenCreatedAt);
-      const ttlInMilliseconds = accessTokenMaxTTL * 1000;
+      const ttlInMilliseconds = Number(accessTokenMaxTTL) * 1000;
       const currentDate = new Date();
       const expirationDate = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
 
@@ -77,7 +72,7 @@ export const identityAccessTokenServiceFactory = ({
           message: "Failed to renew MI access token due to Max TTL expiration"
         });
 
-      const extendToDate = new Date(currentDate.getTime() + accessTokenTTL);
+      const extendToDate = new Date(currentDate.getTime() + Number(accessTokenTTL));
       if (extendToDate > expirationDate)
         throw new UnauthorizedError({
           message: "Failed to renew MI access token past its Max TTL expiration"
@@ -88,9 +83,10 @@ export const identityAccessTokenServiceFactory = ({
   const renewAccessToken = async ({ accessToken }: TRenewAccessTokenDTO) => {
     const appCfg = getConfig();
 
-    const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload;
-    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN)
-      throw new UnauthorizedError();
+    const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload & {
+      identityAccessTokenId: string;
+    };
+    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) throw new UnauthorizedError();
 
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: decodedToken.identityAccessTokenId,
@@ -100,20 +96,14 @@ export const identityAccessTokenServiceFactory = ({
 
     validateAccessTokenExp(identityAccessToken);
 
-    const updatedIdentityAccessToken = await identityAccessTokenDAL.updateById(
-      identityAccessToken.id,
-      {
-        accessTokenLastRenewedAt: new Date()
-      }
-    );
+    const updatedIdentityAccessToken = await identityAccessTokenDAL.updateById(identityAccessToken.id, {
+      accessTokenLastRenewedAt: new Date()
+    });
 
     return { accessToken, identityAccessToken: updatedIdentityAccessToken };
   };
 
-  const fnValidateIdentityAccessToken = async (
-    token: TIdentityAccessTokenJwtPayload,
-    ipAddress?: string
-  ) => {
+  const fnValidateIdentityAccessToken = async (token: TIdentityAccessTokenJwtPayload, ipAddress?: string) => {
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: token.identityAccessTokenId,
       isAccessTokenRevoked: false

@@ -15,11 +15,7 @@ export const projectBotDALFactory = (db: TDbClient) => {
       const bot = await (tx || db)(TableName.ProjectBot)
         .where(filter)
         .leftJoin(TableName.Users, `${TableName.ProjectBot}.senderId`, `${TableName.Users}.id`)
-        .leftJoin(
-          TableName.UserEncryptionKey,
-          `${TableName.UserEncryptionKey}.userId`,
-          `${TableName.Users}.id`
-        )
+        .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.ProjectBot))
         .select(db.ref("publicKey").withSchema(TableName.UserEncryptionKey).as("senderPubKey"))
         .first();

@@ -51,7 +51,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
-  const sendPostHogEvents = async (event: TPostHogEvent) => {
+  const sendPostHogEvents = (event: TPostHogEvent) => {
     if (postHog) {
       postHog.capture({
         event: event.event,

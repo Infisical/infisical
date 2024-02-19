@@ -12,7 +12,7 @@ export const SecretApprovalRequestSecretTagsSchema = z.object({
   secretId: z.string().uuid(),
   tagId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TSecretApprovalRequestSecretTags = z.infer<typeof SecretApprovalRequestSecretTagsSchema>;

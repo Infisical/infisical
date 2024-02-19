@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+// All the any rules are disabled because passport typesense with fastify is really poor
+
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
 import { MultiSamlStrategy } from "@node-saml/passport-saml";
@@ -5,13 +13,12 @@ import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { SamlConfigsSchema } from "@app/db/schemas";
-import { SamlProviders } from "@app/ee/services/saml-config/saml-config-types";
+import { SamlProviders, TGetSamlCfgDTO } from "@app/ee/services/saml-config/saml-config-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 type TSAMLConfig = {
   callbackUrl: string;
@@ -20,6 +27,7 @@ type TSAMLConfig = {
   cert: string;
   audience: string;
   wantAuthnResponseSigned?: boolean;
+  disableRequestedAuthnContext?: boolean;
 };
 
 export const registerSamlRouter = async (server: FastifyZodProvider) => {
@@ -33,19 +41,33 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     new MultiSamlStrategy(
       {
         passReqToCallback: true,
+        // eslint-disable-next-line
         getSamlOptions: async (req, done) => {
           try {
-            const { ssoIdentifier } = req.params;
-            if (!ssoIdentifier) throw new BadRequestError({ message: "Missing sso identitier" });
+            const { samlConfigId, orgSlug } = req.params;
 
-            const ssoConfig = await server.services.saml.getSaml({
-              type: "ssoId",
-              id: ssoIdentifier
-            });
-            if (!ssoConfig) throw new BadRequestError({ message: "SSO config not found" });
+            let ssoLookupDetails: TGetSamlCfgDTO;
+
+            if (orgSlug) {
+              ssoLookupDetails = {
+                type: "orgSlug",
+                orgSlug
+              };
+            } else if (samlConfigId) {
+              ssoLookupDetails = {
+                type: "ssoId",
+                id: samlConfigId
+              };
+            } else {
+              throw new BadRequestError({ message: "Missing sso identitier or org slug" });
+            }
+
+            const ssoConfig = await server.services.saml.getSaml(ssoLookupDetails);
+            if (!ssoConfig || !ssoConfig.isActive)
+              throw new BadRequestError({ message: "Failed to authenticate with SAML SSO" });
 
             const samlConfig: TSAMLConfig = {
-              callbackUrl: `${appCfg.SITE_URL}/api/v1/sso/saml2/${ssoIdentifier}`,
+              callbackUrl: `${appCfg.SITE_URL}/api/v1/sso/saml2/${ssoConfig.id}`,
               entryPoint: ssoConfig.entryPoint,
               issuer: ssoConfig.issuer,
               cert: ssoConfig.cert,
@@ -55,7 +77,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               samlConfig.wantAuthnResponseSigned = false;
             }
             if (ssoConfig.authProvider === SamlProviders.AZURE_SAML) {
-              if (req.body.RelayState && JSON.parse(req.body.RelayState).spIntiaited) {
+              samlConfig.disableRequestedAuthnContext = true;
+              if (req.body?.RelayState && JSON.parse(req.body.RelayState).spInitiated) {
                 samlConfig.audience = `spn:${ssoConfig.issuer}`;
               }
             }
@@ -67,19 +90,21 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           }
         }
       },
+      // eslint-disable-next-line
       async (req, profile, cb) => {
         try {
-          const serverCfg = getServerCfg();
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
-          const { email, firstName } = profile;
-          if (!email || !firstName)
+          const { firstName } = profile;
+          const email = profile?.email ?? (profile?.emailAddress as string); // emailRippling is added because in Rippling the field `email` reserved
+
+          if (!email || !firstName) {
             throw new BadRequestError({ message: "Invalid request. Missing email or first name" });
+          }
 
           const { isUserCompleted, providerAuthToken } = await server.services.saml.samlLogin({
             email,
             firstName: profile.firstName as string,
             lastName: profile.lastName as string,
-            isSignupAllowed: Boolean(serverCfg.allowSignUp),
             relayState: (req.body as { RelayState?: string }).RelayState,
             authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider as string,
             orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId as string
@@ -95,11 +120,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
   );
 
   server.route({
-    url: "/redirect/saml2/:ssoIdentifier",
+    url: "/redirect/saml2/organizations/:orgSlug",
     method: "GET",
     schema: {
       params: z.object({
-        ssoIdentifier: z.string().trim()
+        orgSlug: z.string().trim()
       }),
       querystring: z.object({
         callback_port: z.string().optional()
@@ -121,11 +146,37 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/saml2/:ssoIdentifier",
+    url: "/redirect/saml2/:samlConfigId",
+    method: "GET",
+    schema: {
+      params: z.object({
+        samlConfigId: z.string().trim()
+      }),
+      querystring: z.object({
+        callback_port: z.string().optional()
+      })
+    },
+    preValidation: (req, res) =>
+      (
+        passport.authenticate("saml", {
+          failureRedirect: "/",
+          additionalParams: {
+            RelayState: JSON.stringify({
+              spInitiated: true,
+              callbackPort: req.query.callback_port ?? ""
+            })
+          }
+        } as any) as any
+      )(req, res),
+    handler: () => {}
+  });
+
+  server.route({
+    url: "/saml2/:samlConfigId",
     method: "POST",
     schema: {
       params: z.object({
-        ssoIdentifier: z.string().trim()
+        samlConfigId: z.string().trim()
       })
     },
     preValidation: passport.authenticate("saml", {
@@ -137,15 +188,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     handler: (req, res) => {
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
-            req.passportUser.providerAuthToken
-          )}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
         );
       }
       return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(
-          req.passportUser.providerAuthToken
-        )}`
+        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
       );
     }
   });
@@ -168,7 +215,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             isActive: z.boolean(),
             entryPoint: z.string(),
             issuer: z.string(),
-            cert: z.string()
+            cert: z.string(),
+            lastUsed: z.date().nullable().optional()
           })
           .optional()
       }
@@ -177,6 +225,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       const saml = await server.services.saml.getSaml({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         orgId: req.query.organizationId,
         type: "org"
       });
@@ -205,6 +254,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       const saml = await server.services.saml.createSamlCfg({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         orgId: req.body.organizationId,
         ...req.body
       });
@@ -235,6 +285,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       const saml = await server.services.saml.updateSamlCfg({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         orgId: req.body.organizationId,
         ...req.body
       });

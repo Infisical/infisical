@@ -19,6 +19,7 @@ export type TVerifyMfaTokenDTO = {
   mfaToken: string;
   ip: string;
   userAgent: string;
+  orgId?: string;
 };
 
 export type TOauthLoginDTO = {

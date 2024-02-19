@@ -14,7 +14,7 @@ export const IdentityProjectMembershipsSchema = z.object({
   projectId: z.string(),
   identityId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TIdentityProjectMemberships = z.infer<typeof IdentityProjectMembershipsSchema>;

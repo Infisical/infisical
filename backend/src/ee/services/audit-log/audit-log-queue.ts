@@ -1,3 +1,4 @@
+import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -43,6 +44,8 @@ export const auditLogQueueServiceFactory = ({
 
     const plan = await licenseService.getPlan(orgId);
     const ttl = plan.auditLogsRetentionDays * MS_IN_DAY;
+    // skip inserting if audit log retention is 0 meaning its not supported
+    if (ttl === 0) return;
     await auditLogDAL.create({
       actor: actor.type,
       actorMetadata: actor.metadata,
@@ -57,7 +60,35 @@ export const auditLogQueueServiceFactory = ({
     });
   });
 
+  queueService.start(QueueName.AuditLogPrune, async () => {
+    logger.info(`${QueueName.AuditLogPrune}: queue task started`);
+    await auditLogDAL.pruneAuditLog();
+    logger.info(`${QueueName.AuditLogPrune}: queue task completed`);
+  });
+
+  // we do a repeat cron job in utc timezone at 12 Midnight each day
+  const startAuditLogPruneJob = async () => {
+    // clear previous job
+    await queueService.stopRepeatableJob(
+      QueueName.AuditLogPrune,
+      QueueJobs.AuditLogPrune,
+      { pattern: "0 0 * * *", utc: true },
+      QueueName.AuditLogPrune // just a job id
+    );
+
+    await queueService.queue(QueueName.AuditLogPrune, QueueJobs.AuditLogPrune, undefined, {
+      delay: 5000,
+      jobId: QueueName.AuditLogPrune,
+      repeat: { pattern: "0 0 * * *", utc: true }
+    });
+  };
+
+  queueService.listen(QueueName.AuditLogPrune, "failed", (err) => {
+    logger.error(err?.failedReason, `${QueueName.AuditLogPrune}: log pruning failed`);
+  });
+
   return {
-    pushToLog
+    pushToLog,
+    startAuditLogPruneJob
   };
 };

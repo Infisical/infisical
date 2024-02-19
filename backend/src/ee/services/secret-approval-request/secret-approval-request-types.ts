@@ -1,8 +1,4 @@
-import {
-  TImmutableDBKeys,
-  TSecretApprovalPolicies,
-  TSecretApprovalRequestsSecrets
-} from "@app/db/schemas";
+import { TImmutableDBKeys, TSecretApprovalPolicies, TSecretApprovalRequestsSecrets } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 export enum CommitType {
@@ -24,14 +20,7 @@ export enum ApprovalStatus {
 
 type TApprovalCreateSecret = Omit<
   TSecretApprovalRequestsSecrets,
-  | TImmutableDBKeys
-  | "version"
-  | "algorithm"
-  | "keyEncoding"
-  | "requestId"
-  | "op"
-  | "secretVersion"
-  | "secretBlindIndex"
+  TImmutableDBKeys | "version" | "algorithm" | "keyEncoding" | "requestId" | "op" | "secretVersion" | "secretBlindIndex"
 > & {
   secretName: string;
   tagIds?: string[];

@@ -92,10 +92,7 @@ import { serviceTokenDALFactory } from "@app/services/service-token/service-toke
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
-import {
-  getServerCfg,
-  superAdminServiceFactory
-} from "@app/services/super-admin/super-admin-service";
+import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
@@ -112,13 +109,9 @@ import { registerV3Routes } from "./v3";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
-  {
-    db,
-    smtp: smtpService,
-    queue: queueService
-  }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory }
+  { db, smtp: smtpService, queue: queueService }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory }
 ) => {
-  server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
+  await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
 
   // db layers
   const userDAL = userDALFactory(db);
@@ -236,6 +229,7 @@ export const registerRoutes = async (
     orgDAL,
     incidentContactDAL,
     tokenService,
+    projectDAL,
     smtpService,
     userDAL,
     orgBotDAL
@@ -450,6 +444,7 @@ export const registerRoutes = async (
   });
 
   await superAdminService.initServerCfg();
+  await auditLogQueue.startAuditLogPruneJob();
   // setup the communication with license key server
   await licenseService.init();
   // inject all services
@@ -518,9 +513,9 @@ export const registerRoutes = async (
         })
       }
     },
-    handler: () => {
+    handler: async () => {
       const cfg = getConfig();
-      const serverCfg = getServerCfg();
+      const serverCfg = await getServerCfg();
       return {
         date: new Date(),
         message: "Ok" as const,
