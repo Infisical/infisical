@@ -3,8 +3,13 @@ import {
   ProjectMembershipRole,
   ProjectUpgradeStatus,
   ProjectVersion,
+  SecretApprovalRequestsSecretsSchema,
   SecretKeyEncoding,
-  TSecrets
+  SecretsSchema,
+  SecretVersionsSchema,
+  TSecretApprovalRequestsSecrets,
+  TSecrets,
+  TSecretVersions
 } from "@app/db/schemas";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -16,7 +21,7 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { logger } from "@app/lib/logger";
-import { decryptSecrets, SecretDocType, TPartialSecret } from "@app/lib/secret";
+import { decryptSecretApprovals, decryptSecrets, decryptSecretVersions } from "@app/lib/secret";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
 import { TOrgDALFactory } from "../org/org-dal";
@@ -115,7 +120,9 @@ export const projectQueueFactory = ({
       });
 
       // Get all the secrets within the project (as encrypted)
-      const secrets: TPartialSecret[] = [];
+      const secrets: TSecrets[] = [];
+      const secretVersions: TSecretVersions[] = [];
+      const approvalSecrets: TSecretApprovalRequestsSecrets[] = [];
       for (const folder of projectFolders) {
         const folderSecrets = await secretDAL.find({ folderId: folder.id });
 
@@ -132,21 +139,29 @@ export const projectQueueFactory = ({
           status: RequestState.Open,
           folderId: folder.id
         });
-        const approvalSecrets = await secretApprovalSecretDAL.find({
+        const secretApprovals = await secretApprovalSecretDAL.find({
           $in: {
             requestId: approvalRequests.map((el) => el.id)
           }
         });
 
-        secrets.push(...folderSecrets.map((el) => ({ ...el, docType: SecretDocType.Secret })));
-        secrets.push(...folderSecretVersions.map((el) => ({ ...el, docType: SecretDocType.SecretVersion })));
-        secrets.push(...approvalSecrets.map((el) => ({ ...el, docType: SecretDocType.ApprovalSecret })));
+        secrets.push(...folderSecrets);
+        secretVersions.push(...folderSecretVersions);
+        approvalSecrets.push(...secretApprovals);
       }
 
       const decryptedSecrets = decryptSecrets(secrets, userPrivateKey, oldProjectKey);
+      const decryptedSecretVersions = decryptSecretVersions(secretVersions, userPrivateKey, oldProjectKey);
+      const decryptedApprovalSecrets = decryptSecretApprovals(approvalSecrets, userPrivateKey, oldProjectKey);
 
       if (secrets.length !== decryptedSecrets.length) {
         throw new Error("Failed to decrypt some secret versions");
+      }
+      if (secretVersions.length !== decryptedSecretVersions.length) {
+        throw new Error("Failed to decrypt some secret versions");
+      }
+      if (approvalSecrets.length !== decryptedApprovalSecrets.length) {
+        throw new Error("Failed to decrypt some secret approvals");
       }
 
       // Get the existing bot and the existing project keys for the members of the project
@@ -286,107 +301,137 @@ export const projectQueueFactory = ({
           publicKey: ghostUser.keys.publicKey
         });
 
-        type TPartialSecret = Pick<
-          TSecrets,
-          | "id"
-          | "secretKeyCiphertext"
-          | "secretKeyIV"
-          | "secretKeyTag"
-          | "secretValueCiphertext"
-          | "secretValueIV"
-          | "secretValueTag"
-          | "secretCommentCiphertext"
-          | "secretCommentIV"
-          | "secretCommentTag"
-        >;
-
-        const updatedSecrets: TPartialSecret[] = [];
-        const updatedSecretVersions: TPartialSecret[] = [];
-        const updatedSecretApprovals: TPartialSecret[] = [];
+        const updatedSecrets: TSecrets[] = [];
+        const updatedSecretVersions: TSecretVersions[] = [];
+        const updatedSecretApprovals: TSecretApprovalRequestsSecrets[] = [];
         for (const rawSecret of decryptedSecrets) {
-          const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(rawSecret.secretKey, botKey);
-          const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(rawSecret.secretValue || "", botKey);
-          const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(rawSecret.secretComment || "", botKey);
+          const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(rawSecret.decrypted.secretKey, botKey);
+          const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(rawSecret.decrypted.secretValue || "", botKey);
+          const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(
+            rawSecret.decrypted.secretComment || "",
+            botKey
+          );
 
-          const payload = {
-            id: rawSecret.id,
+          const payload: TSecrets = {
+            ...rawSecret.original,
+
             secretKeyCiphertext: secretKeyEncrypted.ciphertext,
             secretKeyIV: secretKeyEncrypted.iv,
             secretKeyTag: secretKeyEncrypted.tag,
+
             secretValueCiphertext: secretValueEncrypted.ciphertext,
             secretValueIV: secretValueEncrypted.iv,
             secretValueTag: secretValueEncrypted.tag,
+
             secretCommentCiphertext: secretCommentEncrypted.ciphertext,
             secretCommentIV: secretCommentEncrypted.iv,
             secretCommentTag: secretCommentEncrypted.tag
           } as const;
 
-          if (rawSecret.docType === SecretDocType.Secret) {
-            updatedSecrets.push(payload);
-          } else if (rawSecret.docType === SecretDocType.SecretVersion) {
-            updatedSecretVersions.push(payload);
-          } else if (rawSecret.docType === SecretDocType.ApprovalSecret) {
-            updatedSecretApprovals.push(payload);
-          } else {
-            throw new Error("Unknown secret type");
+          if (!SecretsSchema.safeParse(payload).success) {
+            throw new Error(`Invalid secret payload: ${JSON.stringify(payload)}`);
           }
+
+          updatedSecrets.push(payload);
         }
 
-        const secretUpdates = await secretDAL.bulkUpdateNoVersionIncrement(
-          [
-            ...updatedSecrets.map((secret) => ({
-              filter: { id: secret.id },
-              data: {
-                ...secret,
-                id: undefined
-              }
-            }))
-          ],
-          tx
-        );
+        for (const rawSecretVersion of decryptedSecretVersions) {
+          const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(rawSecretVersion.decrypted.secretKey, botKey);
+          const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(
+            rawSecretVersion.decrypted.secretValue || "",
+            botKey
+          );
+          const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(
+            rawSecretVersion.decrypted.secretComment || "",
+            botKey
+          );
 
-        const secretVersionUpdates = await secretVersionDAL.bulkUpdateNoVersionIncrement(
-          [
-            ...updatedSecretVersions.map((version) => ({
-              filter: { id: version.id },
-              data: {
-                ...version,
-                id: undefined
-              }
-            }))
-          ],
-          tx
-        );
+          const payload: TSecretVersions = {
+            ...rawSecretVersion.original,
 
-        const secretApprovalUpdates = await secretApprovalSecretDAL.bulkUpdateNoVersionIncrement(
-          [
-            ...updatedSecretApprovals.map((approval) => ({
-              filter: {
-                id: approval.id
-              },
-              data: {
-                ...approval,
-                id: undefined
-              }
-            }))
-          ],
-          tx
-        );
+            secretKeyCiphertext: secretKeyEncrypted.ciphertext,
+            secretKeyIV: secretKeyEncrypted.iv,
+            secretKeyTag: secretKeyEncrypted.tag,
 
-        if (secretUpdates.length !== updatedSecrets.length) {
+            secretValueCiphertext: secretValueEncrypted.ciphertext,
+            secretValueIV: secretValueEncrypted.iv,
+            secretValueTag: secretValueEncrypted.tag,
+
+            secretCommentCiphertext: secretCommentEncrypted.ciphertext,
+            secretCommentIV: secretCommentEncrypted.iv,
+            secretCommentTag: secretCommentEncrypted.tag
+          } as const;
+
+          if (!SecretVersionsSchema.safeParse(payload).success) {
+            throw new Error(`Invalid secret version payload: ${JSON.stringify(payload)}`);
+          }
+
+          updatedSecretVersions.push(payload);
+        }
+
+        for (const rawSecretApproval of decryptedApprovalSecrets) {
+          const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(rawSecretApproval.decrypted.secretKey, botKey);
+          const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(
+            rawSecretApproval.decrypted.secretValue || "",
+            botKey
+          );
+          const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(
+            rawSecretApproval.decrypted.secretComment || "",
+            botKey
+          );
+
+          const payload: TSecretApprovalRequestsSecrets = {
+            ...rawSecretApproval.original,
+
+            secretKeyCiphertext: secretKeyEncrypted.ciphertext,
+            secretKeyIV: secretKeyEncrypted.iv,
+            secretKeyTag: secretKeyEncrypted.tag,
+
+            secretValueCiphertext: secretValueEncrypted.ciphertext,
+            secretValueIV: secretValueEncrypted.iv,
+            secretValueTag: secretValueEncrypted.tag,
+
+            secretCommentCiphertext: secretCommentEncrypted.ciphertext,
+            secretCommentIV: secretCommentEncrypted.iv,
+            secretCommentTag: secretCommentEncrypted.tag
+          } as const;
+
+          if (!SecretApprovalRequestsSecretsSchema.safeParse(payload).success) {
+            throw new Error(`Invalid secret approval payload: ${JSON.stringify(payload)}`);
+          }
+
+          updatedSecretApprovals.push(payload);
+        }
+
+        if (updatedSecrets.length !== secrets.length) {
           throw new Error("Failed to update some secrets");
         }
-        if (secretVersionUpdates.length !== updatedSecretVersions.length) {
+        if (updatedSecretVersions.length !== secretVersions.length) {
           throw new Error("Failed to update some secret versions");
         }
-        if (secretApprovalUpdates.length !== updatedSecretApprovals.length) {
+        if (updatedSecretApprovals.length !== approvalSecrets.length) {
           throw new Error("Failed to update some secret approvals");
+        }
+
+        const secretUpdates = await secretDAL.bulkUpdateNoVersionIncrement(updatedSecrets, tx);
+        const secretVersionUpdates = await secretVersionDAL.bulkUpdateNoVersionIncrement(updatedSecretVersions, tx);
+        const secretApprovalUpdates = await secretApprovalSecretDAL.bulkUpdateNoVersionIncrement(
+          updatedSecretApprovals,
+          tx
+        );
+
+        if (
+          secretUpdates.length !== updatedSecrets.length ||
+          secretVersionUpdates.length !== updatedSecretVersions.length ||
+          secretApprovalUpdates.length !== updatedSecretApprovals.length
+        ) {
+          throw new Error("Parts of the upgrade failed. Some secrets were not updated");
         }
 
         await projectDAL.setProjectUpgradeStatus(data.projectId, null, tx);
 
         //  await new Promise((resolve) => setTimeout(resolve, 15_000));
-        throw new Error("Transaction was successful!");
+        // throw new Error("Transaction was successful!");
       });
     } catch (err) {
       const [project] = await projectDAL

@@ -5,7 +5,6 @@ import {
   SecretApprovalRequestsSecretsSchema,
   TableName,
   TSecretApprovalRequestsSecrets,
-  TSecretApprovalRequestsSecretsUpdate,
   TSecretTags
 } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
@@ -17,22 +16,32 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   const secretApprovalRequestSecretOrm = ormify(db, TableName.SecretApprovalRequestSecret);
   const secretApprovalRequestSecretTagOrm = ormify(db, TableName.SecretApprovalRequestSecretTag);
 
-  const bulkUpdateNoVersionIncrement = async (
-    data: Array<{ filter: Partial<TSecretApprovalRequestsSecrets>; data: TSecretApprovalRequestsSecretsUpdate }>,
-    tx?: Knex
-  ) => {
+  const bulkUpdateNoVersionIncrement = async (data: TSecretApprovalRequestsSecrets[], tx?: Knex) => {
     try {
-      const secs = await Promise.all(
-        data.map(async ({ filter, data: updateData }) => {
-          const [doc] = await (tx || db)(TableName.SecretApprovalRequestSecret)
-            .where(filter)
-            .update(updateData)
-            .returning("*");
-          if (!doc) throw new BadRequestError({ message: "Failed to update document" });
-          return doc;
-        })
+      const existingApprovalSecrets = await secretApprovalRequestSecretOrm.find(
+        {
+          $in: {
+            id: data.map((el) => el.id)
+          }
+        },
+        { tx }
       );
-      return secs;
+
+      if (existingApprovalSecrets.length !== data.length) {
+        throw new BadRequestError({ message: "Some of the secret approvals do not exist" });
+      }
+
+      const updatedApprovalSecrets = await (tx || db)(TableName.SecretApprovalRequestSecret)
+        .insert(data)
+        .onConflict("id") // this will cause a conflict then merge the data
+        .merge() // Merge the data with the existing data
+        .returning("*");
+
+      if (!updatedApprovalSecrets || updatedApprovalSecrets.length === 0) {
+        throw new BadRequestError({ message: "Failed to bulk update secret approvals" });
+      }
+
+      return updatedApprovalSecrets;
     } catch (error) {
       throw new DatabaseError({ error, name: "bulk update secret" });
     }

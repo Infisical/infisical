@@ -1,46 +1,45 @@
 import crypto from "crypto";
 import { z } from "zod";
 
-import { TProjectKeys } from "@app/db/schemas";
-import { logger } from "@app/lib/logger";
+import {
+  SecretApprovalRequestsSecretsSchema,
+  SecretsSchema,
+  SecretVersionsSchema,
+  TProjectKeys,
+  TSecretApprovalRequestsSecrets,
+  TSecrets,
+  TSecretVersions
+} from "@app/db/schemas";
 
 import { decryptAsymmetric } from "../crypto";
 
-export enum SecretDocType {
-  Secret = "secret",
-  SecretVersion = "secretVersion",
-  ApprovalSecret = "approvalSecret"
-}
-
-export interface TPartialSecret {
-  id: string;
-  secretKeyCiphertext: string;
-  secretKeyIV: string;
-  secretKeyTag: string;
-
-  secretValueCiphertext: string;
-  secretValueIV: string;
-  secretValueTag: string;
-
-  secretCommentCiphertext?: string | null;
-  secretCommentIV?: string | null;
-  secretCommentTag?: string | null;
-
-  docType: SecretDocType;
-  keyEncoding: string;
-}
-
-const PartialDecryptedSecretSchema = z.object({
+const DecryptedValuesSchema = z.object({
   id: z.string(),
   secretKey: z.string(),
   secretValue: z.string(),
-  secretComment: z.string().optional(),
-
-  docType: z.nativeEnum(SecretDocType)
+  secretComment: z.string().optional()
 });
-export type TPartialDecryptedSecret = z.infer<typeof PartialDecryptedSecretSchema>;
 
-const decryptSecret = ({
+const DecryptedSecretSchema = z.object({
+  decrypted: DecryptedValuesSchema,
+  original: SecretsSchema
+});
+
+const DecryptedSecretVersionsSchema = z.object({
+  decrypted: DecryptedValuesSchema,
+  original: SecretVersionsSchema
+});
+
+export const DecryptedSecretApprovalsSchema = z.object({
+  decrypted: DecryptedValuesSchema,
+  original: SecretApprovalRequestsSecretsSchema
+});
+
+export type DecryptedSecret = z.infer<typeof DecryptedSecretSchema>;
+export type DecryptedSecretVersions = z.infer<typeof DecryptedSecretVersionsSchema>;
+export type DecryptedSecretApprovals = z.infer<typeof DecryptedSecretApprovalsSchema>;
+
+const decryptCipher = ({
   ciphertext,
   iv,
   tag,
@@ -60,8 +59,62 @@ const decryptSecret = ({
   return cleartext;
 };
 
+const getDecryptedValues = ({
+  secretKeyCiphertext,
+  secretKeyIV,
+  secretKeyTag,
+  secretValueCiphertext,
+  secretValueIV,
+  secretValueTag,
+
+  secretCommentCiphertext,
+  secretCommentIV,
+  secretCommentTag,
+  key
+}: {
+  secretKeyCiphertext: string;
+  secretKeyIV: string;
+  secretKeyTag: string;
+  secretValueCiphertext: string;
+  secretValueIV: string;
+  secretValueTag: string;
+  secretCommentCiphertext?: string | null;
+  secretCommentIV?: string | null;
+  secretCommentTag?: string | null;
+  key: string | Buffer;
+}) => {
+  const secretKey = decryptCipher({
+    ciphertext: secretKeyCiphertext,
+    iv: secretKeyIV,
+    tag: secretKeyTag,
+    key
+  });
+
+  const secretValue = decryptCipher({
+    ciphertext: secretValueCiphertext,
+    iv: secretValueIV,
+    tag: secretValueTag,
+    key
+  });
+
+  const secretComment =
+    secretCommentCiphertext && secretCommentIV && secretCommentTag
+      ? decryptCipher({
+          ciphertext: secretCommentCiphertext,
+          iv: secretCommentIV,
+          tag: secretCommentTag,
+          key
+        })
+      : "";
+
+  return {
+    secretKey,
+    secretValue,
+    secretComment
+  };
+};
 export const decryptSecrets = (
-  encryptedSecrets: TPartialSecret[],
+  encryptedSecrets: TSecrets[],
   privateKey: string,
   latestKey: TProjectKeys & {
     sender: {
@@ -76,47 +129,123 @@ export const decryptSecrets = (
     privateKey
   });
 
-  const decryptedSecrets: TPartialDecryptedSecret[] = [];
+  const decryptedSecrets: DecryptedSecret[] = [];
 
   encryptedSecrets.forEach((encSecret) => {
-    try {
-      const secretKey = decryptSecret({
-        ciphertext: encSecret.secretKeyCiphertext,
-        iv: encSecret.secretKeyIV,
-        tag: encSecret.secretKeyTag,
-        key
-      });
+    const decrypted = getDecryptedValues({
+      secretKeyCiphertext: encSecret.secretKeyCiphertext,
+      secretKeyIV: encSecret.secretKeyIV,
+      secretKeyTag: encSecret.secretKeyTag,
+      secretValueCiphertext: encSecret.secretValueCiphertext,
+      secretValueIV: encSecret.secretValueIV,
+      secretValueTag: encSecret.secretValueTag,
+      secretCommentCiphertext: encSecret.secretCommentCiphertext,
+      secretCommentIV: encSecret.secretCommentIV,
+      secretCommentTag: encSecret.secretCommentTag,
+      key
+    });
 
-      const secretValue = decryptSecret({
-        ciphertext: encSecret.secretValueCiphertext,
-        iv: encSecret.secretValueIV,
-        tag: encSecret.secretValueTag,
-        key
-      });
+    const decryptedSecret: DecryptedSecret = {
+      decrypted: {
+        ...decrypted,
+        id: encSecret.id
+      },
+      original: encSecret
+    };
 
-      const secretComment =
-        encSecret.secretCommentCiphertext && encSecret.secretCommentIV && encSecret.secretCommentTag
-          ? decryptSecret({
-              ciphertext: encSecret.secretCommentCiphertext,
-              iv: encSecret.secretCommentIV,
-              tag: encSecret.secretCommentTag,
-              key
-            })
-          : "";
+    decryptedSecrets.push(DecryptedSecretSchema.parse(decryptedSecret));
+  });
 
-      const decryptedSecret: TPartialDecryptedSecret = {
-        id: encSecret.id,
-        secretKey,
-        secretValue,
-        secretComment,
-        docType: encSecret.docType
-      };
+  return decryptedSecrets;
+};
 
-      decryptedSecrets.push(PartialDecryptedSecretSchema.parse(decryptedSecret));
-    } catch (err) {
-      // This is ok, because we check that the decrypted secrets array length is the same as the encrypted secrets input array length.
-      logger.error(`[${encSecret.id}] - failed to decrypt`, err);
-    }
+export const decryptSecretVersions = (
+  encryptedSecretVersions: TSecretVersions[],
+  privateKey: string,
+  latestKey: TProjectKeys & {
+    sender: {
+      publicKey: string;
+    };
+  }
+) => {
+  const key = decryptAsymmetric({
+    ciphertext: latestKey.encryptedKey,
+    nonce: latestKey.nonce,
+    publicKey: latestKey.sender.publicKey,
+    privateKey
+  });
+
+  const decryptedSecrets: DecryptedSecretVersions[] = [];
+
+  encryptedSecretVersions.forEach((encSecret) => {
+    const decrypted = getDecryptedValues({
+      secretKeyCiphertext: encSecret.secretKeyCiphertext,
+      secretKeyIV: encSecret.secretKeyIV,
+      secretKeyTag: encSecret.secretKeyTag,
+      secretValueCiphertext: encSecret.secretValueCiphertext,
+      secretValueIV: encSecret.secretValueIV,
+      secretValueTag: encSecret.secretValueTag,
+      secretCommentCiphertext: encSecret.secretCommentCiphertext,
+      secretCommentIV: encSecret.secretCommentIV,
+      secretCommentTag: encSecret.secretCommentTag,
+      key
+    });
+
+    const decryptedSecret: DecryptedSecretVersions = {
+      decrypted: {
+        ...decrypted,
+        id: encSecret.id
+      },
+      original: encSecret
+    };
+
+    decryptedSecrets.push(DecryptedSecretVersionsSchema.parse(decryptedSecret));
+  });
+
+  return decryptedSecrets;
+};
+
+export const decryptSecretApprovals = (
+  encryptedSecretApprovals: TSecretApprovalRequestsSecrets[],
+  privateKey: string,
+  latestKey: TProjectKeys & {
+    sender: {
+      publicKey: string;
+    };
+  }
+) => {
+  const key = decryptAsymmetric({
+    ciphertext: latestKey.encryptedKey,
+    nonce: latestKey.nonce,
+    publicKey: latestKey.sender.publicKey,
+    privateKey
+  });
+
+  const decryptedSecrets: DecryptedSecretApprovals[] = [];
+
+  encryptedSecretApprovals.forEach((encSecret) => {
+    const decrypted = getDecryptedValues({
+      secretKeyCiphertext: encSecret.secretKeyCiphertext,
+      secretKeyIV: encSecret.secretKeyIV,
+      secretKeyTag: encSecret.secretKeyTag,
+      secretValueCiphertext: encSecret.secretValueCiphertext,
+      secretValueIV: encSecret.secretValueIV,
+      secretValueTag: encSecret.secretValueTag,
+      secretCommentCiphertext: encSecret.secretCommentCiphertext,
+      secretCommentIV: encSecret.secretCommentIV,
+      secretCommentTag: encSecret.secretCommentTag,
+      key
+    });
+
+    const decryptedSecret: DecryptedSecretApprovals = {
+      decrypted: {
+        ...decrypted,
+        id: encSecret.id
+      },
+      original: encSecret
+    };
+
+    decryptedSecrets.push(DecryptedSecretApprovalsSchema.parse(decryptedSecret));
   });
 
   return decryptedSecrets;

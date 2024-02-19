@@ -45,19 +45,32 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
-  const bulkUpdateNoVersionIncrement = async (
-    data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
-    tx?: Knex
-  ) => {
+  const bulkUpdateNoVersionIncrement = async (data: TSecrets[], tx?: Knex) => {
     try {
-      const secs = await Promise.all(
-        data.map(async ({ filter, data: updateData }) => {
-          const [doc] = await (tx || db)(TableName.Secret).where(filter).update(updateData).returning("*");
-          if (!doc) throw new BadRequestError({ message: "Failed to update document" });
-          return doc;
-        })
+      const existingSecrets = await secretOrm.find(
+        {
+          $in: {
+            id: data.map((el) => el.id)
+          }
+        },
+        { tx }
       );
-      return secs;
+
+      if (existingSecrets.length !== data.length) {
+        throw new BadRequestError({ message: "Some of the secrets do not exist" });
+      }
+
+      const updatedSecrets = await (tx || db)(TableName.Secret)
+        .insert(data)
+        .onConflict("id") // this will cause a conflict then merge the data
+        .merge() // Merge the data with the existing data
+        .returning("*");
+
+      if (!updatedSecrets || updatedSecrets.length === 0) {
+        throw new BadRequestError({ message: "Failed to bulk update secret approvals" });
+      }
+
+      return updatedSecrets;
     } catch (error) {
       throw new DatabaseError({ error, name: "bulk update secret" });
     }
