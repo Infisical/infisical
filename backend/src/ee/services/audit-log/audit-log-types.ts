@@ -15,7 +15,7 @@ export type TListProjectAuditLogDTO = {
 
 export type TCreateAuditLogDTO = {
   event: Event;
-  actor: UserActor | IdentityActor | ServiceActor | ScimIdpActor;
+  actor: UserActor | IdentityActor | ServiceActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;

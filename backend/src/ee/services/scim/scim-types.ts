@@ -1,41 +1,87 @@
 import { TOrgPermission } from "@app/lib/types";
-import { TScimUser } from "@app/lib/scim";
 
 export type TCreateScimTokenDTO = {
-    organizationId: string;
-    description: string;
-    ttl: number;
-} 
+  description: string;
+  ttlDays: number;
+} & TOrgPermission;
 
-// TODO: add org permissions
-// & Omit<TOrgPermission, "orgId">;
+export type TDeleteScimTokenDTO = {
+  scimTokenId: string;
+} & Omit<TOrgPermission, "orgId">;
+
+// SCIM server endpoint types
 
 export type TListScimUsersDTO = {
-    offset: number;
-    limit: number;
-    filter?: string;
-}
+  offset: number;
+  limit: number;
+  filter?: string;
+  orgId: string;
+};
 
-export type TListScimUsersRes = { // check naming here
-    schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"];
-    totalResults: number;
-    Resources: TScimUser[];
-    itemsPerPage: number;
-    startIndex: number;
-}
+export type TListScimUsers = {
+  schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"];
+  totalResults: number;
+  Resources: TScimUser[];
+  itemsPerPage: number;
+  startIndex: number;
+};
+
+export type TGetScimUserDTO = {
+  userId: string;
+  orgId: string;
+};
 
 export type TCreateScimUserDTO = {
-    email: string;
-    firstName: string;
-    lastName: string;
-    orgId: string;
-}
+  email: string;
+  firstName: string;
+  lastName: string;
+  orgId: string;
+};
 
-export type TCreateScimUserRes = {
-    schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"]
-}
+export type TUpdateScimUserDTO = {
+  userId: string;
+  orgId: string;
+  operations: {
+    op: string;
+    path?: string;
+    value?:
+      | string
+      | {
+          active: boolean;
+        };
+  }[];
+};
+
+export type TReplaceScimUserDTO = {
+  userId: string;
+  active: boolean;
+  orgId: string;
+};
 
 export type TScimTokenJwtPayload = {
-    scimTokenId: string;
-    authTokenType: string;
+  scimTokenId: string;
+  authTokenType: string;
+};
+
+export type TScimUser = {
+  schemas: string[];
+  id: string;
+  userName: string;
+  displayName: string;
+  name: {
+    givenName: string;
+    middleName: null;
+    familyName: string;
+  };
+  emails: {
+    primary: boolean;
+    value: string;
+    type: string;
+  }[];
+  active: boolean;
+  groups: string[];
+  meta: {
+    resourceType: string;
+    location: null;
+  };
 };

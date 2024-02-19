@@ -1,6 +1,6 @@
 export type ScimTokenData = {
     id: string;
-    ttl: number;
+    ttlDays: number;
     description: string;
     tokenSuffix: string;
     orgId: string;
@@ -11,7 +11,7 @@ export type ScimTokenData = {
 export type CreateScimTokenDTO = {
     organizationId: string;
     description?: string;
-    ttl?: number;
+    ttlDays?: number;
 }
 
 export type DeleteScimTokenDTO = {

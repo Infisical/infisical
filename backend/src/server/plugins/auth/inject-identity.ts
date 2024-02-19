@@ -3,11 +3,11 @@ import fp from "fastify-plugin";
 import jwt, { JwtPayload } from "jsonwebtoken";
 
 import { TServiceTokens, TUsers } from "@app/db/schemas";
+import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { ActorType, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
-import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 
 export type TAuthMode =
   | {

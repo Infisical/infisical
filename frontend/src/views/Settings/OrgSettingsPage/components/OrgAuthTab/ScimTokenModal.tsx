@@ -35,11 +35,9 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { useOrganization } from "@app/context";
 
-// TODO: turn TTL into a select component
-
 const schema = yup.object({
   description: yup.string(),
-  ttl: yup.string()
+  ttlDays: yup.string().required("TTL is required")
 });
 
 export type FormData = yup.InferType<typeof schema>;
@@ -86,7 +84,7 @@ export const ScimTokenModal = ({
         resolver: yupResolver(schema),
         defaultValues: {
             description: "",
-            ttl: ""
+            ttlDays: "365"
         }
     });
 
@@ -103,14 +101,14 @@ export const ScimTokenModal = ({
     return () => clearTimeout(timer);
   }, [isScimTokenCopied, isScimUrlCopied]);
 
-  const onFormSubmit = async ({ description, ttl }: FormData) => {
+  const onFormSubmit = async ({ description, ttlDays }: FormData) => {
     try {
         if (!currentOrg?.id) return;
         
         const { scimToken } = await createScimTokenMutateAsync({
-            organizationId: currentOrg.id,
-            description,
-            ttl: Number(ttl)
+          organizationId: currentOrg.id,
+          description,
+          ttlDays: Number(ttlDays)
         });
         
         setToken(scimToken);
@@ -130,19 +128,12 @@ export const ScimTokenModal = ({
 
   const onDeleteScimTokenSubmit = async (scimTokenId: string) => {
     try {
-        if (!currentOrg?.id) return;
-        
-        await deleteScimTokenMutateAsync({
-            organizationId: currentOrg.id,
-            scimTokenId
-        });
-    
-    // TODO: find alt way
-
-    //   if (token.startsWith(clientSecretPrefix)) {
-    //     reset();
-    //     setToken("");
-    //   }
+      if (!currentOrg?.id) return;
+      
+      await deleteScimTokenMutateAsync({
+          organizationId: currentOrg.id,
+          scimTokenId
+      });
 
       handlePopUpToggle("deleteScimToken", false);
 
@@ -242,11 +233,11 @@ export const ScimTokenModal = ({
             />
               <Controller
                 control={control}
-                defaultValue=""
-                name="ttl"
+                defaultValue="365"
+                name="ttlDays"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
-                    label="TTL (seconds - optional)"
+                    label="TTL (days)"
                     isError={Boolean(error)}
                     errorText={error?.message}
                   >
@@ -287,19 +278,19 @@ export const ScimTokenModal = ({
                   ({
                     id,
                     description,
-                    ttl,
+                    ttlDays,
                     createdAt
                   }) => {
                     
                     let expiresAt;
-                    if (ttl > 0) {
-                        expiresAt = new Date(new Date(createdAt).getTime() + ttl * 1000);
+                    if (ttlDays > 0) {
+                        expiresAt = new Date(new Date(createdAt).getTime() + ttlDays * 86400);
                     }
 
                     return (
                       <Tr className="h-10 items-center" key={`mi-client-secret-${id}`}>
                         <Td>{description === "" ? "-" : description}</Td>
-                        <Td>{expiresAt ? format(expiresAt, "yyyy-MM-dd") : "-"}</Td>
+                        <Td>{expiresAt ? format(expiresAt, "yyyy-MM-dd HH:mm:ss") : "-"}</Td>
                         <Td>{format(new Date(createdAt), "yyyy-MM-dd HH:mm:ss")}</Td>
                         <Td>
                           <IconButton

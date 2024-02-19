@@ -13,6 +13,7 @@ export enum OrgPermissionSubjects {
   Member = "member",
   Settings = "settings",
   IncidentAccount = "incident-contact",
+  Scim = "scim",
   Sso = "sso",
   Billing = "billing",
   SecretScanning = "secret-scanning",
@@ -26,6 +27,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
+  | [OrgPermissionActions, OrgPermissionSubjects.Scim]
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]

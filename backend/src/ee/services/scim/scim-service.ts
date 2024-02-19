@@ -1,61 +1,71 @@
+import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
-import {
-  OrgMembershipRole,
-  OrgMembershipStatus
-} from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
-import { TUserDALFactory } from "@app/services/user/user-dal";        
-import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TPermissionServiceFactory } from "../permission/permission-service";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
+import { TOrgPermission } from "@app/lib/types";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { deleteOrgMembership } from "@app/services/org/org-fns";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
+
+import { TLicenseServiceFactory } from "../license/license-service";
+import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { TPermissionServiceFactory } from "../permission/permission-service";
+import { buildScimUser, buildScimUserList } from "./scim-fns";
 import {
   TCreateScimTokenDTO,
-  TListScimUsersDTO,
-  TListScimUsersRes,
   TCreateScimUserDTO,
-  TScimTokenJwtPayload
+  TDeleteScimTokenDTO,
+  TGetScimUserDTO,
+  TListScimUsers,
+  TListScimUsersDTO,
+  TReplaceScimUserDTO,
+  TScimTokenJwtPayload,
+  TUpdateScimUserDTO
 } from "./scim-types";
-import { 
-  createScimUser,
-  TScimUser,
-} from "@app/lib/scim";
-import { UnauthorizedError, ScimRequestError } from "@app/lib/errors";
 
 type TScimServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  // TODO: pick types
   scimDAL: TScimDALFactory; // TODO: pick
   userDAL: TUserDALFactory; // TODO: pick
   orgDAL: TOrgDALFactory; // TODO: pick
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  smtpService: TSmtpService;
 };
 
 export type TScimServiceFactory = ReturnType<typeof scimServiceFactory>;
 
-export const scimServiceFactory = ({ 
+export const scimServiceFactory = ({
   licenseService,
   scimDAL,
   userDAL,
   orgDAL,
-  permissionService
+  permissionService,
+  smtpService
 }: TScimServiceFactoryDep) => {
-  const createScimToken = async ({
-    organizationId,
-    description,
-    ttl
-  }: TCreateScimTokenDTO) => {
+  const createScimToken = async ({ actor, actorId, actorOrgId, orgId, description, ttlDays }: TCreateScimTokenDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);
+
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.scim)
+      throw new BadRequestError({
+        message: "Failed to create a SCIM token due to plan restriction. Upgrade plan to create a SCIM token."
+      });
+
     const appCfg = getConfig();
-    
-    // TODO: permission stuff
 
     const scimTokenData = await scimDAL.create({
-      orgId: organizationId,
+      orgId,
       description,
-      ttl
+      ttlDays
     });
-    
+
     const scimToken = jwt.sign(
       {
         scimTokenId: scimTokenData.id,
@@ -63,167 +73,346 @@ export const scimServiceFactory = ({
       },
       appCfg.AUTH_SECRET
     );
-    
-    return { scimToken }
-  }
 
-  const getScimTokens = async (organizationId: string) => {
-    const scimTokens = await scimDAL.find({ orgId: organizationId });
+    return { scimToken };
+  };
+
+  const listScimTokens = async ({ actor, actorId, actorOrgId, orgId }: TOrgPermission) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
+
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.scim)
+      throw new BadRequestError({
+        message: "Failed to get SCIM tokens due to plan restriction. Upgrade plan to get SCIM tokens."
+      });
+
+    const scimTokens = await scimDAL.find({ orgId });
     return scimTokens;
-  }
-  
-  const deleteScimToken = async (scimTokenId: string) => {
-    const scimToken = await scimDAL.deleteById(scimTokenId);
-    return scimToken;
-  }
-  
-  // scim server endpoints
+  };
 
-  const listUsers = async ({
-    offset,
-    limit,
-    filter
-  }: TListScimUsersDTO): Promise<TListScimUsersRes> => {
-    
-    const parseFilter = (filter: string | undefined) => {
-      if (!filter) return {};
-      const [parsedName, parsedValue] = filter.split("eq").map(s => s.trim());
-      
+  const deleteScimToken = async ({ scimTokenId, actor, actorId, actorOrgId }: TDeleteScimTokenDTO) => {
+    let scimToken = await scimDAL.findById(scimTokenId);
+    if (!scimToken) throw new BadRequestError({ message: "Failed to find SCIM token to delete" });
+
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, scimToken.orgId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Scim);
+
+    const plan = await licenseService.getPlan(scimToken.orgId);
+    if (!plan.scim)
+      throw new BadRequestError({
+        message: "Failed to delete the SCIM token due to plan restriction. Upgrade plan to delete the SCIM token."
+      });
+
+    scimToken = await scimDAL.deleteById(scimTokenId);
+
+    return scimToken;
+  };
+
+  // SCIM server endpoints
+  const listScimUsers = async ({ offset, limit, filter, orgId }: TListScimUsersDTO): Promise<TListScimUsers> => {
+    const org = await orgDAL.findById(orgId);
+
+    if (!org.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
+    const parseFilter = (filterToParse: string | undefined) => {
+      if (!filterToParse) return {};
+      const [parsedName, parsedValue] = filterToParse.split("eq").map((s) => s.trim());
+
       let attributeName = parsedName;
-      if (parsedName === "userName") { // note
+      if (parsedName === "userName") {
         attributeName = "email";
       }
-      
+
       return { [attributeName]: parsedValue };
     };
-    
+
     const findOpts = {
       ...(offset && { offset }),
-      ...(limit && { limit }),
+      ...(limit && { limit })
     };
-    
-    const users = await userDAL.find(parseFilter(filter), findOpts);
-    
-    let resources: TScimUser[] = [];
-    
-    let scimResource: TListScimUsersRes = { // note: type
-      Resources: [],
-      itemsPerPage: limit,
-      schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-      startIndex: offset,
-      totalResults: users.length
-    };
-    
-    users.forEach((user) => {
-      let scimUser = createScimUser({
-        userId: user.id,
-        firstName: user.firstName as string,
-        lastName: user.lastName as string,
-        email: user.email
-      });
-      resources.push(scimUser);
+
+    const users = await orgDAL.findMembership(
+      {
+        orgId,
+        ...parseFilter(filter)
+      },
+      findOpts
+    );
+
+    const scimUsers = users.map(({ userId, firstName, lastName, email }) =>
+      buildScimUser({
+        userId: userId ?? "",
+        firstName: firstName ?? "",
+        lastName: lastName ?? "",
+        email,
+        active: true
+      })
+    );
+
+    return buildScimUserList({
+      scimUsers,
+      offset,
+      limit
     });
+  };
 
-    scimResource.Resources = resources;
-    
-    return scimResource;
-  }
-  
-  const getUser = async (userId: string) => {
-    // TODO: check out SCIM-specific errors
-    
-    let user;
-    try {
-      user = await userDAL.findById(userId);
-    } catch (error) {
+  const getScimUser = async ({ userId, orgId }: TGetScimUserDTO) => {
+    const [membership] = await orgDAL
+      .findMembership({
+        userId,
+        orgId
+      })
+      .catch(() => {
+        throw new ScimRequestError({
+          detail: "User not found",
+          status: 404
+        });
+      });
 
-      interface PostgresError extends Error {
-        error: {
-          code: string;
-        }
-      }
-      
-      const dbError = error as PostgresError;
-      
-      if (dbError.error.code === "22P02") throw new ScimRequestError({
+    if (!membership)
+      throw new ScimRequestError({
         detail: "User not found",
         status: 404
       });
-      
-      throw error;
-    }
-    
-    if (!user) throw new ScimRequestError({
-      detail: "User not found",
-      status: 404
+
+    if (!membership.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
+    return buildScimUser({
+      userId: membership.userId as string,
+      firstName: membership.firstName as string,
+      lastName: membership.lastName as string,
+      email: membership.email,
+      active: true
     });
-    
-    return createScimUser({
-      userId: user.id,
-      firstName: user.firstName as string,
-      lastName: user.lastName as string,
-      email: user.email
-    });
-  }
-  
-  const createUser = async ({
-    firstName,
-    lastName,
-    email,
-    orgId
-  }: TCreateScimUserDTO) => {
+  };
+
+  const createScimUser = async ({ firstName, lastName, email, orgId }: TCreateScimUserDTO) => {
+    const org = await orgDAL.findById(orgId);
+
+    if (!org)
+      throw new ScimRequestError({
+        detail: "Organization not found",
+        status: 404
+      });
+
+    if (!org.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
     let user = await userDAL.findOne({
       email
     });
-    
-    if (user) throw new ScimRequestError({
-      detail: "User already exists in the database",
-      status: 409
+
+    if (user) {
+      await userDAL.transaction(async (tx) => {
+        const [orgMembership] = await orgDAL.findMembership({ userId: user.id, orgId }, { tx });
+        if (orgMembership)
+          throw new ScimRequestError({
+            detail: "User already exists in the database",
+            status: 409
+          });
+
+        if (!orgMembership) {
+          await orgDAL.createMembership(
+            {
+              userId: user.id,
+              orgId,
+              inviteEmail: email,
+              role: OrgMembershipRole.Member,
+              status: OrgMembershipStatus.Invited
+            },
+            tx
+          );
+        }
+      });
+    } else {
+      user = await userDAL.transaction(async (tx) => {
+        const newUser = await userDAL.create(
+          {
+            email,
+            firstName,
+            lastName,
+            authMethods: [AuthMethod.EMAIL]
+          },
+          tx
+        );
+
+        await orgDAL.createMembership(
+          {
+            inviteEmail: email,
+            orgId,
+            userId: newUser.id,
+            role: OrgMembershipRole.Member,
+            status: OrgMembershipStatus.Invited
+          },
+          tx
+        );
+        return newUser;
+      });
+    }
+
+    const appCfg = getConfig();
+    await smtpService.sendMail({
+      template: SmtpTemplates.ScimUserProvisioned,
+      subjectLine: "Infisical organization invitation",
+      recipients: [email],
+      substitutions: {
+        organizationName: org.name,
+        callback_url: `${appCfg.SITE_URL}/api/v1/sso/redirect/saml2/organizations/${org.slug}`
+      }
     });
 
-    user = await userDAL.transaction(async (tx) => {
-      const newUser = await userDAL.create(
-        {
-          email,
-          firstName,
-          lastName,
-          authMethods: [AuthMethod.EMAIL]
-        },
-        tx
-      );
-      await orgDAL.createMembership({
-        inviteEmail: email,
-        orgId,
-        role: OrgMembershipRole.Member,
-        status: OrgMembershipStatus.Invited
-      });
-      return newUser;
-    });
-    
-    return createScimUser({
+    return buildScimUser({
       userId: user.id,
       firstName: user.firstName as string,
       lastName: user.lastName as string,
-      email: user.email
+      email: user.email,
+      active: true
     });
-  }
-  
+  };
+
+  const updateScimUser = async ({ userId, orgId, operations }: TUpdateScimUserDTO) => {
+    const [membership] = await orgDAL
+      .findMembership({
+        userId,
+        orgId
+      })
+      .catch(() => {
+        throw new ScimRequestError({
+          detail: "User not found",
+          status: 404
+        });
+      });
+
+    if (!membership)
+      throw new ScimRequestError({
+        detail: "User not found",
+        status: 404
+      });
+
+    if (!membership.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
+    let active = true;
+
+    operations.forEach((operation) => {
+      if (operation.op.toLowerCase() === "replace") {
+        if (operation.path === "active" && operation.value === "False") {
+          // azure scim op format
+          active = false;
+        } else if (typeof operation.value === "object" && operation.value.active === false) {
+          // okta scim op format
+          active = false;
+        }
+      }
+    });
+
+    if (!active) {
+      await deleteOrgMembership({
+        orgMembershipId: membership.id,
+        orgId: membership.orgId,
+        orgDAL
+      });
+    }
+
+    return buildScimUser({
+      userId: membership.userId as string,
+      firstName: membership.firstName as string,
+      lastName: membership.lastName as string,
+      email: membership.email,
+      active
+    });
+  };
+
+  const replaceScimUser = async ({ userId, active, orgId }: TReplaceScimUserDTO) => {
+    const [membership] = await orgDAL
+      .findMembership({
+        userId,
+        orgId
+      })
+      .catch(() => {
+        throw new ScimRequestError({
+          detail: "User not found",
+          status: 404
+        });
+      });
+
+    if (!membership)
+      throw new ScimRequestError({
+        detail: "User not found",
+        status: 404
+      });
+
+    if (!membership.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
+    if (!active) {
+      // tx
+      await deleteOrgMembership({
+        orgMembershipId: membership.id,
+        orgId: membership.orgId,
+        orgDAL
+      });
+    }
+
+    return buildScimUser({
+      userId: membership.userId as string,
+      firstName: membership.firstName as string,
+      lastName: membership.lastName as string,
+      email: membership.email,
+      active
+    });
+  };
+
   const fnValidateScimToken = async (token: TScimTokenJwtPayload) => {
-    // TODO: check expiry
-    
     const scimToken = await scimDAL.findById(token.scimTokenId);
     if (!scimToken) throw new UnauthorizedError();
-    
+
+    const { ttlDays, createdAt } = scimToken;
+
+    // ttl check
+    if (Number(ttlDays) > 0) {
+      const currentDate = new Date();
+      const scimTokenCreatedAt = new Date(createdAt);
+      const ttlInMilliseconds = Number(scimToken.ttlDays) * 86400;
+      const expirationDate = new Date(scimTokenCreatedAt.getTime() + ttlInMilliseconds);
+
+      if (currentDate > expirationDate)
+        throw new ScimRequestError({
+          detail: "The access token expired",
+          status: 401
+        });
+    }
+
     return { scimTokenId: scimToken.id, orgId: scimToken.orgId };
-  }
-  
-  return { 
+  };
+
+  return {
     createScimToken,
-    getScimTokens,
+    listScimTokens,
     deleteScimToken,
-    listUsers,
-    getUser,
-    createUser,
+    listScimUsers,
+    getScimUser,
+    createScimUser,
+    updateScimUser,
+    replaceScimUser,
     fnValidateScimToken
   };
 };

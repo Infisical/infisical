@@ -9,11 +9,11 @@ import { TImmutableDBKeys } from "./models";
 
 export const ScimTokensSchema = z.object({
   id: z.string(),
-  ttl: z.coerce.number().default(15552000),
+  ttlDays: z.coerce.number().default(365),
   description: z.string(),
   orgId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TScimTokens = z.infer<typeof ScimTokensSchema>;

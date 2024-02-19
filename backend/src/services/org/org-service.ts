@@ -126,16 +126,32 @@ export const orgServiceFactory = ({
     actorId,
     actorOrgId,
     orgId,
-    data: { name, slug, authEnforced }
+    data: { name, slug, authEnforced, scimEnabled }
   }: TUpdateOrgDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
+    const plan = await licenseService.getPlan(orgId);
+
     if (authEnforced !== undefined) {
+      if (!plan?.samlSSO)
+        throw new BadRequestError({
+          message:
+            "Failed to enforce/un-enforce SAML SSO due to plan restriction. Upgrade plan to enforce/un-enforce SAML SSO."
+        });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
     }
 
-    if (authEnforced) {
+    if (scimEnabled !== undefined) {
+      if (!plan?.scim)
+        throw new BadRequestError({
+          message:
+            "Failed to enable/disable SCIM provisioning due to plan restriction. Upgrade plan to enable/disable SCIM provisioning."
+        });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Scim);
+    }
+
+    if (authEnforced || scimEnabled) {
       const samlCfg = await samlConfigDAL.findEnforceableSamlCfg(orgId);
       if (!samlCfg)
         throw new BadRequestError({
@@ -147,7 +163,8 @@ export const orgServiceFactory = ({
     const org = await orgDAL.updateById(orgId, {
       name,
       slug: slug ? slugify(slug) : undefined,
-      authEnforced
+      authEnforced,
+      scimEnabled
     });
     if (!org) throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
     return org;

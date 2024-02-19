@@ -11,6 +11,8 @@ import { permissionDALFactory } from "@app/ee/services/permission/permission-dal
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
+import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
+import { scimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { secretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { secretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -32,8 +34,6 @@ import { snapshotFolderDALFactory } from "@app/ee/services/secret-snapshot/snaps
 import { snapshotSecretDALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
-import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
-import { scimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
@@ -191,13 +191,7 @@ export const registerRoutes = async (
     trustedIpDAL,
     permissionService
   });
-  const scimService = scimServiceFactory({ 
-    licenseService,
-    scimDAL,
-    userDAL,
-    orgDAL,
-    permissionService
-  });
+
   const auditLogQueue = auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
@@ -219,6 +213,14 @@ export const registerRoutes = async (
     userDAL,
     samlConfigDAL,
     licenseService
+  });
+  const scimService = scimServiceFactory({
+    licenseService,
+    scimDAL,
+    userDAL,
+    orgDAL,
+    permissionService,
+    smtpService
   });
 
   const telemetryService = telemetryServiceFactory();

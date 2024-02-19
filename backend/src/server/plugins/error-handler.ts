@@ -2,7 +2,13 @@ import { ForbiddenError } from "@casl/ability";
 import fastifyPlugin from "fastify-plugin";
 import { ZodError } from "zod";
 
-import { BadRequestError, DatabaseError, InternalServerError, UnauthorizedError, ScimRequestError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  DatabaseError,
+  InternalServerError,
+  ScimRequestError,
+  UnauthorizedError
+} from "@app/lib/errors";
 
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
   server.setErrorHandler((error, req, res) => {

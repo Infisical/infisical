@@ -13,12 +13,12 @@ export const useCreateScimToken = () => {
         mutationFn: async ({
             organizationId,
             description,
-            ttl
+            ttlDays
         }) => {
             const { data } = await apiRequest.post("/api/v1/scim/scim-tokens", {
                 organizationId,
                 description,
-                ttl
+                ttlDays
             });
             
             return data;

@@ -265,11 +265,7 @@ declare module "knex/types/tables" {
       TIdentityProjectMembershipsInsert,
       TIdentityProjectMembershipsUpdate
     >;
-    [TableName.ScimToken]: Knex.CompositeTableType<
-      TScimTokens,
-      TScimTokensInsert,
-      TScimTokensUpdate
-    >;
+    [TableName.ScimToken]: Knex.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
     [TableName.SecretApprovalPolicy]: Knex.CompositeTableType<
       TSecretApprovalPolicies,
       TSecretApprovalPoliciesInsert,
