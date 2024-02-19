@@ -504,6 +504,21 @@ export const projectQueueFactory = ({
           throw new Error("Parts of the upgrade failed. Some secrets were not updated");
         }
 
+        const secretUpdates = await secretDAL.bulkUpdateNoVersionIncrement(updatedSecrets, tx);
+        const secretVersionUpdates = await secretVersionDAL.bulkUpdateNoVersionIncrement(updatedSecretVersions, tx);
+        const secretApprovalUpdates = await secretApprovalSecretDAL.bulkUpdateNoVersionIncrement(
+          updatedSecretApprovals,
+          tx
+        );
+
+        if (
+          secretUpdates.length !== updatedSecrets.length ||
+          secretVersionUpdates.length !== updatedSecretVersions.length ||
+          secretApprovalUpdates.length !== updatedSecretApprovals.length
+        ) {
+          throw new Error("Parts of the upgrade failed. Some secrets were not updated");
+        }
+
         await projectDAL.setProjectUpgradeStatus(data.projectId, null, tx);
 
         //  await new Promise((resolve) => setTimeout(resolve, 15_000));
