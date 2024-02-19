@@ -129,17 +129,18 @@ export const IntegrationsSection = ({
                     label={
                       (integration.integration === "qovery" && integration?.scope) ||
                       (integration?.scope === "github-org" && "Organization") ||
-                      (["github-repo", "github-env"].includes(integration?.scope as string) && "Repository") ||
+                      (["github-repo", "github-env"].includes(integration?.scope as string) &&
+                        "Repository") ||
                       "App"
                     }
                   />
-                  <div className="min-w-[8rem] rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 max-w-[12rem] text-ellipsis whitespace-nowrap overflow-clip">
-                    {
-                      (integration.integration === "hashicorp-vault" && `${integration.app} - path: ${integration.path}`) ||
-                      (integration.scope === "github-org" && `${integration.owner}` ) ||
-                      (integration.scope?.startsWith("github-") && `${integration.owner}/${integration.app}` ) ||
-                      integration.app
-                    }
+                  <div className="min-w-[8rem] max-w-[12rem] overflow-clip text-ellipsis whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                    {(integration.integration === "hashicorp-vault" &&
+                      `${integration.app} - path: ${integration.path}`) ||
+                      (integration.scope === "github-org" && `${integration.owner}`) ||
+                      (integration.scope?.startsWith("github-") &&
+                        `${integration.owner}/${integration.app}`) ||
+                      integration.app}
                   </div>
                 </div>
                 {(integration.integration === "vercel" ||
@@ -151,29 +152,27 @@ export const IntegrationsSection = ({
                   (integration.integration === "github" && integration.scope === "github-env")) && (
                   <div className="ml-4 flex flex-col">
                     <FormLabel label="Target Environment" />
-                    <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 text-ellipsis whitespace-nowrap overflow-clip">
+                    <div className="overflow-clip text-ellipsis whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                       {integration.targetEnvironment || integration.targetEnvironmentId}
+                    </div>
+                  </div>
+                )}
+                {integration.integration === "checkly" && integration.targetService && (
+                  <div className="ml-2">
+                    <FormLabel label="Group" />
+                    <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                      {integration.targetService}
                     </div>
                   </div>
                 )}
                 {(integration.integration === "checkly" ||
                   integration.integration === "github") && (
-                  <>
-                    {integration.targetService && (
-                      <div className="ml-2">
-                        <FormLabel label="Group" />
-                        <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
-                          {integration.targetService}
-                        </div>
-                      </div>
-                    )}
-                    <div className="ml-2">
-                      <FormLabel label="Secret Suffix" />
-                      <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
-                        {integration?.metadata?.secretSuffix || "-"}
-                      </div>
+                  <div className="ml-2">
+                    <FormLabel label="Secret Suffix" />
+                    <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                      {integration?.metadata?.secretSuffix || "-"}
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
               <div className="flex cursor-default items-center">
