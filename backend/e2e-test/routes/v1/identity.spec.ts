@@ -2,8 +2,58 @@ import { SecretType } from "@app/db/schemas";
 import { getUserPrivateKey, seedData1 } from "@app/db/seed-data";
 import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
 
+const createRawSecret = async (dto: {
+  path: string;
+  key: string;
+  value: string;
+  comment: string;
+  type?: SecretType;
+  token: string;
+}) => {
+  const createSecretReqBody = {
+    workspaceId: seedData1.project.id,
+    environment: seedData1.environment.slug,
+    type: dto.type || SecretType.Shared,
+    secretValue: dto.value,
+    secretComment: dto.comment,
+    secretPath: dto.path
+  };
+  const createSecRes = await testServer.inject({
+    method: "POST",
+    url: `/api/v3/secrets/raw/${dto.key}`,
+    headers: {
+      authorization: `Bearer ${dto.token}`
+    },
+    body: createSecretReqBody
+  });
+  expect(createSecRes.statusCode).toBe(200);
+  const createdSecretPayload = JSON.parse(createSecRes.payload);
+  expect(createdSecretPayload).toHaveProperty("secret");
+  return createdSecretPayload.secret;
+};
+
+const deleteRawSecret = async (dto: { path: string; key: string; token: string }) => {
+  const deleteSecRes = await testServer.inject({
+    method: "DELETE",
+    url: `/api/v3/secrets/raw/${dto.key}`,
+    headers: {
+      authorization: `Bearer ${dto.token}`
+    },
+    body: {
+      workspaceId: seedData1.project.id,
+      environment: seedData1.environment.slug,
+      secretPath: dto.path
+    }
+  });
+  expect(deleteSecRes.statusCode).toBe(200);
+  const updatedSecretPayload = JSON.parse(deleteSecRes.payload);
+  expect(updatedSecretPayload).toHaveProperty("secret");
+  return updatedSecretPayload.secret;
+};
+
 describe("Identity token secret ops", async () => {
   let identityToken = "";
+  let folderId = "";
   beforeAll(async () => {
     // enable bot
     const res = await testServer.inject({
@@ -90,6 +140,7 @@ describe("Identity token secret ops", async () => {
       }
     });
     expect(folderCreate.statusCode).toBe(200);
+    folderId = folderCreate.json().folder.id;
   });
 
   afterAll(async () => {
@@ -116,6 +167,20 @@ describe("Identity token secret ops", async () => {
       }
     });
     expect(setBotInActive.statusCode).toEqual(200);
+
+    const deleteFolder = await testServer.inject({
+      method: "DELETE",
+      url: `/api/v1/folders/${folderId}`,
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      },
+      body: {
+        workspaceId: seedData1.project.id,
+        environment: seedData1.environment.slug,
+        path: "/nested1/nested2"
+      }
+    });
+    expect(deleteFolder.statusCode).toBe(200);
   });
 
   const testRawSecrets = [
@@ -187,9 +252,13 @@ describe("Identity token secret ops", async () => {
         })
       ])
     );
+
+    await deleteRawSecret({ path, key: secret.key, token: identityToken });
   });
 
   test.each(testRawSecrets)("Get secret by name raw in path $path", async ({ secret, path }) => {
+    await createRawSecret({ path, ...secret, token: identityToken });
+
     const getSecByNameRes = await testServer.inject({
       method: "GET",
       url: `/api/v3/secrets/raw/${secret.key}`,
@@ -211,9 +280,37 @@ describe("Identity token secret ops", async () => {
         secretValue: secret.value
       })
     );
+
+    await deleteRawSecret({ path, key: secret.key, token: identityToken });
+  });
+
+  test.each(testRawSecrets)("List secret raw in path $path", async ({ secret, path }) => {
+    await Promise.all(
+      Array.from(Array(5)).map((_e, i) =>
+        createRawSecret({ path, token: identityToken, ...secret, key: `BULK-${secret.key}-${i + 1}` })
+      )
+    );
+
+    const secrets = await getSecrets(seedData1.environment.slug, path);
+    expect(secrets.length).toEqual(5);
+    expect(secrets).toEqual(
+      expect.arrayContaining(
+        Array.from(Array(5)).map((_e, i) =>
+          expect.objectContaining({ value: expect.any(String), key: `BULK-${secret.key}-${i + 1}` })
+        )
+      )
+    );
+
+    await Promise.all(
+      Array.from(Array(5)).map((_e, i) =>
+        deleteRawSecret({ path, token: identityToken, key: `BULK-${secret.key}-${i + 1}` })
+      )
+    );
   });
 
   test.each(testRawSecrets)("Update secret raw in path $path", async ({ secret, path }) => {
+    await createRawSecret({ path, ...secret, token: identityToken });
+
     const updateSecretReqBody = {
       workspaceId: seedData1.project.id,
       environment: seedData1.environment.slug,
@@ -221,7 +318,6 @@ describe("Identity token secret ops", async () => {
       secretValue: "new-value",
       secretPath: path
     };
-
     const updateSecRes = await testServer.inject({
       method: "PATCH",
       url: `/api/v3/secrets/raw/${secret.key}`,
@@ -246,9 +342,13 @@ describe("Identity token secret ops", async () => {
         })
       ])
     );
+
+    await deleteRawSecret({ path, key: secret.key, token: identityToken });
   });
 
   test.each(testRawSecrets)("Delete secret raw in path $path", async ({ path, secret }) => {
+    await createRawSecret({ path, ...secret, token: identityToken });
+
     const deletedSecretReqBody = {
       workspaceId: seedData1.project.id,
       environment: seedData1.environment.slug,
@@ -269,13 +369,6 @@ describe("Identity token secret ops", async () => {
 
     // fetch secrets
     const secrets = await getSecrets(seedData1.environment.slug, path);
-    expect(secrets).toEqual(
-      expect.arrayContaining([
-        expect.not.objectContaining({
-          key: secret.key,
-          type: SecretType.Shared
-        })
-      ])
-    );
+    expect(secrets).toEqual([]);
   });
 });
