@@ -103,8 +103,11 @@ describe("Secret Import Router", async () => {
   });
 
   test("Update secret import position", async () => {
-    const createdImport1 = await createSecretImport("/", "dev");
-    const createdImport2 = await createSecretImport("/", "staging");
+    const devImportDetails = { path: "/", envSlug: "dev" };
+    const stagingImportDetails = { path: "/", envSlug: "staging" };
+
+    const createdImport1 = await createSecretImport(devImportDetails.path, devImportDetails.envSlug);
+    const createdImport2 = await createSecretImport(stagingImportDetails.path, stagingImportDetails.envSlug);
 
     const updateImportRes = await testServer.inject({
       method: "PATCH",
@@ -133,7 +136,7 @@ describe("Secret Import Router", async () => {
         position: 2,
         importEnv: expect.objectContaining({
           name: expect.any(String),
-          slug: expect.any(String),
+          slug: expect.stringMatching(devImportDetails.envSlug),
           id: expect.any(String)
         })
       })
