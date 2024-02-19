@@ -51,7 +51,7 @@ const deleteRawSecret = async (dto: { path: string; key: string; token: string }
   return updatedSecretPayload.secret;
 };
 
-describe("Identity token secret ops", async () => {
+describe("Secret operations with Identity token", async () => {
   let identityToken = "";
   let folderId = "";
   beforeAll(async () => {
@@ -183,11 +183,11 @@ describe("Identity token secret ops", async () => {
     expect(deleteFolder.statusCode).toBe(200);
   });
 
-  const testRawSecrets = [
+  const secretTestCases = [
     {
       path: "/",
       secret: {
-        key: "ID-SEC",
+        key: "secret-key-1",
         value: "something-secret",
         comment: "some comment"
       }
@@ -195,9 +195,46 @@ describe("Identity token secret ops", async () => {
     {
       path: "/nested1/nested2/folder",
       secret: {
-        key: "NESTED-ID-SEC",
-        value: "something-secret",
-        comment: "some comment"
+        key: "secret-key-2",
+        value: `-----BEGIN PRIVATE KEY-----
+        MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCa6eeFk+cMVqFn
+        hoVQDYgn2Ptp5Azysr2UPq6P73pCL9BzUtOXKZROqDyGehzzfg3wE2KdYU1Jk5Uq
+        fP0ZOWDIlM2SaVCSI3FW32o5+ZiggjpqcVdLFc/PS0S/ZdSmpPd8h11iO2brtIAI
+        ugTW8fcKlGSNUwx9aFmE7A6JnTRliTxB1l6QaC+YAwTK39VgeVH2gDSWC407aS15
+        QobAkaBKKmFkzB5D7i2ZJwt+uXJV/rbLmyDmtnw0lubciGn7NX9wbYef180fisqT
+        aPNAz0nPKk0fFH2Wd5MZixNGbrrpDA+FCYvI5doThZyT2hpj08qWP07oXXCAqw46
+        IEupNSILAgMBAAECggEBAIJb5KzeaiZS3B3O8G4OBQ5rJB3WfyLYUHnoSWLsBbie
+        nc392/ovThLmtZAAQE6SO85Tsb93+t64Z2TKqv1H8G658UeMgfWIB78v4CcLJ2mi
+        TN/3opqXrzjkQOTDHzBgT7al/mpETHZ6fOdbCemK0fVALGFUioUZg4M8VXtuI4Jw
+        q28jAyoRKrCrzda4BeQ553NZ4G5RvwhX3O2I8B8upTbt5hLcisBKy8MPLYY5LUFj
+        YKAP+raf6QLliP6KYHuVxUlgzxjLTxVG41etcyqqZF+foyiKBO3PU3n8oh++tgQP
+        ExOxiR0JSkBG5b+oOBD0zxcvo3/SjBHn0dJOZCSU2SkCgYEAyCe676XnNyBZMRD7
+        6trsaoiCWBpA6M8H44+x3w4cQFtqV38RyLy60D+iMKjIaLqeBbnay61VMzo24Bz3
+        EuF2n4+9k/MetLJ0NCw8HmN5k0WSMD2BFsJWG8glVbzaqzehP4tIclwDTYc1jQVt
+        IoV2/iL7HGT+x2daUwbU5kN5hK0CgYEAxiLB+fmjxJW7VY4SHDLqPdpIW0q/kv4K
+        d/yZBrCX799vjmFb9vLh7PkQUfJhMJ/ttJOd7EtT3xh4mfkBeLfHwVU0d/ahbmSH
+        UJu/E9ZGxAW3PP0kxHZtPrLKQwBnfq8AxBauIhR3rPSorQTIOKtwz1jMlHFSUpuL
+        3KeK2YfDYJcCgYEAkQnJOlNcAuRb/WQzSHIvktssqK8NjiZHryy3Vc0hx7j2jES2
+        HGI2dSVHYD9OSiXA0KFm3OTTsnViwm/60iGzFdjRJV6tR39xGUVcoyCuPnvRfUd0
+        PYvBXgxgkYpyYlPDcwp5CvWGJy3tLi1acgOIwIuUr3S38sL//t4adGk8q1kCgYB8
+        Jbs1Tl53BvrimKpwUNbE+sjrquJu0A7vL68SqgQJoQ7dP9PH4Ff/i+/V6PFM7mib
+        BQOm02wyFbs7fvKVGVJoqWK+6CIucX732x7W5yRgHtS5ukQXdbzt1Ek3wkEW98Cb
+        HTruz7RNAt/NyXlLSODeit1lBbx3Vk9EaxZtRsv88QKBgGn7JwXgez9NOyobsNIo
+        QVO80rpUeenSjuFi+R0VmbLKe/wgAQbYJ0xTAsQ0btqViMzB27D6mJyC+KUIwWNX
+        MN8a+m46v4kqvZkKL2c4gmDibyURNe/vCtCHFuanJS/1mo2tr4XDyEeiuK52eTd9
+        omQDpP86RX/hIIQ+JyLSaWYa
+        -----END PRIVATE KEY-----`,
+        comment:
+          "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation"
+      }
+    },
+    {
+      path: "/nested1/nested2/folder",
+      secret: {
+        key: "secret-key-3",
+        value:
+          "TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQsIGNvbnNlY3RldHVyIGFkaXBpc2NpbmcgZWxpdC4gU2VkIGRvIGVpdXNtb2QgdGVtcG9yIGluY2lkaWR1bnQgdXQgbGFib3JlIGV0IGRvbG9yZSBtYWduYSBhbGlxdWEuIFV0IGVuaW0gYWQgbWluaW0gdmVuaWFtLCBxdWlzIG5vc3RydWQgZXhlcmNpdGF0aW9uCg==",
+        comment: ""
       }
     }
   ];
@@ -220,7 +257,7 @@ describe("Identity token secret ops", async () => {
     return secrets.map((el) => ({ key: el.secretKey, value: el.secretValue, type: el.type, version: el.version }));
   };
 
-  test.each(testRawSecrets)("Create secret raw in path $path", async ({ secret, path }) => {
+  test.each(secretTestCases)("Create raw secret", async ({ secret, path }) => {
     const createSecretReqBody = {
       workspaceId: seedData1.project.id,
       environment: seedData1.environment.slug,
@@ -256,7 +293,7 @@ describe("Identity token secret ops", async () => {
     await deleteRawSecret({ path, key: secret.key, token: identityToken });
   });
 
-  test.each(testRawSecrets)("Get secret by name raw in path $path", async ({ secret, path }) => {
+  test.each(secretTestCases)("Fetch raw secret by name", async ({ secret, path }) => {
     await createRawSecret({ path, ...secret, token: identityToken });
 
     const getSecByNameRes = await testServer.inject({
@@ -284,7 +321,7 @@ describe("Identity token secret ops", async () => {
     await deleteRawSecret({ path, key: secret.key, token: identityToken });
   });
 
-  test.each(testRawSecrets)("List secret raw in path $path", async ({ secret, path }) => {
+  test.each(secretTestCases)("List secret raw in path $path", async ({ secret, path }) => {
     await Promise.all(
       Array.from(Array(5)).map((_e, i) =>
         createRawSecret({ path, token: identityToken, ...secret, key: `BULK-${secret.key}-${i + 1}` })
@@ -308,7 +345,7 @@ describe("Identity token secret ops", async () => {
     );
   });
 
-  test.each(testRawSecrets)("Update secret raw in path $path", async ({ secret, path }) => {
+  test.each(secretTestCases)("Update raw secret", async ({ secret, path }) => {
     await createRawSecret({ path, ...secret, token: identityToken });
 
     const updateSecretReqBody = {
@@ -346,7 +383,7 @@ describe("Identity token secret ops", async () => {
     await deleteRawSecret({ path, key: secret.key, token: identityToken });
   });
 
-  test.each(testRawSecrets)("Delete secret raw in path $path", async ({ path, secret }) => {
+  test.each(secretTestCases)("Delete raw secret", async ({ path, secret }) => {
     await createRawSecret({ path, ...secret, token: identityToken });
 
     const deletedSecretReqBody = {
