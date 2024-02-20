@@ -178,6 +178,10 @@ export const projectQueueFactory = ({
         approvalSecrets.push(...secretApprovals);
       }
 
+      const projectIntegrationAuths = await integrationAuthDAL.find({
+        projectId: project.id
+      });
+
       const decryptedSecrets = decryptSecrets(secrets, userPrivateKey, oldProjectKey);
       const decryptedSecretVersions = decryptSecretVersions(secretVersions, userPrivateKey, oldProjectKey);
       const decryptedApprovalSecrets = decryptSecretApprovals(approvalSecrets, userPrivateKey, oldProjectKey);
@@ -500,21 +504,6 @@ export const projectQueueFactory = ({
           secretVersionUpdates.length !== updatedSecretVersions.length ||
           secretApprovalUpdates.length !== updatedSecretApprovals.length ||
           integrationAuthUpdates.length !== updatedIntegrationAuths.length
-        ) {
-          throw new Error("Parts of the upgrade failed. Some secrets were not updated");
-        }
-
-        const secretUpdates = await secretDAL.bulkUpdateNoVersionIncrement(updatedSecrets, tx);
-        const secretVersionUpdates = await secretVersionDAL.bulkUpdateNoVersionIncrement(updatedSecretVersions, tx);
-        const secretApprovalUpdates = await secretApprovalSecretDAL.bulkUpdateNoVersionIncrement(
-          updatedSecretApprovals,
-          tx
-        );
-
-        if (
-          secretUpdates.length !== updatedSecrets.length ||
-          secretVersionUpdates.length !== updatedSecretVersions.length ||
-          secretApprovalUpdates.length !== updatedSecretApprovals.length
         ) {
           throw new Error("Parts of the upgrade failed. Some secrets were not updated");
         }
