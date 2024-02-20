@@ -445,7 +445,7 @@ export const projectQueueFactory = ({
         logger.error("Failed to upgrade project, because no project was found", data);
       } else {
         await projectDAL.setProjectUpgradeStatus(data.projectId, ProjectUpgradeStatus.Failed);
-        logger.error("Failed to upgrade project", data, err);
+        logger.error(err, "Failed to upgrade project");
       }
 
       throw err;
@@ -453,7 +453,7 @@ export const projectQueueFactory = ({
   });
 
   queueService.listen(QueueName.UpgradeProjectToGhost, "failed", (job, err) => {
-    logger.error("Upgrade project failed", job?.data, err);
+    logger.error(err, "Upgrade project failed", job?.data);
   });
 
   return {
