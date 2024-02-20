@@ -137,7 +137,6 @@ export const projectQueueFactory = ({
       const secretVersions: TSecretVersions[] = [];
       const approvalSecrets: TSecretApprovalRequestsSecrets[] = [];
       const folderSecretVersionIdsToDelete: string[] = [];
-
       for (const folder of projectFolders) {
         const folderSecrets = await secretDAL.find({ folderId: folder.id });
 
