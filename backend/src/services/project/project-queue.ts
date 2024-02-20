@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import {
+  IntegrationAuthsSchema,
   ProjectMembershipRole,
   ProjectUpgradeStatus,
   ProjectVersion,
@@ -7,6 +8,7 @@ import {
   SecretKeyEncoding,
   SecretsSchema,
   SecretVersionsSchema,
+  TIntegrationAuths,
   TSecretApprovalRequestsSecrets,
   TSecrets,
   TSecretVersions
@@ -21,9 +23,15 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { logger } from "@app/lib/logger";
-import { decryptSecretApprovals, decryptSecrets, decryptSecretVersions } from "@app/lib/secret";
+import {
+  decryptIntegrationAuths,
+  decryptSecretApprovals,
+  decryptSecrets,
+  decryptSecretVersions
+} from "@app/lib/secret";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
+import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
@@ -50,6 +58,7 @@ type TProjectQueueFactoryDep = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne" | "delete" | "create">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create">;
+  integrationAuthDAL: TIntegrationAuthDALFactory;
   userDAL: Pick<TUserDALFactory, "findUserEncKeyByUserId">;
 
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
@@ -63,6 +72,7 @@ export const projectQueueFactory = ({
   folderDAL,
   userDAL,
   secretVersionDAL,
+  integrationAuthDAL,
   secretApprovalRequestDAL,
   secretApprovalSecretDAL,
   projectKeyDAL,
@@ -150,9 +160,14 @@ export const projectQueueFactory = ({
         approvalSecrets.push(...secretApprovals);
       }
 
+      const projectIntegrationAuths = await integrationAuthDAL.find({
+        projectId: project.id
+      });
+
       const decryptedSecrets = decryptSecrets(secrets, userPrivateKey, oldProjectKey);
       const decryptedSecretVersions = decryptSecretVersions(secretVersions, userPrivateKey, oldProjectKey);
       const decryptedApprovalSecrets = decryptSecretApprovals(approvalSecrets, userPrivateKey, oldProjectKey);
+      const decryptedIntegrationAuths = decryptIntegrationAuths(projectIntegrationAuths, userPrivateKey, oldProjectKey);
 
       if (secrets.length !== decryptedSecrets.length) {
         throw new Error("Failed to decrypt some secret versions");
@@ -304,6 +319,7 @@ export const projectQueueFactory = ({
         const updatedSecrets: TSecrets[] = [];
         const updatedSecretVersions: TSecretVersions[] = [];
         const updatedSecretApprovals: TSecretApprovalRequestsSecrets[] = [];
+        const updatedIntegrationAuths: TIntegrationAuths[] = [];
         for (const rawSecret of decryptedSecrets) {
           const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(rawSecret.decrypted.secretKey, botKey);
           const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(rawSecret.decrypted.secretValue || "", botKey);
@@ -348,6 +364,7 @@ export const projectQueueFactory = ({
 
           const payload: TSecretVersions = {
             ...rawSecretVersion.original,
+            keyEncoding: SecretKeyEncoding.UTF8,
 
             secretKeyCiphertext: secretKeyEncrypted.ciphertext,
             secretKeyIV: secretKeyEncrypted.iv,
@@ -382,6 +399,7 @@ export const projectQueueFactory = ({
 
           const payload: TSecretApprovalRequestsSecrets = {
             ...rawSecretApproval.original,
+            keyEncoding: SecretKeyEncoding.UTF8,
 
             secretKeyCiphertext: secretKeyEncrypted.ciphertext,
             secretKeyIV: secretKeyEncrypted.iv,
@@ -403,6 +421,35 @@ export const projectQueueFactory = ({
           updatedSecretApprovals.push(payload);
         }
 
+        for (const integrationAuth of decryptedIntegrationAuths) {
+          const access = encryptSymmetric128BitHexKeyUTF8(integrationAuth.decrypted.access, botKey);
+          const accessId = encryptSymmetric128BitHexKeyUTF8(integrationAuth.decrypted.accessId, botKey);
+          const refresh = encryptSymmetric128BitHexKeyUTF8(integrationAuth.decrypted.refresh, botKey);
+
+          const payload: TIntegrationAuths = {
+            ...integrationAuth.original,
+            keyEncoding: SecretKeyEncoding.UTF8,
+
+            accessCiphertext: access.ciphertext,
+            accessIV: access.iv,
+            accessTag: access.tag,
+
+            accessIdCiphertext: accessId.ciphertext,
+            accessIdIV: accessId.iv,
+            accessIdTag: accessId.tag,
+
+            refreshCiphertext: refresh.ciphertext,
+            refreshIV: refresh.iv,
+            refreshTag: refresh.tag
+          } as const;
+
+          if (!IntegrationAuthsSchema.safeParse(payload).success) {
+            throw new Error(`Invalid integration auth payload: ${JSON.stringify(payload)}`);
+          }
+
+          updatedIntegrationAuths.push(payload);
+        }
+
         if (updatedSecrets.length !== secrets.length) {
           throw new Error("Failed to update some secrets");
         }
@@ -412,6 +459,9 @@ export const projectQueueFactory = ({
         if (updatedSecretApprovals.length !== approvalSecrets.length) {
           throw new Error("Failed to update some secret approvals");
         }
+        if (updatedIntegrationAuths.length !== projectIntegrationAuths.length) {
+          throw new Error("Failed to update some integration auths");
+        }
 
         const secretUpdates = await secretDAL.bulkUpdateNoVersionIncrement(updatedSecrets, tx);
         const secretVersionUpdates = await secretVersionDAL.bulkUpdateNoVersionIncrement(updatedSecretVersions, tx);
@@ -419,11 +469,22 @@ export const projectQueueFactory = ({
           updatedSecretApprovals,
           tx
         );
+        const integrationAuthUpdates = await integrationAuthDAL.bulkUpdate(
+          updatedIntegrationAuths.map((el) => ({
+            filter: { id: el.id },
+            data: {
+              ...el,
+              id: undefined
+            }
+          })),
+          tx
+        );
 
         if (
           secretUpdates.length !== updatedSecrets.length ||
           secretVersionUpdates.length !== updatedSecretVersions.length ||
-          secretApprovalUpdates.length !== updatedSecretApprovals.length
+          secretApprovalUpdates.length !== updatedSecretApprovals.length ||
+          integrationAuthUpdates.length !== updatedIntegrationAuths.length
         ) {
           throw new Error("Parts of the upgrade failed. Some secrets were not updated");
         }

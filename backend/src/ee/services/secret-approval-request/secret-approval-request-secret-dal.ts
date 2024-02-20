@@ -31,15 +31,13 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
         throw new BadRequestError({ message: "Some of the secret approvals do not exist" });
       }
 
+      if (data.length === 0) return [];
+
       const updatedApprovalSecrets = await (tx || db)(TableName.SecretApprovalRequestSecret)
         .insert(data)
         .onConflict("id") // this will cause a conflict then merge the data
         .merge() // Merge the data with the existing data
         .returning("*");
-
-      if (!updatedApprovalSecrets || updatedApprovalSecrets.length === 0) {
-        throw new BadRequestError({ message: "Failed to bulk update secret approvals" });
-      }
 
       return updatedApprovalSecrets;
     } catch (error) {

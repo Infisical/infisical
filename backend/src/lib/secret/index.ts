@@ -2,9 +2,11 @@ import crypto from "crypto";
 import { z } from "zod";
 
 import {
+  IntegrationAuthsSchema,
   SecretApprovalRequestsSecretsSchema,
   SecretsSchema,
   SecretVersionsSchema,
+  TIntegrationAuths,
   TProjectKeys,
   TSecretApprovalRequestsSecrets,
   TSecrets,
@@ -25,6 +27,16 @@ const DecryptedSecretSchema = z.object({
   original: SecretsSchema
 });
 
+const DecryptedIntegrationAuthsSchema = z.object({
+  decrypted: z.object({
+    id: z.string(),
+    access: z.string(),
+    accessId: z.string(),
+    refresh: z.string()
+  }),
+  original: IntegrationAuthsSchema
+});
+
 const DecryptedSecretVersionsSchema = z.object({
   decrypted: DecryptedValuesSchema,
   original: SecretVersionsSchema
@@ -38,6 +50,13 @@ export const DecryptedSecretApprovalsSchema = z.object({
 export type DecryptedSecret = z.infer<typeof DecryptedSecretSchema>;
 export type DecryptedSecretVersions = z.infer<typeof DecryptedSecretVersionsSchema>;
 export type DecryptedSecretApprovals = z.infer<typeof DecryptedSecretApprovalsSchema>;
+export type DecryptedIntegrationAuths = z.infer<typeof DecryptedIntegrationAuthsSchema>;
+
+type TLatestKey = TProjectKeys & {
+  sender: {
+    publicKey: string;
+  };
+};
 
 const decryptCipher = ({
   ciphertext,
@@ -59,69 +78,20 @@ const decryptCipher = ({
   return cleartext;
 };
 
-const getDecryptedValues = ({
-  secretKeyCiphertext,
-  secretKeyIV,
-  secretKeyTag,
-  secretValueCiphertext,
-  secretValueIV,
-  secretValueTag,
+const getDecryptedValues = (data: Array<{ ciphertext: string; iv: string; tag: string }>, key: string | Buffer) => {
+  const results = [];
 
-  secretCommentCiphertext,
-  secretCommentIV,
-  secretCommentTag,
-  key
-}: {
-  secretKeyCiphertext: string;
-  secretKeyIV: string;
-  secretKeyTag: string;
-  secretValueCiphertext: string;
-  secretValueIV: string;
-  secretValueTag: string;
-  secretCommentCiphertext?: string | null;
-  secretCommentIV?: string | null;
-  secretCommentTag?: string | null;
-  key: string | Buffer;
-}) => {
-  const secretKey = decryptCipher({
-    ciphertext: secretKeyCiphertext,
-    iv: secretKeyIV,
-    tag: secretKeyTag,
-    key
-  });
-
-  const secretValue = decryptCipher({
-    ciphertext: secretValueCiphertext,
-    iv: secretValueIV,
-    tag: secretValueTag,
-    key
-  });
-
-  const secretComment =
-    secretCommentCiphertext && secretCommentIV && secretCommentTag
-      ? decryptCipher({
-          ciphertext: secretCommentCiphertext,
-          iv: secretCommentIV,
-          tag: secretCommentTag,
-          key
-        })
-      : "";
-
-  return {
-    secretKey,
-    secretValue,
-    secretComment
-  };
-};
-export const decryptSecrets = (
-  encryptedSecrets: TSecrets[],
-  privateKey: string,
-  latestKey: TProjectKeys & {
-    sender: {
-      publicKey: string;
-    };
+  for (const { ciphertext, iv, tag } of data) {
+    if (!ciphertext || !iv || !tag) {
+      results.push("");
+    } else {
+      results.push(decryptCipher({ ciphertext, iv, tag, key }));
+    }
   }
-) => {
+
+  return results;
+};
+export const decryptSecrets = (encryptedSecrets: TSecrets[], privateKey: string, latestKey: TLatestKey) => {
   const key = decryptAsymmetric({
     ciphertext: latestKey.encryptedKey,
     nonce: latestKey.nonce,
@@ -132,22 +102,32 @@ export const decryptSecrets = (
   const decryptedSecrets: DecryptedSecret[] = [];
 
   encryptedSecrets.forEach((encSecret) => {
-    const decrypted = getDecryptedValues({
-      secretKeyCiphertext: encSecret.secretKeyCiphertext,
-      secretKeyIV: encSecret.secretKeyIV,
-      secretKeyTag: encSecret.secretKeyTag,
-      secretValueCiphertext: encSecret.secretValueCiphertext,
-      secretValueIV: encSecret.secretValueIV,
-      secretValueTag: encSecret.secretValueTag,
-      secretCommentCiphertext: encSecret.secretCommentCiphertext,
-      secretCommentIV: encSecret.secretCommentIV,
-      secretCommentTag: encSecret.secretCommentTag,
+    const [secretKey, secretValue, secretComment] = getDecryptedValues(
+      [
+        {
+          ciphertext: encSecret.secretKeyCiphertext,
+          iv: encSecret.secretKeyIV,
+          tag: encSecret.secretKeyTag
+        },
+        {
+          ciphertext: encSecret.secretValueCiphertext,
+          iv: encSecret.secretValueIV,
+          tag: encSecret.secretValueTag
+        },
+        {
+          ciphertext: encSecret.secretCommentCiphertext || "",
+          iv: encSecret.secretCommentIV || "",
+          tag: encSecret.secretCommentTag || ""
+        }
+      ],
       key
-    });
+    );
 
     const decryptedSecret: DecryptedSecret = {
       decrypted: {
-        ...decrypted,
+        secretKey,
+        secretValue,
+        secretComment,
         id: encSecret.id
       },
       original: encSecret
@@ -162,11 +142,7 @@ export const decryptSecrets = (
 export const decryptSecretVersions = (
   encryptedSecretVersions: TSecretVersions[],
   privateKey: string,
-  latestKey: TProjectKeys & {
-    sender: {
-      publicKey: string;
-    };
-  }
+  latestKey: TLatestKey
 ) => {
   const key = decryptAsymmetric({
     ciphertext: latestKey.encryptedKey,
@@ -178,22 +154,32 @@ export const decryptSecretVersions = (
   const decryptedSecrets: DecryptedSecretVersions[] = [];
 
   encryptedSecretVersions.forEach((encSecret) => {
-    const decrypted = getDecryptedValues({
-      secretKeyCiphertext: encSecret.secretKeyCiphertext,
-      secretKeyIV: encSecret.secretKeyIV,
-      secretKeyTag: encSecret.secretKeyTag,
-      secretValueCiphertext: encSecret.secretValueCiphertext,
-      secretValueIV: encSecret.secretValueIV,
-      secretValueTag: encSecret.secretValueTag,
-      secretCommentCiphertext: encSecret.secretCommentCiphertext,
-      secretCommentIV: encSecret.secretCommentIV,
-      secretCommentTag: encSecret.secretCommentTag,
+    const [secretKey, secretValue, secretComment] = getDecryptedValues(
+      [
+        {
+          ciphertext: encSecret.secretKeyCiphertext,
+          iv: encSecret.secretKeyIV,
+          tag: encSecret.secretKeyTag
+        },
+        {
+          ciphertext: encSecret.secretValueCiphertext,
+          iv: encSecret.secretValueIV,
+          tag: encSecret.secretValueTag
+        },
+        {
+          ciphertext: encSecret.secretCommentCiphertext || "",
+          iv: encSecret.secretCommentIV || "",
+          tag: encSecret.secretCommentTag || ""
+        }
+      ],
       key
-    });
+    );
 
     const decryptedSecret: DecryptedSecretVersions = {
       decrypted: {
-        ...decrypted,
+        secretKey,
+        secretValue,
+        secretComment,
         id: encSecret.id
       },
       original: encSecret
@@ -208,11 +194,7 @@ export const decryptSecretVersions = (
 export const decryptSecretApprovals = (
   encryptedSecretApprovals: TSecretApprovalRequestsSecrets[],
   privateKey: string,
-  latestKey: TProjectKeys & {
-    sender: {
-      publicKey: string;
-    };
-  }
+  latestKey: TLatestKey
 ) => {
   const key = decryptAsymmetric({
     ciphertext: latestKey.encryptedKey,
@@ -223,30 +205,90 @@ export const decryptSecretApprovals = (
 
   const decryptedSecrets: DecryptedSecretApprovals[] = [];
 
-  encryptedSecretApprovals.forEach((encSecret) => {
-    const decrypted = getDecryptedValues({
-      secretKeyCiphertext: encSecret.secretKeyCiphertext,
-      secretKeyIV: encSecret.secretKeyIV,
-      secretKeyTag: encSecret.secretKeyTag,
-      secretValueCiphertext: encSecret.secretValueCiphertext,
-      secretValueIV: encSecret.secretValueIV,
-      secretValueTag: encSecret.secretValueTag,
-      secretCommentCiphertext: encSecret.secretCommentCiphertext,
-      secretCommentIV: encSecret.secretCommentIV,
-      secretCommentTag: encSecret.secretCommentTag,
+  encryptedSecretApprovals.forEach((encApproval) => {
+    const [secretKey, secretValue, secretComment] = getDecryptedValues(
+      [
+        {
+          ciphertext: encApproval.secretKeyCiphertext,
+          iv: encApproval.secretKeyIV,
+          tag: encApproval.secretKeyTag
+        },
+        {
+          ciphertext: encApproval.secretValueCiphertext,
+          iv: encApproval.secretValueIV,
+          tag: encApproval.secretValueTag
+        },
+        {
+          ciphertext: encApproval.secretCommentCiphertext || "",
+          iv: encApproval.secretCommentIV || "",
+          tag: encApproval.secretCommentTag || ""
+        }
+      ],
       key
-    });
+    );
 
     const decryptedSecret: DecryptedSecretApprovals = {
       decrypted: {
-        ...decrypted,
-        id: encSecret.id
+        secretKey,
+        secretValue,
+        secretComment,
+        id: encApproval.id
       },
-      original: encSecret
+      original: encApproval
     };
 
     decryptedSecrets.push(DecryptedSecretApprovalsSchema.parse(decryptedSecret));
   });
 
   return decryptedSecrets;
+};
+
+export const decryptIntegrationAuths = (
+  encryptedIntegrationAuths: TIntegrationAuths[],
+  privateKey: string,
+  latestKey: TLatestKey
+) => {
+  const key = decryptAsymmetric({
+    ciphertext: latestKey.encryptedKey,
+    nonce: latestKey.nonce,
+    publicKey: latestKey.sender.publicKey,
+    privateKey
+  });
+
+  const decryptedIntegrationAuths: DecryptedIntegrationAuths[] = [];
+
+  encryptedIntegrationAuths.forEach((encAuth) => {
+    const [access, accessId, refresh] = getDecryptedValues(
+      [
+        {
+          ciphertext: encAuth.accessCiphertext || "",
+          iv: encAuth.accessIV || "",
+          tag: encAuth.accessTag || ""
+        },
+        {
+          ciphertext: encAuth.accessIdCiphertext || "",
+          iv: encAuth.accessIdIV || "",
+          tag: encAuth.accessIdTag || ""
+        },
+        {
+          ciphertext: encAuth.refreshCiphertext || "",
+          iv: encAuth.refreshIV || "",
+          tag: encAuth.refreshTag || ""
+        }
+      ],
+      key
+    );
+
+    decryptedIntegrationAuths.push({
+      decrypted: {
+        id: encAuth.id,
+        access,
+        accessId,
+        refresh
+      },
+      original: encAuth
+    });
+  });
+
+  return decryptedIntegrationAuths;
 };

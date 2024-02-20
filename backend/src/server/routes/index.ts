@@ -307,6 +307,7 @@ export const registerRoutes = async (
     folderDAL,
     projectDAL,
     orgDAL,
+    integrationAuthDAL,
     orgService,
     projectEnvDAL,
     userDAL,

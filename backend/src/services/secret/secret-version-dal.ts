@@ -73,15 +73,13 @@ export const secretVersionDALFactory = (db: TDbClient) => {
         throw new BadRequestError({ message: "Some of the secret versions do not exist" });
       }
 
+      if (data.length === 0) return [];
+
       const updatedSecretVersions = await (tx || db)(TableName.SecretVersion)
         .insert(data)
         .onConflict("id") // this will cause a conflict then merge the data
         .merge() // Merge the data with the existing data
         .returning("*");
-
-      if (!updatedSecretVersions || updatedSecretVersions.length === 0) {
-        throw new BadRequestError({ message: "Failed to bulk update secret versions" });
-      }
 
       return updatedSecretVersions;
     } catch (error) {
