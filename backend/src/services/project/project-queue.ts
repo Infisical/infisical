@@ -49,7 +49,7 @@ export type TProjectQueueFactory = ReturnType<typeof projectQueueFactory>;
 
 type TProjectQueueFactoryDep = {
   queueService: TQueueServiceFactory;
-  secretVersionDAL: Pick<TSecretVersionDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
+  secretVersionDAL: Pick<TSecretVersionDALFactory, "find" | "bulkUpdateNoVersionIncrement" | "delete">;
   folderDAL: Pick<TSecretFolderDALFactory, "find">;
   secretDAL: Pick<TSecretDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "find" | "create" | "delete" | "insertMany">;
@@ -133,6 +133,7 @@ export const projectQueueFactory = ({
       const secrets: TSecrets[] = [];
       const secretVersions: TSecretVersions[] = [];
       const approvalSecrets: TSecretApprovalRequestsSecrets[] = [];
+      const folderSecretVersionIdsToDelete: string[] = [];
       for (const folder of projectFolders) {
         const folderSecrets = await secretDAL.find({ folderId: folder.id });
 
@@ -142,9 +143,21 @@ export const projectQueueFactory = ({
           },
           // Only get the latest 100 secret versions for each folder.
           {
-            limit: 100
+            limit: 100,
+            sort: [["createdAt", "desc"]]
           }
         );
+
+        const deletedSecretVersions = await secretVersionDAL.find(
+          {
+            folderId: folder.id
+          },
+          {
+            offset: 100
+          }
+        );
+        folderSecretVersionIdsToDelete.push(...deletedSecretVersions.map((el) => el.id));
+
         const approvalRequests = await secretApprovalRequestDAL.find({
           status: RequestState.Open,
           folderId: folder.id
@@ -478,6 +491,16 @@ export const projectQueueFactory = ({
               id: undefined
             }
           })),
+          tx
+        );
+
+        // Delete all secret versions that are no longer needed. We only store the latest 100 versions for each secret.
+        await secretVersionDAL.delete(
+          {
+            $in: {
+              id: folderSecretVersionIdsToDelete
+            }
+          },
           tx
         );
 
