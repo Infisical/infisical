@@ -330,6 +330,7 @@ export const projectQueueFactory = ({
 
           const payload: TSecrets = {
             ...rawSecret.original,
+            keyEncoding: SecretKeyEncoding.UTF8,
 
             secretKeyCiphertext: secretKeyEncrypted.ciphertext,
             secretKeyIV: secretKeyEncrypted.iv,
