@@ -57,6 +57,12 @@ export const secretDALFactory = (db: TDbClient) => {
               type: el.type,
               ...(el.type === SecretType.Personal ? { userId } : {})
             });
+            if (el.type === SecretType.Shared) {
+              void bd.orWhere({
+                secretBlindIndex: el.blindIndex,
+                type: SecretType.Personal
+              });
+            }
           });
         })
         .delete()

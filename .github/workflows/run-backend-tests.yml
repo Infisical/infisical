@@ -1,0 +1,47 @@
+name: "Run backend tests"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "backend/**"
+      - "!backend/README.md"
+      - "!backend/.*"
+      - "backend/.eslintrc.js"
+  workflow_call:
+
+jobs:
+  check-be-pr:
+    name: Run integration test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: ☁️ Checkout source
+        uses: actions/checkout@v3
+      - uses: KengoTODA/actions-setup-docker-compose@v1
+        if: ${{ env.ACT }}
+        name: Install `docker-compose` for local simulations
+        with:
+          version: "2.14.2"
+      - name: 🔧 Setup Node 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+      - name: Install dependencies
+        run: npm install
+        working-directory: backend
+      - name: Start postgres and redis
+        run: touch .env && docker-compose -f docker-compose.dev.yml up -d db redis
+      - name: Start integration test
+        run: npm run test:e2e
+        working-directory: backend
+        env:
+          REDIS_URL: redis://172.17.0.1:6379
+          DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
+          AUTH_SECRET: something-random
+          ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
+      - name: cleanup
+        run: |
+          docker-compose -f "docker-compose.dev.yml" down

@@ -37,7 +37,7 @@ type TMain = {
 export const main = async ({ db, smtp, logger, queue }: TMain) => {
   const appCfg = getConfig();
   const server = fasitfy({
-    logger,
+    logger: appCfg.NODE_ENV === "test" ? false : logger,
     trustProxy: true,
     connectionTimeout: 30 * 1000,
     ignoreTrailingSlash: true
