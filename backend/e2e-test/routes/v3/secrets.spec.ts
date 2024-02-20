@@ -52,7 +52,7 @@ const deleteSecret = async (dto: { path: string; key: string }) => {
 };
 
 describe("Secret V3 Router", async () => {
-  const testSecrets = [
+  const secretTestCases = [
     {
       path: "/",
       secret: {
@@ -67,6 +67,87 @@ describe("Secret V3 Router", async () => {
         key: "NESTED-SEC1",
         value: "something-secret",
         comment: "some comment"
+      }
+    },
+    {
+      path: "/",
+      secret: {
+        key: "secret-key-2",
+        value: `-----BEGIN PRIVATE KEY-----
+        MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCa6eeFk+cMVqFn
+        hoVQDYgn2Ptp5Azysr2UPq6P73pCL9BzUtOXKZROqDyGehzzfg3wE2KdYU1Jk5Uq
+        fP0ZOWDIlM2SaVCSI3FW32o5+ZiggjpqcVdLFc/PS0S/ZdSmpPd8h11iO2brtIAI
+        ugTW8fcKlGSNUwx9aFmE7A6JnTRliTxB1l6QaC+YAwTK39VgeVH2gDSWC407aS15
+        QobAkaBKKmFkzB5D7i2ZJwt+uXJV/rbLmyDmtnw0lubciGn7NX9wbYef180fisqT
+        aPNAz0nPKk0fFH2Wd5MZixNGbrrpDA+FCYvI5doThZyT2hpj08qWP07oXXCAqw46
+        IEupNSILAgMBAAECggEBAIJb5KzeaiZS3B3O8G4OBQ5rJB3WfyLYUHnoSWLsBbie
+        nc392/ovThLmtZAAQE6SO85Tsb93+t64Z2TKqv1H8G658UeMgfWIB78v4CcLJ2mi
+        TN/3opqXrzjkQOTDHzBgT7al/mpETHZ6fOdbCemK0fVALGFUioUZg4M8VXtuI4Jw
+        q28jAyoRKrCrzda4BeQ553NZ4G5RvwhX3O2I8B8upTbt5hLcisBKy8MPLYY5LUFj
+        YKAP+raf6QLliP6KYHuVxUlgzxjLTxVG41etcyqqZF+foyiKBO3PU3n8oh++tgQP
+        ExOxiR0JSkBG5b+oOBD0zxcvo3/SjBHn0dJOZCSU2SkCgYEAyCe676XnNyBZMRD7
+        6trsaoiCWBpA6M8H44+x3w4cQFtqV38RyLy60D+iMKjIaLqeBbnay61VMzo24Bz3
+        EuF2n4+9k/MetLJ0NCw8HmN5k0WSMD2BFsJWG8glVbzaqzehP4tIclwDTYc1jQVt
+        IoV2/iL7HGT+x2daUwbU5kN5hK0CgYEAxiLB+fmjxJW7VY4SHDLqPdpIW0q/kv4K
+        d/yZBrCX799vjmFb9vLh7PkQUfJhMJ/ttJOd7EtT3xh4mfkBeLfHwVU0d/ahbmSH
+        UJu/E9ZGxAW3PP0kxHZtPrLKQwBnfq8AxBauIhR3rPSorQTIOKtwz1jMlHFSUpuL
+        3KeK2YfDYJcCgYEAkQnJOlNcAuRb/WQzSHIvktssqK8NjiZHryy3Vc0hx7j2jES2
+        HGI2dSVHYD9OSiXA0KFm3OTTsnViwm/60iGzFdjRJV6tR39xGUVcoyCuPnvRfUd0
+        PYvBXgxgkYpyYlPDcwp5CvWGJy3tLi1acgOIwIuUr3S38sL//t4adGk8q1kCgYB8
+        Jbs1Tl53BvrimKpwUNbE+sjrquJu0A7vL68SqgQJoQ7dP9PH4Ff/i+/V6PFM7mib
+        BQOm02wyFbs7fvKVGVJoqWK+6CIucX732x7W5yRgHtS5ukQXdbzt1Ek3wkEW98Cb
+        HTruz7RNAt/NyXlLSODeit1lBbx3Vk9EaxZtRsv88QKBgGn7JwXgez9NOyobsNIo
+        QVO80rpUeenSjuFi+R0VmbLKe/wgAQbYJ0xTAsQ0btqViMzB27D6mJyC+KUIwWNX
+        MN8a+m46v4kqvZkKL2c4gmDibyURNe/vCtCHFuanJS/1mo2tr4XDyEeiuK52eTd9
+        omQDpP86RX/hIIQ+JyLSaWYa
+        -----END PRIVATE KEY-----`,
+        comment:
+          "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation"
+      }
+    },
+    {
+      path: "/nested1/nested2/folder",
+      secret: {
+        key: "secret-key-3",
+        value: `-----BEGIN PRIVATE KEY-----
+        MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCa6eeFk+cMVqFn
+        hoVQDYgn2Ptp5Azysr2UPq6P73pCL9BzUtOXKZROqDyGehzzfg3wE2KdYU1Jk5Uq
+        fP0ZOWDIlM2SaVCSI3FW32o5+ZiggjpqcVdLFc/PS0S/ZdSmpPd8h11iO2brtIAI
+        ugTW8fcKlGSNUwx9aFmE7A6JnTRliTxB1l6QaC+YAwTK39VgeVH2gDSWC407aS15
+        QobAkaBKKmFkzB5D7i2ZJwt+uXJV/rbLmyDmtnw0lubciGn7NX9wbYef180fisqT
+        aPNAz0nPKk0fFH2Wd5MZixNGbrrpDA+FCYvI5doThZyT2hpj08qWP07oXXCAqw46
+        IEupNSILAgMBAAECggEBAIJb5KzeaiZS3B3O8G4OBQ5rJB3WfyLYUHnoSWLsBbie
+        nc392/ovThLmtZAAQE6SO85Tsb93+t64Z2TKqv1H8G658UeMgfWIB78v4CcLJ2mi
+        TN/3opqXrzjkQOTDHzBgT7al/mpETHZ6fOdbCemK0fVALGFUioUZg4M8VXtuI4Jw
+        q28jAyoRKrCrzda4BeQ553NZ4G5RvwhX3O2I8B8upTbt5hLcisBKy8MPLYY5LUFj
+        YKAP+raf6QLliP6KYHuVxUlgzxjLTxVG41etcyqqZF+foyiKBO3PU3n8oh++tgQP
+        ExOxiR0JSkBG5b+oOBD0zxcvo3/SjBHn0dJOZCSU2SkCgYEAyCe676XnNyBZMRD7
+        6trsaoiCWBpA6M8H44+x3w4cQFtqV38RyLy60D+iMKjIaLqeBbnay61VMzo24Bz3
+        EuF2n4+9k/MetLJ0NCw8HmN5k0WSMD2BFsJWG8glVbzaqzehP4tIclwDTYc1jQVt
+        IoV2/iL7HGT+x2daUwbU5kN5hK0CgYEAxiLB+fmjxJW7VY4SHDLqPdpIW0q/kv4K
+        d/yZBrCX799vjmFb9vLh7PkQUfJhMJ/ttJOd7EtT3xh4mfkBeLfHwVU0d/ahbmSH
+        UJu/E9ZGxAW3PP0kxHZtPrLKQwBnfq8AxBauIhR3rPSorQTIOKtwz1jMlHFSUpuL
+        3KeK2YfDYJcCgYEAkQnJOlNcAuRb/WQzSHIvktssqK8NjiZHryy3Vc0hx7j2jES2
+        HGI2dSVHYD9OSiXA0KFm3OTTsnViwm/60iGzFdjRJV6tR39xGUVcoyCuPnvRfUd0
+        PYvBXgxgkYpyYlPDcwp5CvWGJy3tLi1acgOIwIuUr3S38sL//t4adGk8q1kCgYB8
+        Jbs1Tl53BvrimKpwUNbE+sjrquJu0A7vL68SqgQJoQ7dP9PH4Ff/i+/V6PFM7mib
+        BQOm02wyFbs7fvKVGVJoqWK+6CIucX732x7W5yRgHtS5ukQXdbzt1Ek3wkEW98Cb
+        HTruz7RNAt/NyXlLSODeit1lBbx3Vk9EaxZtRsv88QKBgGn7JwXgez9NOyobsNIo
+        QVO80rpUeenSjuFi+R0VmbLKe/wgAQbYJ0xTAsQ0btqViMzB27D6mJyC+KUIwWNX
+        MN8a+m46v4kqvZkKL2c4gmDibyURNe/vCtCHFuanJS/1mo2tr4XDyEeiuK52eTd9
+        omQDpP86RX/hIIQ+JyLSaWYa
+        -----END PRIVATE KEY-----`,
+        comment:
+          "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation"
+      }
+    },
+    {
+      path: "/nested1/nested2/folder",
+      secret: {
+        key: "secret-key-3",
+        value:
+          "TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQsIGNvbnNlY3RldHVyIGFkaXBpc2NpbmcgZWxpdC4gU2VkIGRvIGVpdXNtb2QgdGVtcG9yIGluY2lkaWR1bnQgdXQgbGFib3JlIGV0IGRvbG9yZSBtYWduYSBhbGlxdWEuIFV0IGVuaW0gYWQgbWluaW0gdmVuaWFtLCBxdWlzIG5vc3RydWQgZXhlcmNpdGF0aW9uCg==",
+        comment: ""
       }
     }
   ];
@@ -150,7 +231,7 @@ describe("Secret V3 Router", async () => {
     return secrets.map((el) => ({ ...decryptSecret(projectKey, el), type: el.type }));
   };
 
-  test.each(testSecrets)("Create secret in path $path", async ({ secret, path }) => {
+  test.each(secretTestCases)("Create secret in path $path", async ({ secret, path }) => {
     const createdSecret = await createSecret({ projectKey, path, ...secret });
     const decryptedSecret = decryptSecret(projectKey, createdSecret);
     expect(decryptedSecret.key).toEqual(secret.key);
@@ -171,7 +252,7 @@ describe("Secret V3 Router", async () => {
     await deleteSecret({ path, key: secret.key });
   });
 
-  test.each(testSecrets)("Get secret by name in path $path", async ({ secret, path }) => {
+  test.each(secretTestCases)("Get secret by name in path $path", async ({ secret, path }) => {
     await createSecret({ projectKey, path, ...secret });
 
     const getSecByNameRes = await testServer.inject({
@@ -197,28 +278,31 @@ describe("Secret V3 Router", async () => {
     await deleteSecret({ path, key: secret.key });
   });
 
-  test.each(testSecrets)("Creating personal secret without shared throw error in path $path", async ({ secret }) => {
-    const createSecretReqBody = {
-      workspaceId: seedData1.project.id,
-      environment: seedData1.environment.slug,
-      type: SecretType.Personal,
-      ...encryptSecret(projectKey, "SEC2", secret.value, secret.comment)
-    };
-    const createSecRes = await testServer.inject({
-      method: "POST",
-      url: `/api/v3/secrets/SEC2`,
-      headers: {
-        authorization: `Bearer ${jwtAuthToken}`
-      },
-      body: createSecretReqBody
-    });
-    const payload = JSON.parse(createSecRes.payload);
-    expect(createSecRes.statusCode).toBe(400);
-    expect(payload.error).toEqual("BadRequest");
-    expect(payload.message).toEqual("Failed to create personal secret override for no corresponding shared secret");
-  });
+  test.each(secretTestCases)(
+    "Creating personal secret without shared throw error in path $path",
+    async ({ secret }) => {
+      const createSecretReqBody = {
+        workspaceId: seedData1.project.id,
+        environment: seedData1.environment.slug,
+        type: SecretType.Personal,
+        ...encryptSecret(projectKey, "SEC2", secret.value, secret.comment)
+      };
+      const createSecRes = await testServer.inject({
+        method: "POST",
+        url: `/api/v3/secrets/SEC2`,
+        headers: {
+          authorization: `Bearer ${jwtAuthToken}`
+        },
+        body: createSecretReqBody
+      });
+      const payload = JSON.parse(createSecRes.payload);
+      expect(createSecRes.statusCode).toBe(400);
+      expect(payload.error).toEqual("BadRequest");
+      expect(payload.message).toEqual("Failed to create personal secret override for no corresponding shared secret");
+    }
+  );
 
-  test.each(testSecrets)("Creating personal secret in path $path", async ({ secret, path }) => {
+  test.each(secretTestCases)("Creating personal secret in path $path", async ({ secret, path }) => {
     await createSecret({ projectKey, path, ...secret });
 
     const createSecretReqBody = {
@@ -258,7 +342,7 @@ describe("Secret V3 Router", async () => {
     await deleteSecret({ path, key: secret.key });
   });
 
-  test.each(testSecrets)("Update secret in path $path", async ({ path, secret }) => {
+  test.each(secretTestCases)("Update secret in path $path", async ({ path, secret }) => {
     await createSecret({ projectKey, path, ...secret });
     const updateSecretReqBody = {
       workspaceId: seedData1.project.id,
@@ -298,7 +382,7 @@ describe("Secret V3 Router", async () => {
     await deleteSecret({ path, key: secret.key });
   });
 
-  test.each(testSecrets)("Delete secret in path $path", async ({ secret, path }) => {
+  test.each(secretTestCases)("Delete secret in path $path", async ({ secret, path }) => {
     await createSecret({ projectKey, path, ...secret });
     const deletedSecret = await deleteSecret({ path, key: secret.key });
     const decryptedSecret = decryptSecret(projectKey, deletedSecret);
@@ -320,7 +404,7 @@ describe("Secret V3 Router", async () => {
     );
   });
 
-  test.each(testSecrets)(
+  test.each(secretTestCases)(
     "Deleting personal one should not delete shared secret in path $path",
     async ({ secret, path }) => {
       await createSecret({ projectKey, path, ...secret }); // shared one
@@ -344,7 +428,7 @@ describe("Secret V3 Router", async () => {
     }
   );
 
-  test.each(testSecrets)("Bulk create secrets in path $path", async ({ secret, path }) => {
+  test.each(secretTestCases)("Bulk create secrets in path $path", async ({ secret, path }) => {
     const createSharedSecRes = await testServer.inject({
       method: "POST",
       url: `/api/v3/secrets/batch`,
@@ -381,7 +465,7 @@ describe("Secret V3 Router", async () => {
     await Promise.all(Array.from(Array(5)).map((_e, i) => deleteSecret({ path, key: `BULK-${secret.key}-${i + 1}` })));
   });
 
-  test.each(testSecrets)("Bulk create fail on existing secret in path $path", async ({ secret, path }) => {
+  test.each(secretTestCases)("Bulk create fail on existing secret in path $path", async ({ secret, path }) => {
     await createSecret({ projectKey, ...secret, key: `BULK-${secret.key}-1`, path });
 
     const createSharedSecRes = await testServer.inject({
@@ -405,7 +489,7 @@ describe("Secret V3 Router", async () => {
     await deleteSecret({ path, key: `BULK-${secret.key}-1` });
   });
 
-  test.each(testSecrets)("Bulk update secrets in path $path", async ({ secret, path }) => {
+  test.each(secretTestCases)("Bulk update secrets in path $path", async ({ secret, path }) => {
     await Promise.all(
       Array.from(Array(5)).map((_e, i) =>
         createSecret({ projectKey, ...secret, key: `BULK-${secret.key}-${i + 1}`, path })
@@ -448,7 +532,7 @@ describe("Secret V3 Router", async () => {
     await Promise.all(Array.from(Array(5)).map((_e, i) => deleteSecret({ path, key: `BULK-${secret.key}-${i + 1}` })));
   });
 
-  test.each(testSecrets)("Bulk delete secrets in path $path", async ({ secret, path }) => {
+  test.each(secretTestCases)("Bulk delete secrets in path $path", async ({ secret, path }) => {
     await Promise.all(
       Array.from(Array(5)).map((_e, i) =>
         createSecret({ projectKey, ...secret, key: `BULK-${secret.key}-${i + 1}`, path })
