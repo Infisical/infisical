@@ -9,6 +9,8 @@ jobs:
     name: Run tests before deployment
     runs-on: ubuntu-latest
     steps:
+      - name: ☁️ Checkout source
+        uses: actions/checkout@v3
       - name: Run backend api integration tests
         # https://docs.github.com/en/actions/using-workflows/reusing-workflows#overview
         uses: ./.github/workflows/run-backend-tests.yml
