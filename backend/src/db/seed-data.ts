@@ -206,7 +206,7 @@ export const decryptSecret = (decryptKey: string, encSecret: TSecrets) => {
           tag: encSecret.secretCommentTag,
           iv: encSecret.secretCommentIV
         })
-      : null;
+      : "";
 
   return {
     key: secretKey,
