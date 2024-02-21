@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
@@ -125,6 +126,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         projectName: z.string().trim(),
+        slug: z
+          .string()
+          .min(5)
+          .max(36)
+          .refine((v) => slugify(v) === v, {
+            message: "Slug must be a valid slug"
+          })
+          .optional(),
         organizationId: z.string().trim()
       }),
       response: {
@@ -139,7 +148,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         orgId: req.body.organizationId,
-        workspaceName: req.body.projectName
+        workspaceName: req.body.projectName,
+        slug: req.body.slug
       });
 
       return { project };
