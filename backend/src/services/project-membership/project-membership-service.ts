@@ -4,6 +4,7 @@ import { ForbiddenError } from "@casl/ability";
 import {
   OrgMembershipStatus,
   ProjectMembershipRole,
+  ProjectVersion,
   SecretKeyEncoding,
   TableName,
   TProjectMemberships,
@@ -226,6 +227,10 @@ export const projectMembershipServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new BadRequestError({ message: "Project not found" });
 
+    if (project.version === ProjectVersion.V1) {
+      throw new BadRequestError({ message: "Please upgrade your project on your dashboard" });
+    }
+
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
 
@@ -243,7 +248,7 @@ export const projectMembershipServiceFactory = ({
 
     if (!ghostUser) {
       throw new BadRequestError({
-        message: "Failed to find top-level user"
+        message: "Failed to find sudo user"
       });
     }
 
@@ -251,7 +256,7 @@ export const projectMembershipServiceFactory = ({
 
     if (!ghostUserLatestKey) {
       throw new BadRequestError({
-        message: "Failed to find top-level latest key"
+        message: "Failed to find sudo user latest key"
       });
     }
 
@@ -404,6 +409,19 @@ export const projectMembershipServiceFactory = ({
   }: TDeleteProjectMembershipsDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
+
+    const project = await projectDAL.findById(projectId);
+
+    if (!project) {
+      throw new BadRequestError({
+        message: "Project not found",
+        name: "Delete project membership"
+      });
+    }
+
+    if (project.version === ProjectVersion.V1) {
+      throw new BadRequestError({ message: "Please upgrade your project on your dashboard" });
+    }
 
     const projectMembers = await projectMembershipDAL.findMembershipsByEmail(projectId, emails);
 

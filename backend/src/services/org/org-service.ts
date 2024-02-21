@@ -132,7 +132,7 @@ export const orgServiceFactory = ({
   };
 
   const addGhostUser = async (orgId: string, tx?: Knex) => {
-    const email = `ghost-${alphaNumericNanoId(16)}-${orgId}@infisical.com`; // We add a nanoid because the email is unique. And we have to create a new ghost user each time, so we can have access to the private key.
+    const email = `sudo-${alphaNumericNanoId(16)}-${orgId}@infisical.com`; // We add a nanoid because the email is unique. And we have to create a new ghost user each time, so we can have access to the private key.
     const password = crypto.randomBytes(128).toString("hex");
 
     const user = await userDAL.create(
