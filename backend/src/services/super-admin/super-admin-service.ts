@@ -96,7 +96,11 @@ export const superAdminServiceFactory = ({
 
     const initialOrganizationName = appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
 
-    await orgService.createOrganization(userInfo.user.id, userInfo.user.email, initialOrganizationName);
+    const organization = await orgService.createOrganization(
+      userInfo.user.id,
+      userInfo.user.email,
+      initialOrganizationName
+    );
 
     await updateServerCfg({ initialized: true });
     const token = await authService.generateUserTokens({
@@ -106,7 +110,7 @@ export const superAdminServiceFactory = ({
       organizationId: undefined
     });
     // TODO(akhilmhdh-pg): telemetry service
-    return { token, user: userInfo };
+    return { token, user: userInfo, organization };
   };
 
   return {
