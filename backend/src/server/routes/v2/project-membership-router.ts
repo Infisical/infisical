@@ -11,10 +11,10 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     url: "/:projectId/memberships",
     schema: {
       params: z.object({
-        projectId: z.string()
+        projectId: z.string().describe("The ID of the project.")
       }),
       body: z.object({
-        emails: z.string().email().array()
+        emails: z.string().email().array().describe("Emails of the users to add to the project.")
       }),
       response: {
         200: z.object({
@@ -53,11 +53,11 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     url: "/:projectId/memberships",
     schema: {
       params: z.object({
-        projectId: z.string()
+        projectId: z.string().describe("The ID of the project.")
       }),
 
       body: z.object({
-        emails: z.string().email().array()
+        emails: z.string().email().array().describe("Emails of the users to remove from the project.")
       }),
       response: {
         200: z.object({
