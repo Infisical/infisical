@@ -1,6 +1,5 @@
 export {
   useAddIdentityToWorkspace,
-  useAddUserToWorkspace,
   useCreateWorkspace,
   useCreateWsEnvironment,
   useDeleteIdentityFromWorkspace,

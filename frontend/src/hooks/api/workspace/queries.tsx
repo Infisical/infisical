@@ -319,28 +319,6 @@ export const useGetWorkspaceUsers = (workspaceId: string) => {
   });
 };
 
-export const useAddUserToWorkspace = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ email, workspaceId }: { email: string; workspaceId: string }) => {
-      const {
-        data: { invitees, latestKey }
-      } = await apiRequest.post(`/api/v1/workspace/${workspaceId}/invite-signup`, {
-        emails: [email]
-      });
-
-      return {
-        invitees,
-        latestKey
-      };
-    },
-    onSuccess: (_, dto) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(dto.workspaceId));
-    }
-  });
-};
-
 export const useDeleteUserFromWorkspace = () => {
   const queryClient = useQueryClient();
 
