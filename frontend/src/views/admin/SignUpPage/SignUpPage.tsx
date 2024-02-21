@@ -84,6 +84,10 @@ export const SignUpPage = () => {
         tag: userPass.encryptedPrivateKeyTag,
         privateKey
       });
+      // TODO(akhilmhdh): This is such a confusing pattern and too unreliable
+      // Will be refactored in next iteration to make it url based rather than local storage ones
+      // Part of migration to nextjs 14
+      localStorage.setItem("orgData.id", res.organization.id);
       setStep(SignupSteps.BackupKey);
     } catch (err) {
       console.log(err);
@@ -130,8 +134,8 @@ export const SignUpPage = () => {
           >
             <div className="flex flex-col items-center space-y-2 text-center">
               <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
-              <div className="text-4xl pt-4">Welcome to Infisical</div>
-              <div className="text-bunker-300 pb-4">Create your first Super Admin Account</div>
+              <div className="pt-4 text-4xl">Welcome to Infisical</div>
+              <div className="pb-4 text-bunker-300">Create your first Super Admin Account</div>
             </div>
             <form onSubmit={handleSubmit(handleFormSubmit)}>
               <div className="mt-8">
@@ -199,7 +203,14 @@ export const SignUpPage = () => {
                   )}
                 />
               </div>
-              <Button type="submit" colorSchema="primary" variant="outline_bg" isFullWidth className="mt-4" isLoading={isSubmitting}>
+              <Button
+                type="submit"
+                colorSchema="primary"
+                variant="outline_bg"
+                isFullWidth
+                className="mt-4"
+                isLoading={isSubmitting}
+              >
                 Continue
               </Button>
             </form>

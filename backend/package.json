@@ -24,8 +24,8 @@
     "migration:latest": "knex --knexfile ./src/db/knexfile.ts --client pg migrate:latest",
     "migration:rollback": "knex --knexfile ./src/db/knexfile.ts migrate:rollback",
     "seed:new": "tsx ./scripts/create-seed-file.ts",
-    "seed:run": "knex --knexfile ./src/db/knexfile.ts --client pg seed:run",
-    "db:reset": "npm run migration:rollback -- --all && npm run migration:latest && npm run seed:run"
+    "seed": "knex --knexfile ./src/db/knexfile.ts --client pg seed:run",
+    "db:reset": "npm run migration:rollback -- --all && npm run migration:latest"
   },
   "keywords": [],
   "author": "",
@@ -67,10 +67,10 @@
     "tsx": "^4.4.0",
     "typescript": "^5.3.2",
     "vite-tsconfig-paths": "^4.2.2",
-    "vitest": "^1.0.4"
+    "vitest": "^1.2.2"
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.485.0",
+    "@aws-sdk/client-secrets-manager": "^3.502.0",
     "@casl/ability": "^6.5.0",
     "@fastify/cookie": "^9.2.0",
     "@fastify/cors": "^8.4.1",
@@ -90,7 +90,7 @@
     "@ucast/mongo2js": "^1.3.4",
     "ajv": "^8.12.0",
     "argon2": "^0.31.2",
-    "aws-sdk": "^2.1532.0",
+    "aws-sdk": "^2.1545.0",
     "axios": "^1.6.4",
     "axios-retry": "^4.0.0",
     "bcrypt": "^5.1.1",

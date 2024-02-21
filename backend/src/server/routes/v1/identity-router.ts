@@ -9,7 +9,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Create identity",
       security: [
@@ -56,7 +56,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "PATCH",
     url: "/:identityId",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Update identity",
       security: [
@@ -105,7 +105,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/:identityId",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Delete identity",
       security: [
