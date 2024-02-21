@@ -10,6 +10,10 @@ dotenv.config({
   path: path.join(__dirname, "../../../.env.migration"),
   debug: true
 });
+dotenv.config({
+  path: path.join(__dirname, "../../../.env"),
+  debug: true
+});
 export default {
   development: {
     client: "postgres",

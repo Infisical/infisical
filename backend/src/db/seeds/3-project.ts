@@ -1,7 +1,11 @@
+import crypto from "node:crypto";
+
 import { Knex } from "knex";
 
-import { OrgMembershipRole, TableName } from "../schemas";
-import { seedData1 } from "../seed-data";
+import { encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+
+import { OrgMembershipRole, SecretEncryptionAlgo, SecretKeyEncoding, TableName } from "../schemas";
+import { buildUserProjectKey, getUserPrivateKey, seedData1 } from "../seed-data";
 
 export const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },
@@ -20,21 +24,32 @@ export async function seed(knex: Knex): Promise<void> {
       name: seedData1.project.name,
       orgId: seedData1.organization.id,
       slug: "first-project",
-      // @ts-expect-error exluded type id needs to be inserted here to keep it testable
+      // eslint-disable-next-line
+      // @ts-ignore
       id: seedData1.project.id
     })
     .returning("*");
-
-  // await knex(TableName.ProjectKeys).insert({
-  //   projectId: project.id,
-  //   senderId: seedData1.id
-  // });
 
   await knex(TableName.ProjectMembership).insert({
     projectId: project.id,
     role: OrgMembershipRole.Admin,
     userId: seedData1.id
   });
+
+  const user = await knex(TableName.UserEncryptionKey).where({ userId: seedData1.id }).first();
+  if (!user) throw new Error("User not found");
+
+  const userPrivateKey = await getUserPrivateKey(seedData1.password, user);
+  const projectKey = buildUserProjectKey(userPrivateKey, user.publicKey);
+  await knex(TableName.ProjectKeys).insert({
+    projectId: project.id,
+    nonce: projectKey.nonce,
+    encryptedKey: projectKey.ciphertext,
+    receiverId: seedData1.id,
+    senderId: seedData1.id
+  });
+
+  // create default environments and default folders
   const envs = await knex(TableName.Environment)
     .insert(
       DEFAULT_PROJECT_ENVS.map(({ name, slug }, index) => ({
@@ -46,4 +61,19 @@ export async function seed(knex: Knex): Promise<void> {
     )
     .returning("*");
   await knex(TableName.SecretFolder).insert(envs.map(({ id }) => ({ name: "root", envId: id, parentId: null })));
+
+  // save secret secret blind index
+  const encKey = process.env.ENCRYPTION_KEY;
+  if (!encKey) throw new Error("Missing ENCRYPTION_KEY");
+  const salt = crypto.randomBytes(16).toString("base64");
+  const secretBlindIndex = encryptSymmetric128BitHexKeyUTF8(salt, encKey);
+  // insert secret blind index for project
+  await knex(TableName.SecretBlindIndex).insert({
+    projectId: project.id,
+    encryptedSaltCipherText: secretBlindIndex.ciphertext,
+    saltIV: secretBlindIndex.iv,
+    saltTag: secretBlindIndex.tag,
+    algorithm: SecretEncryptionAlgo.AES_256_GCM,
+    keyEncoding: SecretKeyEncoding.UTF8
+  });
 }
