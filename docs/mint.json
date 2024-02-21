@@ -388,6 +388,8 @@
           "pages": [
             "api-reference/endpoints/workspaces/create-workspace",
             "api-reference/endpoints/workspaces/delete-workspace",
+            "api-reference/endpoints/workspaces/get-workspace",
+            "api-reference/endpoints/workspaces/update-workspace",
             "api-reference/endpoints/workspaces/invite-member-to-workspace",
             "api-reference/endpoints/workspaces/remove-member-from-workspace",
             "api-reference/endpoints/workspaces/memberships",
