@@ -17,18 +17,18 @@ import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approv
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import {
+  decryptIntegrationAuths,
+  decryptSecretApprovals,
+  decryptSecrets,
+  decryptSecretVersions
+} from "@app/lib/crypto";
+import {
   decryptAsymmetric,
   encryptSymmetric128BitHexKeyUTF8,
   infisicalSymmetricDecrypt,
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { logger } from "@app/lib/logger";
-import {
-  decryptIntegrationAuths,
-  decryptSecretApprovals,
-  decryptSecrets,
-  decryptSecretVersions
-} from "@app/lib/secret";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";

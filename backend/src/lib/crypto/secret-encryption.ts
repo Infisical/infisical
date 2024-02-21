@@ -11,9 +11,8 @@ import {
   TSecretApprovalRequestsSecrets,
   TSecrets,
   TSecretVersions
-} from "@app/db/schemas";
-
-import { decryptAsymmetric } from "../crypto";
+} from "../../db/schemas";
+import { decryptAsymmetric } from "./encryption";
 
 const DecryptedValuesSchema = z.object({
   id: z.string(),
@@ -42,15 +41,15 @@ const DecryptedSecretVersionsSchema = z.object({
   original: SecretVersionsSchema
 });
 
-export const DecryptedSecretApprovalsSchema = z.object({
+const DecryptedSecretApprovalsSchema = z.object({
   decrypted: DecryptedValuesSchema,
   original: SecretApprovalRequestsSecretsSchema
 });
 
-export type DecryptedSecret = z.infer<typeof DecryptedSecretSchema>;
-export type DecryptedSecretVersions = z.infer<typeof DecryptedSecretVersionsSchema>;
-export type DecryptedSecretApprovals = z.infer<typeof DecryptedSecretApprovalsSchema>;
-export type DecryptedIntegrationAuths = z.infer<typeof DecryptedIntegrationAuthsSchema>;
+type DecryptedSecret = z.infer<typeof DecryptedSecretSchema>;
+type DecryptedSecretVersions = z.infer<typeof DecryptedSecretVersionsSchema>;
+type DecryptedSecretApprovals = z.infer<typeof DecryptedSecretApprovalsSchema>;
+type DecryptedIntegrationAuths = z.infer<typeof DecryptedIntegrationAuthsSchema>;
 
 type TLatestKey = TProjectKeys & {
   sender: {
@@ -79,7 +78,7 @@ const decryptCipher = ({
 };
 
 const getDecryptedValues = (data: Array<{ ciphertext: string; iv: string; tag: string }>, key: string | Buffer) => {
-  const results = [];
+  const results: string[] = [];
 
   for (const { ciphertext, iv, tag } of data) {
     if (!ciphertext || !iv || !tag) {
