@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { organizationKeys } from "../organization/queries";
 import { User } from "../users/types";
 import { adminQueryKeys } from "./queries";
 import { TCreateAdminUserDTO, TServerConfig } from "./types";
@@ -9,7 +10,11 @@ import { TCreateAdminUserDTO, TServerConfig } from "./types";
 export const useCreateAdminUser = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ user: User; token: string }, {}, TCreateAdminUserDTO>({
+  return useMutation<
+    { user: User; token: string; organization: { id: string } },
+    {},
+    TCreateAdminUserDTO
+  >({
     mutationFn: async (opt) => {
       const { data } = await apiRequest.post("/api/v1/admin/signup", opt);
       return data;
@@ -34,6 +39,7 @@ export const useUpdateServerConfig = () => {
     onSuccess: (data) => {
       queryClient.setQueryData(adminQueryKeys.serverConfig(), data);
       queryClient.invalidateQueries(adminQueryKeys.serverConfig());
+      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
     }
   });
 };

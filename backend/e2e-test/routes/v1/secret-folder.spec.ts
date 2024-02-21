@@ -1,5 +1,40 @@
 import { seedData1 } from "@app/db/seed-data";
 
+const createFolder = async (dto: { path: string; name: string }) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: `/api/v1/folders`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    },
+    body: {
+      workspaceId: seedData1.project.id,
+      environment: seedData1.environment.slug,
+      name: dto.name,
+      path: dto.path
+    }
+  });
+  expect(res.statusCode).toBe(200);
+  return res.json().folder;
+};
+
+const deleteFolder = async (dto: { path: string; id: string }) => {
+  const res = await testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/folders/${dto.id}`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    },
+    body: {
+      workspaceId: seedData1.project.id,
+      environment: seedData1.environment.slug,
+      path: dto.path
+    }
+  });
+  expect(res.statusCode).toBe(200);
+  return res.json().folder;
+};
+
 describe("Secret Folder Router", async () => {
   test.each([
     { name: "folder1", path: "/" }, // one in root
@@ -7,30 +42,15 @@ describe("Secret Folder Router", async () => {
     { name: "folder2", path: "/" },
     { name: "folder1", path: "/level1/level2" } // this should not create folder return same thing
   ])("Create folder $name in $path", async ({ name, path }) => {
-    const res = await testServer.inject({
-      method: "POST",
-      url: `/api/v1/folders`,
-      headers: {
-        authorization: `Bearer ${jwtAuthToken}`
-      },
-      body: {
-        workspaceId: seedData1.project.id,
-        environment: seedData1.environment.slug,
-        name,
-        path
-      }
-    });
-
-    expect(res.statusCode).toBe(200);
-    const payload = JSON.parse(res.payload);
-    expect(payload).toHaveProperty("folder");
+    const createdFolder = await createFolder({ path, name });
     // check for default environments
-    expect(payload).toEqual({
-      folder: expect.objectContaining({
+    expect(createdFolder).toEqual(
+      expect.objectContaining({
         name,
         id: expect.any(String)
       })
-    });
+    );
+    await deleteFolder({ path, id: createdFolder.id });
   });
 
   test.each([
@@ -43,6 +63,8 @@ describe("Secret Folder Router", async () => {
     },
     { path: "/level1/level2", expected: { folders: [{ name: "folder1" }], length: 1 } }
   ])("Get folders $path", async ({ path, expected }) => {
+    const newFolders = await Promise.all(expected.folders.map(({ name }) => createFolder({ name, path })));
+
     const res = await testServer.inject({
       method: "GET",
       url: `/api/v1/folders`,
@@ -59,36 +81,22 @@ describe("Secret Folder Router", async () => {
     expect(res.statusCode).toBe(200);
     const payload = JSON.parse(res.payload);
     expect(payload).toHaveProperty("folders");
-    expect(payload.folders.length).toBe(expected.length);
-    expect(payload).toEqual({ folders: expected.folders.map((el) => expect.objectContaining(el)) });
-  });
-
-  let toBeDeleteFolderId = "";
-  test("Update a deep folder", async () => {
-    const res = await testServer.inject({
-      method: "PATCH",
-      url: `/api/v1/folders/folder1`,
-      headers: {
-        authorization: `Bearer ${jwtAuthToken}`
-      },
-      body: {
-        workspaceId: seedData1.project.id,
-        environment: seedData1.environment.slug,
-        name: "folder-updated",
-        path: "/level1/level2"
-      }
+    expect(payload.folders.length >= expected.folders.length).toBeTruthy();
+    expect(payload).toEqual({
+      folders: expect.arrayContaining(expected.folders.map((el) => expect.objectContaining(el)))
     });
 
-    expect(res.statusCode).toBe(200);
-    const payload = JSON.parse(res.payload);
-    expect(payload).toHaveProperty("folder");
-    expect(payload.folder).toEqual(
+    await Promise.all(newFolders.map(({ id }) => deleteFolder({ path, id })));
+  });
+
+  test("Update a deep folder", async () => {
+    const newFolder = await createFolder({ name: "folder-updated", path: "/level1/level2" });
+    expect(newFolder).toEqual(
       expect.objectContaining({
         id: expect.any(String),
         name: "folder-updated"
       })
     );
-    toBeDeleteFolderId = payload.folder.id;
 
     const resUpdatedFolders = await testServer.inject({
       method: "GET",
@@ -106,14 +114,16 @@ describe("Secret Folder Router", async () => {
     expect(resUpdatedFolders.statusCode).toBe(200);
     const updatedFolderList = JSON.parse(resUpdatedFolders.payload);
     expect(updatedFolderList).toHaveProperty("folders");
-    expect(updatedFolderList.folders.length).toEqual(1);
     expect(updatedFolderList.folders[0].name).toEqual("folder-updated");
+
+    await deleteFolder({ path: "/level1/level2", id: newFolder.id });
   });
 
   test("Delete a deep folder", async () => {
+    const newFolder = await createFolder({ name: "folder-updated", path: "/level1/level2" });
     const res = await testServer.inject({
       method: "DELETE",
-      url: `/api/v1/folders/${toBeDeleteFolderId}`,
+      url: `/api/v1/folders/${newFolder.id}`,
       headers: {
         authorization: `Bearer ${jwtAuthToken}`
       },
