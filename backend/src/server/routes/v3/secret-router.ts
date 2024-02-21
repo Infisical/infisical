@@ -1092,7 +1092,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secrets: z
           .object({
             secretName: z.string().trim(),
-            type: z.nativeEnum(SecretType).default(SecretType.Shared),
             secretKeyCiphertext: z.string().trim(),
             secretKeyIV: z.string().trim(),
             secretKeyTag: z.string().trim(),
@@ -1139,7 +1138,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             projectId,
             policy,
             data: {
-              [CommitType.Create]: inputSecrets.filter(({ type }) => type === "shared")
+              [CommitType.Create]: inputSecrets
             }
           });
 

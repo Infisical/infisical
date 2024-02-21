@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SuperAdminSchema, UsersSchema } from "@app/db/schemas";
+import { OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
@@ -72,6 +72,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           message: z.string(),
           user: UsersSchema,
+          organization: OrganizationsSchema,
           token: z.string(),
           new: z.string()
         })
@@ -82,7 +83,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const serverCfg = await getServerCfg();
       if (serverCfg.initialized)
         throw new UnauthorizedError({ name: "Admin sign up", message: "Admin has been created" });
-      const { user, token } = await server.services.superAdmin.adminSignUp({
+      const { user, token, organization } = await server.services.superAdmin.adminSignUp({
         ...req.body,
         ip: req.realIp,
         userAgent: req.headers["user-agent"] || ""
@@ -109,6 +110,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         message: "Successfully set up admin account",
         user: user.user,
         token: token.access,
+        organization,
         new: "123"
       };
     }
