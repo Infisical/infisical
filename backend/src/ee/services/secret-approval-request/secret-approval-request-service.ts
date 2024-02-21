@@ -48,7 +48,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany">;
-  projectDAL: Pick<TProjectDALFactory, "isProjectBeingUpgraded">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   secretService: Pick<
     TSecretServiceFactory,
     | "fnSecretBulkInsert"
@@ -437,13 +437,7 @@ export const secretApprovalRequestServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
-    const isProjectBeingUpgraded = await projectDAL.isProjectBeingUpgraded(projectId);
-
-    if (isProjectBeingUpgraded) {
-      throw new BadRequestError({
-        message: "Project is currently being upgraded, and secrets cannot be written. Please try again"
-      });
-    }
+    await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "GenSecretApproval" });

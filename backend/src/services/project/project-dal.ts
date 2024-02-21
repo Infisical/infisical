@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { ProjectsSchema, ProjectUpgradeStatus, ProjectVersion, TableName, TProjectsUpdate } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
@@ -160,9 +160,16 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const isProjectBeingUpgraded = async (projectId: string) => {
+  const checkProjectUpgradeStatus = async (projectId: string) => {
     const project = await projectOrm.findById(projectId);
-    return project.upgradeStatus === ProjectUpgradeStatus.InProgress && project.version === ProjectVersion.V1;
+    const upgradeInProgress =
+      project.upgradeStatus === ProjectUpgradeStatus.InProgress && project.version === ProjectVersion.V1;
+
+    if (upgradeInProgress) {
+      throw new BadRequestError({
+        message: "Project is currently being upgraded, and secrets cannot be written. Please try again"
+      });
+    }
   };
 
   return {
@@ -172,6 +179,6 @@ export const projectDALFactory = (db: TDbClient) => {
     findAllProjectsByIdentity,
     findProjectGhostUser,
     findProjectById,
-    isProjectBeingUpgraded
+    checkProjectUpgradeStatus
   };
 };

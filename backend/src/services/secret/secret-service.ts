@@ -50,7 +50,7 @@ type TSecretServiceFactoryDep = {
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath">;
-  projectDAL: Pick<TProjectDALFactory, "isProjectBeingUpgraded">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
@@ -284,13 +284,7 @@ export const secretServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
-    const isProjectBeingUpgraded = await projectDAL.isProjectBeingUpgraded(projectId);
-
-    if (isProjectBeingUpgraded) {
-      throw new BadRequestError({
-        message: "Project is currently being upgraded, and secrets cannot be written. Please try again"
-      });
-    }
+    await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
@@ -370,13 +364,7 @@ export const secretServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
-    const isProjectBeingUpgraded = await projectDAL.isProjectBeingUpgraded(projectId);
-
-    if (isProjectBeingUpgraded) {
-      throw new BadRequestError({
-        message: "Project is currently being upgraded, and secrets cannot be written. Please try again"
-      });
-    }
+    await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
@@ -478,13 +466,7 @@ export const secretServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
-    const isProjectBeingUpgraded = await projectDAL.isProjectBeingUpgraded(projectId);
-
-    if (isProjectBeingUpgraded) {
-      throw new BadRequestError({
-        message: "Project is currently being upgraded, and secrets cannot be written. Please try again"
-      });
-    }
+    await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
@@ -677,13 +659,7 @@ export const secretServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
-    const isProjectBeingUpgraded = await projectDAL.isProjectBeingUpgraded(projectId);
-
-    if (isProjectBeingUpgraded) {
-      throw new BadRequestError({
-        message: "Project is currently being upgraded, and secrets cannot be written. Please try again"
-      });
-    }
+    await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
@@ -740,13 +716,7 @@ export const secretServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
-    const isProjectBeingUpgraded = await projectDAL.isProjectBeingUpgraded(projectId);
-
-    if (isProjectBeingUpgraded) {
-      throw new BadRequestError({
-        message: "Project is currently being upgraded, and secrets cannot be written. Please try again"
-      });
-    }
+    await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
@@ -819,13 +789,7 @@ export const secretServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
-    const isProjectBeingUpgraded = await projectDAL.isProjectBeingUpgraded(projectId);
-
-    if (isProjectBeingUpgraded) {
-      throw new BadRequestError({
-        message: "Project is currently being upgraded, and secrets cannot be written. Please try again"
-      });
-    }
+    await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
