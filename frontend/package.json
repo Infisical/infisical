@@ -92,7 +92,7 @@
     "react-table": "^7.8.0",
     "sanitize-html": "^2.11.0",
     "set-cookie-parser": "^2.5.1",
-    "sharp": "^0.32.6",
+    "sharp": "^0.33.2",
     "styled-components": "^5.3.7",
     "tailwind-merge": "^1.8.1",
     "tweetnacl": "^1.0.3",
