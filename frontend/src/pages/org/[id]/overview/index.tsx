@@ -523,7 +523,6 @@ const OrganizationPage = withPermission(
         // eslint-disable-next-line no-promise-executor-return -- We do this because the function returns too fast, which sometimes causes an error when the user is redirected.
         await new Promise((resolve) => setTimeout(resolve, 2_000));
 
-        createNotification({ text: "Workspace created", type: "success" });
         handlePopUpClose("addNewWs");
         createNotification({ text: "Workspace created", type: "success" });
         router.push(`/project/${newProjectId}/secrets/overview`);
