@@ -9,6 +9,7 @@ export type TCreateProjectDTO = {
   actorOrgId?: string;
   orgId: string;
   workspaceName: string;
+  slug?: string;
 };
 
 export type TDeleteProjectDTO = {
@@ -24,6 +25,13 @@ export type TGetProjectDTO = {
   actorOrgId?: string;
   projectId: string;
 };
+
+export type TUpdateProjectDTO = {
+  update: {
+    name?: string;
+    autoCapitalization?: boolean;
+  };
+} & TProjectPermission;
 
 export type TUpgradeProjectDTO = {
   userPrivateKey: string;

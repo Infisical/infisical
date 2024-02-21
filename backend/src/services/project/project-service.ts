@@ -26,9 +26,15 @@ import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
-import { createProjectKey, createWsMembers } from "./project-fns";
+import { assignWorkspaceKeysToMembers, createProjectKey } from "./project-fns";
 import { TProjectQueueFactory } from "./project-queue";
-import { TCreateProjectDTO, TDeleteProjectDTO, TGetProjectDTO, TUpgradeProjectDTO } from "./project-types";
+import {
+  TCreateProjectDTO,
+  TDeleteProjectDTO,
+  TGetProjectDTO,
+  TUpdateProjectDTO,
+  TUpgradeProjectDTO
+} from "./project-types";
 
 export const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },
@@ -74,7 +80,7 @@ export const projectServiceFactory = ({
   /*
    * Create workspace. Make user the admin
    * */
-  const createProject = async ({ orgId, actor, actorId, actorOrgId, workspaceName }: TCreateProjectDTO) => {
+  const createProject = async ({ orgId, actor, actorId, actorOrgId, workspaceName, slug }: TCreateProjectDTO) => {
     const { permission, membership: orgMembership } = await permissionService.getOrgPermission(
       actor,
       actorId,
@@ -102,7 +108,7 @@ export const projectServiceFactory = ({
         {
           name: workspaceName,
           orgId,
-          slug: slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
+          slug: slug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
           version: ProjectVersion.V2
         },
         tx
@@ -194,7 +200,7 @@ export const projectServiceFactory = ({
           throw new Error("User not found");
         }
 
-        const [projectAdmin] = createWsMembers({
+        const [projectAdmin] = assignWorkspaceKeysToMembers({
           decryptKey: latestKey,
           userPrivateKey: ghostUser.keys.plainPrivateKey,
           members: [
@@ -305,6 +311,17 @@ export const projectServiceFactory = ({
     return projectDAL.findProjectById(projectId);
   };
 
+  const updateProject = async ({ projectId, actor, actorId, actorOrgId, update }: TUpdateProjectDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    const updatedProject = await projectDAL.updateById(projectId, {
+      name: update.name,
+      autoCapitalization: update.autoCapitalization
+    });
+    return updatedProject;
+  };
+
   const toggleAutoCapitalization = async ({
     projectId,
     actor,
@@ -371,6 +388,7 @@ export const projectServiceFactory = ({
     createProject,
     deleteProject,
     getProjects,
+    updateProject,
     findProjectGhostUser,
     getProjectUpgradeStatus,
     getAProject,
