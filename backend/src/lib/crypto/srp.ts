@@ -33,7 +33,9 @@ export const srpCheckClientProof = async (
   return server.checkClientProof(clientProof);
 };
 
-// FOR GHOST USER STUFF
+// Ghost user related:
+// This functionality is intended for ghost user logic. This happens on the frontend when a user is being created.
+// We replicate the same functionality on the backend when creating a ghost user.
 export const generateUserSrpKeys = async (email: string, password: string) => {
   const pair = nacl.box.keyPair();
   const secretKeyUint8Array = pair.secretKey;
