@@ -438,7 +438,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <Select
                         defaultValue={currentWorkspace?.id}
                         value={currentWorkspace?.id}
-                        className="w-full truncate bg-mineshaft-600 py-2.5 font-medium"
+                        className="w-full bg-mineshaft-600 py-2.5 font-medium"
                         onValueChange={(value) => {
                           router.push(`/project/${value}/secrets/overview`);
                           localStorage.setItem("projectData.id", value);
