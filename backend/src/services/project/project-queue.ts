@@ -130,10 +130,14 @@ export const projectQueueFactory = ({
       });
 
       // Get all the secrets within the project (as encrypted)
+      const projectIntegrationAuths = await integrationAuthDAL.find({
+        projectId: project.id
+      });
       const secrets: TSecrets[] = [];
       const secretVersions: TSecretVersions[] = [];
       const approvalSecrets: TSecretApprovalRequestsSecrets[] = [];
       const folderSecretVersionIdsToDelete: string[] = [];
+
       for (const folder of projectFolders) {
         const folderSecrets = await secretDAL.find({ folderId: folder.id });
 
@@ -141,9 +145,9 @@ export const projectQueueFactory = ({
           {
             folderId: folder.id
           },
-          // Only get the latest 100 secret versions for each folder.
+          // Only get the latest 700 secret versions for each folder.
           {
-            limit: 100,
+            limit: 700,
             sort: [["createdAt", "desc"]]
           }
         );
@@ -153,7 +157,8 @@ export const projectQueueFactory = ({
             folderId: folder.id
           },
           {
-            offset: 100
+            // Get all the secret versions that are not the latest 700
+            offset: 700
           }
         );
         folderSecretVersionIdsToDelete.push(...deletedSecretVersions.map((el) => el.id));
@@ -173,24 +178,10 @@ export const projectQueueFactory = ({
         approvalSecrets.push(...secretApprovals);
       }
 
-      const projectIntegrationAuths = await integrationAuthDAL.find({
-        projectId: project.id
-      });
-
       const decryptedSecrets = decryptSecrets(secrets, userPrivateKey, oldProjectKey);
       const decryptedSecretVersions = decryptSecretVersions(secretVersions, userPrivateKey, oldProjectKey);
       const decryptedApprovalSecrets = decryptSecretApprovals(approvalSecrets, userPrivateKey, oldProjectKey);
       const decryptedIntegrationAuths = decryptIntegrationAuths(projectIntegrationAuths, userPrivateKey, oldProjectKey);
-
-      if (secrets.length !== decryptedSecrets.length) {
-        throw new Error("Failed to decrypt some secret versions");
-      }
-      if (secretVersions.length !== decryptedSecretVersions.length) {
-        throw new Error("Failed to decrypt some secret versions");
-      }
-      if (approvalSecrets.length !== decryptedApprovalSecrets.length) {
-        throw new Error("Failed to decrypt some secret approvals");
-      }
 
       // Get the existing bot and the existing project keys for the members of the project
       const existingBot = await projectBotDAL.findOne({ projectId: project.id }).catch(() => null);
