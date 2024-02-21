@@ -110,6 +110,7 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         )
+        .where({ isGhost: false })
         .whereIn("email", emails);
       return members.map(({ email, firstName, lastName, userId, publicKey, ...data }) => ({
         ...data,
