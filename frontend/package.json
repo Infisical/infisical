@@ -56,7 +56,7 @@
     "axios-auth-refresh": "^3.3.6",
     "base64-loader": "^1.0.0",
     "classnames": "^2.3.1",
-    "cookies": "^0.8.0",
+    "cookies": "^0.9.1",
     "cva": "npm:class-variance-authority@^0.4.0",
     "date-fns": "^2.30.0",
     "file-saver": "^2.0.5",
