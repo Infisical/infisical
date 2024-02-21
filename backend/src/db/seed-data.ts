@@ -19,9 +19,6 @@ import { TSecrets, TUserEncryptionKeys } from "./schemas";
 export let userPrivateKey: string | undefined;
 export let userPublicKey: string | undefined;
 
-export let userPrivateKey: string | undefined;
-export let userPublicKey: string | undefined;
-
 export const seedData1 = {
   id: "3dafd81d-4388-432b-a4c5-f735616868c1",
   email: process.env.TEST_USER_EMAIL || "test@localhost.local",
