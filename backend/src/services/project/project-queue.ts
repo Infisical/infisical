@@ -43,7 +43,7 @@ import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
-import { createProjectKey, createWsMembers } from "./project-fns";
+import { assignWorkspaceKeysToMembers, createProjectKey } from "./project-fns";
 
 export type TProjectQueueFactory = ReturnType<typeof projectQueueFactory>;
 
@@ -260,7 +260,7 @@ export const projectQueueFactory = ({
             throw new Error(`User with ID ${key.receiverId} was not found during upgrade, or user is not in org.`);
           }
 
-          const [newMember] = createWsMembers({
+          const [newMember] = assignWorkspaceKeysToMembers({
             decryptKey: ghostUserLatestKey,
             userPrivateKey: ghostUser.keys.plainPrivateKey,
             members: [

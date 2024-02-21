@@ -21,7 +21,7 @@ import { groupBy } from "@app/lib/fn";
 import { ActorType } from "../auth/auth-type";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
-import { createWsMembers } from "../project/project-fns";
+import { assignWorkspaceKeysToMembers } from "../project/project-fns";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
@@ -275,7 +275,7 @@ export const projectMembershipServiceFactory = ({
       ciphertext: bot.encryptedPrivateKey
     });
 
-    const newWsMembers = createWsMembers({
+    const newWsMembers = assignWorkspaceKeysToMembers({
       decryptKey: ghostUserLatestKey,
       userPrivateKey: botPrivateKey,
       members: orgMembers.map((membership) => ({

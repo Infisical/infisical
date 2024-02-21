@@ -4,8 +4,8 @@ import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
 
 import { AddUserToWsDTO } from "./project-types";
 
-export const createWsMembers = ({ members, decryptKey, userPrivateKey }: AddUserToWsDTO) => {
-  const key = decryptAsymmetric({
+export const assignWorkspaceKeysToMembers = ({ members, decryptKey, userPrivateKey }: AddUserToWsDTO) => {
+  const plaintextProjectKey = decryptAsymmetric({
     ciphertext: decryptKey.encryptedKey,
     nonce: decryptKey.nonce,
     publicKey: decryptKey.sender.publicKey,
@@ -14,7 +14,7 @@ export const createWsMembers = ({ members, decryptKey, userPrivateKey }: AddUser
 
   const newWsMembers = members.map(({ orgMembershipId, userPublicKey, projectMembershipRole }) => {
     const { ciphertext: inviteeCipherText, nonce: inviteeNonce } = encryptAsymmetric(
-      key,
+      plaintextProjectKey,
       userPublicKey,
       userPrivateKey
     );
