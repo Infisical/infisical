@@ -2,9 +2,7 @@ import crypto from "node:crypto";
 
 import { Knex } from "knex";
 
-import { getConfig, initEnvConfig } from "@app/lib/config/env";
-import { createSecretBlindIndex, encryptAsymmetric, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
-import { initLogger } from "@app/lib/logger";
+import { encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 
 import { OrgMembershipRole, SecretEncryptionAlgo, SecretKeyEncoding, TableName } from "../schemas";
 import { buildUserProjectKey, getUserPrivateKey, seedData1 } from "../seed-data";
