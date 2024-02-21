@@ -120,7 +120,7 @@ export const projectBotServiceFactory = ({
     }
 
     if (project.version === ProjectVersion.V2) {
-      throw new BadRequestError({ message: "Failed to set bot active, project has a default bot enabled" });
+      throw new BadRequestError({ message: "Failed to set bot active for upgraded project. Bot is already active" });
     }
 
     if (isActive) {
