@@ -29,7 +29,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-// import { UpgradeProjectAlert } from "@app/components/v2/UpgradeProjectAlert";
+import { UpgradeProjectAlert } from "@app/components/v2/UpgradeProjectAlert";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
   useCreateFolder,
@@ -40,8 +40,8 @@ import {
   useGetUserWsKey,
   useUpdateSecretV3
 } from "@app/hooks/api";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
-// import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
@@ -274,62 +274,68 @@ export const SecretOverviewPage = () => {
       <div className="relative right-5 ml-4">
         <NavHeader pageName={t("dashboard.title")} isProjectRelated />
       </div>
-      <div className="mt-6">
-        <p className="text-3xl font-semibold text-bunker-100">Secrets Overview</p>
-        <p className="text-md text-bunker-300">
-          Inject your secrets using
-          <a
-            className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-            href="https://infisical.com/docs/cli/overview"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Infisical CLI
-          </a>
-          ,
-          <a
-            className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-            href="https://infisical.com/docs/documentation/getting-started/api"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Infisical API
-          </a>
-          ,
-          <a
-            className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-            href="https://infisical.com/docs/sdks/overview"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Infisical SDKs
-          </a>
-          , and
-          <a
-            className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-            href="https://infisical.com/docs/documentation/getting-started/introduction"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            more
-          </a>
-          .
-        </p>
-      </div>
+      <div className="space-y-8">
+        <div className="mt-6">
+          <p className="text-3xl font-semibold text-bunker-100">Secrets Overview</p>
+          <p className="text-md text-bunker-300">
+            Inject your secrets using
+            <a
+              className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+              href="https://infisical.com/docs/cli/overview"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Infisical CLI
+            </a>
+            ,
+            <a
+              className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+              href="https://infisical.com/docs/documentation/getting-started/api"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Infisical API
+            </a>
+            ,
+            <a
+              className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+              href="https://infisical.com/docs/sdks/overview"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Infisical SDKs
+            </a>
+            , and
+            <a
+              className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+              href="https://infisical.com/docs/documentation/getting-started/introduction"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              more
+            </a>
+            .
+          </p>
+        </div>
 
+        {currentWorkspace?.version === ProjectVersion.V1 && (
+          <UpgradeProjectAlert project={currentWorkspace} />
+        )}
 
-      <div className="mt-8 flex items-center justify-between">
-        <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
-        <div className="w-80">
-          <Input
-            className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-            placeholder="Search by secret/folder name..."
-            value={searchFilter}
-            onChange={(e) => setSearchFilter(e.target.value)}
-            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          />
+        <div className="flex items-center justify-between">
+          <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
+          <div className="w-80">
+            <Input
+              className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+              placeholder="Search by secret/folder name..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+            />
+          </div>
         </div>
       </div>
+
       <div className="thin-scrollbar mt-4" ref={parentTableRef}>
         <TableContainer className="max-h-[calc(100vh-250px)] overflow-y-auto">
           <Table>
