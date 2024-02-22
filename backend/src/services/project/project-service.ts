@@ -17,7 +17,6 @@ import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
-import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -54,7 +53,6 @@ type TProjectServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey" | "delete" | "find" | "insertMany">;
   projectBotDAL: Pick<TProjectBotDALFactory, "create" | "findById" | "delete" | "findOne">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne">;
-  orgDAL: Pick<TOrgDALFactory, "deleteMembershipByUserId">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
@@ -70,7 +68,6 @@ export const projectServiceFactory = ({
   permissionService,
   userDAL,
   folderDAL,
-  orgDAL,
   orgService,
   identityProjectDAL,
   projectBotDAL,
@@ -300,7 +297,7 @@ export const projectServiceFactory = ({
 
       // Delete the org membership for the ghost user if it's found.
       if (projectGhostUser) {
-        await orgDAL.deleteMembershipByUserId(projectGhostUser.id, deletedProject.orgId, tx);
+        await userDAL.deleteById(projectGhostUser.id, tx);
       }
 
       return project;
