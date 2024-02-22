@@ -32,6 +32,7 @@ const envSchema = z
     SMTP_PASSWORD: zpStr(z.string().optional()),
     SMTP_FROM_ADDRESS: zpStr(z.string().optional()),
     SMTP_FROM_NAME: zpStr(z.string().optional().default("Infisical")),
+    SMTP_SSL: zodStrBool.default("true"),
     COOKIE_SECRET_SIGN_KEY: z
       .string()
       .min(32)
@@ -139,5 +140,6 @@ export const formatSmtpConfig = () => ({
       ? { user: envCfg.SMTP_USERNAME, pass: envCfg.SMTP_PASSWORD }
       : undefined,
   secure: envCfg.SMTP_SECURE,
+  tls : { rejectUnauthorized: envCfg.SMTP_SSL },
   from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`
 });
