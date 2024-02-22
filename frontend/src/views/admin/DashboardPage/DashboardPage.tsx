@@ -121,7 +121,7 @@ export const AdminDashboardPage = () => {
               >
                 <div className="flex justify-between">
                   <div className="mb-4 text-xl font-semibold text-mineshaft-100">
-                    Allow user to Sign Up
+                    Allow user sign up
                   </div>
                   <Controller
                     control={control}
@@ -149,7 +149,7 @@ export const AdminDashboardPage = () => {
                 {signupMode === "anyone" && (
                   <div className="mt-4 flex items-center justify-between">
                     <div className="mb-4 flex text-mineshaft-100">
-                      Allow email with only specific domain(s)
+                      Restrict sign up by email domain(s)
                     </div>
                     <Controller
                       control={control}
@@ -157,7 +157,7 @@ export const AdminDashboardPage = () => {
                       name="allowedSignUpDomain"
                       render={({ field, fieldState: { error } }) => (
                         <FormControl
-                          label="Leave blank to allow any domain handle"
+                          label="Leave blank to allow any email domains"
                           className="w-72"
                           isError={Boolean(error)}
                           errorText={error?.message}
@@ -165,7 +165,7 @@ export const AdminDashboardPage = () => {
                           <Input
                             {...field}
                             value={field.value || ""}
-                            placeholder="domain.com, domain2.com"
+                            placeholder="gmail.com, aws.com, redhat.com"
                             leftIcon={<FontAwesomeIcon icon={faAt} />}
                           />
                         </FormControl>
