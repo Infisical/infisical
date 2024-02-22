@@ -142,7 +142,7 @@ export const serviceTokenServiceFactory = ({
     const updatedToken = await serviceTokenDAL.updateById(serviceToken.id, {
       lastUsed: new Date()
     });
-    return updatedToken;
+    return { ...serviceToken, lastUsed: updatedToken.lastUsed };
   };
 
   return {
