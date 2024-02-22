@@ -18,7 +18,6 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { fetchGithubEmails } from "@app/lib/requests/github";
 import { AuthMethod } from "@app/services/auth/auth-type";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export const registerSsoRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -42,7 +41,6 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         async (req, _accessToken, _refreshToken, profile, cb) => {
           try {
             const email = profile?.emails?.[0]?.value;
-            const serverCfg = await getServerCfg();
             if (!email)
               throw new BadRequestError({
                 message: "Email not found",
@@ -54,8 +52,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
               firstName: profile?.name?.givenName || "",
               lastName: profile?.name?.familyName || "",
               authMethod: AuthMethod.GOOGLE,
-              callbackPort: req.query.state as string,
-              isSignupAllowed: Boolean(serverCfg.allowSignUp)
+              callbackPort: req.query.state as string
             });
             cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
@@ -84,14 +81,12 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           try {
             const ghEmails = await fetchGithubEmails(accessToken);
             const { email } = ghEmails.filter((gitHubEmail) => gitHubEmail.primary)[0];
-            const serverCfg = await getServerCfg();
             const { isUserCompleted, providerAuthToken } = await server.services.login.oauth2Login({
               email,
               firstName: profile.displayName,
               lastName: "",
               authMethod: AuthMethod.GITHUB,
-              callbackPort: req.query.state as string,
-              isSignupAllowed: Boolean(serverCfg.allowSignUp)
+              callbackPort: req.query.state as string
             });
             return cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
@@ -120,14 +115,12 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         async (req: any, _accessToken: string, _refreshToken: string, profile: any, cb: any) => {
           try {
             const email = profile.emails[0].value;
-            const serverCfg = await getServerCfg();
             const { isUserCompleted, providerAuthToken } = await server.services.login.oauth2Login({
               email,
               firstName: profile.displayName,
               lastName: "",
               authMethod: AuthMethod.GITLAB,
-              callbackPort: req.query.state as string,
-              isSignupAllowed: Boolean(serverCfg.allowSignUp)
+              callbackPort: req.query.state as string
             });
 
             return cb(null, { isUserCompleted, providerAuthToken });
