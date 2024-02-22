@@ -74,7 +74,12 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, WorkspaceId: projectId, SecretsPath: secretsPath}, "")
+		includeImports, err := cmd.Flags().GetBool("include-imports")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, WorkspaceId: projectId, SecretsPath: secretsPath, IncludeImport: includeImports}, "")
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
 		}
@@ -109,6 +114,7 @@ func init() {
 	rootCmd.AddCommand(exportCmd)
 	exportCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	exportCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
+	exportCmd.Flags().Bool("include-imports", false, "Import linked secrets ")
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
