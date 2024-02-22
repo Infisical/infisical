@@ -6,6 +6,7 @@ import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
+import { TScimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { TSecretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
@@ -105,6 +106,7 @@ declare module "fastify" {
       secretRotation: TSecretRotationServiceFactory;
       snapshot: TSecretSnapshotServiceFactory;
       saml: TSamlConfigServiceFactory;
+      scim: TScimServiceFactory;
       auditLog: TAuditLogServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;

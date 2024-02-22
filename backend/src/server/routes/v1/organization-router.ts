@@ -93,7 +93,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .trim()
           .regex(/^[a-zA-Z0-9-]+$/, "Name must only contain alphanumeric characters or hyphens")
           .optional(),
-        authEnforced: z.boolean().optional()
+        authEnforced: z.boolean().optional(),
+        scimEnabled: z.boolean().optional()
       }),
       response: {
         200: z.object({

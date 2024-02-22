@@ -16,6 +16,7 @@ export enum OrgPermissionSubjects {
   Settings = "settings",
   IncidentAccount = "incident-contact",
   Sso = "sso",
+  Scim = "scim",
   Billing = "billing",
   SecretScanning = "secret-scanning",
   Identity = "identity"
@@ -29,6 +30,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
+  | [OrgPermissionActions, OrgPermissionSubjects.Scim]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionActions, OrgPermissionSubjects.Identity];
@@ -68,6 +70,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Sso);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Scim);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Scim);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Billing);

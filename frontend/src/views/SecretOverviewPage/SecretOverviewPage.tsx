@@ -29,6 +29,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+// import { UpgradeProjectAlert } from "@app/components/v2/UpgradeProjectAlert";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
   useCreateFolder,
@@ -40,9 +41,9 @@ import {
   useUpdateSecretV3
 } from "@app/hooks/api";
 
+// import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
-// import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
 
@@ -315,6 +316,8 @@ export const SecretOverviewPage = () => {
           .
         </p>
       </div>
+
+
       <div className="mt-8 flex items-center justify-between">
         <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
         <div className="w-80">

@@ -34,6 +34,7 @@ export const formSchema = z.object({
       "incident-contact": generalPermissionSchema,
       "secret-scanning": generalPermissionSchema,
       sso: generalPermissionSchema,
+      scim: generalPermissionSchema,
       billing: generalPermissionSchema,
       identity: generalPermissionSchema
     })

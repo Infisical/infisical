@@ -3,6 +3,7 @@ import fp from "fastify-plugin";
 import jwt, { JwtPayload } from "jsonwebtoken";
 
 import { TServiceTokens, TUsers } from "@app/db/schemas";
+import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { ActorType, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
@@ -35,6 +36,12 @@ export type TAuthMode =
       actor: ActorType.IDENTITY;
       identityId: string;
       identityName: string;
+    }
+  | {
+      authMode: AuthMode.SCIM_TOKEN;
+      actor: ActorType.SCIM_CLIENT;
+      scimTokenId: string;
+      orgId: string;
     };
 
 const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
@@ -55,6 +62,7 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   }
 
   const decodedToken = jwt.verify(authTokenValue, jwtSecret) as JwtPayload;
+
   switch (decodedToken.authTokenType) {
     case AuthTokenType.ACCESS_TOKEN:
       return {
@@ -69,6 +77,12 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
         token: decodedToken as TIdentityAccessTokenJwtPayload,
         actor: ActorType.IDENTITY
+      } as const;
+    case AuthTokenType.SCIM_TOKEN:
+      return {
+        authMode: AuthMode.SCIM_TOKEN,
+        token: decodedToken as TScimTokenJwtPayload,
+        actor: ActorType.SCIM_CLIENT
       } as const;
     default:
       return { authMode: null, token: null } as const;
@@ -111,6 +125,11 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
       case AuthMode.API_KEY: {
         const user = await server.services.apiKey.fnValidateApiKey(token as string);
         req.auth = { authMode: AuthMode.API_KEY as const, userId: user.id, actor, user };
+        break;
+      }
+      case AuthMode.SCIM_TOKEN: {
+        const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
+        req.auth = { authMode: AuthMode.SCIM_TOKEN, actor, scimTokenId, orgId };
         break;
       }
       default:

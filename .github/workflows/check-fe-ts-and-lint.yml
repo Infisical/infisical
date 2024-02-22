@@ -1,4 +1,4 @@
-name: Check Frontend Pull Request
+name: Check Frontend Type and Lint check
 
 on:
   pull_request:
@@ -10,8 +10,8 @@ on:
       - "frontend/.eslintrc.js"
 
 jobs:
-  check-fe-pr:
-    name: Check
+  check-fe-ts-lint:
+    name: Check Frontend Type and Lint check
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -25,12 +25,11 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
       - name: 📦 Install dependencies
-        run: npm ci --only-production --ignore-scripts
+        run: npm install
         working-directory: frontend
-      # -
-      #   name: 🧪 Run tests
-      #   run: npm run test:ci
-      #   working-directory: frontend
-      - name: 🏗️ Run build
-        run: npm run build
+      - name: 🏗️ Run Type check
+        run: npm run type:check 
+        working-directory: frontend
+      - name: 🏗️ Run Link check
+        run: npm run lint:fix 
         working-directory: frontend

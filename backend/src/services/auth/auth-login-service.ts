@@ -281,8 +281,9 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
             name: "Oauth 2 login"
           });
       }
-
-      user = await userDAL.create({ email, firstName, lastName, authMethods: [authMethod] });
+      
+      user = await userDAL.create({ email, firstName, lastName, authMethods: [authMethod], isGhost: false });
+      
     }
     const isLinkingRequired = !user?.authMethods?.includes(authMethod);
     const isUserCompleted = user.isAccepted;

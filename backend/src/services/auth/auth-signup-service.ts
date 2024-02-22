@@ -50,7 +50,7 @@ export const authSignupServiceFactory = ({
       throw new Error("Failed to send verification code for complete account");
     }
     if (!user) {
-      user = await userDAL.create({ authMethods: [AuthMethod.EMAIL], email });
+      user = await userDAL.create({ authMethods: [AuthMethod.EMAIL], email, isGhost: false });
     }
     if (!user) throw new Error("Failed to create user");
 
@@ -212,12 +212,15 @@ export const authSignupServiceFactory = ({
     protectedKeyTag,
     encryptedPrivateKey,
     encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag
+    encryptedPrivateKeyTag,
+    authorization
   }: TCompleteAccountInviteDTO) => {
     const user = await userDAL.findUserByEmail(email);
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
+
+    validateSignUpAuthorization(authorization, user.id);
 
     const [orgMembership] = await orgDAL.findMembership({
       inviteEmail: email,

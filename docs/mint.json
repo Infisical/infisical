@@ -148,16 +148,27 @@
             "documentation/platform/sso/azure",
             "documentation/platform/sso/jumpcloud"
           ]
+        },
+        {
+          "group": "SCIM",
+          "pages": [
+            "documentation/platform/scim/overview",
+            "documentation/platform/scim/okta",
+            "documentation/platform/scim/azure",
+            "documentation/platform/scim/jumpcloud"
+          ]
         }
       ]
     },
     {
       "group": "Self-host Infisical",
       "pages": [
+        "self-hosting/overview",
+        "self-hosting/configuration/requirements",
+        "self-hosting/configuration/schema-migrations",
         {
-          "group": "Deployment options",
+          "group": "Installation methods",
           "pages": [
-            "self-hosting/overview",
             "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/docker-compose",
             "self-hosting/deployment-options/kubernetes-helm",
@@ -172,9 +183,6 @@
           ]
         },
         "self-hosting/configuration/envars",
-        "self-hosting/configuration/email",
-        "self-hosting/configuration/redis",
-        "self-hosting/configuration/sso",
         "self-hosting/faq"
       ]
     },
@@ -377,9 +385,14 @@
         {
           "group": "Projects",
           "pages": [
+            "api-reference/endpoints/workspaces/create-workspace",
+            "api-reference/endpoints/workspaces/delete-workspace",
+            "api-reference/endpoints/workspaces/get-workspace",
+            "api-reference/endpoints/workspaces/update-workspace",
+            "api-reference/endpoints/workspaces/invite-member-to-workspace",
+            "api-reference/endpoints/workspaces/remove-member-from-workspace",
             "api-reference/endpoints/workspaces/memberships",
             "api-reference/endpoints/workspaces/update-membership",
-            "api-reference/endpoints/workspaces/delete-membership",
             "api-reference/endpoints/workspaces/list-identity-memberships",
             "api-reference/endpoints/workspaces/update-identity-membership",
             "api-reference/endpoints/workspaces/delete-identity-membership",

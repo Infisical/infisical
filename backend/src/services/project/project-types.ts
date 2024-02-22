@@ -1,3 +1,6 @@
+import { ProjectMembershipRole, TProjectKeys } from "@app/db/schemas";
+import { TProjectPermission } from "@app/lib/types";
+
 import { ActorType } from "../auth/auth-type";
 
 export type TCreateProjectDTO = {
@@ -6,6 +9,7 @@ export type TCreateProjectDTO = {
   actorOrgId?: string;
   orgId: string;
   workspaceName: string;
+  slug?: string;
 };
 
 export type TDeleteProjectDTO = {
@@ -20,4 +24,25 @@ export type TGetProjectDTO = {
   actorId: string;
   actorOrgId?: string;
   projectId: string;
+};
+
+export type TUpdateProjectDTO = {
+  update: {
+    name?: string;
+    autoCapitalization?: boolean;
+  };
+} & TProjectPermission;
+
+export type TUpgradeProjectDTO = {
+  userPrivateKey: string;
+} & TProjectPermission;
+
+export type AddUserToWsDTO = {
+  decryptKey: TProjectKeys & { sender: { publicKey: string } };
+  userPrivateKey: string;
+  members: {
+    orgMembershipId: string;
+    projectMembershipRole: ProjectMembershipRole;
+    userPublicKey: string;
+  }[];
 };

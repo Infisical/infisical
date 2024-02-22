@@ -30,6 +30,13 @@ export type TVerifyUserToOrgDTO = {
   code: string;
 };
 
+export type TFindOrgMembersByEmailDTO = {
+  actor: ActorType;
+  actorId: string;
+  orgId: string;
+  emails: string[];
+};
+
 export type TFindAllWorkspacesDTO = {
   actor: ActorType;
   actorId: string;
@@ -38,5 +45,5 @@ export type TFindAllWorkspacesDTO = {
 };
 
 export type TUpdateOrgDTO = {
-  data: Partial<{ name: string; slug: string; authEnforced: boolean }>;
+  data: Partial<{ name: string; slug: string; authEnforced: boolean; scimEnabled: boolean }>;
 } & TOrgPermission;

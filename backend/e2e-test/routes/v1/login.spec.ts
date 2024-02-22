@@ -1,5 +1,6 @@
-import { seedData1 } from "@app/db/seed-data";
 import jsrp from "jsrp";
+
+import { seedData1 } from "@app/db/seed-data";
 
 describe("Login V1 Router", async () => {
   // eslint-disable-next-line

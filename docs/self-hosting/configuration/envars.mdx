@@ -1,188 +1,426 @@
 ---
-title: "All environment variables"
-description: "Configure your environment variables when self-hosting Infisical."
+title: "Configurations"
+description: "Configure environment variables for self-hosted Infisical"
 ---
 
-## Environment variables
 
-Depending on your chosen self hosted deployment method, you may need to configured at least the required environment variable listed below.
-Other environment variables are listed below to increase the functionality of your self hosted instance based on your use case.
+Infisical accepts all configurations via environment variables. For a basic self-hosted instance, at least `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI` and `REDIS_URL` must be defined. 
+However, you can configure additional settings to activate more features as needed.
 
-<Tabs>
-  <Tab title="Required">
-    <ParamField query="ENCRYPTION_KEY" type="string" default="none" required>
-      Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-    </ParamField>
+## General platform    
+Used to configure platform-specific security and operational settings
 
-    <ParamField query="AUTH_SECRET" type="string" default="none" required>
-      Must be a random 32 byte base64 string. Can be generated with `openssl rand -base64 32`
-    </ParamField>
-
-    <ParamField query="MONGO_URL" type="string" default="none" required>
-      Mongo connection string. *TLS based connection string is not yet supported
-    </ParamField>
-
-    <ParamField query="REDIS_URL" type="string" default="none" required>
-      Redis connection string
-    </ParamField>
-  </Tab>
-  <Tab title="Email service">
-    <Info>When email service is not configured, Infisical will have limited functionality</Info>
-
-    <ParamField query="SMTP_HOST" type="string" default="none" optional>
-      Hostname to connect to for establishing SMTP connections
-    </ParamField>
-
-    <ParamField query="SMTP_USERNAME" type="string" default="none" optional>
-      Credential to connect to host (e.g. team@infisical.com)
-    </ParamField>
-
-    <ParamField query="SMTP_PASSWORD" type="string" default="none" optional>
-      Credential to connect to host
-    </ParamField>
-
-    <ParamField query="SMTP_PORT" type="string" default="587" optional>
-        Port to connect to for establishing SMTP connections
-    </ParamField>
-
-    <ParamField query="SMTP_SECURE" type="string" default="none" optional>
-    If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported
-    </ParamField>
-
-    <ParamField query="SMTP_FROM_ADDRESS" type="string" default="none" optional>
-      Email address to be used for sending emails
-    </ParamField>
-
-    <ParamField query="SMTP_FROM_NAME" type="string" default="none" optional>
-      Name label to be used in From field (e.g. Team)
-    </ParamField>
-
-  </Tab>
-  <Tab title="Secret Integrations">
-    To sync secret to third party services, provide value for the related services
-
-    <ParamField query="CLIENT_ID_HEROKU" type="string" default="none" optional>
-      OAuth2 client ID for Heroku integration
-    </ParamField>
-
-    <ParamField query="CLIENT_SECRET_HEROKU" type="string" default="none" optional>
-      OAuth2 client secret for Heroku integration
-    </ParamField>
-
-    <ParamField query="CLIENT_ID_VERCEL" type="string" default="none" optional>
-      OAuth2 client ID for Vercel integration
-    </ParamField>
-
-    <ParamField query="CLIENT_SECRET_VERCEL" type="string" default="none" optional>
-      OAuth2 client secret for Vercel integration
-    </ParamField>
-
-    <ParamField query="CLIENT_ID_NETLIFY" type="string" default="none" optional>
-      OAuth2 client ID for Netlify integration
-    </ParamField>
-
-    <ParamField query="CLIENT_SECRET_NETLIFY" type="string" default="none" optional>
-      OAuth2 client secret for Netlify integration
-    </ParamField>
-
-    <ParamField query="CLIENT_ID_GITHUB" type="string" default="none" optional>
-      OAuth2 client ID for GitHub integration
-    </ParamField>
-
-    <ParamField query="CLIENT_SECRET_GITHUB" type="string" default="none" optional>
-      OAuth2 client secret for GitHub integration
-    </ParamField>
-
-    <ParamField query="CLIENT_SLUG_VERCEL" type="string" default="none" optional>
-      OAuth2 slug for Vercel integration
-    </ParamField>
-
-    <ParamField query="CLIENT_ID_BITBUCKET" type="string" default="none" optional>
-      OAuth2 client ID for BitBucket integration
-    </ParamField>
-
-    <ParamField query="CLIENT_SECRET_BITBUCKET" type="string" default="none" optional>
-      OAuth2 client secret for BitBucket integration
-    </ParamField>
-
-  </Tab>
-  <Tab title="Auth Integrations">
-    To integrate with external auth providers, provide value for the related keys
-    <ParamField query="CLIENT_ID_GOOGLE_LOGIN" type="string" default="none" optional>
-      OAuth2 client ID for Google login
-    </ParamField>
-    <ParamField query="CLIENT_SECRET_GOOGLE_LOGIN" type="string" default="none" optional>
-      OAuth2 client secret for Google login
-    </ParamField>
-    <ParamField query="CLIENT_ID_GITHUB_LOGIN" type="string" default="none" optional>
-      OAuth2 client ID for GitHub login
-    </ParamField>
-    <ParamField query="CLIENT_SECRET_GITHUB_LOGIN" type="string" default="none" optional>
-      OAuth2 client secret for GitHub login
-    </ParamField>
-    <ParamField query="CLIENT_ID_GITLAB_LOGIN" type="string" default="none" optional>
-      OAuth2 client ID for GitLab login
-    </ParamField>
-    <ParamField query="CLIENT_SECRET_GITLAB_LOGIN" type="string" default="none" optional>
-      OAuth2 client secret for GitLab login
-    </ParamField>
-    <ParamField query="URL_GITLAB_LOGIN" type="string" default="https://gitlab.com" optional>
-      URL of your self-hosted instance of GitLab where the OAuth application is registered
-    </ParamField>
-  </Tab>
-  <Tab title="Others">
-    #### JWT
-    <ParamField query="JWT_SIGNUP_LIFETIME" type="string" default="15m" optional>
-      JWT token lifetime expressed in seconds or a string describing a time span
-    </ParamField>
-
-    <ParamField query="JWT_REFRESH_LIFETIME" type="string" default="90d" optional>
-      JWT token lifetime expressed in seconds or a string describing a time span
-    </ParamField>
-
-    <ParamField query="JWT_AUTH_LIFETIME" type="string" default="10d" optional>
-      JWT token lifetime expressed in seconds or a string describing a time span
-    </ParamField>
-
-    <ParamField query="JWT_MFA_LIFETIME" type="string" default="5m" optional>
-      JWT token lifetime expressed in seconds or a string describing a time span
-    </ParamField>
-
-    <ParamField query="JWT_PROVIDER_AUTH_LIFETIME" type="string" default="5m" optional>
-      JWT token lifetime expressed in seconds or a string describing a time span
-    </ParamField>
-
-#### Logging
-
-Infisical uses Sentry to report error logs
-
-<ParamField
-  query="PINO_LOG_LEVEL"
-  type="string"
-  default="info"
-  optional
->
-  The minimum log level for application logging; can be one of `trace`, `debug`, `info`, `warn`, `error`, or `fatal`.
+<ParamField query="ENCRYPTION_KEY" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
 </ParamField>
 
-<ParamField
-  query="SENTRY_DSN"
-  type="string"
-  default="none"
-  optional
-></ParamField>
-
-#### Settings
-
-{" "}
-
-<ParamField query="INVITE_ONLY_SIGNUP" type="string" default="false" optional>
-  Only allow users who are invited to sign up
+<ParamField query="AUTH_SECRET" type="string" default="none" required>
+  Must be a random 32 byte base64 string. Can be generated with `openssl rand -base64 32`
 </ParamField>
 
-  <ParamField query="SITE_URL" type="string" default="none" optional>
-    Site URL - should be an absolute URL including the protocol (e.g. https://app.infisical.com)
+<ParamField query="SITE_URL" type="string" default="none" optional>
+  Must be an absolute URL including the protocol (e.g. https://app.infisical.com).
+</ParamField>
+
+## Data Layer 
+The platform utilizes Postgres to persist all of its data and Redis for caching and backgroud tasks
+
+<ParamField query="DB_CONNECTION_URI" type="string" default="" required>
+  Postgres database connection string. 
+</ParamField>
+
+<ParamField query="DB_ROOT_CERT" type="string" default="" optional>
+  Configure the SSL certificate for securing a Postgres connection by first encoding it in base64. 
+  Use the command below to encode your certificate:
+  `echo "<certificate>" | base64`
+</ParamField>
+
+<ParamField query="REDIS_URL" type="string" default="none" required>
+  Redis connection string.
+</ParamField>
+
+
+
+## Email service
+Without email configuration, Infisical's core functions like sign-up/login and secret operations work, but this disables multi-factor authentication, email invites for projects, alerts for suspicious logins, and all other email-dependent features.
+
+<Accordion title="Generic Configuration">
+  <ParamField query="SMTP_HOST" type="string" default="none" optional>
+    Hostname to connect to for establishing SMTP connections
   </ParamField>
-  <ParamField query="TELEMETRY_ENABLED" type="string" default="true" optional></ParamField>
-  </Tab>
-</Tabs>
+
+  <ParamField query="SMTP_USERNAME" type="string" default="none" optional>
+    Credential to connect to host (e.g. team@infisical.com)
+  </ParamField>
+
+  <ParamField query="SMTP_PASSWORD" type="string" default="none" optional>
+    Credential to connect to host
+  </ParamField>
+
+  <ParamField query="SMTP_PORT" type="string" default="587" optional>
+      Port to connect to for establishing SMTP connections
+  </ParamField>
+
+  <ParamField query="SMTP_SECURE" type="string" default="none" optional>
+  If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported
+  </ParamField>
+
+  <ParamField query="SMTP_FROM_ADDRESS" type="string" default="none" optional>
+    Email address to be used for sending emails
+  </ParamField>
+
+  <ParamField query="SMTP_FROM_NAME" type="string" default="none" optional>
+    Name label to be used in From field (e.g. Team)
+  </ParamField>
+</Accordion>
+
+<Accordion title="Twilio SendGrid">
+
+  1. Create an account and configure [SendGrid](https://sendgrid.com) to send emails.
+  2. Create a SendGrid API Key under Settings > [API Keys](https://app.sendgrid.com/settings/api_keys)
+  3. Set a name for your API Key, we recommend using "Infisical," and select the "Restricted Key" option. You will need to enable the "Mail Send" permission as shown below:
+
+  ![creating sendgrid api key](../../images/self-hosting/configuration/email/email-sendgrid-create-key.png)
+
+  ![setting sendgrid api key restriction](../../images/self-hosting/configuration/email/email-sendgrid-restrictions.png)
+
+  4. With the API Key, you can now set your SMTP environment variables:
+
+  ```
+  SMTP_HOST=smtp.sendgrid.net
+  SMTP_USERNAME=apikey
+  SMTP_PASSWORD=SG.rqFsfjxYPiqE1lqZTgD_lz7x8IVLx # your SendGrid API Key from step above
+  SMTP_PORT=587
+  SMTP_SECURE=true
+  SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
+  SMTP_FROM_NAME=Infisical
+  ```
+
+  <Info>
+    Remember that you will need to restart Infisical for this to work properly.
+  </Info>
+</Accordion>
+
+<Accordion title="Mailgun">
+  1. Create an account and configure [Mailgun](https://www.mailgun.com) to send emails.
+  2. Obtain your Mailgun credentials in Sending > Overview > SMTP
+
+  ![obtain mailhog api key estriction](../../images/self-hosting/configuration/email/email-mailhog-credentials.png)
+
+  3. With your Mailgun credentials, you can now set up your SMTP environment variables:
+
+  ```
+  SMTP_HOST=smtp.mailgun.org # obtained from credentials page
+  SMTP_USERNAME=postmaster@example.mailgun.org # obtained from credentials page
+  SMTP_PASSWORD=password # obtained from credentials page
+  SMTP_PORT=587
+  SMTP_SECURE=true
+  SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
+  SMTP_FROM_NAME=Infisical
+  ```
+</Accordion>
+
+<Accordion title="AWS SES">
+  1. Create an account and [configure AWS SES](https://aws.amazon.com/premiumsupport/knowledge-center/ses-set-up-connect-smtp/) to send emails in the Amazon SES console.
+  2. Create an IAM user for SMTP authentication and obtain SMTP credentials in SMTP settings > Create SMTP credentials
+
+  ![opening AWS SES console](../../images/self-hosting/configuration/email/email-aws-ses-console.png)
+
+  ![creating AWS IAM SES user](../../images/self-hosting/configuration/email/email-aws-ses-user.png)
+
+  3. With your AWS SES SMTP credentials, you can now set up your SMTP environment variables:
+
+  ```
+  SMTP_HOST=email-smtp.ap-northeast-1.amazonaws.com # SMTP endpoint obtained from SMTP settings
+  SMTP_USERNAME=xxx # your SMTP username
+  SMTP_PASSWORD=xxx # your SMTP password
+  SMTP_PORT=587
+  SMTP_SECURE=true
+  SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
+  SMTP_FROM_NAME=Infisical
+  ```
+
+  <Info>
+    Remember that you will need to restart Infisical for this to work properly.
+  </Info>
+</Accordion>
+
+<Accordion title="SocketLabs">
+  1. Create an account and configure [SocketLabs](https://www.socketlabs.com/) to send emails.
+  2. From the dashboard, navigate to SMTP Credentials > SMTP & APIs > SMTP Credentials to obtain your SocketLabs SMTP credentials.
+
+  ![opening SocketLabs dashboard](../../images/self-hosting/configuration/email/email-socketlabs-dashboard.png)
+
+  ![obtaining SocketLabs credentials](../../images/self-hosting/configuration/email/email-socketlabs-credentials.png)
+
+  3. With your SocketLabs SMTP credentials, you can now set up your SMTP environment variables:
+
+  ```
+  SMTP_HOST=smtp.socketlabs.com
+  SMTP_USERNAME=username # obtained from your credentials
+  SMTP_PASSWORD=password # obtained from your credentials
+  SMTP_PORT=587
+  SMTP_SECURE=true
+  SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
+  SMTP_FROM_NAME=Infisical
+  ```
+
+  <Note>
+    The `SMTP_FROM_ADDRESS` environment variable should be an email for an
+    authenticated domain under Configuration > Domain Management in SocketLabs.
+    For example, if you're using SocketLabs in sandbox mode, then you may use an
+    email like `team@sandbox.socketlabs.dev`.
+  </Note>
+
+  ![SocketLabs domain management](../../images/self-hosting/configuration/email/email-socketlabs-domains.png)
+
+  <Info>
+    Remember that you will need to restart Infisical for this to work properly.
+  </Info>
+</Accordion>
+
+<Accordion title="Resend">
+  1. Create an account on [Resend](https://resend.com).
+  2. Add a [Domain](https://resend.com/domains).
+
+  ![adding resend domain](../../images/self-hosting/configuration/email/email-resend-create-domain.png)
+
+  3. Create an [API Key](https://resend.com/api-keys).
+
+  ![creating resend api key](../../images/self-hosting/configuration/email/email-resend-create-key.png)
+
+  4. Go to the [SMTP page](https://resend.com/settings/smtp) and copy the values.
+
+  ![go to resend smtp settings](../../images/self-hosting/configuration/email/email-resend-smtp-settings.png)
+
+  5. With the API Key, you can now set your SMTP environment variables variables:
+
+  ```
+  SMTP_HOST=smtp.resend.com
+  SMTP_USERNAME=resend
+  SMTP_PASSWORD=YOUR_API_KEY
+  SMTP_PORT=587
+  SMTP_SECURE=true
+  SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
+  SMTP_FROM_NAME=Infisical
+  ```
+    <Info>
+      Remember that you will need to restart Infisical for this to work properly.
+    </Info>
+</Accordion>
+
+<Accordion title="Gmail">
+  Create an account and enable "less secure app access" in Gmail Account Settings > Security. This will allow
+  applications like Infisical to authenticate with Gmail via your username and password.
+
+  ![Gmail secure app access](../../images/self-hosting/configuration/email/email-gmail-app-access.png)
+
+  With your Gmail username and password, you can set your SMTP environment variables:
+
+  ```
+  SMTP_HOST=smtp.gmail.com
+  SMTP_USERNAME=hey@gmail.com # your email
+  SMTP_PASSWORD=password # your password
+  SMTP_PORT=587
+  SMTP_SECURE=true
+  SMTP_FROM_ADDRESS=hey@gmail.com
+  SMTP_FROM_NAME=Infisical
+  ```
+
+  <Warning>
+    As per the [notice](https://support.google.com/accounts/answer/6010255?hl=en) by Google, you should note that using Gmail credentials for SMTP configuration
+    will only work for Google Workspace or Google Cloud Identity customers as of May 30, 2022.
+
+  Put differently, the SMTP configuration is only possible with business (not personal) Gmail credentials.
+
+  </Warning>
+</Accordion>
+
+<Accordion title="Office365">
+  1. Create an account and configure [Office365](https://www.office.com/) to send emails.
+
+  2. With your login credentials, you can now set up your SMTP environment variables:
+
+  ```
+  SMTP_HOST=smtp.office365.com
+  SMTP_USERNAME=username@yourdomain.com # your username
+  SMTP_PASSWORD=password # your password
+  SMTP_PORT=587
+  SMTP_SECURE=true
+  SMTP_FROM_ADDRESS=username@yourdomain.com
+  SMTP_FROM_NAME=Infisical
+  ```
+</Accordion>
+
+<Accordion title="Zoho Mail">
+  1. Create an account and configure [Zoho Mail](https://www.zoho.com/mail/) to send emails.
+
+  2. With your email credentials, you can now set up your SMTP environment variables:
+
+  ```
+  SMTP_HOST=smtp.zoho.com
+  SMTP_USERNAME=username # your email
+  SMTP_PASSWORD=password # your password
+  SMTP_PORT=587
+  SMTP_SECURE=true
+  SMTP_FROM_ADDRESS=hey@example.com # your personal Zoho email or domain-based email linked to Zoho Mail
+  SMTP_FROM_NAME=Infisical
+  ```
+
+  <Note>
+    You can use either your personal Zoho email address like `you@zohomail.com` or
+    a domain-based email address like `you@yourdomain.com`. If using a
+    domain-based email address, then please make sure that you've configured and
+    verified it with Zoho Mail.
+  </Note>
+
+  <Info>
+    Remember that you will need to restart Infisical for this to work properly.
+  </Info>
+</Accordion>
+
+
+
+
+
+## SSO based login
+By default, users can only login via email/password based login method.
+To login into Infisical with OAuth providers such as Google, configure the associated variables.
+
+<Accordion title="Google">
+  Follow detailed guide to configure [Google SSO](/documentation/platform/sso/google)
+
+  <ParamField query="CLIENT_ID_GOOGLE_LOGIN" type="string" default="none" optional>
+  OAuth2 client ID for Google login
+  </ParamField>
+  <ParamField query="CLIENT_SECRET_GOOGLE_LOGIN" type="string" default="none" optional>
+    OAuth2 client secret for Google login
+  </ParamField>
+</Accordion>
+
+<Accordion title="Github">
+  Follow detailed guide to configure [GitHub SSO](/documentation/platform/sso/github)
+
+  <ParamField query="CLIENT_ID_GITHUB_LOGIN" type="string" default="none" optional>
+    OAuth2 client ID for GitHub login
+  </ParamField>
+  <ParamField query="CLIENT_SECRET_GITHUB_LOGIN" type="string" default="none" optional>
+    OAuth2 client secret for GitHub login
+  </ParamField>
+</Accordion>
+
+<Accordion title="Gitlab">
+  Follow detailed guide to configure [GitLab SSO](/documentation/platform/sso/gitlab)
+
+  <ParamField query="CLIENT_ID_GITLAB_LOGIN" type="string" default="none" optional>
+    OAuth2 client ID for GitLab login
+  </ParamField>
+  <ParamField query="CLIENT_SECRET_GITLAB_LOGIN" type="string" default="none" optional>
+    OAuth2 client secret for GitLab login
+  </ParamField>
+  <ParamField query="URL_GITLAB_LOGIN" type="string" default="https://gitlab.com" optional>
+    URL of your self-hosted instance of GitLab where the OAuth application is registered
+  </ParamField>
+</Accordion>
+
+<Accordion title="Okta SAML">
+  Requires enterprise license. Please contact team@infisical.com to get more information.
+</Accordion>
+
+<Accordion title="Azure SAML">
+  Requires enterprise license. Please contact team@infisical.com to get more information.
+</Accordion>
+
+<Accordion title="JumpCloud SAML">
+  Requires enterprise license. Please contact team@infisical.com to get more information.
+</Accordion>
+
+
+
+
+
+## Native secret integrations
+To help you sync secrets from Infisical to services such as Github and Gitlab, Infisical provides native integrations out of the box.
+
+<Accordion title="Heroku">
+  <ParamField query="CLIENT_ID_HEROKU" type="string" default="none" optional>
+    OAuth2 client ID for Heroku integration
+  </ParamField>
+  <ParamField query="CLIENT_SECRET_HEROKU" type="string" default="none" optional>
+    OAuth2 client secret for Heroku integration
+  </ParamField>
+</Accordion>
+
+<Accordion title="Vercel">
+  <ParamField query="CLIENT_ID_VERCEL" type="string" default="none" optional>
+    OAuth2 client ID for Vercel integration
+  </ParamField>
+
+  <ParamField query="CLIENT_SECRET_VERCEL" type="string" default="none" optional>
+    OAuth2 client secret for Vercel integration
+  </ParamField>
+
+  <ParamField query="CLIENT_SLUG_VERCEL" type="string" default="none" optional>
+    OAuth2 slug for Vercel integration
+  </ParamField>
+</Accordion>
+
+<Accordion title="Netlify">
+  <ParamField query="CLIENT_ID_NETLIFY" type="string" default="none" optional>
+    OAuth2 client ID for Netlify integration
+  </ParamField>
+
+  <ParamField query="CLIENT_SECRET_NETLIFY" type="string" default="none" optional>
+    OAuth2 client secret for Netlify integration
+  </ParamField>
+</Accordion>
+
+<Accordion title="Github">
+  <ParamField query="CLIENT_ID_GITHUB" type="string" default="none" optional>
+    OAuth2 client ID for GitHub integration
+  </ParamField>
+
+  <ParamField query="CLIENT_SECRET_GITHUB" type="string" default="none" optional>
+    OAuth2 client secret for GitHub integration
+  </ParamField>
+</Accordion>
+
+<Accordion title="Bitbucket">
+  <ParamField query="CLIENT_ID_BITBUCKET" type="string" default="none" optional>
+    OAuth2 client ID for BitBucket integration
+  </ParamField>
+
+  <ParamField query="CLIENT_SECRET_BITBUCKET" type="string" default="none" optional>
+    OAuth2 client secret for BitBucket integration
+  </ParamField>
+</Accordion>
+
+<Accordion title="GCP Secrets Manager">
+  <ParamField query="CLIENT_ID_GCP_SECRET_MANAGER" type="string" default="none" optional>
+    OAuth2 client id for GCP secrets manager integration
+  </ParamField>
+
+  <ParamField query="CLIENT_SECRET_GCP_SECRET_MANAGER" type="string" default="none" optional>
+    OAuth2 client secret for GCP secrets manager integration
+  </ParamField>
+</Accordion>
+
+<Accordion title="Azure">
+  <ParamField query="CLIENT_ID_AZURE" type="string" default="none" optional>
+    OAuth2 client id for Azure integration
+  </ParamField>
+
+  <ParamField query="CLIENT_SECRET_AZURE" type="string" default="none" optional>
+    OAuth2 client secret for Azure integration
+  </ParamField>
+</Accordion>
+
+<Accordion title="Gitlab">
+  <ParamField query="CLIENT_ID_GITLAB" type="string" default="none" optional>
+    OAuth2 client id for Gitlab integration
+  </ParamField>
+
+  <ParamField query="CLIENT_SECRET_GITLAB" type="string" default="none" optional>
+    OAuth2 client secret for Gitlab integration
+  </ParamField>
+</Accordion>

@@ -4,6 +4,7 @@ export type Organization = {
   createAt: string;
   updatedAt: string;
   authEnforced: boolean;
+  scimEnabled: boolean;
   slug: string;
 };
 
@@ -11,6 +12,7 @@ export type UpdateOrgDTO = {
   orgId: string;
   name?: string;
   authEnforced?: boolean;
+  scimEnabled?: boolean;
   slug?: string;
 };
 
