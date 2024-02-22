@@ -2,8 +2,10 @@ import { z } from "zod";
 
 import { IdentitiesSchema, OrgMembershipRole } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { getTelemetryDistinctId } from "@app/server/lib/telemtry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerIdentityRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -46,6 +48,17 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
             name: identity.name,
             identityId: identity.id
           }
+        }
+      });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityCreated,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          orgId: req.body.organizationId,
+          name: identity.name,
+          identityId: identity.id,
+          ...req.auditLogInfo
         }
       });
 

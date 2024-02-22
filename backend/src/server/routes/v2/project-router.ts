@@ -4,8 +4,10 @@ import { z } from "zod";
 import { ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { authRateLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemtry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const projectWithEnv = ProjectsSchema.merge(
   z.object({
@@ -150,6 +152,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         orgId: req.body.organizationId,
         workspaceName: req.body.projectName,
         slug: req.body.slug
+      });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ProjectCreated,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          orgId: req.body.organizationId,
+          name: project.name,
+          ...req.auditLogInfo
+        }
       });
 
       return { project };
