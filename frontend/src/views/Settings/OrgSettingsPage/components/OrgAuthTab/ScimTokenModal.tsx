@@ -103,7 +103,7 @@ export const ScimTokenModal = ({
   const onFormSubmit = async ({ description, ttlDays }: FormData) => {
     try {
         if (!currentOrg?.id) return;
-        
+      
         const { scimToken } = await createScimTokenMutateAsync({
           organizationId: currentOrg.id,
           description,
@@ -283,7 +283,7 @@ export const ScimTokenModal = ({
                     
                     let expiresAt;
                     if (ttlDays > 0) {
-                        expiresAt = new Date(new Date(createdAt).getTime() + ttlDays * 86400);
+                      expiresAt = new Date(new Date(createdAt).getTime() + ttlDays * 86400 * 1000);
                     }
 
                     return (

@@ -403,7 +403,7 @@ export const scimServiceFactory = ({
     if (Number(ttlDays) > 0) {
       const currentDate = new Date();
       const scimTokenCreatedAt = new Date(createdAt);
-      const ttlInMilliseconds = Number(scimToken.ttlDays) * 86400;
+      const ttlInMilliseconds = Number(scimToken.ttlDays) * 86400 * 1000;
       const expirationDate = new Date(scimTokenCreatedAt.getTime() + ttlInMilliseconds);
 
       if (currentDate > expirationDate)
