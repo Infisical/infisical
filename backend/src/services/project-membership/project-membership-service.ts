@@ -419,10 +419,6 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
-    if (project.version === ProjectVersion.V1) {
-      throw new BadRequestError({ message: "Please upgrade your project on your dashboard" });
-    }
-
     const projectMembers = await projectMembershipDAL.findMembershipsByEmail(projectId, emails);
 
     if (projectMembers.length !== emails.length) {
