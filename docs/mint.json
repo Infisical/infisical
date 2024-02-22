@@ -386,9 +386,14 @@
         {
           "group": "Projects",
           "pages": [
+            "api-reference/endpoints/workspaces/create-workspace",
+            "api-reference/endpoints/workspaces/delete-workspace",
+            "api-reference/endpoints/workspaces/get-workspace",
+            "api-reference/endpoints/workspaces/update-workspace",
+            "api-reference/endpoints/workspaces/invite-member-to-workspace",
+            "api-reference/endpoints/workspaces/remove-member-from-workspace",
             "api-reference/endpoints/workspaces/memberships",
             "api-reference/endpoints/workspaces/update-membership",
-            "api-reference/endpoints/workspaces/delete-membership",
             "api-reference/endpoints/workspaces/list-identity-memberships",
             "api-reference/endpoints/workspaces/update-identity-membership",
             "api-reference/endpoints/workspaces/delete-identity-membership",

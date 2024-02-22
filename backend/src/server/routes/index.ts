@@ -65,6 +65,7 @@ import { orgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { projectDALFactory } from "@app/services/project/project-dal";
+import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
 import { projectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -280,24 +281,58 @@ export const registerRoutes = async (
     secretScanningDAL,
     secretScanningQueue
   });
-  const projectService = projectServiceFactory({
-    permissionService,
-    projectDAL,
-    secretBlindIndexDAL,
-    projectEnvDAL,
-    projectMembershipDAL,
-    folderDAL,
-    licenseService
-  });
+  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
+
   const projectMembershipService = projectMembershipServiceFactory({
     projectMembershipDAL,
     projectDAL,
     permissionService,
+    projectBotDAL,
     orgDAL,
     userDAL,
     smtpService,
     projectKeyDAL,
     projectRoleDAL,
+    licenseService
+  });
+  const projectKeyService = projectKeyServiceFactory({
+    permissionService,
+    projectKeyDAL,
+    projectMembershipDAL
+  });
+
+  const projectQueueService = projectQueueFactory({
+    queueService,
+    secretDAL,
+    folderDAL,
+    projectDAL,
+    orgDAL,
+    integrationAuthDAL,
+    orgService,
+    projectEnvDAL,
+    userDAL,
+    secretVersionDAL,
+    projectKeyDAL,
+    projectBotDAL,
+    projectMembershipDAL,
+    secretApprovalRequestDAL,
+    secretApprovalSecretDAL: sarSecretDAL
+  });
+
+  const projectService = projectServiceFactory({
+    permissionService,
+    projectDAL,
+    projectQueue: projectQueueService,
+    secretBlindIndexDAL,
+    identityProjectDAL,
+    identityOrgMembershipDAL,
+    projectBotDAL,
+    projectKeyDAL,
+    userDAL,
+    projectEnvDAL,
+    orgService,
+    projectMembershipDAL,
+    folderDAL,
     licenseService
   });
   const projectEnvService = projectEnvServiceFactory({
@@ -307,11 +342,7 @@ export const registerRoutes = async (
     projectDAL,
     folderDAL
   });
-  const projectKeyService = projectKeyServiceFactory({
-    permissionService,
-    projectKeyDAL,
-    projectMembershipDAL
-  });
+
   const projectRoleService = projectRoleServiceFactory({ permissionService, projectRoleDAL });
 
   const snapshotService = secretSnapshotServiceFactory({
@@ -346,9 +377,9 @@ export const registerRoutes = async (
     folderDAL,
     permissionService,
     secretImportDAL,
+    projectDAL,
     secretDAL
   });
-  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL });
   const integrationAuthService = integrationAuthServiceFactory({
     integrationAuthDAL,
     integrationDAL,
@@ -382,6 +413,7 @@ export const registerRoutes = async (
     secretVersionTagDAL,
     secretBlindIndexDAL,
     permissionService,
+    projectDAL,
     secretDAL,
     secretTagDAL,
     snapshotService,
@@ -395,6 +427,7 @@ export const registerRoutes = async (
     secretTagDAL,
     secretApprovalRequestSecretDAL: sarSecretDAL,
     secretApprovalRequestReviewerDAL: sarReviewerDAL,
+    projectDAL,
     secretVersionDAL,
     secretBlindIndexDAL,
     secretApprovalRequestDAL,

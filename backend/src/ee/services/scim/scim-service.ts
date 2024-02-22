@@ -251,7 +251,8 @@ export const scimServiceFactory = ({
             email,
             firstName,
             lastName,
-            authMethods: [AuthMethod.EMAIL]
+            authMethods: [AuthMethod.EMAIL],
+            isGhost: false
           },
           tx
         );

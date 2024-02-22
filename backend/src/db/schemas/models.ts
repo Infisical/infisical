@@ -112,6 +112,17 @@ export enum SecretType {
   Personal = "personal"
 }
 
+export enum ProjectVersion {
+  V1 = 1,
+  V2 = 2
+}
+
+export enum ProjectUpgradeStatus {
+  InProgress = "IN_PROGRESS",
+  // Completed -> Will be null if completed. So a completed status is not needed
+  Failed = "FAILED"
+}
+
 export enum IdentityAuthMethod {
   Univeral = "universal-auth"
 }

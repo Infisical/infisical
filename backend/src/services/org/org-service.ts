@@ -1,6 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import { Knex } from "knex";
 
 import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
 import { TProjects } from "@app/db/schemas/projects";
@@ -11,6 +13,7 @@ import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-
 import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { generateSymmetricKey, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
@@ -28,6 +31,7 @@ import { TOrgRoleDALFactory } from "./org-role-dal";
 import {
   TDeleteOrgMembershipDTO,
   TFindAllWorkspacesDTO,
+  TFindOrgMembersByEmailDTO,
   TInviteUserToOrgDTO,
   TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
@@ -93,6 +97,15 @@ export const orgServiceFactory = ({
     return members;
   };
 
+  const findOrgMembersByEmail = async ({ actor, actorId, orgId, emails }: TFindOrgMembersByEmailDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+
+    const members = await orgDAL.findOrgMembersByEmail(orgId, emails);
+
+    return members;
+  };
+
   const findAllWorkspaces = async ({ actor, actorId, actorOrgId, orgId }: TFindAllWorkspacesDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
@@ -116,6 +129,54 @@ export const orgServiceFactory = ({
     }
 
     return workspaces.filter((workspace) => organizationWorkspaceIds.has(workspace.id));
+  };
+
+  const addGhostUser = async (orgId: string, tx?: Knex) => {
+    const email = `sudo-${alphaNumericNanoId(16)}-${orgId}@infisical.com`; // We add a nanoid because the email is unique. And we have to create a new ghost user each time, so we can have access to the private key.
+    const password = crypto.randomBytes(128).toString("hex");
+
+    const user = await userDAL.create(
+      {
+        isGhost: true,
+        authMethods: [AuthMethod.EMAIL],
+        email,
+        isAccepted: true
+      },
+      tx
+    );
+
+    const encKeys = await generateUserSrpKeys(email, password);
+
+    await userDAL.upsertUserEncryptionKey(
+      user.id,
+      {
+        encryptionVersion: 2,
+        protectedKey: encKeys.protectedKey,
+        protectedKeyIV: encKeys.protectedKeyIV,
+        protectedKeyTag: encKeys.protectedKeyTag,
+        publicKey: encKeys.publicKey,
+        encryptedPrivateKey: encKeys.encryptedPrivateKey,
+        iv: encKeys.encryptedPrivateKeyIV,
+        tag: encKeys.encryptedPrivateKeyTag,
+        salt: encKeys.salt,
+        verifier: encKeys.verifier
+      },
+      tx
+    );
+
+    const createMembershipData = {
+      orgId,
+      userId: user.id,
+      role: OrgMembershipRole.Admin,
+      status: OrgMembershipStatus.Accepted
+    };
+
+    await orgDAL.createMembership(createMembershipData, tx);
+
+    return {
+      user,
+      keys: encKeys
+    };
   };
 
   /*
@@ -338,7 +399,8 @@ export const orgServiceFactory = ({
         {
           email: inviteeEmail,
           isAccepted: false,
-          authMethods: [AuthMethod.EMAIL]
+          authMethods: [AuthMethod.EMAIL],
+          isGhost: false
         },
         tx
       );
@@ -487,10 +549,12 @@ export const orgServiceFactory = ({
     inviteUserToOrganization,
     verifyUserToOrg,
     updateOrg,
+    findOrgMembersByEmail,
     createOrganization,
     deleteOrganizationById,
     deleteOrgMembership,
     findAllWorkspaces,
+    addGhostUser,
     updateOrgMembership,
     // incident contacts
     findIncidentContacts,

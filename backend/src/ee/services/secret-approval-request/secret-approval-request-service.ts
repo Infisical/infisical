@@ -11,6 +11,7 @@ import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { groupBy, pick, unique } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
@@ -47,6 +48,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   secretService: Pick<
     TSecretServiceFactory,
     | "fnSecretBulkInsert"
@@ -67,6 +69,7 @@ export const secretApprovalRequestServiceFactory = ({
   secretApprovalRequestReviewerDAL,
   secretApprovalRequestSecretDAL,
   secretBlindIndexDAL,
+  projectDAL,
   permissionService,
   snapshotService,
   secretService,
@@ -433,6 +436,8 @@ export const secretApprovalRequestServiceFactory = ({
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
+
+    await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "GenSecretApproval" });

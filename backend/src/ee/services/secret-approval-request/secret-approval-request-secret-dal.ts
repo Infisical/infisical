@@ -1,8 +1,13 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretApprovalRequestsSecretsSchema, TableName, TSecretTags } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import {
+  SecretApprovalRequestsSecretsSchema,
+  TableName,
+  TSecretApprovalRequestsSecrets,
+  TSecretTags
+} from "@app/db/schemas";
+import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TSecretApprovalRequestSecretDALFactory = ReturnType<typeof secretApprovalRequestSecretDALFactory>;
@@ -10,6 +15,35 @@ export type TSecretApprovalRequestSecretDALFactory = ReturnType<typeof secretApp
 export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   const secretApprovalRequestSecretOrm = ormify(db, TableName.SecretApprovalRequestSecret);
   const secretApprovalRequestSecretTagOrm = ormify(db, TableName.SecretApprovalRequestSecretTag);
+
+  const bulkUpdateNoVersionIncrement = async (data: TSecretApprovalRequestsSecrets[], tx?: Knex) => {
+    try {
+      const existingApprovalSecrets = await secretApprovalRequestSecretOrm.find(
+        {
+          $in: {
+            id: data.map((el) => el.id)
+          }
+        },
+        { tx }
+      );
+
+      if (existingApprovalSecrets.length !== data.length) {
+        throw new BadRequestError({ message: "Some of the secret approvals do not exist" });
+      }
+
+      if (data.length === 0) return [];
+
+      const updatedApprovalSecrets = await (tx || db)(TableName.SecretApprovalRequestSecret)
+        .insert(data)
+        .onConflict("id") // this will cause a conflict then merge the data
+        .merge() // Merge the data with the existing data
+        .returning("*");
+
+      return updatedApprovalSecrets;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "bulk update secret" });
+    }
+  };
 
   const findByRequestId = async (requestId: string, tx?: Knex) => {
     try {
@@ -190,6 +224,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   return {
     ...secretApprovalRequestSecretOrm,
     findByRequestId,
+    bulkUpdateNoVersionIncrement,
     insertApprovalSecretTags: secretApprovalRequestSecretTagOrm.insertMany
   };
 };

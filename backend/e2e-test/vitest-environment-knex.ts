@@ -56,6 +56,7 @@ export default {
         { expiresIn: cfg.JWT_AUTH_LIFETIME }
       );
     } catch (error) {
+      console.log("[TEST] Error setting up environment", error);
       await db.destroy();
       throw error;
     }
