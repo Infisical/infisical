@@ -24,15 +24,11 @@ export async function seed(knex: Knex): Promise<void> {
       name: seedData1.project.name,
       orgId: seedData1.organization.id,
       slug: "first-project",
-      // @ts-expect-error exluded type id needs to be inserted here to keep it testable
+      // eslint-disable-next-line
+      // @ts-ignore
       id: seedData1.project.id
     })
     .returning("*");
-
-  // await knex(TableName.ProjectKeys).insert({
-  //   projectId: project.id,
-  //   senderId: seedData1.id
-  // });
 
   await knex(TableName.ProjectMembership).insert({
     projectId: project.id,
