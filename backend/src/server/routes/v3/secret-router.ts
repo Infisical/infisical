@@ -28,7 +28,7 @@ const getDistinctId = (req: FastifyRequest) => {
     return `identity-${req.auth.identityId}`;
   }
   if (req.auth.actor === ActorType.SERVICE) {
-    return req.auth.serviceToken.createdByEmail || `service-token-${req.auth.serviceTokenId}`; // when user gets removed from system
+    return req.auth.serviceToken.createdByEmail || `service-token-null-creator-${req.auth.serviceTokenId}`; // when user gets removed from system
   }
   return "unknown-auth-data";
 };
