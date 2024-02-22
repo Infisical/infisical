@@ -44,7 +44,6 @@ import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
-// import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
 
@@ -319,7 +318,10 @@ export const SecretOverviewPage = () => {
       </div>
 
       {currentWorkspace?.version === ProjectVersion.V1 && (
-        <UpgradeProjectAlert project={currentWorkspace} />
+        <>
+          <UpgradeProjectAlert project={currentWorkspace} />
+          {/* <UpgradeOverlay /> */}
+        </>
       )}
       <div className="mt-8 flex items-center justify-between">
         <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />

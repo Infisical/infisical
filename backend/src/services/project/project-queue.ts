@@ -112,6 +112,9 @@ export const projectQueueFactory = ({
 
       await projectDAL.setProjectUpgradeStatus(data.projectId, ProjectUpgradeStatus.InProgress); // Set the status to in progress. This is important to prevent multiple upgrades at the same time.
 
+      // eslint-disable-next-line no-promise-executor-return
+      //   await new Promise((resolve) => setTimeout(resolve, 50_000));
+
       const userPrivateKey = infisicalSymmetricDecrypt({
         keyEncoding: data.encryptedPrivateKey.keyEncoding,
         ciphertext: data.encryptedPrivateKey.encryptedKey,

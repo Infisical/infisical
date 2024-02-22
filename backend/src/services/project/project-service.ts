@@ -17,6 +17,7 @@ import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -53,6 +54,7 @@ type TProjectServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey" | "delete" | "find" | "insertMany">;
   projectBotDAL: Pick<TProjectBotDALFactory, "create" | "findById" | "delete" | "findOne">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "deleteMembershipByUserId">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
@@ -68,6 +70,7 @@ export const projectServiceFactory = ({
   permissionService,
   userDAL,
   folderDAL,
+  orgDAL,
   orgService,
   identityProjectDAL,
   projectBotDAL,
@@ -287,17 +290,22 @@ export const projectServiceFactory = ({
     return results;
   };
 
-  const findProjectGhostUser = async (projectId: string) => {
-    const user = await projectMembershipDAL.findProjectGhostUser(projectId);
-
-    return user;
-  };
-
   const deleteProject = async ({ actor, actorId, actorOrgId, projectId }: TDeleteProjectDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
-    const deletedProject = await projectDAL.deleteById(projectId);
+    const deletedProject = await projectDAL.transaction(async (tx) => {
+      const project = await projectDAL.deleteById(projectId, tx);
+      const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(projectId).catch(() => null);
+
+      // Delete the org membership for the ghost user if it's found.
+      if (projectGhostUser) {
+        await orgDAL.deleteMembershipByUserId(projectGhostUser.id, deletedProject.orgId, tx);
+      }
+
+      return project;
+    });
+
     return deletedProject;
   };
 
@@ -389,7 +397,6 @@ export const projectServiceFactory = ({
     deleteProject,
     getProjects,
     updateProject,
-    findProjectGhostUser,
     getProjectUpgradeStatus,
     getAProject,
     toggleAutoCapitalization,

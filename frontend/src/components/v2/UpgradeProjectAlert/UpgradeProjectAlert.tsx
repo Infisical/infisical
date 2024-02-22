@@ -29,7 +29,7 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
     refetch: manualProjectStatusRefetch
   } = useGetUpgradeProjectStatus({
     projectId: project.id,
-    enabled: membership.role === "admin",
+    enabled: membership.role === "admin" && project.version === ProjectVersion.V1,
     refetchInterval: 5_000,
     onSuccess: (data) => {
       if (membership.role !== "admin") {

@@ -230,6 +230,15 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteMembershipByUserId = async (userId: string, orgId: string, tx?: Knex) => {
+    try {
+      const [membership] = await (tx || db)(TableName.OrgMembership).where({ userId, orgId }).delete().returning("*");
+      return membership;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete org membership" });
+    }
+  };
+
   const findMembership = async (
     filter: TFindFilter<TOrgMemberships>,
     { offset, limit, sort, tx }: TFindOpt<TOrgMemberships> = {}
@@ -275,6 +284,7 @@ export const orgDALFactory = (db: TDbClient) => {
     createMembership,
     updateMembershipById,
     deleteMembershipById,
+    deleteMembershipByUserId,
     updateMembership
   });
 };
