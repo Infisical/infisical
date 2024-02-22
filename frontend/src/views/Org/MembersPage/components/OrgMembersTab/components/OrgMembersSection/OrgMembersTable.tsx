@@ -231,6 +231,14 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                             {(isAllowed) => (
                               <IconButton
                                 onClick={() => {
+                                  if (currentOrg?.authEnforced) {
+                                    createNotification({
+                                      text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
+                                      type: "error"
+                                    });
+                                    return;
+                                  }
+                                  
                                   handlePopUpOpen("removeMember", { orgMembershipId, email });
                                 }}
                                 size="lg"

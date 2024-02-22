@@ -71,12 +71,14 @@ export const useUpdateOrg = () => {
     mutationFn: ({ 
       name, 
       authEnforced,
+      scimEnabled,
       slug,
       orgId 
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, { 
         name, 
         authEnforced,
+        scimEnabled,
         slug
       });
     },

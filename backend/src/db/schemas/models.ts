@@ -40,6 +40,7 @@ export enum TableName {
   IdentityUaClientSecret = "identity_ua_client_secrets",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
+  ScimToken = "scim_tokens",
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
   SecretApprovalRequest = "secret_approval_requests",

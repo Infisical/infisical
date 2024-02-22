@@ -12,7 +12,7 @@ description: "Configure Okta SAML 2.0 for Infisical SSO"
 
 <Steps>
    <Step title="Prepare the SAML SSO configuration in Infisical">
-      In Infisical, head over to your organization Settings > Authentication > SAML SSO Configuration and select **Set up SAML SSO**.
+      In Infisical, head to your Organization Settings > Authentication > SAML SSO Configuration and select **Set up SAML SSO**.
       
       Next, copy the **Single sign-on URL** and **Audience URI (SP Entity ID)** to use when configuring the Okta SAML 2.0 application.
       ![Okta SAML initial configuration](../../../images/sso/okta/init-config.png)
@@ -84,6 +84,11 @@ description: "Configure Okta SAML 2.0 for Infisical SSO"
 
       To enforce SAML SSO, you're required to test out the SAML connection by successfully authenticating at least one Okta user with Infisical;
       Once you've completed this requirement, you can toggle the **Enforce SAML SSO** button to enforce SAML SSO.
+
+      <Warning>
+         We recommend ensuring that your account is provisioned the application in Okta
+         prior to enforcing SAML SSO to prevent any unintended issues.
+      </Warning>
    </Step>
 </Steps>
 

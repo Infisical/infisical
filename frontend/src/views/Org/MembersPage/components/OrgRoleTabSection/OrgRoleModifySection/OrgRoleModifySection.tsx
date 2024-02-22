@@ -81,6 +81,12 @@ const SIMPLE_PERMISSION_OPTIONS = [
     subtitle: "Define organization level SSO requirements",
     icon: faSignIn,
     formName: "sso"
+  },
+  {
+    title: "SCIM",
+    subtitle: "Define organization level SCIM requirements",
+    icon: faUsers,
+    formName: "scim"
   }
 ] as const;
 

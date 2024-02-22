@@ -11,6 +11,8 @@ import { permissionDALFactory } from "@app/ee/services/permission/permission-dal
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
+import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
+import { scimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { secretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { secretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -155,6 +157,7 @@ export const registerRoutes = async (
 
   const auditLogDAL = auditLogDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
+  const scimDAL = scimDALFactory(db);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -188,6 +191,7 @@ export const registerRoutes = async (
     trustedIpDAL,
     permissionService
   });
+
   const auditLogQueue = auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
@@ -209,6 +213,16 @@ export const registerRoutes = async (
     userDAL,
     samlConfigDAL,
     licenseService
+  });
+  const scimService = scimServiceFactory({
+    licenseService,
+    scimDAL,
+    userDAL,
+    orgDAL,
+    projectDAL,
+    projectMembershipDAL,
+    permissionService,
+    smtpService
   });
 
   const telemetryService = telemetryServiceFactory();
@@ -486,6 +500,7 @@ export const registerRoutes = async (
     secretScanning: secretScanningService,
     license: licenseService,
     trustedIp: trustedIpService,
+    scim: scimService,
     secretBlindIndex: secretBlindIndexService,
     telemetry: telemetryService
   });

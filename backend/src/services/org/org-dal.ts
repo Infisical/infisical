@@ -165,7 +165,14 @@ export const orgDALFactory = (db: TDbClient) => {
         // eslint-disable-next-line
         .where(buildFindFilter(filter))
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
-        .select(selectAllTableCols(TableName.OrgMembership), db.ref("email").withSchema(TableName.Users));
+        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
+        .select(
+          selectAllTableCols(TableName.OrgMembership),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.ref("scimEnabled").withSchema(TableName.Organization)
+        );
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {

@@ -148,6 +148,15 @@
             "documentation/platform/sso/azure",
             "documentation/platform/sso/jumpcloud"
           ]
+        },
+        {
+          "group": "SCIM",
+          "pages": [
+            "documentation/platform/scim/overview",
+            "documentation/platform/scim/okta",
+            "documentation/platform/scim/azure",
+            "documentation/platform/scim/jumpcloud"
+          ]
         }
       ]
     },

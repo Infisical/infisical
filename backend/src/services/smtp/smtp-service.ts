@@ -25,7 +25,8 @@ export enum SmtpTemplates {
   OrgInvite = "organizationInvitation.handlebars",
   ResetPassword = "passwordReset.handlebars",
   SecretLeakIncident = "secretLeakIncident.handlebars",
-  WorkspaceInvite = "workspaceInvitation.handlebars"
+  WorkspaceInvite = "workspaceInvitation.handlebars",
+  ScimUserProvisioned = "scimUserProvisioned.handlebars"
 }
 
 export enum SmtpHost {
