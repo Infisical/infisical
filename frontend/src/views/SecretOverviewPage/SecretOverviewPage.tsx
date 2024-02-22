@@ -29,7 +29,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { UpgradeProjectAlert } from "@app/components/v2/UpgradeProjectAlert";
+// import { UpgradeProjectAlert } from "@app/components/v2/UpgradeProjectAlert";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
   useCreateFolder,
@@ -40,8 +40,8 @@ import {
   useGetUserWsKey,
   useUpdateSecretV3
 } from "@app/hooks/api";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
+// import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
@@ -317,12 +317,7 @@ export const SecretOverviewPage = () => {
         </p>
       </div>
 
-      {currentWorkspace?.version === ProjectVersion.V1 && (
-        <>
-          <UpgradeProjectAlert project={currentWorkspace} />
-          {/* <UpgradeOverlay /> */}
-        </>
-      )}
+
       <div className="mt-8 flex items-center justify-between">
         <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
         <div className="w-80">
