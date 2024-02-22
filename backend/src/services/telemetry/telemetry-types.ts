@@ -9,10 +9,10 @@ export enum PostHogEventTypes {
   SecretRotated = "secrets rotated",
   SecretScannerFull = "historical cloud secret scan",
   SecretScannerPush = "cloud secret scan",
-  ProjectCreated = "project created",
-  IntegrationCreated = "integration created",
-  MachineIdentityCreated = "machine identity created",
-  UserOrgInvitation = "user org invitation"
+  ProjectCreated = "Project Created",
+  IntegrationCreated = "Integration Created",
+  MachineIdentityCreated = "Machine Identity Created",
+  UserOrgInvitation = "User Org Invitation"
 }
 
 export type TSecretModifiedEvent = {

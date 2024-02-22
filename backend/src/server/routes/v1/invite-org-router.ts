@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
-import { getTelemetryDistinctId } from "@app/server/lib/telemtry";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
