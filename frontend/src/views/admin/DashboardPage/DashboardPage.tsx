@@ -28,21 +28,12 @@ enum TabSections {
 
 enum SignUpModes {
   Disabled = "disabled",
-  InviteOnly = "invite-only",
   Anyone = "anyone"
 }
 
-const getSignUpMode = (isSignUpEnabled: boolean, isInviteOnly: boolean) => {
-  if (isSignUpEnabled) {
-    if (isInviteOnly) return SignUpModes.InviteOnly;
-    return SignUpModes.Anyone;
-  }
-  return SignUpModes.Disabled;
-};
-
 const formSchema = z.object({
   signUpMode: z.nativeEnum(SignUpModes),
-  allowedSignUpDomain: z.string().optional()
+  allowedSignUpDomain: z.string().optional().nullable()
 });
 
 type TDashboardForm = z.infer<typeof formSchema>;
@@ -55,13 +46,12 @@ export const AdminDashboardPage = () => {
     control,
     handleSubmit,
     watch,
-    getValues,
     formState: { isSubmitting, isDirty }
   } = useForm<TDashboardForm>({
     resolver: zodResolver(formSchema),
     values: {
       // eslint-disable-next-line
-      signUpMode: getSignUpMode(config.allowSignUp, config.inviteOnlySignUp),
+      signUpMode: config.allowSignUp ? SignUpModes.Anyone : SignUpModes.Disabled,
       allowedSignUpDomain: config.allowedSignUpDomain
     }
   });
@@ -91,8 +81,7 @@ export const AdminDashboardPage = () => {
       const { signUpMode, allowedSignUpDomain } = formData;
       await updateServerConfig({
         allowSignUp: signUpMode !== SignUpModes.Disabled,
-        inviteOnlySignUp: signUpMode === SignUpModes.InviteOnly,
-        allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : ""
+        allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : null
       });
       createNotification({
         text: "Successfully changed sign up setting.",
@@ -107,7 +96,6 @@ export const AdminDashboardPage = () => {
     }
   };
 
-  console.log(isDirty,getValues());
   return (
     <div className="container mx-auto max-w-7xl px-4 pb-12 text-white dark:[color-scheme:dark]">
       <div className="mx-auto mb-6 w-full max-w-7xl pt-6">
@@ -152,7 +140,6 @@ export const AdminDashboardPage = () => {
                           {...field}
                         >
                           <SelectItem value={SignUpModes.Disabled}>Disabled</SelectItem>
-                          <SelectItem value={SignUpModes.InviteOnly}>Invite Only</SelectItem>
                           <SelectItem value={SignUpModes.Anyone}>Anyone</SelectItem>
                         </Select>
                       </FormControl>
@@ -177,6 +164,7 @@ export const AdminDashboardPage = () => {
                         >
                           <Input
                             {...field}
+                            value={field.value || ""}
                             placeholder="domain.com, domain2.com"
                             leftIcon={<FontAwesomeIcon icon={faAt} />}
                           />
