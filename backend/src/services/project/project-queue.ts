@@ -122,6 +122,13 @@ export const projectQueueFactory = ({
         tag: data.encryptedPrivateKey.encryptedKeyTag
       });
 
+      const decryptedPlainProjectKey = decryptAsymmetric({
+        ciphertext: oldProjectKey.encryptedKey,
+        nonce: oldProjectKey.nonce,
+        publicKey: oldProjectKey.sender.publicKey,
+        privateKey: userPrivateKey
+      });
+
       const projectEnvs = await projectEnvDAL.find({
         projectId: project.id
       });
@@ -199,6 +206,7 @@ export const projectQueueFactory = ({
 
         // Create a project key
         const { key: newEncryptedProjectKey, iv: newEncryptedProjectKeyIv } = createProjectKey({
+          plainProjectKey: decryptedPlainProjectKey,
           publicKey: ghostUser.keys.publicKey,
           privateKey: ghostUser.keys.plainPrivateKey
         });

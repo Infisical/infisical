@@ -33,11 +33,12 @@ export const assignWorkspaceKeysToMembers = ({ members, decryptKey, userPrivateK
 type TCreateProjectKeyDTO = {
   publicKey: string;
   privateKey: string;
+  plainProjectKey?: string;
 };
 
-export const createProjectKey = ({ publicKey, privateKey }: TCreateProjectKeyDTO) => {
+export const createProjectKey = ({ publicKey, privateKey, plainProjectKey }: TCreateProjectKeyDTO) => {
   // 3. Create a random key that we'll use as the project key.
-  const randomBytes = crypto.randomBytes(16).toString("hex");
+  const randomBytes = plainProjectKey || crypto.randomBytes(16).toString("hex");
 
   // 4. Encrypt the project key with the users key pair.
   const { ciphertext: encryptedProjectKey, nonce: encryptedProjectKeyIv } = encryptAsymmetric(
