@@ -270,7 +270,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
 
     if (!user) {
       // Create a new user based on oAuth
-      if (!serverCfg?.allowSignUp) throw new BadRequestError({ message: "Sign Up disabled", name: "Oauth 2 login" });
+      if (!serverCfg?.allowSignUp) throw new BadRequestError({ message: "Sign up disabled", name: "Oauth 2 login" });
 
       if (serverCfg?.allowedSignUpDomain) {
         const domain = email.split("@")[1];
@@ -281,9 +281,8 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
             name: "Oauth 2 login"
           });
       }
-      
+
       user = await userDAL.create({ email, firstName, lastName, authMethods: [authMethod], isGhost: false });
-      
     }
     const isLinkingRequired = !user?.authMethods?.includes(authMethod);
     const isUserCompleted = user.isAccepted;

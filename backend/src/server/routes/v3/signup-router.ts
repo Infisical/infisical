@@ -30,7 +30,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       const serverCfg = await getServerCfg();
       if (!serverCfg.allowSignUp) {
         throw new BadRequestError({
-          message: "Sign up is disabled!"
+          message: "Sign up is disabled"
         });
       }
 
@@ -71,7 +71,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       const serverCfg = await getServerCfg();
       if (!serverCfg.allowSignUp) {
         throw new BadRequestError({
-          message: "Sign up is disabled!"
+          message: "Sign up is disabled"
         });
       }
 
@@ -120,7 +120,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       const serverCfg = await getServerCfg();
       if (!serverCfg.allowSignUp) {
         throw new BadRequestError({
-          message: "Sign up is disabled!"
+          message: "Sign up is disabled"
         });
       }
 
