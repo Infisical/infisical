@@ -5,7 +5,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerScimRouter = async (server: FastifyZodProvider) => {
-  server.addContentTypeParser("application/scim+json", { parseAs: "string" }, function (req, body, done) {
+  server.addContentTypeParser("application/scim+json", { parseAs: "string" }, (_, body, done) => {
     try {
       const strBody = body instanceof Buffer ? body.toString() : body;
 

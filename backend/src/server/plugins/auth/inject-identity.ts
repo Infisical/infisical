@@ -27,7 +27,7 @@ export type TAuthMode =
     }
   | {
       authMode: AuthMode.SERVICE_TOKEN;
-      serviceToken: TServiceTokens;
+      serviceToken: TServiceTokens & { createdByEmail: string };
       actor: ActorType.SERVICE;
       serviceTokenId: string;
     }

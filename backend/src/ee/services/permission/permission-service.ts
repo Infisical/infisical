@@ -177,6 +177,8 @@ export const permissionServiceFactory = ({
 
   const getServiceTokenProjectPermission = async (serviceTokenId: string, projectId: string) => {
     const serviceToken = await serviceTokenDAL.findById(serviceTokenId);
+    if (!serviceToken) throw new BadRequestError({ message: "Service token not found" });
+
     if (serviceToken.projectId !== projectId)
       throw new UnauthorizedError({
         message: "Failed to find service authorization for given project"
