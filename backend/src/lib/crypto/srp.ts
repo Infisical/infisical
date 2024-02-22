@@ -2,7 +2,7 @@ import argon2 from "argon2";
 import crypto from "crypto";
 import jsrp from "jsrp";
 import nacl from "tweetnacl";
-import * as tweetnacl from "tweetnacl-util";
+import tweetnacl from "tweetnacl-util";
 
 import { TUserEncryptionKeys } from "@app/db/schemas";
 
