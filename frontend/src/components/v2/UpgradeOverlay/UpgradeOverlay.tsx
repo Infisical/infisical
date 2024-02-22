@@ -10,9 +10,12 @@ export const UpgradeOverlay = () => {
   const router = useRouter();
   const { currentWorkspace } = useWorkspace();
   const [isUpgrading, setIsUpgrading] = useToggle(false);
+
+  const isProjectRoute = router.pathname.includes("/project");
+
   const { isLoading: isUpgradeStatusLoading } = useGetUpgradeProjectStatus({
     projectId: currentWorkspace?.id ?? "",
-    enabled: currentWorkspace?.version === ProjectVersion.V1,
+    enabled: isProjectRoute && currentWorkspace && currentWorkspace.version === ProjectVersion.V1,
     refetchInterval: 5_000,
     onSuccess: (data) => {
       if (!data) return;
@@ -26,7 +29,7 @@ export const UpgradeOverlay = () => {
   });
 
   // make sure only to display this on /project routes
-  if (!currentWorkspace || !router.pathname.includes("/project")) {
+  if (!currentWorkspace || !isProjectRoute) {
     return null;
   }
 
