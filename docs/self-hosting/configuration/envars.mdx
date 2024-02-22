@@ -1,5 +1,5 @@
 ---
-title: "Environment variables"
+title: "Configurations"
 description: "Configure environment variables for self-hosted Infisical"
 ---
 
@@ -26,7 +26,7 @@ Used to configure platform-specific security and operational settings
 The platform utilizes Postgres to persist all of its data and Redis for caching and backgroud tasks
 
 <ParamField query="DB_CONNECTION_URI" type="string" default="" required>
-  Postgres database connection string.
+  Postgres database connection string. 
 </ParamField>
 
 <ParamField query="DB_ROOT_CERT" type="string" default="" optional>
@@ -36,7 +36,7 @@ The platform utilizes Postgres to persist all of its data and Redis for caching 
 </ParamField>
 
 <ParamField query="REDIS_URL" type="string" default="none" required>
-  Redis connection string
+  Redis connection string.
 </ParamField>
 
 

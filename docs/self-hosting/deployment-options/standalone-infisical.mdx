@@ -7,9 +7,9 @@ Prerequisites:
 - Basic knowledge of [Docker](https://www.docker.com/)
 - Have Docker installed on your system. If not, follow the installation guide [here](https://docs.docker.com/get-docker/).
 
-Infisical is available as a single Docker image for effortless deployment.
-This Docker image solely includes the application code, meaning you must supply a connection to a Postgres database and a Redis instance.
-The following guide provides a detailed step-by-step walkthrough on how you can deploy Infisical.
+Infisical is available as a single Docker image to ease deployment.
+This Docker image only includes the application code, meaning you must supply a connection to a Postgres database and a Redis instance.
+The following guide provides a detailed step-by-step walkthrough on how you can deploy Infisical with Docker.
 
 <Steps>
   <Step title="Pull the Infisical Docker image">
@@ -24,15 +24,15 @@ The following guide provides a detailed step-by-step walkthrough on how you can 
   </Step>
   <Step title="Run Postgres schema migration ">
     Before you can start the instance of Infisical, you need to run the database schema migrations. 
-    Follow the step by [step guide here](/self-hosting/configuration/schema-migrations) on running schema migrations.
+    Follow the step by [step guide here](/self-hosting/configuration/schema-migrations) on running schema migrations for Infisical.
     
     ```
     docker pull infisical/infisical:<version>
     ```
   </Step>
   <Step title="Start Infisical">
-    For a minimal installation of Infisical, you need to configure `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, and `REDIS_URL`.
-    View all available environment variables [here](/self-hosting/configuration/envars).
+    For a minimal installation of Infisical, you must configure `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, and `REDIS_URL`.
+    [View all available configurations](/self-hosting/configuration/envars).
     
     Once you have added the required environment variables to your docker run command, execute it in your terminal to get Infisical up and running.
     
@@ -55,10 +55,7 @@ The following guide provides a detailed step-by-step walkthrough on how you can 
   </Step>
 </Steps>
 
-<AccordionGroup>
-  <Accordion title="What are the system requirements for running Infisical?">
-    To have a functional deployment, we recommended compute with 2GB of RAM and 1 CPU.
-    
-    However, depending on your usage, you may need to further scale up system resources to meet demand.
-  </Accordion>
-</AccordionGroup>
+### Additional discussion 
+It's important to note that the above is a basic example of deploying Infisical using Docker. 
+In practice, for production deployments, you may want to use container orchestration platforms such as AWS ECS, Google Cloud Run, or Kubernetes. 
+These platforms offer additional features like scalability, load balancing, and automated deployment, making them suitable for handling production-level traffic and providing high availability.

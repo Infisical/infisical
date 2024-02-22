@@ -1,24 +1,28 @@
 ---
-title: "Installation Requirements"
+title: "Requirements"
 description: ""
 ---
 
 This page details the minimum requirements necessary for installing and using Infisical. 
-The actual resource requirements will vary in direct proportion to the operations performed by Infisical and the level of utilization by the end users
-
-## **Hardware Requirements**
-
-**Small deployment** suitable for most initial production setups, as well as development and testing scenarios.
-
-**Large deployment** suitable for high-demand production environments, characterized by either a high volume of transactions, large number of secrets, or both.
+The actual resource requirements will vary in direct proportion to the operations performed by Infisical and the level of utilization by the end users.
 
 
-### **Storage**
+
+## Deployment Sizes
+
+**Small** suitable for most initial production setups, as well as development and testing scenarios.
+
+**Large** suitable for high-demand production environments, characterized by either a high volume of transactions, large number of secrets, or both.
+
+
+## Hardware Requirements
+
+### Storage
 
 Infisical doesn’t require file storage as all persisted data is saved in the database. 
 However, its logs and metrics are saved to disk for later viewing. As a result, we recommend provisioning 1-2 GB of storage.
 
-### **CPU**
+### CPU
 
 CPU requirements vary heavily on the volume of secret operations (reads and writes) you anticipate. 
 Processing large volumes of secrets frequently and consistently will require higher CPU.
@@ -28,7 +32,7 @@ Recommended minimum CPU hardware for different sizes of deployments:
 - **small:** 2-4 core is the **recommended** minimum
 - **large:** 4-8 cores are suitable for larger deployments
 
-### **Memory Allocation**
+### Memory Allocation
 
 Memory needs depend on expected workload, including factors like user activity, automation level, and the frequency of secret operations.
 
@@ -36,7 +40,9 @@ Recommended minimum memory hardware for different sizes of deployments:
 - **small:** 4-8 GB is the **recommended** minimum
 - **large:** 16-32 GB are suitable for larger deployments
 
-## **Database**
+## Database & caching layer
+
+### Postgres
 
 PostgreSQL is the only database supported by Infisical. Infisical has been extensively tested with Postgres version 16. We recommend using versions 14 and up for optimal compatibility.
 
@@ -44,7 +50,7 @@ Recommended resource allocation based on deployment size:
 - **small:** 1 vCPU / 2 GB RAM / 10 GB Disk
 - **large:** 4vCPU / 16 GB RAM / 100 GB Disk
 
-## **Redis**
+### Redis
 
 Redis is utilized for session management and background tasks in Infisical.
 
@@ -54,7 +60,7 @@ Redis requirements:
 - Redis Cluster mode is currently not supported; use Redis Standalone, with or without High Availability (HA).
 - Redis storage needs are minimal: a setup with 1 vCPU, 1 GB RAM, and 1GB SSD will be sufficient for most deployments.
 
-## **Supported Web Browsers**
+## Supported Web Browsers
 
 Infisical supports a range of web browsers. However, features such as browser-based CLI login only work on Google Chrome and Firefox at the moment.
 
