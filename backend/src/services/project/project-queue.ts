@@ -150,7 +150,7 @@ export const projectQueueFactory = ({
           },
           // Only get the latest 700 secret versions for each folder.
           {
-            limit: 700,
+            limit: 1000,
             sort: [["createdAt", "desc"]]
           }
         );
@@ -161,7 +161,7 @@ export const projectQueueFactory = ({
           },
           {
             // Get all the secret versions that are not the latest 700
-            offset: 700
+            offset: 1000
           }
         );
         folderSecretVersionIdsToDelete.push(...deletedSecretVersions.map((el) => el.id));
