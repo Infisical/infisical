@@ -154,10 +154,12 @@
     {
       "group": "Self-host Infisical",
       "pages": [
+        "self-hosting/overview",
+        "self-hosting/configuration/requirements",
+        "self-hosting/configuration/schema-migrations",
         {
-          "group": "Deployment options",
+          "group": "Installation methods",
           "pages": [
-            "self-hosting/overview",
             "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/docker-compose",
             "self-hosting/deployment-options/kubernetes-helm",
@@ -172,9 +174,6 @@
           ]
         },
         "self-hosting/configuration/envars",
-        "self-hosting/configuration/email",
-        "self-hosting/configuration/redis",
-        "self-hosting/configuration/sso",
         "self-hosting/faq"
       ]
     },

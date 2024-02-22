@@ -7,18 +7,32 @@ Prerequisites:
 - Basic knowledge of [Docker](https://www.docker.com/)
 - Have Docker installed on your system. If not, follow the installation guide [here](https://docs.docker.com/get-docker/).
 
+Infisical is available as a single Docker image for effortless deployment.
+This Docker image solely includes the application code, meaning you must supply a connection to a Postgres database and a Redis instance.
+The following guide provides a detailed step-by-step walkthrough on how you can deploy Infisical.
+
 <Steps>
   <Step title="Pull the Infisical Docker image">
-    Run the following command in your terminal to pull the Infisical Docker image:
+    Visit [Docker Hub](https://hub.docker.com/r/infisical/infisical/tags) and select a version of Infisical image you would like to deploy.
+    Then run the following command in your terminal to pull the specific Infisical Docker image.
     
     ```
-    docker pull infisical/infisical:latest
+    docker pull infisical/infisical:<version>
+    ```
+    
+    Remember to replace `<version>` with the docker image tag of your choice.
+  </Step>
+  <Step title="Run Postgres schema migration ">
+    Before you can start the instance of Infisical, you need to run the database schema migrations. 
+    Follow the step by [step guide here](/self-hosting/configuration/schema-migrations) on running schema migrations.
+    
+    ```
+    docker pull infisical/infisical:<version>
     ```
   </Step>
   <Step title="Start Infisical">
-    2.1. Running Infisical requires a few environment variables to be set.
-    At minimum, Infisical requires that you set the variables `ENCRYPTION_KEY`, `AUTH_SECRET`, `MONGO_URL`, and `REDIS_URL`
-    which you can read more about [here](/self-hosting/configuration/envars).
+    For a minimal installation of Infisical, you need to configure `ENCRYPTION_KEY`, `AUTH_SECRET`, and `REDIS_URL`.
+    View all available environment variables [here](/self-hosting/configuration/envars).
     
     Once you have added the required environment variables to your docker run command, execute it in your terminal to get Infisical up and running.
     
@@ -28,15 +42,16 @@ Prerequisites:
     docker run -p 80:8080  \
     -e ENCRYPTION_KEY=f40c9178624764ad85a6830b37ce239a \
     -e AUTH_SECRET="q6LRi7c717a3DQ8JUxlWYkZpMhG4+RHLoFUVt3Bvo2U=" \
-    -e MONGO_URL="<>" \
-    infisical/infisical:latest
+    -e DB_CONNECTION_URI="<>" \
+    -e REDIS_URL="<>" \
+    infisical/infisical:<version>
     ```
     
     <Warning>
       The above environment variable values are only to be used as an example and should not be used in production 
     </Warning>
     
-    2.2. Once the container is running, verify the installation by opening your web browser and navigating to `http://localhost:80`.
+    Once the container is running, verify the installation by opening your web browser and navigating to `http://localhost:80`.
   </Step>
 </Steps>
 
