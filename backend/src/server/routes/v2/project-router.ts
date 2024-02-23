@@ -17,6 +17,14 @@ const projectWithEnv = ProjectsSchema.merge(
   })
 );
 
+const slugSchema = z
+  .string()
+  .min(5)
+  .max(36)
+  .refine((v) => slugify(v) === v, {
+    message: "Slug must be a valid slug"
+  });
+
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   /* Get project key */
   server.route({
@@ -167,6 +175,53 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return { project };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:slug",
+    schema: {
+      params: z.object({
+        slug: slugSchema.describe("The slug of the project to delete.")
+      }),
+      response: {
+        200: z.void()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+
+    handler: async (req) => {
+      await server.services.project.deleteProjectBySlug({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actor: req.permission.type,
+        slug: req.params.slug
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:slug",
+    schema: {
+      params: z.object({
+        slug: slugSchema.describe("The slug of the project to get.")
+      }),
+      response: {
+        200: projectWithEnv
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const project = await server.services.project.getProjectBySlug({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actor: req.permission.type,
+        slug: req.params.slug
+      });
+
+      return project;
     }
   });
 };
