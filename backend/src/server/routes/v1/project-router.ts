@@ -9,6 +9,7 @@ import {
 } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ProjectFilterType } from "@app/services/project/project-types";
 
 import { integrationAuthPubSchema } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
@@ -136,10 +137,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspace = await server.services.project.getAProject({
+        filterType: ProjectFilterType.ID,
+        filter: req.params.workspaceId,
         actorId: req.permission.id,
         actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId
+        actorOrgId: req.permission.orgId
       });
       return { workspace };
     }
@@ -188,10 +190,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspace = await server.services.project.deleteProject({
+        filterType: ProjectFilterType.ID,
+        filter: req.params.workspaceId,
         actorId: req.permission.id,
         actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId
+        actorOrgId: req.permission.orgId
       });
       return { workspace };
     }
@@ -247,17 +250,18 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspace = await server.services.project.updateProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
+        filterType: ProjectFilterType.ID,
+        filter: req.params.workspaceId,
         update: {
           name: req.body.name,
           autoCapitalization: req.body.autoCapitalization
-        }
+        },
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
       });
       return {
         workspace

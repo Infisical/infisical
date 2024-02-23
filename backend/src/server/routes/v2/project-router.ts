@@ -7,6 +7,7 @@ import { authRateLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const projectWithEnv = ProjectsSchema.merge(
@@ -171,6 +172,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  /* Delete a project by slug */
   server.route({
     method: "DELETE",
     url: "/:slug",
@@ -179,21 +181,25 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: slugSchema.describe("The slug of the project to delete.")
       }),
       response: {
-        200: z.void()
+        200: ProjectsSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
 
     handler: async (req) => {
-      await server.services.project.deleteProjectBySlug({
+      const project = await server.services.project.deleteProject({
+        filterType: ProjectFilterType.SLUG,
+        filter: req.params.slug,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
-        actor: req.permission.type,
-        slug: req.params.slug
+        actor: req.permission.type
       });
+
+      return project;
     }
   });
 
+  /* Get a project by slug */
   server.route({
     method: "GET",
     url: "/:slug",
@@ -207,11 +213,47 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const project = await server.services.project.getProjectBySlug({
+      const project = await server.services.project.getAProject({
+        filter: req.params.slug,
+        filterType: ProjectFilterType.SLUG,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
+        actor: req.permission.type
+      });
+
+      return project;
+    }
+  });
+
+  /* Update a project by slug */
+  server.route({
+    method: "PATCH",
+    url: "/:slug",
+    schema: {
+      params: z.object({
+        slug: slugSchema.describe("The slug of the project to update.")
+      }),
+      body: z.object({
+        name: z.string().trim().optional().describe("The new name of the project."),
+        autoCapitalization: z.boolean().optional().describe("The new auto-capitalization setting.")
+      }),
+      response: {
+        200: ProjectsSchema
+      }
+    },
+
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const project = await server.services.project.updateProject({
+        filterType: ProjectFilterType.SLUG,
+        filter: req.params.slug,
+        update: {
+          name: req.body.name,
+          autoCapitalization: req.body.autoCapitalization
+        },
+        actorId: req.permission.id,
         actor: req.permission.type,
-        slug: req.params.slug
+        actorOrgId: req.permission.orgId
       });
 
       return project;

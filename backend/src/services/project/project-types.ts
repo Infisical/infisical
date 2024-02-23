@@ -3,6 +3,11 @@ import { TProjectPermission } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
 
+export enum ProjectFilterType {
+  ID = "id",
+  SLUG = "slug"
+}
+
 export type TCreateProjectDTO = {
   actor: ActorType;
   actorId: string;
@@ -10,13 +15,6 @@ export type TCreateProjectDTO = {
   orgId: string;
   workspaceName: string;
   slug?: string;
-};
-
-export type TDeleteProjectDTO = {
-  actor: ActorType;
-  actorId: string;
-  actorOrgId?: string;
-  projectId: string;
 };
 
 export type TDeleteProjectBySlugDTO = {
@@ -27,25 +25,33 @@ export type TDeleteProjectBySlugDTO = {
 };
 
 export type TGetProjectDTO = {
-  actor: ActorType;
-  actorId: string;
-  actorOrgId?: string;
-  projectId: string;
-};
+  filter: string;
+  filterType: ProjectFilterType;
+} & Omit<TProjectPermission, "projectId">;
 
-export type TGetProjectBySlugDTO = {
-  slug: string;
-  actor: ActorType;
-  actorId: string;
-  actorOrgId?: string;
-};
+export type TToggleProjectAutoCapitalizationDTO = {
+  autoCapitalization: boolean;
+} & TProjectPermission;
+export type TUpdateProjectNameDTO = {
+  name: string;
+} & TProjectPermission;
 
 export type TUpdateProjectDTO = {
+  filter: string;
+  filterType: ProjectFilterType;
   update: {
     name?: string;
     autoCapitalization?: boolean;
   };
-} & TProjectPermission;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TDeleteProjectDTO = {
+  filter: string;
+  filterType: ProjectFilterType;
+  actor: ActorType;
+  actorId: string;
+  actorOrgId?: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TUpgradeProjectDTO = {
   userPrivateKey: string;
