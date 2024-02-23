@@ -19,11 +19,25 @@ export type TDeleteProjectDTO = {
   projectId: string;
 };
 
+export type TDeleteProjectBySlugDTO = {
+  slug: string;
+  actor: ActorType;
+  actorId: string;
+  actorOrgId?: string;
+};
+
 export type TGetProjectDTO = {
   actor: ActorType;
   actorId: string;
   actorOrgId?: string;
   projectId: string;
+};
+
+export type TGetProjectBySlugDTO = {
+  slug: string;
+  actor: ActorType;
+  actorId: string;
+  actorOrgId?: string;
 };
 
 export type TUpdateProjectDTO = {

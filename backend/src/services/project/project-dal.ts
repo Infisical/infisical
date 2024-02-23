@@ -160,6 +160,44 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findProjectBySlug = async (slug: string) => {
+    try {
+      const projects = await db(TableName.ProjectMembership)
+        .where(`${TableName.Project}.slug`, slug)
+        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .join(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .select(
+          selectAllTableCols(TableName.Project),
+          db.ref("id").withSchema(TableName.Project).as("_id"),
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("name").withSchema(TableName.Environment).as("envName")
+        )
+        .orderBy([
+          { column: `${TableName.Project}.name`, order: "asc" },
+          { column: `${TableName.Environment}.position`, order: "asc" }
+        ]);
+      return sqlNestRelationships({
+        data: projects,
+        key: "id",
+        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
+        childrenMapper: [
+          {
+            key: "envId",
+            label: "environments" as const,
+            mapper: ({ envId, envSlug, envName: name }) => ({
+              id: envId,
+              slug: envSlug,
+              name
+            })
+          }
+        ]
+      })?.[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project by slug" });
+    }
+  };
+
   const checkProjectUpgradeStatus = async (projectId: string) => {
     const project = await projectOrm.findById(projectId);
     const upgradeInProgress =
@@ -179,6 +217,7 @@ export const projectDALFactory = (db: TDbClient) => {
     findAllProjectsByIdentity,
     findProjectGhostUser,
     findProjectById,
+    findProjectBySlug,
     checkProjectUpgradeStatus
   };
 };
