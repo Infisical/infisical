@@ -18,15 +18,12 @@ export type UpgradeProjectAlertProps = {
 };
 
 export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.Element | null => {
-  console.log("yes");
   const { createNotification } = useNotificationContext();
   const router = useRouter();
   const { membership } = useProjectPermission();
   const upgradeProject = useUpgradeProject();
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
   const [isUpgrading, setIsUpgrading] = useState(false);
-
-  console.log("yes 2");
 
   const {
     data: projectStatus,
@@ -55,8 +52,6 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
     }
   });
 
-  console.log("yes 3");
-
   const onUpgradeProject = useCallback(async () => {
     if (upgradeProject.isLoading) {
       return;
@@ -82,8 +77,6 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
     setTimeout(() => setIsUpgrading(false), 5_000);
   }, []);
 
-  console.log("yes 4");
-
   const isLoading =
     isUpgrading ||
     ((upgradeProject.isLoading ||
@@ -91,11 +84,8 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
       (currentStatus === null && statusIsLoading)) &&
       projectStatus?.status !== "FAILED");
 
-  console.log("yes 5");
-
   if (project.version !== ProjectVersion.V1) return null;
 
-  console.log("yes 6");
   return (
     <div
       className={twMerge(
