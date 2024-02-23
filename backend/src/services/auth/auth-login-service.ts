@@ -38,17 +38,19 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     if (!isDeviceSeen) {
       const newDeviceList = devices.concat([{ ip, userAgent }]);
       await userDAL.updateById(user.id, { devices: JSON.stringify(newDeviceList) });
-      await smtpService.sendMail({
-        template: SmtpTemplates.NewDeviceJoin,
-        subjectLine: "Successful login from new device",
-        recipients: [user.email],
-        substitutions: {
-          email: user.email,
-          timestamp: new Date().toString(),
-          ip,
-          userAgent
-        }
-      });
+      if (user.email) {
+        await smtpService.sendMail({
+          template: SmtpTemplates.NewDeviceJoin,
+          subjectLine: "Successful login from new device",
+          recipients: [user.email],
+          substitutions: {
+            email: user.email,
+            timestamp: new Date().toString(),
+            ip,
+            userAgent
+          }
+        });
+      }
     }
   };
 
@@ -199,10 +201,12 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
         }
       );
 
-      await sendUserMfaCode({
-        userId: userEnc.userId,
-        email: userEnc.email
-      });
+      if (userEnc.email) {
+        await sendUserMfaCode({
+          userId: userEnc.userId,
+          email: userEnc.email
+        });
+      }
 
       return { isMfaEnabled: true, token: mfaToken } as const;
     }
@@ -226,7 +230,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
    */
   const resendMfaToken = async (userId: string) => {
     const user = await userDAL.findById(userId);
-    if (!user) return;
+    if (!user || !user.email) return;
     await sendUserMfaCode({
       userId: user.id,
       email: user.email

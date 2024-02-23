@@ -350,7 +350,7 @@ export const secretQueueFactory = ({
     await smtpService.sendMail({
       template: SmtpTemplates.SecretReminder,
       subjectLine: "Infisical secret reminder",
-      recipients: [...projectMembers.map((m) => m.user.email)],
+      recipients: [...projectMembers.map((m) => m.user.email)].filter((email) => email).map((email) => email as string),
       substitutions: {
         reminderNote: data.note, // May not be present.
         projectName: project.name,

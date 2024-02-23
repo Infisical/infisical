@@ -135,14 +135,14 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
     }
   };
 
-  const generateOrgCustomerId = async (orgName: string, email: string) => {
+  const generateOrgCustomerId = async (orgName: string, email?: string | null) => {
     if (instanceType === InstanceType.Cloud) {
       const {
         data: { customerId }
       } = await licenseServerCloudApi.request.post<{ customerId: string }>(
         "/api/license-server/v1/customers",
         {
-          email,
+          email: email ?? "",
           name: orgName
         },
         { timeout: 5000, signal: AbortSignal.timeout(5000) }

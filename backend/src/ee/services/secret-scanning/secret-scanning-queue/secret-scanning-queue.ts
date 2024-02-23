@@ -149,7 +149,7 @@ export const secretScanningQueueFactory = ({
       await smtpService.sendMail({
         template: SmtpTemplates.SecretLeakIncident,
         subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.fullName}`,
-        recipients: adminEmails,
+        recipients: adminEmails.filter((email) => email).map((email) => email as string),
         substitutions: {
           numberOfSecrets: Object.keys(allFindingsByFingerprint).length,
           pusher_email: pusher.email,
@@ -221,7 +221,7 @@ export const secretScanningQueueFactory = ({
       await smtpService.sendMail({
         template: SmtpTemplates.SecretLeakIncident,
         subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.fullName}`,
-        recipients: adminEmails,
+        recipients: adminEmails.filter((email) => email).map((email) => email as string),
         substitutions: {
           numberOfSecrets: findings.length
         }

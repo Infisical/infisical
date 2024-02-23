@@ -5,6 +5,8 @@ import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
+import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
+import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
@@ -158,11 +160,12 @@ export const registerRoutes = async (
 
   const auditLogDAL = auditLogDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
-  const scimDAL = scimDALFactory(db);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
   const samlConfigDAL = samlConfigDALFactory(db);
+  const scimDAL = scimDALFactory(db);
+  const ldapConfigDAL = ldapConfigDALFactory(db);
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
   const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
   const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
@@ -224,6 +227,15 @@ export const registerRoutes = async (
     projectMembershipDAL,
     permissionService,
     smtpService
+  });
+
+  const ldapService = ldapConfigServiceFactory({
+    ldapConfigDAL,
+    orgDAL,
+    orgBotDAL,
+    userDAL,
+    permissionService,
+    licenseService
   });
 
   const telemetryService = telemetryServiceFactory();
@@ -529,6 +541,7 @@ export const registerRoutes = async (
     secretRotation: secretRotationService,
     snapshot: snapshotService,
     saml: samlService,
+    ldap: ldapService,
     auditLog: auditLogService,
     secretScanning: secretScanningService,
     license: licenseService,

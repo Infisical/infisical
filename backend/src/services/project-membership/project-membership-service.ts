@@ -135,7 +135,7 @@ export const projectMembershipServiceFactory = ({
       await smtpService.sendMail({
         template: SmtpTemplates.WorkspaceInvite,
         subjectLine: "Infisical workspace invitation",
-        recipients: invitees.map((i) => i.email),
+        recipients: invitees.filter((i) => i.email).map((i) => i.email as string),
         substitutions: {
           workspaceName: project.name,
           callback_url: `${appCfg.SITE_URL}/login`
@@ -207,7 +207,9 @@ export const projectMembershipServiceFactory = ({
       await smtpService.sendMail({
         template: SmtpTemplates.WorkspaceInvite,
         subjectLine: "Infisical workspace invitation",
-        recipients: orgMembers.map(({ email }) => email).filter(Boolean),
+        recipients: orgMembers
+          .map(({ email }) => email)
+          .filter((email): email is string => email !== null && email !== undefined),
         substitutions: {
           workspaceName: project.name,
           callback_url: `${appCfg.SITE_URL}/login`
@@ -317,7 +319,7 @@ export const projectMembershipServiceFactory = ({
       await smtpService.sendMail({
         template: SmtpTemplates.WorkspaceInvite,
         subjectLine: "Infisical workspace invitation",
-        recipients: orgMembers.map(({ user }) => user.email).filter(Boolean),
+        recipients: orgMembers.filter(({ user }) => user.email).map(({ user }) => user.email as string),
         substitutions: {
           workspaceName: project.name,
           callback_url: `${appCfg.SITE_URL}/login`

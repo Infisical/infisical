@@ -5,7 +5,7 @@ import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { AuthModeProviderJwtTokenPayload, AuthModeProviderSignUpTokenPayload, AuthTokenType } from "./auth-type";
 
-export const validateProviderAuthToken = (providerToken: string, email: string) => {
+export const validateProviderAuthToken = (providerToken: string, email?: string) => {
   if (!providerToken) throw new UnauthorizedError();
   const appCfg = getConfig();
   const decodedToken = jwt.verify(providerToken, appCfg.AUTH_SECRET) as AuthModeProviderJwtTokenPayload;

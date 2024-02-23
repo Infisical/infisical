@@ -152,12 +152,13 @@ export const scimServiceFactory = ({
       findOpts
     );
 
-    const scimUsers = users.map(({ userId, firstName, lastName, email }) =>
+    const scimUsers = users.map(({ userId, username, firstName, lastName, email }) =>
       buildScimUser({
         userId: userId ?? "",
+        username: username ?? "",
         firstName: firstName ?? "",
         lastName: lastName ?? "",
-        email,
+        email: email ?? "",
         active: true
       })
     );
@@ -196,9 +197,10 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       userId: membership.userId as string,
+      username: membership.username as string,
+      email: membership.email ?? "",
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
-      email: membership.email,
       active: true
     });
   };
@@ -284,9 +286,10 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       userId: user.id,
+      username: user.username as string,
       firstName: user.firstName as string,
       lastName: user.lastName as string,
-      email: user.email,
+      email: user.email ?? "",
       active: true
     });
   };
@@ -342,9 +345,10 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       userId: membership.userId as string,
+      username: membership.username as string,
+      email: membership.email ?? "",
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
-      email: membership.email,
       active
     });
   };
@@ -387,9 +391,10 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       userId: membership.userId as string,
+      username: membership.username as string,
+      email: membership.email ?? "",
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
-      email: membership.email,
       active
     });
   };

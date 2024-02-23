@@ -9,7 +9,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const UsersSchema = z.object({
   id: z.string().uuid(),
-  email: z.string(),
+  email: z.string().nullable().optional(),
   authMethods: z.string().array().nullable().optional(),
   superAdmin: z.boolean().default(false).nullable().optional(),
   firstName: z.string().nullable().optional(),
@@ -20,7 +20,9 @@ export const UsersSchema = z.object({
   devices: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  isGhost: z.boolean().default(false)
+  isGhost: z.boolean().default(false),
+  username: z.string().nullable().optional(),
+  orgId: z.string().uuid().nullable().optional()
 });
 
 export type TUsers = z.infer<typeof UsersSchema>;

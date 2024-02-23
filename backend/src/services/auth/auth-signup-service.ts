@@ -122,7 +122,7 @@ export const authSignupServiceFactory = ({
 
     let organizationId;
     if (providerAuthToken) {
-      const { orgId } = validateProviderAuthToken(providerAuthToken, user.email);
+      const { orgId } = validateProviderAuthToken(providerAuthToken, user.email as string);
       organizationId = orgId;
     } else {
       validateSignUpAuthorization(authorization, user.id);
@@ -150,7 +150,11 @@ export const authSignupServiceFactory = ({
     });
 
     if (!organizationId) {
-      await orgService.createOrganization(user.id, user.email, organizationName);
+      await orgService.createOrganization({
+        userId: user.id,
+        userEmail: user.email,
+        orgName: organizationName
+      });
     }
 
     const updatedMembersips = await orgDAL.updateMembership(

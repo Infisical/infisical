@@ -20,21 +20,23 @@ export const buildScimUserList = ({
 
 export const buildScimUser = ({
   userId,
+  username,
+  email,
   firstName,
   lastName,
-  email,
   active
 }: {
   userId: string;
+  username: string;
+  email: string;
   firstName: string;
   lastName: string;
-  email: string;
   active: boolean;
 }): TScimUser => {
   return {
     schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
     id: userId,
-    userName: email,
+    userName: username,
     displayName: `${firstName} ${lastName}`,
     name: {
       givenName: firstName,

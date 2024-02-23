@@ -22,7 +22,7 @@ import { secretRawSchema } from "../sanitizedSchemas";
 
 const getDistinctId = (req: FastifyRequest) => {
   if (req.auth.actor === ActorType.USER) {
-    return req.auth.user.email;
+    return req.auth.user.email ?? req.auth.user.username ?? "unknown-user";
   }
   if (req.auth.actor === ActorType.IDENTITY) {
     return `identity-${req.auth.identityId}`;

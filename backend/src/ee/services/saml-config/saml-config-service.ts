@@ -69,7 +69,7 @@ export const samlConfigServiceFactory = ({
     if (!plan.samlSSO)
       throw new BadRequestError({
         message:
-          "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
+          "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to create SSO configuration."
       });
 
     const orgBot = await orgBotDAL.transaction(async (tx) => {
@@ -122,7 +122,6 @@ export const samlConfigServiceFactory = ({
 
     const { ciphertext: encryptedEntryPoint, iv: entryPointIV, tag: entryPointTag } = encryptSymmetric(entryPoint, key);
     const { ciphertext: encryptedIssuer, iv: issuerIV, tag: issuerTag } = encryptSymmetric(issuer, key);
-
     const { ciphertext: encryptedCert, iv: certIV, tag: certTag } = encryptSymmetric(cert, key);
     const samlConfig = await samlConfigDAL.create({
       orgId,

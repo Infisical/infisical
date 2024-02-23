@@ -11,6 +11,10 @@ export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 
 export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
   const toggleUserMfa = async (userId: string, isMfaEnabled: boolean) => {
+    const user = await userDAL.findById(userId);
+
+    if (!user || !user.email) throw new BadRequestError({ name: "Failed to toggle MFA" });
+
     const updatedUser = await userDAL.updateById(userId, {
       isMfaEnabled,
       mfaMethods: isMfaEnabled ? ["email"] : []

@@ -243,6 +243,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.OrgMembership),
           db.ref("email").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("scimEnabled").withSchema(TableName.Organization)

@@ -68,6 +68,7 @@ export const superAdminServiceFactory = ({
         {
           firstName,
           lastName,
+          username: email,
           email,
           superAdmin: true,
           isGhost: false,
@@ -97,11 +98,11 @@ export const superAdminServiceFactory = ({
 
     const initialOrganizationName = appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
 
-    const organization = await orgService.createOrganization(
-      userInfo.user.id,
-      userInfo.user.email,
-      initialOrganizationName
-    );
+    const organization = await orgService.createOrganization({
+      userId: userInfo.user.id,
+      userEmail: userInfo.user.email,
+      orgName: initialOrganizationName
+    });
 
     await updateServerCfg({ initialized: true });
     const token = await authService.generateUserTokens({

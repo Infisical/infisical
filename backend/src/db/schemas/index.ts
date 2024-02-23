@@ -14,6 +14,7 @@ export * from "./identity-universal-auths";
 export * from "./incident-contacts";
 export * from "./integration-auths";
 export * from "./integrations";
+export * from "./ldap-configs";
 export * from "./models";
 export * from "./org-bots";
 export * from "./org-memberships";

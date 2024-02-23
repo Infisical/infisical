@@ -233,7 +233,15 @@ export const orgServiceFactory = ({
   /*
    * Create organization
    * */
-  const createOrganization = async (userId: string, userEmail: string, orgName: string) => {
+  const createOrganization = async ({
+    userId,
+    userEmail,
+    orgName
+  }: {
+    userId: string;
+    orgName: string;
+    userEmail?: string | null;
+  }) => {
     const { privateKey, publicKey } = generateAsymmetricKeyPair();
     const key = generateSymmetricKey();
     const {

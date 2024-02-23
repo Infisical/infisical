@@ -97,13 +97,15 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         authorization: req.headers.authorization as string
       });
 
-      void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+      if (user.email) {
+        void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+      }
 
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserSignedUp,
-        distinctId: user.email,
+        distinctId: user.email ?? user.username ?? "",
         properties: {
-          email: user.email,
+          email: user.email ?? "",
           attributionSource: req.body.attributionSource
         }
       });
@@ -160,13 +162,15 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         authorization: req.headers.authorization as string
       });
 
-      void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+      if (user.email) {
+        void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+      }
 
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserSignedUp,
-        distinctId: user.email,
+        distinctId: user.email ?? user.username ?? "",
         properties: {
-          email: user.email,
+          email: user.email ?? "",
           attributionSource: "Team Invite"
         }
       });
