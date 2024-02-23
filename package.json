@@ -11,7 +11,8 @@
 	},
 	"homepage": "https://github.com/infisical/infisical#readme",
 	"scripts": {
-		"prepare": "husky install"
+		"prepare": "husky install",
+		"commit": "cz"
 	},
 	"lint-staged": {
 		"*.{js,jsx,ts,tsx}": [
@@ -19,7 +20,11 @@
 		]
 	},
 	"devDependencies": {
+		"@commitlint/cli": "^18.6.1",
+		"@commitlint/config-conventional": "^18.6.2",
+		"@commitlint/cz-commitlint": "^18.6.1",
 		"@types/uuid": "^9.0.7",
+		"commitizen": "^4.3.0",
 		"eslint": "^8.29.0",
 		"husky": "^8.0.3"
 	}
