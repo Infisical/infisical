@@ -167,6 +167,7 @@ export const LDAPModal = ({
                                 >
                                     <Input 
                                         {...field} 
+                                        type="password"
                                         placeholder="********"
                                     />
                                 </FormControl>
