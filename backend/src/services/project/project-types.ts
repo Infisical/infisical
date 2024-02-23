@@ -36,6 +36,13 @@ export type TDeleteProjectBySlugDTO = {
   actorOrgId?: string;
 };
 
+export type TDeleteProjectBySlugDTO = {
+  slug: string;
+  actor: ActorType;
+  actorId: string;
+  actorOrgId?: string;
+};
+
 export type TGetProjectDTO = {
   filter: Filter;
 } & Omit<TProjectPermission, "projectId">;
@@ -46,6 +53,13 @@ export type TToggleProjectAutoCapitalizationDTO = {
 export type TUpdateProjectNameDTO = {
   name: string;
 } & TProjectPermission;
+
+export type TGetProjectBySlugDTO = {
+  slug: string;
+  actor: ActorType;
+  actorId: string;
+  actorOrgId?: string;
+};
 
 export type TUpdateProjectDTO = {
   filter: Filter;
