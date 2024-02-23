@@ -90,7 +90,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: z.void()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await server.services.project.upgradeProject({
         actorId: req.permission.id,
@@ -115,7 +115,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const status = await server.services.project.getProjectUpgradeStatus({
         projectId: req.params.projectId,
@@ -148,7 +148,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.createProject({
         actorId: req.permission.id,
@@ -184,7 +184,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: ProjectsSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
 
     handler: async (req) => {
       const project = await server.services.project.deleteProject({
@@ -211,7 +211,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: projectWithEnv
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.getAProject({
         filter: req.params.slug,
@@ -242,7 +242,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }
     },
 
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.updateProject({
         filterType: ProjectFilterType.SLUG,
