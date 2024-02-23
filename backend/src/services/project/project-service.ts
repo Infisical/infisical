@@ -33,9 +33,7 @@ import { assignWorkspaceKeysToMembers, createProjectKey } from "./project-fns";
 import { TProjectQueueFactory } from "./project-queue";
 import {
   TCreateProjectDTO,
-  TDeleteProjectBySlugDTO,
   TDeleteProjectDTO,
-  TGetProjectBySlugDTO,
   TGetProjectDTO,
   TToggleProjectAutoCapitalizationDTO,
   TUpdateProjectDTO,
@@ -473,10 +471,8 @@ export const projectServiceFactory = ({
     deleteProject,
     getProjects,
     updateProject,
-    deleteProjectBySlug,
     getProjectUpgradeStatus,
     getAProject,
-    getProjectBySlug,
     toggleAutoCapitalization,
     updateName,
     upgradeProject

@@ -186,7 +186,6 @@ export const projectDALFactory = (db: TDbClient) => {
           { column: `${TableName.Project}.name`, order: "asc" },
           { column: `${TableName.Environment}.position`, order: "asc" }
         ]);
-
       const project = sqlNestRelationships({
         data: projects,
         key: "id",

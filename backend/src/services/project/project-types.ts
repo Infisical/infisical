@@ -54,12 +54,12 @@ export type TUpdateProjectNameDTO = {
   name: string;
 } & TProjectPermission;
 
-export type TGetProjectBySlugDTO = {
-  slug: string;
-  actor: ActorType;
-  actorId: string;
-  actorOrgId?: string;
-};
+export type TToggleProjectAutoCapitalizationDTO = {
+  autoCapitalization: boolean;
+} & TProjectPermission;
+export type TUpdateProjectNameDTO = {
+  name: string;
+} & TProjectPermission;
 
 export type TUpdateProjectDTO = {
   filter: Filter;
