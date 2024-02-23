@@ -218,10 +218,10 @@ export const MemberListTab = () => {
     () =>
       members?.filter(
         ({ user: u, inviteEmail }) =>
-          u?.firstName?.toLowerCase().includes(searchMemberFilter) ||
-          u?.lastName?.toLowerCase().includes(searchMemberFilter) ||
-          u?.email?.toLowerCase().includes(searchMemberFilter) ||
-          inviteEmail?.includes(searchMemberFilter)
+          u?.firstName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          u?.lastName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          u?.email?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          inviteEmail?.includes(searchMemberFilter.toLowerCase())
       ),
     [members, searchMemberFilter]
   );

@@ -33,9 +33,7 @@ export const UpgradeOverlay = () => {
     return null;
   }
 
-  // for non admin this would throw an error
-  // so no need to render
-  return !isUpgradeStatusLoading && isUpgrading ? ( // isUpgrading
+  return !isUpgradeStatusLoading && isUpgrading ? (
     <div className="absolute top-0 left-0 z-50 flex h-screen w-screen items-center justify-center bg-bunker-500 bg-opacity-80">
       <Spinner size="lg" className="text-primary" />
       <div className="ml-4 flex flex-col space-y-1">

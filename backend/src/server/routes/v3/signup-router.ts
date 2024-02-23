@@ -2,7 +2,9 @@ import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSignupRouter = async (server: FastifyZodProvider) => {
@@ -23,8 +25,26 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      await server.services.signup.beginEmailSignupProcess(req.body.email);
-      return { message: `Sent an email verification code to ${req.body.email}` };
+      const { email } = req.body;
+
+      const serverCfg = await getServerCfg();
+      if (!serverCfg.allowSignUp) {
+        throw new BadRequestError({
+          message: "Sign up is disabled"
+        });
+      }
+
+      if (serverCfg?.allowedSignUpDomain) {
+        const domain = email.split("@")[1];
+        const allowedDomains = serverCfg.allowedSignUpDomain.split(",").map((e) => e.trim());
+        if (!allowedDomains.includes(domain)) {
+          throw new BadRequestError({
+            message: `Email with a domain (@${domain}) is not supported`
+          });
+        }
+      }
+      await server.services.signup.beginEmailSignupProcess(email);
+      return { message: `Sent an email verification code to ${email}` };
     }
   });
 
@@ -48,6 +68,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
+      const serverCfg = await getServerCfg();
+      if (!serverCfg.allowSignUp) {
+        throw new BadRequestError({
+          message: "Sign up is disabled"
+        });
+      }
+
       const { token, user } = await server.services.signup.verifyEmailSignup(req.body.email, req.body.code);
       return { message: "Successfuly verified email", token, user };
     }
@@ -89,6 +116,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       const userAgent = req.headers["user-agent"];
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
+
+      const serverCfg = await getServerCfg();
+      if (!serverCfg.allowSignUp) {
+        throw new BadRequestError({
+          message: "Sign up is disabled"
+        });
+      }
 
       const { user, accessToken, refreshToken } = await server.services.signup.completeEmailAccountSignup({
         ...req.body,

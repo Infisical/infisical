@@ -598,4 +598,8 @@ export const registerRoutes = async (
   );
   await server.register(registerV2Routes, { prefix: "/api/v2" });
   await server.register(registerV3Routes, { prefix: "/api/v3" });
+
+  server.addHook("onClose", async () => {
+    await telemetryService.flushAll();
+  });
 };

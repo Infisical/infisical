@@ -284,29 +284,10 @@ export const ldapConfigServiceFactory = ({
       organizationSlug: string;
     };
 
-    // req.ldapConfig = getLdapCfg2(organization.id);
-
     const boot = async () => {
       const organization = await orgDAL.findOne({ slug: organizationSlug });
       const ldapConfig = await getLdapCfg2(organization.id); // repeat?
       req.ldapConfig = ldapConfig;
-
-      // example
-      // var opts = {
-      //     server: {
-      //         // url: 'ldaps://openldap:636', // connection over SSL/TLS
-      //         url: 'ldap://openldap:389',
-      //         bindDN: 'cn=admin,dc=acme,dc=com',
-      //         bindCredentials: 'admin',
-      //         searchBase: 'ou=people,dc=acme,dc=com',
-      //         searchFilter: '(uid={{username}})',
-      //         searchAttributes: ['uid', 'givenName', 'sn'], // optional, defaults to all (get username too)
-      //         // tlsOptions: {
-      //         //     ca: [caCert]
-      //         // }
-      //     },
-      //     passReqToCallback: true
-      // };
 
       const opts = {
         server: {
