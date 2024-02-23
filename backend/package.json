@@ -70,7 +70,7 @@
     "vitest": "^1.2.2"
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.502.0",
+    "@aws-sdk/client-secrets-manager": "^3.504.0",
     "@casl/ability": "^6.5.0",
     "@fastify/cookie": "^9.2.0",
     "@fastify/cors": "^8.5.0",
