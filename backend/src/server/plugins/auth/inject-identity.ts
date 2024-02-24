@@ -30,6 +30,7 @@ export type TAuthMode =
       serviceToken: TServiceTokens & { createdByEmail: string };
       actor: ActorType.SERVICE;
       serviceTokenId: string;
+      orgId: string;
     }
   | {
       authMode: AuthMode.IDENTITY_ACCESS_TOKEN;
@@ -99,8 +100,12 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
     if (!authMode) return;
 
     switch (authMode) {
+      // May or may not have an orgId. If it doesn't have an org ID, it's likely because the token is from an org that doesn't enforce org-level auth.
       case AuthMode.JWT: {
-        const { user, tokenVersionId, orgId } = await server.services.authToken.fnValidateJwtIdentity(token);
+        const { user, tokenVersionId, orgId } = await server.services.authToken.fnValidateJwtIdentity(
+          token,
+          req.headers?.["x-infisical-organization-id"]
+        );
         req.auth = { authMode: AuthMode.JWT, user, userId: user.id, tokenVersionId, actor, orgId };
         break;
       }
@@ -116,21 +121,25 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
         };
         break;
       }
+      // Will always contain an orgId.
       case AuthMode.SERVICE_TOKEN: {
         const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
         req.auth = {
           authMode: AuthMode.SERVICE_TOKEN as const,
           serviceToken,
+          orgId: serviceToken.orgId,
           serviceTokenId: serviceToken.id,
           actor
         };
         break;
       }
+      // Will never contain an orgId. API keys are not tied to an organization.
       case AuthMode.API_KEY: {
         const user = await server.services.apiKey.fnValidateApiKey(token as string);
         req.auth = { authMode: AuthMode.API_KEY as const, userId: user.id, actor, user };
         break;
       }
+      // OK
       case AuthMode.SCIM_TOKEN: {
         const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
         req.auth = { authMode: AuthMode.SCIM_TOKEN, actor, scimTokenId, orgId };
