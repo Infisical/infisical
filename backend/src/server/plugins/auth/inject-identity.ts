@@ -11,12 +11,12 @@ import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-to
 
 export type TAuthMode =
   | {
-      orgId?: string;
       authMode: AuthMode.JWT;
       actor: ActorType.USER;
       userId: string;
       tokenVersionId: string; // the session id of token used
       user: TUsers;
+      orgId?: string;
     }
   | {
       authMode: AuthMode.API_KEY;
@@ -30,12 +30,14 @@ export type TAuthMode =
       serviceToken: TServiceTokens & { createdByEmail: string };
       actor: ActorType.SERVICE;
       serviceTokenId: string;
+      orgId: string;
     }
   | {
       authMode: AuthMode.IDENTITY_ACCESS_TOKEN;
       actor: ActorType.IDENTITY;
       identityId: string;
       identityName: string;
+      orgId: string;
     }
   | {
       authMode: AuthMode.SCIM_TOKEN;
@@ -89,6 +91,26 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   }
 };
 
+/*
+!!! IMPORTANT NOTE ABOUT `orgId` FIELD on `req.auth` !!!
+
+The `orgId` is an optional field, this is intentional. 
+There are cases where the `orgId` won't be present on the request auth object.
+
+
+2 Examples:
+
+1. When a user first creates their account, no organization is present most of the time, because they haven't created one yet.
+2. When a user is using an API key. We can't link API keys to organizations, because they are not tied to any organization, but instead they're tied to the user itself.
+
+
+Reasons for orgId to be undefined when JWT is used, is to indicate that a certain token was obtained from successfully logging into an org with org-level auth enforced.
+Certain organizations don’t require that enforcement and so the tokens don’t have organizationId on them.
+They shouldn’t be used to access organizations that have specific org-level auth enforced
+And so to differentiate between tokens that were obtained from regular login vs those at the org-auth level we include that field into those tokens.
+
+*/
+
 export const injectIdentity = fp(async (server: FastifyZodProvider) => {
   server.decorateRequest("auth", null);
   server.addHook("onRequest", async (req) => {
@@ -97,36 +119,46 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
     if (!authMode) return;
 
     switch (authMode) {
+      // May or may not have an orgId. If it doesn't have an org ID, it's likely because the token is from an org that doesn't enforce org-level auth.
       case AuthMode.JWT: {
-        const { user, tokenVersionId, orgId } = await server.services.authToken.fnValidateJwtIdentity(token);
+        const { user, tokenVersionId, orgId } = await server.services.authToken.fnValidateJwtIdentity(
+          token,
+          req.headers?.["x-infisical-organization-id"]
+        );
         req.auth = { authMode: AuthMode.JWT, user, userId: user.id, tokenVersionId, actor, orgId };
         break;
       }
+      // Will always contain an orgId.
       case AuthMode.IDENTITY_ACCESS_TOKEN: {
         const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
         req.auth = {
           authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
           actor,
+          orgId: identity.orgId,
           identityId: identity.identityId,
           identityName: identity.name
         };
         break;
       }
+      // Will always contain an orgId.
       case AuthMode.SERVICE_TOKEN: {
         const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
         req.auth = {
           authMode: AuthMode.SERVICE_TOKEN as const,
           serviceToken,
+          orgId: serviceToken.orgId,
           serviceTokenId: serviceToken.id,
           actor
         };
         break;
       }
+      // Will never contain an orgId. API keys are not tied to an organization.
       case AuthMode.API_KEY: {
         const user = await server.services.apiKey.fnValidateApiKey(token as string);
         req.auth = { authMode: AuthMode.API_KEY as const, userId: user.id, actor, user };
         break;
       }
+      // OK
       case AuthMode.SCIM_TOKEN: {
         const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
         req.auth = { authMode: AuthMode.SCIM_TOKEN, actor, scimTokenId, orgId };
