@@ -9,6 +9,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TServiceTokenDALFactory } from "./service-token-dal";
@@ -23,6 +24,7 @@ type TServiceTokenServiceFactoryDep = {
   serviceTokenDAL: TServiceTokenDALFactory;
   userDAL: TUserDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgByProjectId">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findBySlugs">;
 };
 
@@ -31,6 +33,7 @@ export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceF
 export const serviceTokenServiceFactory = ({
   serviceTokenDAL,
   userDAL,
+  orgDAL,
   permissionService,
   projectEnvDAL
 }: TServiceTokenServiceFactoryDep) => {
