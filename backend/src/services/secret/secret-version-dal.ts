@@ -1,8 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TSecretVersions } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { TableName, TSecretVersions, TSecretVersionsUpdate } from "@app/db/schemas";
+import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TSecretVersionDALFactory = ReturnType<typeof secretVersionDALFactory>;
@@ -36,6 +36,57 @@ export const secretVersionDALFactory = (db: TDbClient) => {
     }
   };
 
+  const bulkUpdate = async (
+    data: Array<{ filter: Partial<TSecretVersions>; data: TSecretVersionsUpdate }>,
+    tx?: Knex
+  ) => {
+    try {
+      const secs = await Promise.all(
+        data.map(async ({ filter, data: updateData }) => {
+          const [doc] = await (tx || db)(TableName.SecretVersion)
+            .where(filter)
+            .update(updateData)
+            .increment("version", 1) // TODO: Is this really needed?
+            .returning("*");
+          if (!doc) throw new BadRequestError({ message: "Failed to update document" });
+          return doc;
+        })
+      );
+      return secs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "bulk update secret" });
+    }
+  };
+
+  const bulkUpdateNoVersionIncrement = async (data: TSecretVersions[], tx?: Knex) => {
+    try {
+      const existingSecretVersions = await secretVersionOrm.find(
+        {
+          $in: {
+            id: data.map((el) => el.id)
+          }
+        },
+        { tx }
+      );
+
+      if (existingSecretVersions.length !== data.length) {
+        throw new BadRequestError({ message: "Some of the secret versions do not exist" });
+      }
+
+      if (data.length === 0) return [];
+
+      const updatedSecretVersions = await (tx || db)(TableName.SecretVersion)
+        .insert(data)
+        .onConflict("id") // this will cause a conflict then merge the data
+        .merge() // Merge the data with the existing data
+        .returning("*");
+
+      return updatedSecretVersions;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "bulk update secret" });
+    }
+  };
+
   const findLatestVersionMany = async (folderId: string, secretIds: string[], tx?: Knex) => {
     try {
       const docs: Array<TSecretVersions & { max: number }> = await (tx || db)(TableName.SecretVersion)
@@ -59,5 +110,11 @@ export const secretVersionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...secretVersionOrm, findLatestVersionMany, findLatestVersionByFolderId };
+  return {
+    ...secretVersionOrm,
+    findLatestVersionMany,
+    bulkUpdate,
+    findLatestVersionByFolderId,
+    bulkUpdateNoVersionIncrement
+  };
 };

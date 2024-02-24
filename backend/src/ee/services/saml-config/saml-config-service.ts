@@ -195,7 +195,7 @@ export const samlConfigServiceFactory = ({
       updateQuery.certTag = certTag;
     }
     const [ssoConfig] = await samlConfigDAL.update({ orgId }, updateQuery);
-    await orgDAL.updateById(orgId, { authEnforced: false });
+    await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false });
 
     return ssoConfig;
   };
@@ -338,7 +338,8 @@ export const samlConfigServiceFactory = ({
             email,
             firstName,
             lastName,
-            authMethods: [AuthMethod.EMAIL]
+            authMethods: [AuthMethod.EMAIL],
+            isGhost: false
           },
           tx
         );

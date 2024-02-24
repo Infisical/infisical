@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import { OrgMembershipsSchema, ProjectMembershipsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
+import {
+  OrgMembershipsSchema,
+  ProjectMembershipRole,
+  ProjectMembershipsSchema,
+  UserEncryptionKeysSchema,
+  UsersSchema
+} from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -80,7 +86,10 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
-        members: req.body.members
+        members: req.body.members.map((member) => ({
+          ...member,
+          projectRole: ProjectMembershipRole.Member
+        }))
       });
 
       await server.services.auditLog.createAuditLog({

@@ -70,6 +70,7 @@ export const superAdminServiceFactory = ({
           lastName,
           email,
           superAdmin: true,
+          isGhost: false,
           isAccepted: true,
           authMethods: [AuthMethod.EMAIL]
         },

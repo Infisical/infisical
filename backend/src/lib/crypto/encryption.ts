@@ -8,6 +8,9 @@ import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 
 import { getConfig } from "../config/env";
 
+export const decodeBase64 = (s: string) => naclUtils.decodeBase64(s);
+export const encodeBase64 = (u: Uint8Array) => naclUtils.encodeBase64(u);
+
 export type TDecryptSymmetricInput = {
   ciphertext: string;
   iv: string;

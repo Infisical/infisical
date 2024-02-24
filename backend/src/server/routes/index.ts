@@ -11,6 +11,8 @@ import { permissionDALFactory } from "@app/ee/services/permission/permission-dal
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
+import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
+import { scimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { secretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { secretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -63,6 +65,7 @@ import { orgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { projectDALFactory } from "@app/services/project/project-dal";
+import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
 import { projectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -155,6 +158,7 @@ export const registerRoutes = async (
 
   const auditLogDAL = auditLogDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
+  const scimDAL = scimDALFactory(db);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -188,6 +192,7 @@ export const registerRoutes = async (
     trustedIpDAL,
     permissionService
   });
+
   const auditLogQueue = auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
@@ -209,6 +214,16 @@ export const registerRoutes = async (
     userDAL,
     samlConfigDAL,
     licenseService
+  });
+  const scimService = scimServiceFactory({
+    licenseService,
+    scimDAL,
+    userDAL,
+    orgDAL,
+    projectDAL,
+    projectMembershipDAL,
+    permissionService,
+    smtpService
   });
 
   const telemetryService = telemetryServiceFactory();
@@ -266,24 +281,58 @@ export const registerRoutes = async (
     secretScanningDAL,
     secretScanningQueue
   });
-  const projectService = projectServiceFactory({
-    permissionService,
-    projectDAL,
-    secretBlindIndexDAL,
-    projectEnvDAL,
-    projectMembershipDAL,
-    folderDAL,
-    licenseService
-  });
+  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
+
   const projectMembershipService = projectMembershipServiceFactory({
     projectMembershipDAL,
     projectDAL,
     permissionService,
+    projectBotDAL,
     orgDAL,
     userDAL,
     smtpService,
     projectKeyDAL,
     projectRoleDAL,
+    licenseService
+  });
+  const projectKeyService = projectKeyServiceFactory({
+    permissionService,
+    projectKeyDAL,
+    projectMembershipDAL
+  });
+
+  const projectQueueService = projectQueueFactory({
+    queueService,
+    secretDAL,
+    folderDAL,
+    projectDAL,
+    orgDAL,
+    integrationAuthDAL,
+    orgService,
+    projectEnvDAL,
+    userDAL,
+    secretVersionDAL,
+    projectKeyDAL,
+    projectBotDAL,
+    projectMembershipDAL,
+    secretApprovalRequestDAL,
+    secretApprovalSecretDAL: sarSecretDAL
+  });
+
+  const projectService = projectServiceFactory({
+    permissionService,
+    projectDAL,
+    projectQueue: projectQueueService,
+    secretBlindIndexDAL,
+    identityProjectDAL,
+    identityOrgMembershipDAL,
+    projectBotDAL,
+    projectKeyDAL,
+    userDAL,
+    projectEnvDAL,
+    orgService,
+    projectMembershipDAL,
+    folderDAL,
     licenseService
   });
   const projectEnvService = projectEnvServiceFactory({
@@ -293,11 +342,7 @@ export const registerRoutes = async (
     projectDAL,
     folderDAL
   });
-  const projectKeyService = projectKeyServiceFactory({
-    permissionService,
-    projectKeyDAL,
-    projectMembershipDAL
-  });
+
   const projectRoleService = projectRoleServiceFactory({ permissionService, projectRoleDAL });
 
   const snapshotService = secretSnapshotServiceFactory({
@@ -332,9 +377,9 @@ export const registerRoutes = async (
     folderDAL,
     permissionService,
     secretImportDAL,
+    projectDAL,
     secretDAL
   });
-  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL });
   const integrationAuthService = integrationAuthServiceFactory({
     integrationAuthDAL,
     integrationDAL,
@@ -368,6 +413,7 @@ export const registerRoutes = async (
     secretVersionTagDAL,
     secretBlindIndexDAL,
     permissionService,
+    projectDAL,
     secretDAL,
     secretTagDAL,
     snapshotService,
@@ -381,6 +427,7 @@ export const registerRoutes = async (
     secretTagDAL,
     secretApprovalRequestSecretDAL: sarSecretDAL,
     secretApprovalRequestReviewerDAL: sarReviewerDAL,
+    projectDAL,
     secretVersionDAL,
     secretBlindIndexDAL,
     secretApprovalRequestDAL,
@@ -486,6 +533,7 @@ export const registerRoutes = async (
     secretScanning: secretScanningService,
     license: licenseService,
     trustedIp: trustedIpService,
+    scim: scimService,
     secretBlindIndex: secretBlindIndexService,
     telemetry: telemetryService
   });
@@ -537,4 +585,8 @@ export const registerRoutes = async (
   );
   await server.register(registerV2Routes, { prefix: "/api/v2" });
   await server.register(registerV3Routes, { prefix: "/api/v3" });
+
+  server.addHook("onClose", async () => {
+    await telemetryService.flushAll();
+  });
 };

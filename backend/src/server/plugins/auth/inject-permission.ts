@@ -14,6 +14,8 @@ export const injectPermission = fp(async (server) => {
       req.permission = { type: ActorType.IDENTITY, id: req.auth.identityId };
     } else if (req.auth.actor === ActorType.SERVICE) {
       req.permission = { type: ActorType.SERVICE, id: req.auth.serviceTokenId };
+    } else if (req.auth.actor === ActorType.SCIM_CLIENT) {
+      req.permission = { type: ActorType.SCIM_CLIENT, id: req.auth.scimTokenId, orgId: req.auth.orgId };
     }
   });
 });

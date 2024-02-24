@@ -23,7 +23,7 @@ export const userDALFactory = (db: TDbClient) => {
   const findUserEncKeyByEmail = async (email: string) => {
     try {
       return await db(TableName.Users)
-        .where({ email })
+        .where({ email, isGhost: false })
         .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .first();
     } catch (error) {
@@ -44,6 +44,17 @@ export const userDALFactory = (db: TDbClient) => {
       return user;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find user enc by user id" });
+    }
+  };
+
+  const findUserByProjectMembershipId = async (projectMembershipId: string) => {
+    try {
+      return await db(TableName.ProjectMembership)
+        .where({ [`${TableName.ProjectMembership}.id` as "id"]: projectMembershipId })
+        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find user by project membership id" });
     }
   };
 
@@ -111,6 +122,7 @@ export const userDALFactory = (db: TDbClient) => {
     findUserEncKeyByEmail,
     findUserEncKeyByUserId,
     updateUserEncryptionByUserId,
+    findUserByProjectMembershipId,
     upsertUserEncryptionKey,
     createUserEncryption,
     findOneUserAction,

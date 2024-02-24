@@ -28,5 +28,4 @@ export type TOauthLoginDTO = {
   lastName?: string;
   authMethod: AuthMethod;
   callbackPort?: string;
-  isSignupAllowed?: boolean;
 };

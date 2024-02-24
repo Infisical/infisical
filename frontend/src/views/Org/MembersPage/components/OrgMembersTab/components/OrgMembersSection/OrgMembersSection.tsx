@@ -46,7 +46,7 @@ export const OrgMembersSection = () => {
   const handleAddMemberModal = () => {
     if (currentOrg?.authEnforced) {
       createNotification({
-        text: "You cannot invite users when org-level auth is configured for your organization",
+        text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
         type: "error"
       });
       return;

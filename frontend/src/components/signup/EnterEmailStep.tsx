@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
+import axios from "axios";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { useSendVerificationEmail } from "@app/hooks/api";
 
 import { Button, Input } from "../v2";
@@ -25,6 +27,7 @@ export default function EnterEmailStep({
   setEmail,
   incrementStep
 }: DownloadBackupPDFStepProps): JSX.Element {
+  const { createNotification } = useNotificationContext();
   const { mutateAsync } = useSendVerificationEmail();
   const [emailError, setEmailError] = useState(false);
   const { t } = useTranslation();
@@ -46,8 +49,18 @@ export default function EnterEmailStep({
 
     // If everything is correct, go to the next step
     if (!emailCheckBool) {
-      await mutateAsync({ email });
-      incrementStep();
+      try {
+        await mutateAsync({ email });
+        incrementStep();
+      } catch(e) {
+        if (axios.isAxiosError(e)) {
+          const { message = "Something went wrong" } = e.response?.data as { message: string};
+          createNotification({
+            type: "error",
+            text:  message
+          })
+        }
+      }
     }
   };
 

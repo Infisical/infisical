@@ -1,6 +1,7 @@
 import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
 import Redis from "ioredis";
 
+import { SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TScanFullRepoEventPayload,
@@ -15,7 +16,8 @@ export enum QueueName {
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
   SecretFullRepoScan = "secret-full-repo-scan",
-  SecretPushEventScan = "secret-push-event-scan"
+  SecretPushEventScan = "secret-push-event-scan",
+  UpgradeProjectToGhost = "upgrade-project-to-ghost"
 }
 
 export enum QueueJobs {
@@ -25,7 +27,8 @@ export enum QueueJobs {
   AuditLogPrune = "audit-log-prune-job",
   SecWebhook = "secret-webhook-trigger",
   IntegrationSync = "secret-integration-pull",
-  SecretScan = "secret-scan"
+  SecretScan = "secret-scan",
+  UpgradeProjectToGhost = "upgrade-project-to-ghost-job"
 }
 
 export type TQueueJobTypes = {
@@ -64,6 +67,20 @@ export type TQueueJobTypes = {
     payload: TScanFullRepoEventPayload;
   };
   [QueueName.SecretPushEventScan]: { name: QueueJobs.SecretScan; payload: TScanPushEventPayload };
+
+  [QueueName.UpgradeProjectToGhost]: {
+    name: QueueJobs.UpgradeProjectToGhost;
+    payload: {
+      projectId: string;
+      startedByUserId: string;
+      encryptedPrivateKey: {
+        encryptedKey: string;
+        encryptedKeyIv: string;
+        encryptedKeyTag: string;
+        keyEncoding: SecretKeyEncoding;
+      };
+    };
+  };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;

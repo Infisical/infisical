@@ -1,10 +1,18 @@
+export enum ProjectVersion {
+  V1 = 1,
+  V2 = 2
+}
+
 export type Workspace = {
   __v: number;
   id: string;
   name: string;
   orgId: string;
+  version: ProjectVersion;
+  upgradeStatus: string | null;
   autoCapitalization: boolean;
   environments: WorkspaceEnv[];
+  slug: string;
 };
 
 export type WorkspaceEnv = {
@@ -23,9 +31,16 @@ export type NameWorkspaceSecretsDTO = {
   }[];
 };
 
+export type TGetUpgradeProjectStatusDTO = {
+  projectId: string;
+  onSuccess?: (data?: { status: string }) => void;
+  enabled?: boolean;
+  refetchInterval?: number;
+};
+
 // mutation dto
 export type CreateWorkspaceDTO = {
-  workspaceName: string;
+  projectName: string;
   organizationId: string;
 };
 

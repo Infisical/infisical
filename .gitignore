@@ -63,3 +63,5 @@ yarn-error.log*
 .vscode/*
 
 frontend-build
+
+*.tgz

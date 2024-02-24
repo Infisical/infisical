@@ -61,8 +61,15 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  const flushAll = async () => {
+    if (postHog) {
+      await postHog.shutdownAsync();
+    }
+  };
+
   return {
     sendLoopsEvent,
-    sendPostHogEvents
+    sendPostHogEvents,
+    flushAll
   };
 };

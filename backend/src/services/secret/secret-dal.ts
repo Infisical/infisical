@@ -22,7 +22,11 @@ export const secretDALFactory = (db: TDbClient) => {
 
   // the idea is to use postgres specific function
   // insert with id this will cause a conflict then merge the data
-  const bulkUpdate = async (data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>, tx?: Knex) => {
+  const bulkUpdate = async (
+    data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
+
+    tx?: Knex
+  ) => {
     try {
       const secs = await Promise.all(
         data.map(async ({ filter, data: updateData }) => {
@@ -36,6 +40,35 @@ export const secretDALFactory = (db: TDbClient) => {
         })
       );
       return secs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "bulk update secret" });
+    }
+  };
+
+  const bulkUpdateNoVersionIncrement = async (data: TSecrets[], tx?: Knex) => {
+    try {
+      const existingSecrets = await secretOrm.find(
+        {
+          $in: {
+            id: data.map((el) => el.id)
+          }
+        },
+        { tx }
+      );
+
+      if (existingSecrets.length !== data.length) {
+        throw new BadRequestError({ message: "Some of the secrets do not exist" });
+      }
+
+      if (data.length === 0) return [];
+
+      const updatedSecrets = await (tx || db)(TableName.Secret)
+        .insert(data)
+        .onConflict("id") // this will cause a conflict then merge the data
+        .merge() // Merge the data with the existing data
+        .returning("*");
+
+      return updatedSecrets;
     } catch (error) {
       throw new DatabaseError({ error, name: "bulk update secret" });
     }
@@ -145,5 +178,13 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...secretOrm, update, bulkUpdate, deleteMany, findByFolderId, findByBlindIndexes };
+  return {
+    ...secretOrm,
+    update,
+    bulkUpdate,
+    deleteMany,
+    bulkUpdateNoVersionIncrement,
+    findByFolderId,
+    findByBlindIndexes
+  };
 };
