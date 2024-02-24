@@ -45,7 +45,7 @@ type TProjectMembershipServiceFactoryDep = {
   projectMembershipDAL: TProjectMembershipDALFactory;
   userDAL: Pick<TUserDALFactory, "findById" | "findOne" | "findUserByProjectMembershipId" | "find">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByEmail">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByUsername">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -224,6 +224,7 @@ export const projectMembershipServiceFactory = ({
     actorId,
     actor,
     emails,
+    usernames,
     sendEmails = true
   }: TAddUsersToWorkspaceNonE2EEDTO) => {
     const project = await projectDAL.findById(projectId);
@@ -236,7 +237,9 @@ export const projectMembershipServiceFactory = ({
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
 
-    const orgMembers = await orgDAL.findOrgMembersByEmail(project.orgId, emails);
+    const orgMembers = await orgDAL.findOrgMembersByUsername(project.orgId, [
+      ...new Set([...emails, ...usernames].map((element) => element.toLowerCase()))
+    ]);
 
     if (orgMembers.length !== emails.length) throw new BadRequestError({ message: "Some users are not part of org" });
 

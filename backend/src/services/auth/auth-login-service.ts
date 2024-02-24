@@ -286,7 +286,14 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
           });
       }
 
-      user = await userDAL.create({ email, firstName, lastName, authMethods: [authMethod], isGhost: false });
+      user = await userDAL.create({
+        username: email,
+        email,
+        firstName,
+        lastName,
+        authMethods: [authMethod],
+        isGhost: false
+      });
     }
     const isLinkingRequired = !user?.authMethods?.includes(authMethod);
     const isUserCompleted = user.isAccepted;

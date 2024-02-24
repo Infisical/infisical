@@ -50,7 +50,7 @@ export const authSignupServiceFactory = ({
       throw new Error("Failed to send verification code for complete account");
     }
     if (!user) {
-      user = await userDAL.create({ authMethods: [AuthMethod.EMAIL], email, isGhost: false });
+      user = await userDAL.create({ authMethods: [AuthMethod.EMAIL], username: email, email, isGhost: false });
     }
     if (!user) throw new Error("Failed to create user");
 

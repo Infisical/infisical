@@ -334,6 +334,7 @@ export const samlConfigServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         const newUser = await userDAL.create(
           {
+            username: email,
             email,
             firstName,
             lastName,

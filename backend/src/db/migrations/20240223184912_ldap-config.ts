@@ -26,9 +26,11 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   await knex.schema.alterTable(TableName.Users, (t) => {
-    t.string("username");
-    t.uuid("orgId");
+    t.string("username").notNullable();
+    t.uuid("orgId").nullable();
+    t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
     t.string("email").nullable().alter();
+    t.unique(["username", "orgId"]);
   });
 
   await knex(TableName.Users).update("username", knex.ref("email"));

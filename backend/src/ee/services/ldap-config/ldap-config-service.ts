@@ -355,6 +355,7 @@ export const ldapConfigServiceFactory = ({
         const newUser = await userDAL.create(
           {
             username,
+            orgId,
             firstName,
             lastName,
             authMethods: [AuthMethod.EMAIL],

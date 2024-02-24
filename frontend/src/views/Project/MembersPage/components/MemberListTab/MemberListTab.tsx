@@ -10,10 +10,6 @@ import { z } from "zod";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  decryptAssymmetric,
-  encryptAssymmetric
-} from "@app/components/utilities/cryptography/crypto";
-import {
   Button,
   DeleteActionModal,
   EmptyState,
@@ -51,8 +47,7 @@ import {
   useGetProjectRoles,
   useGetUserWsKey,
   useGetWorkspaceUsers,
-  useUpdateUserWorkspaceRole,
-  useUploadWsKey
+  useUpdateUserWorkspaceRole
 } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
@@ -81,7 +76,7 @@ export const MemberListTab = () => {
   const { data: wsKey } = useGetUserWsKey(workspaceId);
   const { data: members, isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
-
+  
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -99,7 +94,6 @@ export const MemberListTab = () => {
 
   const { mutateAsync: addUserToWorkspace } = useAddUserToWsE2EE();
   const { mutateAsync: addUserToWorkspaceNonE2EE } = useAddUserToWsNonE2EE();
-  const { mutateAsync: uploadWsKey } = useUploadWsKey();
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
   const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
 
@@ -128,7 +122,7 @@ export const MemberListTab = () => {
       } else if (currentWorkspace.version === ProjectVersion.V2) {
         await addUserToWorkspaceNonE2EE({
           projectId: workspaceId,
-          emails: [orgUser.user.email]
+          emails: [orgUser.user.username]
         });
       } else {
         createNotification({
@@ -220,6 +214,7 @@ export const MemberListTab = () => {
         ({ user: u, inviteEmail }) =>
           u?.firstName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
           u?.lastName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          u?.username?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
           u?.email?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
           inviteEmail?.includes(searchMemberFilter.toLowerCase())
       ),
@@ -235,40 +230,6 @@ export const MemberListTab = () => {
       ({ status, user: u }) => status === "accepted" && !wsUserEmails.has(u.email)
     );
   }, [orgUsers, members]);
-
-  const onGrantAccess = async (grantedUserId: string, publicKey: string) => {
-    try {
-      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-      if (!PRIVATE_KEY || !wsKey) return;
-
-      // assymmetrically decrypt symmetric key with local private key
-      const key = decryptAssymmetric({
-        ciphertext: wsKey.encryptedKey,
-        nonce: wsKey.nonce,
-        publicKey: wsKey.sender.publicKey,
-        privateKey: PRIVATE_KEY
-      });
-
-      const { ciphertext, nonce } = encryptAssymmetric({
-        plaintext: key,
-        publicKey,
-        privateKey: PRIVATE_KEY
-      });
-
-      await uploadWsKey({
-        userId: grantedUserId,
-        nonce,
-        encryptedKey: ciphertext,
-        workspaceId: currentWorkspace?.id || ""
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to grant access to user",
-        type: "error"
-      });
-    }
-  };
 
   const isLoading = isMembersLoading || isRolesLoading;
 
@@ -302,7 +263,7 @@ export const MemberListTab = () => {
             <THead>
               <Tr>
                 <Th>Name</Th>
-                <Th>Email</Th>
+                <Th>Username</Th>
                 <Th>Role</Th>
                 <Th className="w-5" />
               </Tr>
@@ -311,22 +272,20 @@ export const MemberListTab = () => {
               {isLoading && <TableSkeleton columns={4} innerKey="project-members" />}
               {!isLoading &&
                 filterdUsers?.map(
-                  ({ user: u, inviteEmail, id: membershipId, status, roleId, role }) => {
+                  ({ user: u, id: membershipId, roleId, role }) => {
                     const name = u ? `${u.firstName} ${u.lastName}` : "-";
-                    const email = u?.email || inviteEmail;
-
+                    const username = u?.username ?? "-";
                     return (
                       <Tr key={`membership-${membershipId}`} className="w-full">
                         <Td>{name}</Td>
-                        <Td>{email}</Td>
+                        <Td>{username}</Td>
                         <Td>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Edit}
                             a={ProjectPermissionSub.Member}
                           >
                             {(isAllowed) => (
-                              <>
-                                <Select
+                              <Select
                                   value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
                                   isDisabled={userId === u?.id || !isAllowed}
                                   className="w-40 bg-mineshaft-600"
@@ -345,18 +304,6 @@ export const MemberListTab = () => {
                                       </SelectItem>
                                     ))}
                                 </Select>
-                                {status === "completed" && user.email !== email && (
-                                  <div className="rounded-md border border-mineshaft-700 bg-white/5 text-white duration-200 hover:bg-primary hover:text-black">
-                                    <Button
-                                      colorSchema="secondary"
-                                      isDisabled={!isAllowed}
-                                      onClick={() => onGrantAccess(u?.id, u?.publicKey)}
-                                    >
-                                      Grant Access
-                                    </Button>
-                                  </div>
-                                )}
-                              </>
                             )}
                           </ProjectPermissionCan>
                         </Td>

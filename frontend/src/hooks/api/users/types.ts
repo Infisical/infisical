@@ -38,7 +38,8 @@ export type UserEnc = {
 export type OrgUser = {
   id: string;
   user: {
-    email: string;
+    username: string;
+    email?: string;
     firstName: string;
     lastName: string;
     id: string;

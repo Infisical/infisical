@@ -97,11 +97,11 @@ export const orgServiceFactory = ({
     return members;
   };
 
-  const findOrgMembersByEmail = async ({ actor, actorId, orgId, emails }: TFindOrgMembersByEmailDTO) => {
+  const findOrgMembersByUsername = async ({ actor, actorId, orgId, emails }: TFindOrgMembersByEmailDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
 
-    const members = await orgDAL.findOrgMembersByEmail(orgId, emails);
+    const members = await orgDAL.findOrgMembersByUsername(orgId, emails);
 
     return members;
   };
@@ -139,6 +139,7 @@ export const orgServiceFactory = ({
       {
         isGhost: true,
         authMethods: [AuthMethod.EMAIL],
+        username: email,
         email,
         isAccepted: true
       },
@@ -405,6 +406,7 @@ export const orgServiceFactory = ({
       // not invited before
       const user = await userDAL.create(
         {
+          username: inviteeEmail,
           email: inviteeEmail,
           isAccepted: false,
           authMethods: [AuthMethod.EMAIL],
@@ -557,7 +559,7 @@ export const orgServiceFactory = ({
     inviteUserToOrganization,
     verifyUserToOrg,
     updateOrg,
-    findOrgMembersByEmail,
+    findOrgMembersByUsername,
     createOrganization,
     deleteOrganizationById,
     deleteOrgMembership,

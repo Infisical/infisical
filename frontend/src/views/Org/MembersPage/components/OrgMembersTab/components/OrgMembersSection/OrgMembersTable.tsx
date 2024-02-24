@@ -143,6 +143,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
         ({ user: u, inviteEmail }) =>
           u?.firstName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
           u?.lastName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          u?.username?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
           u?.email?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
           inviteEmail?.includes(searchMemberFilter.toLowerCase())
       ),
@@ -162,7 +163,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
           <THead>
             <Tr>
               <Th>Name</Th>
-              <Th>Email</Th>
+              <Th>Username</Th>
               <Th>Role</Th>
               <Th className="w-5" />
             </Tr>
@@ -173,11 +174,11 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
               filterdUser?.map(
                 ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status }) => {
                   const name = u && u.firstName ? `${u.firstName} ${u.lastName}` : "-";
-                  const email = u?.email || inviteEmail;
+                  const username = u?.username ?? inviteEmail ?? "-";
                   return (
                     <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
                       <Td>{name}</Td>
-                      <Td>{email}</Td>
+                      <Td>{username}</Td>
                       <Td>
                         <OrgPermissionCan
                           I={OrgPermissionActions.Edit}

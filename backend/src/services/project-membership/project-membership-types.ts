@@ -33,4 +33,5 @@ export type TAddUsersToWorkspaceDTO = {
 export type TAddUsersToWorkspaceNonE2EEDTO = {
   sendEmails?: boolean;
   emails: string[];
+  usernames: string[];
 } & TProjectPermission;

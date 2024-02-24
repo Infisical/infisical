@@ -197,7 +197,7 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       userId: membership.userId as string,
-      username: membership.username as string,
+      username: membership.username,
       email: membership.email ?? "",
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
@@ -205,6 +205,7 @@ export const scimServiceFactory = ({
     });
   };
 
+  // TODO: update SCIM endpoints to add username
   const createScimUser = async ({ firstName, lastName, email, orgId }: TCreateScimUserDTO) => {
     const org = await orgDAL.findById(orgId);
 
@@ -250,6 +251,7 @@ export const scimServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         const newUser = await userDAL.create(
           {
+            username: email,
             email,
             firstName,
             lastName,
@@ -286,7 +288,7 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       userId: user.id,
-      username: user.username as string,
+      username: user.username,
       firstName: user.firstName as string,
       lastName: user.lastName as string,
       email: user.email ?? "",
@@ -345,7 +347,7 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       userId: membership.userId as string,
-      username: membership.username as string,
+      username: membership.username,
       email: membership.email ?? "",
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
@@ -391,7 +393,7 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       userId: membership.userId as string,
-      username: membership.username as string,
+      username: membership.username,
       email: membership.email ?? "",
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,

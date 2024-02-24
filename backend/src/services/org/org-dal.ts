@@ -57,7 +57,7 @@ export const orgDALFactory = (db: TDbClient) => {
   const findAllOrgMembers = async (orgId: string) => {
     try {
       const members = await db(TableName.OrgMembership)
-        .where({ orgId })
+        .where(`${TableName.OrgMembership}.orgId`, orgId)
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
@@ -72,22 +72,24 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("roleId").withSchema(TableName.OrgMembership),
           db.ref("status").withSchema(TableName.OrgMembership),
           db.ref("email").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         )
         .where({ isGhost: false }); // MAKE SURE USER IS NOT A GHOST USER
-      return members.map(({ email, firstName, lastName, userId, publicKey, ...data }) => ({
+
+      return members.map(({ email, username, firstName, lastName, userId, publicKey, ...data }) => ({
         ...data,
-        user: { email, firstName, lastName, id: userId, publicKey }
+        user: { email, username, firstName, lastName, id: userId, publicKey }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org members" });
     }
   };
 
-  const findOrgMembersByEmail = async (orgId: string, emails: string[]) => {
+  const findOrgMembersByUsername = async (orgId: string, usernames: string[]) => {
     try {
       const members = await db(TableName.OrgMembership)
         .where({ orgId })
@@ -104,6 +106,7 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("role").withSchema(TableName.OrgMembership),
           db.ref("roleId").withSchema(TableName.OrgMembership),
           db.ref("status").withSchema(TableName.OrgMembership),
+          db.ref("username").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
@@ -111,7 +114,7 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         )
         .where({ isGhost: false })
-        .whereIn("email", emails);
+        .whereIn("username", usernames);
       return members.map(({ email, firstName, lastName, userId, publicKey, ...data }) => ({
         ...data,
         user: { email, firstName, lastName, id: userId, publicKey }
@@ -267,7 +270,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findOrgById,
     findAllOrgsByUserId,
     ghostUserExists,
-    findOrgMembersByEmail,
+    findOrgMembersByUsername,
     findOrgGhostUser,
     create,
     updateById,
