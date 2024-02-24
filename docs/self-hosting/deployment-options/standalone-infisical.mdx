@@ -28,9 +28,11 @@ The following guide provides a detailed step-by-step walkthrough on how you can 
     
   </Step>
   <Step title="Start Infisical">
-    For a minimal installation of Infisical, you must configure `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, and `REDIS_URL`.
-    [View all available configurations](/self-hosting/configuration/envars).
+    For a minimal installation of Infisical, you must configure `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, and `REDIS_URL`.     [View all available configurations](/self-hosting/configuration/envars).
     
+
+    We recommend using Cloud-based Platform as a Service (PaaS) solutions for PostgreSQL and Redis to ensure high availability. 
+
     Once you have added the required environment variables to your docker run command, execute it in your terminal to get Infisical up and running.
     
     For example:
@@ -48,7 +50,9 @@ The following guide provides a detailed step-by-step walkthrough on how you can 
       The above environment variable values are only to be used as an example and should not be used in production 
     </Warning>
     
-    Once the container is running, verify the installation by opening your web browser and navigating to `http://localhost:80`.
+      Once the container is running, verify the installation by opening your web browser and navigating to `http://localhost:80`.
+
+      ![self host sign up](images/self-hosting/applicable-to-all/selfhost-signup.png)
   </Step>
 </Steps>
 
