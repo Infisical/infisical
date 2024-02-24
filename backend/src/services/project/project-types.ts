@@ -8,6 +8,17 @@ export enum ProjectFilterType {
   SLUG = "slug"
 }
 
+export type Filter =
+  | {
+      type: ProjectFilterType.ID;
+      projectId: string;
+    }
+  | {
+      type: ProjectFilterType.SLUG;
+      slug: string;
+      orgId: string | undefined;
+    };
+
 export type TCreateProjectDTO = {
   actor: ActorType;
   actorId: string;
@@ -25,8 +36,7 @@ export type TDeleteProjectBySlugDTO = {
 };
 
 export type TGetProjectDTO = {
-  filter: string;
-  filterType: ProjectFilterType;
+  filter: Filter;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TToggleProjectAutoCapitalizationDTO = {
@@ -37,8 +47,7 @@ export type TUpdateProjectNameDTO = {
 } & TProjectPermission;
 
 export type TUpdateProjectDTO = {
-  filter: string;
-  filterType: ProjectFilterType;
+  filter: Filter;
   update: {
     name?: string;
     autoCapitalization?: boolean;
@@ -46,8 +55,7 @@ export type TUpdateProjectDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteProjectDTO = {
-  filter: string;
-  filterType: ProjectFilterType;
+  filter: Filter;
   actor: ActorType;
   actorId: string;
   actorOrgId?: string;
