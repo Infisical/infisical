@@ -5,7 +5,7 @@ import { ProjectsSchema, ProjectUpgradeStatus, ProjectVersion, TableName, TProje
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
-import { ProjectFilterType } from "./project-types";
+import { Filter, ProjectFilterType } from "./project-types";
 
 export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 
@@ -168,10 +168,11 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectBySlug = async (slug: string) => {
+  const findProjectBySlug = async (slug: string, orgId: string) => {
     try {
       const projects = await db(TableName.ProjectMembership)
         .where(`${TableName.Project}.slug`, slug)
+        .where(`${TableName.Project}.orgId`, orgId)
         .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
         .join(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
@@ -185,6 +186,7 @@ export const projectDALFactory = (db: TDbClient) => {
           { column: `${TableName.Project}.name`, order: "asc" },
           { column: `${TableName.Environment}.position`, order: "asc" }
         ]);
+
       const project = sqlNestRelationships({
         data: projects,
         key: "id",
@@ -212,17 +214,26 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectByFilter = async (filter: string, type: ProjectFilterType) => {
+  const findProjectByFilter = async (filter: Filter) => {
     try {
-      if (type === ProjectFilterType.ID) {
-        return await findProjectById(filter);
+      if (filter.type === ProjectFilterType.ID) {
+        return await findProjectById(filter.projectId);
       }
-      if (type === ProjectFilterType.SLUG) {
-        return await findProjectBySlug(filter);
+      if (filter.type === ProjectFilterType.SLUG) {
+        if (!filter.orgId) {
+          throw new BadRequestError({
+            message: "Organization ID is required when querying with slugs"
+          });
+        }
+
+        return await findProjectBySlug(filter.slug, filter.orgId);
       }
       throw new BadRequestError({ message: "Invalid filter type" });
     } catch (error) {
-      throw new DatabaseError({ error, name: `Failed to find project by ${type}` });
+      if (error instanceof BadRequestError) {
+        throw error;
+      }
+      throw new DatabaseError({ error, name: `Failed to find project by ${filter.type}` });
     }
   };
 

@@ -195,8 +195,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
     handler: async (req) => {
       const project = await server.services.project.deleteProject({
-        filterType: ProjectFilterType.SLUG,
-        filter: req.params.slug,
+        filter: {
+          type: ProjectFilterType.SLUG,
+          slug: req.params.slug,
+          orgId: req.permission.orgId
+        },
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type
@@ -221,8 +224,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.getAProject({
-        filter: req.params.slug,
-        filterType: ProjectFilterType.SLUG,
+        filter: {
+          slug: req.params.slug,
+          orgId: req.permission.orgId,
+          type: ProjectFilterType.SLUG
+        },
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type
@@ -252,8 +258,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.updateProject({
-        filterType: ProjectFilterType.SLUG,
-        filter: req.params.slug,
+        filter: {
+          type: ProjectFilterType.SLUG,
+          slug: req.params.slug,
+          orgId: req.permission.orgId
+        },
         update: {
           name: req.body.name,
           autoCapitalization: req.body.autoCapitalization
