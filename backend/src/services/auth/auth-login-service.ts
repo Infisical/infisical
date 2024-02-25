@@ -133,7 +133,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     providerAuthToken,
     clientPublicKey
   }: TLoginGenServerPublicKeyDTO) => {
-    const userEnc = await userDAL.findUserEncKeyByEmail(email);
+    const userEnc = await userDAL.findUserEncKeyByUsername(email);
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
       throw new Error("Failed to find  user");
     }
@@ -160,7 +160,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     ip,
     userAgent
   }: TLoginClientProofDTO) => {
-    const userEnc = await userDAL.findUserEncKeyByEmail(email);
+    const userEnc = await userDAL.findUserEncKeyByUsername(email);
     if (!userEnc) throw new Error("Failed to find user");
     const cfg = getConfig();
 
@@ -301,7 +301,8 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
-        email: user.email,
+        // email: user.email,
+        username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,
         authMethod,

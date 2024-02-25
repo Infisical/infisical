@@ -357,7 +357,7 @@ export const samlConfigServiceFactory = ({
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
-        email: user.email,
+        username: user.username,
         firstName,
         lastName,
         organizationName: organization.name,

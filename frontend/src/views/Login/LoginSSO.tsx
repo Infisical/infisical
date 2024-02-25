@@ -15,7 +15,7 @@ export const LoginSSO = ({ providerAuthToken }: Props) => {
     const [password, setPassword] = useState("");
 
     const {
-        email,
+        username,
         isUserCompleted
     } = jwt_decode(providerAuthToken) as any;
     
@@ -35,7 +35,7 @@ export const LoginSSO = ({ providerAuthToken }: Props) => {
                 return (
                     <PasswordStep 
                         providerAuthToken={providerAuthToken}
-                        email={email}
+                        email={username}
                         password={password}
                         setPassword={setPassword}
                         setStep={setStep}
@@ -45,7 +45,7 @@ export const LoginSSO = ({ providerAuthToken }: Props) => {
                 return (
                     <MFAStep 
                         providerAuthToken={providerAuthToken}
-                        email={email}
+                        email={username}
                         password={password}
                     />
                 );

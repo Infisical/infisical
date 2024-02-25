@@ -62,7 +62,7 @@ export type AuthModeRefreshJwtTokenPayload = {
 
 export type AuthModeProviderJwtTokenPayload = {
   authTokenType: AuthTokenType.PROVIDER_TOKEN;
-  email: string;
+  username: string;
   organizationId?: string;
 };
 

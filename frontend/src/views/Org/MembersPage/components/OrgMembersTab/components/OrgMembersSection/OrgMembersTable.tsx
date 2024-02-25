@@ -41,7 +41,7 @@ type Props = {
     popUpName: keyof UsePopUpState<["removeMember", "upgradePlan"]>,
     data?: {
       orgMembershipId?: string;
-      email?: string;
+      username?: string;
       description?: string;
     }
   ) => void;
@@ -174,6 +174,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
               filterdUser?.map(
                 ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status }) => {
                   const name = u && u.firstName ? `${u.firstName} ${u.lastName}` : "-";
+                  const email = u?.email || inviteEmail;
                   const username = u?.username ?? inviteEmail ?? "-";
                   return (
                     <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
@@ -207,7 +208,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     ))}
                                 </Select>
                               )}
-                              {(status === "invited" || status === "verified") &&
+                              {(status === "invited" || status === "verified") && email &&
                                 serverDetails?.emailConfigured && (
                                   <Button
                                     isDisabled={!isAllowed}
@@ -240,7 +241,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     return;
                                   }
                                   
-                                  handlePopUpOpen("removeMember", { orgMembershipId, email });
+                                  handlePopUpOpen("removeMember", { orgMembershipId, username });
                                 }}
                                 size="lg"
                                 colorSchema="danger"

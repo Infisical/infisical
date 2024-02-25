@@ -88,7 +88,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        email: z.string().email().trim(),
+        email: z.string().trim(),
         firstName: z.string().trim(),
         lastName: z.string().trim().optional(),
         protectedKey: z.string().trim(),

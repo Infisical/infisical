@@ -24,7 +24,7 @@ const client = new jsrp.client();
 
 type Props = {
   setStep: (step: number) => void;
-  email: string;
+  username: string;
   password: string;
   setPassword: (value: string) => void;
   name: string;
@@ -57,7 +57,7 @@ type Errors = {
  * @param {string} obj.setLastName - function managing the state of user's last name
  */
 export const UserInfoSSOStep = ({
-  email,
+  username,
   name,
   providerOrganizationName,
   password,
@@ -113,7 +113,7 @@ export const UserInfoSSOStep = ({
 
       client.init(
         {
-          username: email,
+          username,
           password
         },
         async () => {
@@ -156,7 +156,7 @@ export const UserInfoSSOStep = ({
               });
 
               const response = await completeAccountSignup({
-                email,
+                email: username,
                 firstName: name.split(" ")[0],
                 lastName: name.split(" ").slice(1).join(" "),
                 protectedKey,

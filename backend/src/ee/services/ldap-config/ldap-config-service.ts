@@ -329,7 +329,7 @@ export const ldapConfigServiceFactory = ({
 
     if (user) {
       await userDAL.transaction(async (tx) => {
-        const [orgMembership] = await orgDAL.findMembership({ userId: user.id, orgId }, { tx });
+        const [orgMembership] = await orgDAL.findMembership({ userId: user.id }, { tx });
         if (!orgMembership) {
           await orgDAL.createMembership(
             {
@@ -366,7 +366,7 @@ export const ldapConfigServiceFactory = ({
         await orgDAL.createMembership({
           orgId,
           role: OrgMembershipRole.Member,
-          status: OrgMembershipStatus.Invited // should this be invited?
+          status: OrgMembershipStatus.Invited
         });
         return newUser;
       });
@@ -378,6 +378,7 @@ export const ldapConfigServiceFactory = ({
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
+        username: user.username,
         firstName,
         lastName,
         organizationName: organization.name,

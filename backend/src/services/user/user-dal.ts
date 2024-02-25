@@ -20,10 +20,10 @@ export const userDALFactory = (db: TDbClient) => {
 
   // USER ENCRYPTION FUNCTIONS
   // -------------------------
-  const findUserEncKeyByEmail = async (email: string) => {
+  const findUserEncKeyByUsername = async (username: string) => {
     try {
       return await db(TableName.Users)
-        .where({ email, isGhost: false })
+        .where({ username, isGhost: false })
         .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .first();
     } catch (error) {
@@ -119,7 +119,7 @@ export const userDALFactory = (db: TDbClient) => {
   return {
     ...userOrm,
     findUserByEmail,
-    findUserEncKeyByEmail,
+    findUserEncKeyByUsername,
     findUserEncKeyByUserId,
     updateUserEncryptionByUserId,
     findUserByProjectMembershipId,

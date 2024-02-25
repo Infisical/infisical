@@ -115,14 +115,14 @@ export const authSignupServiceFactory = ({
     userAgent,
     authorization
   }: TCompleteAccountSignupDTO) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findOne({ username: email });
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
 
     let organizationId;
     if (providerAuthToken) {
-      const { orgId } = validateProviderAuthToken(providerAuthToken, user.email as string);
+      const { orgId } = validateProviderAuthToken(providerAuthToken, user.username);
       organizationId = orgId;
     } else {
       validateSignUpAuthorization(authorization, user.id);
@@ -152,7 +152,7 @@ export const authSignupServiceFactory = ({
     if (!organizationId) {
       await orgService.createOrganization({
         userId: user.id,
-        userEmail: user.email,
+        userEmail: user.email ?? user.username ?? "", // TODO: look into
         orgName: organizationName
       });
     }
