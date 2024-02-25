@@ -9,6 +9,7 @@ services:
     image: infisical/infisical:latest-postgres
     env_file: .env
     command: npm run migration:latest
+    pull_policy: always
     networks:
       - infisical
 
@@ -23,6 +24,7 @@ services:
       db-migration:
         condition: service_completed_successfully
     image: infisical/infisical:latest-postgres
+    pull_policy: always
     env_file: .env
     ports:
       - 80:8080
