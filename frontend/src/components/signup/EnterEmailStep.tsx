@@ -28,7 +28,7 @@ export default function EnterEmailStep({
   incrementStep
 }: DownloadBackupPDFStepProps): JSX.Element {
   const { createNotification } = useNotificationContext();
-  const { mutateAsync } = useSendVerificationEmail();
+  const { mutateAsync, isLoading } = useSendVerificationEmail();
   const [emailError, setEmailError] = useState(false);
   const { t } = useTranslation();
 
@@ -91,6 +91,8 @@ export default function EnterEmailStep({
               className='h-14'
               colorSchema="primary"
               variant="outline_bg"
+              isLoading={isLoading}
+              isDisabled={isLoading}
             > {String(t("signup.step1-submit"))} </Button>
           </div>
         </div>
