@@ -4,7 +4,8 @@ services:
   db-migration:
     container_name: infisical-db-migration
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     image: infisical/infisical:latest-postgres
     env_file: .env
     command: npm run migration:latest
@@ -16,7 +17,7 @@ services:
     restart: unless-stopped
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_started
       db-migration:
@@ -52,6 +53,11 @@ services:
       - pg_data:/data/db
     networks:
       - infisical
+    healthcheck:
+      test: "pg_isready --username=${POSTGRES_USER} && psql --username=${POSTGRES_USER} --list"
+      interval: 5s
+      timeout: 10s
+      retries: 10
 
 volumes:
   pg_data:
