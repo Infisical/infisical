@@ -16,7 +16,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          config: SuperAdminSchema
+          config: SuperAdminSchema.omit({ createdAt: true, updatedAt: true })
         })
       }
     },

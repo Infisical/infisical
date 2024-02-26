@@ -1,4 +1,5 @@
 import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -14,6 +15,7 @@ type TSuperAdminServiceFactoryDep = {
   userDAL: TUserDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItem">;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
@@ -21,26 +23,44 @@ export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFacto
 // eslint-disable-next-line
 export let getServerCfg: () => Promise<TSuperAdmin>;
 
+const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
 export const superAdminServiceFactory = ({
   serverCfgDAL,
   userDAL,
   authService,
-  orgService
+  orgService,
+  keyStore
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
-    getServerCfg = () => serverCfgDAL.findOne({});
+    getServerCfg = async () => {
+      const config = await keyStore.getItem(ADMIN_CONFIG_KEY);
+      if (!config) {
+        const serverCfg = await serverCfgDAL.findOne({});
+        await keyStore.setItem(ADMIN_CONFIG_KEY, JSON.stringify(serverCfg));
+        return serverCfg;
+      }
+      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin;
+      return {
+        ...keyStoreServerCfg,
+        // this is to allow admin router to work
+        createdAt: new Date(keyStoreServerCfg.createdAt),
+        updatedAt: new Date(keyStoreServerCfg.updatedAt)
+      };
+    };
 
-    const serverCfg = await serverCfgDAL.findOne({});
+    const serverCfg = await getServerCfg();
     if (serverCfg) return;
+
     const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true });
     return newCfg;
   };
 
   const updateServerCfg = async (data: TSuperAdminUpdate) => {
     const serverCfg = await getServerCfg();
-    const cfg = await serverCfgDAL.updateById(serverCfg.id, data);
-    return cfg;
+    const updatedServerCfg = await serverCfgDAL.updateById(serverCfg.id, data);
+    await keyStore.setItem(ADMIN_CONFIG_KEY, JSON.stringify(updatedServerCfg));
+    return updatedServerCfg;
   };
 
   const adminSignUp = async ({

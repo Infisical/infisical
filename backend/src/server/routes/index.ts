@@ -34,6 +34,7 @@ import { snapshotFolderDALFactory } from "@app/ee/services/secret-snapshot/snaps
 import { snapshotSecretDALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
@@ -112,7 +113,12 @@ import { registerV3Routes } from "./v3";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
-  { db, smtp: smtpService, queue: queueService }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory }
+  {
+    db,
+    smtp: smtpService,
+    queue: queueService,
+    keyStore
+  }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory; keyStore: TKeyStoreFactory }
 ) => {
   await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
 
@@ -263,7 +269,8 @@ export const registerRoutes = async (
     userDAL,
     authService: loginService,
     serverCfgDAL: superAdminDAL,
-    orgService
+    orgService,
+    keyStore
   });
   const apiKeyService = apiKeyServiceFactory({ apiKeyDAL, userDAL });
 
