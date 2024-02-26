@@ -30,6 +30,15 @@ export const LDAPStep = ({
                 password
             });
             
+            if (!nextUrl) {
+                createNotification({
+                    text: "Login unsuccessful. Double-check your credentials and try again.",
+                    type: "error"
+                });
+                
+                return;
+            }
+            
             createNotification({
                 text: "Successfully logged in",
                 type: "success"

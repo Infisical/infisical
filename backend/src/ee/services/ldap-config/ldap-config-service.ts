@@ -13,6 +13,7 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TOrgPermission } from "@app/lib/types";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
@@ -204,8 +205,8 @@ export const ldapConfigServiceFactory = ({
     return ldapConfig;
   };
 
-  const getLdapCfg2 = async (orgId: string) => {
-    const ldapConfig = await ldapConfigDAL.findOne({ orgId });
+  const getLdapCfg = async (filter: { orgId: string; isActive?: boolean }) => {
+    const ldapConfig = await ldapConfigDAL.findOne(filter);
     if (!ldapConfig) throw new BadRequestError({ message: "Failed to find organization LDAP data" });
 
     const orgBot = await orgBotDAL.findOne({ orgId: ldapConfig.orgId });
@@ -272,44 +273,55 @@ export const ldapConfigServiceFactory = ({
     };
   };
 
-  const getLdapCfg = async ({ actor, actorId, orgId, actorOrgId }: TOrgPermission) => {
+  const getLdapCfgWithPermissionCheck = async ({ actor, actorId, orgId, actorOrgId }: TOrgPermission) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
-    return getLdapCfg2(orgId);
+    return getLdapCfg({
+      orgId
+    });
   };
 
   // eslint-disable-next-line
-  const getLDAPConfiguration = (req: FastifyRequest, callback: any) => {
+  const getLdapPassportOpts = (req: FastifyRequest, done: any) => {
     const { organizationSlug } = req.body as {
       organizationSlug: string;
     };
 
     const boot = async () => {
-      const organization = await orgDAL.findOne({ slug: organizationSlug });
-      const ldapConfig = await getLdapCfg2(organization.id); // repeat?
-      req.ldapConfig = ldapConfig;
+      try {
+        const organization = await orgDAL.findOne({ slug: organizationSlug });
+        const ldapConfig = await getLdapCfg({
+          orgId: organization.id,
+          isActive: true
+        });
+        req.ldapConfig = ldapConfig;
 
-      const opts = {
-        server: {
-          url: ldapConfig.url,
-          bindDN: ldapConfig.bindDN,
-          bindCredentials: ldapConfig.bindPass,
-          searchBase: ldapConfig.searchBase,
-          searchFilter: "(uid={{username}})",
-          searchAttributes: ["uid", "givenName", "sn"],
-          ...(ldapConfig.caCert !== ""
-            ? {
-                tlsOptions: {
-                  ca: [ldapConfig.caCert]
+        const opts = {
+          server: {
+            url: ldapConfig.url,
+            bindDN: ldapConfig.bindDN,
+            bindCredentials: ldapConfig.bindPass,
+            searchBase: ldapConfig.searchBase,
+            searchFilter: "(uid={{username}})",
+            searchAttributes: ["uid", "givenName", "sn"],
+            ...(ldapConfig.caCert !== ""
+              ? {
+                  tlsOptions: {
+                    ca: [ldapConfig.caCert]
+                  }
                 }
-              }
-            : {})
-        },
-        passReqToCallback: true
-      };
+              : {})
+          },
+          passReqToCallback: true
+        };
 
-      // eslint-disable-next-line
-      callback(null, opts);
+        // eslint-disable-next-line
+          done(null, opts);
+      } catch (err) {
+        logger.error(err);
+        // eslint-disable-next-line
+          done(err as Error);
+      }
     };
 
     process.nextTick(async () => {
@@ -403,8 +415,9 @@ export const ldapConfigServiceFactory = ({
   return {
     createLdapCfg,
     updateLdapCfg,
+    getLdapCfgWithPermissionCheck,
     getLdapCfg,
-    getLDAPConfiguration,
+    getLdapPassportOpts,
     ldapLogin
   };
 };

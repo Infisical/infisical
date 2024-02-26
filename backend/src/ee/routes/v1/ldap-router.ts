@@ -27,7 +27,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
 
   passport.use(
     new LdapStrategy(
-      server.services.ldap.getLDAPConfiguration,
+      server.services.ldap.getLdapPassportOpts,
       // eslint-disable-next-line
         async (req, user, cb) => {
         try {
@@ -98,7 +98,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const ldap = await server.services.ldap.getLdapCfg({
+      const ldap = await server.services.ldap.getLdapCfgWithPermissionCheck({
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.query.organizationId,

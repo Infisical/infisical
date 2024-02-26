@@ -250,7 +250,9 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("scimEnabled").withSchema(TableName.Organization)
-        );
+        )
+        .where({ isGhost: false });
+
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {

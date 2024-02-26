@@ -301,7 +301,6 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
-        // email: user.email,
         username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,

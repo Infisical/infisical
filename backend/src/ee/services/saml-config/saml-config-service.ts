@@ -5,6 +5,7 @@ import {
   OrgMembershipRole,
   OrgMembershipStatus,
   SecretKeyEncoding,
+  TableName,
   TSamlConfigs,
   TSamlConfigsUpdate
 } from "@app/db/schemas";
@@ -31,7 +32,7 @@ import { TCreateSamlCfgDTO, TGetSamlCfgDTO, TSamlLoginDTO, TUpdateSamlCfgDTO } f
 
 type TSamlConfigServiceFactoryDep = {
   samlConfigDAL: TSamlConfigDALFactory;
-  userDAL: Pick<TUserDALFactory, "create" | "findUserByEmail" | "transaction" | "updateById">;
+  userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
@@ -299,16 +300,30 @@ export const samlConfigServiceFactory = ({
     };
   };
 
-  const samlLogin = async ({ firstName, email, lastName, authProvider, orgId, relayState }: TSamlLoginDTO) => {
+  const samlLogin = async ({
+    username,
+    email,
+    firstName,
+    lastName,
+    authProvider,
+    orgId,
+    relayState
+  }: TSamlLoginDTO) => {
     const appCfg = getConfig();
-    let user = await userDAL.findUserByEmail(email);
+    let user = await userDAL.findOne({ username });
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new BadRequestError({ message: "Org not found" });
 
     if (user) {
       await userDAL.transaction(async (tx) => {
-        const [orgMembership] = await orgDAL.findMembership({ userId: user.id, orgId }, { tx });
+        const [orgMembership] = await orgDAL.findMembership(
+          {
+            userId: user.id,
+            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+          },
+          { tx }
+        );
         if (!orgMembership) {
           await orgDAL.createMembership(
             {
@@ -334,7 +349,7 @@ export const samlConfigServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         const newUser = await userDAL.create(
           {
-            username: email,
+            username,
             email,
             firstName,
             lastName,
