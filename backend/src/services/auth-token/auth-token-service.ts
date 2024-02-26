@@ -7,7 +7,6 @@ import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 
 import { AuthModeJwtTokenPayload } from "../auth/auth-type";
-import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTokenDALFactory } from "./auth-token-dal";
 import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenForUserDTO } from "./auth-token-types";
@@ -15,7 +14,6 @@ import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenFo
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
   userDAL: Pick<TUserDALFactory, "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership">;
 };
 export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
 
@@ -56,7 +54,7 @@ export const getTokenConfig = (tokenType: TokenType) => {
   }
 };
 
-export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL }: TAuthTokenServiceFactoryDep) => {
+export const tokenServiceFactory = ({ tokenDAL, userDAL }: TAuthTokenServiceFactoryDep) => {
   const createTokenForUser = async ({ type, userId, orgId }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
@@ -132,7 +130,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL }: TAuthTokenSer
   const revokeAllMySessions = async (userId: string) => tokenDAL.deleteTokenSession({ userId });
 
   // to parse jwt identity in inject identity plugin
-  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload, organizationIdHeader?: string | string[]) => {
+  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
     const session = await tokenDAL.findOneTokenSession({
       id: token.tokenVersionId,
       userId: token.userId
@@ -143,22 +141,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL }: TAuthTokenSer
     const user = await userDAL.findById(session.userId);
     if (!user || !user.isAccepted) throw new UnauthorizedError({ name: "Token user not found" });
 
-    let orgId = token.organizationId;
-    if (!token.organizationId && organizationIdHeader) {
-      // If the token doesn't have an organization ID, but an organization ID is provided in the header, we need to check if the user is a member of the organization before concluding the organization ID is valid.
-      const userMembership = (
-        await orgDAL.findMembership({
-          userId: user.id,
-          orgId: organizationIdHeader as string
-        })
-      )[0];
-
-      if (!userMembership) throw new UnauthorizedError({ name: "User not a member of the organization" });
-
-      orgId = userMembership.orgId;
-    }
-
-    return { user, tokenVersionId: token.tokenVersionId, orgId };
+    return { user, tokenVersionId: token.tokenVersionId, orgId: token.organizationId };
   };
 
   return {
