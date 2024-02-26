@@ -172,15 +172,7 @@
           "pages": [
             "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/docker-compose",
-            "self-hosting/deployment-options/kubernetes-helm",
-            "self-hosting/deployment-options/aws-ec2",
-            "self-hosting/deployment-options/aws-lightsail",
-            "self-hosting/deployment-options/gcp-cloud-run",
-            "self-hosting/deployment-options/azure-app-services",
-            "self-hosting/deployment-options/azure-container-instances",
-            "self-hosting/deployment-options/digital-ocean-marketplace",
-            "self-hosting/deployment-options/fly.io",
-            "self-hosting/deployment-options/railway"
+            "self-hosting/deployment-options/kubernetes-helm"
           ]
         },
         "self-hosting/configuration/envars",
@@ -226,10 +218,6 @@
       ]
     },
     {
-      "group": "Integrations",
-      "pages": ["integrations/overview"]
-    },
-    {
       "group": "Infrastructure Integrations",
       "pages": [
         {
@@ -248,7 +236,7 @@
       ]
     },
     {
-      "group": "3rd-party Integrations",
+      "group": "Native Integrations",
       "pages": [
         {
           "group": "AWS",
@@ -261,39 +249,49 @@
           "group": "Digital Ocean",
           "pages": ["integrations/cloud/digital-ocean-app-platform"]
         },
-        "integrations/cloud/heroku",
         "integrations/cloud/vercel",
-        "integrations/cloud/netlify",
-        "integrations/cloud/render",
-        "integrations/cloud/railway",
-        "integrations/cloud/flyio",
-        "integrations/cloud/laravel-forge",
-        "integrations/cloud/supabase",
-        "integrations/cloud/northflank",
-        "integrations/cloud/hasura-cloud",
-        "integrations/cloud/terraform-cloud",
-        "integrations/cloud/cloudflare-pages",
-        "integrations/cloud/cloudflare-workers",
-        "integrations/cloud/qovery",
-        "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
         "integrations/cloud/gcp-secret-manager",
-        "integrations/cloud/cloud-66",
-        "integrations/cloud/windmill"
+        {
+          "group": "View more",
+          "pages": [
+            "integrations/cloud/heroku",
+            "integrations/cloud/netlify",
+            "integrations/cloud/render",
+            "integrations/cloud/railway",
+            "integrations/cloud/flyio",
+            "integrations/cloud/laravel-forge",
+            "integrations/cloud/supabase",
+            "integrations/cloud/northflank",
+            "integrations/cloud/hasura-cloud",
+            "integrations/cloud/terraform-cloud",
+            "integrations/cloud/cloudflare-pages",
+            "integrations/cloud/cloudflare-workers",
+            "integrations/cloud/qovery",
+            "integrations/cloud/hashicorp-vault",
+            "integrations/cloud/cloud-66",
+            "integrations/cloud/windmill"
+          ]
+        }
       ]
     },
     {
       "group": "CI/CD Integrations",
       "pages": [
         "integrations/cloud/teamcity",
-        "integrations/cloud/checkly",
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
-        "integrations/cicd/circleci",
-        "integrations/cicd/travisci",
-        "integrations/cicd/bitbucket",
-        "integrations/cicd/codefresh",
-        "integrations/cicd/jenkins"
+        {
+          "group": "View more",
+          "pages": [
+            "integrations/cicd/circleci",
+            "integrations/cicd/travisci",
+            "integrations/cicd/bitbucket",
+            "integrations/cicd/codefresh",
+            "integrations/cicd/jenkins",
+            "integrations/cloud/checkly"
+          ]
+        }
       ]
     },
     {
@@ -303,20 +301,25 @@
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
         "integrations/frameworks/express",
-        "integrations/frameworks/nextjs",
-        "integrations/frameworks/nestjs",
-        "integrations/frameworks/sveltekit",
-        "integrations/frameworks/nuxt",
-        "integrations/frameworks/gatsby",
-        "integrations/frameworks/remix",
-        "integrations/frameworks/vite",
-        "integrations/frameworks/fiber",
-        "integrations/frameworks/django",
-        "integrations/frameworks/flask",
-        "integrations/frameworks/laravel",
-        "integrations/frameworks/rails",
-        "integrations/frameworks/dotnet",
-        "integrations/platforms/pm2"
+        {
+          "group": "View more",
+          "pages": [
+            "integrations/frameworks/nextjs",
+            "integrations/frameworks/nestjs",
+            "integrations/frameworks/sveltekit",
+            "integrations/frameworks/nuxt",
+            "integrations/frameworks/gatsby",
+            "integrations/frameworks/remix",
+            "integrations/frameworks/vite",
+            "integrations/frameworks/fiber",
+            "integrations/frameworks/django",
+            "integrations/frameworks/flask",
+            "integrations/frameworks/laravel",
+            "integrations/frameworks/rails",
+            "integrations/frameworks/dotnet",
+            "integrations/platforms/pm2"
+          ]
+        }
       ]
     },
     {
