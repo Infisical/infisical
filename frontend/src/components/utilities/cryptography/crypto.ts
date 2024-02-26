@@ -210,7 +210,14 @@ const decryptSymmetric = ({ ciphertext, iv, tag, key }: DecryptSymmetricProps): 
   try {
     plaintext = aes.decrypt({ ciphertext, iv, tag, secret: key });
   } catch (err) {
-    console.log("Failed to perform decryption");
+    console.log("Failed to decrypt with the following parameters", {
+      ciphertext,
+      iv,
+      tag,
+      key
+    });
+    console.log("Failed to perform decryption", err);
+
     process.exit(1);
   }
 
