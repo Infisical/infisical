@@ -8,3 +8,5 @@ backend/frontend-build
 README.md
 .dockerignore
 **/Dockerfile
+**/.env
+**/.env.*
