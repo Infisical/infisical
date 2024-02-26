@@ -1,15 +1,24 @@
 import { PostHog } from "posthog-node";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { InstanceType } from "@app/ee/services/license/license-types";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 
-import { TPostHogEvent } from "./telemetry-types";
+import { PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
+
+export const TELEMETRY_SECRET_PROCESSED_KEY = "telemtry-secret-processed";
+export const TELEMETRY_SECRET_OPERATONS_KEY = "telemtry-secret-operations";
 
 export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory>;
+export type TTelemetryServiceFactoryDep = {
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "incrementBy">;
+  licenseService: Pick<TLicenseServiceFactory, "getInstanceType">;
+};
 
-// type TTelemetryServiceFactoryDep = {};
-export const telemetryServiceFactory = () => {
+export const telemetryServiceFactory = ({ keyStore, licenseService }: TTelemetryServiceFactoryDep) => {
   const appCfg = getConfig();
 
   if (appCfg.isProductionMode && !appCfg.TELEMETRY_ENABLED) {
@@ -51,13 +60,33 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
-  const sendPostHogEvents = (event: TPostHogEvent) => {
+  const sendPostHogEvents = async (event: TPostHogEvent) => {
     if (postHog) {
-      postHog.capture({
-        event: event.event,
-        distinctId: event.distinctId,
-        properties: event.properties
-      });
+      const instanceType = licenseService.getInstanceType();
+      // capture posthog only when its cloud or signup event happens in self hosted
+      if (instanceType === InstanceType.Cloud || event.event === PostHogEventTypes.UserSignedUp) {
+        postHog.capture({
+          event: event.event,
+          distinctId: event.distinctId,
+          properties: event.properties
+        });
+        return;
+      }
+
+      if (
+        [
+          PostHogEventTypes.SecretPulled,
+          PostHogEventTypes.SecretCreated,
+          PostHogEventTypes.SecretDeleted,
+          PostHogEventTypes.SecretUpdated
+        ].includes(event.event)
+      ) {
+        await keyStore.incrementBy(
+          TELEMETRY_SECRET_PROCESSED_KEY,
+          (event as TSecretModifiedEvent).properties.numberOfSecrets
+        );
+        await keyStore.incrementBy(TELEMETRY_SECRET_OPERATONS_KEY, 1);
+      }
     }
   };
 

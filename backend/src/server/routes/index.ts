@@ -97,6 +97,8 @@ import { serviceTokenServiceFactory } from "@app/services/service-token/service-
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
+import { telemetryDALFactory } from "@app/services/telemetry/telemetry-dal";
+import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-queue";
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
@@ -165,6 +167,7 @@ export const registerRoutes = async (
   const auditLogDAL = auditLogDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const scimDAL = scimDALFactory(db);
+  const telemetryDAL = telemetryDALFactory(db);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -232,7 +235,16 @@ export const registerRoutes = async (
     smtpService
   });
 
-  const telemetryService = telemetryServiceFactory();
+  const telemetryService = telemetryServiceFactory({
+    keyStore,
+    licenseService
+  });
+  const telemetryQueue = telemetryQueueServiceFactory({
+    keyStore,
+    telemetryDAL,
+    queueService
+  });
+
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
   const userService = userServiceFactory({ userDAL });
   const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService });
@@ -498,9 +510,13 @@ export const registerRoutes = async (
   });
 
   await superAdminService.initServerCfg();
-  await auditLogQueue.startAuditLogPruneJob();
+  //
   // setup the communication with license key server
   await licenseService.init();
+
+  await auditLogQueue.startAuditLogPruneJob();
+  await telemetryQueue.startTelemetryCheck();
+
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
     login: loginService,

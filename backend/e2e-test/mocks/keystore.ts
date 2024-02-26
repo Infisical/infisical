@@ -22,6 +22,9 @@ export const mockKeyStore = (): TKeyStoreFactory => {
         return value;
       }
       return null;
+    },
+    incrementBy: async () => {
+      return 1;
     }
   };
 };

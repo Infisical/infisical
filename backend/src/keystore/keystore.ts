@@ -14,5 +14,7 @@ export const keyStoreFactory = (redisUrl: string) => {
 
   const deleteItem = async (key: string) => redis.del(key);
 
-  return { setItem, getItem, setItemWithExpiry, deleteItem };
+  const incrementBy = async (key: string, value: number) => redis.incrby(key, value);
+
+  return { setItem, getItem, setItemWithExpiry, deleteItem, incrementBy };
 };
