@@ -51,7 +51,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.MachineIdentityCreated,
         distinctId: getTelemetryDistinctId(req),
         properties: {

@@ -32,7 +32,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserOrgInvitation,
         distinctId: getTelemetryDistinctId(req),
         properties: {

@@ -154,7 +154,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: req.body.slug
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.ProjectCreated,
         distinctId: getTelemetryDistinctId(req),
         properties: {
