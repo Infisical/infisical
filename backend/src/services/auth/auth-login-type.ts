@@ -2,12 +2,14 @@ import { AuthMethod } from "./auth-type";
 
 export type TLoginGenServerPublicKeyDTO = {
   email: string;
+  userOrgId?: string;
   clientPublicKey: string;
   providerAuthToken?: string;
 };
 
 export type TLoginClientProofDTO = {
   email: string;
+  userOrgId?: string;
   clientProof: string;
   providerAuthToken?: string;
   ip: string;

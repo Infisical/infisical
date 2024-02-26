@@ -25,12 +25,14 @@ export type VerifyMfaTokenRes = {
 
 export type Login1DTO = {
   email: string;
+  orgId?: string;
   clientPublicKey: string;
   providerAuthToken?: string;
 }
 
 export type Login2DTO = {
   email: string;
+  orgId?: string;
   clientProof: string;
   providerAuthToken?: string;
 }

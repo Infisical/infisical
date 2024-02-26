@@ -370,16 +370,21 @@ export const ldapConfigServiceFactory = ({
             orgId,
             firstName,
             lastName,
-            authMethods: [AuthMethod.EMAIL],
+            authMethods: [AuthMethod.LDAP],
             isGhost: false
           },
           tx
         );
-        await orgDAL.createMembership({
-          orgId,
-          role: OrgMembershipRole.Member,
-          status: OrgMembershipStatus.Invited
-        });
+        await orgDAL.createMembership(
+          {
+            userId: newUser.id,
+            orgId,
+            role: OrgMembershipRole.Member,
+            status: OrgMembershipStatus.Invited
+          },
+          tx
+        );
+
         return newUser;
       });
     }

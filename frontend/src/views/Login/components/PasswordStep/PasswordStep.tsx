@@ -78,6 +78,7 @@ export const PasswordStep = ({
             } else {
                 const loginAttempt = await attemptLogin({
                     email,
+                    orgId: organizationId,
                     password,
                     providerAuthToken,
                 });
