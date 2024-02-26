@@ -15,14 +15,8 @@ apiRequest.interceptors.request.use((config) => {
   const mfaTempToken = getMfaTempToken();
   const token = getAuthToken();
   const providerAuthToken = SecurityClient.getProviderAuthToken();
-  const organizationId = localStorage.getItem("orgData.id");
 
   if (config.headers) {
-    if (organizationId) {
-      // eslint-disable-next-line no-param-reassign
-      config.headers["x-infisical-organization-id"] = organizationId;
-    }
-
     if (signupTempToken) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${signupTempToken}`;

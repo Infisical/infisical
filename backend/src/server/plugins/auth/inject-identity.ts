@@ -121,10 +121,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
     switch (authMode) {
       // May or may not have an orgId. If it doesn't have an org ID, it's likely because the token is from an org that doesn't enforce org-level auth.
       case AuthMode.JWT: {
-        const { user, tokenVersionId, orgId } = await server.services.authToken.fnValidateJwtIdentity(
-          token,
-          req.headers?.["x-infisical-organization-id"]
-        );
+        const { user, tokenVersionId, orgId } = await server.services.authToken.fnValidateJwtIdentity(token);
         req.auth = { authMode: AuthMode.JWT, user, userId: user.id, tokenVersionId, actor, orgId };
         break;
       }
