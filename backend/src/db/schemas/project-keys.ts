@@ -19,5 +19,5 @@ export const ProjectKeysSchema = z.object({
 });
 
 export type TProjectKeys = z.infer<typeof ProjectKeysSchema>;
-export type TProjectKeysInsert = Omit<TProjectKeys, TImmutableDBKeys>;
-export type TProjectKeysUpdate = Partial<Omit<TProjectKeys, TImmutableDBKeys>>;
+export type TProjectKeysInsert = Omit<z.input<typeof ProjectKeysSchema>, TImmutableDBKeys>;
+export type TProjectKeysUpdate = Partial<Omit<z.input<typeof ProjectKeysSchema>, TImmutableDBKeys>>;

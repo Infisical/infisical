@@ -9,5 +9,10 @@ export const keyStoreFactory = (redisUrl: string) => {
 
   const getItem = async (key: string) => redis.get(key);
 
-  return { setItem, getItem };
+  const setItemWithExpiry = async (key: string, exp: number | string, value: string | number | Buffer) =>
+    redis.setex(key, exp, value);
+
+  const deleteItem = async (key: string) => redis.del(key);
+
+  return { setItem, getItem, setItemWithExpiry, deleteItem };
 };

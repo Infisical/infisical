@@ -25,5 +25,5 @@ export const ServiceTokensSchema = z.object({
 });
 
 export type TServiceTokens = z.infer<typeof ServiceTokensSchema>;
-export type TServiceTokensInsert = Omit<TServiceTokens, TImmutableDBKeys>;
-export type TServiceTokensUpdate = Partial<Omit<TServiceTokens, TImmutableDBKeys>>;
+export type TServiceTokensInsert = Omit<z.input<typeof ServiceTokensSchema>, TImmutableDBKeys>;
+export type TServiceTokensUpdate = Partial<Omit<z.input<typeof ServiceTokensSchema>, TImmutableDBKeys>>;

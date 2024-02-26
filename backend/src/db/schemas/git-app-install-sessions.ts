@@ -17,5 +17,5 @@ export const GitAppInstallSessionsSchema = z.object({
 });
 
 export type TGitAppInstallSessions = z.infer<typeof GitAppInstallSessionsSchema>;
-export type TGitAppInstallSessionsInsert = Omit<TGitAppInstallSessions, TImmutableDBKeys>;
-export type TGitAppInstallSessionsUpdate = Partial<Omit<TGitAppInstallSessions, TImmutableDBKeys>>;
+export type TGitAppInstallSessionsInsert = Omit<z.input<typeof GitAppInstallSessionsSchema>, TImmutableDBKeys>;
+export type TGitAppInstallSessionsUpdate = Partial<Omit<z.input<typeof GitAppInstallSessionsSchema>, TImmutableDBKeys>>;

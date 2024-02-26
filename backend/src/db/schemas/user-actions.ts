@@ -16,5 +16,5 @@ export const UserActionsSchema = z.object({
 });
 
 export type TUserActions = z.infer<typeof UserActionsSchema>;
-export type TUserActionsInsert = Omit<TUserActions, TImmutableDBKeys>;
-export type TUserActionsUpdate = Partial<Omit<TUserActions, TImmutableDBKeys>>;
+export type TUserActionsInsert = Omit<z.input<typeof UserActionsSchema>, TImmutableDBKeys>;
+export type TUserActionsUpdate = Partial<Omit<z.input<typeof UserActionsSchema>, TImmutableDBKeys>>;

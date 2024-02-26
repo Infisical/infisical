@@ -15,7 +15,7 @@ type TSuperAdminServiceFactoryDep = {
   userDAL: TUserDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItem">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
@@ -24,6 +24,9 @@ export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFacto
 export let getServerCfg: () => Promise<TSuperAdmin>;
 
 const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
+const ADMIN_CONFIG_KEY_EXP = 60; // 60s
+const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
+
 export const superAdminServiceFactory = ({
   serverCfgDAL,
   userDAL,
@@ -35,11 +38,15 @@ export const superAdminServiceFactory = ({
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
     getServerCfg = async () => {
       const config = await keyStore.getItem(ADMIN_CONFIG_KEY);
+      // missing in keystore means fetch from db
       if (!config) {
-        const serverCfg = await serverCfgDAL.findOne({});
-        await keyStore.setItem(ADMIN_CONFIG_KEY, JSON.stringify(serverCfg));
+        const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+        if (serverCfg) {
+          await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
+        }
         return serverCfg;
       }
+
       const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin;
       return {
         ...keyStoreServerCfg,
@@ -49,17 +56,19 @@ export const superAdminServiceFactory = ({
       };
     };
 
-    const serverCfg = await getServerCfg();
+    // reset on initialized
+    await keyStore.deleteItem(ADMIN_CONFIG_KEY);
+    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (serverCfg) return;
 
-    const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true });
+    // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+    const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true, id: ADMIN_CONFIG_DB_UUID });
     return newCfg;
   };
 
   const updateServerCfg = async (data: TSuperAdminUpdate) => {
-    const serverCfg = await getServerCfg();
-    const updatedServerCfg = await serverCfgDAL.updateById(serverCfg.id, data);
-    await keyStore.setItem(ADMIN_CONFIG_KEY, JSON.stringify(updatedServerCfg));
+    const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, data);
+    await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
     return updatedServerCfg;
   };
 
