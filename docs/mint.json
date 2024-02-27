@@ -153,7 +153,8 @@
           "group": "LDAP",
           "pages": [
             "documentation/platform/ldap/overview",
-            "documentation/platform/ldap/jumpcloud"
+            "documentation/platform/ldap/jumpcloud",
+            "documentation/platform/ldap/general"
           ]
         },
         {
