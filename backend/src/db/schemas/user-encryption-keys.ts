@@ -25,5 +25,5 @@ export const UserEncryptionKeysSchema = z.object({
 });
 
 export type TUserEncryptionKeys = z.infer<typeof UserEncryptionKeysSchema>;
-export type TUserEncryptionKeysInsert = Omit<TUserEncryptionKeys, TImmutableDBKeys>;
-export type TUserEncryptionKeysUpdate = Partial<Omit<TUserEncryptionKeys, TImmutableDBKeys>>;
+export type TUserEncryptionKeysInsert = Omit<z.input<typeof UserEncryptionKeysSchema>, TImmutableDBKeys>;
+export type TUserEncryptionKeysUpdate = Partial<Omit<z.input<typeof UserEncryptionKeysSchema>, TImmutableDBKeys>>;

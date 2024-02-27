@@ -17,5 +17,5 @@ export const GitAppOrgSchema = z.object({
 });
 
 export type TGitAppOrg = z.infer<typeof GitAppOrgSchema>;
-export type TGitAppOrgInsert = Omit<TGitAppOrg, TImmutableDBKeys>;
-export type TGitAppOrgUpdate = Partial<Omit<TGitAppOrg, TImmutableDBKeys>>;
+export type TGitAppOrgInsert = Omit<z.input<typeof GitAppOrgSchema>, TImmutableDBKeys>;
+export type TGitAppOrgUpdate = Partial<Omit<z.input<typeof GitAppOrgSchema>, TImmutableDBKeys>>;

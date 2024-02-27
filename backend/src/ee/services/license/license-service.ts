@@ -505,6 +505,9 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
     get isValidLicense() {
       return isValidLicense;
     },
+    getInstanceType() {
+      return instanceType;
+    },
     getPlan,
     updateSubscriptionOrgMemberCount,
     refreshPlan,

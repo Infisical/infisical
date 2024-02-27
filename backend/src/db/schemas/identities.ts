@@ -16,5 +16,5 @@ export const IdentitiesSchema = z.object({
 });
 
 export type TIdentities = z.infer<typeof IdentitiesSchema>;
-export type TIdentitiesInsert = Omit<TIdentities, TImmutableDBKeys>;
-export type TIdentitiesUpdate = Partial<Omit<TIdentities, TImmutableDBKeys>>;
+export type TIdentitiesInsert = Omit<z.input<typeof IdentitiesSchema>, TImmutableDBKeys>;
+export type TIdentitiesUpdate = Partial<Omit<z.input<typeof IdentitiesSchema>, TImmutableDBKeys>>;

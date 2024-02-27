@@ -24,5 +24,5 @@ export const UsersSchema = z.object({
 });
 
 export type TUsers = z.infer<typeof UsersSchema>;
-export type TUsersInsert = Omit<TUsers, TImmutableDBKeys>;
-export type TUsersUpdate = Partial<Omit<TUsers, TImmutableDBKeys>>;
+export type TUsersInsert = Omit<z.input<typeof UsersSchema>, TImmutableDBKeys>;
+export type TUsersUpdate = Partial<Omit<z.input<typeof UsersSchema>, TImmutableDBKeys>>;

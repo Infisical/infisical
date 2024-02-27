@@ -22,5 +22,5 @@ export const BackupPrivateKeySchema = z.object({
 });
 
 export type TBackupPrivateKey = z.infer<typeof BackupPrivateKeySchema>;
-export type TBackupPrivateKeyInsert = Omit<TBackupPrivateKey, TImmutableDBKeys>;
-export type TBackupPrivateKeyUpdate = Partial<Omit<TBackupPrivateKey, TImmutableDBKeys>>;
+export type TBackupPrivateKeyInsert = Omit<z.input<typeof BackupPrivateKeySchema>, TImmutableDBKeys>;
+export type TBackupPrivateKeyUpdate = Partial<Omit<z.input<typeof BackupPrivateKeySchema>, TImmutableDBKeys>>;

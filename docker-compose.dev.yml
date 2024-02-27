@@ -86,6 +86,7 @@ services:
     environment:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+      - TELEMETRY_ENABLED=false
     volumes:
       - ./backend/src:/app/src
 

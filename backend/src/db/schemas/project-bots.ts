@@ -26,5 +26,5 @@ export const ProjectBotsSchema = z.object({
 });
 
 export type TProjectBots = z.infer<typeof ProjectBotsSchema>;
-export type TProjectBotsInsert = Omit<TProjectBots, TImmutableDBKeys>;
-export type TProjectBotsUpdate = Partial<Omit<TProjectBots, TImmutableDBKeys>>;
+export type TProjectBotsInsert = Omit<z.input<typeof ProjectBotsSchema>, TImmutableDBKeys>;
+export type TProjectBotsUpdate = Partial<Omit<z.input<typeof ProjectBotsSchema>, TImmutableDBKeys>>;

@@ -95,7 +95,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretPulled,
         distinctId: getTelemetryDistinctId(req),
         properties: {
@@ -185,7 +185,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretPulled,
         distinctId: getTelemetryDistinctId(req),
         properties: {
@@ -261,7 +261,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretCreated,
         distinctId: getTelemetryDistinctId(req),
         properties: {
@@ -336,7 +336,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretUpdated,
         distinctId: getTelemetryDistinctId(req),
         properties: {
@@ -406,7 +406,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretDeleted,
         distinctId: getTelemetryDistinctId(req),
         properties: {
@@ -512,7 +512,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         (req.headers["user-agent"] !== "k8-operator" || shouldRecordK8Event);
       const approximateNumberTotalSecrets = secrets.length * 20;
       if (shouldCapture) {
-        server.services.telemetry.sendPostHogEvents({
+        await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretPulled,
           distinctId: getTelemetryDistinctId(req),
           properties: {
@@ -589,7 +589,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretPulled,
         distinctId: getTelemetryDistinctId(req),
         properties: {
@@ -752,7 +752,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretCreated,
         distinctId: getTelemetryDistinctId(req),
         properties: {
@@ -934,7 +934,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretUpdated,
         distinctId: getTelemetryDistinctId(req),
         properties: {
@@ -1052,7 +1052,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretDeleted,
         distinctId: getTelemetryDistinctId(req),
         properties: {
@@ -1172,7 +1172,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretCreated,
         distinctId: getTelemetryDistinctId(req),
         properties: {
@@ -1292,7 +1292,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretUpdated,
         distinctId: getTelemetryDistinctId(req),
         properties: {
@@ -1400,7 +1400,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretDeleted,
         distinctId: getTelemetryDistinctId(req),
         properties: {

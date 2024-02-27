@@ -15,5 +15,5 @@ export const SecretRotationOutputsSchema = z.object({
 });
 
 export type TSecretRotationOutputs = z.infer<typeof SecretRotationOutputsSchema>;
-export type TSecretRotationOutputsInsert = Omit<TSecretRotationOutputs, TImmutableDBKeys>;
-export type TSecretRotationOutputsUpdate = Partial<Omit<TSecretRotationOutputs, TImmutableDBKeys>>;
+export type TSecretRotationOutputsInsert = Omit<z.input<typeof SecretRotationOutputsSchema>, TImmutableDBKeys>;
+export type TSecretRotationOutputsUpdate = Partial<Omit<z.input<typeof SecretRotationOutputsSchema>, TImmutableDBKeys>>;

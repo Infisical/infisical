@@ -21,5 +21,7 @@ export const IdentityUniversalAuthsSchema = z.object({
 });
 
 export type TIdentityUniversalAuths = z.infer<typeof IdentityUniversalAuthsSchema>;
-export type TIdentityUniversalAuthsInsert = Omit<TIdentityUniversalAuths, TImmutableDBKeys>;
-export type TIdentityUniversalAuthsUpdate = Partial<Omit<TIdentityUniversalAuths, TImmutableDBKeys>>;
+export type TIdentityUniversalAuthsInsert = Omit<z.input<typeof IdentityUniversalAuthsSchema>, TImmutableDBKeys>;
+export type TIdentityUniversalAuthsUpdate = Partial<
+  Omit<z.input<typeof IdentityUniversalAuthsSchema>, TImmutableDBKeys>
+>;

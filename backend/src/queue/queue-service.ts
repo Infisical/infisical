@@ -13,6 +13,7 @@ export enum QueueName {
   SecretReminder = "secret-reminder",
   AuditLog = "audit-log",
   AuditLogPrune = "audit-log-prune",
+  TelemetryInstanceStats = "telemtry-self-hosted-stats",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
   SecretFullRepoScan = "secret-full-repo-scan",
@@ -26,6 +27,7 @@ export enum QueueJobs {
   AuditLog = "audit-log-job",
   AuditLogPrune = "audit-log-prune-job",
   SecWebhook = "secret-webhook-trigger",
+  TelemetryInstanceStats = "telemetry-self-hosted-stats",
   IntegrationSync = "secret-integration-pull",
   SecretScan = "secret-scan",
   UpgradeProjectToGhost = "upgrade-project-to-ghost-job"
@@ -67,7 +69,6 @@ export type TQueueJobTypes = {
     payload: TScanFullRepoEventPayload;
   };
   [QueueName.SecretPushEventScan]: { name: QueueJobs.SecretScan; payload: TScanPushEventPayload };
-
   [QueueName.UpgradeProjectToGhost]: {
     name: QueueJobs.UpgradeProjectToGhost;
     payload: {
@@ -80,6 +81,10 @@ export type TQueueJobTypes = {
         keyEncoding: SecretKeyEncoding;
       };
     };
+  };
+  [QueueName.TelemetryInstanceStats]: {
+    name: QueueJobs.TelemetryInstanceStats;
+    payload: undefined;
   };
 };
 

@@ -27,5 +27,5 @@ export const OrgBotsSchema = z.object({
 });
 
 export type TOrgBots = z.infer<typeof OrgBotsSchema>;
-export type TOrgBotsInsert = Omit<TOrgBots, TImmutableDBKeys>;
-export type TOrgBotsUpdate = Partial<Omit<TOrgBots, TImmutableDBKeys>>;
+export type TOrgBotsInsert = Omit<z.input<typeof OrgBotsSchema>, TImmutableDBKeys>;
+export type TOrgBotsUpdate = Partial<Omit<z.input<typeof OrgBotsSchema>, TImmutableDBKeys>>;
