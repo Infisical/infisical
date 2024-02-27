@@ -34,6 +34,12 @@ export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
     const user = await userDAL.findById(userId);
     if (!user) throw new BadRequestError({ name: "Update auth methods" });
 
+    if (user.authMethods?.includes(AuthMethod.LDAP))
+      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
+
+    if (authMethods.includes(AuthMethod.LDAP))
+      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
+
     const updatedUser = await userDAL.updateById(userId, { authMethods });
     return updatedUser;
   };

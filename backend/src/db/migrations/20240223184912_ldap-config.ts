@@ -17,8 +17,8 @@ export async function up(knex: Knex): Promise<void> {
       t.string("encryptedBindPass");
       t.string("bindPassIV");
       t.string("bindPassTag");
-      t.text("searchBase").notNullable();
-      t.string("encryptedCACert");
+      t.string("searchBase").notNullable();
+      t.text("encryptedCACert");
       t.string("caCertIV");
       t.string("caCertTag");
       t.timestamps(true, true, true);
@@ -43,7 +43,7 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.Users, (t) => {
     t.dropColumn("username");
     t.dropColumn("orgId");
-    t.string("email").notNullable().alter();
+    // t.string("email").notNullable().alter();
   });
   await dropOnUpdateTrigger(knex, TableName.LdapConfig);
 }

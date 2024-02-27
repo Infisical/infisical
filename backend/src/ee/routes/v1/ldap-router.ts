@@ -42,7 +42,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           return cb(null, { isUserCompleted, providerAuthToken });
         } catch (err) {
           logger.error(err);
-          return cb(null, false);
+          return cb(err, false);
         }
       }
     )
@@ -57,9 +57,9 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
       })
     },
     preValidation: passport.authenticate("ldapauth", {
-      session: false,
-      failureFlash: true,
-      failureRedirect: "/login/provider/error"
+      session: false
+      // failureFlash: true,
+      // failureRedirect: "/login/provider/error"
       // this is due to zod type difference
     }) as any,
     handler: (req, res) => {

@@ -149,7 +149,13 @@
             "documentation/platform/sso/jumpcloud"
           ]
         },
-        "documentation/platform/ldap",
+        {
+          "group": "LDAP",
+          "pages": [
+            "documentation/platform/ldap/overview",
+            "documentation/platform/ldap/jumpcloud"
+          ]
+        },
         {
           "group": "SCIM",
           "pages": [
