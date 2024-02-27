@@ -29,7 +29,6 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
 
   passport.use(
     new LdapStrategy(
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
       server.services.ldap.getLdapPassportOpts as any,
       // eslint-disable-next-line
         async (req: IncomingMessage, user, cb) => {
