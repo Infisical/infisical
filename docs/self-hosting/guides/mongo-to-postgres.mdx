@@ -6,9 +6,9 @@ description: "How to migrate from MongoDB to PostgreSQL for Infisical"
 This guide will provide step by step instructions on migrating your Infisical instance running on MongoDB to the newly released PostgreSQL version of Infisical.
 The newly released Postgres version of Infisical is the only version of Infisical that will receive feature updates and patches going forward. 
 
-<Info>
-  If your deployment is using a Docker image tag that includes `postgres`, then you are already using the Postgres version of Infisical, and you can skip this guide.
-</Info>
+<Tip>
+  If you have a small set of secrets, we recommend you to download the secrets and upload them to your new instance of Infisical instead of running the migration script.
+</Tip>
 
 ## Prerequisites
 
@@ -106,13 +106,20 @@ Once started, the migration script will transform MongoDB data into an equivalen
     git clone https://github.com/Infisical/infisical.git
     ```
   </Step>
-  <Step title="Change directory">
-    Once the repository has been cloned, change directory to the  script folder.
+  <Step title="Install dependencies for backend">
+    ```
+    cd backend
+    ```
+
+    ```
+    npm install
+    ```
+  </Step>
+  <Step title="Install dependencies for script">
     ```
     cd pg-migrator
     ```
-  </Step>
-  <Step title="Install dependencies">
+
     ```
       npm install
     ```
