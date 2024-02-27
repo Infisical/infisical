@@ -66,7 +66,7 @@
     "http-proxy": "^1.18.1",
     "i18next": "^22.4.15",
     "i18next-browser-languagedetector": "^7.0.1",
-    "i18next-http-backend": "^2.2.0",
+    "i18next-http-backend": "^2.4.3",
     "infisical-node": "^1.0.37",
     "jspdf": "^2.5.1",
     "jsrp": "^0.2.4",
