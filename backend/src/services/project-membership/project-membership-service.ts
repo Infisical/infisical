@@ -238,6 +238,8 @@ export const projectMembershipServiceFactory = ({
 
     if (orgMembers.length !== emails.length) throw new BadRequestError({ message: "Some users are not part of org" });
 
+    if (!orgMembers.length) return [];
+
     const existingMembers = await projectMembershipDAL.find({
       projectId,
       $in: { userId: orgMembers.map(({ user }) => user.id).filter(Boolean) }
