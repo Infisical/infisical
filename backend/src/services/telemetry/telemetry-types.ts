@@ -111,7 +111,7 @@ export type TTelemetryInstanceStatsEvent = {
     secrets: number;
     organizations: number;
     organizationNames: number;
-    numberOfSecretOperations: number;
+    numberOfSecretOperationsMade: number;
     numberOfSecretProcessed: number;
   };
 };

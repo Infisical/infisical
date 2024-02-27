@@ -9,8 +9,8 @@ import { logger } from "@app/lib/logger";
 
 import { PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
 
-export const TELEMETRY_SECRET_PROCESSED_KEY = "telemtry-secret-processed";
-export const TELEMETRY_SECRET_OPERATONS_KEY = "telemtry-secret-operations";
+export const TELEMETRY_SECRET_PROCESSED_KEY = "telemetry-secret-processed";
+export const TELEMETRY_SECRET_OPERATIONS_KEY = "telemetry-secret-operations";
 
 export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory>;
 export type TTelemetryServiceFactoryDep = {
@@ -30,10 +30,9 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 `);
   }
 
-  const postHog =
-    appCfg.isProductionMode && appCfg.TELEMETRY_ENABLED
-      ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, { host: appCfg.POSTHOG_HOST })
-      : undefined;
+  const postHog = appCfg.TELEMETRY_ENABLED
+    ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, { host: appCfg.POSTHOG_HOST })
+    : undefined;
 
   // used for email marketting email sending purpose
   const sendLoopsEvent = async (email: string, firstName?: string, lastName?: string) => {
@@ -85,7 +84,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           TELEMETRY_SECRET_PROCESSED_KEY,
           (event as TSecretModifiedEvent).properties.numberOfSecrets
         );
-        await keyStore.incrementBy(TELEMETRY_SECRET_OPERATONS_KEY, 1);
+        await keyStore.incrementBy(TELEMETRY_SECRET_OPERATIONS_KEY, 1);
       }
     }
   };

@@ -7,7 +7,7 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { getServerCfg } from "../super-admin/super-admin-service";
 import { TTelemetryDALFactory } from "./telemetry-dal";
-import { TELEMETRY_SECRET_OPERATONS_KEY, TELEMETRY_SECRET_PROCESSED_KEY } from "./telemetry-service";
+import { TELEMETRY_SECRET_OPERATIONS_KEY, TELEMETRY_SECRET_PROCESSED_KEY } from "./telemetry-service";
 import { PostHogEventTypes } from "./telemetry-types";
 
 type TTelemetryQueueServiceFactoryDep = {
@@ -26,16 +26,16 @@ export const telemetryQueueServiceFactory = ({
   const appCfg = getConfig();
   const postHog =
     appCfg.isProductionMode && appCfg.TELEMETRY_ENABLED
-      ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, { host: appCfg.POSTHOG_HOST })
+      ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, { host: appCfg.POSTHOG_HOST, flushAt: 1, flushInterval: 0 })
       : undefined;
 
   queueService.start(QueueName.TelemetryInstanceStats, async () => {
     const { instanceId } = await getServerCfg();
     const telemtryStats = await telemetryDAL.getTelemetryInstanceStats();
     // parse the redis values into integer
-    const numberOfSecretOperations = parseInt((await keyStore.getItem(TELEMETRY_SECRET_OPERATONS_KEY)) || "0", 10);
+    const numberOfSecretOperationsMade = parseInt((await keyStore.getItem(TELEMETRY_SECRET_OPERATIONS_KEY)) || "0", 10);
     const numberOfSecretProcessed = parseInt((await keyStore.getItem(TELEMETRY_SECRET_PROCESSED_KEY)) || "0", 10);
-    const stats = { ...telemtryStats, numberOfSecretProcessed, numberOfSecretOperations };
+    const stats = { ...telemtryStats, numberOfSecretProcessed, numberOfSecretOperationsMade };
 
     // send to postHog
     postHog?.capture({
@@ -45,7 +45,7 @@ export const telemetryQueueServiceFactory = ({
     });
     // reset the stats
     await keyStore.deleteItem(TELEMETRY_SECRET_PROCESSED_KEY);
-    await keyStore.deleteItem(TELEMETRY_SECRET_OPERATONS_KEY);
+    await keyStore.deleteItem(TELEMETRY_SECRET_OPERATIONS_KEY);
   });
 
   // every day at midnight a telemetry job executes on self hosted
