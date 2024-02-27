@@ -173,7 +173,6 @@
       "pages": [
         "self-hosting/overview",
         "self-hosting/configuration/requirements",
-        "self-hosting/configuration/schema-migrations",
         {
           "group": "Installation methods",
           "pages": [
@@ -183,6 +182,13 @@
           ]
         },
         "self-hosting/configuration/envars",
+        {
+          "group": "Guides",
+          "pages": [
+            "self-hosting/configuration/schema-migrations",
+            "self-hosting/guides/mongo-to-postgres"
+          ]
+        },
         "self-hosting/faq"
       ]
     },
