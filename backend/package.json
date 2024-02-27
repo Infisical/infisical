@@ -94,7 +94,7 @@
     "axios": "^1.6.7",
     "axios-retry": "^4.0.0",
     "bcrypt": "^5.1.1",
-    "bullmq": "^5.1.6",
+    "bullmq": "^5.3.3",
     "dotenv": "^16.4.1",
     "fastify": "^4.26.0",
     "fastify-plugin": "^4.5.1",
