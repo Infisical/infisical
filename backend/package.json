@@ -46,6 +46,7 @@
     "@types/prompt-sync": "^4.2.3",
     "@types/resolve": "^1.20.6",
     "@types/uuid": "^9.0.7",
+    "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/parser": "^6.20.0",
     "eslint": "^8.56.0",
@@ -123,6 +124,7 @@
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "uuid": "^9.0.1",
+    "ws": "^8.16.0",
     "zod": "^3.22.4",
     "zod-to-json-schema": "^3.22.4"
   }
