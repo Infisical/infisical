@@ -52,7 +52,7 @@ export const telemetryQueueServiceFactory = ({
   // this sends some telemetry information like instance id secrets operated etc
   const startTelemetryCheck = async () => {
     // this is a fast way to check its cloud or not
-    if (appCfg.LICENSE_SERVER_KEY) return;
+    if (appCfg.INFISICAL_CLOUD) return;
     // clear previous job
     await queueService.stopRepeatableJob(
       QueueName.TelemetryInstanceStats,
