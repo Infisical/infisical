@@ -3,11 +3,16 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Switch } from "@app/components/v2";
+import {
+  Button,
+  Switch,
+  UpgradePlanModal
+} from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
+  useSubscription
 } from "@app/context";
 import { 
     useCreateLDAPConfig,
@@ -20,18 +25,24 @@ import { LDAPModal } from "./LDAPModal";
 
 export const OrgLDAPSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
+  const { subscription } = useSubscription();
   const { createNotification } = useNotificationContext();
   const { data, isLoading } = useGetLDAPConfig(currentOrg?.id ?? "");
   const { mutateAsync } = useUpdateLDAPConfig();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "addLDAP"
+    "addLDAP",
+    "upgradePlan"
   ] as const);
   
   const { mutateAsync: createMutateAsync } = useCreateLDAPConfig();
 
-  const handleSamlSSOToggle = async (value: boolean) => { // TODO: rename to LDAP toggle
+  const handleLDAPToggle = async (value: boolean) => {
     try {
       if (!currentOrg?.id) return;
+      if (!subscription?.ldap) {
+        handlePopUpOpen("upgradePlan");
+        return;
+      }
 
       await mutateAsync({
         organizationId: currentOrg?.id,
@@ -53,7 +64,7 @@ export const OrgLDAPSection = (): JSX.Element => {
 
   const addLDAPBtnClick = async () => {
     try {
-      if (currentOrg) {
+      if (subscription?.ldap && currentOrg) {
         if (!data) {
           // case: LDAP is not configured
           // -> initialize empty LDAP configuration
@@ -68,6 +79,8 @@ export const OrgLDAPSection = (): JSX.Element => {
         }
 
         handlePopUpOpen("addLDAP");
+      } else {
+        handlePopUpOpen("upgradePlan");
       }
     } catch (err) {
       console.error(err);
@@ -77,9 +90,9 @@ export const OrgLDAPSection = (): JSX.Element => {
   return (
     <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
       <div className="flex items-center mb-8">
-        <h2 className="text-xl font-semibold flex-1 text-white">LDAP Configuration</h2>
+        <h2 className="text-xl font-semibold flex-1 text-white">LDAP</h2>
         {!isLoading && (
-          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
             {(isAllowed) => (
               <Button
                 onClick={addLDAPBtnClick}
@@ -87,7 +100,7 @@ export const OrgLDAPSection = (): JSX.Element => {
                 isDisabled={!isAllowed}
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
               >
-                {data ? "Update LDAP" : "Set up LDAP"}
+                Configure
               </Button>
             )}
           </OrgPermissionCan>
@@ -95,42 +108,29 @@ export const OrgLDAPSection = (): JSX.Element => {
       </div>
       {data && (
         <div className="mb-4">
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Ldap}>
             {(isAllowed) => (
               <Switch
                 id="enable-saml-sso"
-                onCheckedChange={(value) => handleSamlSSOToggle(value)}
+                onCheckedChange={(value) => handleLDAPToggle(value)}
                 isChecked={data ? data.isActive : false}
                 isDisabled={!isAllowed}
               >
-                Enable LDAP
+                Enable
               </Switch>
             )}
           </OrgPermissionCan>
         </div>
       )}
-      <div className="mb-4">
-        <h3 className="text-mineshaft-400 text-sm">URL</h3>
-        <p className="text-gray-400 text-md">{data && data.url !== "" ? data.url : "-"}</p>
-      </div>
-      <div className="mb-4">
-        <h3 className="text-mineshaft-400 text-sm">Bind DN</h3>
-        <p className="text-gray-400 text-md">{data && data.bindDN !== "" ? data.bindDN : "-"}</p>
-      </div>
-      <div className="mb-4">
-        <h3 className="text-mineshaft-400 text-sm">Bind Pass</h3>
-        <p className="text-gray-400 text-md">
-          {data && data.bindPass !== "" ? "*".repeat(data.bindPass.length) : "-"}
-        </p>
-      </div>
-      <div className="mb-4">
-        <h3 className="text-mineshaft-400 text-sm">Search Base / User DN</h3>
-        <p className="text-gray-400 text-md">{data && data.searchBase !== "" ? data.searchBase : "-"}</p>
-      </div>
       <LDAPModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
+      />
+      <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text="You can use LDAP authentication if you switch to Infisical's Enterprise plan."
       />
     </div>
   );

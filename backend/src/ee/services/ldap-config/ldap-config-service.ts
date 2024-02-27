@@ -61,7 +61,7 @@ export const ldapConfigServiceFactory = ({
     caCert
   }: TCreateLdapCfgDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan.ldap)
@@ -154,7 +154,7 @@ export const ldapConfigServiceFactory = ({
     caCert
   }: TUpdateLdapCfgDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan.ldap)
@@ -274,7 +274,7 @@ export const ldapConfigServiceFactory = ({
 
   const getLdapCfgWithPermissionCheck = async ({ actor, actorId, orgId, actorOrgId }: TOrgPermission) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
     return getLdapCfg({
       orgId
     });
