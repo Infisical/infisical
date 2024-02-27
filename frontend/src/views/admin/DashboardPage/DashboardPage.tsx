@@ -22,6 +22,8 @@ import {
 import { useOrganization, useServerConfig, useUser } from "@app/context";
 import { useUpdateServerConfig } from "@app/hooks/api";
 
+import { AuthMethodSection } from "./AuthMethodSection";
+
 enum TabSections {
   Settings = "settings"
 }
@@ -181,6 +183,7 @@ export const AdminDashboardPage = () => {
                   Save
                 </Button>
               </form>
+              <AuthMethodSection />  
             </TabPanel>
           </Tabs>
         </div>

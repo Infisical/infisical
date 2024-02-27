@@ -34,6 +34,12 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         });
       }
 
+      if (serverCfg.disabledAuthMethods?.includes("email")) {
+        throw new BadRequestError({
+          message: "Email Authentication method is disabled"
+        });
+      }
+
       if (serverCfg?.allowedSignUpDomain) {
         const domain = email.split("@")[1];
         const allowedDomains = serverCfg.allowedSignUpDomain.split(",").map((e) => e.trim());
@@ -72,6 +78,12 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!serverCfg.allowSignUp) {
         throw new BadRequestError({
           message: "Sign up is disabled"
+        });
+      }
+
+      if (serverCfg.disabledAuthMethods?.includes("email")) {
+        throw new BadRequestError({
+          message: "Email Authentication method is disabled"
         });
       }
 
@@ -121,6 +133,12 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!serverCfg.allowSignUp) {
         throw new BadRequestError({
           message: "Sign up is disabled"
+        });
+      }
+
+      if (serverCfg.disabledAuthMethods?.includes("email")) {
+        throw new BadRequestError({
+          message: "Email Authentication method is disabled"
         });
       }
 

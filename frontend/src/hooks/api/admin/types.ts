@@ -1,6 +1,16 @@
+
+export enum AuthMethod {
+  EMAIL = "email",
+  GOOGLE = "google",
+  GITHUB = "github",
+  GITLAB = "gitlab",
+  SAML = "saml"
+}
+
 export type TServerConfig = {
   initialized: boolean;
   allowSignUp: boolean;
+  disabledAuthMethods: AuthMethod[];
   allowedSignUpDomain?: string | null;
   isMigrationModeOn?: boolean;
 };

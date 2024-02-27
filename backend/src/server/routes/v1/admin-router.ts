@@ -32,6 +32,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         allowSignUp: z.boolean().optional(),
+        disabledAuthMethods: z.array(z.string()).optional(),
         allowedSignUpDomain: z.string().optional().nullable()
       }),
       response: {

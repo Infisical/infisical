@@ -1,7 +1,9 @@
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export const registerLoginRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -24,6 +26,13 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
+      const serverCfg = await getServerCfg();
+      if (serverCfg.disabledAuthMethods?.includes("email")) {
+        throw new BadRequestError({
+          message: "Email Authentication method is disabled"
+        });
+      }
+
       const { serverPublicKey, salt } = await server.services.login.loginGenServerPublicKey({
         email: req.body.email,
         clientPublicKey: req.body.clientPublicKey,
@@ -68,6 +77,13 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       const userAgent = req.headers["user-agent"];
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
+
+      const serverCfg = await getServerCfg();
+      if (serverCfg.disabledAuthMethods?.includes("email")) {
+        throw new BadRequestError({
+          message: "Email Authentication method is disabled"
+        });
+      }
 
       const data = await server.services.login.loginExchangeClientProof({
         email: req.body.email,

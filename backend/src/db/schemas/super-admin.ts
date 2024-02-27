@@ -13,7 +13,8 @@ export const SuperAdminSchema = z.object({
   allowSignUp: z.boolean().default(true).nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  allowedSignUpDomain: z.string().nullable().optional()
+  allowedSignUpDomain: z.string().nullable().optional(),
+  disabledAuthMethods: z.string().array().nullable().optional()
 });
 
 export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;

@@ -268,6 +268,16 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
 
     const appCfg = getConfig();
 
+    if (
+      serverCfg.disabledAuthMethods?.includes(authMethod) ||
+      (serverCfg.disabledAuthMethods?.includes("saml") && authMethod.endsWith("-saml"))
+    ) {
+      throw new BadRequestError({
+        message: `Authentication method is disabled`,
+        name: "Oauth 2 login"
+      });
+    }
+
     if (!user) {
       // Create a new user based on oAuth
       if (!serverCfg?.allowSignUp) throw new BadRequestError({ message: "Sign up disabled", name: "Oauth 2 login" });
