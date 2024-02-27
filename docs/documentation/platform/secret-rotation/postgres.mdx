@@ -3,31 +3,98 @@ title: "PostgreSQL/CockroachDB"
 description: "Rotated database user password of a PostgreSQL or Cockroach DB"
 ---
 
-Infisical will update periodically the provided database user's password.
+Infisical Postgres secret rotation allows you to automatically rotate your PostgreSQL database user's password at regular intervals.
+
+<Warning>
+	At present Infisical do require access to your database. We will soon be released Infisical agent based rotation which would help you rotate without direct database access from Infisical cloud.
+</Warning>
+
+## Prerequisite
+
+1. Create two users with the required permission in your PostgreSQL instance. Let's call them `user-a` and `user-b`.
+2. Create another PostgreSQL user with permission to update the passwords of `user-a` and `user-b`. Let's call it `admin`
+
+To learn more about Postgres Permissioning, please follow this [documentation](https://www.postgresql.org/docs/9.1/sql-grant.html).
 
 ## Working
 
-1. User's has to create the two user's for Infisical to rotate and provide them required database access.
-2. Infisical will connect with your database with admin access.
-3. If last rotated one was username1, then username2 is chosen to be rotated.
-5. Update it's password with random value.
-6. After testing it gets saved to the provided secret mapping.
+1. Infisical connects to your database using the provided `admin` user account.
+2. A random value is generated and the password for `user-a` is updated with the new value.
+3. The new password is then tested by logging into the database.
+4. If test is success, its saved to the output secret mappings so that rest of the system gets access.
+5. The process is then repeated for `user-b` on the next rotation.
+6. And the loop continues.
+
+<AccordionGroup>
+  <Accordion title="Why can't we delete the other user when rotating?">
+  	When a system has multiple nodes by horizontal scaling, redeployment doesn't happen instantly.
+
+	This means that when the secrets are rotated, and the redeployment is triggered, the existing system will still be using the old credentials until the change rolls out. 
+
+	To avoid causing failure for them, the old credentials are not removed. Instead, in the next rotation, the previous user's credentials are updated.
+  </Accordion>
+  <Accordion title="Why do you need root user account?">
+	The rotator account is used by Infisical to update the credentials for `user-a` and `user-b`. 
+
+	You don't need to grant all permission for it. SQL has an amazing permission system, which means that the admin user only requires permission to update both the user passwords.
+  </Accordion>
+</AccordionGroup>
 
 ## Rotation Configuration
 
-1. Head over to Secret Rotation configuration page of your project by clicking on side bar `Secret Rotation`
-2. Click on `PostgreSQL`
-3. Provide the inputs
-	- Admin Username: DB admin username
-	- Admin Password: DB admin password
-	- Host: DB host
-	- Port: DB port(number)
-	- Username1: The first username in two to rotate
-	- Username2: The second username in two to rotate
-	- CA: Certificate to connect with database(string)
-4. Final step
+<Steps>
+  <Step title="Open Secret Rotation Page">
+	Head over to Secret Rotation configuration page of your project by clicking on `Secret Rotation` in the left side bar 
+  </Step>
+  <Step title="Click on PostgresSQL Card" />
+  <Step title="Provide the inputs">
+  	These are inputs required by PostgresSQL Rotation Providers
+
+<Info>
+	Here Admin username and password means the rotator account. You don't need to provide the Database admin account.
+</Info>
+
+	- Admin Username
+
+		Rotator Admin username
+
+	- Admin password
+
+		Rotator Admin password
+	- Host 
+		
+		Database host url
+	- Port 
+		Database port number
+
+	- Username1
+	
+		The first username in two to rotate - `user-a`
+
+	- Username2
+
+		The second username in two to rotate - `user-b`
+
+	- CA
+		
+		Certificate to connect with database(string)  
+  </Step>
+  <Step title="Configure the output secret mapping">
+  	The secret keys to be replaced in the provided board after successful secret rotation
+
 	- Select `Environment`, `Secret Path` and `Interval` to rotate the secrets
 	- Finally select the secrets in your provided board to replace with new secret after each rotation
+
+		- DB Username
+
+			The rotated database username.
+
+		- DB Password
+
+			The new generated credentials for the database user.
+
 	- Your done and good to go.
+  </Step>
+</Steps>
 
 Congratulations. You have improved your PostgreSQL/CockroachDB access security. 
