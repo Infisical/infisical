@@ -24,9 +24,9 @@ infisical:
 
   resources:
     limits:
-      memory: 210Mi
+      memory: 350Mi
     requests:
-      cpu: 200m
+      cpu: 350m
 
 ingress:
   enabled: true

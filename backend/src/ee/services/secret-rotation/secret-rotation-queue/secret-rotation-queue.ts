@@ -240,7 +240,7 @@ export const secretRotationQueueFactory = ({
         );
       });
 
-      telemetryService.sendPostHogEvents({
+      await telemetryService.sendPostHogEvents({
         event: PostHogEventTypes.SecretRotated,
         distinctId: "",
         properties: {

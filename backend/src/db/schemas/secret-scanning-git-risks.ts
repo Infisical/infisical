@@ -42,5 +42,7 @@ export const SecretScanningGitRisksSchema = z.object({
 });
 
 export type TSecretScanningGitRisks = z.infer<typeof SecretScanningGitRisksSchema>;
-export type TSecretScanningGitRisksInsert = Omit<TSecretScanningGitRisks, TImmutableDBKeys>;
-export type TSecretScanningGitRisksUpdate = Partial<Omit<TSecretScanningGitRisks, TImmutableDBKeys>>;
+export type TSecretScanningGitRisksInsert = Omit<z.input<typeof SecretScanningGitRisksSchema>, TImmutableDBKeys>;
+export type TSecretScanningGitRisksUpdate = Partial<
+  Omit<z.input<typeof SecretScanningGitRisksSchema>, TImmutableDBKeys>
+>;

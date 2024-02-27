@@ -14,6 +14,7 @@ import { AuthTokenType } from "@app/services/auth/auth-type";
 
 import { mockQueue } from "./mocks/queue";
 import { mockSmtpServer } from "./mocks/smtp";
+import { mockKeyStore } from "./mocks/keystore";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 export default {
@@ -41,7 +42,8 @@ export default {
       await db.seed.run();
       const smtp = mockSmtpServer();
       const queue = mockQueue();
-      const server = await main({ db, smtp, logger, queue });
+      const keyStore = mockKeyStore();
+      const server = await main({ db, smtp, logger, queue, keyStore });
       // @ts-expect-error type
       globalThis.testServer = server;
       // @ts-expect-error type

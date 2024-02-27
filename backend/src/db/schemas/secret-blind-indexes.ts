@@ -20,5 +20,5 @@ export const SecretBlindIndexesSchema = z.object({
 });
 
 export type TSecretBlindIndexes = z.infer<typeof SecretBlindIndexesSchema>;
-export type TSecretBlindIndexesInsert = Omit<TSecretBlindIndexes, TImmutableDBKeys>;
-export type TSecretBlindIndexesUpdate = Partial<Omit<TSecretBlindIndexes, TImmutableDBKeys>>;
+export type TSecretBlindIndexesInsert = Omit<z.input<typeof SecretBlindIndexesSchema>, TImmutableDBKeys>;
+export type TSecretBlindIndexesUpdate = Partial<Omit<z.input<typeof SecretBlindIndexesSchema>, TImmutableDBKeys>>;

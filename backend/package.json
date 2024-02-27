@@ -72,7 +72,7 @@
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.504.0",
     "@casl/ability": "^6.5.0",
-    "@fastify/cookie": "^9.2.0",
+    "@fastify/cookie": "^9.3.1",
     "@fastify/cors": "^8.5.0",
     "@fastify/etag": "^5.1.0",
     "@fastify/formbody": "^7.4.0",
@@ -94,7 +94,7 @@
     "axios": "^1.6.7",
     "axios-retry": "^4.0.0",
     "bcrypt": "^5.1.1",
-    "bullmq": "^5.1.6",
+    "bullmq": "^5.3.3",
     "dotenv": "^16.4.1",
     "fastify": "^4.26.0",
     "fastify-plugin": "^4.5.1",

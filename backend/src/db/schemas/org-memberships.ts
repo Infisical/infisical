@@ -20,5 +20,5 @@ export const OrgMembershipsSchema = z.object({
 });
 
 export type TOrgMemberships = z.infer<typeof OrgMembershipsSchema>;
-export type TOrgMembershipsInsert = Omit<TOrgMemberships, TImmutableDBKeys>;
-export type TOrgMembershipsUpdate = Partial<Omit<TOrgMemberships, TImmutableDBKeys>>;
+export type TOrgMembershipsInsert = Omit<z.input<typeof OrgMembershipsSchema>, TImmutableDBKeys>;
+export type TOrgMembershipsUpdate = Partial<Omit<z.input<typeof OrgMembershipsSchema>, TImmutableDBKeys>>;

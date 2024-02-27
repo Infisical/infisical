@@ -31,5 +31,5 @@ export const IntegrationsSchema = z.object({
 });
 
 export type TIntegrations = z.infer<typeof IntegrationsSchema>;
-export type TIntegrationsInsert = Omit<TIntegrations, TImmutableDBKeys>;
-export type TIntegrationsUpdate = Partial<Omit<TIntegrations, TImmutableDBKeys>>;
+export type TIntegrationsInsert = Omit<z.input<typeof IntegrationsSchema>, TImmutableDBKeys>;
+export type TIntegrationsUpdate = Partial<Omit<z.input<typeof IntegrationsSchema>, TImmutableDBKeys>>;

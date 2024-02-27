@@ -158,7 +158,7 @@ export const secretScanningQueueFactory = ({
       });
     }
 
-    telemetryService.sendPostHogEvents({
+    await telemetryService.sendPostHogEvents({
       event: PostHogEventTypes.SecretScannerPush,
       distinctId: repository.fullName,
       properties: {
@@ -228,7 +228,7 @@ export const secretScanningQueueFactory = ({
       });
     }
 
-    telemetryService.sendPostHogEvents({
+    await telemetryService.sendPostHogEvents({
       event: PostHogEventTypes.SecretScannerFull,
       distinctId: repository.fullName,
       properties: {

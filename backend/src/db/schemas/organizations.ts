@@ -19,5 +19,5 @@ export const OrganizationsSchema = z.object({
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;
-export type TOrganizationsInsert = Omit<TOrganizations, TImmutableDBKeys>;
-export type TOrganizationsUpdate = Partial<Omit<TOrganizations, TImmutableDBKeys>>;
+export type TOrganizationsInsert = Omit<z.input<typeof OrganizationsSchema>, TImmutableDBKeys>;
+export type TOrganizationsUpdate = Partial<Omit<z.input<typeof OrganizationsSchema>, TImmutableDBKeys>>;

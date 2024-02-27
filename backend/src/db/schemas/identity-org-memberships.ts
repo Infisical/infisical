@@ -18,5 +18,7 @@ export const IdentityOrgMembershipsSchema = z.object({
 });
 
 export type TIdentityOrgMemberships = z.infer<typeof IdentityOrgMembershipsSchema>;
-export type TIdentityOrgMembershipsInsert = Omit<TIdentityOrgMemberships, TImmutableDBKeys>;
-export type TIdentityOrgMembershipsUpdate = Partial<Omit<TIdentityOrgMemberships, TImmutableDBKeys>>;
+export type TIdentityOrgMembershipsInsert = Omit<z.input<typeof IdentityOrgMembershipsSchema>, TImmutableDBKeys>;
+export type TIdentityOrgMembershipsUpdate = Partial<
+  Omit<z.input<typeof IdentityOrgMembershipsSchema>, TImmutableDBKeys>
+>;

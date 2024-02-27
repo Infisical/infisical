@@ -19,5 +19,5 @@ export const ApiKeysSchema = z.object({
 });
 
 export type TApiKeys = z.infer<typeof ApiKeysSchema>;
-export type TApiKeysInsert = Omit<TApiKeys, TImmutableDBKeys>;
-export type TApiKeysUpdate = Partial<Omit<TApiKeys, TImmutableDBKeys>>;
+export type TApiKeysInsert = Omit<z.input<typeof ApiKeysSchema>, TImmutableDBKeys>;
+export type TApiKeysUpdate = Partial<Omit<z.input<typeof ApiKeysSchema>, TImmutableDBKeys>>;

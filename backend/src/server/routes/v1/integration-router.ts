@@ -82,7 +82,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.IntegrationCreated,
         distinctId: getTelemetryDistinctId(req),
         properties: {
