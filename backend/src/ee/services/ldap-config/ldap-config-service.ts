@@ -26,7 +26,6 @@ import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TLdapConfigDALFactory } from "./ldap-config-dal";
 import { TCreateLdapCfgDTO, TLdapLoginDTO, TUpdateLdapCfgDTO } from "./ldap-config-types";
 
-// TODO: check the Picks
 type TLdapConfigServiceFactoryDep = {
   ldapConfigDAL: TLdapConfigDALFactory;
   orgDAL: Pick<
@@ -320,7 +319,7 @@ export const ldapConfigServiceFactory = ({
       } catch (err) {
         logger.error(err);
         // eslint-disable-next-line
-          done(err as Error);
+          done(err);
       }
     };
 

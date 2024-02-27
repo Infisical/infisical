@@ -6,6 +6,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 // All the any rules are disabled because passport typesense with fastify is really poor
 
+import { IncomingMessage } from "node:http";
+
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
 import { FastifyRequest } from "fastify";
@@ -27,15 +29,16 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
 
   passport.use(
     new LdapStrategy(
-      server.services.ldap.getLdapPassportOpts,
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      server.services.ldap.getLdapPassportOpts as any,
       // eslint-disable-next-line
-        async (req, user, cb) => {
+        async (req: IncomingMessage, user, cb) => {
         try {
           const { isUserCompleted, providerAuthToken } = await server.services.ldap.ldapLogin({
             username: user.uid,
             firstName: user.givenName,
             lastName: user.sn,
-            relayState: (req.body as { RelayState?: string }).RelayState,
+            relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
             orgId: (req as unknown as FastifyRequest).ldapConfig.organization
           });
 
