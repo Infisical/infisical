@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -97,9 +98,17 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
       <div className="flex w-full flex-col text-sm">
         <span className="mb-2 text-lg font-semibold">Upgrade your project</span>
         {membership.role === "admin" ? (
-          <p>
-            Upgrade your project version to continue receiving the latest improvements and patches.
-          </p>
+          <>
+            <p>
+              Upgrade your project version to continue receiving the latest improvements and
+              patches.
+            </p>
+            <Link href="/docs/documentation/platform/project-upgrade">
+              <a target="_blank" className="text-primary-400">
+                Learn more
+              </a>
+            </Link>
+          </>
         ) : (
           <p>
             <span className="font-bold">Please ask a project admin to upgrade the project.</span>
