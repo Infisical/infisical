@@ -234,8 +234,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
         await addUsersToProject.mutateAsync({
           emails: orgUsers
-            .map((member) => member.user.email)
-            .filter((email) => email !== user.email),
+            .map((member) => member.user.username)
+            .filter((username) => username !== user.username),
           projectId: newProjectId
         });
       }
