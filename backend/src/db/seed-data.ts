@@ -21,6 +21,7 @@ export let userPublicKey: string | undefined;
 
 export const seedData1 = {
   id: "3dafd81d-4388-432b-a4c5-f735616868c1",
+  username: process.env.TEST_USER_USERNAME || "test@localhost.local",
   email: process.env.TEST_USER_EMAIL || "test@localhost.local",
   password: process.env.TEST_USER_PASSWORD || "testInfisical@1",
   organization: {

@@ -17,6 +17,7 @@ export async function seed(knex: Knex): Promise<void> {
         // eslint-disable-next-line
         // @ts-ignore
         id: seedData1.id,
+        username: seedData1.username,
         email: seedData1.email,
         superAdmin: true,
         firstName: "test",
