@@ -110,12 +110,19 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
             </Link>
           </>
         ) : (
-          <p>
-            <span className="font-bold">Please ask a project admin to upgrade the project.</span>
-            <br />
-            Upgrading the project version is required to continue receiving the latest improvements
-            and patches.
-          </p>
+          <>
+            <p>
+              <span className="font-bold">Please ask a project admin to upgrade the project.</span>
+              <br />
+              Upgrading the project version is required to continue receiving the latest
+              improvements and patches.
+            </p>
+            <Link href="/docs/documentation/platform/project-upgrade">
+              <a target="_blank" className="text-primary-400">
+                Learn more
+              </a>
+            </Link>
+          </>
         )}
         {currentStatus && <p className="mt-2 opacity-80">Status: {currentStatus}</p>}
       </div>
