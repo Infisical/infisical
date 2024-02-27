@@ -182,3 +182,7 @@ Rather than transferring the data row-by-row from your local machine to the prod
 After successfully migrating the data to PostgreSQL, you can proceed to deploy Infisical using your preferred deployment method. 
 Refer to [Infisical's self-hosting documentation](https://infisical.com/docs/self-hosting/overview) for deployment options. 
 Remember to use your production PostgreSQL connection string for the new deployment and transfer all [environment variables](/self-hosting/configuration/envars) from the MongoDB version of Infisical to the new version (they are all compatible).
+
+## Additional discussion 
+- When you visit Infisical's [docker hub](https://hub.docker.com/r/infisical/infisical) page, you will notice that image tags end with `-postgres`. 
+This is to indicate that this version of Infisical runs on the new Postgres backend. Any image tag that does not end in `postgres` runs on MongoDB.
