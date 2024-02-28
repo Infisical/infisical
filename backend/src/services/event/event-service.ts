@@ -1,9 +1,7 @@
 /* eslint-disable no-console */
 import Redis from "ioredis";
-import { nanoid } from "nanoid";
 
-import { logger } from "@app/lib/logger";
-
+// import { logger } from "@app/lib/logger";
 import { TEvent, TEventType } from "./event-types";
 
 type TEventServiceFactoryDep = {
@@ -14,107 +12,76 @@ export type TEventServiceFactory = ReturnType<typeof eventServiceFactory>;
 
 export const eventServiceFactory = ({ redisUrl }: TEventServiceFactoryDep) => {
   const publisher = new Redis(redisUrl, { maxRetriesPerRequest: null });
-  const internalSubscriber = new Redis(redisUrl, { maxRetriesPerRequest: null });
 
-  // Array of subscriber ID's [channel, subscriberIds]
-  const subscribers: Record<
+  // Map key: the channel ID.
+  // connections / total number of connections: We keep track of this to know when to unsubscribe and disconnect the client.
+  // client / the subscription: We store this so we can use the same connection/subscription for the same channel. We don't want to create a new connection for each subscription, because that would be a waste of resources and become hard to scale.
+  const redisClients = new Map<
     string,
     {
-      id: string;
-      listener: (event: TEvent) => void;
-    }[]
-  > = {};
-
-  // Instead of creating an actual subscriber each time, we will use one global subscriber.
-  // We do this because we want to avoid creating too many connections to Redis, as there's a limit to the number of concurrent connections that can be made to a Redis instance.
-
-  internalSubscriber.on("error", (err) => {
-    console.log("Error in internalSubscriber", err);
-  });
-
-  console.log("internalSubscriber.url", redisUrl);
+      client: Redis;
+      connections: number;
+    }
+  >();
+  // Will this work for vertical scaling? The redisClients
 
   // channel would be the projectId
-  const publishEvent = async (channel: string, event: TEvent[TEventType]) => {
-    const subscriberIds = subscribers?.[channel] || [];
-
-    if (subscriberIds.length === 0) {
-      return;
-    }
-
-    // This is inefficient if there are a lot of subscribers on the same channel.
-    await Promise.all(
-      subscriberIds.map(async (subscriber) => {
-        await publisher.publish(`${channel}.${subscriber.id}`, JSON.stringify(event));
-      })
-    );
+  const publish = async (channel: string, event: TEvent[TEventType]) => {
+    await publisher.publish(channel, JSON.stringify(event));
   };
 
-  const subscribe = async (channel: string, listener: (event: TEvent) => void) => {
-    const subscriptionId = nanoid(32);
+  const crateSubscription = async (channel: string) => {
+    let subscriber: Redis | null = null;
 
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    await internalSubscriber.subscribe(`${channel}.${subscriptionId}`, async (msg) => {
+    const existingSubscriber = redisClients.get(channel);
+
+    if (existingSubscriber) {
+      redisClients.set(channel, {
+        client: existingSubscriber.client,
+        connections: existingSubscriber.connections + 1
+      });
+
+      subscriber = existingSubscriber.client;
+    } else {
+      subscriber = new Redis(redisUrl, { maxRetriesPerRequest: null });
+
+      redisClients.set(channel, {
+        client: subscriber,
+        connections: 1
+      });
+    }
+
+    await subscriber.subscribe(channel, (msg) => {
       if (msg instanceof Error) {
         throw msg;
       }
     });
 
-    if (!subscribers[channel]) {
-      subscribers[channel] = [];
+    return {
+      on: subscriber.on.bind(subscriber),
+      unsubscribe: async () => {
+        const subscriberToRemove = redisClients.get(channel);
 
-      // Create a single .on listener for this channel
-      internalSubscriber.on("message", (subChannel, message) => {
-        if (subChannel.startsWith(channel)) {
-          const event = JSON.parse(message) as TEvent;
-          // Call each subscriber's listener function
-          for (const subscriber of subscribers[channel]) {
-            if (subChannel === `${channel}.${subscriber.id}`) {
-              try {
-                subscriber.listener(event);
-              } catch (err) {
-                logger.error("Error in event listener", err);
-              }
-            }
+        if (subscriberToRemove) {
+          // If there's only 1 connection, we can fully unsubscribe and disconnect the client.
+          if (subscriberToRemove.connections === 1) {
+            await subscriberToRemove.client.unsubscribe(`${channel}`);
+            await subscriberToRemove.client.quit();
+            redisClients.delete(channel);
+          } else {
+            // If there's more than 1 connection, we just decrement the connections count, because there are still other listeners.
+            redisClients.set(channel, {
+              client: subscriberToRemove.client,
+              connections: subscriberToRemove.connections - 1
+            });
           }
         }
-      });
-    }
-
-    // Add the new subscriber to the subscribers object.
-    // The .on listener will take care of calling the listener function when a new event is published to the channel.
-    subscribers[channel].push({
-      id: subscriptionId,
-      listener
-    });
-
-    return {
-      subscriptionId
+      }
     };
   };
 
-  const unsubscribe = async (channel: string, subId: string) => {
-    if (subscribers[channel].length === 1) {
-      // If there's only 1 subscriber, we can delete the entire channel from the subscribers object.
-      delete subscribers[channel];
-    } else if (subscribers[channel]) {
-      // If there are multiple subscribers, we just remove the subscriber ID from the array.
-      subscribers[channel] = subscribers[channel].filter((subscriber) => subscriber.id !== subId);
-    }
-
-    // At last, we unsubscribe from the Redis channel.
-    await internalSubscriber.unsubscribe(`${channel}.${subId}`);
-
-    internalSubscriber.off("message", (subChannel, ...rest) => {
-      if (subChannel === `${channel}.${subId}`) {
-        console.log("Unsubscribed from channel", subChannel, rest);
-      }
-    });
-  };
-
   return {
-    publishEvent,
-    subscribe,
-    unsubscribe
+    publish,
+    crateSubscription
   };
 };

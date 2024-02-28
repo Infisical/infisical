@@ -36,6 +36,7 @@ import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal"
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
+import { serversideEvents } from "@app/server/plugins/sse";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
@@ -44,6 +45,7 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { eventServiceFactory } from "@app/services/event/event-service";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
@@ -115,6 +117,8 @@ export const registerRoutes = async (
   { db, smtp: smtpService, queue: queueService }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory }
 ) => {
   await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
+
+  const cfg = getConfig();
 
   // db layers
   const userDAL = userDALFactory(db);
@@ -490,6 +494,8 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const eventService = eventServiceFactory({ redisUrl: cfg.REDIS_URL });
+
   await superAdminService.initServerCfg();
   await auditLogQueue.startAuditLogPruneJob();
   // setup the communication with license key server
@@ -535,7 +541,8 @@ export const registerRoutes = async (
     trustedIp: trustedIpService,
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
-    telemetry: telemetryService
+    telemetry: telemetryService,
+    event: eventService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {
@@ -545,6 +552,7 @@ export const registerRoutes = async (
   await server.register(injectIdentity, { userDAL, serviceTokenDAL });
   await server.register(injectPermission);
   await server.register(injectAuditLogInfo);
+  await server.register(serversideEvents, { prefix: "/api/v1/sse" });
 
   server.route({
     url: "/api/status",
@@ -562,7 +570,6 @@ export const registerRoutes = async (
       }
     },
     handler: async () => {
-      const cfg = getConfig();
       const serverCfg = await getServerCfg();
       return {
         date: new Date(),
