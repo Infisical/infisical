@@ -453,7 +453,7 @@ const LearningItemSquare = ({
 };
 
 const formSchema = yup.object({
-  name: yup.string().required().label("Project Name").trim(),
+  name: yup.string().required().label("Project Name").trim().max(64, "Too long, Maximum length is 64 characters"),
   addMembers: yup.bool().required().label("Add Members")
 });
 
