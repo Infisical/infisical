@@ -73,7 +73,18 @@ declare module "fastify" {
   }
 
   interface FastifyReply {
-    sse: (msg: { data: string }) => void;
+    sse: ({
+      data,
+      error
+    }:
+      | {
+          data: string;
+          error?: false;
+        }
+      | {
+          error: true;
+          errorMessage: string;
+        }) => void;
   }
 
   interface FastifyInstance {
