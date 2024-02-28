@@ -23,7 +23,7 @@ const slugSchema = z
   .min(5)
   .max(36)
   .refine((v) => slugify(v) === v, {
-    message: "Slug must be a valid slug"
+    message: "Slug must be at least 5 character but no more than 36"
   });
 
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
