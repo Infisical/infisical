@@ -16,6 +16,7 @@ import { registerProjectRouter } from "./project-router";
 import { registerSecretFolderRouter } from "./secret-folder-router";
 import { registerSecretImportRouter } from "./secret-import-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
+import { registerServersideEventsRouter } from "./sse-router";
 import { registerSsoRouter } from "./sso-router";
 import { registerUserActionRouter } from "./user-action-router";
 import { registerUserRouter } from "./user-router";
@@ -57,4 +58,5 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerIntegrationAuthRouter, { prefix: "/integration-auth" });
   await server.register(registerWebhookRouter, { prefix: "/webhooks" });
   await server.register(registerIdentityRouter, { prefix: "/identities" });
+  await server.register(registerServersideEventsRouter, { prefix: "/sse" });
 };
