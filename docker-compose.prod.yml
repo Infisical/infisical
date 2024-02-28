@@ -52,7 +52,7 @@ services:
     restart: always
     env_file: .env
     volumes:
-      - pg_data:/data/db
+      - pg_data:/var/lib/postgresql/data
     networks:
       - infisical
     healthcheck:
