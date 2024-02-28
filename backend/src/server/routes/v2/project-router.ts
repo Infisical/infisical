@@ -136,11 +136,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        projectName: z.string().trim().describe("Name of the project you're creating."),
+        projectName: z.string().trim().describe("Name of the project you're creating"),
         slug: slugSchema
           .optional()
-          .describe("An optional slug for the project. If not provided, it will be auto-generated."),
-        organizationId: z.string().trim().describe("The ID of the organization to create the project in.")
+          .describe("An optional slug for the project. If not provided, it will be auto-generated"),
+        organizationSlug: z.string().trim().describe("The slug of the organization to create the project in")
       }),
       response: {
         200: z.object({
@@ -153,7 +153,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const project = await server.services.project.createProject({
         actorId: req.permission.id,
         actor: req.permission.type,
-        orgId: req.body.organizationId,
+        orgSlug: req.body.organizationSlug,
         workspaceName: req.body.projectName,
         slug: req.body.slug
       });

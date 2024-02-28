@@ -18,6 +18,7 @@ import { ActorType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -63,6 +64,7 @@ type TProjectServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  orgDAL: Pick<TOrgDALFactory, "findOne">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -72,6 +74,7 @@ export const projectServiceFactory = ({
   projectQueue,
   projectKeyDAL,
   permissionService,
+  orgDAL,
   userDAL,
   folderDAL,
   orgService,
@@ -88,11 +91,33 @@ export const projectServiceFactory = ({
   /*
    * Create workspace. Make user the admin
    * */
-  const createProject = async ({ orgId, actor, actorId, actorOrgId, workspaceName, slug }: TCreateProjectDTO) => {
+  const createProject = async ({
+    orgId,
+    orgSlug,
+    actor,
+    actorId,
+    actorOrgId,
+    workspaceName,
+    slug
+  }: TCreateProjectDTO) => {
+    if (orgSlug && orgId) {
+      throw new BadRequestError({
+        message: "Cannot provide both orgId and orgSlug"
+      });
+    }
+
+    if (!orgSlug && !orgId) {
+      throw new BadRequestError({
+        message: "Must provide either orgId or orgSlug"
+      });
+    }
+
+    const organization = orgSlug ? await orgDAL.findOne({ slug: orgSlug }) : await orgDAL.findOne({ id: orgId });
+
     const { permission, membership: orgMembership } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      orgId,
+      organization.id,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
@@ -100,7 +125,7 @@ export const projectServiceFactory = ({
     const appCfg = getConfig();
     const blindIndex = createSecretBlindIndex(appCfg.ROOT_ENCRYPTION_KEY, appCfg.ENCRYPTION_KEY);
 
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await licenseService.getPlan(organization.id);
     if (plan.workspaceLimit !== null && plan.workspacesUsed >= plan.workspaceLimit) {
       // case: limit imposed on number of workspaces allowed
       // case: number of workspaces used exceeds the number of workspaces allowed
@@ -110,12 +135,12 @@ export const projectServiceFactory = ({
     }
 
     const results = await projectDAL.transaction(async (tx) => {
-      const ghostUser = await orgService.addGhostUser(orgId, tx);
+      const ghostUser = await orgService.addGhostUser(organization.id, tx);
 
       const project = await projectDAL.create(
         {
           name: workspaceName,
-          orgId,
+          orgId: organization.id,
           slug: slug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
           version: ProjectVersion.V2
         },
@@ -272,7 +297,7 @@ export const projectServiceFactory = ({
         // Get the role permission for the identity
         const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
           ProjectMembershipRole.Admin,
-          orgId
+          organization.id
         );
 
         const hasPrivilege = isAtLeastAsPrivileged(permission, rolePermission);
