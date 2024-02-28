@@ -73,16 +73,23 @@ var loginCmd = &cobra.Command{
 				return
 			}
 		}
-		//override domain
+
+		promptOverrideDomain := true
 		domainQuery := true
-		if config.INFISICAL_URL_MANUAL_OVERRIDE != "" && config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
+		if cmd.Parent().Flag("domain").Changed || envVariableSet("INFISICAL_API_URL") {
+			log.Debug().Msg("Domain Manual Override")
+
+			config.INFISICAL_URL = config.INFISICAL_URL_MANUAL_OVERRIDE
+			promptOverrideDomain = false
+			domainQuery = false
+		}
+
+		if promptOverrideDomain {
 			overrideDomain, err := DomainOverridePrompt()
 			if err != nil {
 				util.HandleError(err)
 			}
 
-			//if not override set INFISICAL_URL to exported var
-			//set domainQuery to false
 			if !overrideDomain {
 				domainQuery = false
 				config.INFISICAL_URL = config.INFISICAL_URL_MANUAL_OVERRIDE
@@ -306,6 +313,13 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 	userCredentialsToBeStored.Email = email
 	userCredentialsToBeStored.PrivateKey = string(decryptedPrivateKey)
 	userCredentialsToBeStored.JTWToken = loginTwoResponse.Token
+}
+
+func envVariableSet(envVar string) bool {
+	if _, ok := os.LookupEnv(envVar); ok {
+		return true
+	}
+	return false
 }
 
 func init() {
