@@ -16,6 +16,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { TEventType } from "@app/services/event/event-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { secretRawSchema } from "../sanitizedSchemas";
@@ -917,6 +918,15 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretReminderRepeatDays,
         secretReminderNote,
         newSecretName
+      });
+
+      await server.services.event.publish(req.body.workspaceId, {
+        type: TEventType.SECRET_UPDATE,
+        payload: {
+          secretId: secret.id,
+          secretKey: req.params.secretName,
+          secretPath: "test/path"
+        }
       });
 
       await server.services.auditLog.createAuditLog({
