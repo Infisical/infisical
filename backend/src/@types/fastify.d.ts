@@ -20,6 +20,7 @@ import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TEventServiceFactory } from "@app/services/event/event-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
@@ -71,6 +72,10 @@ declare module "fastify" {
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
   }
 
+  interface FastifyReply {
+    sse: (msg: { data: string }) => void;
+  }
+
   interface FastifyInstance {
     services: {
       login: TAuthLoginFactory;
@@ -113,6 +118,7 @@ declare module "fastify" {
       trustedIp: TTrustedIpServiceFactory;
       secretBlindIndex: TSecretBlindIndexServiceFactory;
       telemetry: TTelemetryServiceFactory;
+      event: TEventServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
