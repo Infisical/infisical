@@ -633,7 +633,7 @@ const OrganizationPage = withPermission(
                   key={workspace.id}
                   className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
                 >
-                  <div className="mt-0 text-lg text-mineshaft-100">{workspace.name}</div>
+                  <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
                   <div className="mt-0 pb-6 text-sm text-mineshaft-300">
                     {workspace.environments?.length || 0} environments
                   </div>

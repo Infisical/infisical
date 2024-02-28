@@ -274,13 +274,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </Link>
                     )}
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild className="data-[state=open]:bg-mineshaft-600">
+                      <DropdownMenuTrigger
+                        asChild
+                        className="max-w-[160px] data-[state=open]:bg-mineshaft-600"
+                      >
                         <div className="mr-auto flex items-center rounded-md py-1.5 pl-1.5 pr-2 hover:bg-mineshaft-600">
-                          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary text-sm">
+                          <div className="flex h-5 w-5 min-w-[20px] items-center justify-center rounded-md bg-primary text-sm">
                             {currentOrg?.name.charAt(0)}
                           </div>
                           <div
-                            className="overflow-hidden text-ellipsis pl-2 text-sm text-mineshaft-100"
+                            className="overflow-hidden truncate text-ellipsis pl-2 text-sm text-mineshaft-100"
                             style={{ maxWidth: "140px" }}
                           >
                             {currentOrg?.name}
@@ -324,7 +327,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                                   )
                                 }
                               >
-                                <div className="flex w-full items-center justify-between">
+                                <div className="flex w-full max-w-[150px] items-center justify-between truncate">
                                   {org.name}
                                 </div>
                               </Button>
@@ -423,7 +426,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <Select
                         defaultValue={currentWorkspace?.id}
                         value={currentWorkspace?.id}
-                        className="w-full truncate bg-mineshaft-600 py-2.5 font-medium"
+                        className="w-full [&>*:first-child]:truncate bg-mineshaft-600 py-2.5 font-medium"
                         onValueChange={(value) => {
                           router.push(`/project/${value}/secrets/overview`);
                           localStorage.setItem("projectData.id", value);
@@ -438,7 +441,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
                               <SelectItem
                                 key={`ws-layout-list-${id}`}
                                 value={id}
-                                className={`${currentWorkspace?.id === id && "bg-mineshaft-600"}`}
+                                className={`${
+                                  currentWorkspace?.id === id && "bg-mineshaft-600"
+                                } truncate`}
                               >
                                 {name}
                               </SelectItem>
