@@ -220,6 +220,30 @@ func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleE
 	return secrets, nil
 }
 
+func FilterSecretsByTag(plainTextSecrets []models.SingleEnvironmentVariable, tagSlugs string) []models.SingleEnvironmentVariable {
+	if tagSlugs == "" {
+		return plainTextSecrets
+	}
+
+	tagSlugsMap := make(map[string]bool)
+	tagSlugsList := strings.Split(tagSlugs, ",")
+	for _, slug := range tagSlugsList {
+		tagSlugsMap[slug] = true
+	}
+
+	filteredSecrets := []models.SingleEnvironmentVariable{}
+	for _, secret := range plainTextSecrets {
+		for _, tag := range secret.Tags {
+			if tagSlugsMap[tag.Slug] {
+				filteredSecrets = append(filteredSecrets, secret)
+				break
+			}
+		}
+	}
+
+	return filteredSecrets
+}
+
 func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectConfigFilePath string) ([]models.SingleEnvironmentVariable, error) {
 	var infisicalToken string
 	if params.InfisicalToken == "" {
