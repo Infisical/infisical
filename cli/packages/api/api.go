@@ -490,5 +490,7 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 		return GetRawSecretsV3Response{}, fmt.Errorf("CallGetRawSecretsV3: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
 	}
 
+	getRawSecretsV3Response.ETag = response.Header().Get(("etag"))
+
 	return getRawSecretsV3Response, nil
 }
