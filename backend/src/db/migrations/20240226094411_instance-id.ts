@@ -10,16 +10,10 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.SuperAdmin, (t) => {
     t.uuid("instanceId").notNullable().defaultTo(knex.fn.uuid());
   });
-  // eslint-disable-next-line
-  await knex(TableName.SuperAdmin)
-    .update({ id: ADMIN_CONFIG_UUID })
-    .whereNotNull("id")
-    .andWhere("id", "<>", ADMIN_CONFIG_UUID)
-    .limit(1);
 
   const superUserConfigExists = await knex(TableName.SuperAdmin).where("id", ADMIN_CONFIG_UUID).first();
-
   if (!superUserConfigExists) {
+    // eslint-disable-next-line
     await knex(TableName.SuperAdmin).update({ id: ADMIN_CONFIG_UUID }).whereNotNull("id").limit(1);
   }
 }
