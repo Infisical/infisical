@@ -7,7 +7,7 @@ import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
-import { groupBy, pick } from "@app/lib/fn";
+import { groupBy, pick, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
@@ -242,10 +242,18 @@ export const secretServiceFactory = ({
 
     if (isNew) {
       if (secrets.length) throw new BadRequestError({ message: "Secret already exist" });
-    } else if (secrets.length !== inputSecrets.length)
-      throw new BadRequestError({
-        message: `Secret not found: blind index ${JSON.stringify(keyName2BlindIndex)}`
-      });
+    } else {
+      const secretKeysInDB = unique(secrets, (el) => el.secretBlindIndex as string).map(
+        (el) => blindIndex2KeyName[el.secretBlindIndex as string]
+      );
+      const hasUnknownSecretsProvided = secretKeysInDB.length !== inputSecrets.length;
+      if (hasUnknownSecretsProvided) {
+        const keysMissingInDB = Object.keys(keyName2BlindIndex).filter((key) => !secretKeysInDB.includes(key));
+        throw new BadRequestError({
+          message: `Secret not found: blind index ${keysMissingInDB.join(",")}`
+        });
+      }
+    }
 
     return { blindIndex2KeyName, keyName2BlindIndex, secrets };
   };
