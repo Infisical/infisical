@@ -90,26 +90,7 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   }
 };
 
-/*
-!!! IMPORTANT NOTE ABOUT `orgId` FIELD on `req.auth` !!!
-
-The `orgId` is an optional field, this is intentional. 
-There are cases where the `orgId` won't be present on the request auth object.
-
-
-2 Examples:
-
-1. When a user first creates their account, no organization is present most of the time, because they haven't created one yet.
-2. When a user is using an API key. We can't link API keys to organizations, because they are not tied to any organization, but instead they're tied to the user itself.
-
-
-Reasons for orgId to be undefined when JWT is used, is to indicate that a certain token was obtained from successfully logging into an org with org-level auth enforced.
-Certain organizations don’t require that enforcement and so the tokens don’t have organizationId on them.
-They shouldn’t be used to access organizations that have specific org-level auth enforced
-And so to differentiate between tokens that were obtained from regular login vs those at the org-auth level we include that field into those tokens.
-
-*/
-
+// ! Important: You can only 100% count on the `req.permission.orgId` field being present when the auth method is Identity Access Token (Machine Identity).
 export const injectIdentity = fp(async (server: FastifyZodProvider) => {
   server.decorateRequest("auth", null);
   server.addHook("onRequest", async (req) => {
