@@ -532,9 +532,8 @@ const main = async () => {
       postgresTableName: TableName.SuperAdmin,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        const id = uuidV4();
         return {
-          id,
+          id: "00000000-0000-0000-0000-000000000000",
           allowSignUp: doc.allowSignUp,
           initialized: doc.initialized,
           createdAt: new Date((doc as any).createdAt),
