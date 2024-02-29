@@ -16,15 +16,19 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-const SERVICE_ACCOUNT_ACCESS_KEY = "serviceAccountAccessKey"
-const SERVICE_ACCOUNT_PUBLIC_KEY = "serviceAccountPublicKey"
-const SERVICE_ACCOUNT_PRIVATE_KEY = "serviceAccountPrivateKey"
+const (
+	SERVICE_ACCOUNT_ACCESS_KEY  = "serviceAccountAccessKey"
+	SERVICE_ACCOUNT_PUBLIC_KEY  = "serviceAccountPublicKey"
+	SERVICE_ACCOUNT_PRIVATE_KEY = "serviceAccountPrivateKey"
+)
 
-const INFISICAL_TOKEN_SECRET_KEY_NAME = "infisicalToken"
-const SECRET_VERSION_ANNOTATION = "secrets.infisical.com/version" // used to set the version of secrets via Etag
-const OPERATOR_SETTINGS_CONFIGMAP_NAME = "infisical-config"
-const OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE = "infisical-operator-system"
-const INFISICAL_DOMAIN = "https://app.infisical.com/api"
+const (
+	INFISICAL_TOKEN_SECRET_KEY_NAME       = "infisicalToken"
+	SECRET_VERSION_ANNOTATION             = "secrets.infisical.com/version" // used to set the version of secrets via Etag
+	OPERATOR_SETTINGS_CONFIGMAP_NAME      = "infisical-config"
+	OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE = "infisical-operator-system"
+	INFISICAL_DOMAIN                      = "https://app.infisical.com/api"
+)
 
 func (r *InfisicalSecretReconciler) GetInfisicalConfigMap(ctx context.Context) (configMap map[string]string, errToReturn error) {
 	// default key values
@@ -36,7 +40,6 @@ func (r *InfisicalSecretReconciler) GetInfisicalConfigMap(ctx context.Context) (
 		Namespace: OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE,
 		Name:      OPERATOR_SETTINGS_CONFIGMAP_NAME,
 	}, kubeConfigMap)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			kubeConfigMap = nil
@@ -231,7 +234,10 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	var fullEncryptedSecretsResponse api.GetEncryptedSecretsV3Response
 
 	if serviceAccountCreds.AccessKey != "" || serviceAccountCreds.PrivateKey != "" || serviceAccountCreds.PublicKey != "" {
-		plainTextSecretsFromApi, fullEncryptedSecretsResponse, err = util.GetPlainTextSecretsViaServiceAccount(serviceAccountCreds, infisicalSecret.Spec.Authentication.ServiceAccount.ProjectId, infisicalSecret.Spec.Authentication.ServiceAccount.EnvironmentName, secretVersionBasedOnETag)
+		plainTextSecretsFromApi, fullEncryptedSecretsResponse, err = util.GetPlainTextSecretsViaServiceAccount(serviceAccountCreds,
+			infisicalSecret.Spec.Authentication.ServiceAccount.ProjectId,
+			infisicalSecret.Spec.Authentication.ServiceAccount.EnvironmentName, secretVersionBasedOnETag,
+			infisicalSecret.Spec.TLSConfig.InsecureSkipVerify)
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
@@ -242,7 +248,8 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		envSlug := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.EnvSlug
 		secretsPath := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.SecretsPath
 
-		plainTextSecretsFromApi, fullEncryptedSecretsResponse, err = util.GetPlainTextSecretsViaServiceToken(infisicalToken, secretVersionBasedOnETag, envSlug, secretsPath)
+		plainTextSecretsFromApi, fullEncryptedSecretsResponse, err = util.GetPlainTextSecretsViaServiceToken(infisicalToken, secretVersionBasedOnETag,
+			envSlug, secretsPath, infisicalSecret.Spec.TLSConfig.InsecureSkipVerify)
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
@@ -263,5 +270,4 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	} else {
 		return r.UpdateInfisicalManagedKubeSecret(ctx, *managedKubeSecret, plainTextSecretsFromApi, fullEncryptedSecretsResponse)
 	}
-
 }

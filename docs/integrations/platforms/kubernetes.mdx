@@ -221,6 +221,27 @@ type: Opaque
 </Accordion>
 
 
+<Accordion title="tlsConfig">
+  This block defines the  TLS configuration the operator should use to connect to your Infisical instance
+</Accordion>
+
+<Accordion title="tlsConfig.insecureSkipVerify">
+  If enabled and set to true, the http client would not skip TLS verification when syncing your secrets from your infisical instance
+
+  ## Example
+  ```yaml
+  apiVersion: secrets.infisical.com/v1alpha1
+  kind: InfisicalSecret
+  metadata:
+    name: infisicalsecret-sample-crd
+  spec:
+    tlsConfig:
+      insecureSkipVerify: false
+    ...
+  ```
+</Accordion>
+
+
 ### Apply the Infisical CRD to your cluster 
 Once you have configured the Infisical CRD with the required fields, you can apply it to your cluster. 
 After applying, you should notice that the managed secret has been created in the desired namespace your specified.

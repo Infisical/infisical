@@ -1,6 +1,7 @@
 package util
 
 import (
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"path"
@@ -30,7 +31,7 @@ func VerifyServiceToken(serviceToken string) (string, error) {
 	return serviceToken, nil
 }
 
-func GetServiceTokenDetails(infisicalToken string) (api.GetServiceTokenDetailsResponse, error) {
+func GetServiceTokenDetails(infisicalToken string, insecureSkipVerify bool) (api.GetServiceTokenDetailsResponse, error) {
 	serviceTokenParts := strings.SplitN(infisicalToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
 		return api.GetServiceTokenDetailsResponse{}, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
@@ -42,6 +43,12 @@ func GetServiceTokenDetails(infisicalToken string) (api.GetServiceTokenDetailsRe
 	httpClient.SetAuthToken(serviceToken).
 		SetHeader("Accept", "application/json")
 
+	if insecureSkipVerify {
+		httpClient.SetTLSClientConfig(&tls.Config{
+			InsecureSkipVerify: true,
+		})
+	}
+
 	serviceTokenDetails, err := api.CallGetServiceTokenDetailsV2(httpClient)
 	if err != nil {
 		return api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to get service token details. [err=%v]", err)
@@ -50,7 +57,9 @@ func GetServiceTokenDetails(infisicalToken string) (api.GetServiceTokenDetailsRe
 	return serviceTokenDetails, nil
 }
 
-func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string, envSlug string, secretPath string) ([]model.SingleEnvironmentVariable, api.GetEncryptedSecretsV3Response, error) {
+func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string, envSlug string, secretPath string,
+	insecureSkipVerify bool,
+) ([]model.SingleEnvironmentVariable, api.GetEncryptedSecretsV3Response, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
 		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
@@ -63,6 +72,12 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string, en
 	httpClient.SetAuthToken(serviceToken).
 		SetHeader("Accept", "application/json")
 
+	if insecureSkipVerify {
+		httpClient.SetTLSClientConfig(&tls.Config{
+			InsecureSkipVerify: true,
+		})
+	}
+
 	serviceTokenDetails, err := api.CallGetServiceTokenDetailsV2(httpClient)
 	if err != nil {
 		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("unable to get service token details. [err=%v]", err)
@@ -74,7 +89,6 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string, en
 		ETag:        etag,
 		SecretPath:  secretPath,
 	})
-
 	if err != nil {
 		return nil, api.GetEncryptedSecretsV3Response{}, err
 	}
@@ -100,7 +114,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string, en
 	}
 
 	// expand secrets that are referenced
-	expandedSecrets := ExpandSecrets(plainTextSecretsMergedWithImports, fullServiceToken)
+	expandedSecrets := ExpandSecrets(plainTextSecretsMergedWithImports, fullServiceToken, insecureSkipVerify)
 
 	return expandedSecrets, encryptedSecretsResponse, nil
 }
@@ -108,10 +122,18 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string, en
 // Fetches plaintext secrets from an API endpoint using a service account.
 // The function fetches the service account details and keys, decrypts the workspace key, fetches the encrypted secrets for the specified project and environment, and decrypts the secrets using the decrypted workspace key.
 // Returns the plaintext secrets, encrypted secrets response, and any errors that occurred during the process.
-func GetPlainTextSecretsViaServiceAccount(serviceAccountCreds model.ServiceAccountDetails, projectId string, environmentName string, etag string) ([]model.SingleEnvironmentVariable, api.GetEncryptedSecretsV3Response, error) {
+func GetPlainTextSecretsViaServiceAccount(serviceAccountCreds model.ServiceAccountDetails, projectId string,
+	environmentName string, etag string, insecureSkipVerify bool,
+) ([]model.SingleEnvironmentVariable, api.GetEncryptedSecretsV3Response, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(serviceAccountCreds.AccessKey).
 		SetHeader("Accept", "application/json")
+
+	if insecureSkipVerify {
+		httpClient.SetTLSClientConfig(&tls.Config{
+			InsecureSkipVerify: true,
+		})
+	}
 
 	serviceAccountDetails, err := api.CallGetServiceTokenAccountDetailsV2(httpClient)
 	if err != nil {
@@ -151,7 +173,6 @@ func GetPlainTextSecretsViaServiceAccount(serviceAccountCreds model.ServiceAccou
 	}
 
 	privateKey, err := base64.StdEncoding.DecodeString(serviceAccountCreds.PrivateKey)
-
 	if err != nil {
 		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode PrivateKey secrets because [err=%v]", err)
 	}
@@ -163,7 +184,6 @@ func GetPlainTextSecretsViaServiceAccount(serviceAccountCreds model.ServiceAccou
 		Environment: environmentName,
 		ETag:        etag,
 	})
-
 	if err != nil {
 		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("unable to fetch secrets because [err=%v]", err)
 	}
@@ -302,7 +322,7 @@ func recursivelyExpandSecret(expandedSecs map[string]string, interpolatedSecs ma
 	return interpolatedVal
 }
 
-func ExpandSecrets(secrets []model.SingleEnvironmentVariable, infisicalToken string) []model.SingleEnvironmentVariable {
+func ExpandSecrets(secrets []model.SingleEnvironmentVariable, infisicalToken string, insecureSkipVerify bool) []model.SingleEnvironmentVariable {
 	expandedSecs := make(map[string]string)
 	interpolatedSecs := make(map[string]string)
 	// map[env.secret-path][keyname]Secret
@@ -335,7 +355,7 @@ func ExpandSecrets(secrets []model.SingleEnvironmentVariable, infisicalToken str
 
 			if crossRefSec, ok := crossEnvRefSecs[uniqKey]; !ok {
 				// if not in cross reference cache, fetch it from server
-				refSecs, _, err := GetPlainTextSecretsViaServiceToken(infisicalToken, "", env, secPath)
+				refSecs, _, err := GetPlainTextSecretsViaServiceToken(infisicalToken, "", env, secPath, insecureSkipVerify)
 				if err != nil {
 					fmt.Printf("Could not fetch secrets in environment: %s secret-path: %s", env, secPath)
 					// HandleError(err, fmt.Sprintf("Could not fetch secrets in environment: %s secret-path: %s", env, secPath), "If you are using a service token to fetch secrets, please ensure it is valid")
@@ -377,7 +397,6 @@ func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []model.SingleEn
 	for i := len(importedSecrets) - 1; i >= 0; i-- {
 		importSec := importedSecrets[i]
 		plainTextImportedSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, importSec.Secrets)
-
 		if err != nil {
 			return nil, fmt.Errorf("unable to decrypt your imported secrets [err=%v]", err)
 		}

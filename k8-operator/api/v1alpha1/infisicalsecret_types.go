@@ -33,6 +33,12 @@ type SecretScopeInWorkspace struct {
 	EnvSlug string `json:"envSlug"`
 }
 
+type TLSConfig struct {
+	// Skip TLS verification
+	// +kubebuilder:validation:Optional
+	InsecureSkipVerify bool `json:"insecureSkipVerify"`
+}
+
 type KubeSecretReference struct {
 	// The name of the Kubernetes Secret
 	// +kubebuilder:validation:Required
@@ -68,6 +74,9 @@ type InfisicalSecretSpec struct {
 
 	// +kubebuilder:validation:Required
 	ManagedSecretReference MangedKubeSecretConfig `json:"managedSecretReference"`
+
+	// +kubebuilder:validation:Optional
+	TLSConfig TLSConfig `json:"tlsConfig"`
 
 	// +kubebuilder:default:=60
 	ResyncInterval int `json:"resyncInterval"`
