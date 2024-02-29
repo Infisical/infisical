@@ -240,6 +240,10 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 		httpRequest.SetQueryParam("include_imports", "true")
 	}
 
+	if request.OverrideImports {
+		httpRequest.SetQueryParam("override_imports", "true")
+	}
+
 	if request.SecretPath != "" {
 		httpRequest.SetQueryParam("secretPath", request.SecretPath)
 	}

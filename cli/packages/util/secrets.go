@@ -80,7 +80,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 	return plainTextSecrets, serviceTokenDetails, nil
 }
 
-func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, tagSlugs string, secretsPath string, includeImports bool) ([]models.SingleEnvironmentVariable, error) {
+func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, tagSlugs string, secretsPath string, includeImports bool, overrideImports bool) ([]models.SingleEnvironmentVariable, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(JTWToken).
 		SetHeader("Accept", "application/json")
@@ -122,9 +122,10 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 	plainTextWorkspaceKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 	getSecretsRequest := api.GetEncryptedSecretsV3Request{
-		WorkspaceId:   workspaceId,
-		Environment:   environmentName,
-		IncludeImport: includeImports,
+		WorkspaceId:     workspaceId,
+		Environment:     environmentName,
+		IncludeImport:   includeImports,
+		OverrideImports: overrideImports,
 		// TagSlugs:    tagSlugs,
 	}
 
@@ -286,7 +287,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		// }
 
 		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, infisicalDotJson.WorkspaceId,
-			params.Environment, params.TagSlugs, params.SecretsPath, params.IncludeImport)
+			params.Environment, params.TagSlugs, params.SecretsPath, params.IncludeImport, params.OverrideImports)
 		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
 
 		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
