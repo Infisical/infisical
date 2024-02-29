@@ -172,7 +172,7 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 
 func secretTemplateFunction(accessToken string) func(string, string, string) ([]models.SingleEnvironmentVariable, error) {
 	return func(projectID, envSlug, secretPath string) ([]models.SingleEnvironmentVariable, error) {
-		secrets, err := util.GetPlainTextSecretsViaMachineIdentity(accessToken, projectID, envSlug, secretPath, false)
+		secrets, err := util.GetPlainTextSecretsViaMachineIdentity(accessToken, projectID, envSlug, secretPath, false, false)
 		if err != nil {
 			return nil, err
 		}

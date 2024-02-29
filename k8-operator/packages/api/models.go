@@ -29,11 +29,12 @@ type GetEncryptedWorkspaceKeyResponse struct {
 }
 
 type GetEncryptedSecretsV3Request struct {
-	Environment   string `json:"environment"`
-	WorkspaceId   string `json:"workspaceId"`
-	SecretPath    string `json:"secretPath"`
-	IncludeImport bool   `json:"include_imports"`
-	ETag          string `json:"etag,omitempty"`
+	Environment     string `json:"environment"`
+	WorkspaceId     string `json:"workspaceId"`
+	SecretPath      string `json:"secretPath"`
+	IncludeImport   bool   `json:"include_imports"`
+	OverrideImports bool   `json:"override_imports"`
+	ETag            string `json:"etag,omitempty"`
 }
 
 type EncryptedSecretV3 struct {
