@@ -517,7 +517,6 @@ export const registerRoutes = async (
   const serviceTokenService = serviceTokenServiceFactory({
     projectEnvDAL,
     serviceTokenDAL,
-    orgDAL,
     userDAL,
     permissionService
   });

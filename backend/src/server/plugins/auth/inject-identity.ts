@@ -30,7 +30,6 @@ export type TAuthMode =
       serviceToken: TServiceTokens & { createdByEmail: string };
       actor: ActorType.SERVICE;
       serviceTokenId: string;
-      orgId: string;
     }
   | {
       authMode: AuthMode.IDENTITY_ACCESS_TOKEN;
@@ -124,7 +123,6 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
         req.auth = {
           authMode: AuthMode.SERVICE_TOKEN as const,
           serviceToken,
-          orgId: serviceToken.orgId,
           serviceTokenId: serviceToken.id,
           actor
         };
