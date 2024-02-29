@@ -8,9 +8,12 @@
 
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
+// import { FastifyRequest } from "fastify";
 import { Strategy as GitHubStrategy } from "passport-github";
 import { Strategy as GitLabStrategy } from "passport-gitlab2";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as OpenIDConnectStrategy } from "passport-openidconnect";
+// const OpenIDConnectStrategy = require('passport-openidconnect');
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
@@ -132,6 +135,136 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       )
     );
   }
+
+  /**
+   * TODO:
+   * 1. Test w static config
+   * 2. Fetch config from db
+   */
+
+  // const getOIDCConfiguration = (req: FastifyRequest, callback: any) => {
+  //   // Fetching things from database or whatever
+  //   const { username } = req.body as { username: string };
+
+  //   process.nextTick(() => {
+  //     const opts = {
+  //       issuer: "",
+  //       authorizationURL: "",
+  //       tokenURL: "",
+  //       userInfoURL: "",
+  //       clientID: "",
+  //       clientSecret: "",
+  //       callbackURL: `${'test'}/api/sso/oidc`,
+  //       // issuer: ISSUER_URL_OIDC_LOGIN,
+  //       // authorizationURL: AUTHORIZATION_URL_OIDC_LOGIN,
+  //       // tokenURL: TOKEN_URL_OIDC_LOGIN,
+  //       // userInfoURL: USER_INFO_URL_OIDC_LOGIN,
+  //       // clientID: CLIENT_ID_OIDC_LOGIN,
+  //       // clientSecret: CLIENT_SECRET_OIDC_LOGIN,
+  //       // callbackURL: `${SITE_URL}/api/sso/oidc`,
+  //       scope: ['profile', 'email'],
+  //       passReqToCallback: true
+  //     }
+
+  //     callback(null, opts);
+  //   });
+  // };
+
+  const ISSUER_URL_OIDC_LOGIN = "https://oauth.id.jumpcloud.com/";
+  const AUTHORIZATION_URL_OIDC_LOGIN = "https://oauth.id.jumpcloud.com/oauth2/auth";
+  const TOKEN_URL_OIDC_LOGIN = "https://oauth.id.jumpcloud.com/oauth2/token";
+  const USER_INFO_URL_OIDC_LOGIN = "https://oauth.id.jumpcloud.com/userinfo";
+  const CLIENT_ID_OIDC_LOGIN = "";
+  const CLIENT_SECRET_OIDC_LOGIN = "";
+  const SITE_URL = "";
+
+  const config = {
+    issuer: ISSUER_URL_OIDC_LOGIN,
+    authorizationURL: AUTHORIZATION_URL_OIDC_LOGIN,
+    tokenURL: TOKEN_URL_OIDC_LOGIN,
+    userInfoURL: USER_INFO_URL_OIDC_LOGIN,
+    clientID: CLIENT_ID_OIDC_LOGIN,
+    clientSecret: CLIENT_SECRET_OIDC_LOGIN,
+    callbackURL: `${SITE_URL}/api/v1/sso/oidc`,
+    scope: ["profile", "email"],
+    passReqToCallback: true
+  };
+
+  if (config) {
+    passport.use(
+      new OpenIDConnectStrategy(config, (req: any, issuer: any, profile: any, done: any) => {
+        try {
+          console.log("oidc");
+          console.log("oidc issuer: ", issuer);
+          console.log("oidc profile: ", profile);
+          // const { name: { familyName, givenName }, emails } = profile;
+          done(null, profile);
+        } catch (err) {
+          console.log("oidc err: ", err);
+          done(null, false);
+        }
+      })
+    );
+  }
+
+  server.route({
+    url: "/login/oidc",
+    method: "GET",
+    preValidation: (req, res) => {
+      console.log("oidc login");
+      return (
+        passport.authenticate("openidconnect", {
+          session: false,
+          scope: ["profile", "email"]
+        }) as any
+      )(req, res);
+    },
+    handler: async (req, res) => {
+      console.log("oidc login 2");
+      if (req.passportUser) {
+        return res.code(200).send({ message: "Authentication successful", user: req.passportUser });
+      }
+      return res.code(401).send({ error: "Authentication failed" });
+    }
+  });
+
+  server.route({
+    url: "/oidc",
+    method: "GET",
+    preValidation: (req, res) => {
+      console.log("oidcx req: ", req); // code, state
+      return (
+        passport.authenticate("openidconnect", {
+          session: false,
+          failureRedirect: "/api/v1/sso/login/provider/error",
+          failureMessage: true
+        }) as any
+      )(req, res);
+    },
+    handler: (req, res) => {
+      console.log("oidc 3");
+      if (req.passportUser.isUserCompleted) {
+        // login
+        return res.redirect(`${SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`);
+      }
+
+      // signup
+      return res.redirect(`${SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`);
+    }
+  });
+
+  server.route({
+    url: "/login/provider/error",
+    method: "GET",
+    handler: (req, res) => {
+      console.log("reqyx: ", req);
+      console.log("resyx: ", res);
+      return res.status(500).send({
+        error: "Authentication error",
+        details: req.query
+      });
+    }
+  });
 
   server.route({
     url: "/redirect/google",
