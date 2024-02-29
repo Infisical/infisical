@@ -66,6 +66,7 @@ export type TGetSecretsDTO = {
   path: string;
   environment: string;
   includeImports?: boolean;
+  overrideImports?: boolean;
 } & TProjectPermission;
 
 export type TGetASecretDTO = {

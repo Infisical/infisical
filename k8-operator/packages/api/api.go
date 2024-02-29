@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -60,7 +61,8 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 		SetHeader("User-Agent", USER_AGENT_NAME).
 		SetHeader("If-None-Match", request.ETag).
 		SetQueryParam("environment", request.Environment).
-		SetQueryParam("include_imports", "true"). // TODO needs to be set as a option
+		SetQueryParam("include_imports", strconv.FormatBool(request.IncludeImport)).
+		SetQueryParam("override_imports", strconv.FormatBool(request.OverrideImports)).
 		SetQueryParam("workspaceId", request.WorkspaceId)
 
 	if request.SecretPath != "" {
