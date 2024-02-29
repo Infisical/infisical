@@ -73,6 +73,19 @@ type Template struct {
 	DestinationPath       string `yaml:"destination-path"`
 }
 
+type SecretsStateManager struct {
+	// etags should be stored in memory, and the key should be env-secretPath-projectID, and the value should be the actual etag
+	etags                 map[string]string
+	secretMutationChannel chan bool
+}
+
+func NewSecretsStateManager(secretMutationChannel chan bool) *SecretsStateManager {
+	return &SecretsStateManager{
+		etags:                 make(map[string]string),
+		secretMutationChannel: secretMutationChannel,
+	}
+}
+
 func ReadFile(filePath string) ([]byte, error) {
 	return ioutil.ReadFile(filePath)
 }
@@ -170,20 +183,29 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 	return config, nil
 }
 
-func secretTemplateFunction(accessToken string) func(string, string, string) ([]models.SingleEnvironmentVariable, error) {
+func secretTemplateFunction(accessToken string, secretStateManager *SecretsStateManager) func(string, string, string) ([]models.SingleEnvironmentVariable, error) {
 	return func(projectID, envSlug, secretPath string) ([]models.SingleEnvironmentVariable, error) {
-		secrets, err := util.GetPlainTextSecretsViaMachineIdentity(accessToken, projectID, envSlug, secretPath, false)
+		res, err := util.GetPlainTextSecretsViaMachineIdentity(accessToken, projectID, envSlug, secretPath, false)
 		if err != nil {
 			return nil, err
 		}
 
-		return secrets, nil
+		if secretStateManager != nil {
+			key := fmt.Sprintf("%s-%s-%s", envSlug, secretPath, projectID)
+			oldEtag, ok := secretStateManager.etags[key] // if there's no etag, it means it's the first time we are fetching this secret. we should only notify the secretMutationChannel if the etag has changed, not if it's the first time we are fetching the secret
+			if ok && oldEtag != res.Hash {
+				secretStateManager.secretMutationChannel <- true
+			}
+			secretStateManager.etags[key] = res.Hash
+		}
+
+		return res.Secrets, nil
 	}
 }
 
-func ProcessTemplate(templatePath string, data interface{}, accessToken string) (*bytes.Buffer, error) {
+func ProcessTemplate(templatePath string, data interface{}, accessToken string, secretStateManager *SecretsStateManager) (*bytes.Buffer, error) {
 	// custom template function to fetch secrets from Infisical
-	secretFunction := secretTemplateFunction(accessToken)
+	secretFunction := secretTemplateFunction(accessToken, secretStateManager)
 	funcs := template.FuncMap{
 		"secret": secretFunction,
 	}
@@ -203,7 +225,7 @@ func ProcessTemplate(templatePath string, data interface{}, accessToken string) 
 	return &buf, nil
 }
 
-func ProcessBase64Template(encodedTemplate string, data interface{}, accessToken string) (*bytes.Buffer, error) {
+func ProcessBase64Template(encodedTemplate string, data interface{}, accessToken string, secretStateManager *SecretsStateManager) (*bytes.Buffer, error) {
 	// custom template function to fetch secrets from Infisical
 	decoded, err := base64.StdEncoding.DecodeString(encodedTemplate)
 	if err != nil {
@@ -212,7 +234,7 @@ func ProcessBase64Template(encodedTemplate string, data interface{}, accessToken
 
 	templateString := string(decoded)
 
-	secretFunction := secretTemplateFunction(accessToken)
+	secretFunction := secretTemplateFunction(accessToken, secretStateManager) // TODO: Fix this
 	funcs := template.FuncMap{
 		"secret": secretFunction,
 	}
@@ -244,13 +266,22 @@ type TokenManager struct {
 	clientIdPath                   string
 	clientSecretPath               string
 	newAccessTokenNotificationChan chan bool
-	removeClientSecretOnRead       bool
-	cachedClientSecret             string
-	exitAfterAuth                  bool
+
+	removeClientSecretOnRead bool
+	cachedClientSecret       string
+	exitAfterAuth            bool
 }
 
 func NewTokenManager(fileDeposits []Sink, templates []Template, clientIdPath string, clientSecretPath string, newAccessTokenNotificationChan chan bool, removeClientSecretOnRead bool, exitAfterAuth bool) *TokenManager {
-	return &TokenManager{filePaths: fileDeposits, templates: templates, clientIdPath: clientIdPath, clientSecretPath: clientSecretPath, newAccessTokenNotificationChan: newAccessTokenNotificationChan, removeClientSecretOnRead: removeClientSecretOnRead, exitAfterAuth: exitAfterAuth}
+	return &TokenManager{
+		filePaths:                      fileDeposits,
+		templates:                      templates,
+		clientIdPath:                   clientIdPath,
+		clientSecretPath:               clientSecretPath,
+		newAccessTokenNotificationChan: newAccessTokenNotificationChan,
+		removeClientSecretOnRead:       removeClientSecretOnRead,
+		exitAfterAuth:                  exitAfterAuth,
+	}
 }
 
 func (tm *TokenManager) SetToken(token string, accessTokenTTL time.Duration, accessTokenMaxTTL time.Duration) {
@@ -428,7 +459,7 @@ func (tm *TokenManager) WriteTokenToFiles() {
 	}
 }
 
-func (tm *TokenManager) FetchSecrets() {
+func (tm *TokenManager) FetchSecrets(secretStateManager *SecretsStateManager) {
 	log.Info().Msgf("template engine started...")
 	for {
 		token := tm.GetToken()
@@ -437,9 +468,9 @@ func (tm *TokenManager) FetchSecrets() {
 				var processedTemplate *bytes.Buffer
 				var err error
 				if secretTemplate.SourcePath != "" {
-					processedTemplate, err = ProcessTemplate(secretTemplate.SourcePath, nil, token)
+					processedTemplate, err = ProcessTemplate(secretTemplate.SourcePath, nil, token, secretStateManager)
 				} else {
-					processedTemplate, err = ProcessBase64Template(secretTemplate.Base64TemplateContent, nil, token)
+					processedTemplate, err = ProcessBase64Template(secretTemplate.Base64TemplateContent, nil, token, secretStateManager)
 				}
 
 				if err != nil {
@@ -458,7 +489,7 @@ func (tm *TokenManager) FetchSecrets() {
 			}
 
 			// fetch new secrets every 5 minutes (TODO: add PubSub in the future )
-			time.Sleep(5 * time.Minute)
+			time.Sleep(5 * time.Second)
 		}
 	}
 }
@@ -537,19 +568,24 @@ var agentCmd = &cobra.Command{
 		configUniversalAuthType := agentConfig.Auth.Config.(UniversalAuth)
 
 		tokenRefreshNotifier := make(chan bool)
+		secretMutationNotifier := make(chan bool)
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 		filePaths := agentConfig.Sinks
 		tm := NewTokenManager(filePaths, agentConfig.Templates, configUniversalAuthType.ClientIDPath, configUniversalAuthType.ClientSecretPath, tokenRefreshNotifier, configUniversalAuthType.RemoveClientSecretOnRead, agentConfig.Infisical.ExitAfterAuth)
 
+		ssm := NewSecretsStateManager(secretMutationNotifier)
+
 		go tm.ManageTokenLifecycle()
-		go tm.FetchSecrets()
+		go tm.FetchSecrets(ssm)
 
 		for {
 			select {
 			case <-tokenRefreshNotifier:
 				go tm.WriteTokenToFiles()
+			case <-secretMutationNotifier:
+				log.Info().Msgf("Mashallah, a mutation has occurred")
 			case <-sigChan:
 				log.Info().Msg("agent is gracefully shutting...")
 				// TODO: check if we are in the middle of writing files to disk
