@@ -8,11 +8,11 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.SuperAdmin, (t) => {
     t.uuid("instanceId").notNullable().defaultTo(knex.fn.uuid());
   });
+
   // this is updated to avoid race condition on replication
   // eslint-disable-next-line
   // @ts-ignore
-  await knex(TableName.SuperAdmin)
-    .update({ id: ADMIN_CONFIG_UUID })
+  await knex(TableName.SuperAdmin).update({ id: ADMIN_CONFIG_UUID })
     .whereNotNull("id")
     .andWhere("id", "<>", ADMIN_CONFIG_UUID)
     .limit(1);
