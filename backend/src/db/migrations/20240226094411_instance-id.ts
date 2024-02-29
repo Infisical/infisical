@@ -11,7 +11,11 @@ export async function up(knex: Knex): Promise<void> {
   // this is updated to avoid race condition on replication
   // eslint-disable-next-line
   // @ts-ignore
-  await knex(TableName.SuperAdmin).update({ id: ADMIN_CONFIG_UUID }).whereNotNull("id").limit(1);
+  await knex(TableName.SuperAdmin)
+    .update({ id: ADMIN_CONFIG_UUID })
+    .whereNotNull("id")
+    .andWhere("id", "<>", ADMIN_CONFIG_UUID)
+    .limit(1);
 }
 
 export async function down(knex: Knex): Promise<void> {
