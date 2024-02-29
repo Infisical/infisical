@@ -202,12 +202,13 @@ export const secretServiceFactory = ({
     return deletedSecrets;
   };
 
-  // this is a utility function for secret modification
-  // this will check given secret name blind index exist or not
-  // if its a created secret set isNew to true
-  // thus if these blindindex exist it will throw an error
-  // vice versa when u need to check for updated secret
-  // this will also return the blind index grouped by secretName
+  /**
+   * Checks and handles secrets using a blind index method.
+   * The function generates mappings between secret names and their blind indexes, validates user IDs for personal secrets, and retrieves secrets from the database based on their blind indexes.
+   * For new secrets (isNew = true), it ensures they don't already exist in the database.
+   * For existing secrets, it verifies their presence in the database.
+   * If discrepancies are found, errors are thrown. The function returns mappings and the fetched secrets.
+   */
   const fnSecretBlindIndexCheck = async ({
     inputSecrets,
     folderId,
