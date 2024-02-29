@@ -47,26 +47,33 @@ description: "Use Helm chart to install Infisical on your Kubernetes cluster"
     <Tabs>
       <Tab title="Proof of concept deployment">
           For test or proof-of-concept purposes, you may omit `DB_CONNECTION_URI` and `REDIS_URL` from `infisical-secrets`. This is because the Helm chart will automatically provision and connect to the in-cluster instances of Postgres and Redis by default.
-
+      ```yaml simple-values-example.yaml 
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: infisical-secrets
+        type: Opaque
+        stringData:
+          AUTH_SECRET: <>
+          ENCRYPTION_KEY: <>
+      ```
       </Tab>
       <Tab title="Production deployment">
         For production environments, we recommend using Cloud-based Platform as a Service (PaaS) solutions for PostgreSQL and Redis to ensure high availability. In on-premise setups, it's recommended to configure Redis and Postgres for high availability, either by using Bitnami charts or a custom configuration.
-
+        ```yaml simple-values-example.yaml 
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: infisical-secrets
+        type: Opaque
+        stringData:
+          AUTH_SECRET: <>
+          ENCRYPTION_KEY: <>
+          REDIS_URL: <>
+          DB_CONNECTION_URI: <>
+        ```
       </Tab>
     </Tabs>
-
-    ```yaml simple-values-example.yaml 
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: infisical-secrets
-      type: Opaque
-      stringData:
-        AUTH_SECRET: <>
-        ENCRYPTION_KEY: <>
-        REDIS_URL: <>
-        DB_CONNECTION_URI: <>
-    ```
   </Step>
 
   <Step title="Database schema migration ">
