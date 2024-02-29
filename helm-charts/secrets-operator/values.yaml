@@ -1,5 +1,15 @@
 controllerManager:
   kubeRbacProxy:
+    args:
+    - --secure-listen-address=0.0.0.0:8443
+    - --upstream=http://127.0.0.1:8080/
+    - --logtostderr=true
+    - --v=0
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
     image:
       repository: gcr.io/kubebuilder/kube-rbac-proxy
       tag: v0.15.0
@@ -11,6 +21,15 @@ controllerManager:
         cpu: 5m
         memory: 64Mi
   manager:
+    args:
+    - --health-probe-bind-address=:8081
+    - --metrics-bind-address=127.0.0.1:8080
+    - --leader-elect
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
     image:
       repository: infisical/kubernetes-operator
       tag: latest
@@ -22,6 +41,8 @@ controllerManager:
         cpu: 10m
         memory: 64Mi
   replicas: 1
+  serviceAccount:
+    annotations: {}
 kubernetesClusterDomain: cluster.local
 metricsService:
   ports:
