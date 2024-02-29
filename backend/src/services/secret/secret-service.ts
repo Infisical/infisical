@@ -7,7 +7,7 @@ import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
-import { groupBy, pick } from "@app/lib/fn";
+import { groupBy, pick, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
@@ -202,12 +202,13 @@ export const secretServiceFactory = ({
     return deletedSecrets;
   };
 
-  // this is a utility function for secret modification
-  // this will check given secret name blind index exist or not
-  // if its a created secret set isNew to true
-  // thus if these blindindex exist it will throw an error
-  // vice versa when u need to check for updated secret
-  // this will also return the blind index grouped by secretName
+  /**
+   * Checks and handles secrets using a blind index method.
+   * The function generates mappings between secret names and their blind indexes, validates user IDs for personal secrets, and retrieves secrets from the database based on their blind indexes.
+   * For new secrets (isNew = true), it ensures they don't already exist in the database.
+   * For existing secrets, it verifies their presence in the database.
+   * If discrepancies are found, errors are thrown. The function returns mappings and the fetched secrets.
+   */
   const fnSecretBlindIndexCheck = async ({
     inputSecrets,
     folderId,
@@ -242,10 +243,18 @@ export const secretServiceFactory = ({
 
     if (isNew) {
       if (secrets.length) throw new BadRequestError({ message: "Secret already exist" });
-    } else if (secrets.length !== inputSecrets.length)
-      throw new BadRequestError({
-        message: `Secret not found: blind index ${JSON.stringify(keyName2BlindIndex)}`
-      });
+    } else {
+      const secretKeysInDB = unique(secrets, (el) => el.secretBlindIndex as string).map(
+        (el) => blindIndex2KeyName[el.secretBlindIndex as string]
+      );
+      const hasUnknownSecretsProvided = secretKeysInDB.length !== inputSecrets.length;
+      if (hasUnknownSecretsProvided) {
+        const keysMissingInDB = Object.keys(keyName2BlindIndex).filter((key) => !secretKeysInDB.includes(key));
+        throw new BadRequestError({
+          message: `Secret not found: blind index ${keysMissingInDB.join(",")}`
+        });
+      }
+    }
 
     return { blindIndex2KeyName, keyName2BlindIndex, secrets };
   };
