@@ -4,7 +4,6 @@ Copyright (c) 2023 Infisical Inc.
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,7 +11,6 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
@@ -271,40 +269,4 @@ func execCmd(cmd *exec.Cmd) error {
 	waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
 	os.Exit(waitStatus.ExitStatus())
 	return nil
-}
-
-func ExecuteCommandWithTimeout(command string, timeout int64) error {
-
-	shell := [2]string{"sh", "-c"}
-	if runtime.GOOS == "windows" {
-		shell = [2]string{"cmd", "/C"}
-	} else {
-		currentShell := os.Getenv("SHELL")
-		if currentShell != "" {
-			shell[0] = currentShell
-		}
-	}
-
-	ctx := context.Background()
-	if timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
-		defer cancel()
-	}
-
-	cmd := exec.CommandContext(ctx, shell[0], shell[1], command)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok { // type assertion
-			if exitError.ProcessState.ExitCode() == -1 {
-				return fmt.Errorf("command timed out")
-			}
-		}
-		return err
-	} else {
-		return nil
-	}
 }
