@@ -543,7 +543,6 @@ func (tm *TokenManager) MonitorSecretChanges(secretTemplate Template, sigChan ch
 					existingEtag = currentEtag
 
 					if !firstRun && execCommand != "" {
-						log.Info().Msgf("executing command: %s", execCommand)
 						err := ExecuteCommandWithTimeout(execCommand, execTimeout)
 
 						if err != nil {
