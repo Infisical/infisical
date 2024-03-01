@@ -488,7 +488,6 @@ func (tm *TokenManager) MonitorSecretChanges(secretTemplate Template, sigChan ch
 	// Now you can use the `command` variable, which is guaranteed to be a string
 
 	for {
-		log.Info().Msg("polling")
 		token := tm.GetToken()
 
 		if token != "" {
