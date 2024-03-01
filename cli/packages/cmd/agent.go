@@ -521,9 +521,12 @@ func (tm *TokenManager) MonitorSecretChanges(secretTemplate Template, sigChan ch
 					}
 				}
 			}
+			time.Sleep(pollingInterval)
+		} else {
+			// It fails to get the access token. So we will re-try in 3 seconds. We do this because if we don't, the user will have to wait for the next polling interval to get the first secret render.
+			time.Sleep(3 * time.Second)
 		}
 
-		time.Sleep(pollingInterval)
 	}
 }
 
