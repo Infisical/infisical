@@ -152,7 +152,7 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 	return plainTextSecrets, nil
 }
 
-func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId string, environmentName string, secretsPath string, includeImports bool) ([]models.SingleEnvironmentVariable, error) {
+func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId string, environmentName string, secretsPath string, includeImports bool) (models.PlaintextSecretResult, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
@@ -170,12 +170,12 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 
 	rawSecrets, err := api.CallGetRawSecretsV3(httpClient, api.GetRawSecretsV3Request{WorkspaceId: workspaceId, SecretPath: secretsPath, Environment: environmentName})
 	if err != nil {
-		return nil, err
+		return models.PlaintextSecretResult{}, err
 	}
 
 	plainTextSecrets := []models.SingleEnvironmentVariable{}
 	if err != nil {
-		return nil, fmt.Errorf("unable to decrypt your secrets [err=%v]", err)
+		return models.PlaintextSecretResult{}, fmt.Errorf("unable to decrypt your secrets [err=%v]", err)
 	}
 
 	for _, secret := range rawSecrets.Secrets {
@@ -189,7 +189,10 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 	// 	}
 	// }
 
-	return plainTextSecrets, nil
+	return models.PlaintextSecretResult{
+		Secrets: plainTextSecrets,
+		Hash:    rawSecrets.ETag,
+	}, nil
 }
 
 func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleEnvironmentVariable, importedSecrets []api.ImportedSecretV3) ([]models.SingleEnvironmentVariable, error) {

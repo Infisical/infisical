@@ -34,6 +34,11 @@ type SingleEnvironmentVariable struct {
 	Comment string `json:"comment"`
 }
 
+type PlaintextSecretResult struct {
+	Secrets []SingleEnvironmentVariable
+	Etag    string
+}
+
 type SingleFolder struct {
 	ID   string `json:"_id"`
 	Name string `json:"name"`
