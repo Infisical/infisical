@@ -130,6 +130,11 @@ export const licenseServiceFactory = ({
         `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`,
         error
       );
+      await keyStore.setItemWithExpiry(
+        FEATURE_CACHE_KEY(orgId),
+        LICENSE_SERVER_CLOUD_PLAN_TTL,
+        JSON.stringify(onPremFeatures)
+      );
       return onPremFeatures;
     }
     return onPremFeatures;
