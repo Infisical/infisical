@@ -104,7 +104,7 @@ Once started, the migration script will transform MongoDB data into an equivalen
   <Step title="Clone Infisical Repository">
     Clone the Infisical MongoDB repository.
     ```
-    git clone -b infisical/v0.46.7-postgres https://github.com/Infisical/infisical.git
+    git clone -b infisical/v0.46.11-postgres https://github.com/Infisical/infisical.git
     ```
   </Step>
   <Step title="Install dependencies for backend">
@@ -192,7 +192,7 @@ For guidance on deployment options, please visit the [self-hosting documentation
 Remember to transfer the necessary [environment variables](/self-hosting/configuration/envars) from the MongoDB version of Infisical to the new Postgres based Infisical; rest assured, they are fully compatible.
 
 <Warning>
-The first deployment of Postgres based Infisical must be deployed with Docker image tag `v0.46.7-postgres`. 
+The first deployment of Postgres based Infisical must be deployed with Docker image tag `v0.46.11-postgres`. 
 After deploying this version, you can proceed to update to any subsequent versions.
 </Warning>
 

@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import { Knex } from "knex";
 
 import { TableName } from "../schemas";
@@ -8,10 +10,12 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.SuperAdmin, (t) => {
     t.uuid("instanceId").notNullable().defaultTo(knex.fn.uuid());
   });
-  // this is updated to avoid race condition on replication
-  // eslint-disable-next-line
-  // @ts-ignore
-  await knex(TableName.SuperAdmin).update({ id: ADMIN_CONFIG_UUID }).whereNotNull("id").limit(1);
+
+  const superUserConfigExists = await knex(TableName.SuperAdmin).where("id", ADMIN_CONFIG_UUID).first();
+  if (!superUserConfigExists) {
+    // eslint-disable-next-line
+    await knex(TableName.SuperAdmin).update({ id: ADMIN_CONFIG_UUID }).whereNotNull("id").limit(1);
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {

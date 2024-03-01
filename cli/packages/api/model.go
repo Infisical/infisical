@@ -506,4 +506,5 @@ type GetRawSecretsV3Response struct {
 		SecretComment string `json:"secretComment"`
 	} `json:"secrets"`
 	Imports []any `json:"imports"`
+	ETag		string
 }

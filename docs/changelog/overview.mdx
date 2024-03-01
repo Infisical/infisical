@@ -4,7 +4,22 @@ title: "Changelog"
 
 The changelog below reflects new product developments and updates on a monthly basis.
 
-## January 2024
+## Feb 2024
+- Added org-scoped authentication enforcement for SAML
+- Added support for [SCIM](https://infisical.com/docs/documentation/platform/scim/overview) along with instructions for setting it up with [Okta](https://infisical.com/docs/documentation/platform/scim/okta), [Azure](https://infisical.com/docs/documentation/platform/scim/azure), and [JumpCloud](https://infisical.com/docs/documentation/platform/scim/jumpcloud).
+- Pushed out project update for non-E2EE w/ new endpoints like for project creation and member invitation.
+- Added API Integration testing for new backend.
+- Added capability to create projects in Terraform.
+- Added slug-based capabilities to both organizations and projects to gradually make the API more developer-friendly moving forward.
+- Fixed + improved various analytics/telemetry-related items.
+- Fixed various issues associated with the Python SDK: build during installation on Mac OS, Rust dependency.
+- Updated self-hosting documentation to reflect [new backend](https://infisical.com/docs/self-hosting/overview).
+- Released [Postgres-based Infisical helm chart](https://cloudsmith.io/~infisical/repos/helm-charts/packages/detail/helm/infisical-standalone/).
+- Added checks to ensure that breaking API changes don't get released.
+- Automated API reference documentation to be inline with latest releases of Infisical.
+
+## Jan 2024
+- Completed Postgres migration initiative with restructed Fastify-based backend.
 - Reduced size of Infisical Node.js SDK by ≈90%.
 - Added secret fallback support to all SDK's.
 - Added Machine Identity support to [Terraform Provider](https://github.com/Infisical/terraform-provider-infisical).
@@ -12,21 +27,21 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added symmetric encryption support to all SDK's.
 - Fixed secret reminders bug, where reminders were not being updated correctly.
 
-## December 2023
+## Dec 2023
 
 - Released [(machine) identities](https://infisical.com/docs/documentation/platform/identities/overview) and [universal auth](https://infisical.com/docs/documentation/platform/identities/universal-auth) features.
 - Created new cross-language SDKs for [Python](https://infisical.com/docs/sdks/languages/python), [Node](https://infisical.com/docs/sdks/languages/node), and [Java](https://infisical.com/docs/sdks/languages/java). 
 - Released first version of the [Infisical Agent](https://infisical.com/docs/infisical-agent/overview)
 - Added ability to [manage folders via CLI](https://infisical.com/docs/cli/commands/secrets).  
 
-## November 2023
+## Nov 2023
 
 - Replaced internal [Winston](https://github.com/winstonjs/winston) with [Pino](https://github.com/pinojs/pino) logging library with external logging to AWS CloudWatch
 - Added admin panel to self-hosting experience.
 - Released [secret rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview) feature with preliminary support for rotating [SendGrid](https://infisical.com/docs/documentation/platform/secret-rotation/sendgrid), [PostgreSQL/CockroachDB](https://infisical.com/docs/documentation/platform/secret-rotation/postgres), and [MySQL/MariaDB](https://infisical.com/docs/documentation/platform/secret-rotation/mysql) credentials.
 - Released secret reminders feature.
 
-## October 2023
+## Oct 2023
 
 - Added support for [GitLab SSO](https://infisical.com/docs/documentation/platform/sso/gitlab).
 - Became SOC 2 (Type II) certified.
@@ -35,7 +50,7 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added native [Hasura Cloud integration](https://infisical.com/docs/integrations/cloud/hasura-cloud).
 - Updated resource deletion logic for user, organization, and project deletion.
 
-## September 2023
+## Sep 2023
 
 - Released [secret approvals](https://infisical.com/docs/documentation/platform/pr-workflows) feature.
 - Released an update to access controls; every user role now clearly defines and enforces a certain set of conditions across Infisical.
@@ -43,7 +58,7 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added a native integration with [Qovery](https://infisical.com/docs/integrations/cloud/qovery).
 - Added service token generation capability for the CLI.
 
-## August 2023
+## Aug 2023
 
 - Release Audit Logs V2.
 - Add support for [GitHub SSO](https://infisical.com/docs/documentation/platform/sso/github).
@@ -171,7 +186,7 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added sorting capability to sort keys by name alphabetically in dashboard.
 - Added downloading secrets back as `.env` file capability.
 
-## August 2022
+## Aug 2022
 
 - Released first version of the Infisical platform with push/pull capability and end-to-end encryption.
 - Improved security handling of authentication tokens by storing refresh tokens in HttpOnly cookies.
