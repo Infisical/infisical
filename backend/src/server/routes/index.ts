@@ -194,7 +194,7 @@ export const registerRoutes = async (
     projectRoleDAL,
     serviceTokenDAL
   });
-  const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL });
+  const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL, keyStore });
   const trustedIpService = trustedIpServiceFactory({
     licenseService,
     projectDAL,

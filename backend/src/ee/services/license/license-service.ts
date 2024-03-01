@@ -5,8 +5,8 @@
 // TODO(akhilmhdh): With tony find out the api structure and fill it here
 
 import { ForbiddenError } from "@casl/ability";
-import NodeCache from "node-cache";
 
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -39,6 +39,7 @@ type TLicenseServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseDAL: TLicenseDALFactory;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
 };
 
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
@@ -46,12 +47,18 @@ export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
 const LICENSE_SERVER_CLOUD_LOGIN = "/api/auth/v1/license-server-login";
 const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/license-login";
 
-const FEATURE_CACHE_KEY = (orgId: string, projectId?: string) => `${orgId}-${projectId || ""}`;
-export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }: TLicenseServiceFactoryDep) => {
+const LICENSE_SERVER_CLOUD_PLAN_TTL = 60; // 60s
+const FEATURE_CACHE_KEY = (orgId: string) => `infisical-cloud-plan-${orgId}`;
+
+export const licenseServiceFactory = ({
+  orgDAL,
+  permissionService,
+  licenseDAL,
+  keyStore
+}: TLicenseServiceFactoryDep) => {
   let isValidLicense = false;
   let instanceType = InstanceType.OnPrem;
   let onPremFeatures: TFeatureSet = getDefaultOnPremFeatures();
-  const featureStore = new NodeCache({ stdTTL: 60 });
 
   const appCfg = getConfig();
   const licenseServerCloudApi = setupLicenceRequestWithStore(
@@ -75,6 +82,7 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
         isValidLicense = true;
         return;
       }
+
       if (appCfg.LICENSE_KEY) {
         const token = await licenseServerOnPremApi.refreshLicence();
         if (token) {
@@ -100,22 +108,21 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
     logger.info(`getPlan: attempting to fetch plan for [orgId=${orgId}] [projectId=${projectId}]`);
     try {
       if (instanceType === InstanceType.Cloud) {
-        const cachedPlan = featureStore.get<TFeatureSet>(FEATURE_CACHE_KEY(orgId, projectId));
-        if (cachedPlan) return cachedPlan;
+        const cachedPlan = await keyStore.getItem(FEATURE_CACHE_KEY(orgId));
+        if (cachedPlan) return JSON.parse(cachedPlan) as TFeatureSet;
 
         const org = await orgDAL.findOrgById(orgId);
         if (!org) throw new BadRequestError({ message: "Org not found" });
         const {
           data: { currentPlan }
         } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
-          `/api/license-server/v1/customers/${org.customerId}/cloud-plan`,
-          {
-            params: {
-              workspaceId: projectId
-            }
-          }
+          `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
         );
-        featureStore.set(FEATURE_CACHE_KEY(org.id, projectId), currentPlan);
+        await keyStore.setItemWithExpiry(
+          FEATURE_CACHE_KEY(org.id),
+          LICENSE_SERVER_CLOUD_PLAN_TTL,
+          JSON.stringify(currentPlan)
+        );
         return currentPlan;
       }
     } catch (error) {
@@ -128,10 +135,10 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
     return onPremFeatures;
   };
 
-  const refreshPlan = async (orgId: string, projectId?: string) => {
+  const refreshPlan = async (orgId: string) => {
     if (instanceType === InstanceType.Cloud) {
-      featureStore.del(FEATURE_CACHE_KEY(orgId, projectId));
-      await getPlan(orgId, projectId);
+      await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
+      await getPlan(orgId);
     }
   };
 
@@ -166,7 +173,7 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
           quantity: count
         });
       }
-      featureStore.del(orgId);
+      await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
       const usedSeats = await licenseDAL.countOfOrgMembers(null);
       await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, { usedSeats });
@@ -215,7 +222,7 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
       `/api/license-server/v1/customers/${organization.customerId}/session/trial`,
       { success_url }
     );
-    featureStore.del(FEATURE_CACHE_KEY(orgId));
+    await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     return { url };
   };
 

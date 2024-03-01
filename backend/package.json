@@ -108,7 +108,6 @@
     "lodash.isequal": "^4.5.0",
     "mysql2": "^3.9.1",
     "nanoid": "^5.0.4",
-    "node-cache": "^5.1.2",
     "nodemailer": "^6.9.9",
     "ora": "^7.0.1",
     "passport-github": "^1.1.0",
