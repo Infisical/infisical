@@ -74,10 +74,10 @@ type Template struct {
 
 	Config struct { // Configurations for the template
 		PollingInterval string `yaml:"polling-interval"` // How often to poll for changes in the secret
-		Exec            struct {
+		Execute         struct {
 			Command string `yaml:"command"` // Command to execute once the template has been rendered
 			Timeout int64  `yaml:"timeout"` // Timeout for the command
-		} `yaml:"exec"` // Command to execute once the template has been rendered
+		} `yaml:"execute"` // Command to execute once the template has been rendered
 	} `yaml:"config"`
 }
 
@@ -262,7 +262,6 @@ type TokenManager struct {
 }
 
 func NewTokenManager(fileDeposits []Sink, templates []Template, clientIdPath string, clientSecretPath string, newAccessTokenNotificationChan chan bool, removeClientSecretOnRead bool, exitAfterAuth bool) *TokenManager {
-	log.Info().Msgf("Token manager done, templates: %+v", templates[0])
 	return &TokenManager{
 		filePaths:                      fileDeposits,
 		templates:                      templates,
@@ -451,9 +450,6 @@ func (tm *TokenManager) WriteTokenToFiles() {
 }
 
 func (tm *TokenManager) WriteTemplateToFile(bytes *bytes.Buffer, template *Template) {
-
-	log.Info().Msgf("template engine started...")
-
 	if err := WriteBytesToFile(bytes, template.DestinationPath); err != nil {
 		log.Error().Msgf("template engine: unable to write secrets to path because %s. Will try again on next cycle", err)
 		return
@@ -482,8 +478,8 @@ func (tm *TokenManager) MonitorSecretChanges(secretTemplate Template, sigChan ch
 	var currentEtag string
 	var firstRun = true
 
-	execTimeout := secretTemplate.Config.Exec.Timeout
-	execCommand := secretTemplate.Config.Exec.Command
+	execTimeout := secretTemplate.Config.Execute.Timeout
+	execCommand := secretTemplate.Config.Execute.Command
 
 	for {
 		token := tm.GetToken()
@@ -612,7 +608,8 @@ var agentCmd = &cobra.Command{
 
 		go tm.ManageTokenLifecycle()
 
-		for _, template := range agentConfig.Templates {
+		for i, template := range agentConfig.Templates {
+			log.Info().Msgf("template engine started for template %v...", i+1)
 			go tm.MonitorSecretChanges(template, sigChan)
 		}
 
