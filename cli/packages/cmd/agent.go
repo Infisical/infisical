@@ -5,12 +5,15 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -83,6 +86,42 @@ type Template struct {
 
 func ReadFile(filePath string) ([]byte, error) {
 	return ioutil.ReadFile(filePath)
+}
+
+func ExecuteCommandWithTimeout(command string, timeout int64) error {
+
+	shell := [2]string{"sh", "-c"}
+	if runtime.GOOS == "windows" {
+		shell = [2]string{"cmd", "/C"}
+	} else {
+		currentShell := os.Getenv("SHELL")
+		if currentShell != "" {
+			shell[0] = currentShell
+		}
+	}
+
+	ctx := context.Background()
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+		defer cancel()
+	}
+
+	cmd := exec.CommandContext(ctx, shell[0], shell[1], command)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok { // type assertion
+			if exitError.ProcessState.ExitCode() == -1 {
+				return fmt.Errorf("command timed out")
+			}
+		}
+		return err
+	} else {
+		return nil
+	}
 }
 
 func FileExists(filepath string) bool {
@@ -185,8 +224,8 @@ func secretTemplateFunction(accessToken string, existingEtag string, currentEtag
 			return nil, err
 		}
 
-		if existingEtag != res.Hash {
-			*currentEtag = res.Hash
+		if existingEtag != res.Etag {
+			*currentEtag = res.Etag
 		}
 
 		return res.Secrets, nil
