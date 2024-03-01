@@ -20,7 +20,6 @@ type LoggedInUser struct {
 	Domain string `json:"domain"`
 }
 
-
 type SingleEnvironmentVariable struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
@@ -37,7 +36,7 @@ type SingleEnvironmentVariable struct {
 
 type PlaintextSecretResult struct {
 	Secrets []SingleEnvironmentVariable
-	Hash		string
+	Etag    string
 }
 
 type SingleFolder struct {
