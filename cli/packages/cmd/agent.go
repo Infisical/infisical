@@ -485,8 +485,6 @@ func (tm *TokenManager) MonitorSecretChanges(secretTemplate Template, sigChan ch
 	execTimeout := secretTemplate.Config.Exec.Timeout
 	execCommand := secretTemplate.Config.Exec.Command
 
-	// Now you can use the `command` variable, which is guaranteed to be a string
-
 	for {
 		token := tm.GetToken()
 
