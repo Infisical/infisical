@@ -293,6 +293,9 @@ func ExecuteCommandWithTimeout(command string, timeout int64) error {
 	}
 
 	cmd := exec.CommandContext(ctx, shell[0], shell[1], command)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok { // type assertion
