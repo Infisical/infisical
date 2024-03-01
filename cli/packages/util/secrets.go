@@ -195,7 +195,7 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 
 	return models.PlaintextSecretResult{
 		Secrets: plainTextSecrets,
-		Hash:    rawSecrets.ETag,
+		Etag:    rawSecrets.ETag,
 	}, nil
 }
 
