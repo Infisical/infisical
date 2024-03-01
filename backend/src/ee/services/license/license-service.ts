@@ -47,7 +47,7 @@ export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
 const LICENSE_SERVER_CLOUD_LOGIN = "/api/auth/v1/license-server-login";
 const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/license-login";
 
-const LICENSE_SERVER_CLOUD_PLAN_TTL = 60 * 5; // 5 minutes
+const LICENSE_SERVER_CLOUD_PLAN_TTL = 30; // 30 second
 const FEATURE_CACHE_KEY = (orgId: string) => `infisical-cloud-plan-${orgId}`;
 
 export const licenseServiceFactory = ({
