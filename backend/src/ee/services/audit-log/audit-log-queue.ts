@@ -22,23 +22,13 @@ export const auditLogQueueServiceFactory = ({
   licenseService
 }: TAuditLogQueueServiceFactoryDep) => {
   const pushToLog = async (data: TCreateAuditLogDTO) => {
-    await queueService.queue(QueueName.AuditLog, QueueJobs.AuditLog, data, {
-      removeOnFail: {
-        count: 5
-      },
-      removeOnComplete: true
-    });
-  };
-
-  queueService.start(QueueName.AuditLog, async (job) => {
-    const { actor, event, ipAddress, projectId, userAgent, userAgentType } = job.data;
-    let { orgId } = job.data;
+    let { orgId } = data;
     const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
     if (!orgId) {
       // it will never be undefined for both org and project id
       // TODO(akhilmhdh): use caching here in dal to avoid db calls
-      const project = await projectDAL.findById(projectId as string);
+      const project = await projectDAL.findById(data.projectId as string);
       orgId = project.orgId;
     }
 
@@ -46,6 +36,26 @@ export const auditLogQueueServiceFactory = ({
     const ttl = plan.auditLogsRetentionDays * MS_IN_DAY;
     // skip inserting if audit log retention is 0 meaning its not supported
     if (ttl === 0) return;
+
+    await queueService.queue(
+      QueueName.AuditLog,
+      QueueJobs.AuditLog,
+      { ...data, orgId },
+      {
+        removeOnFail: {
+          count: 3
+        },
+        removeOnComplete: true
+      }
+    );
+  };
+
+  queueService.start(QueueName.AuditLog, async (job) => {
+    const { actor, event, ipAddress, projectId, userAgent, userAgentType, orgId } = job.data;
+    const MS_IN_DAY = 24 * 60 * 60 * 1000;
+
+    const plan = await licenseService.getPlan(orgId as string);
+    const ttl = plan.auditLogsRetentionDays * MS_IN_DAY;
     await auditLogDAL.create({
       actor: actor.type,
       actorMetadata: actor.metadata,
