@@ -255,7 +255,7 @@ export const SecretItem = memo(
                         });
                       }}
                       {...field}
-                      className="w-full px-0 placeholder:text-red-600 focus:text-bunker-100 focus:ring-transparent"
+                      className="w-full px-0 placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
                     />
                   )}
                 />
