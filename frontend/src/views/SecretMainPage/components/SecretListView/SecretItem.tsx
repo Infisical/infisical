@@ -1,24 +1,4 @@
 /* eslint-disable simple-import-sort/imports */
-import { memo, useEffect } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { subject } from "@casl/ability";
-import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
-import {
-  faCheck,
-  faClock,
-  faClose,
-  faCodeBranch,
-  faComment,
-  faCopy,
-  faEllipsis,
-  faKey,
-  faTag,
-  faTags
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { AnimatePresence, motion } from "framer-motion";
-import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -48,9 +28,30 @@ import {
 import { useToggle } from "@app/hooks";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 import { WsTag } from "@app/hooks/api/types";
+import { subject } from "@casl/ability";
+import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
+import {
+  faCheck,
+  faClock,
+  faClose,
+  faCodeBranch,
+  faComment,
+  faCopy,
+  faEllipsis,
+  faKey,
+  faTag,
+  faTags
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AnimatePresence, motion } from "framer-motion";
+import { memo, useEffect } from "react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { twMerge } from "tailwind-merge";
 
-import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { CreateReminderForm } from "./CreateReminderForm";
+import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
 
 type Props = {
   secret: DecryptedSecret;
@@ -86,6 +87,7 @@ export const SecretItem = memo(
   }: Props) => {
     const { currentWorkspace } = useWorkspace();
     const { permission } = useProjectPermission();
+    const { createNotification } = useNotificationContext();
     const isReadOnly =
       permission.can(
         ProjectPermissionActions.Read,
@@ -235,15 +237,25 @@ export const SecretItem = memo(
                 <Controller
                   name="key"
                   control={control}
-                  render={({ field }) => (
+                  render={({ field, fieldState: { error } }) => (
                     <Input
                       autoComplete="off"
                       isReadOnly={isReadOnly}
                       autoCapitalization={currentWorkspace?.autoCapitalization}
                       variant="plain"
                       isDisabled={isOverriden}
+                      placeholder="Secret name is required"
+                      isRequired
+                      isError={Boolean(error)}
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        createNotification({
+                          text: "Secret name cannot be empty",
+                          type: "error"
+                        });
+                      }}
                       {...field}
-                      className="w-full px-0 focus:text-bunker-100 focus:ring-transparent"
+                      className="w-full px-0 placeholder:text-red-600 focus:text-bunker-100 focus:ring-transparent"
                     />
                   )}
                 />
