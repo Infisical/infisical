@@ -72,6 +72,14 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
   });
 
   const handleFormSubmit = async (data: Form) => {
+    if (!data.key) {
+      createNotification({
+        type: "error",
+        text: "Secret name cannot be empty"
+      });
+      return;
+    }
+
     const promises = secrets
       .filter((secret) => !!secret)
       .map((secret) => {
