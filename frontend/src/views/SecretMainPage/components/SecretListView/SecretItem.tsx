@@ -49,7 +49,6 @@ import { memo, useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
 
@@ -87,7 +86,6 @@ export const SecretItem = memo(
   }: Props) => {
     const { currentWorkspace } = useWorkspace();
     const { permission } = useProjectPermission();
-    const { createNotification } = useNotificationContext();
     const isReadOnly =
       permission.can(
         ProjectPermissionActions.Read,
@@ -106,7 +104,8 @@ export const SecretItem = memo(
       setValue,
       reset,
       getValues,
-      formState: { isDirty, isSubmitting }
+      trigger,
+      formState: { isDirty, isSubmitting, errors }
     } = useForm<TFormSchema>({
       defaultValues: secret,
       values: secret,
@@ -244,16 +243,9 @@ export const SecretItem = memo(
                       autoCapitalization={currentWorkspace?.autoCapitalization}
                       variant="plain"
                       isDisabled={isOverriden}
-                      placeholder="Secret name is required"
-                      isRequired
+                      placeholder={error?.message}
                       isError={Boolean(error)}
-                      onInvalid={(e) => {
-                        e.preventDefault();
-                        createNotification({
-                          text: "Secret name cannot be empty",
-                          type: "error"
-                        });
-                      }}
+                      onKeyUp={() => trigger("key")}
                       {...field}
                       className="w-full px-0 placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
                     />
@@ -509,7 +501,7 @@ export const SecretItem = memo(
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: -10, opacity: 0 }}
                   >
-                    <Tooltip content="Save">
+                    <Tooltip content={errors.key ? errors.key?.message : "Save"}>
                       <IconButton
                         ariaLabel="more"
                         variant="plain"
@@ -519,12 +511,16 @@ export const SecretItem = memo(
                           "p-0 text-primary opacity-0 group-hover:opacity-100",
                           isDirty && "opacity-100"
                         )}
-                        isDisabled={isSubmitting}
+                        isDisabled={isSubmitting || Boolean(errors.key)}
                       >
                         {isSubmitting ? (
                           <Spinner className="m-0 h-4 w-4 p-0" />
                         ) : (
-                          <FontAwesomeIcon icon={faCheck} size="lg" className="text-primary" />
+                          <FontAwesomeIcon
+                            icon={faCheck}
+                            size="lg"
+                            className={twMerge("text-primary", errors.key && "text-mineshaft-300")}
+                          />
                         )}
                       </IconButton>
                     </Tooltip>
