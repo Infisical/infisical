@@ -1,9 +1,12 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { faCheck, faClose } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faClose, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
+import { z } from "zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { IconButton, Input, Spinner, Tooltip } from "@app/components/v2";
@@ -13,6 +16,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
+import { useToggle } from "@app/hooks";
 import { useGetUserWsKey, useUpdateSecretV3 } from "@app/hooks/api";
 import { DecryptedSecret } from "@app/hooks/api/types";
 import { SecretActionType } from "@app/views/SecretMainPage/components/SecretListView/SecretListView.utils";
@@ -24,7 +28,11 @@ type Props = {
   getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
 };
 
-type Form = { key: string };
+export const formSchema = z.object({
+  key: z.string().trim().min(1, { message: "Secret key is required" })
+});
+
+type TFormSchema = z.infer<typeof formSchema>;
 
 function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }: Props) {
   const { currentWorkspace } = useWorkspace();
@@ -59,19 +67,32 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
 
   const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
 
+  const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
+
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
 
   const {
     handleSubmit,
     control,
     reset,
-    formState: { isDirty, isSubmitting }
-  } = useForm<Form>({
+    trigger,
+    getValues,
+    formState: { isDirty, isSubmitting, errors }
+  } = useForm<TFormSchema>({
     defaultValues: { key: secretKey },
-    values: { key: secretKey }
+    values: { key: secretKey },
+    resolver: zodResolver(formSchema)
   });
 
-  const handleFormSubmit = async (data: Form) => {
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isSecNameCopied) {
+      timer = setTimeout(() => setIsSecNameCopied.off(), 2000);
+    }
+    return () => clearTimeout(timer);
+  }, [isSecNameCopied]);
+
+  const handleFormSubmit = async (data: TFormSchema) => {
     if (!data.key) {
       createNotification({
         type: "error",
@@ -118,6 +139,12 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
       });
   };
 
+  const copyTokenToClipboard = () => {
+    const [key] = getValues(["key"]);
+    navigator.clipboard.writeText(key as string);
+    setIsSecNameCopied.on();
+  };
+
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
@@ -131,68 +158,99 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
         <Controller
           name="key"
           control={control}
-          render={({ field }) => (
+          render={({ field, fieldState: { error } }) => (
             <Input
               autoComplete="off"
               isReadOnly={isReadOnly}
               autoCapitalization={currentWorkspace?.autoCapitalization}
               variant="plain"
               isDisabled={isOverriden}
+              placeholder={error?.message}
+              onKeyUp={() => trigger("key")}
+              isError={Boolean(error)}
               {...field}
-              className="w-full px-2 focus:text-bunker-100 focus:ring-transparent"
+              className="w-full px-2 placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
             />
           )}
         />
       </div>
-      {(isReadOnly || isOverriden) && (
+
+      {isReadOnly || isOverriden ? (
         <span className="mr-5 rounded-md bg-mineshaft-500 px-2">Read Only</span>
+      ) : (
+        <div className="group flex w-20 items-center justify-center border-l border-mineshaft-500 py-1">
+          <AnimatePresence exitBeforeEnter>
+            {!isDirty ? (
+              <motion.div
+                key="options"
+                className="flex flex-shrink-0 items-center space-x-4 px-3"
+                initial={{ x: 0, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 10, opacity: 0 }}
+              >
+                <Tooltip content="Copy secret">
+                  <IconButton
+                    ariaLabel="copy-value"
+                    variant="plain"
+                    size="sm"
+                    className="p-0 opacity-0 group-hover:opacity-100"
+                    onClick={copyTokenToClipboard}
+                  >
+                    <FontAwesomeIcon icon={isSecNameCopied ? faCheck : faCopy} />
+                  </IconButton>
+                </Tooltip>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="options-save"
+                className="flex flex-shrink-0 items-center space-x-4 px-3"
+                initial={{ x: -10, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -10, opacity: 0 }}
+              >
+                <Tooltip content={errors.key ? errors.key.message : "Save"}>
+                  <IconButton
+                    ariaLabel="more"
+                    variant="plain"
+                    type="submit"
+                    size="md"
+                    className={twMerge(
+                      "p-0 text-primary opacity-0 group-hover:opacity-100",
+                      isDirty && "opacity-100"
+                    )}
+                    isDisabled={isSubmitting || Boolean(errors.key)}
+                  >
+                    {isSubmitting ? (
+                      <Spinner className="m-0 h-4 w-4 p-0" />
+                    ) : (
+                      <FontAwesomeIcon
+                        icon={faCheck}
+                        size="lg"
+                        className={twMerge("text-primary", errors.key && "text-mineshaft-400")}
+                      />
+                    )}
+                  </IconButton>
+                </Tooltip>
+                <Tooltip content="Cancel">
+                  <IconButton
+                    ariaLabel="more"
+                    variant="plain"
+                    size="md"
+                    className={twMerge(
+                      "p-0 opacity-0 group-hover:opacity-100",
+                      isDirty && "opacity-100"
+                    )}
+                    onClick={() => reset()}
+                    isDisabled={isSubmitting}
+                  >
+                    <FontAwesomeIcon icon={faClose} size="lg" />
+                  </IconButton>
+                </Tooltip>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       )}
-      <AnimatePresence exitBeforeEnter>
-        {isDirty && (
-          <motion.div
-            key="options-save"
-            className="flex h-10 flex-shrink-0 items-center space-x-4 px-3"
-            initial={{ x: -10, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -10, opacity: 0 }}
-          >
-            <Tooltip content="Save">
-              <IconButton
-                ariaLabel="more"
-                variant="plain"
-                type="submit"
-                size="md"
-                className={twMerge(
-                  "p-0 text-primary opacity-0 group-hover:opacity-100",
-                  isDirty && "opacity-100"
-                )}
-                isDisabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <Spinner className="m-0 h-4 w-4 p-0" />
-                ) : (
-                  <FontAwesomeIcon icon={faCheck} size="lg" className="text-primary" />
-                )}
-              </IconButton>
-            </Tooltip>
-            <Tooltip content="Cancel">
-              <IconButton
-                ariaLabel="more"
-                variant="plain"
-                size="md"
-                className={twMerge(
-                  "p-0 opacity-0 group-hover:opacity-100",
-                  isDirty && "opacity-100"
-                )}
-                onClick={() => reset()}
-                isDisabled={isSubmitting}
-              >
-                <FontAwesomeIcon icon={faClose} size="lg" />
-              </IconButton>
-            </Tooltip>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </form>
   );
 }
