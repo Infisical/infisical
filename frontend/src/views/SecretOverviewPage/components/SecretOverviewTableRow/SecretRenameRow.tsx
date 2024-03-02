@@ -116,7 +116,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
       className="secret-table relative mb-2 flex w-full flex-row items-center justify-between overflow-hidden rounded-lg border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter"
     >
       <div className="flex h-11 flex-1 flex-shrink-0 items-center">
-        <span className="flex h-full min-w-[11rem] items-center justify-start border-r-2 border-mineshaft-600 px-2">
+        <span className="flex h-full min-w-[11rem] items-center justify-start border-r-2 border-mineshaft-600 px-4">
           Key
         </span>
 
