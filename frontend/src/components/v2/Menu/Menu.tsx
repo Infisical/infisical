@@ -42,27 +42,27 @@ export const MenuItem = <T extends ElementType = "button">({
   const iconRef = useRef();
 
   return (
-    <a onMouseEnter={() => iconRef.current?.play()} onMouseLeave={() => iconRef.current?.stop()}>
+    <span onMouseEnter={() => iconRef.current?.play()} onMouseLeave={() => iconRef.current?.stop()}>
       <li
         className={twMerge(
-          "group px-1 py-2 mt-0.5 font-inter flex flex-col text-sm text-bunker-100 transition-all rounded cursor-pointer hover:bg-mineshaft-700 duration-50",
+          "duration-50 group mt-0.5 flex cursor-pointer flex-col rounded px-1 py-2 font-inter text-sm text-bunker-100 transition-all hover:bg-mineshaft-700",
           isSelected && "bg-mineshaft-600 hover:bg-mineshaft-600",
-          isDisabled && "hover:bg-transparent cursor-not-allowed",
+          isDisabled && "cursor-not-allowed hover:bg-transparent",
           className
         )}
       >
-        <motion.span className="w-full flex flex-row items-center justify-start rounded-sm">
+        <motion.span className="flex w-full flex-row items-center justify-start rounded-sm">
           <Item
             type="button"
             role="menuitem"
-            className="flex items-center relative"
+            className="relative flex items-center"
             ref={inputRef}
             {...props}
           >
             <div
               className={`${
                 isSelected ? "visisble" : "invisible"
-              } -left-[0.28rem] absolute w-[0.07rem] rounded-md h-5 bg-primary`}
+              } absolute -left-[0.28rem] h-5 w-[0.07rem] rounded-md bg-primary`}
             />
             {/* {icon && <span className="mr-3 ml-4 w-5 block group-hover:hidden">{icon}</span>} */}
             {icon && (
@@ -81,7 +81,7 @@ export const MenuItem = <T extends ElementType = "button">({
           {description && <span className="mt-2 text-xs">{description}</span>}
         </motion.span>
       </li>
-    </a>
+    </span>
   );
 };
 
@@ -103,16 +103,16 @@ export const SubMenuItem = <T extends ElementType = "button">({
     <a onMouseEnter={() => iconRef.current?.play()} onMouseLeave={() => iconRef.current?.stop()}>
       <li
         className={twMerge(
-          "group px-1 py-1 mt-0.5 font-inter flex flex-col text-sm text-mineshaft-300 hover:text-mineshaft-100 transition-all rounded cursor-pointer hover:bg-mineshaft-700 duration-50",
-          isDisabled && "hover:bg-transparent cursor-not-allowed",
+          "duration-50 group mt-0.5 flex cursor-pointer flex-col rounded px-1 py-1 font-inter text-sm text-mineshaft-300 transition-all hover:bg-mineshaft-700 hover:text-mineshaft-100",
+          isDisabled && "cursor-not-allowed hover:bg-transparent",
           className
         )}
       >
-        <motion.span className="w-full flex flex-row items-center justify-start rounded-sm pl-6">
+        <motion.span className="flex w-full flex-row items-center justify-start rounded-sm pl-6">
           <Item
             type="button"
             role="menuitem"
-            className="flex items-center relative"
+            className="relative flex items-center"
             ref={inputRef}
             {...props}
           >
