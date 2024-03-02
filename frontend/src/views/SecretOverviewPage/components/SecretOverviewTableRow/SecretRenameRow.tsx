@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { IconButton, Input, Spinner, Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
@@ -28,6 +29,7 @@ type Form = { key: string };
 function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }: Props) {
   const { currentWorkspace } = useWorkspace();
   const { permission } = useProjectPermission();
+  const { createNotification } = useNotificationContext();
 
   const secrets = environments.map((env) => getSecretByKey(env.slug, secretKey));
 
@@ -93,7 +95,19 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
         });
       });
 
-    await Promise.all(promises);
+    await Promise.all(promises)
+      .then(() => {
+        createNotification({
+          type: "success",
+          text: "Successfully renamed the secret"
+        });
+      })
+      .catch(() => {
+        createNotification({
+          type: "error",
+          text: "Error renaming the secret"
+        });
+      });
   };
 
   return (
