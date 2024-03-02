@@ -65,7 +65,7 @@ var initCmd = &cobra.Command{
 
 		var workspaceNames []string
 		for _, workspace := range workspaces {
-			workspaceNames = append(workspaceNames, workspace.Name)
+			workspaceNames = append(workspaceNames, fmt.Sprintf("%s (%s)", workspace.Name, workspace.Organization))
 		}
 
 		prompt := promptui.Select{

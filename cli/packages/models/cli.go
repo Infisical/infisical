@@ -49,7 +49,7 @@ type Workspace struct {
 	Name         string `json:"name"`
 	Plan         string `json:"plan,omitempty"`
 	V            int    `json:"__v"`
-	Organization string `json:"organization,omitempty"`
+	Organization string `json:"orgId,omitempty"`
 }
 
 type WorkspaceConfigFile struct {

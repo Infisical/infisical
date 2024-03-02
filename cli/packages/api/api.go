@@ -145,6 +145,25 @@ func CallLogin2V2(httpClient *resty.Client, request GetLoginTwoV2Request) (GetLo
 	return loginTwoV2Response, nil
 }
 
+func CallGetAllOrganizations(httpClient *resty.Client) (GetOrganizationsResponse, error) {
+	var orgResponse GetOrganizationsResponse
+	response, err := httpClient.
+		R().
+		SetResult(&orgResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		Get(fmt.Sprintf("%v/v1/organization", config.INFISICAL_URL))
+
+	if err != nil {
+		return GetOrganizationsResponse{}, err
+	}
+
+	if response.IsError() {
+		return GetOrganizationsResponse{}, fmt.Errorf("CallGetAllOrganizations: Unsuccessful response: [response=%v]", response)
+	}
+
+	return orgResponse, nil
+}
+
 func CallGetAllWorkSpacesUserBelongsTo(httpClient *resty.Client) (GetWorkSpacesResponse, error) {
 	var workSpacesResponse GetWorkSpacesResponse
 	response, err := httpClient.
@@ -159,6 +178,22 @@ func CallGetAllWorkSpacesUserBelongsTo(httpClient *resty.Client) (GetWorkSpacesR
 
 	if response.IsError() {
 		return GetWorkSpacesResponse{}, fmt.Errorf("CallGetAllWorkSpacesUserBelongsTo: Unsuccessful response:  [response=%v]", response)
+	}
+
+	// Call the organization API
+	orgResponse, err := CallGetAllOrganizations(httpClient)
+	if err != nil {
+		return GetWorkSpacesResponse{}, err
+	}
+
+	// Update organization names in workspacesResponse
+	for i, workspace := range workSpacesResponse.Workspaces {
+		for _, organization := range orgResponse.Organizations {
+			if workspace.Organization == organization.ID {
+				workSpacesResponse.Workspaces[i].Organization = organization.Name
+				break
+			}
+		}
 	}
 
 	return workSpacesResponse, nil

@@ -124,8 +124,15 @@ type GetWorkSpacesResponse struct {
 		Name         string `json:"name"`
 		Plan         string `json:"plan,omitempty"`
 		V            int    `json:"__v"`
-		Organization string `json:"organization,omitempty"`
+		Organization string `json:"orgId,omitempty"`
 	} `json:"workspaces"`
+}
+
+type GetOrganizationsResponse struct {
+	Organizations []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"organizations"`
 }
 
 type Secret struct {
@@ -505,5 +512,5 @@ type GetRawSecretsV3Response struct {
 		SecretComment string `json:"secretComment"`
 	} `json:"secrets"`
 	Imports []any `json:"imports"`
-	ETag		string
+	ETag    string
 }
