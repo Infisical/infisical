@@ -42,7 +42,7 @@ export const MenuItem = <T extends ElementType = "button">({
   const iconRef = useRef();
 
   return (
-    <span onMouseEnter={() => iconRef.current?.play()} onMouseLeave={() => iconRef.current?.stop()}>
+    <div onMouseEnter={() => iconRef.current?.play()} onMouseLeave={() => iconRef.current?.stop()}>
       <li
         className={twMerge(
           "duration-50 group mt-0.5 flex cursor-pointer flex-col rounded px-1 py-2 font-inter text-sm text-bunker-100 transition-all hover:bg-mineshaft-700",
@@ -81,7 +81,7 @@ export const MenuItem = <T extends ElementType = "button">({
           {description && <span className="mt-2 text-xs">{description}</span>}
         </motion.span>
       </li>
-    </span>
+    </div>
   );
 };
 
