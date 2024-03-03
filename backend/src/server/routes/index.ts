@@ -341,6 +341,7 @@ export const registerRoutes = async (
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
+    orgDAL,
     projectQueue: projectQueueService,
     secretBlindIndexDAL,
     identityProjectDAL,

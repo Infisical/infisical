@@ -170,6 +170,7 @@ func CallGetAllWorkSpacesUserBelongsTo(httpClient *resty.Client) (GetWorkSpacesR
 		R().
 		SetResult(&workSpacesResponse).
 		SetHeader("User-Agent", USER_AGENT).
+		SetQueryParam("populateOrgName", "true").
 		Get(fmt.Sprintf("%v/v1/workspace", config.INFISICAL_URL))
 
 	if err != nil {
@@ -178,22 +179,6 @@ func CallGetAllWorkSpacesUserBelongsTo(httpClient *resty.Client) (GetWorkSpacesR
 
 	if response.IsError() {
 		return GetWorkSpacesResponse{}, fmt.Errorf("CallGetAllWorkSpacesUserBelongsTo: Unsuccessful response:  [response=%v]", response)
-	}
-
-	// Call the organization API
-	orgResponse, err := CallGetAllOrganizations(httpClient)
-	if err != nil {
-		return GetWorkSpacesResponse{}, err
-	}
-
-	// Update organization names in workspacesResponse
-	for i, workspace := range workSpacesResponse.Workspaces {
-		for _, organization := range orgResponse.Organizations {
-			if workspace.Organization == organization.ID {
-				workSpacesResponse.Workspaces[i].Organization = organization.Name
-				break
-			}
-		}
 	}
 
 	return workSpacesResponse, nil

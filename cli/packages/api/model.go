@@ -120,11 +120,12 @@ type PullSecretsByInfisicalTokenResponse struct {
 
 type GetWorkSpacesResponse struct {
 	Workspaces []struct {
-		ID           string `json:"_id"`
-		Name         string `json:"name"`
-		Plan         string `json:"plan,omitempty"`
-		V            int    `json:"__v"`
-		Organization string `json:"orgId,omitempty"`
+		ID           string  `json:"_id"`
+		Name         string  `json:"name"`
+		Plan         string  `json:"plan,omitempty"`
+		V            int     `json:"__v"`
+		Organization *string `json:"orgName,omitempty"`
+		DisplayName  *string `json:"displayName,omitempty"`
 	} `json:"workspaces"`
 }
 

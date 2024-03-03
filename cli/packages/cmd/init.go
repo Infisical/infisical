@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/models"
@@ -58,14 +57,10 @@ var initCmd = &cobra.Command{
 		}
 
 		workspaces := workspaceResponse.Workspaces
-		if len(workspaces) == 0 {
-			message := fmt.Sprintf("You don't have any projects created in Infisical. You must first create a project at %s", util.INFISICAL_TOKEN_NAME)
-			util.PrintErrorMessageAndExit(message)
-		}
 
-		var workspaceNames []string
-		for _, workspace := range workspaces {
-			workspaceNames = append(workspaceNames, fmt.Sprintf("%s (%s)", workspace.Name, workspace.Organization))
+		workspaceNames, err := util.GetWorkspacesNameList(workspaceResponse)
+		if err != nil {
+			util.HandleError(err, "Error extracting workspace names")
 		}
 
 		prompt := promptui.Select{

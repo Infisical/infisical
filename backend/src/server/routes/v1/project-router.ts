@@ -16,7 +16,9 @@ import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 const projectWithEnv = ProjectsSchema.merge(
   z.object({
     _id: z.string(),
-    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
+    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array(),
+    orgName: z.string().optional(),
+    displayName: z.string().optional()
   })
 );
 
@@ -91,6 +93,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     url: "/",
     method: "GET",
     schema: {
+      querystring: z.object({
+        populateOrgName: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+      }),
       response: {
         200: z.object({
           workspaces: projectWithEnv.array()
@@ -99,7 +107,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const workspaces = await server.services.project.getProjects(req.permission.id);
+      const workspaces = await server.services.project.getProjects(req.permission.id, req.query.populateOrgName);
       return { workspaces };
     }
   });

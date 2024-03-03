@@ -45,11 +45,12 @@ type SingleFolder struct {
 }
 
 type Workspace struct {
-	ID           string `json:"_id"`
-	Name         string `json:"name"`
-	Plan         string `json:"plan,omitempty"`
-	V            int    `json:"__v"`
-	Organization string `json:"orgId,omitempty"`
+	ID           string  `json:"_id"`
+	Name         string  `json:"name"`
+	Plan         string  `json:"plan,omitempty"`
+	V            int     `json:"__v"`
+	Organization *string `json:"orgName,omitempty"`
+	DisplayName  *string `json:"displayName,omitempty"`
 }
 
 type WorkspaceConfigFile struct {
