@@ -58,7 +58,7 @@ import {
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
-import { CreateSecretInAllEnvsForm } from "./components/CreateSecretsSection/CreateSecretInAllEnvsForm";
+import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
@@ -584,10 +584,10 @@ export const SecretOverviewPage = () => {
           </TableContainer>
         </div>
       </div>
-      <CreateSecretInAllEnvsForm
+      <CreateSecretForm
         secretPath={secretPath}
         isOpen={popUp.addSecretsInAllEnvs.isOpen}
-        workspaceId={workspaceId}
+        getSecretByKey={getSecretByKey}
         onTogglePopUp={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
         onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
         decryptFileKey={latestFileKey!}
