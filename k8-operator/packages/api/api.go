@@ -62,7 +62,7 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 		SetHeader("If-None-Match", request.ETag).
 		SetQueryParam("environment", request.Environment).
 		SetQueryParam("include_imports", strconv.FormatBool(request.IncludeImport)).
-		SetQueryParam("override_imports", strconv.FormatBool(request.OverrideImports)).
+		SetQueryParam("allow_override_in_imports", strconv.FormatBool(request.AllowOverrideInImports)).
 		SetQueryParam("workspaceId", request.WorkspaceId)
 
 	if request.SecretPath != "" {

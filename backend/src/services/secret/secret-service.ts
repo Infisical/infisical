@@ -525,7 +525,7 @@ export const secretServiceFactory = ({
     actor,
     actorOrgId,
     includeImports,
-    overrideImports
+    allowOverrideInImports
   }: TGetSecretsDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
@@ -556,7 +556,7 @@ export const secretServiceFactory = ({
         allowedImports,
         secretDAL,
         folderDAL,
-        overrideImports
+        allowOverrideInImports
       });
       return {
         secrets: secrets.map((el) => ({ ...el, workspace: projectId, environment })),

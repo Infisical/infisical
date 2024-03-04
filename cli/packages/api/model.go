@@ -272,11 +272,11 @@ type GetNewAccessTokenWithRefreshTokenResponse struct {
 }
 
 type GetEncryptedSecretsV3Request struct {
-	Environment     string `json:"environment"`
-	WorkspaceId     string `json:"workspaceId"`
-	SecretPath      string `json:"secretPath"`
-	IncludeImport   bool   `json:"include_imports"`
-	OverrideImports bool   `json:"override_imports"`
+	Environment            string `json:"environment"`
+	WorkspaceId            string `json:"workspaceId"`
+	SecretPath             string `json:"secretPath"`
+	IncludeImport          bool   `json:"include_imports"`
+	AllowOverrideInImports bool   `json:"allow_override_in_imports"`
 }
 
 type GetFoldersV1Request struct {
@@ -506,5 +506,5 @@ type GetRawSecretsV3Response struct {
 		SecretComment string `json:"secretComment"`
 	} `json:"secrets"`
 	Imports []any `json:"imports"`
-	ETag		string
+	ETag    string
 }

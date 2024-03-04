@@ -435,7 +435,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .enum(["true", "false"])
           .default("false")
           .transform((value) => value === "true"),
-        override_imports: z
+        allow_override_in_imports: z
           .enum(["true", "false"])
           .default("false")
           .transform((value) => value === "true")
@@ -487,7 +487,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         projectId: req.query.workspaceId,
         path: req.query.secretPath,
         includeImports: req.query.include_imports,
-        overrideImports: req.query.override_imports
+        allowOverrideInImports: req.query.allow_override_in_imports
       });
 
       await server.services.auditLog.createAuditLog({

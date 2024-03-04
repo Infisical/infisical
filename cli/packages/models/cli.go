@@ -72,7 +72,7 @@ type GetAllSecretsParameters struct {
 	WorkspaceId              string
 	SecretsPath              string
 	IncludeImport            bool
-	OverrideImports          bool
+	AllowOverrideInImports   bool
 }
 
 type GetAllFoldersParameters struct {
