@@ -17,7 +17,6 @@ import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
-import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -47,7 +46,6 @@ type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
-  orgDAL: TOrgDALFactory;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
@@ -66,7 +64,6 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 export const projectServiceFactory = ({
   projectDAL,
   projectQueue,
-  orgDAL,
   projectKeyDAL,
   permissionService,
   userDAL,
@@ -309,19 +306,8 @@ export const projectServiceFactory = ({
     return deletedProject;
   };
 
-  const getProjects = async (actorId: string, populateOrgName?: boolean) => {
+  const getProjects = async (actorId: string) => {
     const workspaces = await projectDAL.findAllProjects(actorId);
-    if (populateOrgName) {
-      const orgs = await orgDAL.findAllOrgsByUserId(actorId);
-      return workspaces.map((workspace) => {
-        const orgName = orgs.find((org) => org.id === workspace.orgId)?.name || "";
-        return {
-          ...workspace,
-          orgName,
-          displayName: `${workspace.name} (${orgName})`
-        };
-      });
-    }
     return workspaces;
   };
 

@@ -51,21 +51,19 @@ var initCmd = &cobra.Command{
 
 		httpClient := resty.New()
 		httpClient.SetAuthToken(userCreds.UserCredentials.JTWToken)
-		workspaceResponse, err := api.CallGetAllWorkSpacesUserBelongsTo(httpClient)
+
+		organizationResponse, err := api.CallGetAllOrganizations(httpClient)
 		if err != nil {
-			util.HandleError(err, "Unable to pull projects that belong to you")
+			util.HandleError(err, "Unable to pull organizations that belong to you")
 		}
 
-		workspaces := workspaceResponse.Workspaces
+		organizations := organizationResponse.Organizations
 
-		workspaceNames, err := util.GetWorkspacesNameList(workspaceResponse)
-		if err != nil {
-			util.HandleError(err, "Error extracting workspace names")
-		}
+		organizationNames := util.GetOrganizationsNameList(organizationResponse)
 
 		prompt := promptui.Select{
-			Label: "Which of your Infisical projects would you like to connect this project to?",
-			Items: workspaceNames,
+			Label: "Which of your Infisical organization would you like to get projects from?",
+			Items: organizationNames,
 			Size:  7,
 		}
 
@@ -74,7 +72,27 @@ var initCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
-		err = writeWorkspaceFile(workspaces[index])
+		selectedOrganization := organizations[index]
+
+		workspaceResponse, err := api.CallGetAllWorkSpacesUserBelongsTo(httpClient)
+		if err != nil {
+			util.HandleError(err, "Unable to pull projects that belong to you")
+		}
+
+		filteredWorkspaces, workspaceNames := util.GetWorkspacesInOrganization(workspaceResponse, selectedOrganization.ID)
+
+		prompt = promptui.Select{
+			Label: "Which of your Infisical projects would you like to connect this project to?",
+			Items: workspaceNames,
+			Size:  7,
+		}
+
+		index, _, err = prompt.Run()
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		err = writeWorkspaceFile(filteredWorkspaces[index])
 		if err != nil {
 			util.HandleError(err)
 		}
