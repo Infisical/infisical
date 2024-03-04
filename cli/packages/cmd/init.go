@@ -62,7 +62,7 @@ var initCmd = &cobra.Command{
 		organizationNames := util.GetOrganizationsNameList(organizationResponse)
 
 		prompt := promptui.Select{
-			Label: "Which of your Infisical organization would you like to get projects from?",
+			Label: "Which Infisical organization would you like to select a project from?",
 			Items: organizationNames,
 			Size:  7,
 		}
