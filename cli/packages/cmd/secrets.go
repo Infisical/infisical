@@ -290,7 +290,6 @@ var secretsSetCmd = &cobra.Command{
 			updateSecretRequest := api.UpdateSecretByNameV3Request{
 				WorkspaceID:           workspaceFile.WorkspaceId,
 				Environment:           environmentName,
-				SecretName:            secret.PlainTextKey,
 				SecretValueCiphertext: secret.SecretValueCiphertext,
 				SecretValueIV:         secret.SecretValueIV,
 				SecretValueTag:        secret.SecretValueTag,
@@ -298,7 +297,7 @@ var secretsSetCmd = &cobra.Command{
 				SecretPath:            secretsPath,
 			}
 
-			err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest)
+			err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest, secret.PlainTextKey)
 			if err != nil {
 				util.HandleError(err, "Unable to process secret update request")
 				return
