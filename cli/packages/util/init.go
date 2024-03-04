@@ -11,7 +11,7 @@ func GetOrganizationsNameList(organizationResponse api.GetOrganizationsResponse)
 	organizations := organizationResponse.Organizations
 
 	if len(organizations) == 0 {
-		message := fmt.Sprintf("You don't have any organization created in Infisical. You must first create a organization at %s", INFISICAL_TOKEN_NAME)
+		message := fmt.Sprintf("You don't have any organization created in Infisical. You must first create a organization at %s", INFISICAL_DEFAULT_URL)
 		PrintErrorMessageAndExit(message)
 	}
 
@@ -37,7 +37,7 @@ func GetWorkspacesInOrganization(workspaceResponse api.GetWorkSpacesResponse, or
 	}
 
 	if len(filteredWorkspaces) == 0 {
-		message := fmt.Sprintf("You don't have any projects created in Infisical organization. You must first create a project at %s", INFISICAL_TOKEN_NAME)
+		message := fmt.Sprintf("You don't have any projects created in Infisical organization. You must first create a project at %s", INFISICAL_DEFAULT_URL)
 		PrintErrorMessageAndExit(message)
 	}
 
