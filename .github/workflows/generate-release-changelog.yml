@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-tags: true
       - name: Get tags
-        run: git fetch --tags origin
+        run: git fetch origin
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
