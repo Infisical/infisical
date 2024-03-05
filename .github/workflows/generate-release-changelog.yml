@@ -2,10 +2,7 @@ name: Generate Changelog
 permissions:
   contents: write
 
-on:
-  push:
-    tags:
-      - "infisical/v*.*.*-postgres"
+on: [workflow_dispatch]
 
 jobs:
   generate_changelog:
