@@ -170,7 +170,6 @@ func CallGetAllWorkSpacesUserBelongsTo(httpClient *resty.Client) (GetWorkSpacesR
 		R().
 		SetResult(&workSpacesResponse).
 		SetHeader("User-Agent", USER_AGENT).
-		SetQueryParam("populateOrgName", "true").
 		Get(fmt.Sprintf("%v/v1/workspace", config.INFISICAL_URL))
 
 	if err != nil {
