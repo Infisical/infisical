@@ -238,7 +238,6 @@ export const registerRoutes = async (
     smtpService
   });
 
-<<<<<<< HEAD
   const ldapService = ldapConfigServiceFactory({
     ldapConfigDAL,
     orgDAL,
@@ -248,8 +247,6 @@ export const registerRoutes = async (
     licenseService
   });
 
-  const telemetryService = telemetryServiceFactory();
-=======
   const telemetryService = telemetryServiceFactory({
     keyStore,
     licenseService
@@ -260,7 +257,6 @@ export const registerRoutes = async (
     queueService
   });
 
->>>>>>> origin
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
   const userService = userServiceFactory({ userDAL });
   const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService });
