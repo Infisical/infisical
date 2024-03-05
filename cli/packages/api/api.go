@@ -145,6 +145,25 @@ func CallLogin2V2(httpClient *resty.Client, request GetLoginTwoV2Request) (GetLo
 	return loginTwoV2Response, nil
 }
 
+func CallGetAllOrganizations(httpClient *resty.Client) (GetOrganizationsResponse, error) {
+	var orgResponse GetOrganizationsResponse
+	response, err := httpClient.
+		R().
+		SetResult(&orgResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		Get(fmt.Sprintf("%v/v1/organization", config.INFISICAL_URL))
+
+	if err != nil {
+		return GetOrganizationsResponse{}, err
+	}
+
+	if response.IsError() {
+		return GetOrganizationsResponse{}, fmt.Errorf("CallGetAllOrganizations: Unsuccessful response: [response=%v]", response)
+	}
+
+	return orgResponse, nil
+}
+
 func CallGetAllWorkSpacesUserBelongsTo(httpClient *resty.Client) (GetWorkSpacesResponse, error) {
 	var workSpacesResponse GetWorkSpacesResponse
 	response, err := httpClient.
