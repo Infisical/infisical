@@ -22,8 +22,8 @@ export const getTokenConfig = (tokenType: TokenType) => {
   // type [type]
   switch (tokenType) {
     case TokenType.TOKEN_EMAIL_CONFIRMATION: {
-      // generate random 6-digit code
-      const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
+      // generate random hex
+      const token = crypto.randomBytes(16).toString("hex");
       const expiresAt = new Date(new Date().getTime() + 86400000);
       return { token, expiresAt };
     }
@@ -84,6 +84,14 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL }: TAuthTokenServiceFact
     code,
     orgId
   }: TValidateTokenForUserDTO): Promise<TAuthTokens | undefined> => {
+    const appCfg = getConfig();
+
+    // check if smtp is not configured, consider the token as valid
+    if (!appCfg.isSmtpConfigured) {
+      const deletedToken = await tokenDAL.delete({ type, userId, orgId: orgId || null });
+      return deletedToken?.[0];
+    }
+
     const token = await tokenDAL.findOne({ type, userId, orgId: orgId || null });
     // validate token
     if (!token) throw new Error("Failed to find token");
@@ -92,7 +100,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL }: TAuthTokenServiceFact
       throw new Error("Token expired. Please try again");
     }
 
-    const isValidToken = await bcrypt.compare(code, token.tokenHash);
+    const isValidToken = await bcrypt.compare(code.toString(), token.tokenHash);
     if (!isValidToken) {
       if (token?.triesLeft) {
         if (token.triesLeft === 1) {

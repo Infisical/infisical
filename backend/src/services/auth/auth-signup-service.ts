@@ -59,12 +59,14 @@ export const authSignupServiceFactory = ({
       userId: user.id
     });
 
+    const encodedToken = Buffer.from(JSON.stringify({ email, token })).toString("base64"); // converting one token using actual token and email
+    const verificationLink = `${getConfig().SITE_URL}/signup?token=${encodedToken}`;
     await smtpService.sendMail({
       template: SmtpTemplates.EmailVerification,
-      subjectLine: "Infisical confirmation code",
+      subjectLine: "Infisical confirmation link",
       recipients: [email],
       substitutions: {
-        code: token
+        link: verificationLink
       }
     });
   };
@@ -73,7 +75,7 @@ export const authSignupServiceFactory = ({
     const user = await userDAL.findUserByEmail(email);
     if (!user || (user && user.isAccepted)) {
       // TODO(akhilmhdh): copy as old one. this needs to be changed due to security issues
-      throw new Error("Failed to send verification code for complete account");
+      throw new Error("Failed to send verification token for complete account");
     }
     const appCfg = getConfig();
     await tokenService.validateTokenForUser({

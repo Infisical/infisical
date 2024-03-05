@@ -132,10 +132,10 @@ export const useSendVerificationEmail = () => {
 
 export const useVerifyEmailVerificationCode = () => {
   return useMutation({
-    mutationFn: async ({ email, code }: { email: string; code: string }) => {
+    mutationFn: async ({ email, token }: { email: string; token: string }) => {
       const { data } = await apiRequest.post("/api/v3/signup/email/verify", {
         email,
-        code
+        token
       });
 
       return data;

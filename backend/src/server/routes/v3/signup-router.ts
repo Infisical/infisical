@@ -57,7 +57,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         email: z.string().email().trim(),
-        code: z.string().trim()
+        token: z.string().trim()
       }),
       response: {
         200: z.object({
@@ -75,7 +75,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         });
       }
 
-      const { token, user } = await server.services.signup.verifyEmailSignup(req.body.email, req.body.code);
+      const { token, user } = await server.services.signup.verifyEmailSignup(req.body.email, req.body.token);
       return { message: "Successfuly verified email", token, user };
     }
   });

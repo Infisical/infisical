@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
 import Image from "next/image";
-import { useRouter } from "next/router";
+import { NextRouter, useRouter } from "next/router";
+import { z } from "zod";
 
-import CodeInputStep from "@app/components/signup/CodeInputStep";
 import DownloadBackupPDF from "@app/components/signup/DonwloadBackupPDFStep";
+import EmailSendStep from "@app/components/signup/EmailSendStep";
+import EmailValidateStep from "@app/components/signup/EmailValidateStep";
 import EnterEmailStep from "@app/components/signup/EnterEmailStep";
 import InitialSignupStep from "@app/components/signup/InitialSignupStep";
 import TeamInviteStep from "@app/components/signup/TeamInviteStep";
@@ -17,6 +19,17 @@ import { useVerifyEmailVerificationCode } from "@app/hooks/api";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
+const userTokenSchema = z.object({
+  token: z.string().min(32).max(32),
+  email: z.string().email()
+});
+
+const removeTokenQueryParam = (router: NextRouter) => {
+  const currentUrl = new URL(window.location.href);
+  currentUrl.searchParams.delete("token");
+  router.push(currentUrl.href, undefined, { shallow: true });
+};
+
 /**
  * @returns the signup page
  */
@@ -26,13 +39,12 @@ export default function SignUp() {
   const [name, setName] = useState("");
   const [organizationName, setOrganizationName] = useState("");
   const [attributionSource, setAttributionSource] = useState("");
-  const [code, setCode] = useState("123456");
-  const [codeError, setCodeError] = useState(false);
+  const [tokenError, setTokenError] = useState(false);
   const [step, setStep] = useState(1);
   const router = useRouter();
   const { data: serverDetails } = useFetchServerStatus();
   const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
-  const [isCodeInputCheckLoading, setIsCodeInputCheckLoading] = useState(false);
+  const [isValidatingEmailAndToken, setIsValidatingEmailAndToken] = useState(false);
   const { t } = useTranslation();
   const { mutateAsync } = useVerifyEmailVerificationCode();
   const { config } = useServerConfig();
@@ -55,30 +67,41 @@ export default function SignUp() {
     tryAuth();
   }, []);
 
+  const verifyToken = async (userEmail: string, userToken: string) => {
+    setIsValidatingEmailAndToken(true);
+    // Checking if the code matches the email.
+    try {
+      const { token } = await mutateAsync({ email: userEmail, token: userToken });
+      SecurityClient.setSignupToken(token);
+      setStep(3);
+    } catch (err) {
+      console.error(err);
+      setTokenError(true);
+    }
+    setIsValidatingEmailAndToken(false);
+  };
+
   /**
    * Goes to the following step (out of 5) of the signup process.
    * Step 1 is submitting your email
-   * Step 2 is Verifying your email with the code that you received
+   * Step 2 is sending email with verification link, then validating when user get's back using the token parameter
    * Step 3 is asking the final info.
    * Step 4 is downloading a backup pdf
    * Step 5 is inviting users
    */
   const incrementStep = async () => {
-    if (step === 1 || step === 3 || step === 4) {
+    if (step === 1 || (serverDetails?.emailConfigured && step === 2) || step === 3 || step === 4) {
       setStep(step + 1);
-    } else if (step === 2) {
-      setIsCodeInputCheckLoading(true);
-      // Checking if the code matches the email.
-      try {
-        const { token } = await mutateAsync({ email, code });
-        SecurityClient.setSignupToken(token);
-        setStep(3);
-      } catch (err) {
-        console.error(err);
-        setCodeError(true);
-      }
-      setIsCodeInputCheckLoading(false);
+    } else if (step === 2 && !serverDetails?.emailConfigured) {
+      // if emailConfigured is false, then send random token to the api
+      await verifyToken(email, "always-validated-token");
     }
+  };
+
+  const resetProcess = () => {
+    setStep(1);
+    setTokenError(false);
+    setIsValidatingEmailAndToken(false);
   };
 
   // when email service is not configured, skip step 2 and 5
@@ -95,7 +118,43 @@ export default function SignUp() {
     })();
   }, [step]);
 
+  useEffect(() => {
+    const checkVerificationToken = async () => {
+      const { token: queryToken } = router.query;
+      if (queryToken && typeof queryToken === "string") {
+        try {
+          // Decode and parse the token
+          const userToken = JSON.parse(Buffer.from(queryToken, "base64").toString("utf-8"));
+          const { token: decodedToken, email: decodedEmail } = userTokenSchema.parse(userToken);
+          setEmail(decodedEmail);
+
+          // Remove the token from url
+          removeTokenQueryParam(router);
+
+          // Verify the token
+          await verifyToken(decodedEmail, decodedToken);
+        } catch (error) {
+          // Remove the token from url
+          removeTokenQueryParam(router);
+          console.error("Invalid Token Provided");
+        }
+      }
+    };
+
+    checkVerificationToken();
+  }, []);
+
   const renderView = (registerStep: number) => {
+    if (isValidatingEmailAndToken || tokenError) {
+      return (
+        <EmailValidateStep
+          isValidatingEmailAndToken={isValidatingEmailAndToken}
+          isValidationFailed={tokenError}
+          resetProcess={resetProcess}
+        />
+      );
+    }
+
     if (isSignupWithEmail && registerStep === 1) {
       return <EnterEmailStep email={email} setEmail={setEmail} incrementStep={incrementStep} />;
     }
@@ -105,15 +164,7 @@ export default function SignUp() {
     }
 
     if (registerStep === 2) {
-      return (
-        <CodeInputStep
-          email={email}
-          incrementStep={incrementStep}
-          setCode={setCode}
-          codeError={codeError}
-          isCodeInputCheckLoading={isCodeInputCheckLoading}
-        />
-      );
+      return <EmailSendStep email={email} />;
     }
 
     if (registerStep === 3) {
