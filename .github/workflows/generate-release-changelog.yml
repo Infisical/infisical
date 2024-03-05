@@ -3,6 +3,7 @@ permissions:
   contents: write
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "infisical/v*.*.*-postgres"
