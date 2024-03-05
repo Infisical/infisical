@@ -12,7 +12,7 @@ import uuid
 REPO_OWNER = "infisical"
 REPO_NAME = "infisical"
 TOKEN = os.environ["GITHUB_TOKEN"]
-SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
+# SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 SLACK_MSG_COLOR = "#36a64f"
 
