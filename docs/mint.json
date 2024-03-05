@@ -146,10 +146,18 @@
             "documentation/platform/sso/gitlab",
             "documentation/platform/sso/okta",
             "documentation/platform/sso/azure",
-            "documentation/platform/sso/jumpcloud"
+            "documentation/platform/sso/jumpcloud",
+            "documentation/platform/sso/google-saml"
           ]
         },
-        "documentation/platform/ldap",
+        {
+          "group": "LDAP",
+          "pages": [
+            "documentation/platform/ldap/overview",
+            "documentation/platform/ldap/jumpcloud",
+            "documentation/platform/ldap/general"
+          ]
+        },
         {
           "group": "LDAP",
           "pages": [
@@ -174,7 +182,6 @@
       "pages": [
         "self-hosting/overview",
         "self-hosting/configuration/requirements",
-        "self-hosting/configuration/schema-migrations",
         {
           "group": "Installation methods",
           "pages": [
@@ -184,6 +191,13 @@
           ]
         },
         "self-hosting/configuration/envars",
+        {
+          "group": "Guides",
+          "pages": [
+            "self-hosting/configuration/schema-migrations",
+            "self-hosting/guides/mongo-to-postgres"
+          ]
+        },
         "self-hosting/faq"
       ]
     },

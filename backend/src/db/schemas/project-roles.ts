@@ -19,5 +19,5 @@ export const ProjectRolesSchema = z.object({
 });
 
 export type TProjectRoles = z.infer<typeof ProjectRolesSchema>;
-export type TProjectRolesInsert = Omit<TProjectRoles, TImmutableDBKeys>;
-export type TProjectRolesUpdate = Partial<Omit<TProjectRoles, TImmutableDBKeys>>;
+export type TProjectRolesInsert = Omit<z.input<typeof ProjectRolesSchema>, TImmutableDBKeys>;
+export type TProjectRolesUpdate = Partial<Omit<z.input<typeof ProjectRolesSchema>, TImmutableDBKeys>>;

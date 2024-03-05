@@ -16,7 +16,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          config: SuperAdminSchema
+          config: SuperAdminSchema.omit({ createdAt: true, updatedAt: true })
         })
       }
     },
@@ -90,7 +90,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         userAgent: req.headers["user-agent"] || ""
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.AdminInit,
         distinctId: user.user.email ?? user.user.username ?? "",
         properties: {

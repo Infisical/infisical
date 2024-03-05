@@ -17,5 +17,5 @@ export const ScimTokensSchema = z.object({
 });
 
 export type TScimTokens = z.infer<typeof ScimTokensSchema>;
-export type TScimTokensInsert = Omit<TScimTokens, TImmutableDBKeys>;
-export type TScimTokensUpdate = Partial<Omit<TScimTokens, TImmutableDBKeys>>;
+export type TScimTokensInsert = Omit<z.input<typeof ScimTokensSchema>, TImmutableDBKeys>;
+export type TScimTokensUpdate = Partial<Omit<z.input<typeof ScimTokensSchema>, TImmutableDBKeys>>;

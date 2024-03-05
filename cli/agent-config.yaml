@@ -1,5 +1,5 @@
 infisical:
-  address: "http://localhost:8080"
+  address: "https://app.infisical.com/"
 auth:
   type: "universal-auth"
   config:
@@ -13,3 +13,12 @@ sinks:
 templates:
   - source-path: my-dot-ev-secret-template
     destination-path: my-dot-env.env
+    config:
+      polling-interval: 60s
+      execute:
+        command: docker-compose -f docker-compose.prod.yml down && docker-compose -f docker-compose.prod.yml up -d
+  - source-path: my-dot-ev-secret-template1
+    destination-path: my-dot-env-1.env
+    config:
+      exec:
+        command: mkdir hello-world1

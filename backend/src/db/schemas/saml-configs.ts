@@ -27,5 +27,5 @@ export const SamlConfigsSchema = z.object({
 });
 
 export type TSamlConfigs = z.infer<typeof SamlConfigsSchema>;
-export type TSamlConfigsInsert = Omit<TSamlConfigs, TImmutableDBKeys>;
-export type TSamlConfigsUpdate = Partial<Omit<TSamlConfigs, TImmutableDBKeys>>;
+export type TSamlConfigsInsert = Omit<z.input<typeof SamlConfigsSchema>, TImmutableDBKeys>;
+export type TSamlConfigsUpdate = Partial<Omit<z.input<typeof SamlConfigsSchema>, TImmutableDBKeys>>;

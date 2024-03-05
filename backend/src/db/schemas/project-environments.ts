@@ -18,5 +18,5 @@ export const ProjectEnvironmentsSchema = z.object({
 });
 
 export type TProjectEnvironments = z.infer<typeof ProjectEnvironmentsSchema>;
-export type TProjectEnvironmentsInsert = Omit<TProjectEnvironments, TImmutableDBKeys>;
-export type TProjectEnvironmentsUpdate = Partial<Omit<TProjectEnvironments, TImmutableDBKeys>>;
+export type TProjectEnvironmentsInsert = Omit<z.input<typeof ProjectEnvironmentsSchema>, TImmutableDBKeys>;
+export type TProjectEnvironmentsUpdate = Partial<Omit<z.input<typeof ProjectEnvironmentsSchema>, TImmutableDBKeys>>;

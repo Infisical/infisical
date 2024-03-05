@@ -13,7 +13,8 @@ metadata:
   name: default
 subjects:
   - kind: ServiceAccount
-    name: {{ .Release.Namespace }}
+    name: default 
+    namespace: {{ .Release.Namespace }}
 roleRef:
   kind: Role
   name: k8s-wait-for-infisical-schema-migration

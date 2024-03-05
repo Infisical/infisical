@@ -36,6 +36,7 @@ import { snapshotFolderDALFactory } from "@app/ee/services/secret-snapshot/snaps
 import { snapshotSecretDALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
@@ -98,6 +99,8 @@ import { serviceTokenServiceFactory } from "@app/services/service-token/service-
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
+import { telemetryDALFactory } from "@app/services/telemetry/telemetry-dal";
+import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-queue";
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
@@ -114,7 +117,12 @@ import { registerV3Routes } from "./v3";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
-  { db, smtp: smtpService, queue: queueService }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory }
+  {
+    db,
+    smtp: smtpService,
+    queue: queueService,
+    keyStore
+  }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory; keyStore: TKeyStoreFactory }
 ) => {
   await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
 
@@ -160,6 +168,7 @@ export const registerRoutes = async (
 
   const auditLogDAL = auditLogDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
+  const telemetryDAL = telemetryDALFactory(db);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -188,7 +197,7 @@ export const registerRoutes = async (
     projectRoleDAL,
     serviceTokenDAL
   });
-  const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL });
+  const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL, keyStore });
   const trustedIpService = trustedIpServiceFactory({
     licenseService,
     projectDAL,
@@ -229,6 +238,7 @@ export const registerRoutes = async (
     smtpService
   });
 
+<<<<<<< HEAD
   const ldapService = ldapConfigServiceFactory({
     ldapConfigDAL,
     orgDAL,
@@ -239,6 +249,18 @@ export const registerRoutes = async (
   });
 
   const telemetryService = telemetryServiceFactory();
+=======
+  const telemetryService = telemetryServiceFactory({
+    keyStore,
+    licenseService
+  });
+  const telemetryQueue = telemetryQueueServiceFactory({
+    keyStore,
+    telemetryDAL,
+    queueService
+  });
+
+>>>>>>> origin
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
   const userService = userServiceFactory({ userDAL });
   const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService });
@@ -275,7 +297,8 @@ export const registerRoutes = async (
     userDAL,
     authService: loginService,
     serverCfgDAL: superAdminDAL,
-    orgService
+    orgService,
+    keyStore
   });
   const apiKeyService = apiKeyServiceFactory({ apiKeyDAL, userDAL });
 
@@ -503,9 +526,13 @@ export const registerRoutes = async (
   });
 
   await superAdminService.initServerCfg();
-  await auditLogQueue.startAuditLogPruneJob();
+  //
   // setup the communication with license key server
   await licenseService.init();
+
+  await auditLogQueue.startAuditLogPruneJob();
+  await telemetryQueue.startTelemetryCheck();
+
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
     login: loginService,
