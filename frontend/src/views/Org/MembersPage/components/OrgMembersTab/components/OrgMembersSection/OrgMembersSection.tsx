@@ -20,6 +20,7 @@ import { useDeleteOrgMembership } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddOrgMemberModal } from "./AddOrgMemberModal";
+import { AddProjectModal } from "./AddProjectModal";
 import { OrgMembersTable } from "./OrgMembersTable";
 
 export const OrgMembersSection = () => {
@@ -27,15 +28,18 @@ export const OrgMembersSection = () => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id ?? "";
-  
+
   const [completeInviteLink, setCompleteInviteLink] = useState<string>("");
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addMember",
     "removeMember",
     "upgradePlan",
-    "setUpEmail"
+    "setUpEmail",
+    "addProject"
   ] as const);
+
+  console.log("popUp", popUp);
 
   const { mutateAsync: deleteMutateAsync } = useDeleteOrgMembership();
 
@@ -111,6 +115,7 @@ export const OrgMembersSection = () => {
         completeInviteLink={completeInviteLink}
         setCompleteInviteLink={setCompleteInviteLink}
       />
+      <AddProjectModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
         title={`Are you sure want to remove member with username ${

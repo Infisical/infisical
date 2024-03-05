@@ -113,6 +113,18 @@ export const orgServiceFactory = ({
     return members;
   };
 
+  /*
+   * Get all workspace members with projects
+   * */
+  const findAllOrgMembersWithProjects = async (userId: string, orgId: string, actorOrgId?: string) => {
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+
+    const members = await orgDAL.findAllOrgMembersWithProjects(orgId);
+
+    return members;
+  };
+
   const findOrgMembersByUsername = async ({
     actor,
     actorId,
@@ -660,6 +672,7 @@ export const orgServiceFactory = ({
   return {
     findOrganizationById,
     findAllOrgMembers,
+    findAllOrgMembersWithProjects,
     findAllOrganizationOfUser,
     inviteUserToOrganization,
     verifyUserToOrg,

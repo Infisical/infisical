@@ -12,6 +12,7 @@ export {
   useGetMyOrganizationProjects,
   useGetMySessions,
   useGetOrgUsers,
+  useGetOrgUsersWithProjects,
   useGetUser,
   useGetUserAction,
   useLogoutUser,

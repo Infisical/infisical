@@ -121,10 +121,25 @@ export const fetchOrgUsers = async (orgId: string) => {
   return data.users;
 };
 
+export const fetchOrgUsersWithProjects = async (orgId: string) => {
+  const { data } = await apiRequest.get<{ users: OrgUser[] }>(
+    `/api/v1/organization/${orgId}/users/projects`
+  );
+
+  return data.users;
+};
+
 export const useGetOrgUsers = (orgId: string) =>
   useQuery({
     queryKey: userKeys.getOrgUsers(orgId),
     queryFn: () => fetchOrgUsers(orgId),
+    enabled: Boolean(orgId)
+  });
+
+export const useGetOrgUsersWithProjects = (orgId: string) =>
+  useQuery({
+    queryKey: userKeys.getOrgUsers(orgId),
+    queryFn: () => fetchOrgUsersWithProjects(orgId),
     enabled: Boolean(orgId)
   });
 

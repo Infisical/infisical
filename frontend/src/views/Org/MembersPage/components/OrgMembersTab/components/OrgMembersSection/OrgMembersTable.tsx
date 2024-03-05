@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { faMagnifyingGlass, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faPlus, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -31,7 +31,7 @@ import {
   useAddUserToOrg,
   useFetchServerStatus,
   useGetOrgRoles,
-  useGetOrgUsers,
+  useGetOrgUsersWithProjects,
   useUpdateOrgUserRole
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -48,6 +48,50 @@ type Props = {
   setCompleteInviteLink: (link: string) => void;
 };
 
+type AddProjectProps = {
+  handlePopUpOpen: any;
+  currentOrg: string;
+  createNotification: any;
+  orgMembershipId: string;
+  email: string;
+};
+
+const AddProject = ({
+  handlePopUpOpen,
+  currentOrg,
+  createNotification,
+  orgMembershipId,
+  email
+}: AddProjectProps) => {
+  return (
+    <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Member}>
+      {(isAllowed) => (
+        <IconButton
+          onClick={() => {
+            if (currentOrg?.authEnforced) {
+              createNotification({
+                text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
+                type: "error"
+              });
+              return;
+            }
+
+            handlePopUpOpen("addProject", { orgMembershipId, email });
+          }}
+          size="lg"
+          colorSchema="primary"
+          variant="plain"
+          ariaLabel="update"
+          className="ml-4"
+          isDisabled={!isAllowed}
+        >
+          <FontAwesomeIcon icon={faPlus} />
+        </IconButton>
+      )}
+    </OrgPermissionCan>
+  );
+};
+
 export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Props) => {
   const { createNotification } = useNotificationContext();
   const { subscription } = useSubscription();
@@ -61,7 +105,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 
   const { data: serverDetails } = useFetchServerStatus();
-  const { data: members, isLoading: isMembersLoading } = useGetOrgUsers(orgId);
+  const { data: members, isLoading: isMembersLoading } = useGetOrgUsersWithProjects(orgId);
 
   const { mutateAsync: addUserMutateAsync } = useAddUserToOrg();
   const { mutateAsync: updateUserOrgRole } = useUpdateOrgUserRole();
@@ -150,6 +194,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
     [members, searchMemberFilter]
   );
 
+  console.log("filterdUser", filterdUser);
+
   return (
     <div>
       <Input
@@ -165,6 +211,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
               <Th>Name</Th>
               <Th>Username</Th>
               <Th>Role</Th>
+              <Th>Projects</Th>
               <Th className="w-5" />
             </Tr>
           </THead>
@@ -172,9 +219,11 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
             {isLoading && <TableSkeleton columns={5} innerKey="org-members" />}
             {!isLoading &&
               filterdUser?.map(
-                ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status }) => {
+                ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status, projects }) => {
                   const name = u && u.firstName ? `${u.firstName} ${u.lastName}` : "-";
                   const email = u?.email || inviteEmail;
+
+                  console.log("u", u);
                   const username = u?.username ?? inviteEmail ?? "-";
                   return (
                     <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
@@ -208,7 +257,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     ))}
                                 </Select>
                               )}
-                              {(status === "invited" || status === "verified") && email &&
+                              {(status === "invited" || status === "verified") &&
+                                email &&
                                 serverDetails?.emailConfigured && (
                                   <Button
                                     isDisabled={!isAllowed}
@@ -223,6 +273,16 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                             </>
                           )}
                         </OrgPermissionCan>
+                      </Td>
+                      <Td>
+                        {projects.join(", ")}
+                        <AddProject
+                          handlePopUpOpen={handlePopUpOpen}
+                          createNotification={createNotification}
+                          currentOrg={currentOrg}
+                          orgMembershipId={orgMembershipId}
+                          email={email}
+                        />
                       </Td>
                       <Td>
                         {userId !== u?.id && (
@@ -240,7 +300,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     });
                                     return;
                                   }
-                                  
+
                                   handlePopUpOpen("removeMember", { orgMembershipId, username });
                                 }}
                                 size="lg"
