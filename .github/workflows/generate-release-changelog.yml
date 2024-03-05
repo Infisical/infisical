@@ -1,0 +1,39 @@
+name: Generate Changelog
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - "infisical/v*.*.*-postgres"
+
+jobs:
+  generate_changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.0"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests openai
+      - name: Generate Changelog and Post to Slack
+        id: gen-changelog
+        run: python .github/resources/changelog-generator.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      - name: Set git identity
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@infisical.noreply.github.com'
+      - name: Save the changelog to file
+        run: | 
+          echo "${{ steps.gen-changelog.outputs.changelog }}" >> CHANGELOG.md
+          git add CHANGELOG.md
+          git commit -m "chore: changelog update" --no-verify
+          git push origin main
