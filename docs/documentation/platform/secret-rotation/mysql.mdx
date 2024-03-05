@@ -48,12 +48,11 @@ To learn more about MySQL Permissioning, please follow this [documentation](http
   </Step>
   <Step title="Click on MySQL Card" />
   <Step title="Provide the inputs">
+![Secret Rotation Input](../../../images/secret-rotation/mysql-step1.png)
   	These are inputs required by MySQL Rotation Providers
-
 <Info>
 	Here Admin username and password means the rotator account. You don't need to provide the Database admin account.
 </Info>
-
 	- Admin Username
 
 		Rotator Admin username
@@ -80,6 +79,9 @@ To learn more about MySQL Permissioning, please follow this [documentation](http
 		Certificate to connect with database(string)  
   </Step>
   <Step title="Configure the output secret mapping">
+
+![Secret Rotation Output](../../../images/secret-rotation/postgres-step2.png)
+
   	The secret keys to be replaced in the provided board after successful secret rotation
 
 	- Select `Environment`, `Secret Path` and `Interval` to rotate the secrets
