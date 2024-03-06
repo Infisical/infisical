@@ -513,7 +513,7 @@ const OrganizationPage = withPermission(
           const orgUsers = await fetchOrgUsers(currentOrg);
 
           await addUsersToProject.mutateAsync({
-            emails: orgUsers
+            usernames: orgUsers
               .map((member) => member.user.username)
               .filter((username) => username !== user.username),
             projectId: newProjectId
