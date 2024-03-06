@@ -45,7 +45,7 @@ export type TGetUpgradeProjectStatusDTO = {
 // mutation dto
 export type CreateWorkspaceDTO = {
   projectName: string;
-  organizationId: string;
+  organizationSlug: string;
 };
 
 export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
