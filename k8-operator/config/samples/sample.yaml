@@ -39,9 +39,9 @@ spec:
 
         universalAuthMachineIdentity:
             secretsScope:
-                projectId: "<project-id>" # TODO: Make this a slug
+                projectSlug: <project-slug>
                 envSlug: <env-slug> # "dev", "staging", "prod", etc..
-                secretsPath: <secrets-path> # Root is "/"
+                secretsPath: "<secrets-path>" # Root is "/"
 
             credentials:
                 secretName: universal-auth-credentials
