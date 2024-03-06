@@ -29,7 +29,30 @@ spec:
     creationPolicy: "Orphan" ## Owner | Orphan
     # secretType: kubernetes.io/dockerconfigjson
 
-  # # To be depreciated soon
-  # tokenSecretReference:
-  #   secretName: service-token
-  #   secretNamespace: default
+        serviceToken:
+            serviceTokenSecretReference:
+                secretName: service-token
+                secretNamespace: default
+            secretsScope:
+                envSlug: <env-slug>
+                secretsPath: <secrets-path> # Root is "/"
+
+        universalAuthMachineIdentity:
+            secretsScope:
+                projectId: "<project-id>" # TODO: Make this a slug
+                envSlug: <env-slug> # "dev", "staging", "prod", etc..
+                secretsPath: <secrets-path> # Root is "/"
+
+            credentials:
+                secretName: universal-auth-credentials
+                secretNamespace: default
+
+    managedSecretReference:
+        secretName: managed-secret
+        secretNamespace: default
+        # secretType: kubernetes.io/dockerconfigjson
+
+    # # To be depreciated soon
+    # tokenSecretReference:
+    #   secretName: service-token
+    #   secretNamespace: default
