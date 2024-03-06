@@ -9,7 +9,12 @@ export async function seed(knex: Knex): Promise<void> {
   await knex(TableName.Users).del();
   await knex(TableName.UserEncryptionKey).del();
   await knex(TableName.SuperAdmin).del();
-  await knex(TableName.SuperAdmin).insert([{ initialized: true, allowSignUp: true }]);
+
+  await knex(TableName.SuperAdmin).insert([
+    // eslint-disable-next-line
+    // @ts-ignore
+    { id: "00000000-0000-0000-0000-000000000000", initialized: true, allowSignUp: true }
+  ]);
   // Inserts seed entries
   const [user] = await knex(TableName.Users)
     .insert([
