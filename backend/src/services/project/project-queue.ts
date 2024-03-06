@@ -102,8 +102,11 @@ export const projectQueueFactory = ({
 
       const oldProjectKey = await projectKeyDAL.findLatestProjectKey(data.startedByUserId, data.projectId);
 
-      if (!project || !oldProjectKey) {
-        throw new Error("Project or project key not found");
+      if (!project) {
+        throw new Error("Project not found");
+      }
+      if (!oldProjectKey) {
+        throw new Error("Old project key not found");
       }
 
       if (project.upgradeStatus !== ProjectUpgradeStatus.Failed && project.upgradeStatus !== null) {
@@ -267,8 +270,19 @@ export const projectQueueFactory = ({
           const user = await userDAL.findUserEncKeyByUserId(key.receiverId);
           const [orgMembership] = await orgDAL.findMembership({ userId: key.receiverId, orgId: project.orgId });
 
-          if (!user || !orgMembership) {
-            throw new Error(`User with ID ${key.receiverId} was not found during upgrade, or user is not in org.`);
+          if (!user) {
+            throw new Error(`User with ID ${key.receiverId} was not found during upgrade.`);
+          }
+
+          if (!orgMembership) {
+            // This can happen. Since we don't remove project memberships and project keys when a user is removed from an org, this is a valid case.
+            logger.info("User is not in organization", {
+              userId: key.receiverId,
+              orgId: project.orgId,
+              projectId: project.id
+            });
+            // eslint-disable-next-line no-continue
+            continue;
           }
 
           const [newMember] = assignWorkspaceKeysToMembers({
@@ -532,7 +546,12 @@ export const projectQueueFactory = ({
         logger.error("Failed to upgrade project, because no project was found", data);
       } else {
         await projectDAL.setProjectUpgradeStatus(data.projectId, ProjectUpgradeStatus.Failed);
-        logger.error(err, "Failed to upgrade project");
+        logger.error("Failed to upgrade project", err, {
+          extra: {
+            project,
+            jobData: data
+          }
+        });
       }
 
       throw err;
