@@ -12,7 +12,7 @@ import uuid
 REPO_OWNER = "infisical"
 REPO_NAME = "infisical"
 TOKEN = os.environ["GITHUB_TOKEN"]
-# SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
+SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 SLACK_MSG_COLOR = "#36a64f"
 
@@ -29,6 +29,23 @@ def set_multiline_output(name, value):
         print(f'{name}<<{delimiter}', file=fh)
         print(value, file=fh)
         print(delimiter, file=fh)
+
+def post_changelog_to_slack(changelog, tag):
+    slack_payload = {
+        "text": "Hey team, it's changelog time! :wave:",
+        "attachments": [
+            {
+                "color": SLACK_MSG_COLOR,
+                "title": f"🗓️Infisical Changelog - {tag}",
+                "text": changelog,
+            }
+        ],
+    }
+
+    response = requests.post(SLACK_WEBHOOK_URL, json=slack_payload)
+
+    if response.status_code != 200:
+        raise Exception("Failed to post changelog to Slack.")
 
 def find_previous_release_tag(release_tag:str):
     previous_tag = subprocess.check_output(["git", "describe", "--tags", "--abbrev=0", f"{release_tag}^"]).decode("utf-8").strip()
@@ -123,20 +140,17 @@ The changelog should:
 6. Linear Links: note that the Linear link is optional, include it only if provided.
 7. Do not wrap your answer in a codeblock. Just output the text, nothing else
 Here's a good example to follow, please try to match the formatting as closely as possible, only changing the content of the changelog and have some liberty with the introduction. Notice the importance of the formatting of a changelog item:
-```
-- <https://github.com/facebook/react/pull/27304/|#27304>: We optimize our ci to strip comments and minify production builds. (<https://linear.app/example/issue/WEB-1234/|WEB-1234>))
-```
+- <https://github.com/facebook/react/pull/27304/%7C#27304>: We optimize our ci to strip comments and minify production builds. (<https://linear.app/example/issue/WEB-1234/%7CWEB-1234>))
 And here's an example of the full changelog:
-```
+
 *Features*
-• <https://github.com/facebook/react/pull/27304/|#27304>: We optimize our ci to strip comments and minify production builds. (<https://linear.app/example/issue/WEB-1234/|WEB-1234>)
+• <https://github.com/facebook/react/pull/27304/%7C#27304>: We optimize our ci to strip comments and minify production builds. (<https://linear.app/example/issue/WEB-1234/%7CWEB-1234>)
 *Fixes & Improvements*
-• <https://github.com/facebook/react/pull/27304/|#27304>: We optimize our ci to strip comments and minify production builds. (<https://linear.app/example/issue/WEB-1234/|WEB-1234>)
+• <https://github.com/facebook/react/pull/27304/%7C#27304>: We optimize our ci to strip comments and minify production builds. (<https://linear.app/example/issue/WEB-1234/%7CWEB-1234>)
 *Technical Updates*
-• <https://github.com/facebook/react/pull/27304/|#27304>: We optimize our ci to strip comments and minify production builds. (<https://linear.app/example/issue/WEB-1234/|WEB-1234>)
+• <https://github.com/facebook/react/pull/27304/%7C#27304>: We optimize our ci to strip comments and minify production builds. (<https://linear.app/example/issue/WEB-1234/%7CWEB-1234>)
 
 Stay tuned for more exciting updates coming soon!
-```
 And here are the commits:
 {}
     """.format(
@@ -166,11 +180,11 @@ if __name__ == "__main__":
         pr_details = extract_commit_details_from_prs(prs)
 
         # Generate changelog
-        changelog = f"## Infisical - {latest_tag}\n\n{generate_changelog_with_openai(pr_details)}"
+        changelog = generate_changelog_with_openai(pr_details)
 
+        post_changelog_to_slack(changelog,latest_tag)
         # Print or post changelog to Slack
-        set_multiline_output("changelog", changelog)
+        # set_multiline_output("changelog", changelog)
 
     except Exception as e:
         print(str(e))
-

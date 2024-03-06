@@ -197,3 +197,14 @@ dockers:
       - "infisical/cli:{{ .Major }}.{{ .Minor }}"
       - "infisical/cli:{{ .Major }}"
       - "infisical/cli:latest"
+
+  - dockerfile: docker/alpine
+    goos: linux
+    goarch: arm64
+    ids:
+      - all-other-builds
+    image_templates:
+      - "infisical/cli:{{ .Version }}"
+      - "infisical/cli:{{ .Major }}.{{ .Minor }}"
+      - "infisical/cli:{{ .Major }}"
+      - "infisical/cli:latest"

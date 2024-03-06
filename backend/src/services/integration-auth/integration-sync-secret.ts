@@ -441,16 +441,19 @@ const syncSecretsAWSParameterStore = async ({
 }) => {
   if (!accessId) return;
 
-  AWS.config.update({
+  const config = new AWS.Config({
     region: integration.region as string,
-    accessKeyId: accessId,
-    secretAccessKey: accessToken
+    credentials: {
+      accessKeyId: accessId,
+      secretAccessKey: accessToken
+    }
   });
 
   const ssm = new AWS.SSM({
     apiVersion: "2014-11-06",
     region: integration.region as string
   });
+  ssm.config.update(config);
 
   const params = {
     Path: integration.path as string,
@@ -514,12 +517,6 @@ const syncSecretsAWSParameterStore = async ({
       }
     })
   );
-
-  AWS.config.update({
-    region: undefined,
-    accessKeyId: undefined,
-    secretAccessKey: undefined
-  });
 };
 
 /**
@@ -540,12 +537,6 @@ const syncSecretsAWSSecretManager = async ({
   const secKeyVal = getSecretKeyValuePair(secrets);
   try {
     if (!accessId) return;
-
-    AWS.config.update({
-      region: integration.region as string,
-      accessKeyId: accessId,
-      secretAccessKey: accessToken
-    });
 
     secretsManager = new SecretsManagerClient({
       region: integration.region as string,
@@ -575,12 +566,6 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
     }
-
-    AWS.config.update({
-      region: undefined,
-      accessKeyId: undefined,
-      secretAccessKey: undefined
-    });
   } catch (err) {
     if (err instanceof ResourceNotFoundException && secretsManager) {
       await secretsManager.send(
@@ -590,11 +575,6 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
     }
-    AWS.config.update({
-      region: undefined,
-      accessKeyId: undefined,
-      secretAccessKey: undefined
-    });
   }
 };
 
