@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
-	"github.com/Infisical/infisical/k8-operator/packages/api"
 	"github.com/Infisical/infisical/k8-operator/packages/model"
 	"github.com/Infisical/infisical/k8-operator/packages/util"
 	corev1 "k8s.io/api/core/v1"
@@ -303,7 +302,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	// }
 
 	var plainTextSecretsFromApi []model.SingleEnvironmentVariable
-	var updateAttributes api.UpdateAttributes
+	var updateAttributes model.UpdateAttributes
 
 	if authStrategy == AuthStrategy.SERVICE_ACCOUNT { // Service Account
 		plainTextSecretsFromApi, updateAttributes, err = util.GetPlainTextSecretsViaServiceAccount(serviceAccountCreds, infisicalSecret.Spec.Authentication.ServiceAccount.ProjectId, infisicalSecret.Spec.Authentication.ServiceAccount.EnvironmentName, secretVersionBasedOnETag)
