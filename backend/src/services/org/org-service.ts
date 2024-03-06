@@ -22,6 +22,8 @@ import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
+import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
@@ -44,6 +46,8 @@ type TOrgServiceFactoryDep = {
   orgRoleDAL: TOrgRoleDALFactory;
   userDAL: TUserDALFactory;
   projectDAL: TProjectDALFactory;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserId" | "delete">;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete">;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne" | "findEnforceableSamlCfg">;
   smtpService: TSmtpService;
@@ -65,6 +69,8 @@ export const orgServiceFactory = ({
   permissionService,
   smtpService,
   projectDAL,
+  projectMembershipDAL,
+  projectKeyDAL,
   tokenService,
   orgBotDAL,
   licenseService,
@@ -503,10 +509,50 @@ export const orgServiceFactory = ({
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
 
-    const membership = await orgDAL.deleteMembershipById(membershipId, orgId);
+    const deletedMembership = await orgDAL.transaction(async (tx) => {
+      const orgMembership = await orgDAL.deleteMembershipById(membershipId, orgId, tx);
 
-    await licenseService.updateSubscriptionOrgMemberCount(orgId);
-    return membership;
+      if (!orgMembership.userId) {
+        await licenseService.updateSubscriptionOrgMemberCount(orgId);
+        return orgMembership;
+      }
+
+      // Get all the project memberships of the user in the organization
+      const projectMemberships = await projectMembershipDAL.findProjectMembershipsByUserId(orgId, orgMembership.userId);
+
+      // Delete all the project memberships of the user in the organization
+      await projectMembershipDAL.delete(
+        {
+          $in: {
+            id: projectMemberships.map((membership) => membership.id)
+          }
+        },
+        tx
+      );
+
+      // Get all the project keys of the user in the organization
+      const projectKeys = await projectKeyDAL.find({
+        $in: {
+          projectId: projectMemberships.map((membership) => membership.projectId)
+        },
+        receiverId: orgMembership.userId
+      });
+
+      // Delete all the project keys of the user in the organization
+      await projectKeyDAL.delete(
+        {
+          $in: {
+            id: projectKeys.map((key) => key.id)
+          }
+        },
+        tx
+      );
+
+      await licenseService.updateSubscriptionOrgMemberCount(orgId);
+      return orgMembership;
+    });
+
+    return deletedMembership;
   };
 
   /*
