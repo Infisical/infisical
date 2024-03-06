@@ -9,12 +9,20 @@ type Authentication struct {
 	ServiceAccount ServiceAccountDetails `json:"serviceAccount"`
 	// +kubebuilder:validation:Optional
 	ServiceToken ServiceTokenDetails `json:"serviceToken"`
+	// +kubebuilder:validation:Optional
+	UniversalAuthMachineIdentity UniversalAuthMachineIdentityDetails `json:"universalAuthMachineIdentity"`
+}
+
+type UniversalAuthMachineIdentityDetails struct {
+	// +kubebuilder:validation:Required
+	Credentials KubeSecretReference `json:"credentials"`
+	// +kubebuilder:validation:Required
+	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
 }
 
 type ServiceTokenDetails struct {
 	// +kubebuilder:validation:Required
 	ServiceTokenSecretReference KubeSecretReference `json:"serviceTokenSecretReference"`
-
 	// +kubebuilder:validation:Required
 	SecretsScope SecretScopeInWorkspace `json:"secretsScope"`
 }
@@ -28,9 +36,17 @@ type ServiceAccountDetails struct {
 type SecretScopeInWorkspace struct {
 	// +kubebuilder:validation:Required
 	SecretsPath string `json:"secretsPath"`
-
 	// +kubebuilder:validation:Required
 	EnvSlug string `json:"envSlug"`
+}
+
+type MachineIdentityScopeInWorkspace struct {
+	// +kubebuilder:validation:Required
+	SecretsPath string `json:"secretsPath"`
+	// +kubebuilder:validation:Required
+	EnvSlug string `json:"envSlug"`
+	// +kubebuilder:validation:Required
+	ProjectId string `json:"projectId"`
 }
 
 type KubeSecretReference struct {
