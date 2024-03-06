@@ -6,6 +6,16 @@ type ServiceAccountDetails struct {
 	PrivateKey string
 }
 
+type MachineIdentityDetails struct {
+	ClientId     string
+	ClientSecret string
+}
+
+type UpdateAttributes struct {
+	Modified bool
+	ETag     string
+}
+
 type SingleEnvironmentVariable struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
