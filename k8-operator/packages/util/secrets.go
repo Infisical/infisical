@@ -58,7 +58,7 @@ func GetPlainTextSecretsViaUniversalAuthMachineIdentity(accessToken string, etag
 	httpClient.SetAuthToken(accessToken)
 
 	secretsResponse, err := api.CallGetDecryptedSecretsV3(httpClient, api.GetDecryptedSecretsV3Request{
-		ProjectID:   secretScope.ProjectId,
+		ProjectSlug: secretScope.ProjectSlug,
 		Environment: secretScope.EnvSlug,
 		SecretPath:  secretScope.SecretsPath,
 		ETag:        etag,

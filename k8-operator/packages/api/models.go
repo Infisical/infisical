@@ -97,7 +97,7 @@ type GetDecryptedSecretsV3Response struct {
 }
 
 type GetDecryptedSecretsV3Request struct {
-	ProjectID   string `json:"projectId"`
+	ProjectSlug string `json:"workspaceSlug"`
 	Environment string `json:"environment"`
 	SecretPath  string `json:"secretPath"`
 	ETag        string `json:"etag,omitempty"`

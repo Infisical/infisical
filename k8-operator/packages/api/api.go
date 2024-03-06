@@ -153,7 +153,7 @@ func CallGetDecryptedSecretsV3(httpClient *resty.Client, request GetDecryptedSec
 		SetResult(&decryptedSecretsResponse).
 		SetHeader("User-Agent", USER_AGENT_NAME).
 		SetQueryParam("secretPath", request.SecretPath).
-		SetQueryParam("workspaceId", request.ProjectID).
+		SetQueryParam("workspaceSlug", request.ProjectSlug).
 		SetQueryParam("environment", request.Environment).
 		Get(fmt.Sprintf("%v/v3/secrets/raw", API_HOST_URL))
 
