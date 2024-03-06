@@ -16,6 +16,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { secretRawSchema } from "../sanitizedSchemas";
@@ -34,6 +35,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       ],
       querystring: z.object({
         workspaceId: z.string().trim().optional(),
+        workspaceSlug: z
+          .string()
+          .trim()
+          .optional()
+          .describe(
+            "The slug of the workspace. This is only supported when authenticating Machine Identity's. Either the project ID or project slug has to be present in the request."
+          ),
         environment: z.string().trim().optional(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         include_imports: z
@@ -68,6 +76,18 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           environment = scope[0].environment;
           workspaceId = req.auth.serviceToken.projectId;
         }
+      } else if (req.permission.type === ActorType.IDENTITY && req.query.workspaceSlug && !workspaceId) {
+        const workspace = await server.services.project.getAProject({
+          filter: {
+            type: ProjectFilterType.SLUG,
+            orgId: req.permission.orgId,
+            slug: req.query.workspaceSlug
+          },
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId
+        });
+        workspaceId = workspace.id;
       }
 
       if (!workspaceId || !environment) throw new BadRequestError({ message: "Missing workspace id or environment" });
@@ -83,7 +103,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       });
 
       await server.services.auditLog.createAuditLog({
-        projectId: req.query.workspaceId,
+        projectId: workspaceId,
         ...req.auditLogInfo,
         event: {
           type: EventType.GET_SECRETS,
