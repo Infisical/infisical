@@ -46,7 +46,7 @@ type MachineIdentityScopeInWorkspace struct {
 	// +kubebuilder:validation:Required
 	EnvSlug string `json:"envSlug"`
 	// +kubebuilder:validation:Required
-	ProjectId string `json:"projectId"`
+	ProjectSlug string `json:"projectSlug"`
 }
 
 type KubeSecretReference struct {
