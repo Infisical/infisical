@@ -193,7 +193,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       clientPublicKey: null
     });
     // send multi factor auth token if they it enabled
-    if (userEnc.isMfaEnabled) {
+    if (userEnc.isMfaEnabled && userEnc.email) {
       const mfaToken = jwt.sign(
         {
           authTokenType: AuthTokenType.MFA_TOKEN,
@@ -206,12 +206,10 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
         }
       );
 
-      if (userEnc.email) {
-        await sendUserMfaCode({
-          userId: userEnc.userId,
-          email: userEnc.email
-        });
-      }
+      await sendUserMfaCode({
+        userId: userEnc.userId,
+        email: userEnc.email
+      });
 
       return { isMfaEnabled: true, token: mfaToken } as const;
     }
@@ -271,7 +269,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
    * OAuth2 login for google,github, and other oauth2 provider
    * */
   const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort }: TOauthLoginDTO) => {
-    let user = await userDAL.findUserByEmail(email);
+    let user = await userDAL.findUserByUsername(email);
     const serverCfg = await getServerCfg();
 
     const appCfg = getConfig();

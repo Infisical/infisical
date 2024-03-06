@@ -94,6 +94,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         event: PostHogEventTypes.AdminInit,
         distinctId: user.user.username ?? "",
         properties: {
+          username: user.user.username,
           email: user.user.email ?? "",
           lastName: user.user.lastName || "",
           firstName: user.user.firstName || ""

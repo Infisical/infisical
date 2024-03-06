@@ -43,8 +43,8 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
       payload.actor = {
         type: ActorType.USER,
         metadata: {
-          email: req.auth.user.email as string | undefined,
-          username: req.auth.user.username as string | undefined,
+          email: req.auth.user.email,
+          username: req.auth.user.username,
           userId: req.permission.id
         }
       };

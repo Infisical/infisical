@@ -44,7 +44,7 @@ export const authSignupServiceFactory = ({
       throw new Error("Provided a disposable email");
     }
 
-    let user = await userDAL.findUserByEmail(email);
+    let user = await userDAL.findUserByUsername(email);
     if (user && user.isAccepted) {
       // TODO(akhilmhdh-pg): copy as old one. this needs to be changed due to security issues
       throw new Error("Failed to send verification code for complete account");
@@ -70,7 +70,7 @@ export const authSignupServiceFactory = ({
   };
 
   const verifyEmailSignup = async (email: string, code: string) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findUserByUsername(email);
     if (!user || (user && user.isAccepted)) {
       // TODO(akhilmhdh): copy as old one. this needs to be changed due to security issues
       throw new Error("Failed to send verification code for complete account");
@@ -152,7 +152,7 @@ export const authSignupServiceFactory = ({
     if (!organizationId) {
       await orgService.createOrganization({
         userId: user.id,
-        userEmail: user.email ?? user.username ?? "", // TODO: look into
+        userEmail: user.email ?? user.username,
         orgName: organizationName
       });
     }
@@ -219,7 +219,7 @@ export const authSignupServiceFactory = ({
     encryptedPrivateKeyTag,
     authorization
   }: TCompleteAccountInviteDTO) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findUserByUsername(email);
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }

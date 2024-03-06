@@ -99,7 +99,7 @@ export const authPaswordServiceFactory = ({
    * Email password reset flow via email. Step 1 send email
    */
   const sendPasswordResetEmail = async (email: string) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findUserByUsername(email);
     // ignore as user is not found to avoid an outside entity to identify infisical registered accounts
     if (!user || (user && !user.isAccepted)) return;
 
@@ -126,7 +126,7 @@ export const authPaswordServiceFactory = ({
    * */
   const verifyPasswordResetEmail = async (email: string, code: string) => {
     const cfg = getConfig();
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findUserByUsername(email);
     // ignore as user is not found to avoid an outside entity to identify infisical registered accounts
     if (!user || (user && !user.isAccepted)) {
       throw new Error("Failed email verification for pass reset");

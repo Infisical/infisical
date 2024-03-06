@@ -16,7 +16,7 @@ export type TUserDALFactory = ReturnType<typeof userDALFactory>;
 
 export const userDALFactory = (db: TDbClient) => {
   const userOrm = ormify(db, TableName.Users);
-  const findUserByEmail = async (email: string, tx?: Knex) => userOrm.findOne({ email }, tx);
+  const findUserByUsername = async (username: string, tx?: Knex) => userOrm.findOne({ username }, tx);
 
   // USER ENCRYPTION FUNCTIONS
   // -------------------------
@@ -121,7 +121,7 @@ export const userDALFactory = (db: TDbClient) => {
 
   return {
     ...userOrm,
-    findUserByEmail,
+    findUserByUsername,
     findUserEncKeyByUsername,
     findUserEncKeyByUserId,
     updateUserEncryptionByUserId,

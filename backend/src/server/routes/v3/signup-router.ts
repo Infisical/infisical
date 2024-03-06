@@ -139,6 +139,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         event: PostHogEventTypes.UserSignedUp,
         distinctId: user.username ?? "",
         properties: {
+          username: user.username,
           email: user.email ?? "",
           attributionSource: req.body.attributionSource
         }

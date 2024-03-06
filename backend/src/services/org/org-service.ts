@@ -370,7 +370,7 @@ export const orgServiceFactory = ({
       });
     }
     const invitee = await orgDAL.transaction(async (tx) => {
-      const inviteeUser = await userDAL.findUserByEmail(inviteeEmail, tx);
+      const inviteeUser = await userDAL.findUserByUsername(inviteeEmail, tx);
       if (inviteeUser) {
         // if user already exist means its already part of infisical
         // Thus the signup flow is not needed anymore
@@ -461,7 +461,7 @@ export const orgServiceFactory = ({
    * magic link and issue a temporary signup token for user to complete setting up their account
    */
   const verifyUserToOrg = async ({ orgId, email, code }: TVerifyUserToOrgDTO) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findUserByUsername(email);
     if (!user) {
       throw new BadRequestError({ message: "Invalid request", name: "Verify user to org" });
     }
