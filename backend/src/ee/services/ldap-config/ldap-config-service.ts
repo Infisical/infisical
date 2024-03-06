@@ -19,6 +19,8 @@ import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { normalizeUsername } from "@app/services/user/user-fns";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -34,6 +36,7 @@ type TLdapConfigServiceFactoryDep = {
   >;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -45,6 +48,7 @@ export const ldapConfigServiceFactory = ({
   orgDAL,
   orgBotDAL,
   userDAL,
+  userAliasDAL,
   permissionService,
   licenseService
 }: TLdapConfigServiceFactoryDep) => {
@@ -289,6 +293,8 @@ export const ldapConfigServiceFactory = ({
     const boot = async () => {
       try {
         const organization = await orgDAL.findOne({ slug: organizationSlug });
+        if (!organization) throw new BadRequestError({ message: "Org not found" });
+
         const ldapConfig = await getLdapCfg({
           orgId: organization.id,
           isActive: true
@@ -302,7 +308,7 @@ export const ldapConfigServiceFactory = ({
             bindCredentials: ldapConfig.bindPass,
             searchBase: ldapConfig.searchBase,
             searchFilter: "(uid={{username}})",
-            searchAttributes: ["uid", "givenName", "sn"],
+            searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
             ...(ldapConfig.caCert !== ""
               ? {
                   tlsOptions: {
@@ -328,23 +334,25 @@ export const ldapConfigServiceFactory = ({
     });
   };
 
-  const ldapLogin = async ({ username, firstName, lastName, orgId, relayState }: TLdapLoginDTO) => {
+  const ldapLogin = async ({ externalId, username, firstName, lastName, emails, orgId, relayState }: TLdapLoginDTO) => {
+    // externalId + username
     const appCfg = getConfig();
-    let user = await userDAL.findOne({
-      username,
-      orgId
+    let userAlias = await userAliasDAL.findOne({
+      externalId,
+      orgId,
+      aliasType: AuthMethod.LDAP
     });
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new BadRequestError({ message: "Org not found" });
 
-    if (user) {
+    if (userAlias) {
       await userDAL.transaction(async (tx) => {
-        const [orgMembership] = await orgDAL.findMembership({ userId: user.id }, { tx });
+        const [orgMembership] = await orgDAL.findMembership({ userId: userAlias.userId }, { tx });
         if (!orgMembership) {
           await orgDAL.createMembership(
             {
-              userId: user.id,
+              userId: userAlias.userId,
               orgId,
               role: OrgMembershipRole.Member,
               status: OrgMembershipStatus.Accepted
@@ -362,11 +370,12 @@ export const ldapConfigServiceFactory = ({
         }
       });
     } else {
-      user = await userDAL.transaction(async (tx) => {
+      userAlias = await userDAL.transaction(async (tx) => {
+        const uniqueUsername = await normalizeUsername(username, userDAL);
         const newUser = await userDAL.create(
           {
-            username,
-            orgId,
+            username: uniqueUsername,
+            email: emails[0],
             firstName,
             lastName,
             authMethods: [AuthMethod.LDAP],
@@ -374,6 +383,18 @@ export const ldapConfigServiceFactory = ({
           },
           tx
         );
+        const newUserAlias = await userAliasDAL.create(
+          {
+            userId: newUser.id,
+            username,
+            aliasType: AuthMethod.LDAP,
+            externalId,
+            emails,
+            orgId
+          },
+          tx
+        );
+
         await orgDAL.createMembership(
           {
             userId: newUser.id,
@@ -384,9 +405,12 @@ export const ldapConfigServiceFactory = ({
           tx
         );
 
-        return newUser;
+        return newUserAlias;
       });
     }
+
+    // query for user here
+    const user = await userDAL.findOne({ id: userAlias.userId });
 
     const isUserCompleted = Boolean(user.isAccepted);
 

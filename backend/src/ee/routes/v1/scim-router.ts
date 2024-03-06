@@ -237,7 +237,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
 
       const user = await req.server.services.scim.createScimUser({
         username: req.body.userName,
-        email: primaryEmail as string,
+        email: primaryEmail,
         firstName: req.body.name.givenName,
         lastName: req.body.name.familyName,
         orgId: req.permission.orgId as string

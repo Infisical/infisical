@@ -57,7 +57,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findMembershipsByEmail = async (projectId: string, emails: string[]) => {
+  const findMembershipsByUsername = async (projectId: string, usernames: string[]) => {
     try {
       const members = await db(TableName.ProjectMembership)
         .where({ projectId })
@@ -70,18 +70,18 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.ProjectMembership),
           db.ref("id").withSchema(TableName.Users).as("userId"),
-          db.ref("email").withSchema(TableName.Users)
+          db.ref("username").withSchema(TableName.Users)
         )
-        .whereIn("email", emails)
+        .whereIn("username", usernames)
         .where({ isGhost: false });
-      return members.map(({ userId, email, ...data }) => ({
+      return members.map(({ userId, username, ...data }) => ({
         ...data,
-        user: { id: userId, email }
+        user: { id: userId, username }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find members by email" });
     }
   };
 
-  return { ...projectMemberOrm, findAllProjectMembers, findProjectGhostUser, findMembershipsByEmail };
+  return { ...projectMemberOrm, findAllProjectMembers, findProjectGhostUser, findMembershipsByUsername };
 };

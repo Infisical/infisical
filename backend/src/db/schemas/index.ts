@@ -53,6 +53,7 @@ export * from "./service-tokens";
 export * from "./super-admin";
 export * from "./trusted-ips";
 export * from "./user-actions";
+export * from "./user-aliases";
 export * from "./user-encryption-keys";
 export * from "./users";
 export * from "./webhooks";

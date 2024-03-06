@@ -441,7 +441,7 @@ export const orgServiceFactory = ({
       recipients: [inviteeEmail],
       substitutions: {
         inviterFirstName: user.firstName,
-        inviterEmail: user.email,
+        inviterUsername: user.username,
         organizationName: org?.name,
         email: inviteeEmail,
         organizationId: org?.id.toString(),

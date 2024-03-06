@@ -25,24 +25,38 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
+  await createOnUpdateTrigger(knex, TableName.LdapConfig);
+
+  if (!(await knex.schema.hasTable(TableName.UserAliases))) {
+    await knex.schema.createTable(TableName.UserAliases, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.uuid("userId").notNullable();
+      t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.string("username").notNullable();
+      t.string("aliasType").notNullable();
+      t.string("externalId").notNullable();
+      t.specificType("emails", "text[]");
+      t.uuid("orgId").nullable();
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+      t.timestamps(true, true, true);
+    });
+  }
+
+  await createOnUpdateTrigger(knex, TableName.UserAliases);
+
   await knex.schema.alterTable(TableName.Users, (t) => {
-    t.string("username").notNullable();
-    t.uuid("orgId").nullable();
-    t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+    t.string("username").unique().notNullable();
     t.string("email").nullable().alter();
-    t.unique(["username", "orgId"]);
   });
 
   await knex(TableName.Users).update("username", knex.ref("email"));
-
-  await createOnUpdateTrigger(knex, TableName.LdapConfig);
 }
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.LdapConfig);
+  await knex.schema.dropTableIfExists(TableName.UserAliases);
   await knex.schema.alterTable(TableName.Users, (t) => {
     t.dropColumn("username");
-    t.dropColumn("orgId");
     // t.string("email").notNullable().alter();
   });
   await dropOnUpdateTrigger(knex, TableName.LdapConfig);

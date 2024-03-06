@@ -134,7 +134,7 @@ export const projectMembershipServiceFactory = ({
       const appCfg = getConfig();
       await smtpService.sendMail({
         template: SmtpTemplates.WorkspaceInvite,
-        subjectLine: "Infisical workspace invitation",
+        subjectLine: "Infisical project invitation",
         recipients: invitees.filter((i) => i.email).map((i) => i.email as string),
         substitutions: {
           workspaceName: project.name,
@@ -206,10 +206,8 @@ export const projectMembershipServiceFactory = ({
       const appCfg = getConfig();
       await smtpService.sendMail({
         template: SmtpTemplates.WorkspaceInvite,
-        subjectLine: "Infisical workspace invitation",
-        recipients: orgMembers
-          .map(({ email }) => email)
-          .filter((email): email is string => email !== null && email !== undefined),
+        subjectLine: "Infisical project invitation",
+        recipients: orgMembers.filter((i) => i.email).map((i) => i.email as string),
         substitutions: {
           workspaceName: project.name,
           callback_url: `${appCfg.SITE_URL}/login`
@@ -237,11 +235,14 @@ export const projectMembershipServiceFactory = ({
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
 
+    const usernamesAndEmails = [...emails, ...usernames];
+
     const orgMembers = await orgDAL.findOrgMembersByUsername(project.orgId, [
-      ...new Set([...emails, ...usernames].map((element) => element.toLowerCase()))
+      ...new Set(usernamesAndEmails.map((element) => element.toLowerCase()))
     ]);
 
-    if (orgMembers.length !== emails.length) throw new BadRequestError({ message: "Some users are not part of org" });
+    if (orgMembers.length !== usernamesAndEmails.length)
+      throw new BadRequestError({ message: "Some users are not part of org" });
 
     if (!orgMembers.length) return [];
 
@@ -320,16 +321,21 @@ export const projectMembershipServiceFactory = ({
     });
 
     if (sendEmails) {
+      const recipients = orgMembers.filter((i) => i.user.email).map((i) => i.user.email as string);
+
       const appCfg = getConfig();
-      await smtpService.sendMail({
-        template: SmtpTemplates.WorkspaceInvite,
-        subjectLine: "Infisical workspace invitation",
-        recipients: orgMembers.filter(({ user }) => user.email).map(({ user }) => user.email as string),
-        substitutions: {
-          workspaceName: project.name,
-          callback_url: `${appCfg.SITE_URL}/login`
-        }
-      });
+
+      if (recipients.length) {
+        await smtpService.sendMail({
+          template: SmtpTemplates.WorkspaceInvite,
+          subjectLine: "Infisical project invitation",
+          recipients: orgMembers.filter((i) => i.user.email).map((i) => i.user.email as string),
+          substitutions: {
+            workspaceName: project.name,
+            callback_url: `${appCfg.SITE_URL}/login`
+          }
+        });
+      }
     }
     return members;
   };
@@ -412,7 +418,8 @@ export const projectMembershipServiceFactory = ({
     actor,
     actorOrgId,
     projectId,
-    emails
+    emails,
+    usernames
   }: TDeleteProjectMembershipsDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
@@ -426,9 +433,13 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
-    const projectMembers = await projectMembershipDAL.findMembershipsByEmail(projectId, emails);
+    const usernamesAndEmails = [...emails, ...usernames];
 
-    if (projectMembers.length !== emails.length) {
+    const projectMembers = await projectMembershipDAL.findMembershipsByUsername(projectId, [
+      ...new Set(usernamesAndEmails.map((element) => element.toLowerCase()))
+    ]);
+
+    if (projectMembers.length !== usernamesAndEmails.length) {
       throw new BadRequestError({
         message: "Some users are not part of project",
         name: "Delete project membership"

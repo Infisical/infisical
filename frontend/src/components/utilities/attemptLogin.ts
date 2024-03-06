@@ -21,12 +21,10 @@ interface IsLoginSuccessful {
  */
 const attemptLogin = async ({
   email,
-  orgId,
   password,
   providerAuthToken
 }: {
   email: string;
-  orgId?: string;
   password: string;
   providerAuthToken?: string;
 }): Promise<IsLoginSuccessful> => {
@@ -40,7 +38,6 @@ const attemptLogin = async ({
 
   const { serverPublicKey, salt } = await login1({
     email,
-    orgId,
     clientPublicKey,
     providerAuthToken
   });
@@ -62,7 +59,6 @@ const attemptLogin = async ({
     tag
   } = await login2({
     email,
-    orgId,
     clientProof,
     providerAuthToken
   });

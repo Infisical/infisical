@@ -20,9 +20,11 @@ export type TUpdateLdapCfgDTO = Partial<{
   TOrgPermission;
 
 export type TLdapLoginDTO = {
+  externalId: string;
   username: string;
   firstName: string;
   lastName: string;
+  emails: string[];
   orgId: string;
   relayState?: string;
 };

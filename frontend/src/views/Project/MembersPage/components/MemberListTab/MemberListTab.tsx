@@ -111,7 +111,7 @@ export const MemberListTab = () => {
     const orgUser = (orgUsers || []).find(({ id }) => id === orgMembershipId);
     if (!orgUser) return;
 
-    try {
+    try { // TODO: update
       if (currentWorkspace.version === ProjectVersion.V1) {
         await addUserToWorkspace({
           workspaceId,
@@ -122,7 +122,7 @@ export const MemberListTab = () => {
       } else if (currentWorkspace.version === ProjectVersion.V2) {
         await addUserToWorkspaceNonE2EE({
           projectId: workspaceId,
-          emails: [orgUser.user.username]
+          usernames: [orgUser.user.username]
         });
       } else {
         createNotification({
@@ -148,11 +148,11 @@ export const MemberListTab = () => {
   };
 
   const handleRemoveUser = async () => {
-    const email = (popUp?.removeMember?.data as { email: string })?.email;
+    const username = (popUp?.removeMember?.data as { username: string })?.username;
     if (!currentOrg?.id) return;
 
     try {
-      await removeUserFromWorkspace({ workspaceId, emails: [email] });
+      await removeUserFromWorkspace({ workspaceId, usernames: [username] });
       createNotification({
         text: "Successfully removed user from project",
         type: "success"
@@ -222,12 +222,12 @@ export const MemberListTab = () => {
   );
 
   const filteredOrgUsers = useMemo(() => {
-    const wsUserEmails = new Map();
+    const wsUserUsernames = new Map();
     members?.forEach((member) => {
-      wsUserEmails.set(member.user.email, true);
+      wsUserUsernames.set(member.user.username, true);
     });
     return (orgUsers || []).filter(
-      ({ status, user: u }) => status === "accepted" && !wsUserEmails.has(u.email)
+      ({ status, user: u }) => status === "accepted" && !wsUserUsernames.has(u.username)
     );
   }, [orgUsers, members]);
 
@@ -322,7 +322,7 @@ export const MemberListTab = () => {
                                   className="ml-4"
                                   isDisabled={userId === u?.id || !isAllowed}
                                   onClick={() =>
-                                    handlePopUpOpen("removeMember", { email: u.email })
+                                    handlePopUpOpen("removeMember", { username: u.username })
                                   }
                                 >
                                   <FontAwesomeIcon icon={faXmark} />
@@ -354,20 +354,20 @@ export const MemberListTab = () => {
             <form onSubmit={handleSubmit(onAddMember)}>
               <Controller
                 control={control}
-                defaultValue={filteredOrgUsers?.[0]?.user?.email}
+                defaultValue={filteredOrgUsers?.[0]?.user?.username}
                 name="orgMembershipId"
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl label="Email" isError={Boolean(error)} errorText={error?.message}>
+                  <FormControl label="Username" isError={Boolean(error)} errorText={error?.message}>
                     <Select
                       position="popper"
                       className="w-full"
-                      defaultValue={filteredOrgUsers?.[0]?.user?.email}
+                      defaultValue={filteredOrgUsers?.[0]?.user?.username}
                       value={field.value}
                       onValueChange={field.onChange}
                     >
                       {filteredOrgUsers.map(({ id: orgUserId, user: u }) => (
                         <SelectItem value={orgUserId} key={`org-membership-join-${orgUserId}`}>
-                          {u?.email}
+                          {u?.username}
                         </SelectItem>
                       ))}
                     </Select>

@@ -78,7 +78,7 @@ export type AddUserToWsDTOE2EE = {
 
 export type AddUserToWsDTONonE2EE = {
   projectId: string;
-  emails: string[];
+  usernames: string[];
 };
 
 export type UpdateOrgUserRoleDTO = {

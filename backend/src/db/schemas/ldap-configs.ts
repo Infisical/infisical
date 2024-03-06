@@ -27,5 +27,5 @@ export const LdapConfigsSchema = z.object({
 });
 
 export type TLdapConfigs = z.infer<typeof LdapConfigsSchema>;
-export type TLdapConfigsInsert = Omit<TLdapConfigs, TImmutableDBKeys>;
-export type TLdapConfigsUpdate = Partial<Omit<TLdapConfigs, TImmutableDBKeys>>;
+export type TLdapConfigsInsert = Omit<z.input<typeof LdapConfigsSchema>, TImmutableDBKeys>;
+export type TLdapConfigsUpdate = Partial<Omit<z.input<typeof LdapConfigsSchema>, TImmutableDBKeys>>;

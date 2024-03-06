@@ -18,6 +18,7 @@ export type TDeleteProjectMembershipOldDTO = {
 
 export type TDeleteProjectMembershipsDTO = {
   emails: string[];
+  usernames: string[];
 } & TProjectPermission;
 
 export type TAddUsersToWorkspaceDTO = {

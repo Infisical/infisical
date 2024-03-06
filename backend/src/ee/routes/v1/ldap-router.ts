@@ -34,9 +34,11 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         async (req: IncomingMessage, user, cb) => {
         try {
           const { isUserCompleted, providerAuthToken } = await server.services.ldap.ldapLogin({
+            externalId: user.uidNumber,
             username: user.uid,
             firstName: user.givenName,
             lastName: user.sn,
+            emails: user.mail ? [user.mail] : [],
             relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
             orgId: (req as unknown as FastifyRequest).ldapConfig.organization
           });

@@ -104,6 +104,7 @@ import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
+import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 
@@ -128,6 +129,7 @@ export const registerRoutes = async (
 
   // db layers
   const userDAL = userDALFactory(db);
+  const userAliasDAL = userAliasDALFactory(db);
   const authDAL = authDALFactory(db);
   const authTokenDAL = tokenDALFactory(db);
   const orgDAL = orgDALFactory(db);
@@ -243,6 +245,7 @@ export const registerRoutes = async (
     orgDAL,
     orgBotDAL,
     userDAL,
+    userAliasDAL,
     permissionService,
     licenseService
   });

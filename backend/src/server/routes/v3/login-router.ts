@@ -13,7 +13,6 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         email: z.string().trim(),
-        orgId: z.string().optional(),
         providerAuthToken: z.string().trim().optional(),
         clientPublicKey: z.string().trim()
       }),
@@ -27,7 +26,6 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { serverPublicKey, salt } = await server.services.login.loginGenServerPublicKey({
         email: req.body.email,
-        userOrgId: req.body.orgId,
         clientPublicKey: req.body.clientPublicKey,
         providerAuthToken: req.body.providerAuthToken
       });
@@ -45,7 +43,6 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         email: z.string().trim(),
-        orgId: z.string().optional(),
         providerAuthToken: z.string().trim().optional(),
         clientProof: z.string().trim()
       }),
@@ -74,7 +71,6 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
 
       const data = await server.services.login.loginExchangeClientProof({
         email: req.body.email,
-        userOrgId: req.body.orgId,
         ip: req.realIp,
         userAgent,
         providerAuthToken: req.body.providerAuthToken,
