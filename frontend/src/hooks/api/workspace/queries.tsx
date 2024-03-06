@@ -199,19 +199,19 @@ export const useGetWorkspaceIntegrations = (workspaceId: string) =>
   });
 
 export const createWorkspace = ({
-  organizationId,
+  organizationSlug,
   projectName
 }: CreateWorkspaceDTO): Promise<{ data: { project: Workspace } }> => {
-  return apiRequest.post("/api/v2/workspace", { projectName, organizationId });
+  return apiRequest.post("/api/v2/workspace", { projectName, organizationSlug });
 };
 
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{ data: { project: Workspace } }, {}, CreateWorkspaceDTO>({
-    mutationFn: async ({ organizationId, projectName }) =>
+    mutationFn: async ({ organizationSlug, projectName }) =>
       createWorkspace({
-        organizationId,
+        organizationSlug,
         projectName
       }),
     onSuccess: () => {
