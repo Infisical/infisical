@@ -75,7 +75,7 @@ export const CreateSecretForm = ({
     const isEnvironmentsSelected = environmentsSelected.length;
 
     if (!isEnvironmentsSelected) {
-      createNotification({ type: "error", text: "Select atleast one environment" });
+      createNotification({ type: "error", text: "Select at least one environment" });
       return;
     }
 
