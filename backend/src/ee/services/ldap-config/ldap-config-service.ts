@@ -335,7 +335,6 @@ export const ldapConfigServiceFactory = ({
   };
 
   const ldapLogin = async ({ externalId, username, firstName, lastName, emails, orgId, relayState }: TLdapLoginDTO) => {
-    // externalId + username
     const appCfg = getConfig();
     let userAlias = await userAliasDAL.findOne({
       externalId,
@@ -409,7 +408,6 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    // query for user here
     const user = await userDAL.findOne({ id: userAlias.userId });
 
     const isUserCompleted = Boolean(user.isAccepted);
