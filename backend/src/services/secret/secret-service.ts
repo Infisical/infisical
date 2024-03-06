@@ -375,6 +375,10 @@ export const secretServiceFactory = ({
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
+    if (inputSecret.newSecretName === "") {
+      throw new BadRequestError({ message: "New secret name cannot be empty" });
+    }
+
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
     const folderId = folder.id;
