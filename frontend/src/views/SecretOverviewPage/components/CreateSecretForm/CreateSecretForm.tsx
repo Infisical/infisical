@@ -143,8 +143,8 @@ export const CreateSecretForm = ({
     <Modal isOpen={isOpen} onOpenChange={onTogglePopUp}>
       <ModalContent
         className="max-h-[80vh] overflow-y-auto"
-        title="Add Secrets"
-        subTitle="Add secrets in all environments at once."
+        title="Bulk Create & Update"
+        subTitle="Create & update a secret across many environments"
       >
         <form onSubmit={handleSubmit(handleFormSubmit)}>
           <FormControl label="Key" isError={Boolean(errors?.key)} errorText={errors?.key?.message}>
