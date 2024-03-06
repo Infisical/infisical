@@ -291,7 +291,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </div>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
-                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.email}</div>
+                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.username}</div>
                         {orgs?.map((org) => {
                           return (
                             <DropdownMenuItem key={org.id}>
@@ -366,7 +366,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </div>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
-                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.email}</div>
+                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.username}</div>
                         <Link href="/personal-settings">
                           <DropdownMenuItem>Personal Settings</DropdownMenuItem>
                         </Link>
