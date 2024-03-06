@@ -529,8 +529,6 @@ export const projectQueueFactory = ({
           throw new Error("Parts of the upgrade failed. Some secrets were not updated");
         }
 
-        throw new Error("It worked! (This is a test error message)");
-
         await projectDAL.setProjectUpgradeStatus(data.projectId, null, tx);
 
         //  await new Promise((resolve) => setTimeout(resolve, 15_000));
