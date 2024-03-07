@@ -68,6 +68,7 @@ type GetAllSecretsParameters struct {
 	Environment              string
 	EnvironmentPassedViaFlag bool
 	InfisicalToken           string
+	UniversalAuthAccessToken string
 	TagSlugs                 string
 	WorkspaceId              string
 	SecretsPath              string
@@ -95,4 +96,9 @@ type DeleteFolderParameters struct {
 	Environment    string
 	FolderPath     string
 	InfisicalToken string
+}
+
+type ExpandSecretsAuthentication struct {
+	InfisicalToken           string
+	UniversalAuthAccessToken string
 }
