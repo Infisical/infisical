@@ -9,10 +9,11 @@ import { useToggle } from "@app/hooks";
 type Props = {
   value: string;
   hoverText: string;
+  notificationText: string;
   children: React.ReactNode;
 };
 
-export const CopyButton = ({ value, children, hoverText }: Props) => {
+export const CopyButton = ({ value, children, hoverText, notificationText }: Props) => {
   const [isProjectIdCopied, setIsProjectIdCopied] = useToggle(false);
   const { createNotification } = useNotificationContext();
 
@@ -25,7 +26,7 @@ export const CopyButton = ({ value, children, hoverText }: Props) => {
     navigator.clipboard.writeText(value);
 
     createNotification({
-      text: "Copied Project ID to clipboard",
+      text: notificationText,
       type: "success"
     });
 
@@ -43,7 +44,7 @@ export const CopyButton = ({ value, children, hoverText }: Props) => {
       onClick={copyToClipboard}
     >
       {children}
-      <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
+      <span className="absolute -left-8 -top-20 hidden translate-y-full justify-center rounded-md bg-bunker-800 py-2 px-3 text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
         {hoverText}
       </span>
     </Button>
