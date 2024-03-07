@@ -131,20 +131,48 @@ Default re-sync interval is every 1 minute.
 </Accordion>
 
 <Accordion title="authentication.universalAuthMachineIdentity">
-The universal machine identity authentication method is used to authenticate with Infisical. The client ID and client secret needs to be stored in a Kubernetes secret. This block defines the reference to the name and namespace of secret that stores these credentials.
+  The universal machine identity authentication method is used to authenticate with Infisical. The client ID and client secret needs to be stored in a Kubernetes secret. This block defines the reference to the name and namespace of secret that stores these credentials.
 
-#### 1. Create a machine identity
-You need to create a machine identity, and give it access to the project(s) you want to interact with. You can [read more about machine identities here](/documentation/platform/identities/universal-auth).
+  #### 1. Create a machine identity
+  You need to create a machine identity, and give it access to the project(s) you want to interact with. You can [read more about machine identities here](/documentation/platform/identities/universal-auth).
 
-#### 2. Create Kubernetes secret containing machine identity credentials
+  #### 2. Create Kubernetes secret containing machine identity credentials
 
-``` bash
-  kubectl create secret generic universal-auth-credentials --from-literal=clientId="<your-identity-client-id>" --from-literal=clientSecret="<your-identity-client-secret>"
-```
+  Once you have created your machine identity and added it to your project(s), you will need to create a Kubernetes secret containing the identity credentials.
+  To quickly create a Kubernetes secret containing the identity credentials, you can run the command below. Make sure you replace `<your-identity-client-id>` with the identity client ID and `<your-identity-client-secret>` with the identity client secret.
 
+  ``` bash
+    kubectl create secret generic universal-auth-credentials --from-literal=clientId="<your-identity-client-id>" --from-literal=clientSecret="<your-identity-client-secret>"
+  ```
+
+  #### 3. Add reference for the Kubernetes secret containing the identity credentials
+  Once the secret is created, add the name and namespace of the secret that was just created under `authentication.serviceToken.universalAuthMachineIdentity` field in the InfisicalSecret resource.
+
+  <Info>
+    Make sure to also populate the `secretsScope` field with the project slug _`projectSlug`_, environment slug _`envSlug`_, and secrets path _`secretsPath`_ that you want to fetch secrets from. Please see the example below.
+  </Info>
+
+  ## Example
+  ```yaml
+  apiVersion: secrets.infisical.com/v1alpha1
+  kind: InfisicalSecret
+  metadata:
+    name: infisicalsecret-sample-crd
+  spec:
+    authentication:
+        universalAuthMachineIdentity:
+            secretsScope:
+                projectSlug: <project-slug> # <-- project slug
+                envSlug: <env-slug> # "dev", "staging", "prod", etc..
+                secretsPath: "<secrets-path>" # Root is "/"
+            credentials:
+                secretName: universal-auth-credentials # <-- name of the Kubernetes secret that stores our machine identity credentials
+                secretNamespace: default # <-- namespace of the Kubernetes secret that stores our machine identity credentials
+    ...
+  ```
 </Accordion>
 
-<Accordion title="authentication.serviceToken.serviceTokenSecretReference">
+<Accordion title="authentication.serviceToken">
   The service token required to authenticate with Infisical needs to be stored in a Kubernetes secret. This block defines the reference to the name and namespace of secret that stores this service token. 
   Follow the instructions below to create and store the service token in a Kubernetes secrets and reference it in your CRD.
 
@@ -165,6 +193,10 @@ You need to create a machine identity, and give it access to the project(s) you 
 
   Once the secret is created, add the name and namespace of the secret that was just created under `authentication.serviceToken.serviceTokenSecretReference` field in the InfisicalSecret resource.
 
+  <Info>
+    Make sure to also populate the `secretsScope` field with the, environment slug _`envSlug`_, and secrets path _`secretsPath`_ that you want to fetch secrets from. Please see the example below.
+  </Info>
+
   ## Example
   ```yaml
   apiVersion: secrets.infisical.com/v1alpha1
@@ -177,23 +209,11 @@ You need to create a machine identity, and give it access to the project(s) you 
         serviceTokenSecretReference:
           secretName: service-token # <-- name of the Kubernetes secret that stores our service token
           secretNamespace: option # <-- namespace of the Kubernetes secret that stores our service token
+        secretsScope:
+          envSlug: <env-slug> # "dev", "staging", "prod", etc..
+          secretsPath: <secrets-path> # Root is "/"
     ...
   ```
-</Accordion>
-
-<Accordion title="authentication.serviceToken.secretsScope">
-  This block defines the scope of what secrets should be fetched. This is needed as your service token can have access to multiple folders and environments.
-  A scope is defined by `envSlug` and `secretsPath`. 
-  
-  #### envSlug
-
-  This refers to the short hand name of an environment. For example for the `development` environment the environment slug is `dev`. You can locate the slug of your environment by heading to your project settings in the Infisical dashboard.
-
-  #### secretsPath
-  
-  secretsPath is the path to the secret in the given environment. For example a path of `/` would refer to the root of the environment whereas `/folder1` would refer to the secrets in folder1 from the root.
-
-  Both fields are required.
 </Accordion>
 
 <Accordion title="managedSecretReference">
