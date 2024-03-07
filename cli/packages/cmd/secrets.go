@@ -80,7 +80,9 @@ var secretsCmd = &cobra.Command{
 		}
 
 		if shouldExpandSecrets {
-			secrets = util.ExpandSecrets(secrets, infisicalToken, "")
+			secrets = util.ExpandSecrets(secrets, models.ExpandSecretsAuthentication{
+				InfisicalToken: infisicalToken,
+			}, "")
 		}
 
 		visualize.PrintAllSecretDetails(secrets)
