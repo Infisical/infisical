@@ -7,7 +7,6 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useToggle } from "@app/hooks";
 import { useRenameWorkspace } from "@app/hooks/api";
 
 import { CopyButton } from "./CopyButton";
@@ -22,7 +21,6 @@ export const ProjectNameChangeSection = () => {
   const { createNotification } = useNotificationContext();
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync, isLoading } = useRenameWorkspace();
-  const [isProjectIdCopied, setIsProjectIdCopied] = useToggle(false);
 
   const { handleSubmit, control, reset } = useForm<FormData>({ resolver: yupResolver(formSchema) });
 
@@ -33,16 +31,6 @@ export const ProjectNameChangeSection = () => {
       });
     }
   }, [currentWorkspace]);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-
-    if (isProjectIdCopied) {
-      timer = setTimeout(() => setIsProjectIdCopied.off(), 2000);
-    }
-
-    return () => clearTimeout(timer);
-  }, [setIsProjectIdCopied]);
 
   const onFormSubmit = async ({ name }: FormData) => {
     try {
