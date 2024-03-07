@@ -61,23 +61,45 @@ Once you have installed the operator to your cluster, you'll need to create a `I
 apiVersion: secrets.infisical.com/v1alpha1
 kind: InfisicalSecret
 metadata:
-  # Name of of this InfisicalSecret resource
-  name: infisicalsecret-sample
+    name: infisicalsecret-sample
+    labels:
+        label-to-be-passed-to-managed-secret: sample-value
+    annotations:
+        example.com/annotation-to-be-passed-to-managed-secret: "sample-value"
 spec:
-  # The host that should be used to pull secrets from. If left empty, the value specified in Global configuration will be used
-  hostAPI: https://app.infisical.com/api
-  resyncInterval: 60
-  authentication:
-    serviceToken:
-      serviceTokenSecretReference:
-        secretName: service-token
+    hostAPI: https://app.infisical.com/api
+    resyncInterval: 10
+    authentication:
+        # Make sure to only have 1 authentication method defined, serviceAccount/serviceToken/universalAuthMachineIdentity.
+        # If you have multiple authentication methods defined, it may cause issues.
+        universalAuthMachineIdentity:
+            secretsScope:
+                projectSlug: <project-slug>
+                envSlug: <env-slug> # "dev", "staging", "prod", etc..
+                secretsPath: "<secrets-path>" # Root is "/"
+            credentials:
+                secretName: universal-auth-credentials
+                secretNamespace: default
+
+        serviceAccount:
+            serviceAccountSecretReference:
+                secretName: service-account
+                secretNamespace: default
+            projectId: "<project-id>"
+            environmentName: "<env-name>"
+
+        serviceToken:
+            serviceTokenSecretReference:
+                secretName: service-token
+                secretNamespace: default
+            secretsScope:
+                envSlug: <env-slug>
+                secretsPath: <secrets-path> # Root is "/"
+
+    managedSecretReference:
+        secretName: managed-secret
         secretNamespace: default
-      secretsScope:
-        envSlug: dev
-        secretsPath: "/"
-  managedSecretReference:
-    secretName: managed-secret # <-- the name of kubernetes secret that will be created
-    secretNamespace: default # <-- where the kubernetes secret should be created
+        # secretType: kubernetes.io/dockerconfigjson
 ```
 ### InfisicalSecret CRD properties
 
@@ -105,11 +127,25 @@ Default re-sync interval is every 1 minute.
 </Accordion>
 
 <Accordion title="authentication">
-  This block defines the method that will be used to authenticate with Infisical so that secrets can be fetched. Currently, only [Service Tokens](../../documentation/platform/token) can be used to authenticate with Infisical. 
+  This block defines the method that will be used to authenticate with Infisical so that secrets can be fetched
+</Accordion>
+
+<Accordion title="authentication.universalAuthMachineIdentity">
+The universal machine identity authentication method is used to authenticate with Infisical. The client ID and client secret needs to be stored in a Kubernetes secret. This block defines the reference to the name and namespace of secret that stores these credentials.
+
+#### 1. Create a machine identity
+You need to create a machine identity, and give it access to the project(s) you want to interact with. You can [read more about machine identities here](/documentation/platform/identities/universal-auth).
+
+#### 2. Create Kubernetes secret containing machine identity credentials
+
+``` bash
+  kubectl create secret generic universal-auth-credentials --from-literal=clientId="<your-identity-client-id>" --from-literal=clientSecret="<your-identity-client-secret>"
+```
+
 </Accordion>
 
 <Accordion title="authentication.serviceToken.serviceTokenSecretReference">
-  The service token required to authenticate with Infisical needs to be stored in a Kubernetes secret. This block defines the reference to the name and name space of secret that stores this service token. 
+  The service token required to authenticate with Infisical needs to be stored in a Kubernetes secret. This block defines the reference to the name and namespace of secret that stores this service token. 
   Follow the instructions below to create and store the service token in a Kubernetes secrets and reference it in your CRD.
 
   #### 1. Generate service token 
@@ -122,7 +158,7 @@ Default re-sync interval is every 1 minute.
   To quickly create a Kubernetes secret containing the generated service token, you can run the command below. Make sure you replace `<your-service-token-here>` with your service token.
 
   ``` bash
-  kubectl create secret generic service-token --from-literal=infisicalToken=<your-service-token-here> 
+  kubectl create secret generic service-token --from-literal=infisicalToken="<your-service-token-here>"
   ```
 
   #### 3. Add reference for the Kubernetes secret containing service token 
