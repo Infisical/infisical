@@ -74,10 +74,18 @@ export const ProjectNameChangeSection = () => {
       <div className="justify-betweens flex">
         <h2 className="mb-8 flex-1 text-xl font-semibold text-mineshaft-100">Project Name</h2>
         <div className="space-x-2">
-          <CopyButton value={currentWorkspace?.slug || ""} hoverText="Click to slug">
+          <CopyButton
+            value={currentWorkspace?.slug || ""}
+            hoverText="Click to project slug"
+            notificationText="Copied project slug to clipboard"
+          >
             Copy Project Slug
           </CopyButton>
-          <CopyButton value={currentWorkspace?.id || ""} hoverText="Click to ID">
+          <CopyButton
+            value={currentWorkspace?.id || ""}
+            hoverText="Click to project ID"
+            notificationText="Copied project ID to clipboard"
+          >
             Copy Project ID
           </CopyButton>
         </div>
