@@ -58,6 +58,7 @@ export const auditLogServiceFactory = ({
     if (data.event.type !== EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH) {
       if (!data.projectId && !data.orgId) throw new BadRequestError({ message: "Must either project id or org id" });
     }
+
     return auditLogQueue.pushToLog(data);
   };
 

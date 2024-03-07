@@ -21,13 +21,15 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 enum AuthProvider {
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
-  JUMPCLOUD_SAML = "jumpcloud-saml"
+  JUMPCLOUD_SAML = "jumpcloud-saml",
+  GOOGLE_SAML = "google-saml"
 }
 
 const ssoAuthProviders = [
   { label: "Okta SAML", value: AuthProvider.OKTA_SAML },
   { label: "Azure SAML", value: AuthProvider.AZURE_SAML },
-  { label: "JumpCloud SAML", value: AuthProvider.JUMPCLOUD_SAML }
+  { label: "JumpCloud SAML", value: AuthProvider.JUMPCLOUD_SAML },
+  { label: "Google SAML", value: AuthProvider.GOOGLE_SAML }
 ];
 
 const schema = yup
@@ -140,7 +142,15 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) 
           issuer: "IdP Entity ID",
           issuerPlaceholder: "xxx"
         };
-
+      case AuthProvider.GOOGLE_SAML:
+        return {
+          acsUrl: "ACS URL",
+          entityId: "SP Entity ID",
+          entryPoint: "SSO URL",
+          entryPointPlaceholder: "https://accounts.google.com/o/saml2/idp?idpid=xxx",
+          issuer: "IdP Entity ID",
+          issuerPlaceholder: "https://accounts.google.com/o/saml2/idp?idpid=xxx"
+        };
       default:
         return {
           acsUrl: "ACS URL",

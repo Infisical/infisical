@@ -25,5 +25,5 @@ export const WebhooksSchema = z.object({
 });
 
 export type TWebhooks = z.infer<typeof WebhooksSchema>;
-export type TWebhooksInsert = Omit<TWebhooks, TImmutableDBKeys>;
-export type TWebhooksUpdate = Partial<Omit<TWebhooks, TImmutableDBKeys>>;
+export type TWebhooksInsert = Omit<z.input<typeof WebhooksSchema>, TImmutableDBKeys>;
+export type TWebhooksUpdate = Partial<Omit<z.input<typeof WebhooksSchema>, TImmutableDBKeys>>;

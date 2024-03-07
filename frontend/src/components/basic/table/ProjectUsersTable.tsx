@@ -59,8 +59,8 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
   const workspaceId = router.query.id as string;
   // Delete the row in the table (e.g. a user)
   // #TODO: Add a pop-up that warns you that the user is going to be deleted.
-  const handleDelete = async (membershipId: string) => {
-    await deleteUserFromWorkspaceMutateAsync({ membershipId, workspaceId });
+  const handleDelete = async (email: string) => {
+    await deleteUserFromWorkspaceMutateAsync({ emails: [email], workspaceId });
   };
 
   const handleRoleUpdate = async (index: number, e: string) => {
@@ -368,7 +368,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
                     myRole !== "member" ? (
                       <div className="mt-0.5 flex items-center opacity-50 hover:opacity-100">
                         <Button
-                          onButtonPressed={() => handleDelete(row.membershipId)}
+                          onButtonPressed={() => handleDelete(row.email)}
                           color="red"
                           size="icon-sm"
                           icon={faX}

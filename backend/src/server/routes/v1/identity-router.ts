@@ -2,14 +2,16 @@ import { z } from "zod";
 
 import { IdentitiesSchema, OrgMembershipRole } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerIdentityRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Create identity",
       security: [
@@ -49,6 +51,17 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.MachineIdentityCreated,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          orgId: req.body.organizationId,
+          name: identity.name,
+          identityId: identity.id,
+          ...req.auditLogInfo
+        }
+      });
+
       return { identity };
     }
   });
@@ -56,7 +69,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "PATCH",
     url: "/:identityId",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Update identity",
       security: [
@@ -105,7 +118,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/:identityId",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Delete identity",
       security: [

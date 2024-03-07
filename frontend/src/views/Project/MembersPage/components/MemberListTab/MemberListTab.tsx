@@ -44,7 +44,8 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
-  useAddUserToWs,
+  useAddUserToWsE2EE,
+  useAddUserToWsNonE2EE,
   useDeleteUserFromWorkspace,
   useGetOrgUsers,
   useGetProjectRoles,
@@ -54,6 +55,7 @@ import {
   useUploadWsKey
 } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 const addMemberFormSchema = z.object({
   orgMembershipId: z.string().trim()
@@ -95,12 +97,14 @@ export const MemberListTab = () => {
     formState: { isSubmitting }
   } = useForm<TAddMemberForm>({ resolver: zodResolver(addMemberFormSchema) });
 
-  const { mutateAsync: addUserToWorkspace } = useAddUserToWs();
+  const { mutateAsync: addUserToWorkspace } = useAddUserToWsE2EE();
+  const { mutateAsync: addUserToWorkspaceNonE2EE } = useAddUserToWsNonE2EE();
   const { mutateAsync: uploadWsKey } = useUploadWsKey();
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
   const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
 
   const onAddMember = async ({ orgMembershipId }: TAddMemberForm) => {
+    if (!currentWorkspace) return;
     if (!currentOrg?.id) return;
     // TODO(akhilmhdh): Move to memory storage
     const userPrivateKey = localStorage.getItem("PRIVATE_KEY");
@@ -114,12 +118,26 @@ export const MemberListTab = () => {
     if (!orgUser) return;
 
     try {
-      await addUserToWorkspace({
-        workspaceId,
-        userPrivateKey,
-        decryptKey: wsKey,
-        members: [{ orgMembershipId, userPublicKey: orgUser.user.publicKey }]
-      });
+      if (currentWorkspace.version === ProjectVersion.V1) {
+        await addUserToWorkspace({
+          workspaceId,
+          userPrivateKey,
+          decryptKey: wsKey,
+          members: [{ orgMembershipId, userPublicKey: orgUser.user.publicKey }]
+        });
+      } else if (currentWorkspace.version === ProjectVersion.V2) {
+        await addUserToWorkspaceNonE2EE({
+          projectId: workspaceId,
+          emails: [orgUser.user.email]
+        });
+      } else {
+        createNotification({
+          text: "Failed to add user to project, unknown project type",
+          type: "error"
+        });
+
+        return;
+      }
       createNotification({
         text: "Successfully added user to the project",
         type: "success"
@@ -136,11 +154,11 @@ export const MemberListTab = () => {
   };
 
   const handleRemoveUser = async () => {
-    const membershipId = (popUp?.removeMember?.data as { id: string })?.id;
+    const email = (popUp?.removeMember?.data as { email: string })?.email;
     if (!currentOrg?.id) return;
 
     try {
-      await removeUserFromWorkspace({ workspaceId, membershipId });
+      await removeUserFromWorkspace({ workspaceId, emails: [email] });
       createNotification({
         text: "Successfully removed user from project",
         type: "success"
@@ -200,10 +218,10 @@ export const MemberListTab = () => {
     () =>
       members?.filter(
         ({ user: u, inviteEmail }) =>
-          u?.firstName?.toLowerCase().includes(searchMemberFilter) ||
-          u?.lastName?.toLowerCase().includes(searchMemberFilter) ||
-          u?.email?.toLowerCase().includes(searchMemberFilter) ||
-          inviteEmail?.includes(searchMemberFilter)
+          u?.firstName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          u?.lastName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          u?.email?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          inviteEmail?.includes(searchMemberFilter.toLowerCase())
       ),
     [members, searchMemberFilter]
   );
@@ -357,7 +375,7 @@ export const MemberListTab = () => {
                                   className="ml-4"
                                   isDisabled={userId === u?.id || !isAllowed}
                                   onClick={() =>
-                                    handlePopUpOpen("removeMember", { id: membershipId })
+                                    handlePopUpOpen("removeMember", { email: u.email })
                                   }
                                 >
                                   <FontAwesomeIcon icon={faXmark} />
@@ -441,7 +459,7 @@ export const MemberListTab = () => {
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
         deleteKey="remove"
-        title="Do you want to remove this user from the org?"
+        title="Do you want to remove this user from the project?"
         onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
         onDeleteApproved={handleRemoveUser}
       />

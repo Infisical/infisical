@@ -20,11 +20,20 @@ import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
 import { z } from "zod";
 
-import { TIntegrationAuths, TIntegrations } from "@app/db/schemas";
+import { TIntegrationAuths, TIntegrations, SecretType } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 
-import { Integrations, IntegrationUrls } from "./integration-list";
+import { Integrations, IntegrationUrls, IntegrationSyncBehavior } from "./integration-list";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSecretDALFactory } from "@app/services/secret/secret-dal";
+import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
+import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
+
+import { createManySecretsRawHelper } from "../secret/secret-fns";
 
 const getSecretKeyValuePair = (secrets: Record<string, { value: string | null; comment?: string } | null>) =>
   Object.keys(secrets).reduce<Record<string, string | null | undefined>>((prev, key) => {
@@ -441,16 +450,19 @@ const syncSecretsAWSParameterStore = async ({
 }) => {
   if (!accessId) return;
 
-  AWS.config.update({
+  const config = new AWS.Config({
     region: integration.region as string,
-    accessKeyId: accessId,
-    secretAccessKey: accessToken
+    credentials: {
+      accessKeyId: accessId,
+      secretAccessKey: accessToken
+    }
   });
 
   const ssm = new AWS.SSM({
     apiVersion: "2014-11-06",
     region: integration.region as string
   });
+  ssm.config.update(config);
 
   const params = {
     Path: integration.path as string,
@@ -514,12 +526,6 @@ const syncSecretsAWSParameterStore = async ({
       }
     })
   );
-
-  AWS.config.update({
-    region: undefined,
-    accessKeyId: undefined,
-    secretAccessKey: undefined
-  });
 };
 
 /**
@@ -540,12 +546,6 @@ const syncSecretsAWSSecretManager = async ({
   const secKeyVal = getSecretKeyValuePair(secrets);
   try {
     if (!accessId) return;
-
-    AWS.config.update({
-      region: integration.region as string,
-      accessKeyId: accessId,
-      secretAccessKey: accessToken
-    });
 
     secretsManager = new SecretsManagerClient({
       region: integration.region as string,
@@ -575,12 +575,6 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
     }
-
-    AWS.config.update({
-      region: undefined,
-      accessKeyId: undefined,
-      secretAccessKey: undefined
-    });
   } catch (err) {
     if (err instanceof ResourceNotFoundException && secretsManager) {
       await secretsManager.send(
@@ -590,26 +584,45 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
     }
-    AWS.config.update({
-      region: undefined,
-      accessKeyId: undefined,
-      secretAccessKey: undefined
-    });
   }
 };
 
 /**
  * Sync/push [secrets] to Heroku app named [integration.app]
+ * server.services... 
  */
 const syncSecretsHeroku = async ({
+  projectDAL,
+  secretDAL,
+  secretVersionDAL,
+  secretBlindIndexDAL,
+  secretTagDAL,
+  secretVersionTagDAL,
+  folderDAL,
+  botKey, // TODO: consider getting botKey inside this fn
+  projectId,
+  environment,
+  secretPath,
   integration,
   secrets,
   accessToken
 }: {
+  projectDAL: TProjectDALFactory;
+  secretDAL: TSecretDALFactory;
+  secretVersionDAL: TSecretVersionDALFactory;
+  secretBlindIndexDAL: TSecretBlindIndexDALFactory;
+  secretTagDAL: TSecretTagDALFactory;
+  secretVersionTagDAL: TSecretVersionTagDALFactory;
+  folderDAL: TSecretFolderDALFactory;
+  botKey: string;
+  projectId: string;
+  environment: string;
+  secretPath: string;
   integration: TIntegrations;
   secrets: Record<string, { value: string; comment?: string } | null>;
   accessToken: string;
 }) => {
+
   const herokuSecrets = (
     await request.get(`${IntegrationUrls.HEROKU_API_URL}/apps/${integration.app}/config-vars`, {
       headers: {
@@ -619,11 +632,61 @@ const syncSecretsHeroku = async ({
       }
     })
   ).data;
+  
+  let secretsToAdd: { [key: string]: string } = {};
+  let secretsToUpdate: { [key: string]: string } = {};
+
+  const metadata = z.record(z.any()).parse(integration.metadata);
 
   Object.keys(herokuSecrets).forEach((key) => {
-    if (!(key in secrets)) {
-      secrets[key] = null;
+    switch (metadata.syncBehavior) {
+      case IntegrationSyncBehavior.OVERWRITE_TARGET: {
+        if (!(key in secrets)) secrets[key] = null;
+        break;
+      };
+      case IntegrationSyncBehavior.PREFER_TARGET: {
+        secrets[key] = herokuSecrets[key];
+        if (!(key in secrets)) {
+          secretsToAdd[key] = herokuSecrets[key];
+        } else {
+          if (secrets[key] !== herokuSecrets[key]) {
+            secretsToUpdate[key] = secrets[key]?.value as string;
+          }
+        }
+        break;
+      };
+      case IntegrationSyncBehavior.PREFER_SOURCE: {
+        if(!(key in secrets)) {
+          secrets[key] = herokuSecrets[key];
+          secretsToAdd[key] = herokuSecrets[key];
+        }
+        break;
+      };
+      default: {
+        if (!(key in secrets)) secrets[key] = null;
+        break;
+      };
     }
+  });
+
+  await createManySecretsRawHelper({
+    botKey,
+    projectDAL,
+    secretDAL,
+    secretVersionDAL,
+    secretBlindIndexDAL,
+    secretTagDAL,
+    secretVersionTagDAL,
+    folderDAL,
+    projectId,
+    environment,
+    path: secretPath,
+    secrets: Object.keys(secretsToAdd).map((key) => ({
+      secretName: key,
+      secretValue: secretsToAdd[key],
+      type: SecretType.Shared,
+      secretComment: ""
+    }))
   });
 
   await request.patch(
@@ -2950,8 +3013,22 @@ const syncSecretsHasuraCloud = async ({
 
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
+ * 
+ * Do this in terms of DAL
+ * 
  */
 export const syncIntegrationSecrets = async ({
+  projectDAL,
+  secretDAL,
+  secretVersionDAL,
+  secretBlindIndexDAL,
+  secretTagDAL,
+  secretVersionTagDAL,
+  folderDAL,
+  botKey,
+  projectId,
+  environment,
+  secretPath,
   integration,
   integrationAuth,
   secrets,
@@ -2959,6 +3036,17 @@ export const syncIntegrationSecrets = async ({
   accessToken,
   appendices
 }: {
+  projectDAL: TProjectDALFactory;
+  secretDAL: TSecretDALFactory;
+  secretVersionDAL: TSecretVersionDALFactory;
+  secretBlindIndexDAL: TSecretBlindIndexDALFactory;
+  secretTagDAL: TSecretTagDALFactory;
+  secretVersionTagDAL: TSecretVersionTagDALFactory;
+  folderDAL: TSecretFolderDALFactory;
+  botKey: string;
+  projectId: string;
+  environment: string;
+  secretPath: string;
   integration: TIntegrations;
   integrationAuth: TIntegrationAuths;
   secrets: Record<string, { value: string; comment?: string }>;
@@ -2999,9 +3087,20 @@ export const syncIntegrationSecrets = async ({
       break;
     case Integrations.HEROKU:
       await syncSecretsHeroku({
+        projectDAL,
+        secretDAL,
+        secretVersionDAL,
+        secretBlindIndexDAL,
+        secretTagDAL,
+        secretVersionTagDAL,
+        folderDAL,
+        botKey,
+        projectId,
+        environment,
+        secretPath,
         integration,
         secrets,
-        accessToken
+        accessToken,
       });
       break;
     case Integrations.VERCEL:

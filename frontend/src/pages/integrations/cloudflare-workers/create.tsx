@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import axios from "axios";
 import queryString from "query-string";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { useCreateIntegration, useGetWorkspaceById } from "@app/hooks/api";
 
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "../../../components/v2";
+import { Button, Card, CardTitle, FormControl, Input, Select, SelectItem } from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
@@ -13,6 +15,7 @@ import {
 export default function CloudflareWorkersIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
+  const { createNotification } = useNotificationContext();
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
@@ -22,6 +25,8 @@ export default function CloudflareWorkersIntegrationPage() {
   });
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [secretPath, setSecretPath] = useState("/");
+
   const [targetApp, setTargetApp] = useState("");
   const [targetAppId, setTargetAppId] = useState("");
 
@@ -56,7 +61,7 @@ export default function CloudflareWorkersIntegrationPage() {
         app: targetApp,
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
-        secretPath: "/"
+        secretPath
       });
 
       setIsLoading(false);
@@ -64,6 +69,18 @@ export default function CloudflareWorkersIntegrationPage() {
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
       console.error(err);
+
+      let errorMessage: string = "Something went wrong!";
+      if (axios.isAxiosError(err)) {
+        const { message } = err?.response?.data as { message: string };
+        errorMessage = message;
+      }
+
+      createNotification({
+        text: errorMessage,
+        type: "error"
+      });
+      setIsLoading(false);
     }
   };
 
@@ -95,6 +112,13 @@ export default function CloudflareWorkersIntegrationPage() {
               </SelectItem>
             ))}
           </Select>
+        </FormControl>
+        <FormControl label="Infisical Secret Path" className="mt-2 px-6">
+          <Input
+            value={secretPath}
+            onChange={(evt) => setSecretPath(evt.target.value)}
+            placeholder="Provide a path, default is /"
+          />
         </FormControl>
         <FormControl label="Cloudflare Workers Project" className="mt-4 px-6">
           <Select

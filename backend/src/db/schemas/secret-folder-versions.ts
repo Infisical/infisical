@@ -18,5 +18,5 @@ export const SecretFolderVersionsSchema = z.object({
 });
 
 export type TSecretFolderVersions = z.infer<typeof SecretFolderVersionsSchema>;
-export type TSecretFolderVersionsInsert = Omit<TSecretFolderVersions, TImmutableDBKeys>;
-export type TSecretFolderVersionsUpdate = Partial<Omit<TSecretFolderVersions, TImmutableDBKeys>>;
+export type TSecretFolderVersionsInsert = Omit<z.input<typeof SecretFolderVersionsSchema>, TImmutableDBKeys>;
+export type TSecretFolderVersionsUpdate = Partial<Omit<z.input<typeof SecretFolderVersionsSchema>, TImmutableDBKeys>>;

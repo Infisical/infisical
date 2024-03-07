@@ -87,13 +87,15 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
-        name: z.string().trim().optional(),
+        name: z.string().trim().max(64, { message: "Name must be 64 or fewer characters" }).optional(),
         slug: z
           .string()
           .trim()
-          .regex(/^[a-zA-Z0-9-]+$/, "Name must only contain alphanumeric characters or hyphens")
+          .max(64, { message: "Slug must be 64 or fewer characters" })
+          .regex(/^[a-zA-Z0-9-]+$/, "Slug must only contain alphanumeric characters or hyphens")
           .optional(),
-        authEnforced: z.boolean().optional()
+        authEnforced: z.boolean().optional(),
+        scimEnabled: z.boolean().optional()
       }),
       response: {
         200: z.object({

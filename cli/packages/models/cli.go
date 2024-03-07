@@ -34,17 +34,22 @@ type SingleEnvironmentVariable struct {
 	Comment string `json:"comment"`
 }
 
+type PlaintextSecretResult struct {
+	Secrets []SingleEnvironmentVariable
+	Etag    string
+}
+
 type SingleFolder struct {
 	ID   string `json:"_id"`
 	Name string `json:"name"`
 }
 
 type Workspace struct {
-	ID           string `json:"_id"`
-	Name         string `json:"name"`
-	Plan         string `json:"plan,omitempty"`
-	V            int    `json:"__v"`
-	Organization string `json:"organization,omitempty"`
+	ID             string `json:"_id"`
+	Name           string `json:"name"`
+	Plan           string `json:"plan,omitempty"`
+	V              int    `json:"__v"`
+	OrganizationId string `json:"orgId"`
 }
 
 type WorkspaceConfigFile struct {

@@ -1,5 +1,5 @@
 ---
-title: "Infisical Agent"
+title: "Overview"
 ---
 
 Infisical Agent is a client daemon that simplifies the adoption of Infisical by providing a more scalable and user-friendly approach for applications to interact with Infisical.
@@ -51,6 +51,9 @@ While specifying an authentication method is mandatory to start the agent, confi
 | `sinks[].config.path`        | The file path where the access token should be stored for each sink in the list. |
 | `templates[].source-path`    | The path to the template file that should be used to render secrets. |
 | `templates[].destination-path` | The path where the rendered secrets from the source template will be saved to. |
+| `templates[].config.polling-interval` | How frequently to check for secret changes. Default: `60s` (optional)  |
+| `templates[].config.execute.command` | The command to execute when secret change is detected (optional) |
+| `templates[].config.execute.timeout` | How long in seconds to wait for command to execute before timing out (optional) |
 
 
 ## Quick start Infisical Agent
@@ -76,6 +79,11 @@ sinks:
 templates:
   - source-path: my-dot-ev-secret-template
     destination-path: /some/path/.env
+    config:
+      polling-interval: 60s
+      execute:
+        timeout: 30
+        command: ./reload-app.sh
 ```
 
 Above is an example agent configuration file that defines the token authentication method, one sink location (where to deposit access tokens after renewal) and a secret template. 

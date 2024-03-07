@@ -1,4 +1,3 @@
-import { FastifyRequest } from "fastify";
 import picomatch from "picomatch";
 import { z } from "zod";
 
@@ -13,25 +12,13 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CommitType } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { secretRawSchema } from "../sanitizedSchemas";
-
-const getDistinctId = (req: FastifyRequest) => {
-  if (req.auth.actor === ActorType.USER) {
-    return req.auth.user.email;
-  }
-  if (req.auth.actor === ActorType.IDENTITY) {
-    return `identity-${req.auth.identityId}`;
-  }
-  if (req.auth.actor === ActorType.SERVICE) {
-    return `service-token-${req.auth.serviceToken.id}`;
-  }
-  return "unknown-auth-data";
-};
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -108,9 +95,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretPulled,
-        distinctId: getDistinctId(req),
+        distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: secrets.length,
           workspaceId,
@@ -198,9 +185,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretPulled,
-        distinctId: getDistinctId(req),
+        distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: 1,
           workspaceId,
@@ -274,9 +261,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretCreated,
-        distinctId: getDistinctId(req),
+        distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: 1,
           workspaceId: req.body.workspaceId,
@@ -349,9 +336,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretUpdated,
-        distinctId: getDistinctId(req),
+        distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: 1,
           workspaceId: req.body.workspaceId,
@@ -419,9 +406,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretDeleted,
-        distinctId: getDistinctId(req),
+        distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: 1,
           workspaceId: req.body.workspaceId,
@@ -525,9 +512,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         (req.headers["user-agent"] !== "k8-operator" || shouldRecordK8Event);
       const approximateNumberTotalSecrets = secrets.length * 20;
       if (shouldCapture) {
-        server.services.telemetry.sendPostHogEvents({
+        await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretPulled,
-          distinctId: getDistinctId(req),
+          distinctId: getTelemetryDistinctId(req),
           properties: {
             numberOfSecrets: shouldRecordK8Event ? approximateNumberTotalSecrets : secrets.length,
             workspaceId: req.query.workspaceId,
@@ -602,9 +589,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretPulled,
-        distinctId: getDistinctId(req),
+        distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: 1,
           workspaceId: req.query.workspaceId,
@@ -765,9 +752,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretCreated,
-        distinctId: getDistinctId(req),
+        distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: 1,
           workspaceId: req.body.workspaceId,
@@ -947,9 +934,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretUpdated,
-        distinctId: getDistinctId(req),
+        distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: 1,
           workspaceId: req.body.workspaceId,
@@ -1065,9 +1052,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretDeleted,
-        distinctId: getDistinctId(req),
+        distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: 1,
           workspaceId: req.body.workspaceId,
@@ -1092,7 +1079,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secrets: z
           .object({
             secretName: z.string().trim(),
-            type: z.nativeEnum(SecretType).default(SecretType.Shared),
             secretKeyCiphertext: z.string().trim(),
             secretKeyIV: z.string().trim(),
             secretKeyTag: z.string().trim(),
@@ -1139,7 +1125,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             projectId,
             policy,
             data: {
-              [CommitType.Create]: inputSecrets.filter(({ type }) => type === "shared")
+              [CommitType.Create]: inputSecrets
             }
           });
 
@@ -1186,9 +1172,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretCreated,
-        distinctId: getDistinctId(req),
+        distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: secrets.length,
           workspaceId: req.body.workspaceId,
@@ -1306,9 +1292,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretUpdated,
-        distinctId: getDistinctId(req),
+        distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: secrets.length,
           workspaceId: req.body.workspaceId,
@@ -1414,9 +1400,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretDeleted,
-        distinctId: getDistinctId(req),
+        distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: secrets.length,
           workspaceId: req.body.workspaceId,

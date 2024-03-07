@@ -1,12 +1,12 @@
 export {
   useAddIdentityToWorkspace,
-  useAddUserToWorkspace,
   useCreateWorkspace,
   useCreateWsEnvironment,
   useDeleteIdentityFromWorkspace,
   useDeleteUserFromWorkspace,
   useDeleteWorkspace,
   useDeleteWsEnvironment,
+  useGetUpgradeProjectStatus,
   useGetUserWorkspaceMemberships,
   useGetUserWorkspaces,
   useGetWorkspaceAuthorizations,
@@ -21,5 +21,6 @@ export {
   useToggleAutoCapitalization,
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
-  useUpdateWsEnvironment
+  useUpdateWsEnvironment,
+  useUpgradeProject
 } from "./queries";

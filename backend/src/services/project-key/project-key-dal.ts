@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TProjectKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -10,10 +12,11 @@ export const projectKeyDALFactory = (db: TDbClient) => {
 
   const findLatestProjectKey = async (
     userId: string,
-    projectId: string
+    projectId: string,
+    tx?: Knex
   ): Promise<(TProjectKeys & { sender: { publicKey: string } }) | undefined> => {
     try {
-      const projectKey = await db(TableName.ProjectKeys)
+      const projectKey = await (tx || db)(TableName.ProjectKeys)
         .join(TableName.Users, `${TableName.ProjectKeys}.senderId`, `${TableName.Users}.id`)
         .join(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
         .where({ projectId, receiverId: userId })
@@ -29,9 +32,9 @@ export const projectKeyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findAllProjectUserPubKeys = async (projectId: string) => {
+  const findAllProjectUserPubKeys = async (projectId: string, tx?: Knex) => {
     try {
-      const pubKeys = await db(TableName.ProjectMembership)
+      const pubKeys = await (tx || db)(TableName.ProjectMembership)
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)

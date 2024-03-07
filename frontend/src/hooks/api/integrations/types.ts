@@ -33,9 +33,22 @@ export type TIntegration = {
   __v: number;
   metadata?: {
     secretSuffix?: string;
+    syncBehavior?: IntegrationSyncBehavior;
     scope: string;
     org: string;
     project: string;
     environment: string;
   };
 };
+
+export enum IntegrationSyncBehavior {
+  OVERWRITE_TARGET = "overwrite-target",
+  PREFER_TARGET = "prefer-target",
+  PREFER_SOURCE = "prefer-source"
+}
+
+export const syncBehaviors = [
+  { label: "Overwrite target", value: IntegrationSyncBehavior.OVERWRITE_TARGET },
+  { label: "Prefer target", value: IntegrationSyncBehavior.PREFER_TARGET },
+  { label: "Prefer source", value: IntegrationSyncBehavior.PREFER_SOURCE }
+];

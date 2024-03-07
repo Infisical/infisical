@@ -27,6 +27,7 @@ type TSAMLConfig = {
   cert: string;
   audience: string;
   wantAuthnResponseSigned?: boolean;
+  wantAssertionsSigned?: boolean;
   disableRequestedAuthnContext?: boolean;
 };
 
@@ -82,6 +83,10 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
                 samlConfig.audience = `spn:${ssoConfig.issuer}`;
               }
             }
+            if (ssoConfig.authProvider === SamlProviders.GOOGLE_SAML) {
+              samlConfig.wantAssertionsSigned = false;
+            }
+
             (req as unknown as FastifyRequest).ssoConfig = ssoConfig;
             done(null, samlConfig);
           } catch (error) {

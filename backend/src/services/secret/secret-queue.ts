@@ -25,6 +25,11 @@ import { TSecretDALFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
 import { TCreateSecretReminderDTO, THandleReminderDTO, TRemoveSecretReminderDTO } from "./secret-types";
 
+import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
+import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
+
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 
 type TSecretQueueFactoryDep = {
@@ -32,15 +37,19 @@ type TSecretQueueFactoryDep = {
   integrationDAL: Pick<TIntegrationDALFactory, "findByProjectIdV2">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   integrationAuthService: Pick<TIntegrationAuthServiceFactory, "getIntegrationAccessToken">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findByManySecretPath">;
-  secretDAL: Pick<TSecretDALFactory, "findByFolderId" | "find">;
+  folderDAL: TSecretFolderDALFactory;
+  secretDAL: TSecretDALFactory;
   secretImportDAL: Pick<TSecretImportDALFactory, "find">;
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectDAL: TProjectDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   smtpService: TSmtpService;
   orgDAL: Pick<TOrgDALFactory, "findOrgByProjectId">;
+  secretVersionDAL: TSecretVersionDALFactory;
+  secretBlindIndexDAL: TSecretBlindIndexDALFactory;
+  secretTagDAL: TSecretTagDALFactory;
+  secretVersionTagDAL: TSecretVersionTagDALFactory;
 };
 
 export type TGetSecrets = {
@@ -62,7 +71,11 @@ export const secretQueueFactory = ({
   orgDAL,
   smtpService,
   projectDAL,
-  projectMembershipDAL
+  projectMembershipDAL,
+  secretVersionDAL,
+  secretBlindIndexDAL,
+  secretTagDAL,
+  secretVersionTagDAL,
 }: TSecretQueueFactoryDep) => {
   const syncIntegrations = async (dto: TGetSecrets) => {
     await queueService.queue(QueueName.IntegrationSync, QueueJobs.IntegrationSync, dto, {
@@ -307,6 +320,17 @@ export const secretQueueFactory = ({
       }
 
       await syncIntegrationSecrets({
+        projectDAL,
+        secretDAL,
+        secretVersionDAL,
+        secretBlindIndexDAL,
+        secretTagDAL,
+        secretVersionTagDAL,
+        folderDAL,
+        botKey,
+        projectId,
+        environment,
+        secretPath,
         integration,
         integrationAuth,
         secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets,

@@ -58,3 +58,35 @@ export class BadRequestError extends Error {
     this.error = error;
   }
 }
+
+export class ScimRequestError extends Error {
+  name: string;
+
+  schemas: string[];
+
+  detail: string;
+
+  status: number;
+
+  error: unknown;
+
+  constructor({
+    name,
+    error,
+    detail,
+    status
+  }: {
+    message?: string;
+    name?: string;
+    error?: unknown;
+    detail: string;
+    status: number;
+  }) {
+    super(detail ?? "The request is invalid");
+    this.name = name || "ScimRequestError";
+    this.schemas = ["urn:ietf:params:scim:api:messages:2.0:Error"];
+    this.error = error;
+    this.detail = detail;
+    this.status = status;
+  }
+}

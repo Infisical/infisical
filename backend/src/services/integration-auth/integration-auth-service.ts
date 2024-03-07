@@ -43,6 +43,7 @@ import {
 import { getIntegrationOptions, Integrations, IntegrationUrls } from "./integration-list";
 import { getTeams } from "./integration-team";
 import { exchangeCode, exchangeRefresh } from "./integration-token";
+import { access } from "node:fs";
 
 type TIntegrationAuthServiceFactoryDep = {
   integrationAuthDAL: TIntegrationAuthDALFactory;
@@ -591,6 +592,7 @@ export const integrationAuthServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+
     const { data } = await request.get<THerokuPipelineCoupling[]>(
       `${IntegrationUrls.HEROKU_API_URL}/pipeline-couplings`,
       {
@@ -601,7 +603,7 @@ export const integrationAuthServiceFactory = ({
         }
       }
     );
-
+    
     return data.map(({ app: { id: appId }, stage, pipeline: { id: pipelineId, name } }) => ({
       app: { appId },
       stage,

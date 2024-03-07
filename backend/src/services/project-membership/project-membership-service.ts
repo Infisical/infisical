@@ -1,15 +1,28 @@
+/* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 
-import { OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import {
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  ProjectVersion,
+  SecretKeyEncoding,
+  TableName,
+  TProjectMemberships,
+  TUsers
+} from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
+import { ActorType } from "../auth/auth-type";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
+import { assignWorkspaceKeysToMembers } from "../project/project-fns";
+import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
@@ -17,7 +30,9 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TProjectMembershipDALFactory } from "./project-membership-dal";
 import {
   TAddUsersToWorkspaceDTO,
-  TDeleteProjectMembershipDTO,
+  TAddUsersToWorkspaceNonE2EEDTO,
+  TDeleteProjectMembershipOldDTO,
+  TDeleteProjectMembershipsDTO,
   TGetProjectMembershipDTO,
   TInviteUserToProjectDTO,
   TUpdateProjectMembershipDTO
@@ -26,11 +41,12 @@ import {
 type TProjectMembershipServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   smtpService: TSmtpService;
+  projectBotDAL: TProjectBotDALFactory;
   projectMembershipDAL: TProjectMembershipDALFactory;
-  userDAL: Pick<TUserDALFactory, "findById" | "findOne">;
+  userDAL: Pick<TUserDALFactory, "findById" | "findOne" | "findUserByProjectMembershipId" | "find">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByEmail">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -42,6 +58,7 @@ export const projectMembershipServiceFactory = ({
   projectMembershipDAL,
   smtpService,
   projectRoleDAL,
+  projectBotDAL,
   orgDAL,
   userDAL,
   projectDAL,
@@ -55,64 +72,90 @@ export const projectMembershipServiceFactory = ({
     return projectMembershipDAL.findAllProjectMembers(projectId);
   };
 
-  const inviteUserToProject = async ({ actorId, actor, actorOrgId, projectId, email }: TInviteUserToProjectDTO) => {
+  const inviteUserToProject = async ({ actorId, actor, actorOrgId, projectId, emails }: TInviteUserToProjectDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
 
-    const invitee = await userDAL.findOne({ email });
-    if (!invitee || !invitee.isAccepted)
-      throw new BadRequestError({
-        message: "Faield to validate invitee",
-        name: "Invite user to project"
-      });
-
-    const inviteeMembership = await projectMembershipDAL.findOne({
-      userId: invitee.id,
-      projectId
-    });
-    if (inviteeMembership)
-      throw new BadRequestError({
-        message: "Existing member of project",
-        name: "Invite user to project"
-      });
+    const invitees: TUsers[] = [];
 
     const project = await projectDAL.findById(projectId);
-    const inviteeMembershipOrg = await orgDAL.findMembership({
-      userId: invitee.id,
-      orgId: project.orgId,
-      status: OrgMembershipStatus.Accepted
+    const users = await userDAL.find({
+      $in: { email: emails }
     });
-    if (!inviteeMembershipOrg)
-      throw new BadRequestError({
-        message: "Failed to validate invitee org membership",
-        name: "Invite user to project"
+
+    await projectDAL.transaction(async (tx) => {
+      for (const invitee of users) {
+        if (!invitee.isAccepted)
+          throw new BadRequestError({
+            message: "Failed to validate invitee",
+            name: "Invite user to project"
+          });
+
+        const inviteeMembership = await projectMembershipDAL.findOne(
+          {
+            userId: invitee.id,
+            projectId
+          },
+          tx
+        );
+
+        if (inviteeMembership) {
+          throw new BadRequestError({
+            message: "Existing member of project",
+            name: "Invite user to project"
+          });
+        }
+
+        const inviteeMembershipOrg = await orgDAL.findMembership({
+          userId: invitee.id,
+          orgId: project.orgId,
+          status: OrgMembershipStatus.Accepted
+        });
+
+        if (!inviteeMembershipOrg) {
+          throw new BadRequestError({
+            message: "Failed to validate invitee org membership",
+            name: "Invite user to project"
+          });
+        }
+
+        await projectMembershipDAL.create(
+          {
+            userId: invitee.id,
+            projectId,
+            role: ProjectMembershipRole.Member
+          },
+          tx
+        );
+
+        invitees.push(invitee);
+      }
+
+      const appCfg = getConfig();
+      await smtpService.sendMail({
+        template: SmtpTemplates.WorkspaceInvite,
+        subjectLine: "Infisical workspace invitation",
+        recipients: invitees.map((i) => i.email),
+        substitutions: {
+          workspaceName: project.name,
+          callback_url: `${appCfg.SITE_URL}/login`
+        }
       });
+    });
 
     const latestKey = await projectKeyDAL.findLatestProjectKey(actorId, projectId);
-    await projectMembershipDAL.create({
-      userId: invitee.id,
-      projectId,
-      role: ProjectMembershipRole.Member
-    });
 
-    const sender = await userDAL.findById(actorId);
-    const appCfg = getConfig();
-    await smtpService.sendMail({
-      template: SmtpTemplates.WorkspaceInvite,
-      subjectLine: "Infisical workspace invitation",
-      recipients: [invitee.email],
-      substitutions: {
-        inviterFirstName: sender.firstName,
-        inviterEmail: sender.email,
-        workspaceName: project.name,
-        callback_url: `${appCfg.SITE_URL}/login`
-      }
-    });
-
-    return { invitee, latestKey };
+    return { invitees, latestKey };
   };
 
-  const addUsersToProject = async ({ projectId, actorId, actor, actorOrgId, members }: TAddUsersToWorkspaceDTO) => {
+  const addUsersToProject = async ({
+    projectId,
+    actorId,
+    actor,
+    actorOrgId,
+    members,
+    sendEmails = true
+  }: TAddUsersToWorkspaceDTO) => {
     const project = await projectDAL.findById(projectId);
     if (!project) throw new BadRequestError({ message: "Project not found" });
 
@@ -134,11 +177,16 @@ export const projectMembershipServiceFactory = ({
 
     await projectMembershipDAL.transaction(async (tx) => {
       await projectMembershipDAL.insertMany(
-        orgMembers.map(({ userId }) => ({
-          projectId,
-          userId: userId as string,
-          role: ProjectMembershipRole.Member
-        })),
+        orgMembers.map(({ userId, id: membershipId }) => {
+          const role =
+            members.find((i) => i.orgMembershipId === membershipId)?.projectRole || ProjectMembershipRole.Member;
+
+          return {
+            projectId,
+            userId: userId as string,
+            role
+          };
+        }),
         tx
       );
       const encKeyGroupByOrgMembId = groupBy(members, (i) => i.orgMembershipId);
@@ -153,20 +201,132 @@ export const projectMembershipServiceFactory = ({
         tx
       );
     });
-    const sender = await userDAL.findById(actorId);
-    const appCfg = getConfig();
-    await smtpService.sendMail({
-      template: SmtpTemplates.WorkspaceInvite,
-      subjectLine: "Infisical workspace invitation",
-      recipients: orgMembers.map(({ email }) => email).filter(Boolean),
-      substitutions: {
-        inviterFirstName: sender.firstName,
-        inviterEmail: sender.email,
-        workspaceName: project.name,
-        callback_url: `${appCfg.SITE_URL}/login`
-      }
-    });
+
+    if (sendEmails) {
+      const appCfg = getConfig();
+      await smtpService.sendMail({
+        template: SmtpTemplates.WorkspaceInvite,
+        subjectLine: "Infisical workspace invitation",
+        recipients: orgMembers.map(({ email }) => email).filter(Boolean),
+        substitutions: {
+          workspaceName: project.name,
+          callback_url: `${appCfg.SITE_URL}/login`
+        }
+      });
+    }
     return orgMembers;
+  };
+
+  const addUsersToProjectNonE2EE = async ({
+    projectId,
+    actorId,
+    actor,
+    emails,
+    sendEmails = true
+  }: TAddUsersToWorkspaceNonE2EEDTO) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new BadRequestError({ message: "Project not found" });
+
+    if (project.version === ProjectVersion.V1) {
+      throw new BadRequestError({ message: "Please upgrade your project on your dashboard" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
+
+    const orgMembers = await orgDAL.findOrgMembersByEmail(project.orgId, emails);
+
+    if (orgMembers.length !== emails.length) throw new BadRequestError({ message: "Some users are not part of org" });
+
+    if (!orgMembers.length) return [];
+
+    const existingMembers = await projectMembershipDAL.find({
+      projectId,
+      $in: { userId: orgMembers.map(({ user }) => user.id).filter(Boolean) }
+    });
+    if (existingMembers.length) throw new BadRequestError({ message: "Some users are already part of project" });
+
+    const ghostUser = await projectDAL.findProjectGhostUser(projectId);
+
+    if (!ghostUser) {
+      throw new BadRequestError({
+        message: "Failed to find sudo user"
+      });
+    }
+
+    const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, projectId);
+
+    if (!ghostUserLatestKey) {
+      throw new BadRequestError({
+        message: "Failed to find sudo user latest key"
+      });
+    }
+
+    const bot = await projectBotDAL.findOne({ projectId });
+
+    if (!bot) {
+      throw new BadRequestError({
+        message: "Failed to find bot"
+      });
+    }
+
+    const botPrivateKey = infisicalSymmetricDecrypt({
+      keyEncoding: bot.keyEncoding as SecretKeyEncoding,
+      iv: bot.iv,
+      tag: bot.tag,
+      ciphertext: bot.encryptedPrivateKey
+    });
+
+    const newWsMembers = assignWorkspaceKeysToMembers({
+      decryptKey: ghostUserLatestKey,
+      userPrivateKey: botPrivateKey,
+      members: orgMembers.map((membership) => ({
+        orgMembershipId: membership.id,
+        projectMembershipRole: ProjectMembershipRole.Member,
+        userPublicKey: membership.user.publicKey
+      }))
+    });
+
+    const members: TProjectMemberships[] = [];
+
+    await projectMembershipDAL.transaction(async (tx) => {
+      const result = await projectMembershipDAL.insertMany(
+        orgMembers.map(({ user }) => ({
+          projectId,
+          userId: user.id,
+          role: ProjectMembershipRole.Member
+        })),
+        tx
+      );
+
+      members.push(...result);
+
+      const encKeyGroupByOrgMembId = groupBy(newWsMembers, (i) => i.orgMembershipId);
+      await projectKeyDAL.insertMany(
+        orgMembers.map(({ user, id }) => ({
+          encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
+          nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
+          senderId: ghostUser.id,
+          receiverId: user.id,
+          projectId
+        })),
+        tx
+      );
+    });
+
+    if (sendEmails) {
+      const appCfg = getConfig();
+      await smtpService.sendMail({
+        template: SmtpTemplates.WorkspaceInvite,
+        subjectLine: "Infisical workspace invitation",
+        recipients: orgMembers.map(({ user }) => user.email).filter(Boolean),
+        substitutions: {
+          workspaceName: project.name,
+          callback_url: `${appCfg.SITE_URL}/login`
+        }
+      });
+    }
+    return members;
   };
 
   const updateProjectMembership = async ({
@@ -179,6 +339,15 @@ export const projectMembershipServiceFactory = ({
   }: TUpdateProjectMembershipDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
+
+    const membershipUser = await userDAL.findUserByProjectMembershipId(membershipId);
+
+    if (membershipUser?.isGhost) {
+      throw new BadRequestError({
+        message: "Unauthorized member update",
+        name: "Update project membership"
+      });
+    }
 
     const isCustomRole = !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole);
     if (isCustomRole) {
@@ -205,15 +374,25 @@ export const projectMembershipServiceFactory = ({
     return membership;
   };
 
+  // This is old and should be removed later. Its not used anywhere, but it is exposed in our API. So to avoid breaking changes, we are keeping it for now.
   const deleteProjectMembership = async ({
     actorId,
     actor,
     actorOrgId,
     projectId,
     membershipId
-  }: TDeleteProjectMembershipDTO) => {
+  }: TDeleteProjectMembershipOldDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
+
+    const member = await userDAL.findUserByProjectMembershipId(membershipId);
+
+    if (member?.isGhost) {
+      throw new BadRequestError({
+        message: "Unauthorized member delete",
+        name: "Delete project membership"
+      });
+    }
 
     const membership = await projectMembershipDAL.transaction(async (tx) => {
       const [deletedMembership] = await projectMembershipDAL.delete({ projectId, id: membershipId }, tx);
@@ -223,11 +402,74 @@ export const projectMembershipServiceFactory = ({
     return membership;
   };
 
+  const deleteProjectMemberships = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    projectId,
+    emails
+  }: TDeleteProjectMembershipsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
+
+    const project = await projectDAL.findById(projectId);
+
+    if (!project) {
+      throw new BadRequestError({
+        message: "Project not found",
+        name: "Delete project membership"
+      });
+    }
+
+    const projectMembers = await projectMembershipDAL.findMembershipsByEmail(projectId, emails);
+
+    if (projectMembers.length !== emails.length) {
+      throw new BadRequestError({
+        message: "Some users are not part of project",
+        name: "Delete project membership"
+      });
+    }
+
+    if (actor === ActorType.USER && projectMembers.some(({ user }) => user.id === actorId)) {
+      throw new BadRequestError({
+        message: "Cannot remove yourself from project",
+        name: "Delete project membership"
+      });
+    }
+
+    const memberships = await projectMembershipDAL.transaction(async (tx) => {
+      const deletedMemberships = await projectMembershipDAL.delete(
+        {
+          projectId,
+          $in: {
+            id: projectMembers.map(({ id }) => id)
+          }
+        },
+        tx
+      );
+
+      await projectKeyDAL.delete(
+        {
+          projectId,
+          $in: {
+            receiverId: projectMembers.map(({ user }) => user.id).filter(Boolean)
+          }
+        },
+        tx
+      );
+
+      return deletedMemberships;
+    });
+    return memberships;
+  };
+
   return {
     getProjectMemberships,
     inviteUserToProject,
     updateProjectMembership,
-    deleteProjectMembership,
+    addUsersToProjectNonE2EE,
+    deleteProjectMemberships,
+    deleteProjectMembership, // TODO: Remove this
     addUsersToProject
   };
 };

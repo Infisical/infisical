@@ -27,6 +27,7 @@ import {
   useGetWsTags
 } from "@app/hooks/api";
 
+import { ProjectIndexSecretsSection } from "../SecretOverviewPage/components/ProjectIndexSecretsSection";
 import { ActionBar } from "./components/ActionBar";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderListView } from "./components/FolderListView";
@@ -219,6 +220,7 @@ export const SecretMainPage = () => {
             protectionPolicyName={boardPolicy?.name}
           />
         </div>
+        <ProjectIndexSecretsSection decryptFileKey={decryptFileKey!} />
         {!isRollbackMode ? (
           <>
             <ActionBar

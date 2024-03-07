@@ -141,10 +141,10 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
     () =>
       members?.filter(
         ({ user: u, inviteEmail }) =>
-          u?.firstName?.toLowerCase().includes(searchMemberFilter) ||
-          u?.lastName?.toLowerCase().includes(searchMemberFilter) ||
-          u?.email?.toLowerCase().includes(searchMemberFilter) ||
-          inviteEmail?.includes(searchMemberFilter)
+          u?.firstName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          u?.lastName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          u?.email?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          inviteEmail?.includes(searchMemberFilter.toLowerCase())
       ),
     [members, searchMemberFilter]
   );
@@ -231,6 +231,14 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                             {(isAllowed) => (
                               <IconButton
                                 onClick={() => {
+                                  if (currentOrg?.authEnforced) {
+                                    createNotification({
+                                      text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
+                                      type: "error"
+                                    });
+                                    return;
+                                  }
+                                  
                                   handlePopUpOpen("removeMember", { orgMembershipId, email });
                                 }}
                                 size="lg"

@@ -1,6 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import { Knex } from "knex";
 
 import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
 import { TProjects } from "@app/db/schemas/projects";
@@ -11,6 +13,7 @@ import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-
 import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { generateSymmetricKey, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
@@ -19,6 +22,8 @@ import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
+import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
@@ -28,6 +33,7 @@ import { TOrgRoleDALFactory } from "./org-role-dal";
 import {
   TDeleteOrgMembershipDTO,
   TFindAllWorkspacesDTO,
+  TFindOrgMembersByEmailDTO,
   TInviteUserToOrgDTO,
   TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
@@ -40,6 +46,8 @@ type TOrgServiceFactoryDep = {
   orgRoleDAL: TOrgRoleDALFactory;
   userDAL: TUserDALFactory;
   projectDAL: TProjectDALFactory;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserId" | "delete">;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete">;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne" | "findEnforceableSamlCfg">;
   smtpService: TSmtpService;
@@ -61,6 +69,8 @@ export const orgServiceFactory = ({
   permissionService,
   smtpService,
   projectDAL,
+  projectMembershipDAL,
+  projectKeyDAL,
   tokenService,
   orgBotDAL,
   licenseService,
@@ -93,6 +103,15 @@ export const orgServiceFactory = ({
     return members;
   };
 
+  const findOrgMembersByEmail = async ({ actor, actorId, orgId, emails }: TFindOrgMembersByEmailDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+
+    const members = await orgDAL.findOrgMembersByEmail(orgId, emails);
+
+    return members;
+  };
+
   const findAllWorkspaces = async ({ actor, actorId, actorOrgId, orgId }: TFindAllWorkspacesDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
@@ -118,6 +137,54 @@ export const orgServiceFactory = ({
     return workspaces.filter((workspace) => organizationWorkspaceIds.has(workspace.id));
   };
 
+  const addGhostUser = async (orgId: string, tx?: Knex) => {
+    const email = `sudo-${alphaNumericNanoId(16)}-${orgId}@infisical.com`; // We add a nanoid because the email is unique. And we have to create a new ghost user each time, so we can have access to the private key.
+    const password = crypto.randomBytes(128).toString("hex");
+
+    const user = await userDAL.create(
+      {
+        isGhost: true,
+        authMethods: [AuthMethod.EMAIL],
+        email,
+        isAccepted: true
+      },
+      tx
+    );
+
+    const encKeys = await generateUserSrpKeys(email, password);
+
+    await userDAL.upsertUserEncryptionKey(
+      user.id,
+      {
+        encryptionVersion: 2,
+        protectedKey: encKeys.protectedKey,
+        protectedKeyIV: encKeys.protectedKeyIV,
+        protectedKeyTag: encKeys.protectedKeyTag,
+        publicKey: encKeys.publicKey,
+        encryptedPrivateKey: encKeys.encryptedPrivateKey,
+        iv: encKeys.encryptedPrivateKeyIV,
+        tag: encKeys.encryptedPrivateKeyTag,
+        salt: encKeys.salt,
+        verifier: encKeys.verifier
+      },
+      tx
+    );
+
+    const createMembershipData = {
+      orgId,
+      userId: user.id,
+      role: OrgMembershipRole.Admin,
+      status: OrgMembershipStatus.Accepted
+    };
+
+    await orgDAL.createMembership(createMembershipData, tx);
+
+    return {
+      user,
+      keys: encKeys
+    };
+  };
+
   /*
    * Update organization details
    * */
@@ -126,16 +193,32 @@ export const orgServiceFactory = ({
     actorId,
     actorOrgId,
     orgId,
-    data: { name, slug, authEnforced }
+    data: { name, slug, authEnforced, scimEnabled }
   }: TUpdateOrgDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
+    const plan = await licenseService.getPlan(orgId);
+
     if (authEnforced !== undefined) {
+      if (!plan?.samlSSO)
+        throw new BadRequestError({
+          message:
+            "Failed to enforce/un-enforce SAML SSO due to plan restriction. Upgrade plan to enforce/un-enforce SAML SSO."
+        });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
     }
 
-    if (authEnforced) {
+    if (scimEnabled !== undefined) {
+      if (!plan?.scim)
+        throw new BadRequestError({
+          message:
+            "Failed to enable/disable SCIM provisioning due to plan restriction. Upgrade plan to enable/disable SCIM provisioning."
+        });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Scim);
+    }
+
+    if (authEnforced || scimEnabled) {
       const samlCfg = await samlConfigDAL.findEnforceableSamlCfg(orgId);
       if (!samlCfg)
         throw new BadRequestError({
@@ -147,7 +230,8 @@ export const orgServiceFactory = ({
     const org = await orgDAL.updateById(orgId, {
       name,
       slug: slug ? slugify(slug) : undefined,
-      authEnforced
+      authEnforced,
+      scimEnabled
     });
     if (!org) throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
     return org;
@@ -321,7 +405,8 @@ export const orgServiceFactory = ({
         {
           email: inviteeEmail,
           isAccepted: false,
-          authMethods: [AuthMethod.EMAIL]
+          authMethods: [AuthMethod.EMAIL],
+          isGhost: false
         },
         tx
       );
@@ -424,10 +509,50 @@ export const orgServiceFactory = ({
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
 
-    const membership = await orgDAL.deleteMembershipById(membershipId, orgId);
+    const deletedMembership = await orgDAL.transaction(async (tx) => {
+      const orgMembership = await orgDAL.deleteMembershipById(membershipId, orgId, tx);
 
-    await licenseService.updateSubscriptionOrgMemberCount(orgId);
-    return membership;
+      if (!orgMembership.userId) {
+        await licenseService.updateSubscriptionOrgMemberCount(orgId);
+        return orgMembership;
+      }
+
+      // Get all the project memberships of the user in the organization
+      const projectMemberships = await projectMembershipDAL.findProjectMembershipsByUserId(orgId, orgMembership.userId);
+
+      // Delete all the project memberships of the user in the organization
+      await projectMembershipDAL.delete(
+        {
+          $in: {
+            id: projectMemberships.map((membership) => membership.id)
+          }
+        },
+        tx
+      );
+
+      // Get all the project keys of the user in the organization
+      const projectKeys = await projectKeyDAL.find({
+        $in: {
+          projectId: projectMemberships.map((membership) => membership.projectId)
+        },
+        receiverId: orgMembership.userId
+      });
+
+      // Delete all the project keys of the user in the organization
+      await projectKeyDAL.delete(
+        {
+          $in: {
+            id: projectKeys.map((key) => key.id)
+          }
+        },
+        tx
+      );
+
+      await licenseService.updateSubscriptionOrgMemberCount(orgId);
+      return orgMembership;
+    });
+
+    return deletedMembership;
   };
 
   /*
@@ -470,10 +595,12 @@ export const orgServiceFactory = ({
     inviteUserToOrganization,
     verifyUserToOrg,
     updateOrg,
+    findOrgMembersByEmail,
     createOrganization,
     deleteOrganizationById,
     deleteOrgMembership,
     findAllWorkspaces,
+    addGhostUser,
     updateOrgMembership,
     // incident contacts
     findIncidentContacts,

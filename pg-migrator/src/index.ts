@@ -66,7 +66,7 @@ enum SecretEncryptionAlgo {
   AES_256_GCM = "aes-256-gcm",
 }
 
-const ENV_SLUG_LENGTH = 15;
+const ENV_SLUG_LENGTH = 500;
 
 enum SecretKeyEncoding {
   UTF8 = "utf8",
@@ -210,9 +210,9 @@ export const migrateCollection = async <
           return (await tx
             .batchInsert<Tables[K]["base"]>(postgresTableName, pgDoc as any)
             .returning(returnKeys as any)) as Pick<
-            Tables[K]["base"],
-            R[number]
-          >[];
+              Tables[K]["base"],
+              R[number]
+            >[];
         });
         await postPgProcessing?.(mongooseDoc, newUserIds);
       }
@@ -230,9 +230,9 @@ export const migrateCollection = async <
         return (await tx
           .batchInsert(postgresTableName, pgDoc as any)
           .returning(returnKeys as any)) as Pick<
-          Tables[K]["base"],
-          R[number]
-        >[];
+            Tables[K]["base"],
+            R[number]
+          >[];
       });
       await postPgProcessing?.(mongooseDoc, newUserIds);
     }
@@ -258,9 +258,9 @@ const main = async () => {
   try {
     dotenv.config();
 
-    process.env.MONGO_DB_URL = "mongodb://root:example@localhost:27017/test?authSource=admin"
+    // process.env.MONGO_DB_URL = "mongodb://root:example@localhost:27017/test?authSource=admin"
 
-    process.env.POSTGRES_DB_URL = "postgres://infisical:infisical@localhost/infisical?sslmode=disable"
+    // process.env.POSTGRES_DB_URL = "postgres://infisical:infisical@localhost/infisical?sslmode=disable"
 
     process.env.START_FRESH = "true";
     const prompt = promptSync({ sigint: true });
@@ -313,7 +313,7 @@ const main = async () => {
       preProcessing: async (doc) => {
         if (["64058e0ea5c55c6a8203fed7", "64155f5d75c91bf4e176eb85", "6434ff80b82e04f17008aa13"].includes(doc._id.toString())) {
           console.log("Skipping duplicate user")
-          return 
+          return
         }
 
         const id = uuidV4();
@@ -532,9 +532,8 @@ const main = async () => {
       postgresTableName: TableName.SuperAdmin,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        const id = uuidV4();
         return {
-          id,
+          id: "00000000-0000-0000-0000-000000000000",
           allowSignUp: doc.allowSignUp,
           initialized: doc.initialized,
           createdAt: new Date((doc as any).createdAt),
@@ -843,9 +842,9 @@ const main = async () => {
             await folderKv.put(folder.id, id);
             const parentId = folder?.parentId
               ? await folderKv.get(folder?.parentId).catch((e) => {
-                  console.log("parent folder not found==>", folder);
-                  throw e;
-                })
+                console.log("parent folder not found==>", folder);
+                throw e;
+              })
               : null;
 
             pgFolder.push({
@@ -1548,8 +1547,8 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         // dangling identity
-        if (!await identityKv.get(doc.identity.toString()).catch(() => null)){
-          return 
+        if (!await identityKv.get(doc.identity.toString()).catch(() => null)) {
+          return
         }
 
         const id = uuidV4();
@@ -1584,8 +1583,8 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         // dangling identity
-        if (!await identityKv.get(doc.identity.toString()).catch(() => null)){
-          return 
+        if (!await identityKv.get(doc.identity.toString()).catch(() => null)) {
+          return
         }
 
         const identityUAId = await identityUaKv.get(
@@ -1617,15 +1616,15 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         // dangling identity
-        if (!await identityKv.get(doc.identity.toString()).catch(() => null)){
-          return 
+        if (!await identityKv.get(doc.identity.toString()).catch(() => null)) {
+          return
         }
 
         await identityAccessTokenKv.put(doc._id.toString(), doc._id.toString());
         const identityUAClientSecretId = doc?.identityUniversalAuthClientSecret
           ? await identityUaClientSecKv.get(
-              doc.identityUniversalAuthClientSecret.toString(),
-            )
+            doc.identityUniversalAuthClientSecret.toString(),
+          )
           : null;
         const identityId = await identityKv.get(doc.identity.toString());
         return {
@@ -1652,8 +1651,8 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         // dangling identity
-        if (!await identityKv.get(doc.identity.toString()).catch(() => null)){
-          return 
+        if (!await identityKv.get(doc.identity.toString()).catch(() => null)) {
+          return
         }
 
         const id = uuidV4();
@@ -1687,8 +1686,8 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         // dangling identity
-        if (!await identityKv.get(doc.identity.toString()).catch(() => null)){
-          return 
+        if (!await identityKv.get(doc.identity.toString()).catch(() => null)) {
+          return
         }
 
         const id = uuidV4();
@@ -2317,8 +2316,8 @@ const main = async () => {
 
         const statusChangeBy = doc.statusChangeBy
           ? await projectMembKv
-              .get(doc.statusChangeBy.toString())
-              .catch(() => null)
+            .get(doc.statusChangeBy.toString())
+            .catch(() => null)
           : null;
         return {
           id,
@@ -2454,7 +2453,7 @@ const main = async () => {
                 secretCommentCiphertext:
                   commit.newVersion.secretCommentCiphertext ||
                   secret.secretCommentCiphertext,
-                  secretVersion,
+                secretVersion,
                 createdAt: new Date((doc as any).createdAt),
                 updatedAt: new Date((doc as any).updatedAt),
               };
