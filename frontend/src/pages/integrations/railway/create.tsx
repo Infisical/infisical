@@ -74,16 +74,6 @@ export default function RailwayCreateIntegrationPage() {
     }
   }, [targetEnvironments]);
 
-  useEffect(() => {
-    if (targetServices) {
-      if (targetServices.length > 0) {
-        setTargetServiceId(targetServices[0].serviceId);
-      } else {
-        setTargetServiceId("none");
-      }
-    }
-  }, [targetServices]);
-
   const handleButtonClick = async () => {
     try {
       setIsLoading(true);
@@ -124,11 +114,14 @@ export default function RailwayCreateIntegrationPage() {
     }
   };
 
+  const filteredTargetServices = targetServices ? [ { name: "", serviceId: "none" }, ...targetServices ] : [ { name: "", serviceId: "none" } ];
+
   return workspace &&
     selectedSourceEnvironment &&
     integrationAuthApps &&
     targetEnvironments &&
-    targetServices ? (
+    targetServices &&
+    filteredTargetServices ? (
     <div className="flex h-full w-full items-center justify-center">
       <Card className="max-w-md rounded-md p-8">
         <CardTitle className="text-center">Railway Integration</CardTitle>
@@ -208,20 +201,14 @@ export default function RailwayCreateIntegrationPage() {
             className="w-full border border-mineshaft-500"
             isDisabled={targetServices.length === 0}
           >
-            {targetServices.length > 0 ? (
-              targetServices.map((targetService) => (
+              {filteredTargetServices.map((targetService) => (
                 <SelectItem
                   value={targetService.serviceId as string}
                   key={`target-service-${targetService.serviceId as string}`}
                 >
                   {targetService.name}
                 </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-service-none">
-                No services found
-              </SelectItem>
-            )}
+              ))}
           </Select>
         </FormControl>
         <Button

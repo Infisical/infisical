@@ -649,33 +649,21 @@ export const integrationAuthServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
-    if (appId) {
+
+    if (appId && appId !== "") {
       const query = `
-     query project($id: String!) {
-        project(id: $id) {
-          createdAt
-          deletedAt
-          id
-          description
-          expiredAt
-          isPublic
-          isTempProject
-          isUpdatable
-          name
-          prDeploys
-          teamId
-          updatedAt
-          upstreamUrl
-		  services {
-			edges {
-				node {
-					id
-					name
-				}
-			}
-		  }
+        query project($id: String!) {
+          project(id: $id) {
+            services {
+                edges {
+                    node {
+                        id
+                        name
+                    }
+                }
+            }
+          }
         }
-      }
       `;
 
       const variables = {
@@ -711,6 +699,7 @@ export const integrationAuthServiceFactory = ({
       );
       return edges.map(({ node: { name, id: serviceId } }) => ({ name, serviceId }));
     }
+
     return [];
   };
 
