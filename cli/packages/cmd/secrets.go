@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -39,6 +40,11 @@ var secretsCmd = &cobra.Command{
 		}
 
 		infisicalToken, err := cmd.Flags().GetString("token")
+
+		if infisicalToken == "" {
+			infisicalToken = os.Getenv(util.INFISICAL_TOKEN_NAME)
+		}
+
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -80,7 +86,9 @@ var secretsCmd = &cobra.Command{
 		}
 
 		if shouldExpandSecrets {
-			secrets = util.ExpandSecrets(secrets, infisicalToken, "")
+			secrets = util.ExpandSecrets(secrets, models.ExpandSecretsAuthentication{
+				InfisicalToken: infisicalToken,
+			}, "")
 		}
 
 		visualize.PrintAllSecretDetails(secrets)
