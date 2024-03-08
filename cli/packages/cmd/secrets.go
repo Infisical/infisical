@@ -406,7 +406,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse path flag")
 	}
 
-	showOnlyValue, err := cmd.Flags().GetBool("value")
+	showOnlyValue, err := cmd.Flags().GetBool("raw-value")
 	if err != nil {
 		util.HandleError(err, "Unable to parse path flag")
 	}
@@ -433,7 +433,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	}
 
 	if showOnlyValue && len(requestedSecrets) > 1 {
-		util.PrintErrorMessageAndExit("--value only works with one secret.")
+		util.PrintErrorMessageAndExit("--raw-value only works with one secret.")
 	}
 
 	if showOnlyValue {
@@ -674,7 +674,7 @@ func init() {
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsCmd.AddCommand(secretsGetCmd)
 	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
-	secretsGetCmd.Flags().Bool("value", false, "Returns only the value of secret, only works with one secret")
+	secretsGetCmd.Flags().Bool("raw-value", false, "Returns only the value of secret, only works with one secret")
 
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
