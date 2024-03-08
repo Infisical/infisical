@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding, SecretsSchema, SecretType, TableName } from "@app/db/schemas";
+import { SecretEncryptionAlgo, SecretKeyEncoding, SecretsSchema, SecretType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
@@ -19,14 +19,9 @@ import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretDALFactory } from "./secret-dal";
-import { 
-  decryptSecretRaw, 
-  fnSecretBlindIndexCheck,
-  fnSecretBulkInsert
-} from "./secret-fns";
+import { decryptSecretRaw, fnSecretBlindIndexCheck, fnSecretBulkInsert, fnSecretBulkUpdate } from "./secret-fns";
 import { TSecretQueueFactory } from "./secret-queue";
 import {
-  TCreateManySecretsRawHelper,
   TCreateBulkSecretDTO,
   TCreateSecretDTO,
   TCreateSecretRawDTO,
@@ -35,7 +30,6 @@ import {
   TDeleteSecretRawDTO,
   TFnSecretBlindIndexCheckV2,
   TFnSecretBulkDelete,
-  TFnSecretBulkUpdate,
   TGetASecretDTO,
   TGetASecretRawDTO,
   TGetSecretsDTO,
@@ -96,50 +90,6 @@ export const secretServiceFactory = ({
     });
     if (!secretBlindIndex) throw new BadRequestError({ message: "Secret not found" });
     return secretBlindIndex;
-  };
-
-  const fnSecretBulkUpdate = async ({ tx, inputSecrets, folderId, projectId }: TFnSecretBulkUpdate) => {
-    const newSecrets = await secretDAL.bulkUpdate(
-      inputSecrets.map(({ filter, data: { tags, ...data } }) => ({
-        filter: { ...filter, folderId },
-        data
-      })),
-      tx
-    );
-    const secretVersions = await secretVersionDAL.insertMany(
-      newSecrets.map(({ id, createdAt, updatedAt, ...el }) => ({
-        ...el,
-        secretId: id
-      })),
-      tx
-    );
-    const secsUpdatedTag = inputSecrets.flatMap(({ data: { tags } }, i) =>
-      tags !== undefined ? { tags, secretId: newSecrets[i].id } : []
-    );
-    if (secsUpdatedTag.length) {
-      await secretTagDAL.deleteTagsManySecret(
-        projectId,
-        secsUpdatedTag.map(({ secretId }) => secretId),
-        tx
-      );
-      const newSecretTags = secsUpdatedTag.flatMap(({ tags: secretTags = [], secretId }) =>
-        secretTags.map((tag) => ({
-          [`${TableName.SecretTag}Id` as const]: tag,
-          [`${TableName.Secret}Id` as const]: secretId
-        }))
-      );
-      if (newSecretTags.length) {
-        const secTags = await secretTagDAL.saveTagsToSecret(newSecretTags, tx);
-        const secVersionsGroupBySecId = groupBy(secretVersions, (i) => i.secretId);
-        const newSecretVersionTags = secTags.flatMap(({ secretsId, secret_tagsId }) => ({
-          [`${TableName.SecretVersion}Id` as const]: secVersionsGroupBySecId[secretsId][0].id,
-          [`${TableName.SecretTag}Id` as const]: secret_tagsId
-        }));
-        await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
-      }
-    }
-
-    return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
   };
 
   const fnSecretBulkDelete = async ({ folderId, inputSecrets, tx, actorId }: TFnSecretBulkDelete) => {
@@ -372,6 +322,10 @@ export const secretServiceFactory = ({
             }
           }
         ],
+        secretDAL,
+        secretVersionDAL,
+        secretTagDAL,
+        secretVersionTagDAL,
         tx
       })
     );
@@ -598,7 +552,7 @@ export const secretServiceFactory = ({
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
+    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Create secret" });
 
     const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
       inputSecrets,
@@ -656,7 +610,7 @@ export const secretServiceFactory = ({
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-    if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
+    if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Update secret" });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
@@ -703,7 +657,11 @@ export const secretServiceFactory = ({
             algorithm: SecretEncryptionAlgo.AES_256_GCM,
             keyEncoding: SecretKeyEncoding.UTF8
           }
-        }))
+        })),
+        secretDAL,
+        secretVersionDAL,
+        secretTagDAL,
+        secretVersionTagDAL
       })
     );
 
@@ -826,98 +784,6 @@ export const secretServiceFactory = ({
     });
     return decryptSecretRaw(secret, botKey);
   };
-  
-  const createManySecretsRawHelper = async ({ // TODO: place on top
-    projectId,
-    environment,
-    path,
-    secrets,
-    userId
-  }: TCreateManySecretsRawHelper) => {
-    const botKey = await projectBotService.getBotKey(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
-
-    await projectDAL.checkProjectUpgradeStatus(projectId);
-
-    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-    if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
-    const folderId = folder.id;
-
-    const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
-
-    const inputSecrets = await Promise.all(
-      secrets.map(async (secret) => {
-        const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
-        const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
-        const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretComment || "", botKey);
-
-        if (secret.type === SecretType.Personal) {
-          const sharedExist = await secretDAL.findOne({
-            secretBlindIndex: keyName2BlindIndex[secret.secretName],
-            folderId,
-            type: SecretType.Shared
-          });
-
-          if (!sharedExist)
-            throw new BadRequestError({
-              message: "Failed to create personal secret override for no corresponding shared secret"
-            });
-          
-          if (!userId) throw new BadRequestError({ message: "Missing user id for personal secret" });
-        }
-
-        const tags = secret.tags ? await secretTagDAL.findManyTagsById(projectId, secret.tags) : [];
-        if ((secret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
-
-        return ({
-          type: secret.type,
-          userId: secret.type === SecretType.Personal ? userId : null,
-          secretName: secret.secretName,
-          secretKeyCiphertext: secretKeyEncrypted.ciphertext,
-          secretKeyIV: secretKeyEncrypted.iv,
-          secretKeyTag: secretKeyEncrypted.tag,
-          secretValueCiphertext: secretValueEncrypted.ciphertext,
-          secretValueIV: secretValueEncrypted.iv,
-          secretValueTag: secretValueEncrypted.tag,
-          secretCommentCiphertext: secretCommentEncrypted.ciphertext,
-          secretCommentIV: secretCommentEncrypted.iv,
-          secretCommentTag: secretCommentEncrypted.tag,
-          skipMultilineEncoding: secret.skipMultilineEncoding,
-          tags: secret.tags
-        });
-      })
-    );
-
-    // insert operation
-    const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
-      inputSecrets,
-      folderId,
-      isNew: true,
-      blindIndexCfg,
-      secretDAL
-    });
-
-    const newSecrets = await secretDAL.transaction(async (tx) =>
-      fnSecretBulkInsert({
-        inputSecrets: inputSecrets.map(({ secretName, ...el }) => ({
-          ...el,
-          version: 0,
-          secretBlindIndex: keyName2BlindIndex[secretName],
-          algorithm: SecretEncryptionAlgo.AES_256_GCM,
-          keyEncoding: SecretKeyEncoding.UTF8
-        })),
-        folderId,
-        secretDAL,
-        secretVersionDAL,
-        secretTagDAL,
-        secretVersionTagDAL,
-        tx
-      })
-    );
-
-    return newSecrets;
-  }
 
   const createSecretRaw = async ({
     secretName,

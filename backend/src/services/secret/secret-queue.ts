@@ -6,6 +6,10 @@ import { BadRequestError } from "@app/lib/errors";
 import { isSamePath } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
+import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
+import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
@@ -25,16 +29,11 @@ import { TSecretDALFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
 import { TCreateSecretReminderDTO, THandleReminderDTO, TRemoveSecretReminderDTO } from "./secret-types";
 
-import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
-import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
-import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
-import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
-
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 
 type TSecretQueueFactoryDep = {
   queueService: TQueueServiceFactory;
-  integrationDAL: Pick<TIntegrationDALFactory, "findByProjectIdV2">;
+  integrationDAL: Pick<TIntegrationDALFactory, "findByProjectIdV2" | "updateById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   integrationAuthService: Pick<TIntegrationAuthServiceFactory, "getIntegrationAccessToken">;
   folderDAL: TSecretFolderDALFactory;
@@ -75,7 +74,7 @@ export const secretQueueFactory = ({
   secretVersionDAL,
   secretBlindIndexDAL,
   secretTagDAL,
-  secretVersionTagDAL,
+  secretVersionTagDAL
 }: TSecretQueueFactoryDep) => {
   const syncIntegrations = async (dto: TGetSecrets) => {
     await queueService.queue(QueueName.IntegrationSync, QueueJobs.IntegrationSync, dto, {
@@ -321,6 +320,7 @@ export const secretQueueFactory = ({
 
       await syncIntegrationSecrets({
         projectDAL,
+        integrationDAL,
         secretDAL,
         secretVersionDAL,
         secretBlindIndexDAL,

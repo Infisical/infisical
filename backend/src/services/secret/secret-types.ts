@@ -4,11 +4,11 @@ import { SecretType, TSecretBlindIndexes, TSecrets, TSecretsInsert, TSecretsUpda
 import { TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
-import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
-import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
-import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
+import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 type TPartialSecret = Pick<TSecrets, "id" | "secretReminderRepeatDays" | "secretReminderNote">;
 
@@ -198,6 +198,10 @@ export type TFnSecretBulkUpdate = {
   folderId: string;
   projectId: string;
   inputSecrets: { filter: Partial<TSecrets>; data: TSecretsUpdate & { tags?: string[] } }[];
+  secretDAL: Pick<TSecretDALFactory, "bulkUpdate">;
+  secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret" | "deleteTagsManySecret">;
+  secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   tx?: Knex;
 };
 
@@ -257,7 +261,7 @@ export type TCreateManySecretsRawHelper = {
     tags?: string[];
     metadata?: {
       source?: string;
-    }
+    };
   }[];
   userId?: string; // only relevant for personal secret(s)
   botKey: string;
@@ -268,4 +272,33 @@ export type TCreateManySecretsRawHelper = {
   secretTagDAL: TSecretTagDALFactory;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
   folderDAL: TSecretFolderDALFactory;
-}
+};
+
+export type TUpdateManySecretsRawHelper = {
+  projectId: string;
+  environment: string;
+  path: string;
+  secrets: {
+    secretName: string;
+    newSecretName?: string;
+    secretValue: string;
+    type: SecretType;
+    secretComment?: string;
+    skipMultilineEncoding?: boolean;
+    secretReminderRepeatDays?: number | null;
+    secretReminderNote?: string | null;
+    tags?: string[];
+    metadata?: {
+      source?: string;
+    };
+  }[];
+  userId?: string; // only relevant for personal secret(s)
+  botKey: string;
+  projectDAL: TProjectDALFactory;
+  secretDAL: TSecretDALFactory;
+  secretVersionDAL: TSecretVersionDALFactory;
+  secretBlindIndexDAL: TSecretBlindIndexDALFactory;
+  secretTagDAL: TSecretTagDALFactory;
+  secretVersionTagDAL: TSecretVersionTagDALFactory;
+  folderDAL: TSecretFolderDALFactory;
+};

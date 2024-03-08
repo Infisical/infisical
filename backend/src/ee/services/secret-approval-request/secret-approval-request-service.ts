@@ -12,14 +12,14 @@ import { groupBy, pick, unique } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
-import { TSecretDALFactory } from "@app/services/secret/secret-dal";
-import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
@@ -47,7 +47,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretApprovalRequestReviewerDAL: TSecretApprovalRequestReviewerDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findById" | "findSecretPathByFolderIds">;
   secretDAL: TSecretDALFactory;
-  secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById" | "saveTagsToSecret">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById" | "saveTagsToSecret" | "deleteTagsManySecret">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany" | "insertMany">;
@@ -377,7 +377,11 @@ export const secretApprovalRequestServiceFactory = ({
                   "secretBlindIndex"
                 ])
               }
-            }))
+            })),
+            secretDAL,
+            secretVersionDAL,
+            secretTagDAL,
+            secretVersionTagDAL
           })
         : [];
       const deletedSecret = secretDeletionCommits.length

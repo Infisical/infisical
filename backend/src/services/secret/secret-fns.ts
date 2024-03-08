@@ -1,31 +1,32 @@
 /* eslint-disable no-await-in-loop */
 import path from "path";
 
-import { 
-  SecretKeyEncoding, 
-  TSecretBlindIndexes, 
-  TSecrets,
+import {
   SecretEncryptionAlgo,
+  SecretKeyEncoding,
   SecretType,
-  TableName
+  TableName,
+  TSecretBlindIndexes,
+  TSecrets
 } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { 
-  buildSecretBlindIndexFromName, 
-  encryptSymmetric128BitHexKeyUTF8,
-  decryptSymmetric128BitHexKeyUTF8 
+import {
+  buildSecretBlindIndexFromName,
+  decryptSymmetric128BitHexKeyUTF8,
+  encryptSymmetric128BitHexKeyUTF8
 } from "@app/lib/crypto";
+import { BadRequestError } from "@app/lib/errors";
+import { groupBy, unique } from "@app/lib/fn";
 
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretDALFactory } from "./secret-dal";
-import { 
+import {
   TCreateManySecretsRawHelper,
+  TFnSecretBlindIndexCheck,
   TFnSecretBulkInsert,
-  TFnSecretBlindIndexCheck
+  TFnSecretBulkUpdate,
+  TUpdateManySecretsRawHelper
 } from "./secret-types";
-
-import { groupBy, unique } from "@app/lib/fn";
-import { BadRequestError } from "@app/lib/errors";
 
 export const generateSecretBlindIndexBySalt = async (secretName: string, secretBlindIndexDoc: TSecretBlindIndexes) => {
   const appCfg = getConfig();
@@ -308,14 +309,15 @@ export const fnSecretBlindIndexCheck = async ({
 
 // these functions are special functions shared by a couple of resources
 // used by secret approval, rotation or anywhere in which secret needs to modified
-export const fnSecretBulkInsert = async ({ // TODO: Pick types here 
-  folderId, 
-  inputSecrets, 
+export const fnSecretBulkInsert = async ({
+  // TODO: Pick types here
+  folderId,
+  inputSecrets,
   secretDAL,
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
-  tx 
+  tx
 }: TFnSecretBulkInsert) => {
   const newSecrets = await secretDAL.insertMany(
     inputSecrets.map(({ tags, ...el }) => ({ ...el, folderId })),
@@ -349,10 +351,63 @@ export const fnSecretBulkInsert = async ({ // TODO: Pick types here
   return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
-export const createManySecretsRawHelper = async ({ // TODO: place on top
+export const fnSecretBulkUpdate = async ({
+  tx,
+  inputSecrets,
+  folderId,
+  projectId,
+  secretDAL,
+  secretVersionDAL,
+  secretTagDAL,
+  secretVersionTagDAL
+}: TFnSecretBulkUpdate) => {
+  const newSecrets = await secretDAL.bulkUpdate(
+    inputSecrets.map(({ filter, data: { tags, ...data } }) => ({
+      filter: { ...filter, folderId },
+      data
+    })),
+    tx
+  );
+  const secretVersions = await secretVersionDAL.insertMany(
+    newSecrets.map(({ id, createdAt, updatedAt, ...el }) => ({
+      ...el,
+      secretId: id
+    })),
+    tx
+  );
+  const secsUpdatedTag = inputSecrets.flatMap(({ data: { tags } }, i) =>
+    tags !== undefined ? { tags, secretId: newSecrets[i].id } : []
+  );
+  if (secsUpdatedTag.length) {
+    await secretTagDAL.deleteTagsManySecret(
+      projectId,
+      secsUpdatedTag.map(({ secretId }) => secretId),
+      tx
+    );
+    const newSecretTags = secsUpdatedTag.flatMap(({ tags: secretTags = [], secretId }) =>
+      secretTags.map((tag) => ({
+        [`${TableName.SecretTag}Id` as const]: tag,
+        [`${TableName.Secret}Id` as const]: secretId
+      }))
+    );
+    if (newSecretTags.length) {
+      const secTags = await secretTagDAL.saveTagsToSecret(newSecretTags, tx);
+      const secVersionsGroupBySecId = groupBy(secretVersions, (i) => i.secretId);
+      const newSecretVersionTags = secTags.flatMap(({ secretsId, secret_tagsId }) => ({
+        [`${TableName.SecretVersion}Id` as const]: secVersionsGroupBySecId[secretsId][0].id,
+        [`${TableName.SecretTag}Id` as const]: secret_tagsId
+      }));
+      await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
+    }
+  }
+
+  return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
+};
+
+export const createManySecretsRawHelper = async ({
   projectId,
   environment,
-  path,
+  path: secretPath,
   secrets,
   userId,
   botKey, // TODO: consider getting botKey inside this fn
@@ -364,66 +419,65 @@ export const createManySecretsRawHelper = async ({ // TODO: place on top
   secretVersionTagDAL,
   folderDAL
 }: TCreateManySecretsRawHelper) => {
-await projectDAL.checkProjectUpgradeStatus(projectId);
+  await projectDAL.checkProjectUpgradeStatus(projectId);
 
-const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
-const folderId = folder.id;
+  const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+  if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
+  const folderId = folder.id;
 
-const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
-
-const inputSecrets = await Promise.all(
-  secrets.map(async (secret) => {
-    const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
-    const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
-    const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretComment || "", botKey);
-
-    if (secret.type === SecretType.Personal) {
-      const sharedExist = await secretDAL.findOne({
-        secretBlindIndex: keyName2BlindIndex[secret.secretName],
-        folderId,
-        type: SecretType.Shared
-      });
-
-      if (!sharedExist)
-        throw new BadRequestError({
-          message: "Failed to create personal secret override for no corresponding shared secret"
-        });
-      
-      if (!userId) throw new BadRequestError({ message: "Missing user id for personal secret" });
-    }
-
-    const tags = secret.tags ? await secretTagDAL.findManyTagsById(projectId, secret.tags) : [];
-    if ((secret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
-
-    return ({
-      type: secret.type,
-      userId: secret.type === SecretType.Personal ? userId : null,
-      secretName: secret.secretName,
-      secretKeyCiphertext: secretKeyEncrypted.ciphertext,
-      secretKeyIV: secretKeyEncrypted.iv,
-      secretKeyTag: secretKeyEncrypted.tag,
-      secretValueCiphertext: secretValueEncrypted.ciphertext,
-      secretValueIV: secretValueEncrypted.iv,
-      secretValueTag: secretValueEncrypted.tag,
-      secretCommentCiphertext: secretCommentEncrypted.ciphertext,
-      secretCommentIV: secretCommentEncrypted.iv,
-      secretCommentTag: secretCommentEncrypted.tag,
-      skipMultilineEncoding: secret.skipMultilineEncoding,
-      tags: secret.tags
-    });
-  })
-);
+  const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
+  if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Create secret" });
 
   // insert operation
   const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
-    inputSecrets,
+    inputSecrets: secrets,
     folderId,
     isNew: true,
     blindIndexCfg,
     secretDAL
   });
+
+  const inputSecrets = await Promise.all(
+    secrets.map(async (secret) => {
+      const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
+      const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
+      const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretComment || "", botKey);
+
+      if (secret.type === SecretType.Personal) {
+        if (!userId) throw new BadRequestError({ message: "Missing user id for personal secret" });
+        const sharedExist = await secretDAL.findOne({
+          secretBlindIndex: keyName2BlindIndex[secret.secretName],
+          folderId,
+          type: SecretType.Shared
+        });
+
+        if (!sharedExist)
+          throw new BadRequestError({
+            message: "Failed to create personal secret override for no corresponding shared secret"
+          });
+      }
+
+      const tags = secret.tags ? await secretTagDAL.findManyTagsById(projectId, secret.tags) : [];
+      if ((secret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+
+      return {
+        type: secret.type,
+        userId: secret.type === SecretType.Personal ? userId : null,
+        secretName: secret.secretName,
+        secretKeyCiphertext: secretKeyEncrypted.ciphertext,
+        secretKeyIV: secretKeyEncrypted.iv,
+        secretKeyTag: secretKeyEncrypted.tag,
+        secretValueCiphertext: secretValueEncrypted.ciphertext,
+        secretValueIV: secretValueEncrypted.iv,
+        secretValueTag: secretValueEncrypted.tag,
+        secretCommentCiphertext: secretCommentEncrypted.ciphertext,
+        secretCommentIV: secretCommentEncrypted.iv,
+        secretCommentTag: secretCommentEncrypted.tag,
+        skipMultilineEncoding: secret.skipMultilineEncoding,
+        tags: secret.tags
+      };
+    })
+  );
 
   const newSecrets = await secretDAL.transaction(async (tx) =>
     fnSecretBulkInsert({
@@ -444,4 +498,130 @@ const inputSecrets = await Promise.all(
   );
 
   return newSecrets;
-}
+};
+
+export const updateManySecretsRawHelper = async ({
+  projectId,
+  environment,
+  path: secretPath,
+  secrets,
+  userId,
+  botKey, // TODO: consider getting botKey inside this fn
+  projectDAL,
+  secretDAL,
+  secretVersionDAL,
+  secretBlindIndexDAL,
+  secretTagDAL,
+  secretVersionTagDAL,
+  folderDAL
+}: TUpdateManySecretsRawHelper) => {
+  await projectDAL.checkProjectUpgradeStatus(projectId);
+
+  const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+  if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Update secret" });
+  const folderId = folder.id;
+
+  const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
+  if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
+
+  const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
+    inputSecrets: secrets,
+    folderId,
+    isNew: false,
+    blindIndexCfg,
+    secretDAL,
+    userId
+  });
+
+  const inputSecrets = await Promise.all(
+    secrets.map(async (secret) => {
+      if (secret.newSecretName === "") {
+        throw new BadRequestError({ message: "New secret name cannot be empty" });
+      }
+
+      const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
+      const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
+      const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretComment || "", botKey);
+
+      if (secret.type === SecretType.Personal) {
+        if (!userId) throw new BadRequestError({ message: "Missing user id for personal secret" });
+
+        const sharedExist = await secretDAL.findOne({
+          secretBlindIndex: keyName2BlindIndex[secret.secretName],
+          folderId,
+          type: SecretType.Shared
+        });
+
+        if (!sharedExist)
+          throw new BadRequestError({
+            message: "Failed to update personal secret override for no corresponding shared secret"
+          });
+
+        if (secret.newSecretName) throw new BadRequestError({ message: "Personal secret cannot change the key name" });
+      }
+
+      const tags = secret.tags ? await secretTagDAL.findManyTagsById(projectId, secret.tags) : [];
+      if ((secret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+
+      return {
+        type: secret.type,
+        userId: secret.type === SecretType.Personal ? userId : null,
+        secretName: secret.secretName,
+        newSecretName: secret.newSecretName,
+        secretKeyCiphertext: secretKeyEncrypted.ciphertext,
+        secretKeyIV: secretKeyEncrypted.iv,
+        secretKeyTag: secretKeyEncrypted.tag,
+        secretValueCiphertext: secretValueEncrypted.ciphertext,
+        secretValueIV: secretValueEncrypted.iv,
+        secretValueTag: secretValueEncrypted.tag,
+        secretCommentCiphertext: secretCommentEncrypted.ciphertext,
+        secretCommentIV: secretCommentEncrypted.iv,
+        secretCommentTag: secretCommentEncrypted.tag,
+        skipMultilineEncoding: secret.skipMultilineEncoding,
+        tags: secret.tags
+      };
+    })
+  );
+
+  const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
+  const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
+  if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+
+  // now find any secret that needs to update its name
+  // same process as above
+  const nameUpdatedSecrets = inputSecrets.filter(({ newSecretName }) => Boolean(newSecretName));
+  const { keyName2BlindIndex: newKeyName2BlindIndex } = await fnSecretBlindIndexCheck({
+    inputSecrets: nameUpdatedSecrets,
+    folderId,
+    isNew: true,
+    blindIndexCfg,
+    secretDAL
+  });
+
+  const updatedSecrets = await secretDAL.transaction(async (tx) =>
+    fnSecretBulkUpdate({
+      folderId,
+      projectId,
+      tx,
+      inputSecrets: inputSecrets.map(({ secretName, newSecretName, ...el }) => ({
+        filter: { secretBlindIndex: keyName2BlindIndex[secretName], type: SecretType.Shared },
+        data: {
+          ...el,
+          folderId,
+          secretBlindIndex:
+            newSecretName && newKeyName2BlindIndex[newSecretName]
+              ? newKeyName2BlindIndex[newSecretName]
+              : keyName2BlindIndex[secretName],
+          algorithm: SecretEncryptionAlgo.AES_256_GCM,
+          keyEncoding: SecretKeyEncoding.UTF8
+        }
+      })),
+      secretDAL,
+      secretVersionDAL,
+      secretTagDAL,
+      secretVersionTagDAL
+    })
+  );
+
+  return updatedSecrets;
+};
