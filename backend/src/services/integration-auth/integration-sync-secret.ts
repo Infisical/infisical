@@ -1204,21 +1204,21 @@ const syncSecretsRailway = async ({
     }
   `;
 
-  const input = {
-    projectId: integration.appId,
-    environmentId: integration.targetEnvironmentId,
-    ...(integration.targetServiceId ? { serviceId: integration.targetServiceId } : {}),
-    replace: true,
-    variables: getSecretKeyValuePair(secrets)
+  const variables = {
+    input: {
+      projectId: integration.appId,
+      environmentId: integration.targetEnvironmentId,
+      ...(integration.targetServiceId ? { serviceId: integration.targetServiceId } : {}),
+      replace: true,
+      variables: getSecretKeyValuePair(secrets)
+    }
   };
 
   await request.post(
     IntegrationUrls.RAILWAY_API_URL,
     {
       query,
-      variables: {
-        input
-      }
+      variables
     },
     {
       headers: {
