@@ -29,6 +29,8 @@ import { TSecretDALFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
 import { TCreateSecretReminderDTO, THandleReminderDTO, TRemoveSecretReminderDTO } from "./secret-types";
 
+// import { updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
+
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 
 type TSecretQueueFactoryDep = {
@@ -318,6 +320,17 @@ export const secretQueueFactory = ({
         });
       }
 
+      // const updateManySecretsRawFn = updateManySecretsRawFnFactory({
+      //   botKey, // can move this out
+      //   projectDAL,
+      //   secretDAL,
+      //   secretVersionDAL,
+      //   secretBlindIndexDAL,
+      //   secretTagDAL,
+      //   secretVersionTagDAL,
+      //   folderDAL
+      // });
+
       await syncIntegrationSecrets({
         projectDAL,
         integrationDAL,
@@ -328,7 +341,7 @@ export const secretQueueFactory = ({
         secretVersionTagDAL,
         folderDAL,
         botKey,
-        projectId,
+        projectId, // service
         environment,
         secretPath,
         integration,

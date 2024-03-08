@@ -32,7 +32,10 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
-import { createManySecretsRawHelper, updateManySecretsRawHelper } from "../secret/secret-fns";
+import {
+  createManySecretsRawHelper
+  // updateManySecretsRawHelper
+} from "../secret/secret-fns";
 import { Integrations, IntegrationSyncBehavior, IntegrationUrls } from "./integration-list";
 
 const getSecretKeyValuePair = (secrets: Record<string, { value: string | null; comment?: string } | null>) =>
@@ -589,7 +592,6 @@ const syncSecretsAWSSecretManager = async ({
 
 /**
  * Sync/push [secrets] to Heroku app named [integration.app]
- * server.services...
  */
 const syncSecretsHeroku = async ({
   projectDAL,
@@ -609,7 +611,7 @@ const syncSecretsHeroku = async ({
   accessToken
 }: {
   projectDAL: TProjectDALFactory;
-  integrationDAL: TIntegrationDALFactory;
+  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
   secretDAL: TSecretDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
@@ -696,27 +698,27 @@ const syncSecretsHeroku = async ({
     });
   }
 
-  if (Object.keys(secretsToUpdate).length) {
-    await updateManySecretsRawHelper({
-      projectId,
-      environment,
-      path: secretPath,
-      secrets: Object.keys(secretsToUpdate).map((key) => ({
-        secretName: key,
-        secretValue: secretsToUpdate[key],
-        type: SecretType.Shared,
-        secretComment: ""
-      })),
-      botKey, // TODO: consider getting botKey inside this fn
-      projectDAL,
-      secretDAL,
-      secretVersionDAL,
-      secretBlindIndexDAL,
-      secretTagDAL,
-      secretVersionTagDAL,
-      folderDAL
-    });
-  }
+  // if (Object.keys(secretsToUpdate).length) {
+  //   await updateManySecretsRawHelper({
+  //     projectId,
+  //     environment,
+  //     path: secretPath,
+  //     secrets: Object.keys(secretsToUpdate).map((key) => ({
+  //       secretName: key,
+  //       secretValue: secretsToUpdate[key],
+  //       type: SecretType.Shared,
+  //       secretComment: ""
+  //     })),
+  //     botKey, // TODO: consider getting botKey inside this fn
+  //     projectDAL,
+  //     secretDAL,
+  //     secretVersionDAL,
+  //     secretBlindIndexDAL,
+  //     secretTagDAL,
+  //     secretVersionTagDAL,
+  //     folderDAL
+  //   });
+  // }
 
   await request.patch(
     `${IntegrationUrls.HEROKU_API_URL}/apps/${integration.app}/config-vars`,
@@ -3071,7 +3073,7 @@ export const syncIntegrationSecrets = async ({
   appendices
 }: {
   projectDAL: TProjectDALFactory;
-  integrationDAL: TIntegrationDALFactory;
+  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
   secretDAL: TSecretDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;

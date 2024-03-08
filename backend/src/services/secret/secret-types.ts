@@ -274,7 +274,18 @@ export type TCreateManySecretsRawHelper = {
   folderDAL: TSecretFolderDALFactory;
 };
 
-export type TUpdateManySecretsRawHelper = {
+export type TUpdateManySecretsRawFnFactory = {
+  botKey: string;
+  projectDAL: TProjectDALFactory;
+  secretDAL: TSecretDALFactory;
+  secretVersionDAL: TSecretVersionDALFactory;
+  secretBlindIndexDAL: TSecretBlindIndexDALFactory;
+  secretTagDAL: TSecretTagDALFactory;
+  secretVersionTagDAL: TSecretVersionTagDALFactory;
+  folderDAL: TSecretFolderDALFactory;
+};
+
+export type TUpdateManySecretsRawFn = {
   projectId: string;
   environment: string;
   path: string;
@@ -292,13 +303,5 @@ export type TUpdateManySecretsRawHelper = {
       source?: string;
     };
   }[];
-  userId?: string; // only relevant for personal secret(s)
-  botKey: string;
-  projectDAL: TProjectDALFactory;
-  secretDAL: TSecretDALFactory;
-  secretVersionDAL: TSecretVersionDALFactory;
-  secretBlindIndexDAL: TSecretBlindIndexDALFactory;
-  secretTagDAL: TSecretTagDALFactory;
-  secretVersionTagDAL: TSecretVersionTagDALFactory;
-  folderDAL: TSecretFolderDALFactory;
+  userId?: string;
 };
