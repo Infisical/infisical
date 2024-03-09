@@ -39,7 +39,8 @@ const buttonVariants = cva(
         selected: "",
         outline_bg: "",
         // a constant color not in use on hover or click goes colorSchema color
-        star: "text-bunker-200 bg-mineshaft-700 border-mineshaft-600"
+        star: "text-bunker-200 bg-mineshaft-700 border-mineshaft-600",
+        link: "text-primary !p-0 bg-transparent outline-none border-none"
       },
       isDisabled: {
         true: "bg-mineshaft-700 border border-mineshaft-600 text-white opacity-50 cursor-not-allowed",
