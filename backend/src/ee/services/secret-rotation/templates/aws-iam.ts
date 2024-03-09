@@ -11,7 +11,7 @@ export const AWS_IAM_TEMPLATE = {
       manager_user_aws_region: { type: "string" as const },
       iam_username: { type: "string" as const }
     },
-    required: ["manage_user_access_key", "manage_user_secret_key", "iam_username"],
+    required: ["manager_user_access_key", "manager_user_secret_key", "manager_user_aws_region", "iam_username"],
     additionalProperties: false
   },
   outputs: {
