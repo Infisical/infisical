@@ -14,7 +14,7 @@ import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
 
-import { navigateUserToOrg } from "../../Login.utils";
+import { navigateUserToSelectOrg } from "../../Login.utils";
 
 type Props = {
   setStep: (step: number) => void;
@@ -85,7 +85,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             return;
           }
 
-          await navigateUserToOrg(router);
+          await navigateUserToSelectOrg(router);
 
           // case: login does not require MFA step
           createNotification({
