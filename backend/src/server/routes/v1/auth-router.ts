@@ -21,7 +21,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req, res) => {
       const appCfg = getConfig();
       if (req.auth.authMode === AuthMode.JWT) {
@@ -85,6 +85,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
 
       const token = jwt.sign(
         {
+          authMethod: decodedToken.authMethod,
           authTokenType: AuthTokenType.ACCESS_TOKEN,
           userId: decodedToken.userId,
           tokenVersionId: tokenVersion.id,
