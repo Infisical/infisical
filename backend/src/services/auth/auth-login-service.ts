@@ -17,7 +17,7 @@ import {
   TOauthLoginDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
-import { AuthMethod, AuthTokenType } from "./auth-type";
+import { AuthMethod, AuthModeMfaJwtTokenPayload, AuthTokenType } from "./auth-type";
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;
@@ -83,12 +83,14 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     user,
     ip,
     userAgent,
-    organizationId
+    organizationId,
+    authMethod
   }: {
     user: TUsers;
     ip: string;
     userAgent: string;
     organizationId?: string;
+    authMethod: AuthMethod;
   }) => {
     const cfg = getConfig();
     await updateUserDeviceSession(user, ip, userAgent);
@@ -98,8 +100,10 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       userId: user.id
     });
     if (!tokenSession) throw new Error("Failed to create token");
+
     const accessToken = jwt.sign(
       {
+        authMethod,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: user.id,
         tokenVersionId: tokenSession.id,
@@ -112,6 +116,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
 
     const refreshToken = jwt.sign(
       {
+        authMethod,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: user.id,
         tokenVersionId: tokenSession.id,
@@ -158,9 +163,9 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
   const loginExchangeClientProof = async ({
     email,
     clientProof,
-    providerAuthToken,
     ip,
-    userAgent
+    userAgent,
+    providerAuthToken
   }: TLoginClientProofDTO) => {
     const userEnc = await userDAL.findUserEncKeyByUsername({
       username: email
@@ -168,14 +173,14 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     if (!userEnc) throw new Error("Failed to find user");
     const cfg = getConfig();
 
-    let organizationId;
-    if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
-      const { orgId } = validateProviderAuthToken(providerAuthToken as string, email);
-      organizationId = orgId;
-    } else if (providerAuthToken) {
-      // SAML SSO
-      const { orgId } = validateProviderAuthToken(providerAuthToken, email);
-      organizationId = orgId;
+    // let organizationId;
+
+    // let authMethod = (providerAuthToken as AuthMethod) || AuthMethod.EMAIL;
+
+    let authMethod = AuthMethod.EMAIL;
+
+    if (providerAuthToken) {
+      authMethod = validateProviderAuthToken(providerAuthToken, email).authMethod;
     }
 
     if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey) throw new Error("Failed to authenticate. Try again?");
@@ -196,9 +201,9 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     if (userEnc.isMfaEnabled && userEnc.email) {
       const mfaToken = jwt.sign(
         {
+          authMethod,
           authTokenType: AuthTokenType.MFA_TOKEN,
-          userId: userEnc.userId,
-          organizationId
+          userId: userEnc.userId
         },
         cfg.AUTH_SECRET,
         {
@@ -221,7 +226,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       },
       ip,
       userAgent,
-      organizationId
+      authMethod
     });
 
     return { token, isMfaEnabled: false, user: userEnc } as const;
@@ -250,6 +255,9 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       userId,
       code: mfaToken
     });
+
+    const decodedToken = jwt.verify(mfaToken, getConfig().AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
+
     const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
 
@@ -260,7 +268,8 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       },
       ip,
       userAgent,
-      organizationId: orgId
+      organizationId: orgId,
+      authMethod: decodedToken.authMethod
     });
 
     return { token, user: userEnc };

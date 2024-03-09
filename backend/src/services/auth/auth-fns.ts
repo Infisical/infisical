@@ -15,10 +15,10 @@ export const validateProviderAuthToken = (providerToken: string, username?: stri
   if (decodedToken.username !== username) throw new Error("Invalid auth credentials");
 
   if (decodedToken.organizationId) {
-    return { orgId: decodedToken.organizationId };
+    return { orgId: decodedToken.organizationId, authMethod: decodedToken.authMethod };
   }
 
-  return {};
+  return { authMethod: decodedToken.authMethod, orgId: null };
 };
 
 export const validateSignUpAuthorization = (token: string, userId: string, validate = true) => {

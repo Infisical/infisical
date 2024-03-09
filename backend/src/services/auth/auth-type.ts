@@ -40,6 +40,7 @@ export enum ActorType { // would extend to AWS, Azure, ...
 
 export type AuthModeJwtTokenPayload = {
   authTokenType: AuthTokenType.ACCESS_TOKEN;
+  authMethod: AuthMethod;
   userId: string;
   tokenVersionId: string;
   accessVersion: number;
@@ -48,12 +49,15 @@ export type AuthModeJwtTokenPayload = {
 
 export type AuthModeMfaJwtTokenPayload = {
   authTokenType: AuthTokenType.MFA_TOKEN;
+  authMethod: AuthMethod;
   userId: string;
   organizationId?: string;
 };
 
 export type AuthModeRefreshJwtTokenPayload = {
+  // authMode
   authTokenType: AuthTokenType.REFRESH_TOKEN;
+  authMethod: AuthMethod;
   userId: string;
   tokenVersionId: string;
   refreshVersion: number;
@@ -63,6 +67,8 @@ export type AuthModeRefreshJwtTokenPayload = {
 export type AuthModeProviderJwtTokenPayload = {
   authTokenType: AuthTokenType.PROVIDER_TOKEN;
   username: string;
+  authMethod: AuthMethod;
+  email: string;
   organizationId?: string;
 };
 
