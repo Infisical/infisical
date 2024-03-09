@@ -18,18 +18,19 @@ export type TAuthMode =
       user: TUsers;
       orgId?: string;
     }
-  | {
-      authMode: AuthMode.API_KEY;
-      actor: ActorType.USER;
-      userId: string;
-      user: TUsers;
-      orgId?: string;
-    }
+  // | {
+  //     authMode: AuthMode.API_KEY;
+  //     actor: ActorType.USER;
+  //     userId: string;
+  //     user: TUsers;
+  //     orgId?: string;
+  //   }
   | {
       authMode: AuthMode.SERVICE_TOKEN;
       serviceToken: TServiceTokens & { createdByEmail: string };
       actor: ActorType.SERVICE;
       serviceTokenId: string;
+      orgId: string;
     }
   | {
       authMode: AuthMode.IDENTITY_ACCESS_TOKEN;
@@ -51,6 +52,7 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
     return { authMode: AuthMode.API_KEY, token: apiKey, actor: ActorType.USER } as const;
   }
   const authHeader = req.headers?.authorization;
+
   if (!authHeader) return { authMode: null, token: null };
 
   const authTokenValue = authHeader.slice(7); // slice of after Bearer
@@ -72,7 +74,8 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         actor: ActorType.USER
       } as const;
     case AuthTokenType.API_KEY:
-      return { authMode: AuthMode.API_KEY, token: decodedToken, actor: ActorType.USER } as const;
+      throw new Error("API Key auth is no longer supported.");
+    // return { authMode: AuthMode.API_KEY, token: decodedToken, actor: ActorType.USER } as const;
     case AuthTokenType.IDENTITY_ACCESS_TOKEN:
       return {
         authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
@@ -96,6 +99,10 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
   server.addHook("onRequest", async (req) => {
     const appCfg = getConfig();
     const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
+
+    if (req.url.includes("/api/v3/auth/")) {
+      return;
+    }
     if (!authMode) return;
 
     switch (authMode) {
@@ -119,6 +126,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
       case AuthMode.SERVICE_TOKEN: {
         const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
         req.auth = {
+          orgId: serviceToken.orgId,
           authMode: AuthMode.SERVICE_TOKEN as const,
           serviceToken,
           serviceTokenId: serviceToken.id,
@@ -126,11 +134,11 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
         };
         break;
       }
-      case AuthMode.API_KEY: {
-        const user = await server.services.apiKey.fnValidateApiKey(token as string);
-        req.auth = { authMode: AuthMode.API_KEY as const, userId: user.id, actor, user };
-        break;
-      }
+      // case AuthMode.API_KEY: {
+      //   const user = await server.services.apiKey.fnValidateApiKey(token as string);
+      //   req.auth = { authMode: AuthMode.API_KEY as const, userId: user.id, actor, user };
+      //   break;
+      // }
       case AuthMode.SCIM_TOKEN: {
         const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
         req.auth = { authMode: AuthMode.SCIM_TOKEN, actor, scimTokenId, orgId };
