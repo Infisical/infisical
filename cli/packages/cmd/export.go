@@ -87,7 +87,9 @@ var exportCmd = &cobra.Command{
 
 		var output string
 		if shouldExpandSecrets {
-			secrets = util.ExpandSecrets(secrets, infisicalToken, "")
+			secrets = util.ExpandSecrets(secrets, models.ExpandSecretsAuthentication{
+				InfisicalToken: infisicalToken,
+			}, "")
 		}
 		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
 		output, err = formatEnvs(secrets, format)

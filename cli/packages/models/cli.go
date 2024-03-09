@@ -21,11 +21,12 @@ type LoggedInUser struct {
 }
 
 type SingleEnvironmentVariable struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-	Type  string `json:"type"`
-	ID    string `json:"_id"`
-	Tags  []struct {
+	Key         string `json:"key"`
+	WorkspaceId string `json:"workspace"`
+	Value       string `json:"value"`
+	Type        string `json:"type"`
+	ID          string `json:"_id"`
+	Tags        []struct {
 		ID        string `json:"_id"`
 		Name      string `json:"name"`
 		Slug      string `json:"slug"`
@@ -45,11 +46,11 @@ type SingleFolder struct {
 }
 
 type Workspace struct {
-	ID           string `json:"_id"`
-	Name         string `json:"name"`
-	Plan         string `json:"plan,omitempty"`
-	V            int    `json:"__v"`
-	Organization string `json:"organization,omitempty"`
+	ID             string `json:"_id"`
+	Name           string `json:"name"`
+	Plan           string `json:"plan,omitempty"`
+	V              int    `json:"__v"`
+	OrganizationId string `json:"orgId"`
 }
 
 type WorkspaceConfigFile struct {
@@ -68,6 +69,7 @@ type GetAllSecretsParameters struct {
 	Environment              string
 	EnvironmentPassedViaFlag bool
 	InfisicalToken           string
+	UniversalAuthAccessToken string
 	TagSlugs                 string
 	WorkspaceId              string
 	SecretsPath              string
@@ -95,4 +97,9 @@ type DeleteFolderParameters struct {
 	Environment    string
 	FolderPath     string
 	InfisicalToken string
+}
+
+type ExpandSecretsAuthentication struct {
+	InfisicalToken           string
+	UniversalAuthAccessToken string
 }

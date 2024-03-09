@@ -39,11 +39,12 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { identityUa, accessToken, identityAccessToken, validClientSecretInfo } =
+      const { identityUa, accessToken, identityAccessToken, validClientSecretInfo, identityMembershipOrg } =
         await server.services.identityUa.login(req.body.clientId, req.body.clientSecret, req.realIp);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
+        orgId: identityMembershipOrg?.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,
           metadata: {

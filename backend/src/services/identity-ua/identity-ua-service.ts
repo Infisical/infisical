@@ -54,6 +54,8 @@ export const identityUaServiceFactory = ({
     const identityUa = await identityUaDAL.findOne({ clientId });
     if (!identityUa) throw new UnauthorizedError();
 
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityUa.identityId });
+
     checkIPAgainstBlocklist({
       ipAddress: ip,
       trustedIps: identityUa.clientSecretTrustedIps as TIp[]
@@ -131,7 +133,7 @@ export const identityUaServiceFactory = ({
       }
     );
 
-    return { accessToken, identityUa, validClientSecretInfo, identityAccessToken };
+    return { accessToken, identityUa, validClientSecretInfo, identityAccessToken, identityMembershipOrg };
   };
 
   const attachUa = async ({

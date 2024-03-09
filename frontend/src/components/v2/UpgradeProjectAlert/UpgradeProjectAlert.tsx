@@ -103,7 +103,7 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
               Upgrade your project version to continue receiving the latest improvements and
               patches.
             </p>
-            <Link href="/docs/documentation/platform/project-upgrade">
+            <Link href="https://infisical.com/docs/documentation/platform/project-upgrade">
               <a target="_blank" className="text-primary-400">
                 Learn more
               </a>
@@ -117,7 +117,7 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
               Upgrading the project version is required to continue receiving the latest
               improvements and patches.
             </p>
-            <Link href="/docs/documentation/platform/project-upgrade">
+            <Link href="https://infisical.com/docs/documentation/platform/project-upgrade">
               <a target="_blank" className="text-primary-400">
                 Learn more
               </a>

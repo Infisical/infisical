@@ -179,7 +179,7 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 	}
 
 	for _, secret := range rawSecrets.Secrets {
-		plainTextSecrets = append(plainTextSecrets, models.SingleEnvironmentVariable{Key: secret.SecretKey, Value: secret.SecretValue})
+		plainTextSecrets = append(plainTextSecrets, models.SingleEnvironmentVariable{Key: secret.SecretKey, Value: secret.SecretValue, WorkspaceId: secret.Workspace})
 	}
 
 	// if includeImports {
@@ -191,7 +191,7 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 
 	return models.PlaintextSecretResult{
 		Secrets: plainTextSecrets,
-		Hash:    rawSecrets.ETag,
+		Etag:    rawSecrets.ETag,
 	}, nil
 }
 
@@ -248,11 +248,8 @@ func FilterSecretsByTag(plainTextSecrets []models.SingleEnvironmentVariable, tag
 }
 
 func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectConfigFilePath string) ([]models.SingleEnvironmentVariable, error) {
-	var infisicalToken string
 	if params.InfisicalToken == "" {
-		infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
-	} else {
-		infisicalToken = params.InfisicalToken
+		params.InfisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
 	}
 
 	isConnected := CheckIsConnectedToInternet()
@@ -260,7 +257,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 	// var serviceTokenDetails api.GetServiceTokenDetailsResponse
 	var errorToReturn error
 
-	if infisicalToken == "" {
+	if params.InfisicalToken == "" && params.UniversalAuthAccessToken == "" {
 		if isConnected {
 			log.Debug().Msg("GetAllEnvironmentVariables: Connected to internet, checking logged in creds")
 
@@ -306,12 +303,6 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			infisicalDotJson.WorkspaceId = params.WorkspaceId
 		}
 
-		// // Verify environment
-		// err = ValidateEnvironmentName(params.Environment, workspaceFile.WorkspaceId, loggedInUserDetails.UserCredentials)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("unable to validate environment name because [err=%s]", err)
-		// }
-
 		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, infisicalDotJson.WorkspaceId,
 			params.Environment, params.TagSlugs, params.SecretsPath, params.IncludeImport)
 		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
@@ -332,91 +323,19 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		}
 
 	} else {
-		log.Debug().Msg("Trying to fetch secrets using service token")
-		secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken, params.Environment, params.SecretsPath, params.IncludeImport)
-	}
+		if params.InfisicalToken != "" {
+			log.Debug().Msg("Trying to fetch secrets using service token")
+			secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport)
+		} else if params.UniversalAuthAccessToken != "" {
+			log.Debug().Msg("Trying to fetch secrets using universal auth")
+			res, err := GetPlainTextSecretsViaMachineIdentity(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport)
 
-	return secretsToReturn, errorToReturn
-}
-
-// func ValidateEnvironmentName(environmentName string, workspaceId string, userLoggedInDetails models.UserCredentials) error {
-// 	httpClient := resty.New()
-// 	httpClient.SetAuthToken(userLoggedInDetails.JTWToken).
-// 		SetHeader("Accept", "application/json")
-
-// 	response, err := api.CallGetAccessibleEnvironments(httpClient, api.GetAccessibleEnvironmentsRequest{WorkspaceId: workspaceId})
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	listOfEnvSlugs := []string{}
-// 	mapOfEnvSlugs := make(map[string]interface{})
-
-// 	for _, environment := range response.AccessibleEnvironments {
-// 		listOfEnvSlugs = append(listOfEnvSlugs, environment.Slug)
-// 		mapOfEnvSlugs[environment.Slug] = environment
-// 	}
-
-// 	_, exists := mapOfEnvSlugs[environmentName]
-// 	if !exists {
-// 		HandleError(fmt.Errorf("the environment [%s] does not exist in project with [id=%s]. Only [%s] are available", environmentName, workspaceId, strings.Join(listOfEnvSlugs, ",")))
-// 	}
-
-// 	return nil
-
-// }
-
-func getExpandedEnvVariable(secrets []models.SingleEnvironmentVariable, variableWeAreLookingFor string, hashMapOfCompleteVariables map[string]string, hashMapOfSelfRefs map[string]string) string {
-	if value, found := hashMapOfCompleteVariables[variableWeAreLookingFor]; found {
-		return value
-	}
-
-	for _, secret := range secrets {
-		if secret.Key == variableWeAreLookingFor {
-			regex := regexp.MustCompile(`\${([^\}]*)}`)
-			variablesToPopulate := regex.FindAllString(secret.Value, -1)
-
-			// case: variable is a constant so return its value
-			if len(variablesToPopulate) == 0 {
-				return secret.Value
-			}
-
-			valueToEdit := secret.Value
-			for _, variableWithSign := range variablesToPopulate {
-				variableWithoutSign := strings.Trim(variableWithSign, "}")
-				variableWithoutSign = strings.Trim(variableWithoutSign, "${")
-
-				// case: reference to self
-				if variableWithoutSign == secret.Key {
-					hashMapOfSelfRefs[variableWithoutSign] = variableWithoutSign
-					continue
-				} else {
-					var expandedVariableValue string
-
-					if preComputedVariable, found := hashMapOfCompleteVariables[variableWithoutSign]; found {
-						expandedVariableValue = preComputedVariable
-					} else {
-						expandedVariableValue = getExpandedEnvVariable(secrets, variableWithoutSign, hashMapOfCompleteVariables, hashMapOfSelfRefs)
-						hashMapOfCompleteVariables[variableWithoutSign] = expandedVariableValue
-					}
-
-					// If after expanding all the vars above, is the current var a self ref? if so no replacement needed for it
-					if _, found := hashMapOfSelfRefs[variableWithoutSign]; found {
-						continue
-					} else {
-						valueToEdit = strings.ReplaceAll(valueToEdit, variableWithSign, expandedVariableValue)
-					}
-				}
-			}
-
-			return valueToEdit
-
-		} else {
-			continue
+			errorToReturn = err
+			secretsToReturn = res.Secrets
 		}
 	}
 
-	return "${" + variableWeAreLookingFor + "}"
+	return secretsToReturn, errorToReturn
 }
 
 var secRefRegex = regexp.MustCompile(`\${([^\}]*)}`)
@@ -428,7 +347,7 @@ func recursivelyExpandSecret(expandedSecs map[string]string, interpolatedSecs ma
 
 	interpolatedVal, ok := interpolatedSecs[key]
 	if !ok {
-		HandleError(fmt.Errorf("Could not find refered secret -  %s", key), "Kindly check whether its provided")
+		HandleError(fmt.Errorf("could not find refered secret -  %s", key), "Kindly check whether its provided")
 	}
 
 	refs := secRefRegex.FindAllStringSubmatch(interpolatedVal, -1)
@@ -467,7 +386,7 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 	return secretMapByName
 }
 
-func ExpandSecrets(secrets []models.SingleEnvironmentVariable, infisicalToken string, projectConfigPathDir string) []models.SingleEnvironmentVariable {
+func ExpandSecrets(secrets []models.SingleEnvironmentVariable, auth models.ExpandSecretsAuthentication, projectConfigPathDir string) []models.SingleEnvironmentVariable {
 	expandedSecs := make(map[string]string)
 	interpolatedSecs := make(map[string]string)
 	// map[env.secret-path][keyname]Secret
@@ -499,8 +418,18 @@ func ExpandSecrets(secrets []models.SingleEnvironmentVariable, infisicalToken st
 			uniqKey := fmt.Sprintf("%s.%s", env, secPathDot)
 
 			if crossRefSec, ok := crossEnvRefSecs[uniqKey]; !ok {
+
+				var refSecs []models.SingleEnvironmentVariable
+				var err error
+
 				// if not in cross reference cache, fetch it from server
-				refSecs, err := GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: env, InfisicalToken: infisicalToken, SecretsPath: secPath}, projectConfigPathDir)
+				if auth.InfisicalToken != "" {
+					refSecs, err = GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: env, InfisicalToken: auth.InfisicalToken, SecretsPath: secPath}, projectConfigPathDir)
+				} else if auth.UniversalAuthAccessToken != "" {
+					refSecs, err = GetAllEnvironmentVariables((models.GetAllSecretsParameters{Environment: env, UniversalAuthAccessToken: auth.UniversalAuthAccessToken, SecretsPath: secPath, WorkspaceId: sec.WorkspaceId}), projectConfigPathDir)
+				} else {
+					HandleError(errors.New("no authentication provided"), "Please provide authentication to fetch secrets")
+				}
 				if err != nil {
 					HandleError(err, fmt.Sprintf("Could not fetch secrets in environment: %s secret-path: %s", env, secPath), "If you are using a service token to fetch secrets, please ensure it is valid")
 				}
@@ -508,6 +437,7 @@ func ExpandSecrets(secrets []models.SingleEnvironmentVariable, infisicalToken st
 				// save it to avoid calling api again for same environment and folder path
 				crossEnvRefSecs[uniqKey] = refSecsByKey
 				return refSecsByKey[secKey].Value
+
 			} else {
 				return crossRefSec[secKey].Value
 			}

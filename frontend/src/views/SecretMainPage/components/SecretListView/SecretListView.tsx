@@ -206,7 +206,7 @@ export const SecretListView = ({
         reminderRepeatDays,
         reminderNote
       } = modSecret;
-      const hasKeyChanged = oldKey !== key;
+      const hasKeyChanged = oldKey !== key && key;
 
       const tagIds = tags?.map(({ id }) => id);
       const oldTagIds = (orgSecret?.tags || []).map(({ id }) => id);
