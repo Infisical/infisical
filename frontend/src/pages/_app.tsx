@@ -2,6 +2,7 @@
 /* eslint-disable no-var */
 /* eslint-disable func-names */
 /* eslint-disable react/jsx-props-no-spreading */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 
 import { useEffect } from "react";
@@ -86,9 +87,11 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
       <QueryClientProvider client={queryClient}>
         <NotificationProvider>
           <ServerConfigProvider>
-            <AuthProvider>
-              <Component {...pageProps} />
-            </AuthProvider>
+            <UserProvider>
+              <AuthProvider>
+                <Component {...pageProps} />
+              </AuthProvider>
+            </UserProvider>
           </ServerConfigProvider>
         </NotificationProvider>
       </QueryClientProvider>
@@ -99,29 +102,29 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <NotificationProvider>
-          <ServerConfigProvider>
-            <AuthProvider>
-              <OrgProvider>
-                <OrgPermissionProvider>
-                  <WorkspaceProvider>
-                    <ProjectPermissionProvider>
-                      <SubscriptionProvider>
-                        <UserProvider>
+      <UserProvider>
+        <TooltipProvider>
+          <NotificationProvider>
+            <ServerConfigProvider>
+              <AuthProvider>
+                <OrgProvider>
+                  <OrgPermissionProvider>
+                    <WorkspaceProvider>
+                      <ProjectPermissionProvider>
+                        <SubscriptionProvider>
                           <Layout>
                             <Component {...pageProps} />
                           </Layout>
-                        </UserProvider>
-                      </SubscriptionProvider>
-                    </ProjectPermissionProvider>
-                  </WorkspaceProvider>
-                </OrgPermissionProvider>
-              </OrgProvider>
-            </AuthProvider>
-          </ServerConfigProvider>
-        </NotificationProvider>
-      </TooltipProvider>
+                        </SubscriptionProvider>
+                      </ProjectPermissionProvider>
+                    </WorkspaceProvider>
+                  </OrgPermissionProvider>
+                </OrgProvider>
+              </AuthProvider>
+            </ServerConfigProvider>
+          </NotificationProvider>
+        </TooltipProvider>
+      </UserProvider>
     </QueryClientProvider>
   );
 };
