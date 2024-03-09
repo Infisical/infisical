@@ -9,6 +9,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TServiceTokenDALFactory } from "./service-token-dal";
@@ -24,6 +25,7 @@ type TServiceTokenServiceFactoryDep = {
   userDAL: TUserDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findBySlugs">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceFactory>;
@@ -32,7 +34,8 @@ export const serviceTokenServiceFactory = ({
   serviceTokenDAL,
   userDAL,
   permissionService,
-  projectEnvDAL
+  projectEnvDAL,
+  projectDAL
 }: TServiceTokenServiceFactoryDep) => {
   const createServiceToken = async ({
     iv,
@@ -132,6 +135,9 @@ export const serviceTokenServiceFactory = ({
     const serviceToken = await serviceTokenDAL.findById(TOKEN_IDENTIFIER);
 
     if (!serviceToken) throw new UnauthorizedError();
+    const project = await projectDAL.findById(serviceToken.projectId);
+
+    if (!project) throw new UnauthorizedError({ message: "Service token project not found" });
 
     if (serviceToken.expiresAt && new Date(serviceToken.expiresAt) < new Date()) {
       await serviceTokenDAL.deleteById(serviceToken.id);
@@ -144,7 +150,7 @@ export const serviceTokenServiceFactory = ({
       lastUsed: new Date()
     });
 
-    return { ...serviceToken, lastUsed: updatedToken.lastUsed };
+    return { ...serviceToken, lastUsed: updatedToken.lastUsed, orgId: project.orgId };
   };
 
   return {
