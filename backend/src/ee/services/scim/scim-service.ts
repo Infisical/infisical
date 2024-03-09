@@ -429,6 +429,15 @@ export const scimServiceFactory = ({
         });
     }
 
+    const organization = await orgDAL.findById(scimToken.orgId);
+
+    if (!organization.scimEnabled) {
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+    }
+
     return { scimTokenId: scimToken.id, orgId: scimToken.orgId };
   };
 
