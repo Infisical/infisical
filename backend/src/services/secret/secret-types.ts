@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { SecretType, TSecretBlindIndexes, TSecrets, TSecretsInsert, TSecretsUpdate } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
@@ -248,7 +249,18 @@ export type TRemoveSecretReminderDTO = {
 
 // ---
 
-export type TCreateManySecretsRawHelper = {
+export type TCreateManySecretsRawFnFactory = {
+  projectDAL: TProjectDALFactory;
+  projectBotDAL: TProjectBotDALFactory;
+  secretDAL: TSecretDALFactory;
+  secretVersionDAL: TSecretVersionDALFactory;
+  secretBlindIndexDAL: TSecretBlindIndexDALFactory;
+  secretTagDAL: TSecretTagDALFactory;
+  secretVersionTagDAL: TSecretVersionTagDALFactory;
+  folderDAL: TSecretFolderDALFactory;
+};
+
+export type TCreateManySecretsRawFn = {
   projectId: string;
   environment: string;
   path: string;
@@ -264,19 +276,11 @@ export type TCreateManySecretsRawHelper = {
     };
   }[];
   userId?: string; // only relevant for personal secret(s)
-  botKey: string;
-  projectDAL: TProjectDALFactory;
-  secretDAL: TSecretDALFactory;
-  secretVersionDAL: TSecretVersionDALFactory;
-  secretBlindIndexDAL: TSecretBlindIndexDALFactory;
-  secretTagDAL: TSecretTagDALFactory;
-  secretVersionTagDAL: TSecretVersionTagDALFactory;
-  folderDAL: TSecretFolderDALFactory;
 };
 
 export type TUpdateManySecretsRawFnFactory = {
-  botKey: string;
   projectDAL: TProjectDALFactory;
+  projectBotDAL: TProjectBotDALFactory;
   secretDAL: TSecretDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;

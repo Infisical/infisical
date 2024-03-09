@@ -61,7 +61,7 @@ export const useCreateIntegration = () => {
       metadata?: {
         secretPrefix?: string;
         secretSuffix?: string;
-        syncBehavior?: string;
+        initialSyncBehavior?: string;
       }
     }) => {
       const { data: { integration } } = await apiRequest.post("/api/v1/integration", {

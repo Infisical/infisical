@@ -18,10 +18,12 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 
+import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
-  TCreateManySecretsRawHelper,
+  TCreateManySecretsRawFn,
+  TCreateManySecretsRawFnFactory,
   TFnSecretBlindIndexCheck,
   TFnSecretBulkInsert,
   TFnSecretBulkUpdate,
@@ -405,112 +407,114 @@ export const fnSecretBulkUpdate = async ({
   return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
-export const createManySecretsRawHelper = async ({
-  projectId,
-  environment,
-  path: secretPath,
-  secrets,
-  userId,
-  botKey, // TODO: consider getting botKey inside this fn
+export const createManySecretsRawFnFactory = ({
   projectDAL,
+  projectBotDAL,
   secretDAL,
   secretVersionDAL,
   secretBlindIndexDAL,
   secretTagDAL,
   secretVersionTagDAL,
   folderDAL
-}: TCreateManySecretsRawHelper) => {
-  await projectDAL.checkProjectUpgradeStatus(projectId);
+}: TCreateManySecretsRawFnFactory) => {
+  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL);
+  const createManySecretsRawFn = async ({
+    projectId,
+    environment,
+    path: secretPath,
+    secrets,
+    userId
+  }: TCreateManySecretsRawFn) => {
+    const botKey = await getBotKeyFn(projectId);
+    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
-  const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-  if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
-  const folderId = folder.id;
+    await projectDAL.checkProjectUpgradeStatus(projectId);
 
-  const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-  if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Create secret" });
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
+    const folderId = folder.id;
 
-  // insert operation
-  const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
-    inputSecrets: secrets,
-    folderId,
-    isNew: true,
-    blindIndexCfg,
-    secretDAL
-  });
+    const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
+    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Create secret" });
 
-  const inputSecrets = await Promise.all(
-    secrets.map(async (secret) => {
-      const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
-      const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
-      const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretComment || "", botKey);
-
-      if (secret.type === SecretType.Personal) {
-        if (!userId) throw new BadRequestError({ message: "Missing user id for personal secret" });
-        const sharedExist = await secretDAL.findOne({
-          secretBlindIndex: keyName2BlindIndex[secret.secretName],
-          folderId,
-          type: SecretType.Shared
-        });
-
-        if (!sharedExist)
-          throw new BadRequestError({
-            message: "Failed to create personal secret override for no corresponding shared secret"
-          });
-      }
-
-      const tags = secret.tags ? await secretTagDAL.findManyTagsById(projectId, secret.tags) : [];
-      if ((secret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
-
-      return {
-        type: secret.type,
-        userId: secret.type === SecretType.Personal ? userId : null,
-        secretName: secret.secretName,
-        secretKeyCiphertext: secretKeyEncrypted.ciphertext,
-        secretKeyIV: secretKeyEncrypted.iv,
-        secretKeyTag: secretKeyEncrypted.tag,
-        secretValueCiphertext: secretValueEncrypted.ciphertext,
-        secretValueIV: secretValueEncrypted.iv,
-        secretValueTag: secretValueEncrypted.tag,
-        secretCommentCiphertext: secretCommentEncrypted.ciphertext,
-        secretCommentIV: secretCommentEncrypted.iv,
-        secretCommentTag: secretCommentEncrypted.tag,
-        skipMultilineEncoding: secret.skipMultilineEncoding,
-        tags: secret.tags
-      };
-    })
-  );
-
-  const newSecrets = await secretDAL.transaction(async (tx) =>
-    fnSecretBulkInsert({
-      inputSecrets: inputSecrets.map(({ secretName, ...el }) => ({
-        ...el,
-        version: 0,
-        secretBlindIndex: keyName2BlindIndex[secretName],
-        algorithm: SecretEncryptionAlgo.AES_256_GCM,
-        keyEncoding: SecretKeyEncoding.UTF8
-      })),
+    // insert operation
+    const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
+      inputSecrets: secrets,
       folderId,
-      secretDAL,
-      secretVersionDAL,
-      secretTagDAL,
-      secretVersionTagDAL,
-      tx
-    })
-  );
+      isNew: true,
+      blindIndexCfg,
+      secretDAL
+    });
 
-  return newSecrets;
+    const inputSecrets = await Promise.all(
+      secrets.map(async (secret) => {
+        const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
+        const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
+        const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretComment || "", botKey);
+
+        if (secret.type === SecretType.Personal) {
+          if (!userId) throw new BadRequestError({ message: "Missing user id for personal secret" });
+          const sharedExist = await secretDAL.findOne({
+            secretBlindIndex: keyName2BlindIndex[secret.secretName],
+            folderId,
+            type: SecretType.Shared
+          });
+
+          if (!sharedExist)
+            throw new BadRequestError({
+              message: "Failed to create personal secret override for no corresponding shared secret"
+            });
+        }
+
+        const tags = secret.tags ? await secretTagDAL.findManyTagsById(projectId, secret.tags) : [];
+        if ((secret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+
+        return {
+          type: secret.type,
+          userId: secret.type === SecretType.Personal ? userId : null,
+          secretName: secret.secretName,
+          secretKeyCiphertext: secretKeyEncrypted.ciphertext,
+          secretKeyIV: secretKeyEncrypted.iv,
+          secretKeyTag: secretKeyEncrypted.tag,
+          secretValueCiphertext: secretValueEncrypted.ciphertext,
+          secretValueIV: secretValueEncrypted.iv,
+          secretValueTag: secretValueEncrypted.tag,
+          secretCommentCiphertext: secretCommentEncrypted.ciphertext,
+          secretCommentIV: secretCommentEncrypted.iv,
+          secretCommentTag: secretCommentEncrypted.tag,
+          skipMultilineEncoding: secret.skipMultilineEncoding,
+          tags: secret.tags
+        };
+      })
+    );
+
+    const newSecrets = await secretDAL.transaction(async (tx) =>
+      fnSecretBulkInsert({
+        inputSecrets: inputSecrets.map(({ secretName, ...el }) => ({
+          ...el,
+          version: 0,
+          secretBlindIndex: keyName2BlindIndex[secretName],
+          algorithm: SecretEncryptionAlgo.AES_256_GCM,
+          keyEncoding: SecretKeyEncoding.UTF8
+        })),
+        folderId,
+        secretDAL,
+        secretVersionDAL,
+        secretTagDAL,
+        secretVersionTagDAL,
+        tx
+      })
+    );
+
+    return newSecrets;
+  };
+
+  return createManySecretsRawFn;
 };
 
-// TOOD: potentially convert raw stuff
-
-// updateManySecretsRawFnFactory
-
-// updateManySecretsRawHelper
-
-export const updateManySecretsRawFnFactory = async ({
-  // TODO: refactor
-  botKey,
+export const updateManySecretsRawFnFactory = ({
   projectDAL,
+  projectBotDAL,
   secretDAL,
   secretVersionDAL,
   secretBlindIndexDAL,
@@ -518,14 +522,16 @@ export const updateManySecretsRawFnFactory = async ({
   secretVersionTagDAL,
   folderDAL
 }: TUpdateManySecretsRawFnFactory) => {
+  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL);
   const updateManySecretsRawFn = async ({
     projectId,
     environment,
     path: secretPath,
-    secrets, // accept instead ciphertext secrets
+    secrets, // consider accepting instead ciphertext secrets
     userId
-  }: TUpdateManySecretsRawFn) => {
-    // TODO: fetch botKey from here
+  }: TUpdateManySecretsRawFn): Promise<Array<TSecrets & { _id: string }>> => {
+    const botKey = await getBotKeyFn(projectId);
+    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
 

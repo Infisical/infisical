@@ -6,6 +6,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { isSamePath } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
@@ -29,8 +31,6 @@ import { TSecretDALFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
 import { TCreateSecretReminderDTO, THandleReminderDTO, TRemoveSecretReminderDTO } from "./secret-types";
 
-// import { updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
-
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 
 type TSecretQueueFactoryDep = {
@@ -44,6 +44,7 @@ type TSecretQueueFactoryDep = {
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: TProjectDALFactory;
+  projectBotDAL: TProjectBotDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   smtpService: TSmtpService;
   orgDAL: Pick<TOrgDALFactory, "findOrgByProjectId">;
@@ -72,12 +73,35 @@ export const secretQueueFactory = ({
   orgDAL,
   smtpService,
   projectDAL,
+  projectBotDAL,
   projectMembershipDAL,
   secretVersionDAL,
   secretBlindIndexDAL,
   secretTagDAL,
   secretVersionTagDAL
 }: TSecretQueueFactoryDep) => {
+  const createManySecretsRawFn = createManySecretsRawFnFactory({
+    projectDAL,
+    projectBotDAL,
+    secretDAL,
+    secretVersionDAL,
+    secretBlindIndexDAL,
+    secretTagDAL,
+    secretVersionTagDAL,
+    folderDAL
+  });
+
+  const updateManySecretsRawFn = updateManySecretsRawFnFactory({
+    projectDAL,
+    projectBotDAL,
+    secretDAL,
+    secretVersionDAL,
+    secretBlindIndexDAL,
+    secretTagDAL,
+    secretVersionTagDAL,
+    folderDAL
+  });
+
   const syncIntegrations = async (dto: TGetSecrets) => {
     await queueService.queue(QueueName.IntegrationSync, QueueJobs.IntegrationSync, dto, {
       attempts: 5,
@@ -320,30 +344,10 @@ export const secretQueueFactory = ({
         });
       }
 
-      // const updateManySecretsRawFn = updateManySecretsRawFnFactory({
-      //   botKey, // can move this out
-      //   projectDAL,
-      //   secretDAL,
-      //   secretVersionDAL,
-      //   secretBlindIndexDAL,
-      //   secretTagDAL,
-      //   secretVersionTagDAL,
-      //   folderDAL
-      // });
-
       await syncIntegrationSecrets({
-        projectDAL,
+        createManySecretsRawFn,
+        updateManySecretsRawFn,
         integrationDAL,
-        secretDAL,
-        secretVersionDAL,
-        secretBlindIndexDAL,
-        secretTagDAL,
-        secretVersionTagDAL,
-        folderDAL,
-        botKey,
-        projectId, // service
-        environment,
-        secretPath,
         integration,
         integrationAuth,
         secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets,

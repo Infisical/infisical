@@ -4,15 +4,22 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faArrowUpRightFromSquare, faBookOpen, faBugs, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { 
+  faArrowUpRightFromSquare, 
+  faBookOpen, 
+  faBugs, 
+  // faCircleInfo 
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import queryString from "query-string";
-import { RadioGroup } from "@app/components/v2/RadioGroup";
-import { useCreateIntegration } from "@app/hooks/api";
-import { useGetIntegrationAuthHerokuPipelines } from "@app/hooks/api/integrationAuth/queries";
-import { App, Pipeline } from "@app/hooks/api/integrationAuth/types";
-import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
+import queryString from "query-string";
+// import { useGetIntegrationAuthHerokuPipelines } from "@app/hooks/api/integrationAuth/queries";
+// import { App, Pipeline } from "@app/hooks/api/integrationAuth/types";
+import * as yup from "yup";
+
+// import { RadioGroup } from "@app/components/v2/RadioGroup";
+import { useCreateIntegration } from "@app/hooks/api";
+import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
 
 import {
   Button,
@@ -27,16 +34,24 @@ import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
 } from "../../../hooks/api/integrationAuth";
-import { useCreateWsEnvironment, useGetWorkspaceById } from "../../../hooks/api/workspace";
-import { IntegrationSyncBehavior, syncBehaviors } from "@app/hooks/api/integrations/types";
+import { 
+  // useCreateWsEnvironment, 
+  useGetWorkspaceById 
+} from "../../../hooks/api/workspace";
+
+const initialSyncBehaviors = [
+  { label: "No Import - Overwrite all values in Heroku", value: IntegrationSyncBehavior.OVERWRITE_TARGET },
+  { label: "Import - Prefer values from Heroku", value: IntegrationSyncBehavior.PREFER_TARGET },
+  { label: "Import - Prefer values from Infisical", value: IntegrationSyncBehavior.PREFER_SOURCE }
+];
 
 const schema = yup.object({
   selectedSourceEnvironment: yup.string().required("Source environment is required"),
   secretPath: yup.string().required("Secret path is required"),
   targetApp: yup.string().required("Heroku app is required"),
-  syncBehavior: yup
+  initialSyncBehavior: yup
     .string()
-    .oneOf(syncBehaviors.map((b) => b.value), "Invalid sync behavior")
+    .oneOf(initialSyncBehaviors.map((b) => b.value), "Invalid initial sync behavior")
     .required("Initial sync behavior is required")
 });
 
@@ -49,7 +64,7 @@ export default function HerokuCreateIntegrationPage() {
     resolver: yupResolver(schema),
     defaultValues: {
       secretPath: "/",
-      syncBehavior: IntegrationSyncBehavior.PREFER_SOURCE
+      initialSyncBehavior: IntegrationSyncBehavior.PREFER_SOURCE
     }
   });
 
@@ -57,7 +72,7 @@ export default function HerokuCreateIntegrationPage() {
 
 
   const { mutateAsync } = useCreateIntegration();
-  const { mutateAsync: mutateAsyncEnv } = useCreateWsEnvironment();
+  // const { mutateAsync: mutateAsyncEnv } = useCreateWsEnvironment();
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
@@ -67,14 +82,14 @@ export default function HerokuCreateIntegrationPage() {
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
 
-  const { data: integrationAuthPipelineCouplings } = useGetIntegrationAuthHerokuPipelines({
-    integrationAuthId: (integrationAuthId as string) ?? ""
-  });
+  // const { data: integrationAuthPipelineCouplings } = useGetIntegrationAuthHerokuPipelines({
+  //   integrationAuthId: (integrationAuthId as string) ?? ""
+  // });
   
-  const [uniquePipelines, setUniquePipelines] = useState<Pipeline[]>();
-  const [selectedPipeline, setSelectedPipeline] = useState("");
-  const [selectedPipelineApps, setSelectedPipelineApps] = useState<App[]>();
-  const [integrationType, setIntegrationType] = useState("App");
+  // const [uniquePipelines, setUniquePipelines] = useState<Pipeline[]>();
+  // const [selectedPipeline, setSelectedPipeline] = useState("");
+  // const [selectedPipelineApps, setSelectedPipelineApps] = useState<App[]>();
+  // const [integrationType, setIntegrationType] = useState("App");
   
   const [isLoading, setIsLoading] = useState(false);
 
@@ -84,37 +99,37 @@ export default function HerokuCreateIntegrationPage() {
     }
   }, [workspace]);
 
-  useEffect(() => {
-    if (integrationAuthPipelineCouplings) {
-        const uniquePipelinesConst = Array.from(
-          new Set(
-            integrationAuthPipelineCouplings
-              .map(({ pipeline: { pipelineId, name } }) => ({
-                name,
-                pipelineId
-              }))
-              .map((obj) => JSON.stringify(obj))
-          )).map((str) => JSON.parse(str)) as { pipelineId: string; name: string }[]
+  // useEffect(() => {
+  //   if (integrationAuthPipelineCouplings) {
+  //       const uniquePipelinesConst = Array.from(
+  //         new Set(
+  //           integrationAuthPipelineCouplings
+  //             .map(({ pipeline: { pipelineId, name } }) => ({
+  //               name,
+  //               pipelineId
+  //             }))
+  //             .map((obj) => JSON.stringify(obj))
+  //         )).map((str) => JSON.parse(str)) as { pipelineId: string; name: string }[]
           
-          [... (new Set())]
-        setUniquePipelines(uniquePipelinesConst);
-        if (uniquePipelinesConst) {
-          if (uniquePipelinesConst!.length > 0) {
-            setSelectedPipeline(uniquePipelinesConst![0].name);
-          } else {
-            setSelectedPipeline("none");
-          }
-        }
-    }
-  }, [integrationAuthPipelineCouplings]);
+  //         [... (new Set())]
+  //       setUniquePipelines(uniquePipelinesConst);
+  //       if (uniquePipelinesConst) {
+  //         if (uniquePipelinesConst!.length > 0) {
+  //           setSelectedPipeline(uniquePipelinesConst![0].name);
+  //         } else {
+  //           setSelectedPipeline("none");
+  //         }
+  //       }
+  //   }
+  // }, [integrationAuthPipelineCouplings]);
 
-  useEffect(() => {
-    if (integrationAuthPipelineCouplings) {
-      setSelectedPipelineApps(integrationAuthApps?.filter(app => integrationAuthPipelineCouplings
-        .filter((pipelineCoupling) => pipelineCoupling.pipeline.name === selectedPipeline)
-        .map(coupling => coupling.app.appId).includes(String(app.appId))))
-    }
-  }, [selectedPipeline]);
+  // useEffect(() => {
+  //   if (integrationAuthPipelineCouplings) {
+  //     setSelectedPipelineApps(integrationAuthApps?.filter(app => integrationAuthPipelineCouplings
+  //       .filter((pipelineCoupling) => pipelineCoupling.pipeline.name === selectedPipeline)
+  //       .map(coupling => coupling.app.appId).includes(String(app.appId))))
+  //   }
+  // }, [selectedPipeline]);
 
   useEffect(() => {
     if (integrationAuthApps) {
@@ -167,10 +182,9 @@ export default function HerokuCreateIntegrationPage() {
   // };
 
   const onFormSubmit = async ({
-    selectedSourceEnvironment: sce,
     secretPath,
     targetApp,
-    syncBehavior,
+    initialSyncBehavior,
   }: FormData) => {
     try {
       if (!integrationAuth?.id) return;
@@ -184,7 +198,7 @@ export default function HerokuCreateIntegrationPage() {
         sourceEnvironment: selectedSourceEnvironment,
         secretPath,
         metadata: {
-          syncBehavior
+          initialSyncBehavior
         }
       });
 
@@ -314,7 +328,7 @@ export default function HerokuCreateIntegrationPage() {
           />
           <Controller
             control={control}
-            name="syncBehavior"
+            name="initialSyncBehavior"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl
                 label="Initial Sync Behavior"
@@ -322,7 +336,7 @@ export default function HerokuCreateIntegrationPage() {
                 isError={Boolean(error)}
               >
                 <Select {...field} onValueChange={(e) => onChange(e)} className="w-full">
-                  {syncBehaviors.map((b) => {
+                  {initialSyncBehaviors.map((b) => {
                     return (
                       <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
                         {b.label}

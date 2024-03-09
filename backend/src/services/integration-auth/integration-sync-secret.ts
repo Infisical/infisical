@@ -20,23 +20,13 @@ import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
 import { z } from "zod";
 
-import { SecretType, TIntegrationAuths, TIntegrations } from "@app/db/schemas";
+import { SecretType, TIntegrationAuths, TIntegrations, TSecrets } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { TSecretDALFactory } from "@app/services/secret/secret-dal";
-import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
-import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
-import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
-import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
-import {
-  createManySecretsRawHelper
-  // updateManySecretsRawHelper
-} from "../secret/secret-fns";
-import { Integrations, IntegrationSyncBehavior, IntegrationUrls } from "./integration-list";
+import { IntegrationInitialSyncBehavior, Integrations, IntegrationUrls } from "./integration-list";
 
 const getSecretKeyValuePair = (secrets: Record<string, { value: string | null; comment?: string } | null>) =>
   Object.keys(secrets).reduce<Record<string, string | null | undefined>>((prev, key) => {
@@ -594,35 +584,25 @@ const syncSecretsAWSSecretManager = async ({
  * Sync/push [secrets] to Heroku app named [integration.app]
  */
 const syncSecretsHeroku = async ({
-  projectDAL,
+  createManySecretsRawFn,
+  updateManySecretsRawFn,
   integrationDAL,
-  secretDAL,
-  secretVersionDAL,
-  secretBlindIndexDAL,
-  secretTagDAL,
-  secretVersionTagDAL,
-  folderDAL,
-  botKey, // TODO: consider getting botKey inside this fn
-  projectId,
-  environment,
-  secretPath,
   integration,
   secrets,
   accessToken
 }: {
-  projectDAL: TProjectDALFactory;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
   integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
-  secretDAL: TSecretDALFactory;
-  secretVersionDAL: TSecretVersionDALFactory;
-  secretBlindIndexDAL: TSecretBlindIndexDALFactory;
-  secretTagDAL: TSecretTagDALFactory;
-  secretVersionTagDAL: TSecretVersionTagDALFactory;
-  folderDAL: TSecretFolderDALFactory;
-  botKey: string;
-  projectId: string;
-  environment: string;
-  secretPath: string;
-  integration: TIntegrations;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
   secrets: Record<string, { value: string; comment?: string } | null>;
   accessToken: string;
 }) => {
@@ -644,13 +624,13 @@ const syncSecretsHeroku = async ({
   Object.keys(herokuSecrets).forEach((key) => {
     if (!integration.lastUsed) {
       // first time using integration
-      // -> apply initial sync behavior rule
-      switch (metadata.syncBehavior) {
-        case IntegrationSyncBehavior.OVERWRITE_TARGET: {
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        case IntegrationInitialSyncBehavior.OVERWRITE_TARGET: {
           if (!(key in secrets)) secrets[key] = null;
           break;
         }
-        case IntegrationSyncBehavior.PREFER_TARGET: {
+        case IntegrationInitialSyncBehavior.PREFER_TARGET: {
           if (!(key in secrets)) {
             secretsToAdd[key] = herokuSecrets[key];
           } else if (secrets[key]?.value !== herokuSecrets[key]) {
@@ -661,7 +641,7 @@ const syncSecretsHeroku = async ({
           };
           break;
         }
-        case IntegrationSyncBehavior.PREFER_SOURCE: {
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
           if (!(key in secrets)) {
             secrets[key] = herokuSecrets[key];
             secretsToAdd[key] = herokuSecrets[key];
@@ -677,18 +657,10 @@ const syncSecretsHeroku = async ({
   });
 
   if (Object.keys(secretsToAdd).length) {
-    await createManySecretsRawHelper({
-      botKey,
-      projectDAL,
-      secretDAL,
-      secretVersionDAL,
-      secretBlindIndexDAL,
-      secretTagDAL,
-      secretVersionTagDAL,
-      folderDAL,
-      projectId,
-      environment,
-      path: secretPath,
+    await createManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
       secrets: Object.keys(secretsToAdd).map((key) => ({
         secretName: key,
         secretValue: secretsToAdd[key],
@@ -698,27 +670,19 @@ const syncSecretsHeroku = async ({
     });
   }
 
-  // if (Object.keys(secretsToUpdate).length) {
-  //   await updateManySecretsRawHelper({
-  //     projectId,
-  //     environment,
-  //     path: secretPath,
-  //     secrets: Object.keys(secretsToUpdate).map((key) => ({
-  //       secretName: key,
-  //       secretValue: secretsToUpdate[key],
-  //       type: SecretType.Shared,
-  //       secretComment: ""
-  //     })),
-  //     botKey, // TODO: consider getting botKey inside this fn
-  //     projectDAL,
-  //     secretDAL,
-  //     secretVersionDAL,
-  //     secretBlindIndexDAL,
-  //     secretTagDAL,
-  //     secretVersionTagDAL,
-  //     folderDAL
-  //   });
-  // }
+  if (Object.keys(secretsToUpdate).length) {
+    await updateManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToUpdate).map((key) => ({
+        secretName: key,
+        secretValue: secretsToUpdate[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
 
   await request.patch(
     `${IntegrationUrls.HEROKU_API_URL}/apps/${integration.app}/config-vars`,
@@ -3053,18 +3017,9 @@ const syncSecretsHasuraCloud = async ({
  *
  */
 export const syncIntegrationSecrets = async ({
-  projectDAL,
+  createManySecretsRawFn,
+  updateManySecretsRawFn,
   integrationDAL,
-  secretDAL,
-  secretVersionDAL,
-  secretBlindIndexDAL,
-  secretTagDAL,
-  secretVersionTagDAL,
-  folderDAL,
-  botKey,
-  projectId,
-  environment,
-  secretPath,
   integration,
   integrationAuth,
   secrets,
@@ -3072,19 +3027,18 @@ export const syncIntegrationSecrets = async ({
   accessToken,
   appendices
 }: {
-  projectDAL: TProjectDALFactory;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
   integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
-  secretDAL: TSecretDALFactory;
-  secretVersionDAL: TSecretVersionDALFactory;
-  secretBlindIndexDAL: TSecretBlindIndexDALFactory;
-  secretTagDAL: TSecretTagDALFactory;
-  secretVersionTagDAL: TSecretVersionTagDALFactory;
-  folderDAL: TSecretFolderDALFactory;
-  botKey: string;
-  projectId: string;
-  environment: string;
-  secretPath: string;
-  integration: TIntegrations;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
   integrationAuth: TIntegrationAuths;
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
@@ -3124,18 +3078,9 @@ export const syncIntegrationSecrets = async ({
       break;
     case Integrations.HEROKU:
       await syncSecretsHeroku({
-        projectDAL,
+        createManySecretsRawFn,
+        updateManySecretsRawFn,
         integrationDAL,
-        secretDAL,
-        secretVersionDAL,
-        secretBlindIndexDAL,
-        secretTagDAL,
-        secretVersionTagDAL,
-        folderDAL,
-        botKey,
-        projectId,
-        environment,
-        secretPath,
         integration,
         secrets,
         accessToken

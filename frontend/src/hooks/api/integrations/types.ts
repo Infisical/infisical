@@ -46,9 +46,3 @@ export enum IntegrationSyncBehavior {
   PREFER_TARGET = "prefer-target",
   PREFER_SOURCE = "prefer-source"
 }
-
-export const syncBehaviors = [
-  { label: "Overwrite target", value: IntegrationSyncBehavior.OVERWRITE_TARGET },
-  { label: "Prefer target", value: IntegrationSyncBehavior.PREFER_TARGET },
-  { label: "Prefer source", value: IntegrationSyncBehavior.PREFER_SOURCE }
-];

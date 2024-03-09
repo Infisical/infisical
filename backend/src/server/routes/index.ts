@@ -422,10 +422,11 @@ export const registerRoutes = async (
     projectMembershipDAL,
     smtpService,
     projectDAL,
+    projectBotDAL,
     secretVersionDAL,
     secretBlindIndexDAL,
     secretTagDAL,
-    secretVersionTagDAL,
+    secretVersionTagDAL
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
     permissionService,

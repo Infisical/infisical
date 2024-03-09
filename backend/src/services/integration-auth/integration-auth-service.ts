@@ -43,7 +43,6 @@ import {
 import { getIntegrationOptions, Integrations, IntegrationUrls } from "./integration-list";
 import { getTeams } from "./integration-team";
 import { exchangeCode, exchangeRefresh } from "./integration-token";
-import { access } from "node:fs";
 
 type TIntegrationAuthServiceFactoryDep = {
   integrationAuthDAL: TIntegrationAuthDALFactory;
@@ -603,7 +602,7 @@ export const integrationAuthServiceFactory = ({
         }
       }
     );
-    
+
     return data.map(({ app: { id: appId }, stage, pipeline: { id: pipelineId, name } }) => ({
       app: { appId },
       stage,

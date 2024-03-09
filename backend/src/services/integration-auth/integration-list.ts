@@ -37,7 +37,7 @@ export enum IntegrationType {
   OAUTH2 = "oauth2"
 }
 
-export enum IntegrationSyncBehavior {
+export enum IntegrationInitialSyncBehavior {
   OVERWRITE_TARGET = "overwrite-target",
   PREFER_TARGET = "prefer-target",
   PREFER_SOURCE = "prefer-source"
