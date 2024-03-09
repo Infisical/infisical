@@ -264,7 +264,7 @@ export const registerRoutes = async (
     queueService
   });
 
-  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
+  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, orgDAL });
   const userService = userServiceFactory({ userDAL });
   const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService });
   const passwordService = authPaswordServiceFactory({
@@ -518,7 +518,8 @@ export const registerRoutes = async (
     projectEnvDAL,
     serviceTokenDAL,
     userDAL,
-    permissionService
+    permissionService,
+    projectDAL
   });
 
   const identityService = identityServiceFactory({
