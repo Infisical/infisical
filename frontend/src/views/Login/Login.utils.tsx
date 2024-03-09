@@ -1,10 +1,12 @@
 import { NextRouter } from "next/router";
 
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { userKeys } from "@app/hooks/api/users/queries";
+import { queryClient } from "@app/reactQuery";
 
 export const navigateUserToOrg = async (router: NextRouter, organizationId?: string) => {
   const userOrgs = await fetchOrganizations();
-  
+
   const nonAuthEnforcedOrgs = userOrgs.filter((org) => !org.authEnforced);
 
   if (organizationId) {
@@ -23,4 +25,9 @@ export const navigateUserToOrg = async (router: NextRouter, organizationId?: str
     localStorage.removeItem("orgData.id");
     router.push("/org/none");
   }
+};
+
+export const navigateUserToSelectOrg = (router: NextRouter) => {
+  queryClient.invalidateQueries(userKeys.getUser);
+  router.push("/login/select-organization", undefined, { shallow: true });
 };
