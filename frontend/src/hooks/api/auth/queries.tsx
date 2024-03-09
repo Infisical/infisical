@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 
+import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
 import { setAuthToken } from "@app/reactQuery";
 
@@ -52,6 +53,27 @@ export const useLogin1 = () => {
       providerAuthToken?: string;
     }) => {
       return login1(details);
+    }
+  });
+};
+
+export const selectOrganization = async (data: { organizationId: string }) => {
+  const { data: res } = await apiRequest.post<{ token: string }>(
+    "/api/v3/auth/select-organization",
+    data
+  );
+  return res;
+};
+
+export const useSelectOrganization = () => {
+  return useMutation({
+    mutationFn: async (details: { organizationId: string }) => {
+      const data = await selectOrganization(details);
+
+      SecurityClient.setToken(data.token);
+      SecurityClient.setProviderAuthToken("");
+
+      return data;
     }
   });
 };
