@@ -11,16 +11,16 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.boolean("isActive").notNullable();
       t.string("url").notNullable();
-      t.string("encryptedBindDN");
-      t.string("bindDNIV");
-      t.string("bindDNTag");
-      t.string("encryptedBindPass");
-      t.string("bindPassIV");
-      t.string("bindPassTag");
+      t.string("encryptedBindDN").notNullable();
+      t.string("bindDNIV").notNullable();
+      t.string("bindDNTag").notNullable();
+      t.string("encryptedBindPass").notNullable();
+      t.string("bindPassIV").notNullable();
+      t.string("bindPassTag").notNullable();
       t.string("searchBase").notNullable();
-      t.text("encryptedCACert");
-      t.string("caCertIV");
-      t.string("caCertTag");
+      t.text("encryptedCACert").notNullable();
+      t.string("caCertIV").notNullable();
+      t.string("caCertTag").notNullable();
       t.timestamps(true, true, true);
     });
   }

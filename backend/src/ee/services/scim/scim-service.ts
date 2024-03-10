@@ -281,15 +281,18 @@ export const scimServiceFactory = ({
     }
 
     const appCfg = getConfig();
-    await smtpService.sendMail({
-      template: SmtpTemplates.ScimUserProvisioned,
-      subjectLine: "Infisical organization invitation",
-      recipients: email ? [email] : [],
-      substitutions: {
-        organizationName: org.name,
-        callback_url: `${appCfg.SITE_URL}/api/v1/sso/redirect/saml2/organizations/${org.slug}`
-      }
-    });
+
+    if (email) {
+      await smtpService.sendMail({
+        template: SmtpTemplates.ScimUserProvisioned,
+        subjectLine: "Infisical organization invitation",
+        recipients: [email],
+        substitutions: {
+          organizationName: org.name,
+          callback_url: `${appCfg.SITE_URL}/api/v1/sso/redirect/saml2/organizations/${org.slug}`
+        }
+      });
+    }
 
     return buildScimUser({
       userId: user.id,
