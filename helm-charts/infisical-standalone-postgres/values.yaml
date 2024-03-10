@@ -15,6 +15,8 @@ infisical:
     tag: "v0.46.3-postgres"
     pullPolicy: IfNotPresent
 
+  waitHelperImage: ghcr.io/groundnuty/k8s-wait-for:no-root-v2.0
+
   affinity: {}
   kubeSecretRef: "infisical-secrets"
   service:
