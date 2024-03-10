@@ -45,11 +45,15 @@ export async function up(knex: Knex): Promise<void> {
   await createOnUpdateTrigger(knex, TableName.UserAliases);
 
   await knex.schema.alterTable(TableName.Users, (t) => {
-    t.string("username").unique().notNullable();
+    t.string("username").unique();
     t.string("email").nullable().alter();
   });
 
   await knex(TableName.Users).update("username", knex.ref("email"));
+
+  await knex.schema.alterTable(TableName.Users, (t) => {
+    t.string("username").notNullable().alter();
+  });
 }
 
 export async function down(knex: Knex): Promise<void> {
