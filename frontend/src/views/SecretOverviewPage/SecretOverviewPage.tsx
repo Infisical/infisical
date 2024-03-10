@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
 import { subject } from "@casl/ability";
 import {
   faAngleDown,
   faArrowDown,
   faArrowUp,
   faFolderBlank,
+  faList,
   faFolderPlus,
   faMagnifyingGlass,
   faPlus
@@ -21,6 +23,8 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   EmptyState,
   IconButton,
@@ -104,6 +108,7 @@ export const SecretOverviewPage = () => {
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
   const userAvailableEnvs = currentWorkspace?.environments || [];
+  const [visibleEnvs, setVisisbleEnvs] = useState(userAvailableEnvs);
 
   const {
     data: secrets,
@@ -201,6 +206,14 @@ export const SecretOverviewPage = () => {
     }
   };
 
+  const handleEnvSelect = (envId: string) => {
+    if (visibleEnvs.map(env => env.id).includes(envId)) {
+      setVisisbleEnvs(visibleEnvs.filter(env => env.id !== envId))
+    } else {
+      setVisisbleEnvs(visibleEnvs.concat(userAvailableEnvs.filter(env => env.id === envId)))
+    }
+  };
+
   const handleSecretUpdate = async (env: string, key: string, value: string, secretId?: string) => {
     try {
       await updateSecretV3({
@@ -277,7 +290,7 @@ export const SecretOverviewPage = () => {
       }
     }
     const query: Record<string, string> = { ...router.query, env: slug };
-    const envIndex = userAvailableEnvs.findIndex((el) => slug === el.slug);
+    const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       router.push({
         pathname: "/project/[id]/secrets/[env]",
@@ -377,6 +390,52 @@ export const SecretOverviewPage = () => {
           <div className="flex items-center justify-between">
             <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
             <div className="flex flex-row items-center justify-center space-x-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    ariaLabel="Environments"
+                    variant="plain"
+                    size="sm"
+                    className="flex justify-center items-center overflow-hidden p-0 w-11 bg-mineshaft-800 hover:bg-primary/10 hover:border-primary/60 border border-mineshaft-600 mr-2"
+                  >
+                    <Tooltip content="Choose visible environments" className="mb-2">
+                      <FontAwesomeIcon icon={faList} />
+                    </Tooltip>
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
+                  {userAvailableEnvs.map((avaiableEnv) => {
+                    const { id: envId, name } = avaiableEnv;
+
+                    const isEnvSelected = visibleEnvs.map(env => env.id).includes(envId);
+                    return (
+                      <DropdownMenuItem
+                        onClick={() => handleEnvSelect(envId)}
+                        key={envId}
+                        icon={isEnvSelected && <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />}
+                        iconPos="left"
+                      >
+                        <div className="flex items-center">
+                          {name}
+                        </div>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  {/* <DropdownMenuItem className="px-1.5" asChild>
+                    <Button
+                      size="xs"
+                      className="w-full"
+                      colorSchema="primary"
+                      variant="outline_bg"
+                      leftIcon={<FontAwesomeIcon icon={faHockeyPuck} />}
+                      // onClick={onCreateTag}
+                    >
+                      Create an environment
+                    </Button>
+                  </DropdownMenuItem> */}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <div className="w-80">
                 <Input
                   className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
@@ -463,7 +522,7 @@ export const SecretOverviewPage = () => {
                       </IconButton>
                     </div>
                   </Th>
-                  {userAvailableEnvs?.map(({ name, slug }, index) => {
+                  {visibleEnvs?.map(({ name, slug }, index) => {
                     const envSecKeyCount = getEnvSecretKeyCount(slug);
                     const missingKeyCount = secKeys.length - envSecKeyCount;
                     return (
@@ -498,7 +557,7 @@ export const SecretOverviewPage = () => {
               <TBody>
                 {canViewOverviewPage && isTableLoading && (
                   <TableSkeleton
-                    columns={userAvailableEnvs.length + 1}
+                    columns={visibleEnvs.length + 1}
                     innerKey="secret-overview-loading"
                     rows={5}
                     className="bg-mineshaft-700"
@@ -506,12 +565,12 @@ export const SecretOverviewPage = () => {
                 )}
                 {isTableEmpty && !isTableLoading && (
                   <Tr>
-                    <Td colSpan={userAvailableEnvs.length + 1}>
+                    <Td colSpan={visibleEnvs.length + 1}>
                       <EmptyState title="Let's add some secrets" icon={faFolderBlank} iconSize="3x">
                         <Link
                           href={{
                             pathname: "/project/[id]/secrets/[env]",
-                            query: { id: workspaceId, env: userAvailableEnvs?.[0]?.slug }
+                            query: { id: workspaceId, env: visibleEnvs?.[0]?.slug }
                           }}
                         >
                           <Button
@@ -520,7 +579,7 @@ export const SecretOverviewPage = () => {
                             colorSchema="primary"
                             size="md"
                           >
-                            Go to {userAvailableEnvs?.[0]?.name}
+                            Go to {visibleEnvs?.[0]?.name}
                           </Button>
                         </Link>
                       </EmptyState>
@@ -532,13 +591,13 @@ export const SecretOverviewPage = () => {
                     <SecretOverviewFolderRow
                       folderName={folderName}
                       isFolderPresentInEnv={isFolderPresentInEnv}
-                      environments={userAvailableEnvs}
+                      environments={visibleEnvs}
                       key={`overview-${folderName}-${index + 1}`}
                       onClick={handleFolderClick}
                     />
                   ))}
                 {!isTableLoading &&
-                  (userAvailableEnvs?.length > 0 ? (
+                  (visibleEnvs?.length > 0 ? (
                     filteredSecretNames.map((key, index) => (
                       <SecretOverviewTableRow
                         secretPath={secretPath}
@@ -546,7 +605,7 @@ export const SecretOverviewPage = () => {
                         onSecretDelete={handleSecretDelete}
                         onSecretUpdate={handleSecretUpdate}
                         key={`overview-${key}-${index + 1}`}
-                        environments={userAvailableEnvs}
+                        environments={visibleEnvs}
                         secretKey={key}
                         getSecretByKey={getSecretByKey}
                         expandableColWidth={expandableTableWidth}
@@ -564,7 +623,7 @@ export const SecretOverviewPage = () => {
                       style={{ height: "45px" }}
                     />
                   </Td>
-                  {userAvailableEnvs.map(({ name, slug }) => (
+                  {visibleEnvs?.map(({ name, slug }) => (
                     <Td key={`explore-${name}-btn`} className="border-0 border-mineshaft-600 p-0">
                       <div className="flex w-full items-center justify-center border-r border-t border-mineshaft-600 px-5 py-2">
                         <Button

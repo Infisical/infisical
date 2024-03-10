@@ -514,6 +514,37 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
+    url: "/:integrationAuthId/heroku/pipelines",
+    method: "GET",
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          pipelines: z
+            .object({
+              app: z.object({ appId: z.string() }),
+              stage: z.string(),
+              pipeline: z.object({ name: z.string(), pipelineId: z.string() })
+            })
+            .array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const pipelines = await server.services.integrationAuth.getHerokuPipelines({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationAuthId
+      });
+      return { pipelines };
+    }
+  });
+
+  server.route({
     url: "/:integrationAuthId/railway/environments",
     method: "GET",
     onRequest: verifyAuth([AuthMode.JWT]),

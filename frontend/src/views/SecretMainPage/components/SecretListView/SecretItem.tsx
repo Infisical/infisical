@@ -325,7 +325,7 @@ export const SecretItem = memo(
                       )}
                     </ProjectPermissionCan>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Apply tags to this secrets</DropdownMenuLabel>
+                      <DropdownMenuLabel>Add tags to this secret</DropdownMenuLabel>
                       {tags.map((tag) => {
                         const { id: tagId, name, color } = tag;
 

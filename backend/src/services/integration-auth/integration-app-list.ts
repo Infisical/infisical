@@ -109,7 +109,7 @@ const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string })
  */
 const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
   const res = (
-    await request.get<{ name: string }[]>(`${IntegrationUrls.HEROKU_API_URL}/apps`, {
+    await request.get<{ name: string; id: string }[]>(`${IntegrationUrls.HEROKU_API_URL}/apps`, {
       headers: {
         Accept: "application/vnd.heroku+json; version=3",
         Authorization: `Bearer ${accessToken}`
@@ -118,7 +118,8 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
   ).data;
 
   const apps = res.map((a) => ({
-    name: a.name
+    name: a.name,
+    appId: a.id
   }));
 
   return apps;
