@@ -91,7 +91,7 @@ export const AdminLayout = ({ children }: LayoutProps) => {
       console.error(error);
     }
   };
-
+  
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
@@ -121,7 +121,7 @@ export const AdminLayout = ({ children }: LayoutProps) => {
                         </div>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
-                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user.username}</div>
+                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.username}</div>
                         <Link href="/personal-settings">
                           <DropdownMenuItem>Personal Settings</DropdownMenuItem>
                         </Link>

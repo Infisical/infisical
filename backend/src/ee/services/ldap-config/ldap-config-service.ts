@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import { FastifyRequest } from "fastify";
 import jwt from "jsonwebtoken";
 
 import { OrgMembershipRole, OrgMembershipStatus, SecretKeyEncoding, TLdapConfigsUpdate } from "@app/db/schemas";
@@ -13,7 +12,6 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { TOrgPermission } from "@app/lib/types";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
@@ -284,54 +282,35 @@ export const ldapConfigServiceFactory = ({
     });
   };
 
-  // eslint-disable-next-line
-  const getLdapPassportOpts = (req: FastifyRequest, done: any) => {
-    const { organizationSlug } = req.body as {
-      organizationSlug: string;
-    };
+  const bootLdap = async (organizationSlug: string) => {
+    const organization = await orgDAL.findOne({ slug: organizationSlug });
+    if (!organization) throw new BadRequestError({ message: "Org not found" });
 
-    const boot = async () => {
-      try {
-        const organization = await orgDAL.findOne({ slug: organizationSlug });
-        if (!organization) throw new BadRequestError({ message: "Org not found" });
-
-        const ldapConfig = await getLdapCfg({
-          orgId: organization.id,
-          isActive: true
-        });
-        req.ldapConfig = ldapConfig;
-
-        const opts = {
-          server: {
-            url: ldapConfig.url,
-            bindDN: ldapConfig.bindDN,
-            bindCredentials: ldapConfig.bindPass,
-            searchBase: ldapConfig.searchBase,
-            searchFilter: "(uid={{username}})",
-            searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
-            ...(ldapConfig.caCert !== ""
-              ? {
-                  tlsOptions: {
-                    ca: [ldapConfig.caCert]
-                  }
-                }
-              : {})
-          },
-          passReqToCallback: true
-        };
-
-        // eslint-disable-next-line
-          done(null, opts);
-      } catch (err) {
-        logger.error(err);
-        // eslint-disable-next-line
-          done(err);
-      }
-    };
-
-    process.nextTick(async () => {
-      await boot();
+    const ldapConfig = await getLdapCfg({
+      orgId: organization.id,
+      isActive: true
     });
+
+    const opts = {
+      server: {
+        url: ldapConfig.url,
+        bindDN: ldapConfig.bindDN,
+        bindCredentials: ldapConfig.bindPass,
+        searchBase: ldapConfig.searchBase,
+        searchFilter: "(uid={{username}})",
+        searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
+        ...(ldapConfig.caCert !== ""
+          ? {
+              tlsOptions: {
+                ca: [ldapConfig.caCert]
+              }
+            }
+          : {})
+      },
+      passReqToCallback: true
+    };
+
+    return { opts, ldapConfig };
   };
 
   const ldapLogin = async ({ externalId, username, firstName, lastName, emails, orgId, relayState }: TLdapLoginDTO) => {
@@ -443,7 +422,8 @@ export const ldapConfigServiceFactory = ({
     updateLdapCfg,
     getLdapCfgWithPermissionCheck,
     getLdapCfg,
-    getLdapPassportOpts,
-    ldapLogin
+    // getLdapPassportOpts,
+    ldapLogin,
+    bootLdap
   };
 };

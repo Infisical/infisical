@@ -27,11 +27,27 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
 
+  const getLdapPassportOpts = (req: FastifyRequest, done: any) => {
+    const { organizationSlug } = req.body as {
+      organizationSlug: string;
+    };
+
+    process.nextTick(async () => {
+      try {
+        const { opts, ldapConfig } = await server.services.ldap.bootLdap(organizationSlug);
+        req.ldapConfig = ldapConfig;
+        done(null, opts);
+      } catch (err) {
+        done(err);
+      }
+    });
+  };
+
   passport.use(
     new LdapStrategy(
-      server.services.ldap.getLdapPassportOpts as any,
+      getLdapPassportOpts as any,
       // eslint-disable-next-line
-        async (req: IncomingMessage, user, cb) => {
+      async (req: IncomingMessage, user, cb) => {
         try {
           const { isUserCompleted, providerAuthToken } = await server.services.ldap.ldapLogin({
             externalId: user.uidNumber,

@@ -140,6 +140,7 @@ services:
     volumes:
       - ldap_data:/var/lib/ldap
       - ldap_config:/etc/ldap/slapd.d
+    profiles: [ldap]
 
   phpldapadmin: # username: cn=admin,dc=acme,dc=com, pass is admin
     image: osixia/phpldapadmin:latest
@@ -151,6 +152,7 @@ services:
       - 6433:80
     depends_on:
       - openldap
+    profiles: [ldap]
 
 volumes:
   postgres-data:

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form"; 
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
@@ -20,15 +20,15 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const schema = yup.object({
-    url: yup.string().required("URL is required"),
-    bindDN: yup.string().required("Bind DN is required"),
-    bindPass: yup.string().required("Bind Pass is required"),
-    searchBase: yup.string().required("Search Base is required"),
-    caCert: yup.string()
-}).required();
+const LDAPFormSchema = z.object({
+    url: z.string().min(1, "URL is requiredx"),
+    bindDN: z.string().min(1, "Bind DN is requiredx"),
+    bindPass: z.string().min(1, "Bind Pass is required"),
+    searchBase: z.string().min(1, "Search Base is required"),
+    caCert: z.string().optional()
+});
 
-export type AddLDAPFormData = yup.InferType<typeof schema>;
+export type TLDAPFormData = z.infer<typeof LDAPFormSchema>;
 
 type Props = {
   popUp: UsePopUpState<["addLDAP"]>;
@@ -51,9 +51,9 @@ export const LDAPModal = ({
         control,
         handleSubmit,
         reset,
-    } = useForm<AddLDAPFormData>({
-        resolver: yupResolver(schema)
-    });
+    } = useForm<TLDAPFormData>({
+        resolver: zodResolver(LDAPFormSchema)
+    })
     
     useEffect(() => {
         if (data) {
@@ -73,7 +73,7 @@ export const LDAPModal = ({
         bindPass,
         searchBase,
         caCert
-    }: AddLDAPFormData) => {
+    }: TLDAPFormData) => {
         try {
             if (!currentOrg) return;
             

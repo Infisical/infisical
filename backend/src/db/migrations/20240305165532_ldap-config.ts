@@ -8,7 +8,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.LdapConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("orgId").notNullable().unique();
-      t.foreign("orgId").references("id").inTable(TableName.Organization);
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.boolean("isActive").notNullable();
       t.string("url").notNullable();
       t.string("encryptedBindDN");
