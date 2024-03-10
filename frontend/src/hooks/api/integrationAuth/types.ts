@@ -17,6 +17,17 @@ export type App = {
   secretGroups?: string[];
 };
 
+export type Pipeline = {
+  pipelineId: string;
+  name: string;
+};
+
+export type HerokuPipelineCoupling = {
+  app: { appId: string };
+  stage: string;
+  pipeline: { pipelineId: string; name: string };
+};
+
 export type Team = {
   name: string;
   teamId: string;

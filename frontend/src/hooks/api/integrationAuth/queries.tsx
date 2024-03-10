@@ -8,6 +8,7 @@ import {
   BitBucketWorkspace,
   ChecklyGroup,
   Environment,
+  HerokuPipelineCoupling,
   IntegrationAuth,
   NorthflankSecretGroup,
   Org,
@@ -63,6 +64,8 @@ const integrationAuthKeys = {
     environmentId: string;
     scope: "job" | "application" | "container";
   }) => [{ integrationAuthId, environmentId, scope }, "integrationAuthQoveryScopes"] as const,
+  getIntegrationAuthHerokuPipelines: ({ integrationAuthId }: { integrationAuthId: string; }) => 
+  [{ integrationAuthId}, "integrationAuthHerokuPipelines"] as const,
   getIntegrationAuthRailwayEnvironments: ({
     integrationAuthId,
     appId
@@ -287,6 +290,20 @@ const fetchIntegrationAuthQoveryScopes = async ({
   }
 
   return undefined;
+};
+
+const fetchIntegrationAuthHerokuPipelines = async ({ integrationAuthId }: { 
+  integrationAuthId: string; 
+}) => {
+  const {
+    data: { pipelines }
+  } = await apiRequest.get<{ pipelines: HerokuPipelineCoupling[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/heroku/pipelines`
+  );
+
+  console.log(99999, pipelines)
+
+  return pipelines;
 };
 
 const fetchIntegrationAuthRailwayEnvironments = async ({
@@ -535,6 +552,23 @@ export const useGetIntegrationAuthQoveryScopes = ({
         integrationAuthId,
         environmentId,
         scope
+      }),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthHerokuPipelines = ({
+  integrationAuthId
+}: {
+  integrationAuthId: string;
+}) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthHerokuPipelines({
+      integrationAuthId
+    }),
+    queryFn: () =>
+      fetchIntegrationAuthHerokuPipelines({
+        integrationAuthId
       }),
     enabled: true
   });

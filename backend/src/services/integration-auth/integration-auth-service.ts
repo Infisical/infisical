@@ -20,9 +20,11 @@ import {
   TDeleteIntegrationAuthsDTO,
   TGetIntegrationAuthDTO,
   TGetIntegrationAuthTeamCityBuildConfigDTO,
+  THerokuPipelineCoupling,
   TIntegrationAuthAppsDTO,
   TIntegrationAuthBitbucketWorkspaceDTO,
   TIntegrationAuthChecklyGroupsDTO,
+  TIntegrationAuthHerokuPipelinesDTO,
   TIntegrationAuthNorthflankSecretGroupDTO,
   TIntegrationAuthQoveryEnvironmentsDTO,
   TIntegrationAuthQoveryOrgsDTO,
@@ -576,6 +578,38 @@ export const integrationAuthServiceFactory = ({
     return [];
   };
 
+  const getHerokuPipelines = async ({ id, actor, actorId, actorOrgId }: TIntegrationAuthHerokuPipelinesDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+
+    const { data } = await request.get<THerokuPipelineCoupling[]>(
+      `${IntegrationUrls.HEROKU_API_URL}/pipeline-couplings`,
+      {
+        headers: {
+          Accept: "application/vnd.heroku+json; version=3",
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
+
+    return data.map(({ app: { id: appId }, stage, pipeline: { id: pipelineId, name } }) => ({
+      app: { appId },
+      stage,
+      pipeline: { pipelineId, name }
+    }));
+  };
+
   const getRailwayEnvironments = async ({ id, actor, actorId, actorOrgId, appId }: TIntegrationAuthRailwayEnvDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
@@ -649,33 +683,21 @@ export const integrationAuthServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
-    if (appId) {
+
+    if (appId && appId !== "") {
       const query = `
-     query project($id: String!) {
-        project(id: $id) {
-          createdAt
-          deletedAt
-          id
-          description
-          expiredAt
-          isPublic
-          isTempProject
-          isUpdatable
-          name
-          prDeploys
-          teamId
-          updatedAt
-          upstreamUrl
-		  services {
-			edges {
-				node {
-					id
-					name
-				}
-			}
-		  }
+        query project($id: String!) {
+          project(id: $id) {
+            services {
+                edges {
+                    node {
+                        id
+                        name
+                    }
+                }
+            }
+          }
         }
-      }
       `;
 
       const variables = {
@@ -711,6 +733,7 @@ export const integrationAuthServiceFactory = ({
       );
       return edges.map(({ node: { name, id: serviceId } }) => ({ name, serviceId }));
     }
+
     return [];
   };
 
@@ -915,6 +938,7 @@ export const integrationAuthServiceFactory = ({
     getQoveryApps,
     getQoveryEnvs,
     getQoveryJobs,
+    getHerokuPipelines,
     getQoveryOrgs,
     getQoveryProjects,
     getQoveryContainers,

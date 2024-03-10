@@ -154,7 +154,7 @@ func CreateFolder(params models.CreateFolderParameters) (models.SingleFolder, er
 		WorkspaceId: params.WorkspaceId,
 		Environment: params.Environment,
 		FolderName:  params.FolderName,
-		Directory:   params.FolderPath,
+		Path:        params.FolderPath,
 	}
 
 	apiResponse, err := api.CallCreateFolderV1(httpClient, createFolderRequest)

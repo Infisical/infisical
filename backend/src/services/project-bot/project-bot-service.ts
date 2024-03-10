@@ -1,15 +1,16 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ProjectVersion, SecretKeyEncoding } from "@app/db/schemas";
+import { ProjectVersion } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { decryptAsymmetric, generateAsymmetricKeyPair } from "@app/lib/crypto";
-import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { generateAsymmetricKeyPair } from "@app/lib/crypto";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotDALFactory } from "./project-bot-dal";
-import { TFindBotByProjectIdDTO, TGetPrivateKeyDTO, TSetActiveStateDTO } from "./project-bot-types";
+import { getBotKeyFnFactory, getBotPrivateKey } from "./project-bot-fns";
+import { TFindBotByProjectIdDTO, TSetActiveStateDTO } from "./project-bot-types";
 
 type TProjectBotServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -24,29 +25,10 @@ export const projectBotServiceFactory = ({
   projectDAL,
   permissionService
 }: TProjectBotServiceFactoryDep) => {
-  const getBotPrivateKey = ({ bot }: TGetPrivateKeyDTO) =>
-    infisicalSymmetricDecrypt({
-      keyEncoding: bot.keyEncoding as SecretKeyEncoding,
-      iv: bot.iv,
-      tag: bot.tag,
-      ciphertext: bot.encryptedPrivateKey
-    });
+  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL);
 
   const getBotKey = async (projectId: string) => {
-    const bot = await projectBotDAL.findOne({ projectId });
-    if (!bot) throw new BadRequestError({ message: "failed to find bot key" });
-    if (!bot.isActive) throw new BadRequestError({ message: "Bot is not active" });
-    if (!bot.encryptedProjectKeyNonce || !bot.encryptedProjectKey)
-      throw new BadRequestError({ message: "Encryption key missing" });
-
-    const botPrivateKey = getBotPrivateKey({ bot });
-
-    return decryptAsymmetric({
-      ciphertext: bot.encryptedProjectKey,
-      privateKey: botPrivateKey,
-      nonce: bot.encryptedProjectKeyNonce,
-      publicKey: bot.sender.publicKey
-    });
+    return getBotKeyFn(projectId);
   };
 
   const findBotByProjectId = async ({

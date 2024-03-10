@@ -236,12 +236,27 @@
     {
       "group": "Agent",
       "pages": [
-        "infisical-agent/overview"
+        "infisical-agent/overview",
+        {
+          "group": "Use cases",
+          "pages": [
+            "infisical-agent/guides/docker-swarm-with-agent",
+            "integrations/platforms/ecs-with-agent"
+          ]
+        }
       ]
     },
     {
       "group": "Infrastructure Integrations",
       "pages": [
+        {
+          "group": "Container orchestrators",
+          "pages": [
+            "integrations/platforms/kubernetes",
+            "infisical-agent/guides/docker-swarm-with-agent",
+            "integrations/platforms/ecs-with-agent"
+          ]
+        },
         {
           "group": "Docker",
           "pages": [
@@ -251,10 +266,8 @@
             "integrations/platforms/docker-compose"
           ]
         },
-        "integrations/platforms/kubernetes",
         "integrations/frameworks/terraform",
-        "integrations/platforms/ansible",
-        "integrations/platforms/ecs-with-agent"
+        "integrations/platforms/ansible"
       ]
     },
     {

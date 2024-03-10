@@ -15,6 +15,7 @@ import { useToggle } from "@app/hooks";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 
 import { SecretEditRow } from "./SecretEditRow";
+import SecretRenameRow from "./SecretRenameRow";
 
 type Props = {
   secretKey: string;
@@ -105,6 +106,13 @@ export const SecretOverviewTableRow = ({
                 width: `calc(${expandableColWidth}px - 1rem)`
               }}
             >
+              <SecretRenameRow
+                secretKey={secretKey}
+                environments={environments}
+                secretPath={secretPath}
+                getSecretByKey={getSecretByKey}
+              />
+
               <TableContainer>
                 <table className="secret-table">
                   <thead>

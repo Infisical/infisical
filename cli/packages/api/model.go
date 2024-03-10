@@ -299,10 +299,10 @@ type GetFoldersV1Response struct {
 }
 
 type CreateFolderV1Request struct {
-	FolderName  string `json:"folderName"`
+	FolderName  string `json:"name"`
 	WorkspaceId string `json:"workspaceId"`
 	Environment string `json:"environment"`
-	Directory   string `json:"directory"`
+	Path        string `json:"path"`
 }
 
 type CreateFolderV1Response struct {

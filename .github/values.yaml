@@ -27,7 +27,7 @@ infisical:
   deploymentAnnotations:
     secrets.infisical.com/auto-reload: "true"
 
-  kubeSecretRef: "infisical-gamma-secrets"
+  kubeSecretRef: "managed-secret"
 
 ingress:
   ## @param ingress.enabled Enable ingress

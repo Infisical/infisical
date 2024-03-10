@@ -436,7 +436,12 @@ export const registerRoutes = async (
     orgDAL,
     projectMembershipDAL,
     smtpService,
-    projectDAL
+    projectDAL,
+    projectBotDAL,
+    secretVersionDAL,
+    secretBlindIndexDAL,
+    secretTagDAL,
+    secretVersionTagDAL
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
     permissionService,
@@ -460,6 +465,7 @@ export const registerRoutes = async (
   const sarService = secretApprovalRequestServiceFactory({
     permissionService,
     folderDAL,
+    secretDAL,
     secretTagDAL,
     secretApprovalRequestSecretDAL: sarSecretDAL,
     secretApprovalRequestReviewerDAL: sarReviewerDAL,
@@ -469,6 +475,7 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     secretService,
     snapshotService,
+    secretVersionTagDAL,
     secretQueueService
   });
   const secretRotationQueue = secretRotationQueueFactory({

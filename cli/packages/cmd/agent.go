@@ -228,7 +228,9 @@ func secretTemplateFunction(accessToken string, existingEtag string, currentEtag
 			*currentEtag = res.Etag
 		}
 
-		return res.Secrets, nil
+		expandedSecrets := util.ExpandSecrets(res.Secrets, models.ExpandSecretsAuthentication{UniversalAuthAccessToken: accessToken}, "")
+
+		return expandedSecrets, nil
 	}
 }
 
@@ -622,7 +624,7 @@ var agentCmd = &cobra.Command{
 		}
 
 		if !FileExists(configPath) && agentConfigInBase64 == "" {
-			log.Error().Msgf("No agent config file provided. Please provide a agent config file", configPath)
+			log.Error().Msgf("No agent config file provided at %v. Please provide a agent config file", configPath)
 			return
 		}
 
