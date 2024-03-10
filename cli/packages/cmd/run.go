@@ -92,6 +92,14 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		if !cmd.Flags().Changed("path") {
+			workspaceMappedPath := util.GetPathFromWorkspaceFile()
+			if workspaceMappedPath != "" {
+				secretsPath = workspaceMappedPath
+			}
+		}
+
+
 		includeImports, err := cmd.Flags().GetBool("include-imports")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
