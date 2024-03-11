@@ -47,6 +47,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.Users, (t) => {
     t.string("username").unique();
     t.string("email").nullable().alter();
+    t.dropUnique(["email"]);
   });
 
   await knex(TableName.Users).update("username", knex.ref("email"));
