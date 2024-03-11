@@ -1,0 +1,37 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+---
+
+repos:
+  # https://github.com/norwoodj/helm-docs#pre-commit-hook
+  - repo: https://github.com/norwoodj/helm-docs
+    rev: v1.13.1
+    hooks:
+      # Will automatically generate the corresponding charts documentation
+      - id: helm-docs
+        files: (README\.md\.gotmpl|_templates\.gotmpl|(Chart|requirements|values)\.yaml)$
+        args:
+          # Make the tool search for charts only given directory
+          - --chart-search-root=helm-charts
+
+          # The `./` makes it relative to the chart-search-root set above
+          - --template-files=./_templates.gotmpl
+
+          # Repeating the flag adds this to the list, now [./_templates.gotmpl, README.md.gotmpl]
+          # A base filename makes it relative to each chart directory found
+          - --template-files=README.md.gotmpl
+          
+          - --sort-values-order=file
+  # https://github.com/dadav/helm-schema#pre-commit-hook
+  - repo: https://github.com/dadav/helm-schema
+    rev: 0.10.0
+    hooks:
+      - id: helm-schema
+        args:
+          # Make the tool search for charts only given directory
+          - --chart-search-root=helm-charts
+          # Don't analyze dependencies
+          - --no-dependencies
+          # Skip default unwanted extra fields (fail-safe)
+          - --skip-auto-generation=required,default,additionalProperties
