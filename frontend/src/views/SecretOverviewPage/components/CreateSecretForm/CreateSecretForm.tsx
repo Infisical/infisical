@@ -171,7 +171,7 @@ export const CreateSecretForm = ({
             )}
           />
           <FormLabel label="Environments" className="mb-2" />
-          <div className="thin-scrollbar grid max-h-64 grid-cols-3 gap-4 overflow-auto ">
+          <div className="thin-scrollbar grid max-h-64 grid-cols-3 gap-4 overflow-auto py-2">
             {environments.map((env) => {
               return (
                 <Controller
@@ -183,13 +183,20 @@ export const CreateSecretForm = ({
                       isChecked={field.value}
                       onCheckedChange={field.onChange}
                       id={`secret-input-${env.slug}`}
+                      className="!justify-start"
                     >
-                      {env.name}
-                      {getSecretByKey(env.slug, newSecretKey) && (
-                        <Tooltip content="Secret exists. Will be overwritten">
-                          <FontAwesomeIcon icon={faWarning} className="ml-1 text-yellow-400" />
-                        </Tooltip>
-                      )}
+                      <span className="flex w-full flex-row items-center justify-start whitespace-pre-wrap">
+                        <span title={env.name} className="truncate">
+                          {env.name}
+                        </span>
+                        <span>
+                          {getSecretByKey(env.slug, newSecretKey) && (
+                            <Tooltip content="Secret exists. Will be overwritten">
+                              <FontAwesomeIcon icon={faWarning} className="ml-1 text-yellow-400" />
+                            </Tooltip>
+                          )}
+                        </span>
+                      </span>
                     </Checkbox>
                   )}
                 />
