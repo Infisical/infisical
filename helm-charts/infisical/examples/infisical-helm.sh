@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-
+##
 ## Infisical local k8s development environment setup script
 ## using 'helm' and assume you already have a cluster and an ingress (nginx)
-##
-
 ##
 ## DEVELOPMENT USE ONLY
 ## DO NOT USE IN PRODUCTION
