@@ -4,7 +4,7 @@ import { Knex } from "knex";
 
 import { encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 
-import { OrgMembershipRole, SecretEncryptionAlgo, SecretKeyEncoding, TableName } from "../schemas";
+import { ProjectMembershipRole, SecretEncryptionAlgo, SecretKeyEncoding, TableName } from "../schemas";
 import { buildUserProjectKey, getUserPrivateKey, seedData1 } from "../seed-data";
 
 export const DEFAULT_PROJECT_ENVS = [
@@ -30,10 +30,15 @@ export async function seed(knex: Knex): Promise<void> {
     })
     .returning("*");
 
-  await knex(TableName.ProjectMembership).insert({
-    projectId: project.id,
-    role: OrgMembershipRole.Admin,
-    userId: seedData1.id
+  const projectMembership = await knex(TableName.ProjectMembership)
+    .insert({
+      projectId: project.id,
+      userId: seedData1.id
+    })
+    .returning("*");
+  await knex(TableName.ProjectUserMembershipRole).insert({
+    role: ProjectMembershipRole.Admin,
+    projectMembershipId: projectMembership[0].id
   });
 
   const user = await knex(TableName.UserEncryptionKey).where({ userId: seedData1.id }).first();

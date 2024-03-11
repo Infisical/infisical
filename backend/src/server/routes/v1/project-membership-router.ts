@@ -2,14 +2,15 @@ import { z } from "zod";
 
 import {
   OrgMembershipsSchema,
-  ProjectMembershipRole,
   ProjectMembershipsSchema,
+  ProjectUserMembershipRolesSchema,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
 export const registerProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -35,7 +36,21 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
                 firstName: true,
                 lastName: true,
                 id: true
-              }).merge(UserEncryptionKeysSchema.pick({ publicKey: true }))
+              }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+              roles: z.array(
+                z.object({
+                  id: z.string(),
+                  role: z.string(),
+                  customRoleId: z.string().optional().nullable(),
+                  customRoleName: z.string().optional().nullable(),
+                  customRoleSlug: z.string().optional().nullable(),
+                  isTemporary: z.boolean(),
+                  temporaryMode: z.string().optional().nullable(),
+                  temporaryRange: z.string().nullable().optional(),
+                  temporaryAccessStartTime: z.date().nullable().optional(),
+                  temporaryAccessEndTime: z.date().nullable().optional()
+                })
+              )
             })
           )
             .omit({ createdAt: true, updatedAt: true })
@@ -86,10 +101,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
-        members: req.body.members.map((member) => ({
-          ...member,
-          projectRole: ProjectMembershipRole.Member
-        }))
+        members: req.body.members
       });
 
       await server.services.auditLog.createAuditLog({
@@ -124,39 +136,53 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         membershipId: z.string().trim()
       }),
       body: z.object({
-        role: z.string().trim()
+        roles: z.array(
+          z.union([
+            z.object({
+              role: z.string(),
+              isTemporary: z.literal(false).default(false)
+            }),
+            z.object({
+              role: z.string(),
+              isTemporary: z.literal(true),
+              temporaryMode: z.nativeEnum(ProjectUserMembershipTemporaryMode),
+              temporaryRange: z.string(),
+              temporaryAccessStartTime: z.string().datetime()
+            })
+          ])
+        )
       }),
       response: {
         200: z.object({
-          membership: ProjectMembershipsSchema
+          roles: ProjectUserMembershipRolesSchema.array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const membership = await server.services.projectMembership.updateProjectMembership({
+      const roles = await server.services.projectMembership.updateProjectMembership({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         membershipId: req.params.membershipId,
-        role: req.body.role
+        roles: req.body.roles
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
-        event: {
-          type: EventType.UPDATE_USER_WORKSPACE_ROLE,
-          metadata: {
-            userId: membership.userId,
-            newRole: req.body.role,
-            oldRole: membership.role,
-            email: ""
-          }
-        }
-      });
-      return { membership };
+      // await server.services.auditLog.createAuditLog({
+      //   ...req.auditLogInfo,
+      //   projectId: req.params.workspaceId,
+      //   event: {
+      //     type: EventType.UPDATE_USER_WORKSPACE_ROLE,
+      //     metadata: {
+      //       userId: membership.userId,
+      //       newRole: req.body.role,
+      //       oldRole: membership.role,
+      //       email: ""
+      //     }
+      //   }
+      // });
+      return { roles };
     }
   });
 

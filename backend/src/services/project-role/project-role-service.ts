@@ -92,7 +92,7 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
         name: "Admin",
         slug: ProjectMembershipRole.Admin,
         description: "Complete administration access over the project",
-        permissions: packRules(projectAdminPermissions.rules),
+        permissions: packRules(projectAdminPermissions),
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -102,7 +102,7 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
         name: "Developer",
         slug: ProjectMembershipRole.Member,
         description: "Non-administrative role in an project",
-        permissions: packRules(projectMemberPermissions.rules),
+        permissions: packRules(projectMemberPermissions),
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -112,7 +112,7 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
         name: "Viewer",
         slug: ProjectMembershipRole.Viewer,
         description: "Non-administrative role in an project",
-        permissions: packRules(projectViewerPermission.rules),
+        permissions: packRules(projectViewerPermission),
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -122,7 +122,7 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
         name: "No Access",
         slug: "no-access",
         description: "No access to any resources in the project",
-        permissions: packRules(projectNoAccessPermissions.rules),
+        permissions: packRules(projectNoAccessPermissions),
         createdAt: new Date(),
         updatedAt: new Date()
       },

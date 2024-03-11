@@ -78,6 +78,7 @@ import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal"
 import { projectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { projectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { projectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
+import { projectUserMembershipRoleDALFactory } from "@app/services/project-membership/project-user-membership-role-dal";
 import { projectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
@@ -141,6 +142,7 @@ export const registerRoutes = async (
 
   const projectDAL = projectDALFactory(db);
   const projectMembershipDAL = projectMembershipDALFactory(db);
+  const projectUserMembershipRoleDAL = projectUserMembershipRoleDALFactory(db);
   const projectRoleDAL = projectRoleDALFactory(db);
   const projectEnvDAL = projectEnvDALFactory(db);
   const projectKeyDAL = projectKeyDALFactory(db);
@@ -321,6 +323,7 @@ export const registerRoutes = async (
 
   const projectMembershipService = projectMembershipServiceFactory({
     projectMembershipDAL,
+    projectUserMembershipRoleDAL,
     projectDAL,
     permissionService,
     projectBotDAL,
@@ -352,7 +355,8 @@ export const registerRoutes = async (
     projectBotDAL,
     projectMembershipDAL,
     secretApprovalRequestDAL,
-    secretApprovalSecretDAL: sarSecretDAL
+    secretApprovalSecretDAL: sarSecretDAL,
+    projectUserMembershipRoleDAL
   });
 
   const projectService = projectServiceFactory({
@@ -369,7 +373,8 @@ export const registerRoutes = async (
     orgService,
     projectMembershipDAL,
     folderDAL,
-    licenseService
+    licenseService,
+    projectUserMembershipRoleDAL
   });
   const projectEnvService = projectEnvServiceFactory({
     permissionService,

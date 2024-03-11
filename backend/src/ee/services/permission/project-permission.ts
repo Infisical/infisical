@@ -56,8 +56,8 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback];
 
-const buildAdminPermission = () => {
-  const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+const buildAdminPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets);
@@ -135,13 +135,13 @@ const buildAdminPermission = () => {
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
-  return build({ conditionsMatcher });
+  return rules;
 };
 
-export const projectAdminPermissions = buildAdminPermission();
+export const projectAdminPermissions = buildAdminPermissionRules();
 
-const buildMemberPermission = () => {
-  const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+const buildMemberPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets);
@@ -196,13 +196,13 @@ const buildMemberPermission = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
 
-  return build({ conditionsMatcher });
+  return rules;
 };
 
-export const projectMemberPermissions = buildMemberPermission();
+export const projectMemberPermissions = buildMemberPermissionRules();
 
-const buildViewerPermission = () => {
-  const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+const buildViewerPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
@@ -220,14 +220,14 @@ const buildViewerPermission = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
 
-  return build({ conditionsMatcher });
+  return rules;
 };
 
-export const projectViewerPermission = buildViewerPermission();
+export const projectViewerPermission = buildViewerPermissionRules();
 
 const buildNoAccessProjectPermission = () => {
-  const { build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-  return build({ conditionsMatcher });
+  const { rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+  return rules;
 };
 
 export const buildServiceTokenProjectPermission = (
