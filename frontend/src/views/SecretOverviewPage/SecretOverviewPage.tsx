@@ -396,7 +396,7 @@ export const SecretOverviewPage = () => {
                     ariaLabel="Environments"
                     variant="plain"
                     size="sm"
-                    className="mr-2 flex w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 hover:border-primary/60 hover:bg-primary/10"
+                    className="flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 hover:border-primary/60 hover:bg-primary/10"
                   >
                     <Tooltip content="Choose visible environments" className="mb-2">
                       <FontAwesomeIcon icon={faList} />
