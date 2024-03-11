@@ -14,7 +14,7 @@ const formSchema = yup.object({
     .string()
     .required()
     .label("Organization Name")
-    .max(64, "Too long, Maximum length is 64 characters")
+    .max(64, "Too long, maximum length is 64 characters")
 });
 
 type FormData = yup.InferType<typeof formSchema>;

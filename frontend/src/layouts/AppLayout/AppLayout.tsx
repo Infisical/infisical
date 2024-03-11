@@ -28,6 +28,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
+import { twMerge } from "tailwind-merge";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -99,7 +100,7 @@ const supportOptions = [
 ];
 
 const formSchema = yup.object({
-  name: yup.string().required().label("Project Name").trim().max(64, "Too long, Maximum length is 64 characters"),
+  name: yup.string().required().label("Project Name").trim().max(64, "Too long, maximum length is 64 characters"),
   addMembers: yup.bool().required().label("Add Members")
 });
 
@@ -441,9 +442,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
                               <SelectItem
                                 key={`ws-layout-list-${id}`}
                                 value={id}
-                                className={`${
-                                  currentWorkspace?.id === id && "bg-mineshaft-600"
-                                } truncate`}
+                                className={twMerge(
+                                  currentWorkspace?.id === id && "bg-mineshaft-600",
+                                  "truncate"
+                                )}
                               >
                                 {name}
                               </SelectItem>

@@ -13,7 +13,7 @@ import { useToggle } from "@app/hooks";
 import { useRenameWorkspace } from "@app/hooks/api";
 
 const formSchema = yup.object({
-  name: yup.string().required().label("Project Name").max(64, "Too long, Maximum length is 64 characters"),
+  name: yup.string().required().label("Project Name").max(64, "Too long, maximum length is 64 characters"),
 });
 
 type FormData = yup.InferType<typeof formSchema>;
