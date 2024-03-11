@@ -1,10 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
 import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import NavHeader from "@app/components/navigation/NavHeader";
 import { PermissionDeniedBanner } from "@app/components/permissions";
 import { ContentLoader } from "@app/components/v2";
@@ -47,9 +48,10 @@ const LOADER_TEXT = [
 
 export const SecretMainPage = () => {
   const { t } = useTranslation();
-  const { currentWorkspace } = useWorkspace();
+  const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const router = useRouter();
   const { permission } = useProjectPermission();
+  const { createNotification } = useNotificationContext();
 
   const [isVisible, setIsVisible] = useState(false);
   const [sortDir, setSortDir] = useState<SortDir>(SortDir.ASC);
@@ -74,6 +76,20 @@ export const SecretMainPage = () => {
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRollback
   );
+
+  useEffect(() => {
+    if (
+      !isWorkspaceLoading &&
+      !currentWorkspace?.environments.find((env) => env.slug === environment) &&
+      router.isReady
+    ) {
+      router.push(`/project/${workspaceId}/secrets/overview`);
+      createNotification({
+        text: "No envronment found with given slug",
+        type: "error"
+      });
+    }
+  }, [isWorkspaceLoading, currentWorkspace, environment, router.isReady]);
 
   const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
 
