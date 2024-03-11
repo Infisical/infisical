@@ -22,11 +22,18 @@ spec:
           image: "{{ $infisicalValues.image.repository }}:{{ $infisicalValues.image.tag }}"
           command: ["npm", "run", "migration:latest"]
           env:
-          {{- if .Values.postgresql.enabled }}
+          {{/* requires only DB_CONNECTION_URI, given > built-in > secret */}}
+          {{- if hasKey $infisicalValues.config "DB_CONNECTION_URI" -}}
+          - name: DB_CONNECTION_URI
+            value: {{ $infisicalValues.config.DB_CONNECTION_URI }}
+          {{- else if .Values.postgresql.enabled -}}
           - name: DB_CONNECTION_URI
             value: {{ include "infisical.postgresDBConnectionString" . }}
+          {{- else -}}
+          - name: DB_CONNECTION_URI
+            valueFrom:
+              secretKeyRef:
+                name: {{ $infisicalValues.kubeSecretRef }}
+                key: DB_CONNECTION_URI
           {{- end }}
-          envFrom:
-          - secretRef:
-              name: {{ $infisicalValues.kubeSecretRef }}
 {{- end }}
