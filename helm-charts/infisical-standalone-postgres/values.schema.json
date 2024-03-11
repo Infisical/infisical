@@ -1,8 +1,8 @@
 {
   "properties": {
     "fullnameOverride": {
-      "title": "fullnameOverride",
-      "type": "string"
+      "description": "Override release fullname",
+      "title": "fullnameOverride"
     },
     "global": {
       "description": "Global values are values that can be accessed from any chart or subchart by exactly the same name.",
@@ -10,231 +10,497 @@
       "type": "object"
     },
     "infisical": {
+      "additionalProperties": true,
       "properties": {
         "affinity": {
-          "title": "affinity",
-          "type": "object"
+          "additionalProperties": true,
+          "description": "Backend pod affinity",
+          "title": "affinity"
         },
         "autoDatabaseSchemaMigration": {
+          "description": "Automatically migrate database",
           "title": "autoDatabaseSchemaMigration",
           "type": "boolean"
         },
+        "config": {
+          "properties": {
+            "AUTH_SECRET": {
+              "description": "Must be a random 32 byte base64 string. Can be generated with `openssl rand -base64 32`.",
+              "type": "string"
+            },
+            "CLIENT_ID_AZURE": {
+              "description": "OAuth2 client id for Azure integration.",
+              "type": "string"
+            },
+            "CLIENT_ID_BITBUCKET": {
+              "description": "OAuth2 client ID for BitBucket integration.",
+              "type": "string"
+            },
+            "CLIENT_ID_GCP_SECRET_MANAGER": {
+              "description": "OAuth2 client id for GCP secrets manager integration.",
+              "type": "string"
+            },
+            "CLIENT_ID_GITHUB": {
+              "description": "OAuth2 client ID for GitHub integration.",
+              "type": "string"
+            },
+            "CLIENT_ID_GITHUB_LOGIN": {
+              "description": "OAuth2 client ID for GitHub login.",
+              "type": "string"
+            },
+            "CLIENT_ID_GITLAB": {
+              "description": "OAuth2 client id for Gitlab integration.",
+              "type": "string"
+            },
+            "CLIENT_ID_GITLAB_LOGIN": {
+              "description": "OAuth2 client ID for GitLab login.",
+              "type": "string"
+            },
+            "CLIENT_ID_GOOGLE_LOGIN": {
+              "description": "OAuth2 client ID for Google login.",
+              "type": "string"
+            },
+            "CLIENT_ID_HEROKU": {
+              "description": "OAuth2 client ID for Heroku integration.",
+              "type": "string"
+            },
+            "CLIENT_ID_NETLIFY": {
+              "description": "OAuth2 client ID for Netlify integration.",
+              "type": "string"
+            },
+            "CLIENT_ID_VERCEL": {
+              "description": "OAuth2 client ID for Vercel integration.",
+              "type": "string"
+            },
+            "CLIENT_SECRET_AZURE": {
+              "description": "OAuth2 client secret for Azure integration.",
+              "type": "string"
+            },
+            "CLIENT_SECRET_BITBUCKET": {
+              "description": "OAuth2 client secret for BitBucket integration.",
+              "type": "string"
+            },
+            "CLIENT_SECRET_GCP_SECRET_MANAGER": {
+              "description": "OAuth2 client secret for GCP secrets manager integration.",
+              "type": "string"
+            },
+            "CLIENT_SECRET_GITHUB": {
+              "description": "OAuth2 client secret for GitHub integration.",
+              "type": "string"
+            },
+            "CLIENT_SECRET_GITHUB_LOGIN": {
+              "description": "OAuth2 client secret for GitHub login.",
+              "type": "string"
+            },
+            "CLIENT_SECRET_GITLAB": {
+              "description": "OAuth2 client secret for Gitlab integration.",
+              "type": "string"
+            },
+            "CLIENT_SECRET_GITLAB_LOGIN": {
+              "description": "OAuth2 client secret for GitLab login.",
+              "type": "string"
+            },
+            "CLIENT_SECRET_GOOGLE_LOGIN": {
+              "description": "OAuth2 client secret for Google login.",
+              "type": "string"
+            },
+            "CLIENT_SECRET_HEROKU": {
+              "description": "OAuth2 client secret for Heroku integration.",
+              "type": "string"
+            },
+            "CLIENT_SECRET_NETLIFY": {
+              "description": "OAuth2 client secret for Netlify integration.",
+              "type": "string"
+            },
+            "CLIENT_SECRET_VERCEL": {
+              "description": "OAuth2 client secret for Vercel integration.",
+              "type": "string"
+            },
+            "CLIENT_SLUG_VERCEL": {
+              "description": "OAuth2 slug for Vercel integration.",
+              "type": "string"
+            },
+            "DB_CONNECTION_URI": {
+              "description": "Database connection string (postgres, e.g. 'postgresql://user:pass@host:5432/my_db').",
+              "type": "string"
+            },
+            "DB_ROOT_CERT": {
+              "description": "Configure the SSL certificate for securing a Postgres connection by first encoding it in base64. To encode your certificate `echo \"\u003ccertificate\u003e\" | base64`",
+              "type": "string"
+            },
+            "ENCRYPTION_KEY": {
+              "description": "Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`.",
+              "type": "string"
+            },
+            "POSTHOG_HOST": {
+              "type": "string"
+            },
+            "POSTHOG_PROJECT_API_KEY": {
+              "type": "string"
+            },
+            "REDIS_URL": {
+              "description": "Redis connection string (e.g. 'redis://user:pass@host:6379').",
+              "type": "string"
+            },
+            "SITE_URL": {
+              "description": "Must be an absolute URL including the protocol (e.g. https://app.infisical.com).",
+              "type": "string"
+            },
+            "SMTP_FROM_ADDRESS": {
+              "description": "Email address to be used for sending emails.",
+              "type": "string"
+            },
+            "SMTP_FROM_NAME": {
+              "description": "Name label to be used in From field (e.g. Team)",
+              "type": "string"
+            },
+            "SMTP_HOST": {
+              "description": "Hostname to connect to for establishing SMTP connections (e.g. smtp.sendgrid.net).",
+              "type": "string"
+            },
+            "SMTP_PASSWORD": {
+              "description": "Credential to connect to host.",
+              "type": "string"
+            },
+            "SMTP_PORT": {
+              "description": "Port to connect to for establishing SMTP connections.",
+              "type": "integer"
+            },
+            "SMTP_SECURE": {
+              "description": "If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported.",
+              "type": "boolean"
+            },
+            "SMTP_USERNAME": {
+              "description": "Credential to connect to host (e.g. team@infisical.com).",
+              "type": "string"
+            },
+            "URL_GITLAB_LOGIN": {
+              "description": "URL of your self-hosted instance of GitLab where the OAuth application is registered (default 'https://gitlab.com').",
+              "type": "string"
+            }
+          },
+          "description": "Backend [configuration variables](https://infisical.com/docs/self-hosting/configuration/envars) (inline, e.g. for gitops mechanism).\nThose variables take precedence over `infisical.kubeSecretRef`",
+          "title": "config"
+        },
         "deploymentAnnotations": {
-          "title": "deploymentAnnotations",
-          "type": "object"
+          "additionalProperties": true,
+          "description": "Backend deployment annotations",
+          "title": "deploymentAnnotations"
         },
         "enabled": {
+          "description": "Enable backend",
           "title": "enabled",
           "type": "boolean"
         },
         "fullnameOverride": {
+          "description": "Backend deployment fullname override",
           "title": "fullnameOverride",
           "type": "string"
         },
         "image": {
           "properties": {
             "pullPolicy": {
+              "description": "Backend image pullPolicy",
               "title": "pullPolicy",
-              "type": "string"
+              "enum": [
+                "IfNotPresent",
+                "Always",
+                "Never"
+              ]
             },
             "repository": {
+              "description": "Backend image repository",
               "title": "repository",
               "type": "string"
             },
             "tag": {
+              "description": "Backend image [tag](https://hub.docker.com/r/infisical/infisical/tags)",
               "title": "tag",
               "type": "string"
             }
           },
+          "description": "Backend image parameters",
           "title": "image",
           "type": "object"
         },
         "kubeSecretRef": {
+          "description": "Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))",
           "title": "kubeSecretRef",
           "type": "string"
         },
         "name": {
+          "description": "Backend deployment name",
           "title": "name",
           "type": "string"
         },
         "podAnnotations": {
-          "title": "podAnnotations",
-          "type": "object"
+          "additionalProperties": true,
+          "description": "Backend pod annotations",
+          "title": "podAnnotations"
         },
         "replicaCount": {
-          "title": "replicaCount",
-          "type": "integer"
+          "minimum": 1,
+          "description": "Backend replicas count",
+          "title": "replicaCount"
         },
         "resources": {
           "properties": {
             "limits": {
               "properties": {
                 "memory": {
+                  "description": "Memory resource limit",
                   "title": "memory",
                   "type": "string"
                 }
               },
+              "description": "Above which Infisical's pods will not be able to use\nWarning: too low resources may alter the application's stability",
               "title": "limits",
               "type": "object"
             },
             "requests": {
               "properties": {
                 "cpu": {
+                  "description": "CPU resource request",
                   "title": "cpu",
                   "type": "string"
                 }
               },
+              "description": "Infisical's pods will at least use the below resources\nWarning: too low resources may alter the application's stability\nWarning: make sure your cluster have enough resources, taking into consideration the replicas amount",
               "title": "requests",
               "type": "object"
             }
           },
+          "description": "Infisical instance resources and limits",
           "title": "resources",
           "type": "object"
         },
         "service": {
           "properties": {
             "annotations": {
-              "title": "annotations",
-              "type": "object"
+              "additionalProperties": true,
+              "description": "Backend service annotations",
+              "title": "annotations"
             },
             "nodePort": {
+              "description": "Backend service nodePort (used if above type is `NodePort`)",
               "title": "nodePort",
-              "type": "string"
+              "type": "integer"
             },
             "type": {
+              "description": "Backend service type",
               "title": "type",
-              "type": "string"
+              "enum": [
+                "ClusterIP",
+                "NodePort"
+              ]
             }
           },
+          "description": "Backend service",
           "title": "service",
           "type": "object"
         }
       },
-      "title": "infisical",
-      "type": "object"
+      "description": "Infisical parameters\nhttps://infisical.com/docs/self-hosting/deployments/kubernetes",
+      "title": "infisical"
     },
     "ingress": {
+      "additionalProperties": true,
       "properties": {
         "annotations": {
-          "title": "annotations",
-          "type": "object"
+          "additionalProperties": true,
+          "description": "Ingress annotations",
+          "title": "annotations"
         },
         "enabled": {
+          "description": "Enable ingress",
           "title": "enabled",
           "type": "boolean"
         },
         "hostName": {
+          "description": "Your instance's hostname (e.g. `infisical.example.org`).\nReplace with your own domain",
           "title": "hostName",
           "type": "string"
         },
         "ingressClassName": {
+          "description": "Ingress class name",
           "title": "ingressClassName",
           "type": "string"
         },
         "nginx": {
           "properties": {
             "enabled": {
+              "description": "Enable and install NginX ingress controller",
               "title": "enabled",
               "type": "boolean"
             }
           },
-          "title": "nginx",
-          "type": "object"
+          "title": "nginx"
         },
         "tls": {
           "items": {},
-          "title": "tls",
-          "type": "array"
+          "description": "kubernetes.io/ingress.class: \"nginx\"\ncert-manager.io/issuer: letsencrypt-nginx\nIngress TLS hosts (matching above `ingress.hostName`).\nReplace with your own domain",
+          "title": "tls"
         }
       },
-      "title": "ingress",
-      "type": "object"
+      "description": "Ingress parameters\nhttps://kubernetes.io/docs/concepts/services-networking/ingress-controllers/",
+      "title": "ingress"
     },
     "nameOverride": {
-      "title": "nameOverride",
-      "type": "string"
+      "description": "Override release name",
+      "title": "nameOverride"
     },
     "postgresql": {
+      "additionalProperties": true,
       "properties": {
         "auth": {
+          "additionalProperties": true,
           "properties": {
             "database": {
+              "description": "PostgreSQL database name",
               "title": "database",
               "type": "string"
             },
             "password": {
+              "description": "PostgreSQL database password",
               "title": "password",
               "type": "string"
             },
             "username": {
+              "description": "PostgreSQL database username",
               "title": "username",
               "type": "string"
             }
           },
-          "title": "auth",
-          "type": "object"
+          "title": "auth"
         },
         "enabled": {
+          "description": "Enable PostgreSQL",
           "title": "enabled",
           "type": "boolean"
         },
         "fullnameOverride": {
+          "description": "PostgreSQL deployment fullname override",
           "title": "fullnameOverride",
           "type": "string"
         },
         "name": {
+          "description": "PostgreSQL deployment name",
           "title": "name",
           "type": "string"
+        },
+        "persistence": {
+          "properties": {
+            "accessModes": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "description": "PVC Access Mode for PostgreSQL volume",
+              "title": "accessModes",
+              "type": "array"
+            },
+            "annotations": {
+              "additionalProperties": true,
+              "description": "Annotations for the PVC",
+              "title": "annotations"
+            },
+            "dataSource": {
+              "additionalProperties": true,
+              "description": "Custom PVC data source",
+              "title": "dataSource"
+            },
+            "enabled": {
+              "description": "Enable PostgreSQL Primary data persistence using PVC",
+              "title": "enabled",
+              "type": "boolean"
+            },
+            "existingClaim": {
+              "description": "Name of an existing PVC to use",
+              "title": "existingClaim",
+              "type": "string"
+            },
+            "labels": {
+              "additionalProperties": true,
+              "description": "Labels for the PVC",
+              "title": "labels"
+            },
+            "mountPath": {
+              "description": "The path the volume will be mounted at.\nUseful when using custom PostgreSQL images",
+              "title": "mountPath",
+              "type": "string"
+            },
+            "selector": {
+              "additionalProperties": true,
+              "description": "Selector to match an existing Persistent Volume (this value is evaluated as a template)",
+              "title": "selector"
+            },
+            "size": {
+              "description": "PVC Storage Request for PostgreSQL volume",
+              "title": "size",
+              "type": "string"
+            },
+            "storageClass": {
+              "description": "PVC Storage Class for PostgreSQL Primary data volume.\nIf defined, `storageClassName: \u003cstorageClass\u003e`\nIf set to `\"-\"`, `storageClassName: \"\"`, which disables dynamic provisioning\nDefault is undefined/null, no `storageClassName` spec is set. Using default provisioner",
+              "title": "storageClass",
+              "type": "string"
+            }
+          },
+          "description": "PostgreSQL Primary persistence configuration",
+          "title": "persistence",
+          "type": "object"
         }
       },
-      "title": "postgresql",
-      "type": "object"
+      "description": "PostgreSQL parameters\nhttps://github.com/bitnami/charts/tree/main/bitnami/postgresql",
+      "title": "postgresql"
     },
     "redis": {
+      "additionalProperties": true,
       "properties": {
         "architecture": {
+          "description": "Redis architecture. Allowed values: `standalone` or `replication`",
           "title": "architecture",
-          "type": "string"
+          "enum": [
+            "standalone",
+            "replication"
+          ]
         },
         "auth": {
+          "additionalProperties": true,
           "properties": {
             "password": {
+              "description": "Redis [password](https://github.com/bitnami/containers/tree/main/bitnami/redis#setting-the-server-password-on-first-run) (ignored if `existingSecret` set).\nDefaults to a random 10-character alphanumeric string if not set and `usePassword` is true",
               "title": "password",
               "type": "string"
             }
           },
-          "title": "auth",
-          "type": "object"
-        },
-        "cluster": {
-          "properties": {
-            "enabled": {
-              "title": "enabled",
-              "type": "boolean"
-            }
-          },
-          "title": "cluster",
-          "type": "object"
+          "title": "auth"
         },
         "enabled": {
+          "description": "Enable Redis",
           "title": "enabled",
           "type": "boolean"
         },
         "fullnameOverride": {
+          "description": "Redis deployment fullname override",
           "title": "fullnameOverride",
           "type": "string"
         },
         "name": {
+          "description": "Redis deployment name",
           "title": "name",
           "type": "string"
         },
         "usePassword": {
+          "description": "Use password authentication",
           "title": "usePassword",
           "type": "boolean"
         }
       },
-      "title": "redis",
-      "type": "object"
+      "description": "Redis parameters\nhttps://github.com/bitnami/charts/tree/main/bitnami/redis",
+      "title": "redis"
     }
   },
   "$schema": "http://json-schema.org/draft-07/schema#",

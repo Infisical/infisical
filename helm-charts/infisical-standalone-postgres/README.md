@@ -4,9 +4,9 @@
 
 | Name | Chart | Application |
 | - | - | - |
-| [infisical-standalone]() | [![Latest version of 'infisical-standalone' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/infisical/helm-charts/helm/infisical-standalone/latest/x/?render=true&show_latest=true)](https://cloudsmith.io/~infisical/repos/helm-charts/packages/detail/helm/infisical-standalone/latest/) | `1.0.0` |
+| [infisical-standalone](https://infisical.com/docs/self-hosting/deployment-options/kubernetes-helm) | [![Latest version of 'infisical-standalone' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/infisical/helm-charts/helm/infisical-standalone/latest/x/?render=true&show_latest=true)](https://cloudsmith.io/~infisical/repos/helm-charts/packages/detail/helm/infisical-standalone/latest/) | `v0.46.16` |
 
-A helm chart for a full Infisical application
+Standalone Infisical instance (postgres). An open-source secret management platform.
 
 ## Services
 
@@ -116,44 +116,54 @@ Here's the migration instructions : https://infisical.com/docs/self-hosting/guid
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| nameOverride | string | `""` |  |
-| fullnameOverride | string | `""` |  |
-| infisical.enabled | bool | `true` |  |
-| infisical.name | string | `"infisical"` |  |
-| infisical.autoDatabaseSchemaMigration | bool | `true` |  |
-| infisical.fullnameOverride | string | `""` |  |
-| infisical.podAnnotations | object | `{}` |  |
-| infisical.deploymentAnnotations | object | `{}` |  |
-| infisical.replicaCount | int | `2` |  |
-| infisical.image.repository | string | `"infisical/infisical"` |  |
-| infisical.image.tag | string | `"v0.46.3-postgres"` |  |
-| infisical.image.pullPolicy | string | `"IfNotPresent"` |  |
-| infisical.affinity | object | `{}` |  |
-| infisical.kubeSecretRef | string | `"infisical-secrets"` |  |
-| infisical.service.annotations | object | `{}` |  |
-| infisical.service.type | string | `"ClusterIP"` |  |
-| infisical.service.nodePort | string | `""` |  |
-| infisical.resources.limits.memory | string | `"350Mi"` |  |
-| infisical.resources.requests.cpu | string | `"350m"` |  |
-| ingress.enabled | bool | `true` |  |
-| ingress.hostName | string | `""` |  |
-| ingress.ingressClassName | string | `"nginx"` |  |
-| ingress.nginx.enabled | bool | `true` |  |
-| ingress.annotations | object | `{}` |  |
-| ingress.tls | list | `[]` |  |
-| postgresql.enabled | bool | `true` |  |
-| postgresql.name | string | `"postgresql"` |  |
-| postgresql.fullnameOverride | string | `"postgresql"` |  |
-| postgresql.auth.username | string | `"infisical"` |  |
-| postgresql.auth.password | string | `"root"` |  |
-| postgresql.auth.database | string | `"infisicalDB"` |  |
-| redis.enabled | bool | `true` |  |
-| redis.name | string | `"redis"` |  |
-| redis.fullnameOverride | string | `"redis"` |  |
-| redis.cluster.enabled | bool | `false` |  |
-| redis.usePassword | bool | `true` |  |
-| redis.auth.password | string | `"mysecretpassword"` |  |
-| redis.architecture | string | `"standalone"` |  |
+| nameOverride | string | `""` | Override release name |
+| fullnameOverride | string | `""` | Override release fullname |
+| infisical.enabled | bool | `true` | Enable backend |
+| infisical.name | string | `"infisical"` | Backend deployment name |
+| infisical.autoDatabaseSchemaMigration | bool | `true` | Automatically migrate database |
+| infisical.fullnameOverride | string | `""` | Backend deployment fullname override |
+| infisical.podAnnotations | object | `{}` | Backend pod annotations |
+| infisical.deploymentAnnotations | object | `{}` | Backend deployment annotations |
+| infisical.replicaCount | int | `2` | Backend replicas count |
+| infisical.image.repository | string | `"infisical/infisical"` | Backend image repository |
+| infisical.image.tag | string | `"v0.46.3-postgres"` | Backend image [tag](https://hub.docker.com/r/infisical/infisical/tags) |
+| infisical.image.pullPolicy | string | `"IfNotPresent"` | Backend image pullPolicy |
+| infisical.affinity | object | `{}` | Backend pod affinity |
+| infisical.kubeSecretRef | string | `"infisical-secrets"` | Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars)) |
+| infisical.config | object | `{}` | Backend [configuration variables](https://infisical.com/docs/self-hosting/configuration/envars) (inline, e.g. for gitops mechanism). Those variables take precedence over `infisical.kubeSecretRef` |
+| infisical.service.annotations | object | `{}` | Backend service annotations |
+| infisical.service.type | string | `"ClusterIP"` | Backend service type |
+| infisical.service.nodePort | int | `0` | Backend service nodePort (used if above type is `NodePort`) |
+| infisical.resources.limits.memory | string | `"350Mi"` | Memory resource limit |
+| infisical.resources.requests.cpu | string | `"350m"` | CPU resource request |
+| ingress.enabled | bool | `true` | Enable ingress |
+| ingress.hostName | string | `""` | Your instance's hostname (e.g. `infisical.example.org`). Replace with your own domain |
+| ingress.ingressClassName | string | `"nginx"` | Ingress class name |
+| ingress.nginx.enabled | bool | `true` | Enable and install NginX ingress controller |
+| ingress.annotations | object | `{}` | Ingress annotations |
+| ingress.tls | list | `[]` | Ingress TLS hosts (matching above `ingress.hostName`). Replace with your own domain |
+| postgresql.enabled | bool | `true` | Enable PostgreSQL |
+| postgresql.name | string | `"postgresql"` | PostgreSQL deployment name |
+| postgresql.fullnameOverride | string | `"postgresql"` | PostgreSQL deployment fullname override |
+| postgresql.auth.username | string | `"infisical"` | PostgreSQL database username |
+| postgresql.auth.password | string | `"root"` | PostgreSQL database password |
+| postgresql.auth.database | string | `"infisicalDB"` | PostgreSQL database name |
+| postgresql.persistence.enabled | bool | `true` | Enable PostgreSQL Primary data persistence using PVC |
+| postgresql.persistence.existingClaim | string | `""` | Name of an existing PVC to use |
+| postgresql.persistence.mountPath | string | `"/bitnami/postgresql"` | The path the volume will be mounted at. Useful when using custom PostgreSQL images |
+| postgresql.persistence.storageClass | string | `""` | PVC Storage Class for PostgreSQL Primary data volume. If defined, `storageClassName: <storageClass>` If set to `"-"`, `storageClassName: ""`, which disables dynamic provisioning Default is undefined/null, no `storageClassName` spec is set. Using default provisioner |
+| postgresql.persistence.accessModes | list | `["ReadWriteOnce"]` | PVC Access Mode for PostgreSQL volume |
+| postgresql.persistence.size | string | `"8Gi"` | PVC Storage Request for PostgreSQL volume |
+| postgresql.persistence.annotations | object | `{}` | Annotations for the PVC |
+| postgresql.persistence.labels | object | `{}` | Labels for the PVC |
+| postgresql.persistence.selector | object | `{}` | Selector to match an existing Persistent Volume (this value is evaluated as a template) |
+| postgresql.persistence.dataSource | object | `{}` | Custom PVC data source |
+| redis.enabled | bool | `true` | Enable Redis |
+| redis.name | string | `"redis"` | Redis deployment name |
+| redis.fullnameOverride | string | `"redis"` | Redis deployment fullname override |
+| redis.usePassword | bool | `true` | Use password authentication |
+| redis.auth.password | string | `"mysecretpassword"` | Redis [password](https://github.com/bitnami/containers/tree/main/bitnami/redis#setting-the-server-password-on-first-run) (ignored if `existingSecret` set). Defaults to a random 10-character alphanumeric string if not set and `usePassword` is true |
+| redis.architecture | string | `"standalone"` | Redis architecture. Allowed values: `standalone` or `replication` |
 
 ## Validation
 
