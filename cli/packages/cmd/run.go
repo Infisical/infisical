@@ -62,7 +62,8 @@ var runCmd = &cobra.Command{
 			}
 		}
 
-		infisicalToken, err := cmd.Flags().GetString("token")
+		infisicalToken, err := util.GetInfisicalServiceToken(cmd)
+
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
