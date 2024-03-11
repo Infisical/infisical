@@ -83,11 +83,9 @@ Find the chart upgrade instructions below. When upgrading from your version to o
 
 ---
 
-<details>
-<summary>
-
 ### **`0.1.16`**
-</summary>
+<details open>
+<summary><strong>Click for details</strong></summary>
 
 - Auto-generation for the following variables, to ease your future upgrades or setups :
   - `ENCRYPTION_KEY`
@@ -103,7 +101,6 @@ The preference order is :
 - **user-defined** (values file or inline)
   - **existing-secret** (for existing installations, you don't have to specify the secrets when upgrading if they already exist)
     - **auto-generated** (if none of the values above have been found, we'll auto-generate a value for the user, only for the above mentioned variables)
-
 </details>
 
 ## Parameters

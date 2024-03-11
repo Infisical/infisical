@@ -103,8 +103,8 @@ Find the chart upgrade instructions below. When upgrading from your version to o
 <summary>
 
 ### **`0.0.1`** (`v0.44.0`)
-MongoDB to PostgreSQL migration
-</summary>
+<details open>
+<summary><strong>Click for details</strong> (MongoDB to PostgreSQL migration)</summary>
 
 Since the new `infisical-standalone-postgres` chart, Infisical moved away from MongoDB to PostgreSQL.
 
