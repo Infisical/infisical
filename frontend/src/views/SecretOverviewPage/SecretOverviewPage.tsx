@@ -2,15 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
 import { subject } from "@casl/ability";
+import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faArrowDown,
   faArrowUp,
   faFolderBlank,
-  faList,
   faFolderPlus,
+  faList,
   faMagnifyingGlass,
   faPlus
 } from "@fortawesome/free-solid-svg-icons";
@@ -207,10 +207,10 @@ export const SecretOverviewPage = () => {
   };
 
   const handleEnvSelect = (envId: string) => {
-    if (visibleEnvs.map(env => env.id).includes(envId)) {
-      setVisisbleEnvs(visibleEnvs.filter(env => env.id !== envId))
+    if (visibleEnvs.map((env) => env.id).includes(envId)) {
+      setVisisbleEnvs(visibleEnvs.filter((env) => env.id !== envId));
     } else {
-      setVisisbleEnvs(visibleEnvs.concat(userAvailableEnvs.filter(env => env.id === envId)))
+      setVisisbleEnvs(visibleEnvs.concat(userAvailableEnvs.filter((env) => env.id === envId)));
     }
   };
 
@@ -396,7 +396,7 @@ export const SecretOverviewPage = () => {
                     ariaLabel="Environments"
                     variant="plain"
                     size="sm"
-                    className="flex justify-center items-center overflow-hidden p-0 w-11 bg-mineshaft-800 hover:bg-primary/10 hover:border-primary/60 border border-mineshaft-600 mr-2"
+                    className="mr-2 flex w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 hover:border-primary/60 hover:bg-primary/10"
                   >
                     <Tooltip content="Choose visible environments" className="mb-2">
                       <FontAwesomeIcon icon={faList} />
@@ -408,17 +408,19 @@ export const SecretOverviewPage = () => {
                   {userAvailableEnvs.map((avaiableEnv) => {
                     const { id: envId, name } = avaiableEnv;
 
-                    const isEnvSelected = visibleEnvs.map(env => env.id).includes(envId);
+                    const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
                     return (
                       <DropdownMenuItem
                         onClick={() => handleEnvSelect(envId)}
                         key={envId}
-                        icon={isEnvSelected && <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />}
+                        icon={
+                          isEnvSelected && (
+                            <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                          )
+                        }
                         iconPos="left"
                       >
-                        <div className="flex items-center">
-                          {name}
-                        </div>
+                        <div className="flex items-center">{name}</div>
                       </DropdownMenuItem>
                     );
                   })}
