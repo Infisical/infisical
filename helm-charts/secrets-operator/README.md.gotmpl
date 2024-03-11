@@ -1,0 +1,112 @@
+# Infisical Operator Helm Chart
+
+{{ template "infisical.description" . }}
+
+{{ template "infisical.installation.repo" . }}
+
+{{ template "infisical.installation.chart" . }}
+
+{{ template "infisical.encryptionKeys" . }}
+
+{{ template "infisical.upgrading" . }}
+
+---
+
+<details open>
+<summary>
+
+### **`0.3.4`** (`v0.3.3`)
+</summary>
+
+Latest stable version, no breaking changes
+
+</details>
+
+## Parameters
+
+{{ template "chart.valuesTable" . }}
+
+{{ template "infisical.yamlValidation" . }}
+
+## Synchronization
+
+To sync your secrets from Infisical (or from your own instance), create the below resources :
+
+```sh
+# Create the tokenSecretReference (replace with your own token)
+kubectl create secret generic infisical-example-service-token \
+  --from-literal=infisicalToken="<infisical-token-here>"
+
+# Create the InfisicalSecret
+cat <<EOF | kubectl apply -f -
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  # Name of of this InfisicalSecret resource
+  name: infisicalsecret-example
+spec:
+  # The host that should be used to pull secrets from. The default value is https://app.infisical.com/api.
+  hostAPI: https://app.infisical.com/api
+  # time in seconds between each secret re-sync from Infisical (default 60s)
+  resyncInterval: 60
+  authentication:
+    serviceToken:
+      # k8s secret which stores then corresponding Infisical token
+      serviceTokenSecretReference:
+        secretName: service-token
+        secretNamespace: default
+      # scope of what secrets should be fetched from infisical
+      secretsScope:
+        envSlug: dev
+        secretsPath: "/"
+  # secret that's going to be created by the operator and populated with secrets from the above configuration
+  managedSecretReference:
+    # name of managed secret
+    secretName: managed-secret
+    # namespace of the managed secret
+    secretNamespace: default
+EOF
+```
+
+Documentation is also available here : https://infisical.com/docs/integrations/platforms/kubernetes#sync-infisical-secrets-to-your-cluster
+
+## Managed secrets
+
+### Methods
+
+To use the above created manage secrets, you can use the below methods:
+
+- `env`
+- `envFrom`
+- `volumes`
+
+Check the [docs](https://infisical.com/docs/integrations/platforms/kubernetes#using-managed-secret-in-your-deployment) to learn more about their implementation within your k8s resources
+
+### Auto-reload
+
+To [auto-reload](https://infisical.com/docs/integrations/platforms/kubernetes#auto-redeployment) your deployments, add this annotation where the managed secret is consumed:
+
+```yaml
+annotations:
+  secrets.infisical.com/auto-reload: "true"
+```
+
+```yml
+# example
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  labels:
+    app: my-app
+  annotations: 
+    # re-deployment annotation
+    secrets.infisical.com/auto-reload: "true"
+spec:
+  ...
+```
+
+## Local development
+
+*Coming soon*
