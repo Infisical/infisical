@@ -291,7 +291,7 @@ export const SecretDetailSidebar = ({
                       )}
                     </ProjectPermissionCan>
                     <DropdownMenuContent align="end" className="z-[100]">
-                      <DropdownMenuLabel>Apply tags to this secrets</DropdownMenuLabel>
+                      <DropdownMenuLabel>Add tags to this secret</DropdownMenuLabel>
                       {tags.map((tag) => {
                         const { id: tagId, name, color } = tag;
 

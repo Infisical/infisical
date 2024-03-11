@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import path from "path";
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
 import { TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -164,7 +164,7 @@ export const secretFolderServiceFactory = ({
     actorOrgId,
     environment,
     path: secretPath,
-    id
+    idOrName
   }: TDeleteFolderDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
@@ -179,7 +179,10 @@ export const secretFolderServiceFactory = ({
       const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, tx);
       if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
 
-      const [doc] = await folderDAL.delete({ envId: env.id, id, parentId: parentFolder.id }, tx);
+      const [doc] = await folderDAL.delete(
+        { envId: env.id, [uuidValidate(idOrName) ? "id" : "name"]: idOrName, parentId: parentFolder.id },
+        tx
+      );
       if (!doc) throw new BadRequestError({ message: "Folder not found", name: "Delete folder" });
       return doc;
     });

@@ -120,12 +120,19 @@ type PullSecretsByInfisicalTokenResponse struct {
 
 type GetWorkSpacesResponse struct {
 	Workspaces []struct {
-		ID           string `json:"_id"`
-		Name         string `json:"name"`
-		Plan         string `json:"plan,omitempty"`
-		V            int    `json:"__v"`
-		Organization string `json:"organization,omitempty"`
+		ID             string `json:"_id"`
+		Name           string `json:"name"`
+		Plan           string `json:"plan,omitempty"`
+		V              int    `json:"__v"`
+		OrganizationId string `json:"orgId"`
 	} `json:"workspaces"`
+}
+
+type GetOrganizationsResponse struct {
+	Organizations []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"organizations"`
 }
 
 type Secret struct {
@@ -293,10 +300,10 @@ type GetFoldersV1Response struct {
 }
 
 type CreateFolderV1Request struct {
-	FolderName  string `json:"folderName"`
+	FolderName  string `json:"name"`
 	WorkspaceId string `json:"workspaceId"`
 	Environment string `json:"environment"`
-	Directory   string `json:"directory"`
+	Path        string `json:"path"`
 }
 
 type CreateFolderV1Response struct {

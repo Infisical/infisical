@@ -16,7 +16,7 @@ export type TUpdateFolderDTO = {
 export type TDeleteFolderDTO = {
   environment: string;
   path: string;
-  id: string;
+  idOrName: string;
 } & TProjectPermission;
 
 export type TGetFolderDTO = {

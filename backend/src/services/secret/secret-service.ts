@@ -1,13 +1,13 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding, SecretsSchema, SecretType, TableName } from "@app/db/schemas";
+import { SecretEncryptionAlgo, SecretKeyEncoding, SecretsSchema, SecretType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
-import { groupBy, pick, unique } from "@app/lib/fn";
+import { groupBy, pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
@@ -19,7 +19,7 @@ import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretDALFactory } from "./secret-dal";
-import { decryptSecretRaw, generateSecretBlindIndexBySalt } from "./secret-fns";
+import { decryptSecretRaw, fnSecretBlindIndexCheck, fnSecretBulkInsert, fnSecretBulkUpdate } from "./secret-fns";
 import { TSecretQueueFactory } from "./secret-queue";
 import {
   TCreateBulkSecretDTO,
@@ -28,11 +28,8 @@ import {
   TDeleteBulkSecretDTO,
   TDeleteSecretDTO,
   TDeleteSecretRawDTO,
-  TFnSecretBlindIndexCheck,
   TFnSecretBlindIndexCheckV2,
   TFnSecretBulkDelete,
-  TFnSecretBulkInsert,
-  TFnSecretBulkUpdate,
   TGetASecretDTO,
   TGetASecretRawDTO,
   TGetSecretsDTO,
@@ -95,85 +92,6 @@ export const secretServiceFactory = ({
     return secretBlindIndex;
   };
 
-  // these functions are special functions shared by a couple of resources
-  // used by secret approval, rotation or anywhere in which secret needs to modified
-  const fnSecretBulkInsert = async ({ folderId, inputSecrets, tx }: TFnSecretBulkInsert) => {
-    const newSecrets = await secretDAL.insertMany(
-      inputSecrets.map(({ tags, ...el }) => ({ ...el, folderId })),
-      tx
-    );
-    const newSecretGroupByBlindIndex = groupBy(newSecrets, (item) => item.secretBlindIndex as string);
-    const newSecretTags = inputSecrets.flatMap(({ tags: secretTags = [], secretBlindIndex }) =>
-      secretTags.map((tag) => ({
-        [`${TableName.SecretTag}Id` as const]: tag,
-        [`${TableName.Secret}Id` as const]: newSecretGroupByBlindIndex[secretBlindIndex as string][0].id
-      }))
-    );
-    const secretVersions = await secretVersionDAL.insertMany(
-      inputSecrets.map(({ tags, ...el }) => ({
-        ...el,
-        folderId,
-        secretId: newSecretGroupByBlindIndex[el.secretBlindIndex as string][0].id
-      })),
-      tx
-    );
-    if (newSecretTags.length) {
-      const secTags = await secretTagDAL.saveTagsToSecret(newSecretTags, tx);
-      const secVersionsGroupBySecId = groupBy(secretVersions, (i) => i.secretId);
-      const newSecretVersionTags = secTags.flatMap(({ secretsId, secret_tagsId }) => ({
-        [`${TableName.SecretVersion}Id` as const]: secVersionsGroupBySecId[secretsId][0].id,
-        [`${TableName.SecretTag}Id` as const]: secret_tagsId
-      }));
-      await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
-    }
-
-    return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
-  };
-
-  const fnSecretBulkUpdate = async ({ tx, inputSecrets, folderId, projectId }: TFnSecretBulkUpdate) => {
-    const newSecrets = await secretDAL.bulkUpdate(
-      inputSecrets.map(({ filter, data: { tags, ...data } }) => ({
-        filter: { ...filter, folderId },
-        data
-      })),
-      tx
-    );
-    const secretVersions = await secretVersionDAL.insertMany(
-      newSecrets.map(({ id, createdAt, updatedAt, ...el }) => ({
-        ...el,
-        secretId: id
-      })),
-      tx
-    );
-    const secsUpdatedTag = inputSecrets.flatMap(({ data: { tags } }, i) =>
-      tags !== undefined ? { tags, secretId: newSecrets[i].id } : []
-    );
-    if (secsUpdatedTag.length) {
-      await secretTagDAL.deleteTagsManySecret(
-        projectId,
-        secsUpdatedTag.map(({ secretId }) => secretId),
-        tx
-      );
-      const newSecretTags = secsUpdatedTag.flatMap(({ tags: secretTags = [], secretId }) =>
-        secretTags.map((tag) => ({
-          [`${TableName.SecretTag}Id` as const]: tag,
-          [`${TableName.Secret}Id` as const]: secretId
-        }))
-      );
-      if (newSecretTags.length) {
-        const secTags = await secretTagDAL.saveTagsToSecret(newSecretTags, tx);
-        const secVersionsGroupBySecId = groupBy(secretVersions, (i) => i.secretId);
-        const newSecretVersionTags = secTags.flatMap(({ secretsId, secret_tagsId }) => ({
-          [`${TableName.SecretVersion}Id` as const]: secVersionsGroupBySecId[secretsId][0].id,
-          [`${TableName.SecretTag}Id` as const]: secret_tagsId
-        }));
-        await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
-      }
-    }
-
-    return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
-  };
-
   const fnSecretBulkDelete = async ({ folderId, inputSecrets, tx, actorId }: TFnSecretBulkDelete) => {
     const deletedSecrets = await secretDAL.deleteMany(
       inputSecrets.map(({ type, secretBlindIndex }) => ({
@@ -200,63 +118,6 @@ export const secretServiceFactory = ({
     }
 
     return deletedSecrets;
-  };
-
-  /**
-   * Checks and handles secrets using a blind index method.
-   * The function generates mappings between secret names and their blind indexes, validates user IDs for personal secrets, and retrieves secrets from the database based on their blind indexes.
-   * For new secrets (isNew = true), it ensures they don't already exist in the database.
-   * For existing secrets, it verifies their presence in the database.
-   * If discrepancies are found, errors are thrown. The function returns mappings and the fetched secrets.
-   */
-  const fnSecretBlindIndexCheck = async ({
-    inputSecrets,
-    folderId,
-    isNew,
-    userId,
-    blindIndexCfg
-  }: TFnSecretBlindIndexCheck) => {
-    const blindIndex2KeyName: Record<string, string> = {}; // used at audit log point
-    const keyName2BlindIndex = await Promise.all(
-      inputSecrets.map(({ secretName }) => generateSecretBlindIndexBySalt(secretName, blindIndexCfg))
-    ).then((blindIndexes) =>
-      blindIndexes.reduce<Record<string, string>>((prev, curr, i) => {
-        // eslint-disable-next-line
-        prev[inputSecrets[i].secretName] = curr;
-        blindIndex2KeyName[curr] = inputSecrets[i].secretName;
-        return prev;
-      }, {})
-    );
-
-    if (inputSecrets.some(({ type }) => type === SecretType.Personal) && !userId) {
-      throw new BadRequestError({ message: "Missing user id for personal secret" });
-    }
-
-    const secrets = await secretDAL.findByBlindIndexes(
-      folderId,
-      inputSecrets.map(({ secretName, type }) => ({
-        blindIndex: keyName2BlindIndex[secretName],
-        type: type || SecretType.Shared
-      })),
-      userId
-    );
-
-    if (isNew) {
-      if (secrets.length) throw new BadRequestError({ message: "Secret already exist" });
-    } else {
-      const secretKeysInDB = unique(secrets, (el) => el.secretBlindIndex as string).map(
-        (el) => blindIndex2KeyName[el.secretBlindIndex as string]
-      );
-      const hasUnknownSecretsProvided = secretKeysInDB.length !== inputSecrets.length;
-      if (hasUnknownSecretsProvided) {
-        const keysMissingInDB = Object.keys(keyName2BlindIndex).filter((key) => !secretKeysInDB.includes(key));
-        throw new BadRequestError({
-          message: `Secret not found: blind index ${keysMissingInDB.join(",")}`
-        });
-      }
-    }
-
-    return { blindIndex2KeyName, keyName2BlindIndex, secrets };
   };
 
   // this is used when secret blind index already exist
@@ -311,7 +172,8 @@ export const secretServiceFactory = ({
       folderId,
       isNew: true,
       userId: actorId,
-      blindIndexCfg
+      blindIndexCfg,
+      secretDAL
     });
 
     // if user creating personal check its shared also exist
@@ -348,6 +210,10 @@ export const secretServiceFactory = ({
             tags: inputSecret.tags
           }
         ],
+        secretDAL,
+        secretVersionDAL,
+        secretTagDAL,
+        secretVersionTagDAL,
         tx
       })
     );
@@ -375,6 +241,10 @@ export const secretServiceFactory = ({
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
+    if (inputSecret.newSecretName === "") {
+      throw new BadRequestError({ message: "New secret name cannot be empty" });
+    }
+
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
     const folderId = folder.id;
@@ -391,7 +261,8 @@ export const secretServiceFactory = ({
       folderId,
       isNew: false,
       blindIndexCfg,
-      userId: actorId
+      userId: actorId,
+      secretDAL
     });
     if (inputSecret.newSecretName && inputSecret.type === SecretType.Personal) {
       throw new BadRequestError({ message: "Personal secret cannot change the key name" });
@@ -403,7 +274,8 @@ export const secretServiceFactory = ({
         inputSecrets: [{ secretName: inputSecret.newSecretName }],
         folderId,
         isNew: true,
-        blindIndexCfg
+        blindIndexCfg,
+        secretDAL
       });
       newSecretNameBlindIndex = kN2NewBlindIndex[inputSecret.newSecretName];
     }
@@ -450,6 +322,10 @@ export const secretServiceFactory = ({
             }
           }
         ],
+        secretDAL,
+        secretVersionDAL,
+        secretTagDAL,
+        secretVersionTagDAL,
         tx
       })
     );
@@ -492,7 +368,8 @@ export const secretServiceFactory = ({
       inputSecrets: [{ secretName: inputSecret.secretName }],
       folderId,
       isNew: false,
-      blindIndexCfg
+      blindIndexCfg,
+      secretDAL
     });
 
     const deletedSecret = await secretDAL.transaction(async (tx) =>
@@ -677,13 +554,14 @@ export const secretServiceFactory = ({
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
+    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Create secret" });
 
     const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
       inputSecrets,
       folderId,
       isNew: true,
-      blindIndexCfg
+      blindIndexCfg,
+      secretDAL
     });
 
     // get all tags
@@ -702,6 +580,10 @@ export const secretServiceFactory = ({
           keyEncoding: SecretKeyEncoding.UTF8
         })),
         folderId,
+        secretDAL,
+        secretVersionDAL,
+        secretTagDAL,
+        secretVersionTagDAL,
         tx
       })
     );
@@ -730,7 +612,7 @@ export const secretServiceFactory = ({
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-    if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
+    if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Update secret" });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
@@ -740,7 +622,8 @@ export const secretServiceFactory = ({
       inputSecrets,
       folderId,
       isNew: false,
-      blindIndexCfg
+      blindIndexCfg,
+      secretDAL
     });
 
     // now find any secret that needs to update its name
@@ -750,7 +633,8 @@ export const secretServiceFactory = ({
       inputSecrets: nameUpdatedSecrets,
       folderId,
       isNew: true,
-      blindIndexCfg
+      blindIndexCfg,
+      secretDAL
     });
 
     // get all tags
@@ -775,7 +659,11 @@ export const secretServiceFactory = ({
             algorithm: SecretEncryptionAlgo.AES_256_GCM,
             keyEncoding: SecretKeyEncoding.UTF8
           }
-        }))
+        })),
+        secretDAL,
+        secretVersionDAL,
+        secretTagDAL,
+        secretVersionTagDAL
       })
     );
 
@@ -813,7 +701,8 @@ export const secretServiceFactory = ({
       inputSecrets,
       folderId,
       isNew: false,
-      blindIndexCfg
+      blindIndexCfg,
+      secretDAL
     });
 
     const secretsDeleted = await secretDAL.transaction(async (tx) =>

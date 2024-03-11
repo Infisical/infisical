@@ -1,24 +1,4 @@
 /* eslint-disable simple-import-sort/imports */
-import { memo, useEffect } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { subject } from "@casl/ability";
-import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
-import {
-  faCheck,
-  faClock,
-  faClose,
-  faCodeBranch,
-  faComment,
-  faCopy,
-  faEllipsis,
-  faKey,
-  faTag,
-  faTags
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { AnimatePresence, motion } from "framer-motion";
-import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -48,9 +28,29 @@ import {
 import { useToggle } from "@app/hooks";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 import { WsTag } from "@app/hooks/api/types";
+import { subject } from "@casl/ability";
+import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
+import {
+  faCheck,
+  faClock,
+  faClose,
+  faCodeBranch,
+  faComment,
+  faCopy,
+  faEllipsis,
+  faKey,
+  faTag,
+  faTags
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AnimatePresence, motion } from "framer-motion";
+import { memo, useEffect } from "react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { twMerge } from "tailwind-merge";
 
-import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
 import { CreateReminderForm } from "./CreateReminderForm";
+import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
 
 type Props = {
   secret: DecryptedSecret;
@@ -104,7 +104,8 @@ export const SecretItem = memo(
       setValue,
       reset,
       getValues,
-      formState: { isDirty, isSubmitting }
+      trigger,
+      formState: { isDirty, isSubmitting, errors }
     } = useForm<TFormSchema>({
       defaultValues: secret,
       values: secret,
@@ -235,15 +236,18 @@ export const SecretItem = memo(
                 <Controller
                   name="key"
                   control={control}
-                  render={({ field }) => (
+                  render={({ field, fieldState: { error } }) => (
                     <Input
                       autoComplete="off"
                       isReadOnly={isReadOnly}
                       autoCapitalization={currentWorkspace?.autoCapitalization}
                       variant="plain"
                       isDisabled={isOverriden}
+                      placeholder={error?.message}
+                      isError={Boolean(error)}
+                      onKeyUp={() => trigger("key")}
                       {...field}
-                      className="w-full px-0 focus:text-bunker-100 focus:ring-transparent"
+                      className="w-full px-0 placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
                     />
                   )}
                 />
@@ -321,7 +325,7 @@ export const SecretItem = memo(
                       )}
                     </ProjectPermissionCan>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Apply tags to this secrets</DropdownMenuLabel>
+                      <DropdownMenuLabel>Add tags to this secret</DropdownMenuLabel>
                       {tags.map((tag) => {
                         const { id: tagId, name, color } = tag;
 
@@ -497,7 +501,7 @@ export const SecretItem = memo(
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: -10, opacity: 0 }}
                   >
-                    <Tooltip content="Save">
+                    <Tooltip content={errors.key ? errors.key?.message : "Save"}>
                       <IconButton
                         ariaLabel="more"
                         variant="plain"
@@ -507,12 +511,16 @@ export const SecretItem = memo(
                           "p-0 text-primary opacity-0 group-hover:opacity-100",
                           isDirty && "opacity-100"
                         )}
-                        isDisabled={isSubmitting}
+                        isDisabled={isSubmitting || Boolean(errors.key)}
                       >
                         {isSubmitting ? (
                           <Spinner className="m-0 h-4 w-4 p-0" />
                         ) : (
-                          <FontAwesomeIcon icon={faCheck} size="lg" className="text-primary" />
+                          <FontAwesomeIcon
+                            icon={faCheck}
+                            size="lg"
+                            className={twMerge("text-primary", errors.key && "text-mineshaft-300")}
+                          />
                         )}
                       </IconButton>
                     </Tooltip>

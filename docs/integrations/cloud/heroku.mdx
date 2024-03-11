@@ -30,6 +30,17 @@ description: "How to sync secrets from Infisical to Heroku"
         Select which Infisical environment secrets you want to sync to which Heroku app and press create integration to start syncing secrets to Heroku.
         
         ![integrations heroku](../../images/integrations/heroku/integrations-heroku-create.png)
+
+        Here's some guidance on each field:
+        
+        - Project Environment: The environment in the current Infisical project from which you want to sync secrets from.
+        - Secrets Path: The path in the current Infisical project from which you want to sync secrets from such as `/` (for secrets that do not reside in a folder) or `/foo/bar` (for secrets nested in a folder, in this case a folder called `bar` in another folder called `foo`).
+        - Heroku App: The application in Heroku that you want to sync secrets to.
+        - Initial Sync Behavior (default is **Import - Prefer values from Infisical**): The behavior of the first sync operation triggered after creating the integration.
+          - **No Import - Overwrite all values in Heroku**: Sync secrets and overwrite any existing secrets in Heroku.
+          - **Import - Prefer values from Infisical**: Import secrets from Heroku to Infisical; if a secret with the same name already exists in Infisical, do nothing. Afterwards, sync secrets to Heroku.
+          - **Import - Prefer values from Heroku**: Import secrets from Heroku to Infisical; if a secret with the same name already exists in Infisical, replace its value with the one from Heroku. Afterwards, sync secrets to Heroku.
+        
         ![integrations heroku](../../images/integrations/heroku/integrations-heroku.png)
       </Step>
     </Steps>

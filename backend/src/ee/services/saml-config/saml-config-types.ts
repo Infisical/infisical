@@ -4,7 +4,8 @@ import { ActorType } from "@app/services/auth/auth-type";
 export enum SamlProviders {
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
-  JUMPCLOUD_SAML = "jumpcloud-saml"
+  JUMPCLOUD_SAML = "jumpcloud-saml",
+  GOOGLE_SAML = "google-saml"
 }
 
 export type TCreateSamlCfgDTO = {

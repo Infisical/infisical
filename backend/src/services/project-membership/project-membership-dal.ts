@@ -82,5 +82,25 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...projectMemberOrm, findAllProjectMembers, findProjectGhostUser, findMembershipsByEmail };
+  const findProjectMembershipsByUserId = async (orgId: string, userId: string) => {
+    try {
+      const memberships = await db(TableName.ProjectMembership)
+        .where({ userId })
+        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .where({ [`${TableName.Project}.orgId` as "orgId"]: orgId })
+        .select(selectAllTableCols(TableName.ProjectMembership));
+
+      return memberships;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project memberships by user id" });
+    }
+  };
+
+  return {
+    ...projectMemberOrm,
+    findAllProjectMembers,
+    findProjectGhostUser,
+    findMembershipsByEmail,
+    findProjectMembershipsByUserId
+  };
 };

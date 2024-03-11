@@ -12,9 +12,11 @@ import { groupBy, pick, unique } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
@@ -44,10 +46,12 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretApprovalRequestSecretDAL: TSecretApprovalRequestSecretDALFactory;
   secretApprovalRequestReviewerDAL: TSecretApprovalRequestReviewerDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findById" | "findSecretPathByFolderIds">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById">;
+  secretDAL: TSecretDALFactory;
+  secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById" | "saveTagsToSecret" | "deleteTagsManySecret">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
-  secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany">;
+  secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany" | "insertMany">;
+  secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   secretService: Pick<
     TSecretServiceFactory,
@@ -64,8 +68,10 @@ export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretAppro
 
 export const secretApprovalRequestServiceFactory = ({
   secretApprovalRequestDAL,
+  secretDAL,
   folderDAL,
   secretTagDAL,
+  secretVersionTagDAL,
   secretApprovalRequestReviewerDAL,
   secretApprovalRequestSecretDAL,
   secretBlindIndexDAL,
@@ -335,7 +341,11 @@ export const secretApprovalRequestServiceFactory = ({
               tags: el?.tags.map(({ id }) => id),
               version: 1,
               type: SecretType.Shared
-            }))
+            })),
+            secretDAL,
+            secretVersionDAL,
+            secretTagDAL,
+            secretVersionTagDAL
           })
         : [];
       const updatedSecrets = secretUpdationCommits.length
@@ -367,7 +377,11 @@ export const secretApprovalRequestServiceFactory = ({
                   "secretBlindIndex"
                 ])
               }
-            }))
+            })),
+            secretDAL,
+            secretVersionDAL,
+            secretTagDAL,
+            secretVersionTagDAL
           })
         : [];
       const deletedSecret = secretDeletionCommits.length
@@ -455,7 +469,8 @@ export const secretApprovalRequestServiceFactory = ({
         inputSecrets: createdSecrets,
         folderId,
         isNew: true,
-        blindIndexCfg
+        blindIndexCfg,
+        secretDAL
       });
 
       commits.push(
@@ -482,7 +497,8 @@ export const secretApprovalRequestServiceFactory = ({
         inputSecrets: updatedSecrets,
         folderId,
         isNew: false,
-        blindIndexCfg
+        blindIndexCfg,
+        secretDAL
       });
 
       // now find any secret that needs to update its name
@@ -492,7 +508,8 @@ export const secretApprovalRequestServiceFactory = ({
         inputSecrets: nameUpdatedSecrets,
         folderId,
         isNew: true,
-        blindIndexCfg
+        blindIndexCfg,
+        secretDAL
       });
 
       const secsGroupedByBlindIndex = groupBy(secretsToBeUpdated, (el) => el.secretBlindIndex as string);
@@ -531,7 +548,8 @@ export const secretApprovalRequestServiceFactory = ({
         inputSecrets: deletedSecrets,
         folderId,
         isNew: false,
-        blindIndexCfg
+        blindIndexCfg,
+        secretDAL
       });
       const secretsGroupedByBlindIndex = groupBy(secrets, (i) => {
         if (!i.secretBlindIndex) throw new BadRequestError({ message: "Missing secret blind index" });

@@ -32,6 +32,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
           .object({
             secretPrefix: z.string().optional(),
             secretSuffix: z.string().optional(),
+            initialSyncBehavior: z.string().optional(),
             secretGCPLabel: z
               .object({
                 labelName: z.string(),

@@ -20,11 +20,13 @@ import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
 import { z } from "zod";
 
-import { TIntegrationAuths, TIntegrations } from "@app/db/schemas";
+import { SecretType, TIntegrationAuths, TIntegrations, TSecrets } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
-import { Integrations, IntegrationUrls } from "./integration-list";
+import { TIntegrationDALFactory } from "../integration/integration-dal";
+import { IntegrationInitialSyncBehavior, Integrations, IntegrationUrls } from "./integration-list";
 
 const getSecretKeyValuePair = (secrets: Record<string, { value: string | null; comment?: string } | null>) =>
   Object.keys(secrets).reduce<Record<string, string | null | undefined>>((prev, key) => {
@@ -441,16 +443,19 @@ const syncSecretsAWSParameterStore = async ({
 }) => {
   if (!accessId) return;
 
-  AWS.config.update({
+  const config = new AWS.Config({
     region: integration.region as string,
-    accessKeyId: accessId,
-    secretAccessKey: accessToken
+    credentials: {
+      accessKeyId: accessId,
+      secretAccessKey: accessToken
+    }
   });
 
   const ssm = new AWS.SSM({
     apiVersion: "2014-11-06",
     region: integration.region as string
   });
+  ssm.config.update(config);
 
   const params = {
     Path: integration.path as string,
@@ -514,12 +519,6 @@ const syncSecretsAWSParameterStore = async ({
       }
     })
   );
-
-  AWS.config.update({
-    region: undefined,
-    accessKeyId: undefined,
-    secretAccessKey: undefined
-  });
 };
 
 /**
@@ -540,12 +539,6 @@ const syncSecretsAWSSecretManager = async ({
   const secKeyVal = getSecretKeyValuePair(secrets);
   try {
     if (!accessId) return;
-
-    AWS.config.update({
-      region: integration.region as string,
-      accessKeyId: accessId,
-      secretAccessKey: accessToken
-    });
 
     secretsManager = new SecretsManagerClient({
       region: integration.region as string,
@@ -575,12 +568,6 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
     }
-
-    AWS.config.update({
-      region: undefined,
-      accessKeyId: undefined,
-      secretAccessKey: undefined
-    });
   } catch (err) {
     if (err instanceof ResourceNotFoundException && secretsManager) {
       await secretsManager.send(
@@ -590,11 +577,6 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
     }
-    AWS.config.update({
-      region: undefined,
-      accessKeyId: undefined,
-      secretAccessKey: undefined
-    });
   }
 };
 
@@ -602,11 +584,25 @@ const syncSecretsAWSSecretManager = async ({
  * Sync/push [secrets] to Heroku app named [integration.app]
  */
 const syncSecretsHeroku = async ({
+  createManySecretsRawFn,
+  updateManySecretsRawFn,
+  integrationDAL,
   integration,
   secrets,
   accessToken
 }: {
-  integration: TIntegrations;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
   secrets: Record<string, { value: string; comment?: string } | null>;
   accessToken: string;
 }) => {
@@ -620,11 +616,73 @@ const syncSecretsHeroku = async ({
     })
   ).data;
 
+  const secretsToAdd: { [key: string]: string } = {};
+  const secretsToUpdate: { [key: string]: string } = {};
+
+  const metadata = z.record(z.any()).parse(integration.metadata);
+
   Object.keys(herokuSecrets).forEach((key) => {
-    if (!(key in secrets)) {
-      secrets[key] = null;
-    }
+    if (!integration.lastUsed) {
+      // first time using integration
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        case IntegrationInitialSyncBehavior.OVERWRITE_TARGET: {
+          if (!(key in secrets)) secrets[key] = null;
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_TARGET: {
+          if (!(key in secrets)) {
+            secretsToAdd[key] = herokuSecrets[key];
+          } else if (secrets[key]?.value !== herokuSecrets[key]) {
+            secretsToUpdate[key] = herokuSecrets[key];
+          }
+          secrets[key] = {
+            value: herokuSecrets[key]
+          };
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
+          if (!(key in secrets)) {
+            secrets[key] = herokuSecrets[key];
+            secretsToAdd[key] = herokuSecrets[key];
+          }
+          break;
+        }
+        default: {
+          if (!(key in secrets)) secrets[key] = null;
+          break;
+        }
+      }
+    } else if (!(key in secrets)) secrets[key] = null;
   });
+
+  if (Object.keys(secretsToAdd).length) {
+    await createManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToAdd).map((key) => ({
+        secretName: key,
+        secretValue: secretsToAdd[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
+  if (Object.keys(secretsToUpdate).length) {
+    await updateManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToUpdate).map((key) => ({
+        secretName: key,
+        secretValue: secretsToUpdate[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
 
   await request.patch(
     `${IntegrationUrls.HEROKU_API_URL}/apps/${integration.app}/config-vars`,
@@ -637,6 +695,10 @@ const syncSecretsHeroku = async ({
       }
     }
   );
+
+  await integrationDAL.updateById(integration.id, {
+    lastUsed: new Date()
+  });
 };
 
 /**
@@ -1224,21 +1286,21 @@ const syncSecretsRailway = async ({
     }
   `;
 
-  const input = {
-    projectId: integration.appId,
-    environmentId: integration.targetEnvironmentId,
-    ...(integration.targetServiceId ? { serviceId: integration.targetServiceId } : {}),
-    replace: true,
-    variables: getSecretKeyValuePair(secrets)
+  const variables = {
+    input: {
+      projectId: integration.appId,
+      environmentId: integration.targetEnvironmentId,
+      ...(integration.targetServiceId ? { serviceId: integration.targetServiceId } : {}),
+      replace: true,
+      variables: getSecretKeyValuePair(secrets)
+    }
   };
 
   await request.post(
     IntegrationUrls.RAILWAY_API_URL,
     {
       query,
-      variables: {
-        input
-      }
+      variables
     },
     {
       headers: {
@@ -2950,8 +3012,14 @@ const syncSecretsHasuraCloud = async ({
 
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
+ *
+ * Do this in terms of DAL
+ *
  */
 export const syncIntegrationSecrets = async ({
+  createManySecretsRawFn,
+  updateManySecretsRawFn,
+  integrationDAL,
   integration,
   integrationAuth,
   secrets,
@@ -2959,7 +3027,18 @@ export const syncIntegrationSecrets = async ({
   accessToken,
   appendices
 }: {
-  integration: TIntegrations;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
   integrationAuth: TIntegrationAuths;
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
@@ -2999,6 +3078,9 @@ export const syncIntegrationSecrets = async ({
       break;
     case Integrations.HEROKU:
       await syncSecretsHeroku({
+        createManySecretsRawFn,
+        updateManySecretsRawFn,
+        integrationDAL,
         integration,
         secrets,
         accessToken
