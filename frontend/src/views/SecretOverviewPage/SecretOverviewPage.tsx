@@ -608,7 +608,15 @@ export const SecretOverviewPage = () => {
                 {isTableEmpty && !isTableLoading && visibleEnvs.length > 0 && (
                   <Tr>
                     <Td colSpan={visibleEnvs.length + 1}>
-                      <EmptyState title="Let's add some secrets" icon={faFolderBlank} iconSize="3x">
+                      <EmptyState
+                        title={
+                          searchFilter
+                            ? "No secret found for your search, add one now"
+                            : "Let's add some secrets"
+                        }
+                        icon={faFolderBlank}
+                        iconSize="3x"
+                      >
                         <Button
                           className="mt-4"
                           variant="outline_bg"
