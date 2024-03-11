@@ -1,62 +1,367 @@
+# yaml-language-server: $schema=values.schema.json
+
+# @schema
+# required: false
+# @schema
+# -- Override release name
 nameOverride: ""
+# @schema
+# required: false
+# @schema
+# -- Override release fullname
 fullnameOverride: ""
 
+# @schema
+# required: false
+# additionalProperties: true
+# @schema
+# Infisical parameters
+# https://infisical.com/docs/self-hosting/deployments/kubernetes
 infisical:
+  # @schema
+  # type: boolean
+  # @schema
+  # -- Enable backend
   enabled: true
+  # -- Backend deployment name
   name: infisical
+  # -- Automatically migrate database
   autoDatabaseSchemaMigration: true
+  # -- Backend deployment fullname override
   fullnameOverride: ""
+  # @schema
+  # additionalProperties: true
+  # @schema
+  # -- Backend pod annotations
   podAnnotations: {}
+  # @schema
+  # additionalProperties: true
+  # @schema
+  # -- Backend deployment annotations
   deploymentAnnotations: {}
+  # @schema
+  # minimum: 1
+  # @schema
+  # -- Backend replicas count
   replicaCount: 2
-
+  # Backend image parameters
   image:
+    # -- Backend image repository
     repository: infisical/infisical
+    # -- Backend image [tag](https://hub.docker.com/r/infisical/infisical/tags)
     tag: "v0.46.3-postgres"
+    # @schema
+    # enum:
+    # - IfNotPresent
+    # - Always
+    # - Never
+    # @schema
+    # -- Backend image pullPolicy
     pullPolicy: IfNotPresent
-
+  # @schema
+  # additionalProperties: true
+  # @schema
+  # -- Backend pod affinity
   affinity: {}
+  # -- Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
   kubeSecretRef: "infisical-secrets"
+  # @schema
+  # properties:
+  #   ENCRYPTION_KEY:
+  #     description: Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`.
+  #     type: string
+  #   AUTH_SECRET:
+  #     description: Must be a random 32 byte base64 string. Can be generated with `openssl rand -base64 32`.
+  #     type: string
+  #   SITE_URL:
+  #     description: Must be an absolute URL including the protocol (e.g. https://app.infisical.com).
+  #     type: string
+  #   DB_CONNECTION_URI:
+  #     description: Database connection string (postgres, e.g. 'postgresql://user:pass@host:5432/my_db').
+  #     type: string
+  #   DB_ROOT_CERT:
+  #     description: Configure the SSL certificate for securing a Postgres connection by first encoding it in base64. To encode your certificate `echo "<certificate>" | base64`
+  #     type: string
+  #   REDIS_URL:
+  #     description: Redis connection string (e.g. 'redis://user:pass@host:6379').
+  #     type: string
+  #   SMTP_HOST:
+  #     description: Hostname to connect to for establishing SMTP connections (e.g. smtp.sendgrid.net).
+  #     type: string
+  #   SMTP_PORT:
+  #     description: Port to connect to for establishing SMTP connections.
+  #     type: integer
+  #   SMTP_USERNAME:
+  #     description: Credential to connect to host (e.g. team@infisical.com).
+  #     type: string
+  #   SMTP_PASSWORD:
+  #     description: Credential to connect to host.
+  #     type: string
+  #   SMTP_SECURE:
+  #     description: If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported.
+  #     type: boolean
+  #   SMTP_FROM_ADDRESS:
+  #     description: Email address to be used for sending emails.
+  #     type: string
+  #   SMTP_FROM_NAME:
+  #     description: Name label to be used in From field (e.g. Team)
+  #     type: string
+  #   CLIENT_ID_HEROKU:
+  #     description: OAuth2 client ID for Heroku integration.
+  #     type: string
+  #   CLIENT_ID_VERCEL:
+  #     description: OAuth2 client ID for Vercel integration.
+  #     type: string
+  #   CLIENT_ID_NETLIFY:
+  #     description: OAuth2 client ID for Netlify integration.
+  #     type: string
+  #   CLIENT_ID_GITHUB:
+  #     description: OAuth2 client ID for GitHub integration.
+  #     type: string
+  #   CLIENT_ID_GITLAB:
+  #     description: OAuth2 client id for Gitlab integration.
+  #     type: string
+  #   CLIENT_ID_BITBUCKET:
+  #     description: OAuth2 client ID for BitBucket integration.
+  #     type: string
+  #   CLIENT_SECRET_HEROKU:
+  #     description: OAuth2 client secret for Heroku integration.
+  #     type: string
+  #   CLIENT_SECRET_VERCEL:
+  #     description: OAuth2 client secret for Vercel integration.
+  #     type: string
+  #   CLIENT_SECRET_NETLIFY:
+  #     description: OAuth2 client secret for Netlify integration.
+  #     type: string
+  #   CLIENT_SECRET_GITHUB:
+  #     description: OAuth2 client secret for GitHub integration.
+  #     type: string
+  #   CLIENT_SECRET_GITLAB:
+  #     description: OAuth2 client secret for Gitlab integration.
+  #     type: string
+  #   CLIENT_SECRET_BITBUCKET:
+  #     description: OAuth2 client secret for BitBucket integration.
+  #     type: string
+  #   CLIENT_SLUG_VERCEL:
+  #     description: OAuth2 slug for Vercel integration.
+  #     type: string
+  #   POSTHOG_HOST:
+  #     description: 
+  #     type: string
+  #   POSTHOG_PROJECT_API_KEY:
+  #     description: 
+  #     type: string
+  #   CLIENT_ID_GOOGLE_LOGIN:
+  #     description: OAuth2 client ID for Google login.
+  #     type: string
+  #   CLIENT_SECRET_GOOGLE_LOGIN:
+  #     description: OAuth2 client secret for Google login.
+  #     type: string
+  #   CLIENT_ID_GITHUB_LOGIN:
+  #     description: OAuth2 client ID for GitHub login.
+  #     type: string
+  #   CLIENT_SECRET_GITHUB_LOGIN:
+  #     description: OAuth2 client secret for GitHub login.
+  #     type: string
+  #   CLIENT_ID_GITLAB_LOGIN:
+  #     description: OAuth2 client ID for GitLab login.
+  #     type: string
+  #   CLIENT_SECRET_GITLAB_LOGIN:
+  #     description: OAuth2 client secret for GitLab login.
+  #     type: string
+  #   URL_GITLAB_LOGIN: 
+  #     description: URL of your self-hosted instance of GitLab where the OAuth application is registered (default 'https://gitlab.com').
+  #     type: string
+  #   CLIENT_ID_GCP_SECRET_MANAGER:
+  #     description: OAuth2 client id for GCP secrets manager integration.
+  #     type: string
+  #   CLIENT_SECRET_GCP_SECRET_MANAGER:
+  #     description: OAuth2 client secret for GCP secrets manager integration.
+  #     type: string
+  #   CLIENT_ID_AZURE:
+  #     description: OAuth2 client id for Azure integration.
+  #     type: string
+  #   CLIENT_SECRET_AZURE:
+  #     description: OAuth2 client secret for Azure integration.
+  #     type: string
+  # @schema
+  # -- Backend [configuration variables](https://infisical.com/docs/self-hosting/configuration/envars) (inline, e.g. for gitops mechanism).
+  # Those variables take precedence over `infisical.kubeSecretRef`
+  config: {}
+  # Backend service
   service:
+    # @schema
+    # additionalProperties: true
+    # @schema
+    # -- Backend service annotations
     annotations: {}
+    # @schema
+    # enum:
+    # - ClusterIP
+    # - NodePort
+    # @schema
+    # -- Backend service type
     type: ClusterIP
-    nodePort: ""
-
+    # -- Backend service nodePort (used if above type is `NodePort`)
+    nodePort: 0000
+  # Infisical instance resources and limits
   resources:
+    # Above which Infisical's pods will not be able to use
+    # Warning: too low resources may alter the application's stability
     limits:
-      memory: 350Mi
+      # -- Memory resource limit
+      memory: "350Mi"
+    # Infisical's pods will at least use the below resources
+    # Warning: too low resources may alter the application's stability
+    # Warning: make sure your cluster have enough resources, taking into consideration the replicas amount
     requests:
-      cpu: 350m
+      # -- CPU resource request
+      cpu: "350m"
 
+# @schema
+# additionalProperties: true
+# @schema
+# Ingress parameters
+# https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/
 ingress:
+  # @schema
+  # type: boolean
+  # @schema
+  # -- Enable ingress
   enabled: true
+  # -- Your instance's hostname (e.g. `infisical.example.org`).
+  # Replace with your own domain
   hostName: ""
+  # -- Ingress class name
   ingressClassName: nginx
+  # @schema
+  # required: false
+  # @schema
   nginx:
+    # @schema
+    # type: boolean
+    # @schema
+    # -- Enable and install NginX ingress controller
     enabled: true
+  # @schema
+  # additionalProperties: true
+  # required: false
+  # @schema
+  # -- Ingress annotations
   annotations: {}
-  tls:
-    []
+    # kubernetes.io/ingress.class: "nginx"
+    # cert-manager.io/issuer: letsencrypt-nginx
+  # @schema
+  # required: false
+  # @schema
+  # -- Ingress TLS hosts (matching above `ingress.hostName`).
+  # Replace with your own domain
+  tls: []
     # - secretName: letsencrypt-prod
     #   hosts:
-    #     - some.domain.com
+    #     - infisical.example.org
 
+# @schema
+# required: false
+# additionalProperties: true
+# @schema
+# PostgreSQL parameters
+# https://github.com/bitnami/charts/tree/main/bitnami/postgresql
 postgresql:
+  # @schema
+  # type: boolean
+  # @schema
+  # -- Enable PostgreSQL
   enabled: true
+  # -- PostgreSQL deployment name
   name: "postgresql"
+  # -- PostgreSQL deployment fullname override
   fullnameOverride: "postgresql"
+  # @schema
+  # additionalProperties: true
+  # @schema
   auth:
+    # -- PostgreSQL database username
     username: infisical
+    # -- PostgreSQL database password
     password: root
+    # -- PostgreSQL database name
     database: infisicalDB
+  # PostgreSQL Primary persistence configuration
+  persistence:
+    # @schema
+    # type: boolean
+    # @schema
+    # -- Enable PostgreSQL Primary data persistence using PVC
+    enabled: true
+    # -- Name of an existing PVC to use
+    existingClaim: ""
+    # -- The path the volume will be mounted at.
+    # Useful when using custom PostgreSQL images
+    mountPath: /bitnami/postgresql
+    # -- PVC Storage Class for PostgreSQL Primary data volume.
+    # If defined, `storageClassName: <storageClass>`
+    # If set to `"-"`, `storageClassName: ""`, which disables dynamic provisioning
+    # Default is undefined/null, no `storageClassName` spec is set. Using default provisioner
+    storageClass: ""
+    # -- PVC Access Mode for PostgreSQL volume
+    accessModes:
+      - ReadWriteOnce
+    # -- PVC Storage Request for PostgreSQL volume
+    size: 8Gi
+    # @schema
+    # additionalProperties: true
+    # @schema
+    # -- Annotations for the PVC
+    annotations: {}
+    # @schema
+    # additionalProperties: true
+    # @schema
+    # -- Labels for the PVC
+    labels: {}
+    # @schema
+    # additionalProperties: true
+    # @schema
+    # -- Selector to match an existing Persistent Volume (this value is evaluated as a template)
+    selector: {}
+    # @schema
+    # additionalProperties: true
+    # @schema
+    # -- Custom PVC data source
+    dataSource: {}
 
+# @schema
+# required: false
+# additionalProperties: true
+# @schema
+# Redis parameters
+# https://github.com/bitnami/charts/tree/main/bitnami/redis
 redis:
+  # @schema
+  # type: boolean
+  # @schema
+  # -- Enable Redis
   enabled: true
+  # -- Redis deployment name
   name: "redis"
+  # -- Redis deployment fullname override
   fullnameOverride: "redis"
-  cluster:
-    enabled: false
+  # @schema
+  # type: boolean
+  # @schema
+  # -- Use password authentication
   usePassword: true
+  # @schema
+  # additionalProperties: true
+  # @schema
   auth:
+    # -- Redis [password](https://github.com/bitnami/containers/tree/main/bitnami/redis#setting-the-server-password-on-first-run) (ignored if `existingSecret` set).
+    # Defaults to a random 10-character alphanumeric string if not set and `usePassword` is true
     password: "mysecretpassword"
+  # @schema
+  # enum:
+  # - standalone
+  # - replication
+  # @schema
+  # -- Redis architecture. Allowed values: `standalone` or `replication`
   architecture: standalone

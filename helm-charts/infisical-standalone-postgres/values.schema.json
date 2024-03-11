@@ -1,0 +1,242 @@
+{
+  "properties": {
+    "fullnameOverride": {
+      "title": "fullnameOverride",
+      "type": "string"
+    },
+    "global": {
+      "description": "Global values are values that can be accessed from any chart or subchart by exactly the same name.",
+      "title": "global",
+      "type": "object"
+    },
+    "infisical": {
+      "properties": {
+        "affinity": {
+          "title": "affinity",
+          "type": "object"
+        },
+        "autoDatabaseSchemaMigration": {
+          "title": "autoDatabaseSchemaMigration",
+          "type": "boolean"
+        },
+        "deploymentAnnotations": {
+          "title": "deploymentAnnotations",
+          "type": "object"
+        },
+        "enabled": {
+          "title": "enabled",
+          "type": "boolean"
+        },
+        "fullnameOverride": {
+          "title": "fullnameOverride",
+          "type": "string"
+        },
+        "image": {
+          "properties": {
+            "pullPolicy": {
+              "title": "pullPolicy",
+              "type": "string"
+            },
+            "repository": {
+              "title": "repository",
+              "type": "string"
+            },
+            "tag": {
+              "title": "tag",
+              "type": "string"
+            }
+          },
+          "title": "image",
+          "type": "object"
+        },
+        "kubeSecretRef": {
+          "title": "kubeSecretRef",
+          "type": "string"
+        },
+        "name": {
+          "title": "name",
+          "type": "string"
+        },
+        "podAnnotations": {
+          "title": "podAnnotations",
+          "type": "object"
+        },
+        "replicaCount": {
+          "title": "replicaCount",
+          "type": "integer"
+        },
+        "resources": {
+          "properties": {
+            "limits": {
+              "properties": {
+                "memory": {
+                  "title": "memory",
+                  "type": "string"
+                }
+              },
+              "title": "limits",
+              "type": "object"
+            },
+            "requests": {
+              "properties": {
+                "cpu": {
+                  "title": "cpu",
+                  "type": "string"
+                }
+              },
+              "title": "requests",
+              "type": "object"
+            }
+          },
+          "title": "resources",
+          "type": "object"
+        },
+        "service": {
+          "properties": {
+            "annotations": {
+              "title": "annotations",
+              "type": "object"
+            },
+            "nodePort": {
+              "title": "nodePort",
+              "type": "string"
+            },
+            "type": {
+              "title": "type",
+              "type": "string"
+            }
+          },
+          "title": "service",
+          "type": "object"
+        }
+      },
+      "title": "infisical",
+      "type": "object"
+    },
+    "ingress": {
+      "properties": {
+        "annotations": {
+          "title": "annotations",
+          "type": "object"
+        },
+        "enabled": {
+          "title": "enabled",
+          "type": "boolean"
+        },
+        "hostName": {
+          "title": "hostName",
+          "type": "string"
+        },
+        "ingressClassName": {
+          "title": "ingressClassName",
+          "type": "string"
+        },
+        "nginx": {
+          "properties": {
+            "enabled": {
+              "title": "enabled",
+              "type": "boolean"
+            }
+          },
+          "title": "nginx",
+          "type": "object"
+        },
+        "tls": {
+          "items": {},
+          "title": "tls",
+          "type": "array"
+        }
+      },
+      "title": "ingress",
+      "type": "object"
+    },
+    "nameOverride": {
+      "title": "nameOverride",
+      "type": "string"
+    },
+    "postgresql": {
+      "properties": {
+        "auth": {
+          "properties": {
+            "database": {
+              "title": "database",
+              "type": "string"
+            },
+            "password": {
+              "title": "password",
+              "type": "string"
+            },
+            "username": {
+              "title": "username",
+              "type": "string"
+            }
+          },
+          "title": "auth",
+          "type": "object"
+        },
+        "enabled": {
+          "title": "enabled",
+          "type": "boolean"
+        },
+        "fullnameOverride": {
+          "title": "fullnameOverride",
+          "type": "string"
+        },
+        "name": {
+          "title": "name",
+          "type": "string"
+        }
+      },
+      "title": "postgresql",
+      "type": "object"
+    },
+    "redis": {
+      "properties": {
+        "architecture": {
+          "title": "architecture",
+          "type": "string"
+        },
+        "auth": {
+          "properties": {
+            "password": {
+              "title": "password",
+              "type": "string"
+            }
+          },
+          "title": "auth",
+          "type": "object"
+        },
+        "cluster": {
+          "properties": {
+            "enabled": {
+              "title": "enabled",
+              "type": "boolean"
+            }
+          },
+          "title": "cluster",
+          "type": "object"
+        },
+        "enabled": {
+          "title": "enabled",
+          "type": "boolean"
+        },
+        "fullnameOverride": {
+          "title": "fullnameOverride",
+          "type": "string"
+        },
+        "name": {
+          "title": "name",
+          "type": "string"
+        },
+        "usePassword": {
+          "title": "usePassword",
+          "type": "boolean"
+        }
+      },
+      "title": "redis",
+      "type": "object"
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object"
+}
