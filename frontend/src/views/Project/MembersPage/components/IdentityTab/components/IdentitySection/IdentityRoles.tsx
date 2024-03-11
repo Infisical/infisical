@@ -155,7 +155,7 @@ const IdentityTemporaryRoleForm = ({
                   })()
                 }
               >
-                Give access
+                Grant access
               </Button>
             ) : (
               <Button

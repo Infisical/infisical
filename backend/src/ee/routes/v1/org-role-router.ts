@@ -1,6 +1,7 @@
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { OrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -13,7 +14,14 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         organizationId: z.string().trim()
       }),
       body: z.object({
-        slug: z.string().trim(),
+        slug: z
+          .string()
+          .min(1)
+          .trim()
+          .refine((val) => Object.keys(OrgMembershipRole).includes(val), "Invalid keyword slugs")
+          .refine((v) => slugify(v) === v, {
+            message: "Slug must be a valid slug"
+          }),
         name: z.string().trim(),
         description: z.string().trim().optional(),
         permissions: z.any().array()
@@ -45,7 +53,17 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         roleId: z.string().trim()
       }),
       body: z.object({
-        slug: z.string().trim().optional(),
+        slug: z
+          .string()
+          .trim()
+          .optional()
+          .refine(
+            (val) => typeof val === "undefined" || Object.keys(OrgMembershipRole).includes(val),
+            "Invalid keyword slugs"
+          )
+          .refine((val) => typeof val === "undefined" || slugify(val) === val, {
+            message: "Slug must be a valid slug"
+          }),
         name: z.string().trim().optional(),
         description: z.string().trim().optional(),
         permissions: z.any().array()

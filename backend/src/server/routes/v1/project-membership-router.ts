@@ -1,3 +1,4 @@
+import ms from "ms";
 import { z } from "zod";
 
 import {
@@ -147,7 +148,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
                 role: z.string(),
                 isTemporary: z.literal(true),
                 temporaryMode: z.nativeEnum(ProjectUserMembershipTemporaryMode),
-                temporaryRange: z.string(),
+                temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be positive"),
                 temporaryAccessStartTime: z.string().datetime()
               })
             ])

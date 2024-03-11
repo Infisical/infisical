@@ -158,9 +158,6 @@ export const identityProjectServiceFactory = ({
 
       // check cron or relative here later for now its just relative
       const relativeTimeInMs = ms(inputRole.temporaryRange);
-      if (relativeTimeInMs <= 0) {
-        throw new BadRequestError({ message: "Temporary relative time range must be positive" });
-      }
       return {
         projectMembershipId: projectIdentity.id,
         role: isCustomRole ? ProjectMembershipRole.Custom : inputRole.role,

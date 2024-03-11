@@ -76,7 +76,7 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Role);
     const [deletedRole] = await projectRoleDAL.delete({ id: roleId, projectId });
-    if (!deleteRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
+    if (!deletedRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
 
     return deletedRole;
   };
