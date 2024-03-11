@@ -1,4 +1,8 @@
-export { useAddUserToWsE2EE, useAddUserToWsNonE2EE } from "./mutation";
+export {
+  useAddUserToWsE2EE,
+  useAddUserToWsNonE2EE,
+  useAddWorkspaceProjectsToUserNonE2EE
+} from "./mutation";
 export {
   fetchOrgUsers,
   useAddUserToOrg,

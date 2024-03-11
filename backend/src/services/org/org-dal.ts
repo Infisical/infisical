@@ -95,13 +95,9 @@ export const orgDALFactory = (db: TDbClient) => {
       const members: MembersProp = await db(TableName.OrgMembership)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .join(TableName.ProjectMembership, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
-        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
-        .leftJoin<TUserEncryptionKeys>(
-          TableName.UserEncryptionKey,
-          `${TableName.UserEncryptionKey}.userId`,
-          `${TableName.Users}.id`
-        )
+        .leftJoin(TableName.ProjectMembership, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
         .select(
           db.ref("id").withSchema(TableName.OrgMembership),
           db.ref("inviteEmail").withSchema(TableName.OrgMembership),
@@ -114,7 +110,11 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey),
-          db.raw("json_agg(??) AS ??", [`${TableName.Project}.name`, "projects"]) // Adjust the table alias
+          db.raw("json_agg(??) FILTER (WHERE ?? IS NOT NULL) AS ??", [
+            `${TableName.Project}.name`,
+            `${TableName.Project}.name`,
+            "projects"
+          ]) // Adjust the table alias
         )
         .where({ isGhost: false }) // MAKE SURE USER IS NOT A GHOST USER
         .groupBy(

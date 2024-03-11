@@ -7,7 +7,8 @@ import {
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace/queries";
-import { AddUserToWsDTOE2EE, AddUserToWsDTONonE2EE } from "./types";
+import { userKeys } from "./queries";
+import { AddUserToWsDTOE2EE, AddUserToWsDTONonE2EE, AddWorkspaceToUserNonE2EE } from "./types";
 
 export const useAddUserToWsE2EE = () => {
   const queryClient = useQueryClient();
@@ -58,6 +59,22 @@ export const useAddUserToWsNonE2EE = () => {
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(projectId));
+    }
+  });
+};
+
+export const useAddWorkspaceProjectsToUserNonE2EE = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, AddWorkspaceToUserNonE2EE>({
+    mutationFn: async ({ email, projects }) => {
+      const { data } = await apiRequest.post(`/api/v2/workspace/user/${email}/memberships`, {
+        projects
+      });
+      return data;
+    },
+    onSuccess: (_, { orgId }) => {
+      queryClient.invalidateQueries(userKeys.getOrgUsersWithProjects(orgId));
     }
   });
 };

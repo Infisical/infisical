@@ -22,6 +22,7 @@ export const userKeys = {
   getUser: ["user"] as const,
   userAction: ["user-action"] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
+  getOrgUsersWithProjects: (orgId: string) => [{ orgId }, "user"],
   myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
   myAPIKeysV2: ["api-keys-v2"] as const,
@@ -138,7 +139,7 @@ export const useGetOrgUsers = (orgId: string) =>
 
 export const useGetOrgUsersWithProjects = (orgId: string) =>
   useQuery({
-    queryKey: userKeys.getOrgUsers(orgId),
+    queryKey: userKeys.getOrgUsersWithProjects(orgId),
     queryFn: () => fetchOrgUsersWithProjects(orgId),
     enabled: Boolean(orgId)
   });

@@ -107,6 +107,12 @@ export type AddUserToWsDTONonE2EE = {
   usernames: string[];
 };
 
+export type AddWorkspaceToUserNonE2EE = {
+  projects: string[];
+  email: string;
+  orgId: string;
+};
+
 export type UpdateOrgUserRoleDTO = {
   organizationId: string;
   membershipId: string;

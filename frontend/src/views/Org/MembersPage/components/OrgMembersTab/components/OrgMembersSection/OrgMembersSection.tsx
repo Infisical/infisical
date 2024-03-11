@@ -39,8 +39,6 @@ export const OrgMembersSection = () => {
     "addProject"
   ] as const);
 
-  console.log("popUp", popUp);
-
   const { mutateAsync: deleteMutateAsync } = useDeleteOrgMembership();
 
   const isMoreUsersNotAllowed = subscription?.memberLimit
@@ -115,7 +113,11 @@ export const OrgMembersSection = () => {
         completeInviteLink={completeInviteLink}
         setCompleteInviteLink={setCompleteInviteLink}
       />
-      <AddProjectModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <AddProjectModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        handlePopUpClose={handlePopUpClose}
+      />
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
         title={`Are you sure want to remove member with username ${

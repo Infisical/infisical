@@ -54,6 +54,7 @@ type AddProjectProps = {
   createNotification: any;
   orgMembershipId: string;
   email: string;
+  projects: string[];
 };
 
 const AddProject = ({
@@ -61,7 +62,8 @@ const AddProject = ({
   currentOrg,
   createNotification,
   orgMembershipId,
-  email
+  email,
+  projects
 }: AddProjectProps) => {
   return (
     <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Member}>
@@ -76,7 +78,7 @@ const AddProject = ({
               return;
             }
 
-            handlePopUpOpen("addProject", { orgMembershipId, email });
+            handlePopUpOpen("addProject", { orgMembershipId, email, projects });
           }}
           size="lg"
           colorSchema="primary"
@@ -194,8 +196,6 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
     [members, searchMemberFilter]
   );
 
-  console.log("filterdUser", filterdUser);
-
   return (
     <div>
       <Input
@@ -275,13 +275,14 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                         </OrgPermissionCan>
                       </Td>
                       <Td>
-                        {projects.join(", ")}
+                        {projects?.join(", ")}
                         <AddProject
                           handlePopUpOpen={handlePopUpOpen}
                           createNotification={createNotification}
                           currentOrg={currentOrg}
                           orgMembershipId={orgMembershipId}
                           email={email}
+                          projects={projects}
                         />
                       </Td>
                       <Td>
