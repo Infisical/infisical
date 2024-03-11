@@ -238,7 +238,7 @@ export const MemberListTab = () => {
                           {(isAllowed) => (
                               <MemberRoles
                                 roles={roles}
-                                disableEdit={u.id === user?.id && isAllowed}
+                                disableEdit={u.id === user?.id || !isAllowed}
                                 onOpenUpgradeModal={(description) =>
                                   handlePopUpOpen("upgradePlan", { description })
                                 }

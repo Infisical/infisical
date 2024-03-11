@@ -94,3 +94,21 @@ export type TUpdateWorkspaceUserRoleDTO = {
     }
   )[];
 };
+
+export type TUpdateWorkspaceIdentityRoleDTO = {
+  identityId: string;
+  workspaceId: string;
+  roles: (
+    | {
+      role: string;
+      isTemporary?: false;
+    }
+    | {
+      role: string;
+      isTemporary: true;
+      temporaryMode: ProjectUserMembershipTemporaryMode;
+      temporaryRange: string;
+      temporaryAccessStartTime: string;
+    }
+  )[];
+};

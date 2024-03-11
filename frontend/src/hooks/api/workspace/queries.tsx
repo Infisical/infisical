@@ -16,6 +16,7 @@ import {
   RenameWorkspaceDTO,
   TGetUpgradeProjectStatusDTO,
   ToggleAutoCapitalizationDTO,
+  TUpdateWorkspaceIdentityRoleDTO,
   TUpdateWorkspaceUserRoleDTO,
   UpdateEnvironmentDTO,
   Workspace
@@ -393,18 +394,14 @@ export const useUpdateIdentityWorkspaceRole = () => {
     mutationFn: async ({
       identityId,
       workspaceId,
-      role
-    }: {
-      identityId: string;
-      workspaceId: string;
-      role?: string;
-    }) => {
+      roles
+    }:TUpdateWorkspaceIdentityRoleDTO)=> {
       const {
         data: { identityMembership }
       } = await apiRequest.patch(
         `/api/v2/workspace/${workspaceId}/identity-memberships/${identityId}`,
         {
-          role
+          roles
         }
       );
 
