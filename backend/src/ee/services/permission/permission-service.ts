@@ -67,7 +67,7 @@ export const permissionServiceFactory = ({
 
   const buildProjectPermission = (projectUserRoles: TBuildProjectPermissionDTO) => {
     const rules = projectUserRoles
-      .map(({ role, permission }) => {
+      .map(({ role, permissions }) => {
         switch (role) {
           case ProjectMembershipRole.Admin:
             return projectAdminPermissions;
@@ -77,10 +77,11 @@ export const permissionServiceFactory = ({
             return projectViewerPermission;
           case ProjectMembershipRole.NoAccess:
             return projectNoAccessPermissions;
-          case ProjectMembershipRole.Custom:
+          case ProjectMembershipRole.Custom: {
             return unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
-              permission as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
+              permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
             );
+          }
           default:
             throw new BadRequestError({
               name: "ProjectRoleInvalid",
@@ -149,7 +150,11 @@ export const permissionServiceFactory = ({
   };
 
   // user permission for a project in an organization
-  const getUserProjectPermission = async (userId: string, projectId: string, userOrgId?: string) => {
+  const getUserProjectPermission = async (
+    userId: string,
+    projectId: string,
+    userOrgId?: string
+  ): Promise<TProjectPermissionRT<ActorType.USER>> => {
     const userProjectPermission = await permissionDAL.getProjectPermission(userId, projectId);
     if (!userProjectPermission) throw new UnauthorizedError({ name: "User not in project" });
 
@@ -173,16 +178,28 @@ export const permissionServiceFactory = ({
     };
   };
 
-  const getIdentityProjectPermission = async (identityId: string, projectId: string) => {
-    const membership = await permissionDAL.getProjectIdentityPermission(identityId, projectId);
-    if (!membership) throw new UnauthorizedError({ name: "Identity not in project" });
-    if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
+  const getIdentityProjectPermission = async (
+    identityId: string,
+    projectId: string
+  ): Promise<TProjectPermissionRT<ActorType.IDENTITY>> => {
+    const identityProjectPermission = await permissionDAL.getProjectIdentityPermission(identityId, projectId);
+    if (!identityProjectPermission) throw new UnauthorizedError({ name: "Identity not in project" });
+
+    if (
+      identityProjectPermission.roles.some(
+        ({ role, permissions }) => role === ProjectMembershipRole.Custom && !permissions
+      )
+    ) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
 
     return {
-      permission: buildProjectPermission([{ role: membership.role, permission: membership.permissions }]),
-      membership
+      permission: buildProjectPermission(identityProjectPermission.roles),
+      membership: identityProjectPermission,
+      hasRole: (role: string) =>
+        identityProjectPermission.roles.findIndex(
+          ({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug
+        ) !== -1
     };
   };
 
@@ -202,7 +219,11 @@ export const permissionServiceFactory = ({
   };
 
   type TProjectPermissionRT<T extends ActorType> = T extends ActorType.SERVICE
-    ? { permission: MongoAbility<ProjectPermissionSet, MongoQuery>; membership: undefined; hasRole: () => false } // service token doesn't have both membership and roles
+    ? {
+        permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
+        membership: undefined;
+        hasRole: (arg: string) => boolean;
+      } // service token doesn't have both membership and roles
     : {
         permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
         membership: (T extends ActorType.USER ? TProjectMemberships : TIdentityProjectMemberships) & {
@@ -241,12 +262,12 @@ export const permissionServiceFactory = ({
       if (!projectRole) throw new BadRequestError({ message: "Role not found" });
       return {
         permission: buildProjectPermission([
-          { role: ProjectMembershipRole.Custom, permission: projectRole.permissions }
+          { role: ProjectMembershipRole.Custom, permissions: projectRole.permissions }
         ]),
         role: projectRole
       };
     }
-    return { permission: buildProjectPermission([{ role, permission: [] }]) };
+    return { permission: buildProjectPermission([{ role, permissions: [] }]) };
   };
 
   return {

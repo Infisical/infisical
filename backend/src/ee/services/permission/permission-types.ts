@@ -1,4 +1,4 @@
 export type TBuildProjectPermissionDTO = {
-  permission?: unknown;
+  permissions?: unknown;
   role: string;
 }[];

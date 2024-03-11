@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { TDbClient } from "@app/db";
-import { ProjectUserMembershipRolesSchema, TableName } from "@app/db/schemas";
+import { IdentityProjectMembershipRoleSchema, ProjectUserMembershipRolesSchema, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
@@ -108,18 +108,60 @@ export const permissionDALFactory = (db: TDbClient) => {
 
   const getProjectIdentityPermission = async (identityId: string, projectId: string) => {
     try {
-      const membership = await db(TableName.IdentityProjectMembership)
+      const docs = await db(TableName.IdentityProjectMembership)
+        .join(
+          TableName.IdentityProjectMembershipRole,
+          `${TableName.IdentityProjectMembershipRole}.projectMembershipId`,
+          `${TableName.IdentityProjectMembership}.id`
+        )
         .leftJoin(
           TableName.ProjectRoles,
-          `${TableName.IdentityProjectMembership}.roleId`,
+          `${TableName.IdentityProjectMembershipRole}.customRoleId`,
           `${TableName.ProjectRoles}.id`
         )
         .where("identityId", identityId)
         .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
-        .select(selectAllTableCols(TableName.IdentityProjectMembership))
-        .select("permissions")
-        .first();
-      return membership;
+        .select(selectAllTableCols(TableName.IdentityProjectMembershipRole))
+        .select(
+          db.ref("id").withSchema(TableName.IdentityProjectMembership).as("membershipId"),
+          db.ref("createdAt").withSchema(TableName.IdentityProjectMembership).as("membershipCreatedAt"),
+          db.ref("updatedAt").withSchema(TableName.IdentityProjectMembership).as("membershipUpdatedAt"),
+          db.ref("slug").withSchema(TableName.ProjectRoles).as("customRoleSlug")
+        )
+        .select("permissions");
+
+      const permission = sqlNestRelationships({
+        data: docs,
+        key: "membershipId",
+        parentMapper: ({ membershipId, membershipCreatedAt, membershipUpdatedAt }) => ({
+          id: membershipId,
+          identityId,
+          projectId,
+          createdAt: membershipCreatedAt,
+          updatedAt: membershipUpdatedAt,
+          // just a prefilled value
+          orgAuthEnforced: false,
+          orgId: ""
+        }),
+        childrenMapper: [
+          {
+            key: "id",
+            label: "roles" as const,
+            mapper: (data) =>
+              IdentityProjectMembershipRoleSchema.extend({
+                permissions: z.unknown(),
+                customRoleSlug: z.string().optional().nullable()
+              }).parse(data)
+          }
+        ]
+      });
+
+      // when introducting cron mode change it here
+      const activeRoles = permission?.[0]?.roles.filter(
+        ({ isTemporary, temporaryAccessEndTime }) =>
+          !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
+      );
+      return permission?.[0] ? { ...permission[0], roles: activeRoles } : undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "GetProjectIdentityPermission" });
     }

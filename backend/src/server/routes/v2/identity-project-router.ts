@@ -4,10 +4,11 @@ import {
   IdentitiesSchema,
   IdentityProjectMembershipsSchema,
   ProjectMembershipRole,
-  ProjectRolesSchema
+  ProjectUserMembershipRolesSchema
 } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
 export const registerIdentityProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -57,24 +58,41 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         identityId: z.string().trim()
       }),
       body: z.object({
-        role: z.string().trim().min(1).default(ProjectMembershipRole.NoAccess)
+        roles: z
+          .array(
+            z.union([
+              z.object({
+                role: z.string(),
+                isTemporary: z.literal(false).default(false)
+              }),
+              z.object({
+                role: z.string(),
+                isTemporary: z.literal(true),
+                temporaryMode: z.nativeEnum(ProjectUserMembershipTemporaryMode),
+                temporaryRange: z.string(),
+                temporaryAccessStartTime: z.string().datetime()
+              })
+            ])
+          )
+          .min(1)
+          .refine((data) => data.some(({ isTemporary }) => !isTemporary), "Atleast one permanent role required")
       }),
       response: {
         200: z.object({
-          identityMembership: IdentityProjectMembershipsSchema
+          roles: ProjectUserMembershipRolesSchema.array()
         })
       }
     },
     handler: async (req) => {
-      const identityMembership = await server.services.identityProject.updateProjectIdentity({
+      const roles = await server.services.identityProject.updateProjectIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         projectId: req.params.projectId,
-        role: req.body.role
+        roles: req.body.roles
       });
-      return { identityMembership };
+      return { roles };
     }
   });
 
@@ -127,18 +145,29 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       }),
       response: {
         200: z.object({
-          identityMemberships: IdentityProjectMembershipsSchema.merge(
-            z.object({
-              customRole: ProjectRolesSchema.pick({
-                id: true,
-                name: true,
-                slug: true,
-                permissions: true,
-                description: true
-              }).optional(),
+          identityMemberships: z
+            .object({
+              id: z.string(),
+              identityId: z.string(),
+              createdAt: z.date(),
+              updatedAt: z.date(),
+              roles: z.array(
+                z.object({
+                  id: z.string(),
+                  role: z.string(),
+                  customRoleId: z.string().optional().nullable(),
+                  customRoleName: z.string().optional().nullable(),
+                  customRoleSlug: z.string().optional().nullable(),
+                  isTemporary: z.boolean(),
+                  temporaryMode: z.string().optional().nullable(),
+                  temporaryRange: z.string().nullable().optional(),
+                  temporaryAccessStartTime: z.date().nullable().optional(),
+                  temporaryAccessEndTime: z.date().nullable().optional()
+                })
+              ),
               identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true })
             })
-          ).array()
+            .array()
         })
       }
     },

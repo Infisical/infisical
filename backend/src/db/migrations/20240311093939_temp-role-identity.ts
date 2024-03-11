@@ -1,16 +1,19 @@
 import { Knex } from "knex";
 
-import { TableName, TProjectUserMembershipRolesInsert } from "../schemas";
+import { TableName, TIdentityProjectMembershipRoleInsert } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  const doesTableExist = await knex.schema.hasTable(TableName.ProjectUserMembershipRole);
+  const doesTableExist = await knex.schema.hasTable(TableName.IdentityProjectMembershipRole);
   if (!doesTableExist) {
-    await knex.schema.createTable(TableName.ProjectUserMembershipRole, (t) => {
+    await knex.schema.createTable(TableName.IdentityProjectMembershipRole, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("role").notNullable();
       t.uuid("projectMembershipId").notNullable();
-      t.foreign("projectMembershipId").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
+      t.foreign("projectMembershipId")
+        .references("id")
+        .inTable(TableName.IdentityProjectMembership)
+        .onDelete("CASCADE");
       // until role is changed/removed the role should not deleted
       t.uuid("customRoleId");
       t.foreign("customRoleId").references("id").inTable(TableName.ProjectRoles);
@@ -23,11 +26,11 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  await createOnUpdateTrigger(knex, TableName.ProjectUserMembershipRole);
+  await createOnUpdateTrigger(knex, TableName.IdentityProjectMembershipRole);
 
-  const projectMembershipStream = knex.select("*").from(TableName.ProjectMembership).stream();
+  const projectMembershipStream = knex.select("*").from(TableName.IdentityProjectMembership).stream();
   const chunkSize = 1000;
-  let rows: TProjectUserMembershipRolesInsert[] = [];
+  let rows: TIdentityProjectMembershipRoleInsert[] = [];
   for await (const row of projectMembershipStream) {
     // disabling eslint just this part because the latest ts type doesn't have these values after migration as they are removed
     /* eslint-disable  */
@@ -43,35 +46,35 @@ export async function up(knex: Knex): Promise<void> {
     });
     /* eslint-disable */
     if (rows.length >= chunkSize) {
-      await knex(TableName.ProjectUserMembershipRole).insert(rows);
+      await knex(TableName.IdentityProjectMembershipRole).insert(rows);
       rows.splice(0, rows.length);
     }
   }
-  if (rows.length) await knex(TableName.ProjectUserMembershipRole).insert(rows);
-  await knex.schema.alterTable(TableName.ProjectMembership, (t) => {
+  if(rows.length) await knex(TableName.IdentityProjectMembershipRole).insert(rows);
+  await knex.schema.alterTable(TableName.IdentityProjectMembership, (t) => {
     t.dropColumn("roleId");
     t.dropColumn("role");
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const projectUserMembershipRoleStream = knex.select("*").from(TableName.ProjectUserMembershipRole).stream();
-  await knex.schema.alterTable(TableName.ProjectMembership, (t) => {
+  const projectIdentityMembershipRoleStream = knex.select("*").from(TableName.IdentityProjectMembershipRole).stream();
+  await knex.schema.alterTable(TableName.IdentityProjectMembership, (t) => {
     t.string("role");
     t.uuid("roleId");
     t.foreign("roleId").references("id").inTable(TableName.ProjectRoles);
   });
-  for await (const row of projectUserMembershipRoleStream) {
-    await knex(TableName.ProjectMembership).where({ id: row.projectMembershipId }).update({
+  for await (const row of projectIdentityMembershipRoleStream) {
+    await knex(TableName.IdentityProjectMembership).where({ id: row.projectMembershipId }).update({
       // @ts-ignore - since the latest one doesn't have roleId anymore there will be type error here
       roleId: row.customRoleId,
       role: row.role
     });
   }
-  await knex.schema.alterTable(TableName.ProjectMembership, (t) => {
+  await knex.schema.alterTable(TableName.IdentityProjectMembership, (t) => {
     t.string("role").notNullable().alter({ alterNullable: true });
   });
 
-  await knex.schema.dropTableIfExists(TableName.ProjectUserMembershipRole);
-  await dropOnUpdateTrigger(knex, TableName.ProjectUserMembershipRole);
+  await knex.schema.dropTableIfExists(TableName.IdentityProjectMembershipRole);
+  await dropOnUpdateTrigger(knex, TableName.IdentityProjectMembershipRole);
 }

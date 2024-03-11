@@ -17,6 +17,7 @@ import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
+import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -51,6 +52,7 @@ type TProjectServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   identityProjectDAL: TIdentityProjectDALFactory;
+  identityProjectMembershipRoleDAL: Pick<TIdentityProjectMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey" | "delete" | "find" | "insertMany">;
   projectBotDAL: Pick<TProjectBotDALFactory, "create" | "findById" | "delete" | "findOne">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne">;
@@ -78,7 +80,8 @@ export const projectServiceFactory = ({
   projectMembershipDAL,
   projectEnvDAL,
   licenseService,
-  projectUserMembershipRoleDAL
+  projectUserMembershipRoleDAL,
+  identityProjectMembershipRoleDAL
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -275,12 +278,19 @@ export const projectServiceFactory = ({
           });
         const isCustomRole = Boolean(customRole);
 
-        await identityProjectDAL.create(
+        const identityProjectMembership = await identityProjectDAL.create(
           {
             identityId: actorId,
-            projectId: project.id,
+            projectId: project.id
+          },
+          tx
+        );
+
+        await identityProjectMembershipRoleDAL.create(
+          {
+            projectMembershipId: identityProjectMembership.id,
             role: isCustomRole ? ProjectMembershipRole.Custom : ProjectMembershipRole.Admin,
-            roleId: customRole?.id
+            customRoleId: customRole?.id
           },
           tx
         );
