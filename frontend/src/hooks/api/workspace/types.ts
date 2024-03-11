@@ -3,6 +3,10 @@ export enum ProjectVersion {
   V2 = 2
 }
 
+export enum ProjectUserMembershipTemporaryMode {
+  Relative = "relative"
+}
+
 export type Workspace = {
   __v: number;
   id: string;
@@ -72,3 +76,21 @@ export type UpdateEnvironmentDTO = {
 };
 
 export type DeleteEnvironmentDTO = { workspaceId: string; id: string };
+
+export type TUpdateWorkspaceUserRoleDTO = {
+  membershipId: string;
+  workspaceId: string;
+  roles: (
+    | {
+      role: string;
+      isTemporary?: false;
+    }
+    | {
+      role: string;
+      isTemporary: true;
+      temporaryMode: ProjectUserMembershipTemporaryMode;
+      temporaryRange: string;
+      temporaryAccessStartTime: string;
+    }
+  )[];
+};

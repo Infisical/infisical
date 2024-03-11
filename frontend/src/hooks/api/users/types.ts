@@ -64,7 +64,32 @@ export type TProjectMembership = {
   roleId: string;
 };
 
-export type TWorkspaceUser = OrgUser;
+export type TWorkspaceUser = {
+  id: string;
+  user: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    id: string;
+    publicKey: string;
+  };
+  inviteEmail: string;
+  organization: string;
+  roles: {
+    id: string;
+    role: "owner" | "admin" | "member" | "no-access" | "custom";
+    customRoleId: string;
+    customRoleName: string;
+    customRoleSlug: string;
+    isTemporary: boolean;
+    temporaryMode: string | null;
+    temporaryRange: string | null;
+    temporaryAccessStartTime: string | null;
+    temporaryAccessEndTime: string | null;
+  }[];
+  status: "invited" | "accepted" | "verified" | "completed";
+  deniedPermissions: any[];
+};
 
 export type AddUserToWsDTOE2EE = {
   workspaceId: string;

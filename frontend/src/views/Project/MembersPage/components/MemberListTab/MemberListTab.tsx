@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
@@ -34,7 +34,6 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
-  useSubscription,
   useUser,
   useWorkspace
 } from "@app/context";
@@ -44,13 +43,12 @@ import {
   useAddUserToWsNonE2EE,
   useDeleteUserFromWorkspace,
   useGetOrgUsers,
-  useGetProjectRoles,
   useGetUserWsKey,
-  useGetWorkspaceUsers,
-  useUpdateUserWorkspaceRole
+  useGetWorkspaceUsers
 } from "@app/hooks/api";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
+
+import { MemberRoles } from "./MemberRoles";
 
 const addMemberFormSchema = z.object({
   orgMembershipId: z.string().trim()
@@ -60,7 +58,6 @@ type TAddMemberForm = z.infer<typeof addMemberFormSchema>;
 
 export const MemberListTab = () => {
   const { createNotification } = useNotificationContext();
-  const { subscription } = useSubscription();
   const { t } = useTranslation();
 
   const { currentOrg } = useOrganization();
@@ -70,8 +67,6 @@ export const MemberListTab = () => {
   const userId = user?.id || "";
   const orgId = currentOrg?.id || "";
   const workspaceId = currentWorkspace?.id || "";
-
-  const { data: roles, isLoading: isRolesLoading } = useGetProjectRoles(workspaceId);
 
   const { data: wsKey } = useGetUserWsKey(workspaceId);
   const { data: members, isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
@@ -95,7 +90,6 @@ export const MemberListTab = () => {
   const { mutateAsync: addUserToWorkspace } = useAddUserToWsE2EE();
   const { mutateAsync: addUserToWorkspaceNonE2EE } = useAddUserToWsNonE2EE();
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
-  const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
 
   const onAddMember = async ({ orgMembershipId }: TAddMemberForm) => {
     if (!currentWorkspace) return;
@@ -167,47 +161,6 @@ export const MemberListTab = () => {
     handlePopUpClose("removeMember");
   };
 
-  const isIamOwner = useMemo(
-    () => members?.find(({ user: u }) => userId === u?.id)?.role === "owner",
-    [userId, members]
-  );
-
-  const findRoleFromId = useCallback(
-    (roleId: string) => {
-      return (roles || []).find(({ id }) => id === roleId);
-    },
-    [roles]
-  );
-
-  const onRoleChange = async (membershipId: string, role: string) => {
-    if (!currentOrg?.id) return;
-
-    try {
-      const isCustomRole = !Object.values(ProjectMembershipRole).includes(
-        role as ProjectMembershipRole
-      );
-
-      if (isCustomRole && subscription && !subscription?.rbac) {
-        handlePopUpOpen("upgradePlan", {
-          description: "You can assign custom roles to members if you upgrade your Infisical plan."
-        });
-        return;
-      }
-
-      await updateUserWorkspaceRole({ membershipId, role, workspaceId });
-      createNotification({
-        text: "Successfully updated user role",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to update user role",
-        type: "error"
-      });
-    }
-  };
-
   const filterdUsers = useMemo(
     () =>
       members?.filter(
@@ -230,8 +183,6 @@ export const MemberListTab = () => {
       ({ status, user: u }) => status === "accepted" && !wsUserUsernames.has(u.username)
     );
   }, [orgUsers, members]);
-
-  const isLoading = isMembersLoading || isRolesLoading;
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -269,75 +220,61 @@ export const MemberListTab = () => {
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={4} innerKey="project-members" />}
-              {!isLoading &&
-                filterdUsers?.map(
-                  ({ user: u, id: membershipId, roleId, role }) => {
-                    const name = u ? `${u.firstName} ${u.lastName}` : "-";
-                    const username = u?.username ?? "-";
-                    return (
-                      <Tr key={`membership-${membershipId}`} className="w-full">
-                        <Td>{name}</Td>
-                        <Td>{username}</Td>
-                        <Td>
+              {isMembersLoading && <TableSkeleton columns={4} innerKey="project-members" />}
+              {!isMembersLoading &&
+                filterdUsers?.map(({ user: u, inviteEmail, id: membershipId, roles }) => {
+                  const name = u ? `${u.firstName} ${u.lastName}` : "-";
+                  const email = u?.email || inviteEmail;
+
+                  return (
+                    <Tr key={`membership-${membershipId}`} className="w-full">
+                      <Td>{name}</Td>
+                      <Td>{email}</Td>
+                      <Td>
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Edit}
+                          a={ProjectPermissionSub.Member}
+                        >
+                          {(isAllowed) => (
+                              <MemberRoles
+                                roles={roles}
+                                disableEdit={u.id === user?.id && isAllowed}
+                                onOpenUpgradeModal={(description) =>
+                                  handlePopUpOpen("upgradePlan", { description })
+                                }
+                                membershipId={membershipId}
+                              />
+                          )}
+                        </ProjectPermissionCan>
+                      </Td>
+                      <Td>
+                        {userId !== u?.id && (
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Edit}
+                            I={ProjectPermissionActions.Delete}
                             a={ProjectPermissionSub.Member}
                           >
                             {(isAllowed) => (
-                              <Select
-                                  value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
-                                  isDisabled={userId === u?.id || !isAllowed}
-                                  className="w-40 bg-mineshaft-600"
-                                  dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
-                                  onValueChange={(selectedRole) =>
-                                    onRoleChange(membershipId, selectedRole)
-                                  }
-                                >
-                                  {(roles || [])
-                                    .filter(({ slug }) =>
-                                      slug === "owner" ? isIamOwner || role === "owner" : true
-                                    )
-                                    .map(({ slug, name: roleName }) => (
-                                      <SelectItem value={slug} key={`owner-option-${slug}`}>
-                                        {roleName}
-                                      </SelectItem>
-                                    ))}
-                                </Select>
+                              <IconButton
+                                size="lg"
+                                colorSchema="danger"
+                                variant="plain"
+                                ariaLabel="update"
+                                className="ml-4"
+                                isDisabled={userId === u?.id || !isAllowed}
+                                onClick={() => handlePopUpOpen("removeMember", { email: u.email })}
+                              >
+                                <FontAwesomeIcon icon={faXmark} />
+                              </IconButton>
                             )}
                           </ProjectPermissionCan>
-                        </Td>
-                        <Td>
-                          {userId !== u?.id && (
-                            <ProjectPermissionCan
-                              I={ProjectPermissionActions.Delete}
-                              a={ProjectPermissionSub.Member}
-                            >
-                              {(isAllowed) => (
-                                <IconButton
-                                  size="lg"
-                                  colorSchema="danger"
-                                  variant="plain"
-                                  ariaLabel="update"
-                                  className="ml-4"
-                                  isDisabled={userId === u?.id || !isAllowed}
-                                  onClick={() =>
-                                    handlePopUpOpen("removeMember", { username: u.username })
-                                  }
-                                >
-                                  <FontAwesomeIcon icon={faXmark} />
-                                </IconButton>
-                              )}
-                            </ProjectPermissionCan>
-                          )}
-                        </Td>
-                      </Tr>
-                    );
-                  }
-                )}
+                        )}
+                      </Td>
+                    </Tr>
+                  );
+                })}
             </TBody>
           </Table>
-          {!isLoading && filterdUsers?.length === 0 && (
+          {!isMembersLoading && filterdUsers?.length === 0 && (
             <EmptyState title="No project members found" icon={faUsers} />
           )}
         </TableContainer>
