@@ -110,6 +110,10 @@ export const SecretOverviewPage = () => {
   const userAvailableEnvs = currentWorkspace?.environments || [];
   const [visibleEnvs, setVisisbleEnvs] = useState(userAvailableEnvs);
 
+  useEffect(() => {
+    setVisisbleEnvs(userAvailableEnvs);
+  }, [userAvailableEnvs]);
+
   const {
     data: secrets,
     getSecretByKey,
