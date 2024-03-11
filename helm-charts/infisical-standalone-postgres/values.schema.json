@@ -470,6 +470,11 @@
         "auth": {
           "additionalProperties": true,
           "properties": {
+            "enabled": {
+              "description": "Enable Redis password authentication",
+              "title": "enabled",
+              "type": "boolean"
+            },
             "password": {
               "description": "Redis [password](https://github.com/bitnami/containers/tree/main/bitnami/redis#setting-the-server-password-on-first-run) (ignored if `existingSecret` set).\nDefaults to a random 10-character alphanumeric string if not set and `usePassword` is true",
               "title": "password",
@@ -492,11 +497,6 @@
           "description": "Redis deployment name",
           "title": "name",
           "type": "string"
-        },
-        "usePassword": {
-          "description": "Use password authentication",
-          "title": "usePassword",
-          "type": "boolean"
         }
       },
       "description": "Redis parameters\nhttps://github.com/bitnami/charts/tree/main/bitnami/redis",

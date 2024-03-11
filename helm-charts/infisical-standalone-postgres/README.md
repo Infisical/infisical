@@ -99,9 +99,6 @@ Find the chart upgrade instructions below. When upgrading from your version to o
 
 ---
 
-<details open>
-<summary>
-
 ### **`0.0.1`** (`v0.44.0`)
 <details open>
 <summary><strong>Click for details</strong> (MongoDB to PostgreSQL migration)</summary>
@@ -109,7 +106,6 @@ Find the chart upgrade instructions below. When upgrading from your version to o
 Since the new `infisical-standalone-postgres` chart, Infisical moved away from MongoDB to PostgreSQL.
 
 Here's the migration instructions : https://infisical.com/docs/self-hosting/guides/mongo-to-postgres
-
 </details>
 
 ## Parameters
@@ -161,7 +157,7 @@ Here's the migration instructions : https://infisical.com/docs/self-hosting/guid
 | redis.enabled | bool | `true` | Enable Redis |
 | redis.name | string | `"redis"` | Redis deployment name |
 | redis.fullnameOverride | string | `"redis"` | Redis deployment fullname override |
-| redis.usePassword | bool | `true` | Use password authentication |
+| redis.auth.enabled | bool | `true` | Enable Redis password authentication |
 | redis.auth.password | string | `"mysecretpassword"` | Redis [password](https://github.com/bitnami/containers/tree/main/bitnami/redis#setting-the-server-password-on-first-run) (ignored if `existingSecret` set). Defaults to a random 10-character alphanumeric string if not set and `usePassword` is true |
 | redis.architecture | string | `"standalone"` | Redis architecture. Allowed values: `standalone` or `replication` |
 

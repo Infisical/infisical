@@ -347,14 +347,14 @@ redis:
   # -- Redis deployment fullname override
   fullnameOverride: "redis"
   # @schema
-  # type: boolean
-  # @schema
-  # -- Use password authentication
-  usePassword: true
-  # @schema
   # additionalProperties: true
   # @schema
   auth:
+    # @schema
+    # type: boolean
+    # @schema
+    # -- Enable Redis password authentication
+    enabled: true
     # -- Redis [password](https://github.com/bitnami/containers/tree/main/bitnami/redis#setting-the-server-password-on-first-run) (ignored if `existingSecret` set).
     # Defaults to a random 10-character alphanumeric string if not set and `usePassword` is true
     password: "mysecretpassword"
