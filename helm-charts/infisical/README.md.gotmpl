@@ -1,0 +1,106 @@
+# Infisical Helm Chart
+
+> [!WARNING]  
+> This chart is deprecated and discontinued in favor of the new one using PostgreSQL available **[here](../infisical-standalone-postgres/README.md)**. 
+> Some information here might be outdated! Please migrate to the new version : https://infisical.com/docs/self-hosting/guides/mongo-to-postgres
+
+{{ template "infisical.description" . }}
+
+## Services
+
+| Service   | Description      |
+| --------- | ---------------- |
+| `backend` | Infisical's API  |
+| `mongodb` | Database service |
+| `redis`   | Cache service    |
+| `mailhog` | SMTP server      |
+
+{{ template "infisical.installation.repo" . }}
+
+{{ template "infisical.installation.chart" . }}
+
+{{ template "infisical.encryptionKeys" . }}
+
+{{ template "infisical.upgrading" . }}
+
+---
+
+<details>
+<summary>
+
+### **`0.1.16`**
+</summary>
+
+- Auto-generation for the following variables, to ease your future upgrades or setups :
+  - `ENCRYPTION_KEY`
+  - `JWT_SIGNUP_SECRET`
+  - `JWT_REFRESH_SECRET`
+  - `JWT_AUTH_SECRET`
+  - `JWT_SERVICE_SECRET`
+  - `JWT_MFA_SECRET`
+
+We've migrated the applications' environment variables into `secrets` resources, shared within the deployments through `envFrom`. If you upgrade your installation make sure to backup your deployments' environment variables (e.g. encryption key and jwt secrets).
+
+The preference order is :
+- **user-defined** (values file or inline)
+  - **existing-secret** (for existing installations, you don't have to specify the secrets when upgrading if they already exist)
+    - **auto-generated** (if none of the values above have been found, we'll auto-generate a value for the user, only for the above mentioned variables)
+
+</details>
+
+## Parameters
+
+{{ template "chart.valuesTable" . }}
+
+{{ template "infisical.yamlValidation" . }}
+
+## Persistence
+
+The database persistence is enabled by default, your volumes will remain on your cluster even after uninstalling the chart. To disable persistence, set this value `mongodb.persistence.enabled: false`
+
+## Local development
+
+Find the resources and configuration about how to setup your local development environment on a k8s cluster (locally or remotely).
+
+### Requirements
+
+To create a local k8s environment, you'll need at least :
+
+- [`helm`](https://helm.sh/docs/intro/install/) <kbd>required</kbd>
+  - to generate the manifests and deploy the chart 
+- local/remote k8s cluster <kbd>required</kbd>
+  - e.g. [`kind`](https://kubernetes.io/docs/tasks/tools/), [`minikube`](https://kubernetes.io/docs/tasks/tools/) or an online provider
+- [`kubectl`](https://kubernetes.io/docs/tasks/tools/) <kbd>required</kbd>
+  - to interact with the cluster
+
+### Setup
+
+Run one of the below scripts for easy setup :
+
+> [!WARNING]
+> The environment might take some minutes to setup the first time as it need to pull all required images and dependencies
+
+```sh
+cd infisical/helm-charts/infisical/examples
+
+# With 'kind' + 'helm', to create a local cluster and deploy the chart using 'ingress-nginx'
+./infisical-kind.sh
+
+# With 'helm' only, if you already have a cluster (local/remote) to deploy the chart
+./infisical-helm.sh
+```
+
+> [!NOTE]
+> Find complete setup scripts in [**./examples**](./examples). Comments make it easy to understand how to setup your local development environment step-by-step
+
+Above examples will deploy the following :
+
+- [**infisical.local**](https://infisical.local)
+  - Your local Infisical instance
+  - You may have to add `infisical.local` to your `/etc/hosts` or similar depending your OS
+    - The corresponding IP will depend on the tool or the way you're exposing the services ([learn more](https://minikube.sigs.k8s.io/docs/handbook/host-access/))
+
+- [**mailhog.infisical.local**](https://mailhog.infisical.local)
+  - Local SMTP server used to receive the emails (e.g. signup verification code)
+  - You may have to add `mailhog.infisical.local` to your `/etc/hosts` or similar depending your OS
+    - The corresponding IP will depend on the tool or the way you're exposing the services ([learn more](https://minikube.sigs.k8s.io/docs/handbook/host-access/))
