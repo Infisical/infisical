@@ -166,6 +166,7 @@ export const projectMembershipServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
+    actorOrgId,
     emails,
     usernames,
     sendEmails = true
@@ -177,7 +178,13 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({ message: "Please upgrade your project on your dashboard" });
     }
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
 
     const usernamesAndEmails = [...emails, ...usernames];
