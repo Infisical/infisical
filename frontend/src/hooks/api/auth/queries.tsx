@@ -1,9 +1,10 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
 import { setAuthToken } from "@app/reactQuery";
 
+import { organizationKeys } from "../organization/queries";
 import {
   ChangePasswordDTO,
   CompleteAccountDTO,
@@ -66,6 +67,7 @@ export const selectOrganization = async (data: { organizationId: string }) => {
 };
 
 export const useSelectOrganization = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (details: { organizationId: string }) => {
       const data = await selectOrganization(details);
@@ -74,6 +76,9 @@ export const useSelectOrganization = () => {
       SecurityClient.setProviderAuthToken("");
 
       return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
     }
   });
 };
