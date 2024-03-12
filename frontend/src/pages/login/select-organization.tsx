@@ -8,8 +8,11 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import axios from "axios";
 import jwt_decode from "jwt-decode";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin";
 import { Button, Spinner } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { useGetOrganizations, useLogoutUser, useSelectOrganization } from "@app/hooks/api";
@@ -34,6 +37,10 @@ export default function LoginPage() {
   const selectOrg = useSelectOrganization();
   const { user, isLoading: userLoading } = useUser();
 
+  const { createNotification } = useNotificationContext();
+
+  const queryParams = new URLSearchParams(window.location.search);
+
   const logout = useLogoutUser(true);
   const handleLogout = useCallback(async () => {
     try {
@@ -57,17 +64,59 @@ export default function LoginPage() {
         return;
       }
 
-      await selectOrg.mutateAsync({ organizationId: organization.id });
+      const { token } = await selectOrg.mutateAsync({ organizationId: organization.id });
 
-      navigateUserToOrg(router, organization.id);
+      const callbackPort = queryParams.get("callback_port");
+
+      if (callbackPort) {
+        const privateKey = localStorage.getItem("PRIVATE_KEY");
+
+        if (!privateKey) {
+          createNotification({
+            text: "Private key not found",
+            type: "error"
+          });
+        }
+
+        if (!user.email) {
+          createNotification({
+            text: "User email not found",
+            type: "error"
+          });
+        }
+
+        if (!token) {
+          createNotification({
+            text: "No token found",
+            type: "error"
+          });
+        }
+
+        const payload = {
+          JTWToken: token,
+          email: user.email,
+          privateKey
+        } as IsCliLoginSuccessful["loginResponse"];
+
+        console.log("sending to cli", payload);
+
+        // send request to server endpoint
+        const instance = axios.create();
+        await instance.post(`http://127.0.0.1:${callbackPort}/`, payload);
+        // cli page
+        router.push("/cli-redirect");
+      } else {
+        navigateUserToOrg(router, organization.id);
+      }
     },
     [selectOrg]
   );
 
   useEffect(() => {
     const authToken = getAuthToken();
+    const callbackPort = queryParams.get("callback_port");
 
-    if (authToken) {
+    if (authToken && !callbackPort) {
       const decodedJwt = jwt_decode(authToken) as any;
 
       if (decodedJwt?.organizationId) {
