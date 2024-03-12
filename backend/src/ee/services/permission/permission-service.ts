@@ -135,7 +135,7 @@ export const permissionServiceFactory = ({
     id: string,
     orgId: string,
     authMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     switch (type) {
       case ActorType.USER:
@@ -259,7 +259,7 @@ export const permissionServiceFactory = ({
     id: string,
     projectId: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ): Promise<TProjectPermissionRT<T>> => {
     switch (type) {
       case ActorType.USER:
