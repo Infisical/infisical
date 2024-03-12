@@ -1,10 +1,7 @@
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
-import { UnauthorizedError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
-import { AuthModeJwtTokenPayload } from "@app/services/auth/auth-type";
 
 export const registerLoginRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -55,36 +52,11 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const cfg = getConfig();
-
-      if (!req.headers.authorization) throw new UnauthorizedError({ name: "Authorization header is required" });
-      if (!req.headers["user-agent"]) throw new UnauthorizedError({ name: "user agent header is required" });
-
-      const userAgent = req.headers["user-agent"];
-      const authToken = req.headers.authorization.slice(7); // slice of after Bearer
-
-      // The decoded JWT token, which contains the auth method.
-      const decodedToken = jwt.verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
-
-      // if (decodedToken.organizationId) {
-      //   throw new UnauthorizedError({ message: "You have already selected an organization" });
-      // }
-
-      const user = await server.services.user.getMe(decodedToken.userId);
-
-      // Check if the user actually has access to the specified organization.
-      const userOrgs = await server.services.org.findAllOrganizationOfUser(user.id);
-
-      if (!userOrgs.some((org) => org.id === req.body.organizationId)) {
-        throw new UnauthorizedError({ message: "User does not have access to the organization" });
-      }
-
-      await server.services.authToken.clearTokenSessionById(decodedToken.userId, decodedToken.tokenVersionId);
-      const tokens = await server.services.login.generateUserTokens({
-        authMethod: decodedToken.authMethod,
-        user,
-        userAgent,
-        ip: req.realIp,
-        organizationId: req.body.organizationId
+      const tokens = await server.services.login.selectOrganization({
+        userAgentHeader: req.headers["user-agent"],
+        authorizationHeader: req.headers.authorization,
+        organizationId: req.body.organizationId,
+        ipAddress: req.realIp
       });
 
       void res.setCookie("jid", tokens.refresh, {
@@ -93,8 +65,6 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         sameSite: "strict",
         secure: cfg.HTTPS_ENABLED
       });
-
-      return { token: tokens.access };
     }
   });
 
