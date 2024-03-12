@@ -68,12 +68,15 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const userAgent = req.headers["user-agent"];
+      const mfaJwtToken = req.headers.authorization?.replace("Bearer ", "");
       if (!userAgent) throw new Error("user agent header is required");
+      if (!mfaJwtToken) throw new Error("authorization header is required");
       const appCfg = getConfig();
 
       const { user, token } = await server.services.login.verifyMfaToken({
         userAgent,
         ip: req.realIp,
+        mfaJwtToken,
         userId: req.mfa.userId,
         orgId: req.mfa.orgId,
         mfaToken: req.body.mfaToken
