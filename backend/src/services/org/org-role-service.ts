@@ -28,7 +28,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     orgId: string,
     data: Omit<TOrgRolesInsert, "orgId">,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Role);
@@ -48,7 +48,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     roleId: string,
     data: Omit<TOrgRolesUpdate, "orgId">,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Role);
@@ -70,7 +70,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     orgId: string,
     roleId: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
@@ -80,7 +80,12 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     return deletedRole;
   };
 
-  const listRoles = async (userId: string, orgId: string, actorAuthMethod: ActorAuthMethod, actorOrgId?: string) => {
+  const listRoles = async (
+    userId: string,
+    orgId: string,
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId: string | undefined
+  ) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
     const customRoles = await orgRoleDAL.find({ orgId });
@@ -128,7 +133,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     userId: string,
     orgId: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission, membership } = await permissionService.getUserOrgPermission(
       userId,

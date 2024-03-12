@@ -33,7 +33,7 @@ export type TDeleteProjectBySlugDTO = {
   slug: string;
   actor: ActorType;
   actorId: string;
-  actorOrgId?: string;
+  actorOrgId: string | undefined;
 };
 
 export type TGetProjectDTO = {
@@ -60,7 +60,7 @@ export type TDeleteProjectDTO = {
   filter: Filter;
   actor: ActorType;
   actorId: string;
-  actorOrgId?: string;
+  actorOrgId: string | undefined;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpgradeProjectDTO = {

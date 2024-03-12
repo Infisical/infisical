@@ -82,7 +82,7 @@ export const orgServiceFactory = ({
     userId: string,
     orgId: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     const org = await orgDAL.findOrgById(orgId);
@@ -103,7 +103,7 @@ export const orgServiceFactory = ({
     userId: string,
     orgId: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
@@ -330,7 +330,7 @@ export const orgServiceFactory = ({
     userId: string,
     orgId: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { membership } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     if ((membership.role as OrgMembershipRole) !== OrgMembershipRole.Admin)
@@ -613,7 +613,7 @@ export const orgServiceFactory = ({
     userId: string,
     orgId: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
@@ -626,7 +626,7 @@ export const orgServiceFactory = ({
     orgId: string,
     email: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.IncidentAccount);
@@ -647,7 +647,7 @@ export const orgServiceFactory = ({
     orgId: string,
     id: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.IncidentAccount);

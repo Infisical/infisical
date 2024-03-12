@@ -5,7 +5,7 @@ export type TOrgPermission = {
   actorId: string;
   orgId: string;
   actorAuthMethod: ActorAuthMethod;
-  actorOrgId?: string;
+  actorOrgId: string | undefined;
 };
 
 export type TProjectPermission = {
@@ -13,7 +13,7 @@ export type TProjectPermission = {
   actorId: string;
   projectId: string;
   actorAuthMethod: AuthMethod | null;
-  actorOrgId?: string;
+  actorOrgId: string | undefined;
 };
 
 export type RequiredKeys<T> = {
