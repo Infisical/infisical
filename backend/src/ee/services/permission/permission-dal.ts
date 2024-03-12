@@ -63,6 +63,8 @@ export const permissionDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.ProjectUserMembershipRole))
         .select(
           db.ref("id").withSchema(TableName.ProjectMembership).as("membershipId"),
+          // TODO(roll-forward-migration): remove this field when we drop this in next migration after a week
+          db.ref("role").withSchema(TableName.ProjectMembership).as("oldRoleField"),
           db.ref("createdAt").withSchema(TableName.ProjectMembership).as("membershipCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.ProjectMembership).as("membershipUpdatedAt"),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
@@ -74,10 +76,18 @@ export const permissionDALFactory = (db: TDbClient) => {
       const permission = sqlNestRelationships({
         data: docs,
         key: "membershipId",
-        parentMapper: ({ orgId, orgAuthEnforced, membershipId, membershipCreatedAt, membershipUpdatedAt }) => ({
+        parentMapper: ({
+          orgId,
+          orgAuthEnforced,
+          membershipId,
+          membershipCreatedAt,
+          membershipUpdatedAt,
+          oldRoleField
+        }) => ({
           orgId,
           orgAuthEnforced,
           userId,
+          role: oldRoleField,
           id: membershipId,
           projectId,
           createdAt: membershipCreatedAt,
@@ -124,6 +134,7 @@ export const permissionDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.IdentityProjectMembershipRole))
         .select(
           db.ref("id").withSchema(TableName.IdentityProjectMembership).as("membershipId"),
+          db.ref("role").withSchema(TableName.IdentityProjectMembership).as("oldRoleField"),
           db.ref("createdAt").withSchema(TableName.IdentityProjectMembership).as("membershipCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.IdentityProjectMembership).as("membershipUpdatedAt"),
           db.ref("slug").withSchema(TableName.ProjectRoles).as("customRoleSlug")
@@ -133,10 +144,11 @@ export const permissionDALFactory = (db: TDbClient) => {
       const permission = sqlNestRelationships({
         data: docs,
         key: "membershipId",
-        parentMapper: ({ membershipId, membershipCreatedAt, membershipUpdatedAt }) => ({
+        parentMapper: ({ membershipId, membershipCreatedAt, membershipUpdatedAt, oldRoleField }) => ({
           id: membershipId,
           identityId,
           projectId,
+          role: oldRoleField,
           createdAt: membershipCreatedAt,
           updatedAt: membershipUpdatedAt,
           // just a prefilled value

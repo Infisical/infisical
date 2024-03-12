@@ -51,30 +51,13 @@ export async function up(knex: Knex): Promise<void> {
     }
   }
   if(rows.length) await knex(TableName.IdentityProjectMembershipRole).insert(rows);
-  await knex.schema.alterTable(TableName.IdentityProjectMembership, (t) => {
-    t.dropColumn("roleId");
-    t.dropColumn("role");
-  });
+  // await knex.schema.alterTable(TableName.IdentityProjectMembership, (t) => {
+  //   t.dropColumn("roleId");
+  //   t.dropColumn("role");
+  // });
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const projectIdentityMembershipRoleStream = knex.select("*").from(TableName.IdentityProjectMembershipRole).stream();
-  await knex.schema.alterTable(TableName.IdentityProjectMembership, (t) => {
-    t.string("role");
-    t.uuid("roleId");
-    t.foreign("roleId").references("id").inTable(TableName.ProjectRoles);
-  });
-  for await (const row of projectIdentityMembershipRoleStream) {
-    await knex(TableName.IdentityProjectMembership).where({ id: row.projectMembershipId }).update({
-      // @ts-ignore - since the latest one doesn't have roleId anymore there will be type error here
-      roleId: row.customRoleId,
-      role: row.role
-    });
-  }
-  await knex.schema.alterTable(TableName.IdentityProjectMembership, (t) => {
-    t.string("role").notNullable().alter({ alterNullable: true });
-  });
-
   await knex.schema.dropTableIfExists(TableName.IdentityProjectMembershipRole);
   await dropOnUpdateTrigger(knex, TableName.IdentityProjectMembershipRole);
 }
