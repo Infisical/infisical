@@ -30,7 +30,7 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
     projectId: string,
     data: Omit<TProjectRolesInsert, "projectId">,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -57,7 +57,7 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
     roleId: string,
     data: Omit<TOrgRolesUpdate, "orgId">,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -86,7 +86,7 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
     projectId: string,
     roleId: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -107,7 +107,7 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
     actorId: string,
     projectId: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -172,7 +172,7 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
     userId: string,
     projectId: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId?: string
+    actorOrgId: string | undefined
   ) => {
     const { permission, membership } = await permissionService.getUserProjectPermission(
       userId,

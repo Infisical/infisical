@@ -7,7 +7,7 @@ export type TUpdateOrgMembershipDTO = {
   orgId: string;
   membershipId: string;
   role: string;
-  actorOrgId?: string;
+  actorOrgId: string | undefined;
   actorAuthMethod: ActorAuthMethod;
 };
 
@@ -15,14 +15,14 @@ export type TDeleteOrgMembershipDTO = {
   userId: string;
   orgId: string;
   membershipId: string;
-  actorOrgId?: string;
+  actorOrgId: string | undefined;
   actorAuthMethod: ActorAuthMethod;
 };
 
 export type TInviteUserToOrgDTO = {
   userId: string;
   orgId: string;
-  actorOrgId?: string;
+  actorOrgId: string | undefined;
   actorAuthMethod: ActorAuthMethod;
   inviteeEmail: string;
 };
@@ -45,7 +45,7 @@ export type TFindOrgMembersByEmailDTO = {
 export type TFindAllWorkspacesDTO = {
   actor: ActorType;
   actorId: string;
-  actorOrgId?: string;
+  actorOrgId: string | undefined;
   actorAuthMethod: ActorAuthMethod;
   orgId: string;
 };
