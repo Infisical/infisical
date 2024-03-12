@@ -11,13 +11,14 @@ import {
 } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { TProjectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 
 import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
+import { validateOrgSAML } from "./permission-fns";
 import { TBuildProjectPermissionDTO } from "./permission-types";
 import {
   buildServiceTokenProjectPermission,
@@ -99,15 +100,24 @@ export const permissionServiceFactory = ({
   /*
    * Get user permission in an organization
    * */
-  const getUserOrgPermission = async (userId: string, orgId: string, userOrgId?: string) => {
+  const getUserOrgPermission = async (
+    userId: string,
+    orgId: string,
+    authMethod: ActorAuthMethod,
+    userOrgId?: string
+  ) => {
     const membership = await permissionDAL.getOrgPermission(userId, orgId);
     if (!membership) throw new UnauthorizedError({ name: "User not in org" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
-    if (membership.orgAuthEnforced && membership.orgId !== userOrgId) {
-      throw new BadRequestError({ name: "Cannot access org-scoped resource" });
+
+    if (membership.orgId !== userOrgId) {
+      throw new UnauthorizedError({ name: "You are not a member of this organization" });
     }
+
+    validateOrgSAML(authMethod, membership.orgAuthEnforced);
+
     return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
   };
 
@@ -120,10 +130,16 @@ export const permissionServiceFactory = ({
     return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
   };
 
-  const getOrgPermission = async (type: ActorType, id: string, orgId: string, actorOrgId?: string) => {
+  const getOrgPermission = async (
+    type: ActorType,
+    id: string,
+    orgId: string,
+    authMethod: ActorAuthMethod,
+    actorOrgId?: string
+  ) => {
     switch (type) {
       case ActorType.USER:
-        return getUserOrgPermission(id, orgId, actorOrgId);
+        return getUserOrgPermission(id, orgId, authMethod, actorOrgId);
       case ActorType.IDENTITY:
         return getIdentityOrgPermission(id, orgId);
       default:
@@ -153,28 +169,32 @@ export const permissionServiceFactory = ({
   const getUserProjectPermission = async (
     userId: string,
     projectId: string,
+    authMethod: ActorAuthMethod,
+
     userOrgId?: string
   ): Promise<TProjectPermissionRT<ActorType.USER>> => {
-    const userProjectPermission = await permissionDAL.getProjectPermission(userId, projectId);
-    if (!userProjectPermission) throw new UnauthorizedError({ name: "User not in project" });
+    const membership = await permissionDAL.getProjectPermission(userId, projectId);
+    if (!membership) throw new UnauthorizedError({ name: "User not in project" });
 
-    if (
-      userProjectPermission.roles.some(({ role, permissions }) => role === ProjectMembershipRole.Custom && !permissions)
-    ) {
+    if (membership.roles.some(({ role, permissions }) => role === ProjectMembershipRole.Custom && !permissions)) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
 
-    if (userProjectPermission.orgAuthEnforced && userProjectPermission.orgId !== userOrgId) {
-      throw new BadRequestError({ name: "Cannot access org-scoped resource" });
+    if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
+      throw new BadRequestError({ name: "Custom permission not found" });
     }
 
+    if (membership.orgId !== userOrgId) {
+      throw new UnauthorizedError({ name: "You are not a member of this organization" });
+    }
+
+    validateOrgSAML(authMethod, membership.orgAuthEnforced);
+
     return {
-      permission: buildProjectPermission(userProjectPermission.roles),
-      membership: userProjectPermission,
+      permission: buildProjectPermission(membership.roles),
+      membership,
       hasRole: (role: string) =>
-        userProjectPermission.roles.findIndex(
-          ({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug
-        ) !== -1
+        membership.roles.findIndex(({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug) !== -1
     };
   };
 
@@ -238,11 +258,12 @@ export const permissionServiceFactory = ({
     type: T,
     id: string,
     projectId: string,
+    actorAuthMethod: ActorAuthMethod,
     actorOrgId?: string
   ): Promise<TProjectPermissionRT<T>> => {
     switch (type) {
       case ActorType.USER:
-        return getUserProjectPermission(id, projectId, actorOrgId) as Promise<TProjectPermissionRT<T>>;
+        return getUserProjectPermission(id, projectId, actorAuthMethod, actorOrgId) as Promise<TProjectPermissionRT<T>>;
       case ActorType.SERVICE:
         return getServiceTokenProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
       case ActorType.IDENTITY:
