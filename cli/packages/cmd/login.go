@@ -301,7 +301,7 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 		log.Debug().Msgf("[decryptedPrivateKey=%s] [email=%s] [loginTwoResponse.Token=%s]", string(decryptedPrivateKey), email, loginTwoResponse.Token)
 		util.PrintErrorMessageAndExit("We were unable to fetch required details to complete your login. Run with -d to see more info")
 	}
-
+	// Login is successful so ask user to choose organization
 	newJwtToken := GetJwtTokenWithOrganizationId(loginTwoResponse.Token)
 
 	//updating usercredentials
