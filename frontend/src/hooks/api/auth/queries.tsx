@@ -44,7 +44,7 @@ export const login2 = async (loginDetails: Login2DTO) => {
 export const loginLDAPRedirect = async (loginLDAPDetails: LoginLDAPDTO) => {
   const { data } = await apiRequest.post<LoginLDAPRes>("/api/v1/ldap/login", loginLDAPDetails); // return if account is complete or not + provider auth token
   return data;
-}
+};
 
 export const useLogin1 = () => {
   return useMutation({
