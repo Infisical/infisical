@@ -1,7 +1,7 @@
 import { ProjectMembershipRole, TProjectKeys } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
-import { ActorType } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export enum ProjectFilterType {
   ID = "id",
@@ -21,6 +21,7 @@ export type Filter =
 
 export type TCreateProjectDTO = {
   actor: ActorType;
+  actorAuthMethod: ActorAuthMethod;
   actorId: string;
   actorOrgId?: string;
   orgSlug: string;
