@@ -10,7 +10,11 @@ import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@a
 import { useUpdateOrg } from "@app/hooks/api";
 
 const formSchema = yup.object({
-  name: yup.string().required().label("Project Name")
+  name: yup
+    .string()
+    .required()
+    .label("Organization Name")
+    .max(64, "Too long, maximum length is 64 characters")
 });
 
 type FormData = yup.InferType<typeof formSchema>;
