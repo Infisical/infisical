@@ -314,14 +314,14 @@ export const authLoginServiceFactory = ({
    * Multi factor authentication verification of code
    * Third step of login in which user completes with mfa
    * */
-  const verifyMfaToken = async ({ userId, mfaToken, ip, userAgent, orgId }: TVerifyMfaTokenDTO) => {
+  const verifyMfaToken = async ({ userId, mfaToken, mfaJwtToken, ip, userAgent, orgId }: TVerifyMfaTokenDTO) => {
     await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_MFA,
       userId,
       code: mfaToken
     });
 
-    const decodedToken = jwt.verify(mfaToken, getConfig().AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
+    const decodedToken = jwt.verify(mfaJwtToken, getConfig().AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
 
     const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
