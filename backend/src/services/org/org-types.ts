@@ -1,6 +1,6 @@
 import { TOrgPermission } from "@app/lib/types";
 
-import { ActorType } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export type TUpdateOrgMembershipDTO = {
   userId: string;
@@ -32,6 +32,8 @@ export type TVerifyUserToOrgDTO = {
 
 export type TFindOrgMembersByEmailDTO = {
   actor: ActorType;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId: string | undefined;
   actorId: string;
   orgId: string;
   emails: string[];

@@ -12,6 +12,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { BadRequestError } from "@app/lib/errors";
 
+import { ActorAuthMethod } from "../auth/auth-type";
 import { TOrgRoleDALFactory } from "./org-role-dal";
 
 type TOrgRoleServiceFactoryDep = {
@@ -26,9 +27,10 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     userId: string,
     orgId: string,
     data: Omit<TOrgRolesInsert, "orgId">,
+    actorAuthMethod: ActorAuthMethod,
     actorOrgId?: string
   ) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Role);
     const existingRole = await orgRoleDAL.findOne({ slug: data.slug, orgId });
     if (existingRole) throw new BadRequestError({ name: "Create Role", message: "Duplicate role" });
@@ -45,9 +47,10 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     orgId: string,
     roleId: string,
     data: Omit<TOrgRolesUpdate, "orgId">,
+    actorAuthMethod: ActorAuthMethod,
     actorOrgId?: string
   ) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Role);
     if (data?.slug) {
       const existingRole = await orgRoleDAL.findOne({ slug: data.slug, orgId });
@@ -62,8 +65,14 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     return updatedRole;
   };
 
-  const deleteRole = async (userId: string, orgId: string, roleId: string, actorOrgId?: string) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
+  const deleteRole = async (
+    userId: string,
+    orgId: string,
+    roleId: string,
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId?: string
+  ) => {
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
     const [deletedRole] = await orgRoleDAL.delete({ id: roleId, orgId });
     if (!deletedRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
@@ -71,8 +80,8 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     return deletedRole;
   };
 
-  const listRoles = async (userId: string, orgId: string, actorOrgId?: string) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
+  const listRoles = async (userId: string, orgId: string, actorAuthMethod: ActorAuthMethod, actorOrgId?: string) => {
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
     const customRoles = await orgRoleDAL.find({ orgId });
     const roles = [
@@ -115,8 +124,18 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     return roles;
   };
 
-  const getUserPermission = async (userId: string, orgId: string, actorOrgId?: string) => {
-    const { permission, membership } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
+  const getUserPermission = async (
+    userId: string,
+    orgId: string,
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId?: string
+  ) => {
+    const { permission, membership } = await permissionService.getUserOrgPermission(
+      userId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     return { permissions: packRules(permission.rules), membership };
   };
 
