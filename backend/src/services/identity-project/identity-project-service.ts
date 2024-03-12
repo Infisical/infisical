@@ -49,10 +49,17 @@ export const identityProjectServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    actorAuthMethod,
     projectId,
     role
   }: TCreateProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Identity);
 
     const existingIdentity = await identityProjectDAL.findOne({ identityId, projectId });
@@ -112,9 +119,16 @@ export const identityProjectServiceFactory = ({
     roles,
     actor,
     actorId,
+    actorAuthMethod,
     actorOrgId
   }: TUpdateProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
 
     const projectIdentity = await identityProjectDAL.findOne({ identityId, projectId });
@@ -127,6 +141,7 @@ export const identityProjectServiceFactory = ({
       ActorType.IDENTITY,
       projectIdentity.identityId,
       projectIdentity.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
@@ -185,6 +200,7 @@ export const identityProjectServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     projectId
   }: TDeleteProjectIdentityDTO) => {
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
@@ -195,6 +211,7 @@ export const identityProjectServiceFactory = ({
       actor,
       actorId,
       identityProjectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Identity);
@@ -202,6 +219,7 @@ export const identityProjectServiceFactory = ({
       ActorType.IDENTITY,
       identityId,
       identityProjectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
@@ -212,8 +230,20 @@ export const identityProjectServiceFactory = ({
     return deletedIdentity;
   };
 
-  const listProjectIdentities = async ({ projectId, actor, actorId, actorOrgId }: TListProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+  const listProjectIdentities = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListProjectIdentityDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
 
     const identityMemberhips = await identityProjectDAL.findByProjectId(projectId);

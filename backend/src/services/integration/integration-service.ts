@@ -42,6 +42,7 @@ export const integrationServiceFactory = ({
     metadata,
     secretPath,
     targetService,
+    actorAuthMethod,
     targetServiceId,
     integrationAuthId,
     sourceEnvironment,
@@ -55,6 +56,7 @@ export const integrationServiceFactory = ({
       actor,
       actorId,
       integrationAuth.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
@@ -93,6 +95,7 @@ export const integrationServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     targetEnvironment,
     app,
     id,
@@ -109,6 +112,7 @@ export const integrationServiceFactory = ({
       actor,
       actorId,
       integration.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
@@ -129,7 +133,7 @@ export const integrationServiceFactory = ({
     return updatedIntegration;
   };
 
-  const deleteIntegration = async ({ actorId, id, actor, actorOrgId }: TDeleteIntegrationDTO) => {
+  const deleteIntegration = async ({ actorId, id, actor, actorAuthMethod, actorOrgId }: TDeleteIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new BadRequestError({ message: "Integration auth not found" });
 
@@ -137,6 +141,7 @@ export const integrationServiceFactory = ({
       actor,
       actorId,
       integration.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
@@ -145,8 +150,20 @@ export const integrationServiceFactory = ({
     return { ...integration, ...deletedIntegration };
   };
 
-  const listIntegrationByProject = async ({ actor, actorId, actorOrgId, projectId }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+  const listIntegrationByProject = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     const integrations = await integrationDAL.findByProjectId(projectId);
