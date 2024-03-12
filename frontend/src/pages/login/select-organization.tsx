@@ -98,8 +98,6 @@ export default function LoginPage() {
           privateKey
         } as IsCliLoginSuccessful["loginResponse"];
 
-        console.log("sending to cli", payload);
-
         // send request to server endpoint
         const instance = axios.create();
         await instance.post(`http://127.0.0.1:${callbackPort}/`, payload);
