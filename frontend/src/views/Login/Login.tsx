@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import axios from "axios";
 
-import { fetchUserDetails } from "@app/hooks/api/users/queries";
-import { getAuthToken, isLoggedIn } from "@app/reactQuery";
+import { isLoggedIn } from "@app/reactQuery";
 
 import { InitialStep, LDAPStep, MFAStep, SAMLSSOStep } from "./components";
 import { navigateUserToSelectOrg } from "./Login.utils";
@@ -18,33 +16,23 @@ export const Login = () => {
 
   useEffect(() => {
     // TODO(akhilmhdh): workspace will be controlled by a workspace context
-    const redirectToDashboard = async () => {
+    const handleRedirects = async () => {
       // TODO(daniel): Move this to select-organization page.
       try {
-        // user details
-        const userDetails = await fetchUserDetails();
-        // send details back to client
-
-        if (queryParams && queryParams.get("callback_port")) {
-          const callbackPort = queryParams.get("callback_port");
-
-          // send post request to cli with details
-          const cliUrl = `http://127.0.0.1:${callbackPort}/`;
-          const instance = axios.create();
-          await instance.post(cliUrl, {
-            email: userDetails.email,
-            privateKey: localStorage.getItem("PRIVATE_KEY"),
-            JTWToken: getAuthToken()
-          });
+        const callbackPort = queryParams?.get("callback_port");
+        // case: a callback port is set, meaning it's a cli login request: redirect to select org with callback port
+        if (callbackPort) {
+          navigateUserToSelectOrg(router, callbackPort);
+        } else {
+          // case: no callback port, meaning it's a regular login request: redirect to select org
+          navigateUserToSelectOrg(router);
         }
-
-        navigateUserToSelectOrg(router);
       } catch (error) {
         console.log("Error - Not logged in yet");
       }
     };
     if (isLoggedIn()) {
-      redirectToDashboard();
+      handleRedirects();
     }
   }, []);
 
