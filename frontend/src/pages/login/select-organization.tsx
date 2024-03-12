@@ -12,6 +12,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Button, Spinner } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { useGetOrganizations, useLogoutUser, useSelectOrganization } from "@app/hooks/api";
+import { Organization } from "@app/hooks/api/types";
 import { isLoggedIn } from "@app/reactQuery";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 
@@ -44,14 +45,20 @@ export default function LoginPage() {
   }, [logout, router]);
 
   const handleSelectOrganization = useCallback(
-    async (orgId: string) => {
-      console.log("Selected organization: ", orgId);
+    async (organization: Organization) => {
+      if (organization.authEnforced) {
+        // org has an org-level auth method enabled (e.g. SAML)
+        // -> logout + redirect to SAML SSO
 
-      const { token } = await selectOrg.mutateAsync({ organizationId: orgId });
+        await logout.mutateAsync();
+        window.open(`/api/v1/sso/redirect/saml2/organizations/${organization.slug}`);
+        window.close();
+        return;
+      }
 
-      console.log("Organization selected successfully", { token });
+      await selectOrg.mutateAsync({ organizationId: organization.id });
 
-      navigateUserToOrg(router, orgId);
+      navigateUserToOrg(router, organization.id);
     },
     [selectOrg]
   );
@@ -106,23 +113,20 @@ export default function LoginPage() {
             {organizations.isLoading ? (
               <Spinner />
             ) : (
-              organizations.data
-                ?.concat(organizations.data)
-                .concat(organizations.data)
-                .map((org) => (
-                  <div
-                    onClick={() => handleSelectOrganization(org.id)}
-                    key={org.id}
-                    className="group flex cursor-pointer items-center justify-between rounded-md bg-mineshaft-700 px-4 py-3 capitalize text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600"
-                  >
-                    <p className="transition-colors">{org.name}</p>
+              organizations.data?.map((org) => (
+                <div
+                  onClick={() => handleSelectOrganization(org)}
+                  key={org.id}
+                  className="group flex cursor-pointer items-center justify-between rounded-md bg-mineshaft-700 px-4 py-3 capitalize text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600"
+                >
+                  <p className="transition-colors">{org.name}</p>
 
-                    <FontAwesomeIcon
-                      icon={faArrowRight}
-                      className="text-gray-400 transition-colors group-hover:text-primary-500"
-                    />
-                  </div>
-                ))
+                  <FontAwesomeIcon
+                    icon={faArrowRight}
+                    className="text-gray-400 transition-colors group-hover:text-primary-500"
+                  />
+                </div>
+              ))
             )}
           </div>
 
