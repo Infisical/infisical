@@ -31,6 +31,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.projectId,
         req.body,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { role };
@@ -65,6 +66,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.params.projectId,
         req.params.roleId,
         req.body,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { role };
@@ -92,6 +94,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.projectId,
         req.params.roleId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { role };
@@ -121,6 +124,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.type,
         req.permission.id,
         req.params.projectId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { data: { roles } };
@@ -148,6 +152,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       const { permissions, membership } = await server.services.projectRole.getUserPermission(
         req.permission.id,
         req.params.projectId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { data: { permissions, membership } };

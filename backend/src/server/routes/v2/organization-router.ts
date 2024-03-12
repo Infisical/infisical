@@ -44,6 +44,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const users = await server.services.org.findAllOrgMembers(
         req.permission.id,
         req.params.organizationId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { users };
@@ -88,6 +89,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId
       });
 
@@ -123,6 +125,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const membership = await server.services.org.updateOrgMembership({
         userId: req.permission.id,
         role: req.body.role,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId,
         actorOrgId: req.permission.orgId
@@ -155,6 +158,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
       const membership = await server.services.org.deleteOrgMembership({
         userId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId,
         actorOrgId: req.permission.orgId
@@ -176,7 +180,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY], { requireOrg: false }),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
@@ -210,6 +214,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const organization = await server.services.org.deleteOrganizationById(
         req.permission.id,
         req.params.organizationId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { organization };

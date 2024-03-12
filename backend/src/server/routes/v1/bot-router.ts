@@ -30,6 +30,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         projectId: req.params.projectId
       });
       return { bot };
@@ -70,6 +71,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         botId: req.params.botId,
         botKey: req.body.botKey,
         isActive: req.body.isActive

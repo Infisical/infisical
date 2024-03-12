@@ -45,6 +45,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const publicKeys = await server.services.projectKey.getProjectPublicKeys({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId
       });
@@ -97,6 +98,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const users = await server.services.projectMembership.getProjectMemberships({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         projectId: req.params.workspaceId,
         actorOrgId: req.permission.orgId
       });
@@ -141,6 +143,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           type: ProjectFilterType.ID,
           projectId: req.params.workspaceId
         },
+        actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId
@@ -170,6 +173,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           projectId: req.params.workspaceId
         },
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId
       });
@@ -199,6 +203,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const workspace = await server.services.project.updateName({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         name: req.body.name
@@ -238,6 +243,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           name: req.body.name,
           autoCapitalization: req.body.autoCapitalization
         },
+        actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId
@@ -270,6 +276,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const workspace = await server.services.project.toggleAutoCapitalization({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         autoCapitalization: req.body.autoCapitalization
@@ -306,6 +313,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const integrations = await server.services.integration.listIntegrationByProject({
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId
@@ -331,6 +339,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const authorizations = await server.services.integrationAuth.listIntegrationAuthByProjectId({
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId
@@ -356,6 +365,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const serviceTokenData = await server.services.serviceToken.getProjectServiceTokens({
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId

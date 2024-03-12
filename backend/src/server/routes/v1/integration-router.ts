@@ -53,6 +53,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       const { integration, integrationAuth } = await server.services.integration.createIntegration({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
       });
@@ -123,6 +124,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       const integration = await server.services.integration.updateIntegration({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.integrationId,
         ...req.body
@@ -148,6 +150,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const integration = await server.services.integration.deleteIntegration({
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         id: req.params.integrationId

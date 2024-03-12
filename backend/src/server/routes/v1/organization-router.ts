@@ -40,6 +40,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const organization = await server.services.org.findOrganizationById(
         req.permission.id,
         req.params.organizationId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { organization };
@@ -76,6 +77,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const users = await server.services.org.findAllOrgMembers(
         req.permission.id,
         req.params.organizationId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { users };
@@ -111,6 +113,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId,
         data: req.body
       });
@@ -138,6 +141,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const incidentContactsOrg = await req.server.services.org.findIncidentContacts(
         req.permission.id,
         req.params.organizationId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { incidentContactsOrg };
@@ -162,6 +166,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.organizationId,
         req.body.email,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { incidentContactsOrg };
@@ -185,6 +190,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.organizationId,
         req.params.incidentContactId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { incidentContactsOrg };

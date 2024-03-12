@@ -34,6 +34,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const identityMembership = await server.services.identityProject.createProjectIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         projectId: req.params.projectId,
@@ -87,6 +88,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const roles = await server.services.identityProject.updateProjectIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         projectId: req.params.projectId,
@@ -121,6 +123,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const identityMembership = await server.services.identityProject.deleteProjectIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         projectId: req.params.projectId
@@ -175,6 +178,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const identityMemberships = await server.services.identityProject.listProjectIdentities({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.projectId
       });

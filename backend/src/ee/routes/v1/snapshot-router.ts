@@ -46,6 +46,7 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
       const secretSnapshot = await server.services.snapshot.getSnapshotData({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.secretSnapshotId
       });
@@ -78,6 +79,7 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
       const secretSnapshot = await server.services.snapshot.rollbackSnapshot({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.secretSnapshotId
       });
