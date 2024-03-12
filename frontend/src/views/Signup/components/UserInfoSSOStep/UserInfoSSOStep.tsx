@@ -244,6 +244,7 @@ export const UserInfoSSOStep = ({
               onChange={(e) => setOrganizationName(e.target.value)}
               isRequired
               className="h-12"
+              maxLength={64}
               disabled
             />
             {organizationNameError && (

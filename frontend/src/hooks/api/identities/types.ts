@@ -1,4 +1,4 @@
-import { TOrgRole, TProjectRole } from "../roles/types";
+import { TOrgRole } from "../roles/types";
 import { IdentityAuthMethod } from "./enums";
 
 export type IdentityTrustedIp = {
@@ -29,9 +29,18 @@ export type IdentityMembershipOrg = {
 export type IdentityMembership = {
   id: string;
   identity: Identity;
-  organization: string;
-  role: "admin" | "member" | "viewer" | "no-access" | "custom";
-  customRole?: TProjectRole;
+  roles: {
+    id: string;
+    role: "owner" | "admin" | "member" | "no-access" | "custom";
+    customRoleId: string;
+    customRoleName: string;
+    customRoleSlug: string;
+    isTemporary: boolean;
+    temporaryMode: string | null;
+    temporaryRange: string | null;
+    temporaryAccessStartTime: string | null;
+    temporaryAccessEndTime: string | null;
+  }[];
   createdAt: string;
   updatedAt: string;
 };

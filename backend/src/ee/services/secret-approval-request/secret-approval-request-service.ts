@@ -129,14 +129,14 @@ export const secretApprovalRequestServiceFactory = ({
     if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
 
     const { policy } = secretApprovalRequest;
-    const { membership } = await permissionService.getProjectPermission(
+    const { membership, hasRole } = await permissionService.getProjectPermission(
       actor,
       actorId,
       secretApprovalRequest.projectId,
       actorOrgId
     );
     if (
-      membership.role !== ProjectMembershipRole.Admin &&
+      !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerId !== membership.id &&
       !policy.approvers.find((approverId) => approverId === membership.id)
     ) {
@@ -156,14 +156,14 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const { policy } = secretApprovalRequest;
-    const { membership } = await permissionService.getProjectPermission(
+    const { membership, hasRole } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
       secretApprovalRequest.projectId,
       actorOrgId
     );
     if (
-      membership.role !== ProjectMembershipRole.Admin &&
+      !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerId !== membership.id &&
       !policy.approvers.find((approverId) => approverId === membership.id)
     ) {
@@ -198,14 +198,14 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const { policy } = secretApprovalRequest;
-    const { membership } = await permissionService.getProjectPermission(
+    const { membership, hasRole } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
       secretApprovalRequest.projectId,
       actorOrgId
     );
     if (
-      membership.role !== ProjectMembershipRole.Admin &&
+      !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerId !== membership.id &&
       !policy.approvers.find((approverId) => approverId === membership.id)
     ) {
@@ -236,9 +236,14 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const { policy, folderId, projectId } = secretApprovalRequest;
-    const { membership } = await permissionService.getProjectPermission(ActorType.USER, actorId, projectId, actorOrgId);
+    const { membership, hasRole } = await permissionService.getProjectPermission(
+      ActorType.USER,
+      actorId,
+      projectId,
+      actorOrgId
+    );
     if (
-      membership.role !== ProjectMembershipRole.Admin &&
+      !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerId !== membership.id &&
       !policy.approvers.find((approverId) => approverId === membership.id)
     ) {

@@ -58,7 +58,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
       { id: roleId, orgId },
       { ...data, permissions: data.permissions ? JSON.stringify(data.permissions) : undefined }
     );
-    if (!updateRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
+    if (!updatedRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
     return updatedRole;
   };
 
@@ -66,7 +66,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
     const [deletedRole] = await orgRoleDAL.delete({ id: roleId, orgId });
-    if (!deleteRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
+    if (!deletedRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
 
     return deletedRole;
   };

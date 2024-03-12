@@ -75,9 +75,16 @@ export async function seed(knex: Knex): Promise<void> {
     }
   ]);
 
-  await knex(TableName.IdentityProjectMembership).insert({
-    identityId: seedData1.machineIdentity.id,
+  const identityProjectMembership = await knex(TableName.IdentityProjectMembership)
+    .insert({
+      identityId: seedData1.machineIdentity.id,
+      projectId: seedData1.project.id,
+      role: ProjectMembershipRole.Admin
+    })
+    .returning("*");
+
+  await knex(TableName.IdentityProjectMembershipRole).insert({
     role: ProjectMembershipRole.Admin,
-    projectId: seedData1.project.id
+    projectMembershipId: identityProjectMembership[0].id
   });
 }

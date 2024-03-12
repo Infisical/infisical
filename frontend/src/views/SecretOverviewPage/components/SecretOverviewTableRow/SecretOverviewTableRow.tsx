@@ -148,8 +148,13 @@ export const SecretOverviewTableRow = ({
                           key={`secret-expanded-${slug}-${secretKey}`}
                           className="hover:bg-mineshaft-700"
                         >
-                          <td className="flex" style={{ padding: "0.25rem 1rem" }}>
-                            <div className="flex h-8 items-center">{name}</div>
+                          <td
+                            className="flex h-full items-center"
+                            style={{ padding: "0.25rem 1rem" }}
+                          >
+                            <div title={name} className="flex h-8 w-[8rem] items-center ">
+                              <span className="truncate">{name}</span>
+                            </div>
                           </td>
                           <td className="col-span-2 h-8 w-full">
                             <SecretEditRow

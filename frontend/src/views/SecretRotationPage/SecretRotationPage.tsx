@@ -351,7 +351,7 @@ export const SecretRotationPage = withProjectPermission(
           {!isRotationProviderLoading &&
             secretRotationProviders?.providers.map((provider) => (
               <div
-                className="group relative flex h-32 cursor-pointer flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 hover:border-primary/40 hover:bg-primary/10"
+                className="group relative flex h-32 cursor-pointer flex-row items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 hover:border-primary/40 hover:bg-primary/10"
                 key={`infisical-rotation-provider-${provider.name}`}
                 tabIndex={0}
                 role="button"
@@ -362,8 +362,8 @@ export const SecretRotationPage = withProjectPermission(
               >
                 <img
                   src={`/images/secretRotation/${provider.image}`}
-                  height={70}
-                  width={70}
+                  className="max-h-16"
+                  style={{ maxWidth: "6rem" }}
                   alt="rotation provider logo"
                 />
                 <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">

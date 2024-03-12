@@ -16,6 +16,8 @@ import {
   RenameWorkspaceDTO,
   TGetUpgradeProjectStatusDTO,
   ToggleAutoCapitalizationDTO,
+  TUpdateWorkspaceIdentityRoleDTO,
+  TUpdateWorkspaceUserRoleDTO,
   UpdateEnvironmentDTO,
   Workspace
 } from "./types";
@@ -340,27 +342,19 @@ export const useDeleteUserFromWorkspace = () => {
 export const useUpdateUserWorkspaceRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      membershipId,
-      role,
-      workspaceId
-    }: {
-      membershipId: string;
-      role: string;
-      workspaceId: string;
-    }) => {
+    mutationFn: async ({ membershipId, roles, workspaceId }: TUpdateWorkspaceUserRoleDTO) => {
       const {
         data: { membership }
       } = await apiRequest.patch<{ membership: { projectId: string } }>(
         `/api/v1/workspace/${workspaceId}/memberships/${membershipId}`,
         {
-          role
+          roles
         }
       );
       return membership;
     },
-    onSuccess: (res) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(res.projectId));
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(workspaceId));
     }
   });
 };
@@ -400,18 +394,14 @@ export const useUpdateIdentityWorkspaceRole = () => {
     mutationFn: async ({
       identityId,
       workspaceId,
-      role
-    }: {
-      identityId: string;
-      workspaceId: string;
-      role?: string;
-    }) => {
+      roles
+    }:TUpdateWorkspaceIdentityRoleDTO)=> {
       const {
         data: { identityMembership }
       } = await apiRequest.patch(
         `/api/v2/workspace/${workspaceId}/identity-memberships/${identityId}`,
         {
-          role
+          roles
         }
       );
 

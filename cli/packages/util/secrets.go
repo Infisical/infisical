@@ -427,6 +427,8 @@ func ExpandSecrets(secrets []models.SingleEnvironmentVariable, auth models.Expan
 					refSecs, err = GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: env, InfisicalToken: auth.InfisicalToken, SecretsPath: secPath}, projectConfigPathDir)
 				} else if auth.UniversalAuthAccessToken != "" {
 					refSecs, err = GetAllEnvironmentVariables((models.GetAllSecretsParameters{Environment: env, UniversalAuthAccessToken: auth.UniversalAuthAccessToken, SecretsPath: secPath, WorkspaceId: sec.WorkspaceId}), projectConfigPathDir)
+				} else if IsLoggedIn() {
+					refSecs, err = GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: env, SecretsPath: secPath}, projectConfigPathDir)
 				} else {
 					HandleError(errors.New("no authentication provided"), "Please provide authentication to fetch secrets")
 				}
