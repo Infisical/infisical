@@ -157,6 +157,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const project = await server.services.project.createProject({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         orgSlug: req.body.organizationSlug,
         workspaceName: req.body.projectName,
