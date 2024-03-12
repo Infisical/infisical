@@ -6,6 +6,7 @@ export enum AuthMethod {
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
   JUMPCLOUD_SAML = "jumpcloud-saml",
+  GOOGLE_SAML = "google-saml",
   LDAP = "ldap"
 }
 
@@ -37,6 +38,8 @@ export enum ActorType { // would extend to AWS, Azure, ...
   Machine = "machine",
   SCIM_CLIENT = "scimClient"
 }
+
+export type ActorAuthMethod = AuthMethod | null;
 
 export type AuthModeJwtTokenPayload = {
   authTokenType: AuthTokenType.ACCESS_TOKEN;
