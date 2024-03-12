@@ -6,7 +6,7 @@ import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
-import { ActorType, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 
 export type TAuthMode =
@@ -17,6 +17,7 @@ export type TAuthMode =
       tokenVersionId: string; // the session id of token used
       user: TUsers;
       orgId?: string;
+      authMethod: AuthMethod;
     }
   // | {
   //     authMode: AuthMode.API_KEY;
@@ -31,6 +32,7 @@ export type TAuthMode =
       actor: ActorType.SERVICE;
       serviceTokenId: string;
       orgId: string;
+      authMethod: null;
     }
   | {
       authMode: AuthMode.IDENTITY_ACCESS_TOKEN;
@@ -38,12 +40,14 @@ export type TAuthMode =
       identityId: string;
       identityName: string;
       orgId: string;
+      authMethod: null;
     }
   | {
       authMode: AuthMode.SCIM_TOKEN;
       actor: ActorType.SCIM_CLIENT;
       scimTokenId: string;
       orgId: string;
+      authMethod: null;
     };
 
 const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
@@ -108,7 +112,15 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
     switch (authMode) {
       case AuthMode.JWT: {
         const { user, tokenVersionId, orgId } = await server.services.authToken.fnValidateJwtIdentity(token);
-        req.auth = { authMode: AuthMode.JWT, user, userId: user.id, tokenVersionId, actor, orgId };
+        req.auth = {
+          authMode: AuthMode.JWT,
+          user,
+          userId: user.id,
+          tokenVersionId,
+          actor,
+          orgId,
+          authMethod: token.authMethod
+        };
         break;
       }
       // Will always contain an orgId.
@@ -119,7 +131,8 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           actor,
           orgId: identity.orgId,
           identityId: identity.identityId,
-          identityName: identity.name
+          identityName: identity.name,
+          authMethod: null
         };
         break;
       }
@@ -130,7 +143,8 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           authMode: AuthMode.SERVICE_TOKEN as const,
           serviceToken,
           serviceTokenId: serviceToken.id,
-          actor
+          actor,
+          authMethod: null
         };
         break;
       }
@@ -141,7 +155,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
       // }
       case AuthMode.SCIM_TOKEN: {
         const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
-        req.auth = { authMode: AuthMode.SCIM_TOKEN, actor, scimTokenId, orgId };
+        req.auth = { authMode: AuthMode.SCIM_TOKEN, actor, scimTokenId, orgId, authMethod: null };
         break;
       }
       default:
