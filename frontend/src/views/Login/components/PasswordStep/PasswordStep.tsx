@@ -10,7 +10,7 @@ import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
-import { selectOrganization } from "@app/hooks/api/auth/queries";
+import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 
@@ -36,6 +36,7 @@ export const PasswordStep = ({
   const { t } = useTranslation();
   const router = useRouter();
   const { mutateAsync } = useUpdateUserAuthMethods();
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   const { callbackPort, isLinkingRequired, authMethod, organizationId } = jwt_decode(
     providerAuthToken
