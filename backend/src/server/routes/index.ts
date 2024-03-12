@@ -53,6 +53,7 @@ import { identityServiceFactory } from "@app/services/identity/identity-service"
 import { identityAccessTokenDALFactory } from "@app/services/identity-access-token/identity-access-token-dal";
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
+import { identityProjectMembershipRoleDALFactory } from "@app/services/identity-project/identity-project-membership-role-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
 import { identityUaClientSecretDALFactory } from "@app/services/identity-ua/identity-ua-client-secret-dal";
 import { identityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
@@ -78,6 +79,7 @@ import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal"
 import { projectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { projectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { projectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
+import { projectUserMembershipRoleDALFactory } from "@app/services/project-membership/project-user-membership-role-dal";
 import { projectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
@@ -141,6 +143,7 @@ export const registerRoutes = async (
 
   const projectDAL = projectDALFactory(db);
   const projectMembershipDAL = projectMembershipDALFactory(db);
+  const projectUserMembershipRoleDAL = projectUserMembershipRoleDALFactory(db);
   const projectRoleDAL = projectRoleDALFactory(db);
   const projectEnvDAL = projectEnvDALFactory(db);
   const projectKeyDAL = projectKeyDALFactory(db);
@@ -164,6 +167,7 @@ export const registerRoutes = async (
   const identityAccessTokenDAL = identityAccessTokenDALFactory(db);
   const identityOrgMembershipDAL = identityOrgDALFactory(db);
   const identityProjectDAL = identityProjectDALFactory(db);
+  const identityProjectMembershipRoleDAL = identityProjectMembershipRoleDALFactory(db);
 
   const identityUaDAL = identityUaDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
@@ -321,6 +325,7 @@ export const registerRoutes = async (
 
   const projectMembershipService = projectMembershipServiceFactory({
     projectMembershipDAL,
+    projectUserMembershipRoleDAL,
     projectDAL,
     permissionService,
     projectBotDAL,
@@ -352,7 +357,8 @@ export const registerRoutes = async (
     projectBotDAL,
     projectMembershipDAL,
     secretApprovalRequestDAL,
-    secretApprovalSecretDAL: sarSecretDAL
+    secretApprovalSecretDAL: sarSecretDAL,
+    projectUserMembershipRoleDAL
   });
 
   const projectService = projectServiceFactory({
@@ -369,8 +375,11 @@ export const registerRoutes = async (
     orgService,
     projectMembershipDAL,
     folderDAL,
-    licenseService
+    licenseService,
+    projectUserMembershipRoleDAL,
+    identityProjectMembershipRoleDAL
   });
+
   const projectEnvService = projectEnvServiceFactory({
     permissionService,
     projectEnvDAL,
@@ -521,7 +530,9 @@ export const registerRoutes = async (
     permissionService,
     projectDAL,
     identityProjectDAL,
-    identityOrgMembershipDAL
+    identityOrgMembershipDAL,
+    identityProjectMembershipRoleDAL,
+    projectRoleDAL
   });
   const identityUaService = identityUaServiceFactory({
     identityOrgMembershipDAL,

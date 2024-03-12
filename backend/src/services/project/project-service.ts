@@ -17,11 +17,13 @@ import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
+import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -50,9 +52,11 @@ type TProjectServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   identityProjectDAL: TIdentityProjectDALFactory;
+  identityProjectMembershipRoleDAL: Pick<TIdentityProjectMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey" | "delete" | "find" | "insertMany">;
   projectBotDAL: Pick<TProjectBotDALFactory, "create" | "findById" | "delete" | "findOne">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne">;
+  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
@@ -75,7 +79,9 @@ export const projectServiceFactory = ({
   secretBlindIndexDAL,
   projectMembershipDAL,
   projectEnvDAL,
-  licenseService
+  licenseService,
+  projectUserMembershipRoleDAL,
+  identityProjectMembershipRoleDAL
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -114,12 +120,16 @@ export const projectServiceFactory = ({
         tx
       );
       // set ghost user as admin of project
-      await projectMembershipDAL.create(
+      const projectMembership = await projectMembershipDAL.create(
         {
           userId: ghostUser.user.id,
-          role: ProjectMembershipRole.Admin,
-          projectId: project.id
+          projectId: project.id,
+          role: ProjectMembershipRole.Admin
         },
+        tx
+      );
+      await projectUserMembershipRoleDAL.create(
+        { projectMembershipId: projectMembership.id, role: ProjectMembershipRole.Admin },
         tx
       );
 
@@ -213,12 +223,16 @@ export const projectServiceFactory = ({
         });
 
         // Create a membership for the user
-        await projectMembershipDAL.create(
+        const userProjectMembership = await projectMembershipDAL.create(
           {
             projectId: project.id,
             userId: user.id,
             role: projectAdmin.projectRole
           },
+          tx
+        );
+        await projectUserMembershipRoleDAL.create(
+          { projectMembershipId: userProjectMembership.id, role: projectAdmin.projectRole },
           tx
         );
 
@@ -266,12 +280,21 @@ export const projectServiceFactory = ({
           });
         const isCustomRole = Boolean(customRole);
 
-        await identityProjectDAL.create(
+        const identityProjectMembership = await identityProjectDAL.create(
           {
             identityId: actorId,
             projectId: project.id,
             role: isCustomRole ? ProjectMembershipRole.Custom : ProjectMembershipRole.Admin,
             roleId: customRole?.id
+          },
+          tx
+        );
+
+        await identityProjectMembershipRoleDAL.create(
+          {
+            projectMembershipId: identityProjectMembership.id,
+            role: isCustomRole ? ProjectMembershipRole.Custom : ProjectMembershipRole.Admin,
+            customRoleId: customRole?.id
           },
           tx
         );
@@ -350,11 +373,11 @@ export const projectServiceFactory = ({
   };
 
   const upgradeProject = async ({ projectId, actor, actorId, userPrivateKey }: TUpgradeProjectDTO) => {
-    const { permission, membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission, hasRole } = await permissionService.getProjectPermission(actor, actorId, projectId);
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
-    if (membership?.role !== ProjectMembershipRole.Admin) {
+    if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({
         message: "User must be admin"
       });

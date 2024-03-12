@@ -78,18 +78,26 @@ export const ProjectNameChangeSection = () => {
           </CopyButton>
         </div>
       </div>
-
       <div className="max-w-md">
-        <Controller
-          defaultValue=""
-          render={({ field, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Input placeholder="Project name" {...field} className="bg-mineshaft-800" />
-            </FormControl>
+        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Workspace}>
+          {(isAllowed) => (
+            <Controller
+              defaultValue=""
+              render={({ field, fieldState: { error } }) => (
+                <FormControl isError={Boolean(error)} errorText={error?.message}>
+                  <Input
+                    placeholder="Project name"
+                    {...field}
+                    className="bg-mineshaft-800"
+                    isDisabled={!isAllowed}
+                  />
+                </FormControl>
+              )}
+              control={control}
+              name="name"
+            />
           )}
-          control={control}
-          name="name"
-        />
+        </ProjectPermissionCan>
       </div>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Workspace}>
         {(isAllowed) => (

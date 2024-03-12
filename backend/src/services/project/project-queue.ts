@@ -38,6 +38,7 @@ import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -58,9 +59,9 @@ type TProjectQueueFactoryDep = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne" | "delete" | "create">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create">;
+  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   integrationAuthDAL: TIntegrationAuthDALFactory;
   userDAL: Pick<TUserDALFactory, "findUserEncKeyByUserId">;
-
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "transaction" | "updateById" | "setProjectUpgradeStatus" | "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
@@ -81,7 +82,8 @@ export const projectQueueFactory = ({
   orgDAL,
   projectDAL,
   orgService,
-  projectMembershipDAL
+  projectMembershipDAL,
+  projectUserMembershipRoleDAL
 }: TProjectQueueFactoryDep) => {
   const upgradeProject = async (dto: TQueueJobTypes["upgrade-project-to-ghost"]["payload"]) => {
     await queueService.queue(QueueName.UpgradeProjectToGhost, QueueJobs.UpgradeProjectToGhost, dto, {
@@ -227,12 +229,16 @@ export const projectQueueFactory = ({
         );
 
         // Create a membership for the ghost user
-        await projectMembershipDAL.create(
+        const projectMembership = await projectMembershipDAL.create(
           {
             projectId: project.id,
             userId: ghostUser.user.id,
             role: ProjectMembershipRole.Admin
           },
+          tx
+        );
+        await projectUserMembershipRoleDAL.create(
+          { projectMembershipId: projectMembership.id, role: ProjectMembershipRole.Admin },
           tx
         );
 
