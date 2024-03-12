@@ -111,7 +111,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { createNotification } = useNotificationContext();
   const { mutateAsync } = useGetOrgTrialUrl();
 
-  // eslint-disable-next-line prefer-const
   const { workspaces, currentWorkspace } = useWorkspace();
   const { orgs, currentOrg } = useOrganization();
 
