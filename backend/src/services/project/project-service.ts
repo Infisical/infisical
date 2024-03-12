@@ -432,12 +432,20 @@ export const projectServiceFactory = ({
     return updatedProject;
   };
 
-  const upgradeProject = async ({ projectId, actor, actorId, actorAuthMethod, userPrivateKey }: TUpgradeProjectDTO) => {
+  const upgradeProject = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    userPrivateKey
+  }: TUpgradeProjectDTO) => {
     const { permission, hasRole } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
-      actorAuthMethod
+      actorAuthMethod,
+      actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
@@ -462,8 +470,20 @@ export const projectServiceFactory = ({
     });
   };
 
-  const getProjectUpgradeStatus = async ({ projectId, actor, actorAuthMethod, actorId }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod);
+  const getProjectUpgradeStatus = async ({
+    projectId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    actorId
+  }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
 
     const project = await projectDAL.findProjectById(projectId);
