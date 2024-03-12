@@ -52,6 +52,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const approvals = await server.services.secretApprovalRequest.getSecretApprovals({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.query,
         projectId: req.query.workspaceId
@@ -81,6 +82,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const approvals = await server.services.secretApprovalRequest.requestCount({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.query.workspaceId
       });
@@ -106,6 +108,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const { approval } = await server.services.secretApprovalRequest.mergeSecretApprovalRequest({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         approvalId: req.params.id
       });
@@ -134,6 +137,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const review = await server.services.secretApprovalRequest.reviewApproval({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         approvalId: req.params.id,
         status: req.body.status
@@ -163,6 +167,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const approval = await server.services.secretApprovalRequest.updateApprovalStatus({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         approvalId: req.params.id,
         status: req.body.status
@@ -271,6 +276,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const approval = await server.services.secretApprovalRequest.getSecretApprovalDetails({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.id
       });

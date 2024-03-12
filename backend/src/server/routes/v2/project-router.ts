@@ -56,6 +56,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const key = await server.services.projectKey.getLatestProjectKey({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId
       });
@@ -96,6 +97,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       await server.services.project.upgradeProject({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         projectId: req.params.projectId,
         userPrivateKey: req.body.userPrivateKey
       });
@@ -119,6 +121,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const status = await server.services.project.getProjectUpgradeStatus({
+        actorAuthMethod: req.permission.authMethod,
         projectId: req.params.projectId,
         actor: req.permission.type,
         actorId: req.permission.id
@@ -160,6 +163,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const project = await server.services.project.createProject({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         orgSlug: req.body.organizationSlug,
         workspaceName: req.body.projectName,
         slug: req.body.slug
@@ -201,6 +205,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           orgId: req.permission.orgId
         },
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type
       });
@@ -231,6 +236,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         },
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
 
@@ -268,6 +274,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           autoCapitalization: req.body.autoCapitalization
         },
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId
       });

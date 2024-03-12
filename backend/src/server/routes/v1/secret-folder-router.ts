@@ -39,6 +39,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       const folder = await server.services.folder.createFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
@@ -96,6 +97,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       const { folder, old } = await server.services.folder.updateFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
@@ -154,6 +156,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       const folder = await server.services.folder.deleteFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
@@ -207,6 +210,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       const folders = await server.services.folder.getFolders({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.query,
         projectId: req.query.workspaceId,

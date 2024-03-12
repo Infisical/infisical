@@ -39,6 +39,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         orgId: req.body.organizationId,
+        actorAuthMethod: req.permission.authMethod,
         description: req.body.description,
         ttlDays: req.body.ttlDays
       });
@@ -65,6 +66,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       const scimTokens = await server.services.scim.listScimTokens({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.query.organizationId
       });
@@ -92,6 +94,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         scimTokenId: req.params.scimTokenId,
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
 
