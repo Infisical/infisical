@@ -39,6 +39,7 @@ export enum ActorType { // would extend to AWS, Azure, ...
   SCIM_CLIENT = "scimClient"
 }
 
+// This will be null unless the token-type is JWT
 export type ActorAuthMethod = AuthMethod | null;
 
 export type AuthModeJwtTokenPayload = {
