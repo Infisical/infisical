@@ -8,10 +8,6 @@ export const injectPermission = fp(async (server) => {
   server.addHook("onRequest", async (req) => {
     if (!req.auth) return;
 
-    // if (!req.auth.authMethod) {
-    //   throw new Error("THIS SHOULD NOT HAPPEN");
-    // }
-
     if (req.auth.actor === ActorType.USER) {
       req.permission = {
         type: ActorType.USER,
