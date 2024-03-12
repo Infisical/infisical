@@ -302,10 +302,12 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 		util.PrintErrorMessageAndExit("We were unable to fetch required details to complete your login. Run with -d to see more info")
 	}
 
+	newJwtToken := GetJwtTokenWithOrganizationId(loginTwoResponse.Token)
+
 	//updating usercredentials
 	userCredentialsToBeStored.Email = email
 	userCredentialsToBeStored.PrivateKey = string(decryptedPrivateKey)
-	userCredentialsToBeStored.JTWToken = loginTwoResponse.Token
+	userCredentialsToBeStored.JTWToken = newJwtToken
 }
 
 func init() {
@@ -478,6 +480,44 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	}
 
 	return &loginOneResponseResult, &loginTwoResponseResult, nil
+}
+
+func GetJwtTokenWithOrganizationId(oldJwtToken string) string {
+	log.Debug().Msg(fmt.Sprint("GetJwtTokenWithOrganizationId: ", "oldJwtToken", oldJwtToken))
+
+	httpClient := resty.New()
+	httpClient.SetAuthToken(oldJwtToken)
+
+	organizationResponse, err := api.CallGetAllOrganizations(httpClient)
+
+	if err != nil {
+		util.HandleError(err, "Unable to pull organizations that belong to you")
+	}
+
+	organizations := organizationResponse.Organizations
+
+	organizationNames := util.GetOrganizationsNameList(organizationResponse)
+
+	prompt := promptui.Select{
+		Label: "Which Infisical organization would you like to log into?",
+		Items: organizationNames,
+	}
+
+	index, _, err := prompt.Run()
+	if err != nil {
+		util.HandleError(err)
+	}
+
+	selectedOrganization := organizations[index]
+
+	selectedOrgRes, err := api.CallSelectOrganization(httpClient, api.SelectOrganizationRequest{OrganizationId: selectedOrganization.ID})
+
+	if err != nil {
+		util.HandleError(err)
+	}
+
+	return selectedOrgRes.Token
+
 }
 
 func userLoginMenu(currentLoggedInUserEmail string) (bool, error) {
