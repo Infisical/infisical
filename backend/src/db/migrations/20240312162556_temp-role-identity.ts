@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TableName, TIdentityProjectMembershipRoleInsert } from "../schemas";
+import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
@@ -28,29 +28,18 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.IdentityProjectMembershipRole);
 
-  const projectMembershipStream = knex.select("*").from(TableName.IdentityProjectMembership).stream();
-  const chunkSize = 1000;
-  let rows: TIdentityProjectMembershipRoleInsert[] = [];
-  for await (const row of projectMembershipStream) {
-    // disabling eslint just this part because the latest ts type doesn't have these values after migration as they are removed
-    /* eslint-disable  */
-    // @ts-ignore - created at is inserted from old data
-    rows = rows.concat({
-      // @ts-ignore - missing in ts type post migration
-      role: row.role,
-      // @ts-ignore - missing in ts type post migration
-      customRoleId: row.roleId,
-      projectMembershipId: row.id,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt
-    });
-    /* eslint-disable */
-    if (rows.length >= chunkSize) {
-      await knex(TableName.IdentityProjectMembershipRole).insert(rows);
-      rows.splice(0, rows.length);
-    }
-  }
-  if(rows.length) await knex(TableName.IdentityProjectMembershipRole).insert(rows);
+  const identityMemberships = await knex(TableName.IdentityProjectMembership).select(
+    "id",
+    "role",
+    "createdAt",
+    "updatedAt",
+    knex.ref("roleId").withSchema(TableName.IdentityProjectMembership).as("customRoleId")
+  );
+  if (identityMemberships.length)
+    await knex.batchInsert(
+      TableName.IdentityProjectMembershipRole,
+      identityMemberships.map((data) => ({ ...data, projectMembershipId: data.id }))
+    );
   // await knex.schema.alterTable(TableName.IdentityProjectMembership, (t) => {
   //   t.dropColumn("roleId");
   //   t.dropColumn("role");

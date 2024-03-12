@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TableName, TProjectUserMembershipRolesInsert } from "../schemas";
+import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
@@ -25,29 +25,18 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.ProjectUserMembershipRole);
 
-  const projectMembershipStream = knex.select("*").from(TableName.ProjectMembership).stream();
-  const chunkSize = 1000;
-  let rows: TProjectUserMembershipRolesInsert[] = [];
-  for await (const row of projectMembershipStream) {
-    // disabling eslint just this part because the latest ts type doesn't have these values after migration as they are removed
-    /* eslint-disable  */
-    // @ts-ignore - created at is inserted from old data
-    rows = rows.concat({
-      // @ts-ignore - missing in ts type post migration
-      role: row.role,
-      // @ts-ignore - missing in ts type post migration
-      customRoleId: row.roleId,
-      projectMembershipId: row.id,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt
-    });
-    /* eslint-disable */
-    if (rows.length >= chunkSize) {
-      await knex(TableName.ProjectUserMembershipRole).insert(rows);
-      rows.splice(0, rows.length);
-    }
-  }
-  if (rows.length) await knex(TableName.ProjectUserMembershipRole).insert(rows);
+  const projectMemberships = await knex(TableName.ProjectMembership).select(
+    "id",
+    "role",
+    "createdAt",
+    "updatedAt",
+    knex.ref("roleId").withSchema(TableName.ProjectMembership).as("customRoleId")
+  );
+  if (projectMemberships.length)
+    await knex.batchInsert(
+      TableName.ProjectUserMembershipRole,
+      projectMemberships.map((data) => ({ ...data, projectMembershipId: data.id }))
+    );
   // will be dropped later
   // await knex.schema.alterTable(TableName.ProjectMembership, (t) => {
   //   t.dropColumn("roleId");
