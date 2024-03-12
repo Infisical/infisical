@@ -10,6 +10,7 @@ import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
+import { selectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 
@@ -60,17 +61,39 @@ export const PasswordStep = ({
             setIsLoading(false);
             return;
           }
-          // case: login was successful
           const cliUrl = `http://127.0.0.1:${callbackPort}/`;
 
-          // send request to server endpoint
-          const instance = axios.create();
-          await instance.post(cliUrl, { ...isCliLoginSuccessful.loginResponse });
+          // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
+          if (organizationId) {
+            const { token: newJwtToken } = await selectOrganization({ organizationId });
 
-          // cli page
-          router.push("/cli-redirect");
+            console.log(
+              "organization id was present. new JWT token to be used in CLI:",
+              newJwtToken
+            );
 
-          // on success, router.push to cli Login Successful page
+            const instance = axios.create();
+            await instance.post(cliUrl, {
+              ...isCliLoginSuccessful.loginResponse,
+              JTWToken: newJwtToken
+            });
+
+            await navigateUserToOrg(router, organizationId);
+          }
+          // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
+          // if the user has no orgs, navigate to the create org page
+          else {
+            const userOrgs = await fetchOrganizations();
+
+            // case: user has orgs, so we navigate the user to select an org
+            if (userOrgs.length > 0) {
+              navigateUserToSelectOrg(router, callbackPort);
+            }
+            // case: no orgs found, so we navigate the user to create an org
+            else {
+              await navigateUserToOrg(router);
+            }
+          }
         }
       } else {
         const loginAttempt = await attemptLogin({
