@@ -108,10 +108,10 @@ export const SecretOverviewPage = () => {
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
   const userAvailableEnvs = currentWorkspace?.environments || [];
-  const [visibleEnvs, setVisisbleEnvs] = useState(userAvailableEnvs);
+  const [visibleEnvs, setVisibleEnvs] = useState(userAvailableEnvs);
 
   useEffect(() => {
-    setVisisbleEnvs(userAvailableEnvs);
+    setVisibleEnvs(userAvailableEnvs);
   }, [userAvailableEnvs]);
 
   const {
@@ -212,9 +212,9 @@ export const SecretOverviewPage = () => {
 
   const handleEnvSelect = (envId: string) => {
     if (visibleEnvs.map((env) => env.id).includes(envId)) {
-      setVisisbleEnvs(visibleEnvs.filter((env) => env.id !== envId));
+      setVisibleEnvs(visibleEnvs.filter((env) => env.id !== envId));
     } else {
-      setVisisbleEnvs(visibleEnvs.concat(userAvailableEnvs.filter((env) => env.id === envId)));
+      setVisibleEnvs(visibleEnvs.concat(userAvailableEnvs.filter((env) => env.id === envId)));
     }
   };
 
@@ -401,7 +401,7 @@ export const SecretOverviewPage = () => {
                       ariaLabel="Environments"
                       variant="plain"
                       size="sm"
-                      className="mr-2 flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 hover:border-primary/60 hover:bg-primary/10"
+                      className="flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 hover:border-primary/60 hover:bg-primary/10"
                     >
                       <Tooltip content="Choose visible environments" className="mb-2">
                         <FontAwesomeIcon icon={faList} />
@@ -410,8 +410,8 @@ export const SecretOverviewPage = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
-                    {userAvailableEnvs.map((avaiableEnv) => {
-                      const { id: envId, name } = avaiableEnv;
+                    {userAvailableEnvs.map((availableEnv) => {
+                      const { id: envId, name } = availableEnv;
 
                       const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
                       return (

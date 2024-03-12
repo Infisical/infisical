@@ -191,7 +191,10 @@ export const CreateSecretForm = ({
                         </span>
                         <span>
                           {getSecretByKey(env.slug, newSecretKey) && (
-                            <Tooltip content="Secret exists. Will be overwritten">
+                            <Tooltip
+                              className="max-w-[150px]"
+                              content="Secret already exists, and it will be overwritten"
+                            >
                               <FontAwesomeIcon icon={faWarning} className="ml-1 text-yellow-400" />
                             </Tooltip>
                           )}
