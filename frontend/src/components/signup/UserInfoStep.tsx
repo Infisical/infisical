@@ -191,9 +191,10 @@ export default function UserInfoStep({
 
               const userOrgs = await fetchOrganizations();
 
+              const orgSlug = userOrgs[0]?.slug;
               const orgId = userOrgs[0]?.id;
               const project = await ProjectService.initProject({
-                organizationId: orgId,
+                organizationSlug: orgSlug,
                 projectName: "Example Project"
               });
 
