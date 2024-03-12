@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
-import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
+import { faCheckCircle, faCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faArrowDown,
@@ -18,7 +18,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import NavHeader from "@app/components/navigation/NavHeader";
-import { PermissionDeniedBanner, ProjectPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DropdownMenu,
@@ -108,7 +108,11 @@ export const SecretOverviewPage = () => {
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
   const userAvailableEnvs = currentWorkspace?.environments || [];
-  const [visibleEnvs, setVisisbleEnvs] = useState(userAvailableEnvs);
+  const [visibleEnvs, setVisibleEnvs] = useState(userAvailableEnvs);
+
+  useEffect(() => {
+    setVisibleEnvs(userAvailableEnvs);
+  }, [userAvailableEnvs]);
 
   const {
     data: secrets,
@@ -208,9 +212,9 @@ export const SecretOverviewPage = () => {
 
   const handleEnvSelect = (envId: string) => {
     if (visibleEnvs.map((env) => env.id).includes(envId)) {
-      setVisisbleEnvs(visibleEnvs.filter((env) => env.id !== envId));
+      setVisibleEnvs(visibleEnvs.filter((env) => env.id !== envId));
     } else {
-      setVisisbleEnvs(visibleEnvs.concat(userAvailableEnvs.filter((env) => env.id === envId)));
+      setVisibleEnvs(visibleEnvs.concat(userAvailableEnvs.filter((env) => env.id === envId)));
     }
   };
 
@@ -390,41 +394,44 @@ export const SecretOverviewPage = () => {
           <div className="flex items-center justify-between">
             <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
             <div className="flex flex-row items-center justify-center space-x-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton
-                    ariaLabel="Environments"
-                    variant="plain"
-                    size="sm"
-                    className="mr-2 flex w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 hover:border-primary/60 hover:bg-primary/10"
-                  >
-                    <Tooltip content="Choose visible environments" className="mb-2">
-                      <FontAwesomeIcon icon={faList} />
-                    </Tooltip>
-                  </IconButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
-                  {userAvailableEnvs.map((avaiableEnv) => {
-                    const { id: envId, name } = avaiableEnv;
+              {userAvailableEnvs.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton
+                      ariaLabel="Environments"
+                      variant="plain"
+                      size="sm"
+                      className="flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 hover:border-primary/60 hover:bg-primary/10"
+                    >
+                      <Tooltip content="Choose visible environments" className="mb-2">
+                        <FontAwesomeIcon icon={faList} />
+                      </Tooltip>
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
+                    {userAvailableEnvs.map((availableEnv) => {
+                      const { id: envId, name } = availableEnv;
 
-                    const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
-                    return (
-                      <DropdownMenuItem
-                        onClick={() => handleEnvSelect(envId)}
-                        key={envId}
-                        icon={
-                          isEnvSelected && (
-                            <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                          )
-                        }
-                        iconPos="left"
-                      >
-                        <div className="flex items-center">{name}</div>
-                      </DropdownMenuItem>
-                    );
-                  })}
-                  {/* <DropdownMenuItem className="px-1.5" asChild>
+                      const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
+                      return (
+                        <DropdownMenuItem
+                          onClick={() => handleEnvSelect(envId)}
+                          key={envId}
+                          icon={
+                            isEnvSelected ? (
+                              <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                            ) : (
+                              <FontAwesomeIcon className="text-mineshaft-400" icon={faCircle} />
+                            )
+                          }
+                          iconPos="left"
+                        >
+                          <div className="flex items-center">{name}</div>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                    {/* <DropdownMenuItem className="px-1.5" asChild>
                     <Button
                       size="xs"
                       className="w-full"
@@ -436,8 +443,9 @@ export const SecretOverviewPage = () => {
                       Create an environment
                     </Button>
                   </DropdownMenuItem> */}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <div className="w-80">
                 <Input
                   className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
@@ -447,62 +455,64 @@ export const SecretOverviewPage = () => {
                   leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
                 />
               </div>
-              <div>
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Create}
-                  a={subject(ProjectPermissionSub.Secrets, { secretPath })}
-                >
-                  {(isAllowed) => (
-                    <Button
-                      variant="outline_bg"
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                      onClick={() => handlePopUpOpen("addSecretsInAllEnvs")}
-                      className="h-10 rounded-r-none"
-                      isDisabled={!isAllowed}
-                    >
-                      Add Secret
-                    </Button>
-                  )}
-                </ProjectPermissionCan>
-                <DropdownMenu
-                  open={popUp.misc.isOpen}
-                  onOpenChange={(isOpen) => handlePopUpToggle("misc", isOpen)}
-                >
-                  <DropdownMenuTrigger asChild>
-                    <IconButton
-                      ariaLabel="add-folder-or-import"
-                      variant="outline_bg"
-                      className="rounded-l-none bg-mineshaft-600 p-3"
-                    >
-                      <FontAwesomeIcon icon={faAngleDown} />
-                    </IconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <div className="flex flex-col space-y-1 p-1.5">
-                      <ProjectPermissionCan
-                        I={ProjectPermissionActions.Create}
-                        a={subject(ProjectPermissionSub.Secrets, { secretPath })}
+              {userAvailableEnvs.length > 0 && (
+                <div>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Create}
+                    a={subject(ProjectPermissionSub.Secrets, { secretPath })}
+                  >
+                    {(isAllowed) => (
+                      <Button
+                        variant="outline_bg"
+                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                        onClick={() => handlePopUpOpen("addSecretsInAllEnvs")}
+                        className="h-10 rounded-r-none"
+                        isDisabled={!isAllowed}
                       >
-                        {(isAllowed) => (
-                          <Button
-                            leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
-                            onClick={() => {
-                              handlePopUpOpen("addFolder");
-                              handlePopUpClose("misc");
-                            }}
-                            isDisabled={!isAllowed}
-                            variant="outline_bg"
-                            className="h-10"
-                            isFullWidth
-                          >
-                            Add Folder
-                          </Button>
-                        )}
-                      </ProjectPermissionCan>
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                        Add Secret
+                      </Button>
+                    )}
+                  </ProjectPermissionCan>
+                  <DropdownMenu
+                    open={popUp.misc.isOpen}
+                    onOpenChange={(isOpen) => handlePopUpToggle("misc", isOpen)}
+                  >
+                    <DropdownMenuTrigger asChild>
+                      <IconButton
+                        ariaLabel="add-folder-or-import"
+                        variant="outline_bg"
+                        className="rounded-l-none bg-mineshaft-600 p-3"
+                      >
+                        <FontAwesomeIcon icon={faAngleDown} />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <div className="flex flex-col space-y-1 p-1.5">
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Create}
+                          a={subject(ProjectPermissionSub.Secrets, { secretPath })}
+                        >
+                          {(isAllowed) => (
+                            <Button
+                              leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
+                              onClick={() => {
+                                handlePopUpOpen("addFolder");
+                                handlePopUpClose("misc");
+                              }}
+                              isDisabled={!isAllowed}
+                              variant="outline_bg"
+                              className="h-10"
+                              isFullWidth
+                            >
+                              Add Folder
+                            </Button>
+                          )}
+                        </ProjectPermissionCan>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -565,14 +575,25 @@ export const SecretOverviewPage = () => {
                     className="bg-mineshaft-700"
                   />
                 )}
-                {isTableEmpty && !isTableLoading && (
+                {userAvailableEnvs.length > 0 && visibleEnvs.length === 0 && (
                   <Tr>
                     <Td colSpan={visibleEnvs.length + 1}>
-                      <EmptyState title="Let's add some secrets" icon={faFolderBlank} iconSize="3x">
+                      <EmptyState title="You have no visible environments" iconSize="3x" />
+                    </Td>
+                  </Tr>
+                )}
+                {userAvailableEnvs.length === 0 && (
+                  <Tr>
+                    <Td colSpan={visibleEnvs.length + 1}>
+                      <EmptyState
+                        title="You have no environments, start by adding some"
+                        iconSize="3x"
+                      >
                         <Link
                           href={{
-                            pathname: "/project/[id]/secrets/[env]",
-                            query: { id: workspaceId, env: visibleEnvs?.[0]?.slug }
+                            pathname: "/project/[id]/settings",
+                            query: { id: workspaceId },
+                            hash: "environments"
                           }}
                         >
                           <Button
@@ -581,9 +602,34 @@ export const SecretOverviewPage = () => {
                             colorSchema="primary"
                             size="md"
                           >
-                            Go to {visibleEnvs?.[0]?.name}
+                            Add environments
                           </Button>
                         </Link>
+                      </EmptyState>
+                    </Td>
+                  </Tr>
+                )}
+                {isTableEmpty && !isTableLoading && visibleEnvs.length > 0 && (
+                  <Tr>
+                    <Td colSpan={visibleEnvs.length + 1}>
+                      <EmptyState
+                        title={
+                          searchFilter
+                            ? "No secret found for your search, add one now"
+                            : "Let's add some secrets"
+                        }
+                        icon={faFolderBlank}
+                        iconSize="3x"
+                      >
+                        <Button
+                          className="mt-4"
+                          variant="outline_bg"
+                          colorSchema="primary"
+                          size="md"
+                          onClick={() => handlePopUpOpen("addSecretsInAllEnvs")}
+                        >
+                          Add Secrets
+                        </Button>
                       </EmptyState>
                     </Td>
                   </Tr>
@@ -599,22 +645,19 @@ export const SecretOverviewPage = () => {
                     />
                   ))}
                 {!isTableLoading &&
-                  (visibleEnvs?.length > 0 ? (
-                    filteredSecretNames.map((key, index) => (
-                      <SecretOverviewTableRow
-                        secretPath={secretPath}
-                        onSecretCreate={handleSecretCreate}
-                        onSecretDelete={handleSecretDelete}
-                        onSecretUpdate={handleSecretUpdate}
-                        key={`overview-${key}-${index + 1}`}
-                        environments={visibleEnvs}
-                        secretKey={key}
-                        getSecretByKey={getSecretByKey}
-                        expandableColWidth={expandableTableWidth}
-                      />
-                    ))
-                  ) : (
-                    <PermissionDeniedBanner />
+                  visibleEnvs?.length > 0 &&
+                  filteredSecretNames.map((key, index) => (
+                    <SecretOverviewTableRow
+                      secretPath={secretPath}
+                      onSecretCreate={handleSecretCreate}
+                      onSecretDelete={handleSecretDelete}
+                      onSecretUpdate={handleSecretUpdate}
+                      key={`overview-${key}-${index + 1}`}
+                      environments={visibleEnvs}
+                      secretKey={key}
+                      getSecretByKey={getSecretByKey}
+                      expandableColWidth={expandableTableWidth}
+                    />
                   ))}
               </TBody>
               <TFoot>
