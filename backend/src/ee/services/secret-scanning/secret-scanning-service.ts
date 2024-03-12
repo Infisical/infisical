@@ -39,8 +39,14 @@ export const secretScanningServiceFactory = ({
   permissionService,
   secretScanningQueue
 }: TSecretScanningServiceFactoryDep) => {
-  const createInstallationSession = async ({ actor, orgId, actorId, actorOrgId }: TInstallAppSessionDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const createInstallationSession = async ({
+    actor,
+    orgId,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TInstallAppSessionDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
 
     const sessionId = crypto.randomBytes(16).toString("hex");
@@ -53,12 +59,19 @@ export const secretScanningServiceFactory = ({
     actorId,
     installationId,
     actor,
+    actorAuthMethod,
     actorOrgId
   }: TLinkInstallSessionDTO) => {
     const session = await gitAppInstallSessionDAL.findOne({ sessionId });
     if (!session) throw new UnauthorizedError({ message: "Session not found" });
 
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, session.orgId, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      session.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
     const installatedApp = await gitAppOrgDAL.transaction(async (tx) => {
       await gitAppInstallSessionDAL.deleteById(session.id, tx);
@@ -89,23 +102,37 @@ export const secretScanningServiceFactory = ({
     return { installatedApp };
   };
 
-  const getOrgInstallationStatus = async ({ actorId, orgId, actor, actorOrgId }: TGetOrgInstallStatusDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const getOrgInstallationStatus = async ({
+    actorId,
+    orgId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetOrgInstallStatusDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
 
     const appInstallation = await gitAppOrgDAL.findOne({ orgId });
     return Boolean(appInstallation);
   };
 
-  const getRisksByOrg = async ({ actor, orgId, actorId, actorOrgId }: TGetOrgRisksDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const getRisksByOrg = async ({ actor, orgId, actorId, actorAuthMethod, actorOrgId }: TGetOrgRisksDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
     const risks = await secretScanningDAL.find({ orgId }, { sort: [["createdAt", "desc"]] });
     return { risks };
   };
 
-  const updateRiskStatus = async ({ actorId, orgId, actor, actorOrgId, riskId, status }: TUpdateRiskStatusDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const updateRiskStatus = async ({
+    actorId,
+    orgId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    riskId,
+    status
+  }: TUpdateRiskStatusDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
 
     const isRiskResolved = Boolean(
