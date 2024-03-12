@@ -26,8 +26,14 @@ export const trustedIpServiceFactory = ({
   licenseService,
   projectDAL
 }: TTrustedIpServiceFactoryDep) => {
-  const listIpsByProjectId = async ({ projectId, actor, actorId, actorOrgId }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+  const listIpsByProjectId = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
     const trustedIps = await trustedIpDAL.find({
       projectId
@@ -38,13 +44,20 @@ export const trustedIpServiceFactory = ({
   const addProjectIp = async ({
     projectId,
     actorId,
+    actorAuthMethod,
     actor,
     actorOrgId,
     ipAddress: ip,
     comment,
     isActive
   }: TCreateIpDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
     const project = await projectDAL.findById(projectId);
@@ -78,11 +91,18 @@ export const trustedIpServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     ipAddress: ip,
     comment,
     trustedIpId
   }: TUpdateIpDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
     const project = await projectDAL.findById(projectId);
@@ -113,8 +133,21 @@ export const trustedIpServiceFactory = ({
     return { trustedIp, project }; // for audit log
   };
 
-  const deleteProjectIp = async ({ projectId, actorId, actor, actorOrgId, trustedIpId }: TDeleteIpDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+  const deleteProjectIp = async ({
+    projectId,
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    trustedIpId
+  }: TDeleteIpDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
     const project = await projectDAL.findById(projectId);

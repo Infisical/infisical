@@ -56,8 +56,16 @@ export const scimServiceFactory = ({
   permissionService,
   smtpService
 }: TScimServiceFactoryDep) => {
-  const createScimToken = async ({ actor, actorId, actorOrgId, orgId, description, ttlDays }: TCreateScimTokenDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const createScimToken = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    orgId,
+    description,
+    ttlDays
+  }: TCreateScimTokenDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(orgId);
@@ -85,8 +93,8 @@ export const scimServiceFactory = ({
     return { scimToken };
   };
 
-  const listScimTokens = async ({ actor, actorId, actorOrgId, orgId }: TOrgPermission) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const listScimTokens = async ({ actor, actorId, actorOrgId, actorAuthMethod, orgId }: TOrgPermission) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(orgId);
@@ -99,11 +107,17 @@ export const scimServiceFactory = ({
     return scimTokens;
   };
 
-  const deleteScimToken = async ({ scimTokenId, actor, actorId, actorOrgId }: TDeleteScimTokenDTO) => {
+  const deleteScimToken = async ({ scimTokenId, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteScimTokenDTO) => {
     let scimToken = await scimDAL.findById(scimTokenId);
     if (!scimToken) throw new BadRequestError({ message: "Failed to find SCIM token to delete" });
 
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, scimToken.orgId, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      scimToken.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(scimToken.orgId);

@@ -59,9 +59,16 @@ export const secretSnapshotServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     path
   }: TProjectSnapshotCountDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
@@ -77,11 +84,18 @@ export const secretSnapshotServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     path,
     limit = 20,
     offset = 0
   }: TProjectSnapshotListDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
@@ -91,10 +105,16 @@ export const secretSnapshotServiceFactory = ({
     return snapshots;
   };
 
-  const getSnapshotData = async ({ actorId, actor, actorOrgId, id }: TGetSnapshotDataDTO) => {
+  const getSnapshotData = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TGetSnapshotDataDTO) => {
     const snapshot = await snapshotDAL.findSecretSnapshotDataById(id);
     if (!snapshot) throw new BadRequestError({ message: "Snapshot not found" });
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, snapshot.projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      snapshot.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
     return snapshot;
   };
@@ -145,11 +165,23 @@ export const secretSnapshotServiceFactory = ({
     }
   };
 
-  const rollbackSnapshot = async ({ id: snapshotId, actor, actorId, actorOrgId }: TRollbackSnapshotDTO) => {
+  const rollbackSnapshot = async ({
+    id: snapshotId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TRollbackSnapshotDTO) => {
     const snapshot = await snapshotDAL.findById(snapshotId);
     if (!snapshot) throw new BadRequestError({ message: "Snapshot not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, snapshot.projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      snapshot.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretRollback
