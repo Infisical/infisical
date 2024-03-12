@@ -5,7 +5,8 @@ export enum AuthMethod {
   GITLAB = "gitlab",
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
-  JUMPCLOUD_SAML = "jumpcloud-saml"
+  JUMPCLOUD_SAML = "jumpcloud-saml",
+  LDAP = "ldap"
 }
 
 export enum AuthTokenType {
@@ -61,7 +62,7 @@ export type AuthModeRefreshJwtTokenPayload = {
 
 export type AuthModeProviderJwtTokenPayload = {
   authTokenType: AuthTokenType.PROVIDER_TOKEN;
-  email: string;
+  username: string;
   organizationId?: string;
 };
 

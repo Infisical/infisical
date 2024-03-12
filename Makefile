@@ -7,6 +7,9 @@ push:
 up-dev:
 	docker compose -f docker-compose.dev.yml up --build
 
+up-dev-ldap:
+	docker compose -f docker-compose.dev.yml --profile ldap up --build
+
 up-prod:
 	docker-compose -f docker-compose.prod.yml up --build
 

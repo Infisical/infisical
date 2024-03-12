@@ -50,6 +50,9 @@ import {
   TIntegrations,
   TIntegrationsInsert,
   TIntegrationsUpdate,
+  TLdapConfigs,
+  TLdapConfigsInsert,
+  TLdapConfigsUpdate,
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
@@ -161,6 +164,9 @@ import {
   TUserActions,
   TUserActionsInsert,
   TUserActionsUpdate,
+  TUserAliases,
+  TUserAliasesInsert,
+  TUserAliasesUpdate,
   TUserEncryptionKeys,
   TUserEncryptionKeysInsert,
   TUserEncryptionKeysUpdate,
@@ -175,6 +181,7 @@ import {
 declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
+    [TableName.UserAliases]: Knex.CompositeTableType<TUserAliases, TUserAliasesInsert, TUserAliasesUpdate>;
     [TableName.UserEncryptionKey]: Knex.CompositeTableType<
       TUserEncryptionKeys,
       TUserEncryptionKeysInsert,
@@ -318,6 +325,7 @@ declare module "knex/types/tables" {
       TSecretSnapshotFoldersUpdate
     >;
     [TableName.SamlConfig]: Knex.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
+    [TableName.LdapConfig]: Knex.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
     [TableName.OrgBot]: Knex.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;
     [TableName.AuditLog]: Knex.CompositeTableType<TAuditLogs, TAuditLogsInsert, TAuditLogsUpdate>;
     [TableName.GitAppInstallSession]: Knex.CompositeTableType<

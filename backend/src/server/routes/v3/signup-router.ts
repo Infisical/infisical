@@ -88,7 +88,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        email: z.string().email().trim(),
+        email: z.string().trim(),
         firstName: z.string().trim(),
         lastName: z.string().trim().optional(),
         protectedKey: z.string().trim(),
@@ -131,13 +131,16 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         authorization: req.headers.authorization as string
       });
 
-      void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+      if (user.email) {
+        void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+      }
 
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserSignedUp,
-        distinctId: user.email,
+        distinctId: user.username ?? "",
         properties: {
-          email: user.email,
+          username: user.username,
+          email: user.email ?? "",
           attributionSource: req.body.attributionSource
         }
       });
@@ -194,13 +197,16 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         authorization: req.headers.authorization as string
       });
 
-      void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+      if (user.email) {
+        void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+      }
 
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserSignedUp,
-        distinctId: user.email,
+        distinctId: user.username ?? "",
         properties: {
-          email: user.email,
+          username: user.username,
+          email: user.email ?? "",
           attributionSource: "Team Invite"
         }
       });

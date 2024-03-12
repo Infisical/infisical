@@ -92,7 +92,8 @@ export enum EventType {
 
 interface UserActorMetadata {
   userId: string;
-  email: string;
+  email?: string | null;
+  username: string;
 }
 
 interface ServiceActorMetadata {

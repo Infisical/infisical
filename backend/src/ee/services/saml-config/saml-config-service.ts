@@ -5,6 +5,7 @@ import {
   OrgMembershipRole,
   OrgMembershipStatus,
   SecretKeyEncoding,
+  TableName,
   TSamlConfigs,
   TSamlConfigsUpdate
 } from "@app/db/schemas";
@@ -31,7 +32,7 @@ import { TCreateSamlCfgDTO, TGetSamlCfgDTO, TSamlLoginDTO, TUpdateSamlCfgDTO } f
 
 type TSamlConfigServiceFactoryDep = {
   samlConfigDAL: TSamlConfigDALFactory;
-  userDAL: Pick<TUserDALFactory, "create" | "findUserByEmail" | "transaction" | "updateById">;
+  userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
@@ -69,7 +70,7 @@ export const samlConfigServiceFactory = ({
     if (!plan.samlSSO)
       throw new BadRequestError({
         message:
-          "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
+          "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to create SSO configuration."
       });
 
     const orgBot = await orgBotDAL.transaction(async (tx) => {
@@ -122,7 +123,6 @@ export const samlConfigServiceFactory = ({
 
     const { ciphertext: encryptedEntryPoint, iv: entryPointIV, tag: entryPointTag } = encryptSymmetric(entryPoint, key);
     const { ciphertext: encryptedIssuer, iv: issuerIV, tag: issuerTag } = encryptSymmetric(issuer, key);
-
     const { ciphertext: encryptedCert, iv: certIV, tag: certTag } = encryptSymmetric(cert, key);
     const samlConfig = await samlConfigDAL.create({
       orgId,
@@ -300,16 +300,30 @@ export const samlConfigServiceFactory = ({
     };
   };
 
-  const samlLogin = async ({ firstName, email, lastName, authProvider, orgId, relayState }: TSamlLoginDTO) => {
+  const samlLogin = async ({
+    username,
+    email,
+    firstName,
+    lastName,
+    authProvider,
+    orgId,
+    relayState
+  }: TSamlLoginDTO) => {
     const appCfg = getConfig();
-    let user = await userDAL.findUserByEmail(email);
+    let user = await userDAL.findOne({ username });
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new BadRequestError({ message: "Org not found" });
 
     if (user) {
       await userDAL.transaction(async (tx) => {
-        const [orgMembership] = await orgDAL.findMembership({ userId: user.id, orgId }, { tx });
+        const [orgMembership] = await orgDAL.findMembership(
+          {
+            userId: user.id,
+            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+          },
+          { tx }
+        );
         if (!orgMembership) {
           await orgDAL.createMembership(
             {
@@ -335,6 +349,7 @@ export const samlConfigServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         const newUser = await userDAL.create(
           {
+            username,
             email,
             firstName,
             lastName,
@@ -357,7 +372,7 @@ export const samlConfigServiceFactory = ({
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
-        email: user.email,
+        username: user.username,
         firstName,
         lastName,
         organizationName: organization.name,

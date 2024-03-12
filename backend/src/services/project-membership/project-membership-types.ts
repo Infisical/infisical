@@ -18,6 +18,7 @@ export type TDeleteProjectMembershipOldDTO = {
 
 export type TDeleteProjectMembershipsDTO = {
   emails: string[];
+  usernames: string[];
 } & TProjectPermission;
 
 export type TAddUsersToWorkspaceDTO = {
@@ -33,4 +34,5 @@ export type TAddUsersToWorkspaceDTO = {
 export type TAddUsersToWorkspaceNonE2EEDTO = {
   sendEmails?: boolean;
   emails: string[];
+  usernames: string[];
 } & TProjectPermission;

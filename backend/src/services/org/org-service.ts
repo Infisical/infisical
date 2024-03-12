@@ -103,11 +103,11 @@ export const orgServiceFactory = ({
     return members;
   };
 
-  const findOrgMembersByEmail = async ({ actor, actorId, orgId, emails }: TFindOrgMembersByEmailDTO) => {
+  const findOrgMembersByUsername = async ({ actor, actorId, orgId, emails }: TFindOrgMembersByEmailDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
 
-    const members = await orgDAL.findOrgMembersByEmail(orgId, emails);
+    const members = await orgDAL.findOrgMembersByUsername(orgId, emails);
 
     return members;
   };
@@ -145,6 +145,7 @@ export const orgServiceFactory = ({
       {
         isGhost: true,
         authMethods: [AuthMethod.EMAIL],
+        username: email,
         email,
         isAccepted: true
       },
@@ -239,7 +240,15 @@ export const orgServiceFactory = ({
   /*
    * Create organization
    * */
-  const createOrganization = async (userId: string, userEmail: string, orgName: string) => {
+  const createOrganization = async ({
+    userId,
+    userEmail,
+    orgName
+  }: {
+    userId: string;
+    orgName: string;
+    userEmail?: string | null;
+  }) => {
     const { privateKey, publicKey } = generateAsymmetricKeyPair();
     const key = generateSymmetricKey();
     const {
@@ -367,7 +376,7 @@ export const orgServiceFactory = ({
       });
     }
     const invitee = await orgDAL.transaction(async (tx) => {
-      const inviteeUser = await userDAL.findUserByEmail(inviteeEmail, tx);
+      const inviteeUser = await userDAL.findUserByUsername(inviteeEmail, tx);
       if (inviteeUser) {
         // if user already exist means its already part of infisical
         // Thus the signup flow is not needed anymore
@@ -403,6 +412,7 @@ export const orgServiceFactory = ({
       // not invited before
       const user = await userDAL.create(
         {
+          username: inviteeEmail,
           email: inviteeEmail,
           isAccepted: false,
           authMethods: [AuthMethod.EMAIL],
@@ -437,7 +447,7 @@ export const orgServiceFactory = ({
       recipients: [inviteeEmail],
       substitutions: {
         inviterFirstName: user.firstName,
-        inviterEmail: user.email,
+        inviterUsername: user.username,
         organizationName: org?.name,
         email: inviteeEmail,
         organizationId: org?.id.toString(),
@@ -457,7 +467,7 @@ export const orgServiceFactory = ({
    * magic link and issue a temporary signup token for user to complete setting up their account
    */
   const verifyUserToOrg = async ({ orgId, email, code }: TVerifyUserToOrgDTO) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findUserByUsername(email);
     if (!user) {
       throw new BadRequestError({ message: "Invalid request", name: "Verify user to org" });
     }
@@ -595,7 +605,7 @@ export const orgServiceFactory = ({
     inviteUserToOrganization,
     verifyUserToOrg,
     updateOrg,
-    findOrgMembersByEmail,
+    findOrgMembersByUsername,
     createOrganization,
     deleteOrganizationById,
     deleteOrgMembership,

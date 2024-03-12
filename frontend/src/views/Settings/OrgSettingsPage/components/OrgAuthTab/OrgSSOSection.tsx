@@ -1,6 +1,5 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { format } from "date-fns";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -15,13 +14,6 @@ import { useCreateSSOConfig, useGetSSOConfig, useUpdateSSOConfig } from "@app/ho
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { SSOModal } from "./SSOModal";
-
-const ssoAuthProviderMap: { [key: string]: string } = {
-  "okta-saml": "Okta SAML",
-  "azure-saml": "Azure SAML",
-  "jumpcloud-saml": "JumpCloud SAML",
-  "google-saml": "Google SAML"
-};
 
 export const OrgSSOSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
@@ -39,6 +31,11 @@ export const OrgSSOSection = (): JSX.Element => {
   const handleSamlSSOToggle = async (value: boolean) => {
     try {
       if (!currentOrg?.id) return;
+      
+      if (!subscription?.samlSSO) {
+        handlePopUpOpen("upgradePlan");
+        return;
+      }
 
       await mutateAsync({
         organizationId: currentOrg?.id,
@@ -86,7 +83,7 @@ export const OrgSSOSection = (): JSX.Element => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-8 flex items-center">
-        <h2 className="flex-1 text-xl font-semibold text-white">SAML SSO Configuration</h2>
+        <h2 className="flex-1 text-xl font-semibold text-white">SAML</h2>
         {!isLoading && (
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
             {(isAllowed) => (
@@ -96,13 +93,13 @@ export const OrgSSOSection = (): JSX.Element => {
                 isDisabled={!isAllowed}
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
               >
-                {data ? "Update SAML SSO" : "Set up SAML SSO"}
+                Configure
               </Button>
             )}
           </OrgPermissionCan>
         )}
       </div>
-      {data && (
+      {/* {data && ( */}
         <div className="mb-4">
           <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
             {(isAllowed) => (
@@ -112,36 +109,11 @@ export const OrgSSOSection = (): JSX.Element => {
                 isChecked={data ? data.isActive : false}
                 isDisabled={!isAllowed}
               >
-                Enable SAML SSO
+                Enable
               </Switch>
             )}
           </OrgPermissionCan>
         </div>
-      )}
-      <div className="mb-4">
-        <h3 className="text-sm text-mineshaft-400">SSO identifier</h3>
-        <p className="text-md text-gray-400">{data && data.id !== "" ? data.id : "-"}</p>
-      </div>
-      <div className="mb-4">
-        <h3 className="text-sm text-mineshaft-400">Type</h3>
-        <p className="text-md text-gray-400">
-          {data && data.authProvider !== "" ? ssoAuthProviderMap[data.authProvider] : "-"}
-        </p>
-      </div>
-      <div className="mb-4">
-        <h3 className="text-sm text-mineshaft-400">Entrypoint</h3>
-        <p className="text-md text-gray-400">
-          {data && data.entryPoint !== "" ? data.entryPoint : "-"}
-        </p>
-      </div>
-      <div className="mb-4">
-        <h3 className="text-sm text-mineshaft-400">Issuer</h3>
-        <p className="text-md text-gray-400">{data && data.issuer !== "" ? data.issuer : "-"}</p>
-      </div>
-      <div className="mb-4">
-        <h3 className="text-sm text-mineshaft-400">Last Logged In</h3>
-        <p className="text-md text-gray-400">{data?.lastUsed ? format(new Date(data?.lastUsed), "yyyy-MM-dd HH:mm:ss") : "-"}</p>
-      </div>
       <SSOModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}

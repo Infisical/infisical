@@ -14,7 +14,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         projectId: z.string().describe("The ID of the project.")
       }),
       body: z.object({
-        emails: z.string().email().array().describe("Emails of the users to add to the project.")
+        emails: z.string().email().array().default([]).describe("Emails of the users to add to the project."),
+        usernames: z.string().array().default([]).describe("Usernames of the users to add to the project.")
       }),
       response: {
         200: z.object({
@@ -28,7 +29,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         projectId: req.params.projectId,
         actorId: req.permission.id,
         actor: req.permission.type,
-        emails: req.body.emails
+        emails: req.body.emails,
+        usernames: req.body.usernames
       });
 
       await server.services.auditLog.createAuditLog({
@@ -57,7 +59,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       }),
 
       body: z.object({
-        emails: z.string().email().array().describe("Emails of the users to remove from the project.")
+        emails: z.string().email().array().default([]).describe("Emails of the users to remove from the project."),
+        usernames: z.string().array().default([]).describe("Usernames of the users to remove from the project.")
       }),
       response: {
         200: z.object({
@@ -72,7 +75,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         projectId: req.params.projectId,
-        emails: req.body.emails
+        emails: req.body.emails,
+        usernames: req.body.usernames
       });
 
       for (const membership of memberships) {

@@ -37,6 +37,7 @@ export type TSecretModifiedEvent = {
 export type TAdminInitEvent = {
   event: PostHogEventTypes.AdminInit;
   properties: {
+    username: string;
     email: string;
     firstName: string;
     lastName: string;
@@ -46,6 +47,7 @@ export type TAdminInitEvent = {
 export type TUserSignedUpEvent = {
   event: PostHogEventTypes.UserSignedUp;
   properties: {
+    username: string;
     email: string;
     attributionSource?: string;
   };

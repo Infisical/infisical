@@ -122,7 +122,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
               emails: z.array(
                 z.object({
                   primary: z.boolean(),
-                  value: z.string().email(),
+                  value: z.string(),
                   type: z.string().trim()
                 })
               ),
@@ -168,7 +168,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
           emails: z.array(
             z.object({
               primary: z.boolean(),
-              value: z.string().email(),
+              value: z.string(),
               type: z.string().trim()
             })
           ),
@@ -198,13 +198,15 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
           familyName: z.string().trim(),
           givenName: z.string().trim()
         }),
-        // emails: z.array( // optional?
-        //   z.object({
-        //     primary: z.boolean(),
-        //     value: z.string().email(),
-        //     type: z.string().trim()
-        //   })
-        // ),
+        emails: z
+          .array(
+            z.object({
+              primary: z.boolean(),
+              value: z.string().email(),
+              type: z.string().trim()
+            })
+          )
+          .optional(),
         // displayName: z.string().trim(),
         active: z.boolean()
       }),
@@ -231,8 +233,11 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
+      const primaryEmail = req.body.emails?.find((email) => email.primary)?.value;
+
       const user = await req.server.services.scim.createScimUser({
-        email: req.body.userName,
+        username: req.body.userName,
+        email: primaryEmail,
         firstName: req.body.name.givenName,
         lastName: req.body.name.familyName,
         orgId: req.permission.orgId as string

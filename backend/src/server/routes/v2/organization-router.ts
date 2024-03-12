@@ -24,6 +24,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           users: OrgMembershipsSchema.merge(
             z.object({
               user: UsersSchema.pick({
+                username: true,
                 email: true,
                 firstName: true,
                 lastName: true,
@@ -179,11 +180,12 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
-      const organization = await server.services.org.createOrganization(
-        req.permission.id,
-        req.auth.user.email,
-        req.body.name
-      );
+      const organization = await server.services.org.createOrganization({
+        userId: req.permission.id,
+        userEmail: req.auth.user.email,
+        orgName: req.body.name
+      });
+
       return { organization };
     }
   });

@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
-import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -146,15 +146,16 @@ export const scimServiceFactory = ({
 
     const users = await orgDAL.findMembership(
       {
-        orgId,
+        [`${TableName.OrgMembership}.orgId` as "id"]: orgId,
         ...parseFilter(filter)
       },
       findOpts
     );
 
-    const scimUsers = users.map(({ userId, firstName, lastName, email }) =>
+    const scimUsers = users.map(({ userId, username, firstName, lastName, email }) =>
       buildScimUser({
         userId: userId ?? "",
+        username,
         firstName: firstName ?? "",
         lastName: lastName ?? "",
         email,
@@ -173,7 +174,7 @@ export const scimServiceFactory = ({
     const [membership] = await orgDAL
       .findMembership({
         userId,
-        orgId
+        [`${TableName.OrgMembership}.orgId` as "id"]: orgId
       })
       .catch(() => {
         throw new ScimRequestError({
@@ -196,14 +197,15 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       userId: membership.userId as string,
+      username: membership.username,
+      email: membership.email ?? "",
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
-      email: membership.email,
       active: true
     });
   };
 
-  const createScimUser = async ({ firstName, lastName, email, orgId }: TCreateScimUserDTO) => {
+  const createScimUser = async ({ username, email, firstName, lastName, orgId }: TCreateScimUserDTO) => {
     const org = await orgDAL.findById(orgId);
 
     if (!org)
@@ -219,12 +221,18 @@ export const scimServiceFactory = ({
       });
 
     let user = await userDAL.findOne({
-      email
+      username
     });
 
     if (user) {
       await userDAL.transaction(async (tx) => {
-        const [orgMembership] = await orgDAL.findMembership({ userId: user.id, orgId }, { tx });
+        const [orgMembership] = await orgDAL.findMembership(
+          {
+            userId: user.id,
+            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+          },
+          { tx }
+        );
         if (orgMembership)
           throw new ScimRequestError({
             detail: "User already exists in the database",
@@ -248,6 +256,7 @@ export const scimServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         const newUser = await userDAL.create(
           {
+            username,
             email,
             firstName,
             lastName,
@@ -272,21 +281,25 @@ export const scimServiceFactory = ({
     }
 
     const appCfg = getConfig();
-    await smtpService.sendMail({
-      template: SmtpTemplates.ScimUserProvisioned,
-      subjectLine: "Infisical organization invitation",
-      recipients: [email],
-      substitutions: {
-        organizationName: org.name,
-        callback_url: `${appCfg.SITE_URL}/api/v1/sso/redirect/saml2/organizations/${org.slug}`
-      }
-    });
+
+    if (email) {
+      await smtpService.sendMail({
+        template: SmtpTemplates.ScimUserProvisioned,
+        subjectLine: "Infisical organization invitation",
+        recipients: [email],
+        substitutions: {
+          organizationName: org.name,
+          callback_url: `${appCfg.SITE_URL}/api/v1/sso/redirect/saml2/organizations/${org.slug}`
+        }
+      });
+    }
 
     return buildScimUser({
       userId: user.id,
+      username: user.username,
       firstName: user.firstName as string,
       lastName: user.lastName as string,
-      email: user.email,
+      email: user.email ?? "",
       active: true
     });
   };
@@ -295,7 +308,7 @@ export const scimServiceFactory = ({
     const [membership] = await orgDAL
       .findMembership({
         userId,
-        orgId
+        [`${TableName.OrgMembership}.orgId` as "id"]: orgId
       })
       .catch(() => {
         throw new ScimRequestError({
@@ -342,9 +355,10 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       userId: membership.userId as string,
+      username: membership.username,
+      email: membership.email,
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
-      email: membership.email,
       active
     });
   };
@@ -353,7 +367,7 @@ export const scimServiceFactory = ({
     const [membership] = await orgDAL
       .findMembership({
         userId,
-        orgId
+        [`${TableName.OrgMembership}.orgId` as "id"]: orgId
       })
       .catch(() => {
         throw new ScimRequestError({
@@ -387,9 +401,10 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       userId: membership.userId as string,
+      username: membership.username,
+      email: membership.email,
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
-      email: membership.email,
       active
     });
   };
