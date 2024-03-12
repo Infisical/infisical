@@ -65,6 +65,8 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         sameSite: "strict",
         secure: cfg.HTTPS_ENABLED
       });
+
+      return { token: tokens.access };
     }
   });
 
