@@ -9,7 +9,7 @@ import { OrgSSOSection } from "./OrgSSOSection";
 export const OrgAuthTab = withPermission(
   () => {
     return (
-      <div>
+      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
         <OrgGeneralAuthSection />
         <OrgSSOSection />
         <OrgLDAPSection />

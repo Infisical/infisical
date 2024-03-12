@@ -1,6 +1,3 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { 
@@ -64,40 +61,47 @@ export const OrgScimSection = () => {
     }
     
     return (
-        <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-            <div className="mb-8 flex items-center">
-                <h2 className="flex-1 text-xl font-semibold text-white">SCIM</h2>
-                <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Scim}>
+        <>
+            <hr className="border-mineshaft-600" />
+            <div className="py-4">
+                <div className="mb-2 flex justify-between items-center">
+                    <h2 className="text-md text-mineshaft-100">SCIM</h2>
+                    <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Scim}>
                     {(isAllowed) => (
                         <Button
                             onClick={addScimTokenBtnClick}
                             colorSchema="secondary"
                             isDisabled={!isAllowed}
-                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
                         >
-                            Configure
+                            Manage
                         </Button>
                     )}
                 </OrgPermissionCan>
+                </div>
+                <p className="text-sm text-mineshaft-300">Manage SCIM configuration</p>
             </div>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Scim}>
-                {(isAllowed) => (
-                    <Switch
-                        id="enable-scim"
-                        onCheckedChange={(value) => {
-                            if (subscription?.scim) {
-                                handleEnableSCIMToggle(value)
-                            } else {
-                                handlePopUpOpen("upgradePlan");
-                            }
-                        }}
-                        isChecked={currentOrg?.scimEnabled ?? false}
-                        isDisabled={!isAllowed}
-                    >
-                        Enable
-                    </Switch>
-                )}
-            </OrgPermissionCan>
+            <div className="py-4">
+                <div className="mb-2 flex justify-between items-center">
+                    <h2 className="text-md text-mineshaft-100">Enable SCIM</h2>
+                    <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Scim}>
+                        {(isAllowed) => (
+                            <Switch
+                                id="enable-scim"
+                                onCheckedChange={(value) => {
+                                    if (subscription?.scim) {
+                                        handleEnableSCIMToggle(value)
+                                    } else {
+                                        handlePopUpOpen("upgradePlan");
+                                    }
+                                }}
+                                isChecked={currentOrg?.scimEnabled ?? false}
+                                isDisabled={!isAllowed}
+                             />
+                        )}
+                    </OrgPermissionCan>
+                </div>
+                <p className="text-sm text-mineshaft-300">Allow member provisioning/deprovisioning with SCIM</p>
+            </div>
             <ScimTokenModal 
                 popUp={popUp}
                 handlePopUpOpen={handlePopUpOpen}
@@ -108,6 +112,6 @@ export const OrgScimSection = () => {
                 onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
                 text="You can use SCIM Provisioning if you switch to Infisical's Enterprise plan."
             />
-        </div>
+        </>
     );
 }
