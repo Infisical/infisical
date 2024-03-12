@@ -37,8 +37,20 @@ export const secretBlindIndexServiceFactory = ({
     return Number(secretCount);
   };
 
-  const getProjectSecrets = async ({ projectId, actorId, actorAuthMethod, actor }: TGetProjectSecretsDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod);
+  const getProjectSecrets = async ({
+    projectId,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    actor
+  }: TGetProjectSecretsDTO) => {
+    const { hasRole } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new UnauthorizedError({ message: "User must be admin" });
     }
