@@ -358,27 +358,6 @@ export const projectServiceFactory = ({
     return deletedProject;
   };
 
-  const deleteProjectBySlug = async ({ actor, actorId, actorOrgId, slug }: TDeleteProjectBySlugDTO) => {
-    const project = await projectDAL.findOne({ slug });
-
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, project.id, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
-
-    const deletedProject = await projectDAL.transaction(async (tx) => {
-      const delProject = await projectDAL.deleteById(project.id, tx);
-      const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(project.id).catch(() => null);
-
-      // Delete the org membership for the ghost user if it's found.
-      if (projectGhostUser) {
-        await userDAL.deleteById(projectGhostUser.id, tx);
-      }
-
-      return delProject;
-    });
-
-    return deletedProject;
-  };
-
   const getProjects = async (actorId: string) => {
     const workspaces = await projectDAL.findAllProjects(actorId);
     return workspaces;
