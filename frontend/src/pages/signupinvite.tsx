@@ -23,7 +23,11 @@ import issueBackupKey from "@app/components/utilities/cryptography/issueBackupKe
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { useServerConfig } from "@app/context";
-import { completeAccountSignupInvite, verifySignupInvite } from "@app/hooks/api/auth/queries";
+import {
+  completeAccountSignupInvite,
+  selectOrganization,
+  verifySignupInvite
+} from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 
 // eslint-disable-next-line new-cap
@@ -170,6 +174,10 @@ export default function SignupInvite() {
               const userOrgs = await fetchOrganizations();
 
               const orgId = userOrgs[0].id;
+
+              const { token: newJwtToken } = await selectOrganization({ organizationId: orgId });
+              SecurityClient.setToken(newJwtToken);
+
               localStorage.setItem("orgData.id", orgId);
 
               setStep(3);
@@ -210,6 +218,8 @@ export default function SignupInvite() {
                   SecurityClient.setSignupToken(response.token);
                   setStep(2);
                 } else {
+                  const { token: newJwtToken } = await selectOrganization({ organizationId });
+                  SecurityClient.setToken(newJwtToken);
                   // user will be redirected to dashboard
                   // if not logged in gets kicked out to login
                   router.push(`/org/${organizationId}/overview`);
