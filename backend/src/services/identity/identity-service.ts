@@ -142,7 +142,8 @@ export const identityServiceFactory = ({
       ActorType.IDENTITY,
       id,
       identityOrgMembership.orgId,
-      actorAuthMethod
+      actorAuthMethod,
+      actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
     if (!hasRequiredPriviledges)
