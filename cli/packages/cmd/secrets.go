@@ -63,6 +63,11 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		allowOverrideInImports, err := cmd.Flags().GetBool("allow-override-in-imports")
+		if err != nil {
+			util.HandleError(err)
+		}
+
 		tagSlugs, err := cmd.Flags().GetString("tags")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -73,7 +78,7 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports}, "")
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports, AllowOverrideInImports: allowOverrideInImports}, "")
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -685,6 +690,7 @@ func init() {
 	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
 	secretsGetCmd.Flags().Bool("raw-value", false, "Returns only the value of secret, only works with one secret")
 
+	secretsCmd.Flags().Bool("allow-override-in-imports", false, "Prioritizes personal secrets with the same name for imported secrets (default: false)")
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
 	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")

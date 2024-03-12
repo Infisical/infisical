@@ -7,13 +7,15 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 export const fnSecretsFromImports = async ({
   allowedImports,
   folderDAL,
-  secretDAL
+  secretDAL,
+  allowOverrideInImports
 }: {
   allowedImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string };
   })[];
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">;
   secretDAL: Pick<TSecretDALFactory, "find">;
+  allowOverrideInImports?: boolean;
 }) => {
   const importedFolders = await folderDAL.findByManySecretPath(
     allowedImports.map(({ importEnv, importPath }) => ({
@@ -28,7 +30,7 @@ export const fnSecretsFromImports = async ({
   const importedSecrets = await secretDAL.find(
     {
       $in: { folderId: folderIds },
-      type: SecretType.Shared
+      ...(allowOverrideInImports ? {} : { type: SecretType.Shared }) // Only get Shared Secrets when allow_override_in_imports is disabled
     },
     {
       sort: [["id", "asc"]]

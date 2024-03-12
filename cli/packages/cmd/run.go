@@ -78,6 +78,11 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		allowOverrideInImports, err := cmd.Flags().GetBool("allow-override-in-imports")
+		if err != nil {
+			util.HandleError(err)
+		}
+
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -98,7 +103,7 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports}, projectConfigDir)
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports, AllowOverrideInImports: allowOverrideInImports}, projectConfigDir)
 
 		if err != nil {
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
@@ -202,6 +207,7 @@ func init() {
 	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	runCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	runCmd.Flags().Bool("include-imports", true, "Import linked secrets ")
+	runCmd.Flags().Bool("allow-override-in-imports", false, "Prioritizes personal secrets with the same name for imported secrets (default: false)")
 	runCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	runCmd.Flags().StringP("command", "c", "", "chained commands to execute (e.g. \"npm install && npm run dev; echo ...\")")
 	runCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs ")

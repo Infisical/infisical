@@ -279,10 +279,11 @@ type GetNewAccessTokenWithRefreshTokenResponse struct {
 }
 
 type GetEncryptedSecretsV3Request struct {
-	Environment   string `json:"environment"`
-	WorkspaceId   string `json:"workspaceId"`
-	SecretPath    string `json:"secretPath"`
-	IncludeImport bool   `json:"include_imports"`
+	Environment            string `json:"environment"`
+	WorkspaceId            string `json:"workspaceId"`
+	SecretPath             string `json:"secretPath"`
+	IncludeImport          bool   `json:"include_imports"`
+	AllowOverrideInImports bool   `json:"allow_override_in_imports"`
 }
 
 type GetFoldersV1Request struct {

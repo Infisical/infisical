@@ -17,7 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string, includeImports bool) ([]models.SingleEnvironmentVariable, api.GetServiceTokenDetailsResponse, error) {
+func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string, includeImports bool, allowOverrideInImports bool) ([]models.SingleEnvironmentVariable, api.GetServiceTokenDetailsResponse, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
 		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
@@ -45,10 +45,11 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 	}
 
 	encryptedSecrets, err := api.CallGetSecretsV3(httpClient, api.GetEncryptedSecretsV3Request{
-		WorkspaceId:   serviceTokenDetails.Workspace,
-		Environment:   environment,
-		SecretPath:    secretPath,
-		IncludeImport: includeImports,
+		WorkspaceId:            serviceTokenDetails.Workspace,
+		Environment:            environment,
+		SecretPath:             secretPath,
+		IncludeImport:          includeImports,
+		AllowOverrideInImports: allowOverrideInImports,
 	})
 
 	if err != nil {
@@ -71,7 +72,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 	}
 
 	if includeImports {
-		plainTextSecrets, err = InjectImportedSecret(plainTextWorkspaceKey, plainTextSecrets, encryptedSecrets.ImportedSecrets)
+		plainTextSecrets, err = InjectImportedSecret(plainTextWorkspaceKey, plainTextSecrets, encryptedSecrets.ImportedSecrets, allowOverrideInImports)
 		if err != nil {
 			return nil, api.GetServiceTokenDetailsResponse{}, err
 		}
@@ -80,7 +81,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 	return plainTextSecrets, serviceTokenDetails, nil
 }
 
-func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, tagSlugs string, secretsPath string, includeImports bool) ([]models.SingleEnvironmentVariable, error) {
+func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, tagSlugs string, secretsPath string, includeImports bool, allowOverrideInImports bool) ([]models.SingleEnvironmentVariable, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(JTWToken).
 		SetHeader("Accept", "application/json")
@@ -122,9 +123,10 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 	plainTextWorkspaceKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 	getSecretsRequest := api.GetEncryptedSecretsV3Request{
-		WorkspaceId:   workspaceId,
-		Environment:   environmentName,
-		IncludeImport: includeImports,
+		WorkspaceId:            workspaceId,
+		Environment:            environmentName,
+		IncludeImport:          includeImports,
+		AllowOverrideInImports: allowOverrideInImports,
 		// TagSlugs:    tagSlugs,
 	}
 
@@ -143,7 +145,7 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 	}
 
 	if includeImports {
-		plainTextSecrets, err = InjectImportedSecret(plainTextWorkspaceKey, plainTextSecrets, encryptedSecrets.ImportedSecrets)
+		plainTextSecrets, err = InjectImportedSecret(plainTextWorkspaceKey, plainTextSecrets, encryptedSecrets.ImportedSecrets, allowOverrideInImports)
 		if err != nil {
 			return nil, err
 		}
@@ -152,15 +154,17 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 	return plainTextSecrets, nil
 }
 
-func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId string, environmentName string, secretsPath string, includeImports bool) (models.PlaintextSecretResult, error) {
+func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId string, environmentName string, secretsPath string, includeImports bool, allowOverrideInImports bool) (models.PlaintextSecretResult, error) {
+
 	httpClient := resty.New()
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
 
 	getSecretsRequest := api.GetEncryptedSecretsV3Request{
-		WorkspaceId:   workspaceId,
-		Environment:   environmentName,
-		IncludeImport: includeImports,
+		WorkspaceId:            workspaceId,
+		Environment:            environmentName,
+		IncludeImport:          includeImports,
+		AllowOverrideInImports: allowOverrideInImports,
 		// TagSlugs:    tagSlugs,
 	}
 
@@ -195,14 +199,14 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 	}, nil
 }
 
-func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleEnvironmentVariable, importedSecrets []api.ImportedSecretV3) ([]models.SingleEnvironmentVariable, error) {
+func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleEnvironmentVariable, importedSecrets []api.ImportedSecretV3, allowOverrideInImports bool) ([]models.SingleEnvironmentVariable, error) {
 	if importedSecrets == nil {
 		return secrets, nil
 	}
 
-	hasOverriden := make(map[string]bool)
+	hasOverridden := make(map[string]bool)
 	for _, sec := range secrets {
-		hasOverriden[sec.Key] = true
+		hasOverridden[sec.Key] = true
 	}
 
 	for i := len(importedSecrets) - 1; i >= 0; i-- {
@@ -214,9 +218,9 @@ func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleE
 		}
 
 		for _, sec := range plainTextImportedSecrets {
-			if _, ok := hasOverriden[sec.Key]; !ok {
+			if _, ok := hasOverridden[sec.Key]; !ok || (allowOverrideInImports && sec.Type == SECRET_TYPE_PERSONAL) {
 				secrets = append(secrets, sec)
-				hasOverriden[sec.Key] = true
+				hasOverridden[sec.Key] = true
 			}
 		}
 	}
@@ -304,7 +308,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		}
 
 		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, infisicalDotJson.WorkspaceId,
-			params.Environment, params.TagSlugs, params.SecretsPath, params.IncludeImport)
+			params.Environment, params.TagSlugs, params.SecretsPath, params.IncludeImport, params.AllowOverrideInImports)
 		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
 
 		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
@@ -325,10 +329,10 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 	} else {
 		if params.InfisicalToken != "" {
 			log.Debug().Msg("Trying to fetch secrets using service token")
-			secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport)
+			secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport, params.AllowOverrideInImports)
 		} else if params.UniversalAuthAccessToken != "" {
 			log.Debug().Msg("Trying to fetch secrets using universal auth")
-			res, err := GetPlainTextSecretsViaMachineIdentity(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport)
+			res, err := GetPlainTextSecretsViaMachineIdentity(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport, params.AllowOverrideInImports)
 
 			errorToReturn = err
 			secretsToReturn = res.Secrets
