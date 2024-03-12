@@ -170,7 +170,6 @@ export const permissionServiceFactory = ({
     userId: string,
     projectId: string,
     authMethod: ActorAuthMethod,
-
     userOrgId?: string
   ): Promise<TProjectPermissionRT<ActorType.USER>> => {
     const membership = await permissionDAL.getProjectPermission(userId, projectId);
