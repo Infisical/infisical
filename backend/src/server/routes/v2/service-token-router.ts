@@ -47,6 +47,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
       const { serviceToken, user } = await server.services.serviceToken.getServiceToken({
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         actor: req.permission.type
       });
 

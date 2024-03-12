@@ -711,6 +711,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
         const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
+          actorOrgId: req.permission.orgId,
           actorAuthMethod: req.permission.authMethod,
           actor: req.permission.type,
           secretPath,
