@@ -35,7 +35,6 @@ export type TVerifyUserToOrgDTO = {
 
 export type TFindOrgMembersByEmailDTO = {
   actor: ActorType;
-  actorAuthMethod: ActorAuthMethod;
   actorOrgId: string | undefined;
   actorId: string;
   actorAuthMethod: ActorAuthMethod;

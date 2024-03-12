@@ -33,7 +33,6 @@ import { TOrgRoleDALFactory } from "./org-role-dal";
 import {
   TDeleteOrgMembershipDTO,
   TFindAllWorkspacesDTO,
-  TFindOrgMembersByEmailDTO,
   TInviteUserToOrgDTO,
   TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
