@@ -148,13 +148,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
                 role: z.string(),
                 isTemporary: z.literal(true),
                 temporaryMode: z.nativeEnum(ProjectUserMembershipTemporaryMode),
-                temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be positive"),
+                temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
                 temporaryAccessStartTime: z.string().datetime()
               })
             ])
           )
           .min(1)
-          .refine((data) => data.some(({ isTemporary }) => !isTemporary), "Atleast one permanent role required")
+          .refine((data) => data.some(({ isTemporary }) => !isTemporary), "At least long lived role is required")
       }),
       response: {
         200: z.object({

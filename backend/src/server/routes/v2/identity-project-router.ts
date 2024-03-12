@@ -70,7 +70,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
                 role: z.string(),
                 isTemporary: z.literal(true),
                 temporaryMode: z.nativeEnum(ProjectUserMembershipTemporaryMode),
-                temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be positive"),
+                temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
                 temporaryAccessStartTime: z.string().datetime()
               })
             ])

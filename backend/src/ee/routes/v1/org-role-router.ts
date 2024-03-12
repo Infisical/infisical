@@ -18,9 +18,12 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
           .string()
           .min(1)
           .trim()
-          .refine((val) => Object.keys(OrgMembershipRole).includes(val), "Invalid keyword slugs")
+          .refine(
+            (val) => Object.keys(OrgMembershipRole).includes(val),
+            "Please choose a different slug, the slug you have entered is reserved"
+          )
           .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
+            message: "Slug must be a valid"
           }),
         name: z.string().trim(),
         description: z.string().trim().optional(),
@@ -59,10 +62,10 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
           .optional()
           .refine(
             (val) => typeof val === "undefined" || Object.keys(OrgMembershipRole).includes(val),
-            "Invalid keyword slugs"
+            "Please choose a different slug, the slug you have entered is reserved."
           )
           .refine((val) => typeof val === "undefined" || slugify(val) === val, {
-            message: "Slug must be a valid slug"
+            message: "Slug must be a valid"
           }),
         name: z.string().trim().optional(),
         description: z.string().trim().optional(),

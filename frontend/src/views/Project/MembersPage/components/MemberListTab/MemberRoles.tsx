@@ -73,7 +73,7 @@ const TemporaryRoleForm = ({
     >
       <PopoverTrigger>
         <IconButton ariaLabel="role-temp" variant="plain" size="md">
-          <Tooltip content={isExpired ? "Access Expired" : "Grant Temporary Access"}>
+          <Tooltip content={isExpired ? "Timed access expired" : "Grant timed access"}>
             <FontAwesomeIcon
               icon={faClock}
               className={twMerge(
@@ -93,7 +93,7 @@ const TemporaryRoleForm = ({
       >
         <div className="flex flex-col space-y-4">
           <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
-            Set Role Temporarily
+            Configure timed access
           </div>
           {isExpired && <Tag colorSchema="red">Expired</Tag>}
           <Controller
@@ -292,12 +292,12 @@ export const MemberRoles = ({
         .map(({ role, customRoleName, id, isTemporary, temporaryAccessEndTime }) => {
           const isExpired = new Date() > new Date(temporaryAccessEndTime || ("" as string));
           return (
-            <Tag key={id} className="capitalize">
+            <Tag key={id}>
               <div className="flex items-center space-x-2">
                 <div>{formatRoleName(role, customRoleName)}</div>
                 {isTemporary && (
                   <div>
-                    <Tooltip content={isExpired ? "Expired Temporary Access" : "Temporary Access"}>
+                    <Tooltip content={isExpired ? "Timed role expired" : "Timed role access"}>
                       <FontAwesomeIcon
                         icon={faClock}
                         className={twMerge(isExpired && "text-red-600")}
@@ -326,7 +326,7 @@ export const MemberRoles = ({
                       {isTemporary && (
                         <div>
                           <Tooltip
-                            content={isExpired ? "Expired Temporary Access" : "Temporary Access"}
+                            content={isExpired ? "Access expired" : "Temporary access"}
                           >
                             <FontAwesomeIcon
                               icon={faClock}
