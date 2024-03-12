@@ -84,7 +84,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         projectId: z.string().trim()
       }),
-
       body: z.object({
         userPrivateKey: z.string().trim()
       }),
@@ -96,6 +95,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await server.services.project.upgradeProject({
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         projectId: req.params.projectId,
@@ -122,6 +122,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const status = await server.services.project.getProjectUpgradeStatus({
         actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.projectId,
         actor: req.permission.type,
         actorId: req.permission.id
