@@ -37,12 +37,12 @@ The distinguishing factor, however, is the authentication method used.
     Once you have created a service token with the required permissions, you'll need to feed the token to the CLI. 
 
     #### Pass as flag
-    You may use the --token flag to set the token 
+    You may use the `--token` flag to set the token
 
     ```
-    infisical export --token=<>
-    infisical secrets --token=<>
-    infisical run --token=<> -- npm run dev
+    infisical export --token=<your-token>
+    infisical secrets --token=<your-token>
+    infisical run --token=<your-token> -- npm run dev
     ```
 
     #### Pass via shell environment variable
@@ -135,3 +135,53 @@ Another option to point the CLI to your self hosted Infisical instance is to set
 infisical <any-command> --domain="https://your-self-hosted-infisical.com/api"
 ```
 </Accordion>
+
+## Telemetry
+
+Infisical collects non-sensitive aggregated CLI usage data to improve its products. Infisical collects this information by default, but you can disable this data collection at any time.
+
+<Accordion title="Disable telemetry">
+
+#### Command-line parameter
+
+```bash
+infisical --no-telemetry <your-command>
+```
+
+#### Globally
+
+<Tabs>
+   <Tab title="Unix/Linux">
+      <Tip>
+        `$HOME/.profile` is pretty common but, you could place it under `$HOME/.profile.d/infisical.sh` or any profile file run at login 
+      </Tip>
+
+      ```bash
+      cat <<EOF >> $HOME/.profile && source $HOME/.profile
+
+      # Disabling Infisical CLI telemetry
+      export INFISICAL_DISABLE_TELEMETRY=true
+      EOF
+      ```
+
+   </Tab>
+   <Tab title="Windows">
+      <Warning>
+        You might need to open the console as **administrator** !
+      </Warning>
+
+      ```bash
+      # Default terminal or Windows Powershell
+      setx INFISICAL_DISABLE_TELEMETRY "true"
+      ```
+
+      ```powershell
+      # Windows Powershell
+      [System.Environment]::SetEnvironmentVariable('INFISICAL_DISABLE_TELEMETRY','true', 'User')
+      ```
+
+   </Tab>
+</Tabs>
+</Accordion>
+
+More about telemetry usage and data [here](./telemetry)
