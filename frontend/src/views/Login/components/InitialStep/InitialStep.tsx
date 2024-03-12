@@ -5,7 +5,6 @@ import { useRouter } from "next/router";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import axios from "axios";
 
 import Error from "@app/components/basic/Error";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -57,17 +56,14 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             setIsLoading(false);
             return;
           }
-          // case: login was successful
-          const cliUrl = `http://127.0.0.1:${callbackPort}/`;
 
-          // send request to server endpoint
-          const instance = axios.create();
-          await instance.post(cliUrl, { ...isCliLoginSuccessful.loginResponse });
-
-          // cli page
-          router.push("/cli-redirect");
-
-          // on success, router.push to cli Login Successful page
+          navigateUserToSelectOrg(router, callbackPort!);
+        } else {
+          setLoginError(true);
+          createNotification({
+            text: "CLI login unsuccessful. Double-check your credentials and try again.",
+            type: "error"
+          });
         }
       } else {
         const isLoginSuccessful = await attemptLogin({
@@ -85,7 +81,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             return;
           }
 
-          await navigateUserToSelectOrg(router);
+          navigateUserToSelectOrg(router);
 
           // case: login does not require MFA step
           createNotification({
