@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 
 import { TUsers, UserDeviceSchema } from "@app/db/schemas";
+import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
@@ -89,7 +90,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     user: TUsers;
     ip: string;
     userAgent: string;
-    organizationId?: string;
+    organizationId: string | undefined;
     authMethod: AuthMethod;
   }) => {
     const cfg = getConfig();
@@ -178,9 +179,15 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     // let authMethod = (providerAuthToken as AuthMethod) || AuthMethod.EMAIL;
 
     let authMethod = AuthMethod.EMAIL;
+    let organizationId: string | undefined;
 
     if (providerAuthToken) {
-      authMethod = validateProviderAuthToken(providerAuthToken, email).authMethod;
+      const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
+
+      authMethod = decodedProviderToken.authMethod;
+      if (isAuthMethodSaml(authMethod) && decodedProviderToken.orgId) {
+        organizationId = decodedProviderToken.orgId;
+      }
     }
 
     if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey) throw new Error("Failed to authenticate. Try again?");
@@ -226,7 +233,8 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       },
       ip,
       userAgent,
-      authMethod
+      authMethod,
+      organizationId
     });
 
     return { token, isMfaEnabled: false, user: userEnc } as const;
