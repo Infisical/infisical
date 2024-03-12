@@ -180,21 +180,21 @@ export const ldapConfigServiceFactory = ({
       keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
     });
 
-    if (bindDN) {
+    if (bindDN !== undefined) {
       const { ciphertext: encryptedBindDN, iv: bindDNIV, tag: bindDNTag } = encryptSymmetric(bindDN, key);
       updateQuery.encryptedBindDN = encryptedBindDN;
       updateQuery.bindDNIV = bindDNIV;
       updateQuery.bindDNTag = bindDNTag;
     }
 
-    if (bindPass) {
+    if (bindPass !== undefined) {
       const { ciphertext: encryptedBindPass, iv: bindPassIV, tag: bindPassTag } = encryptSymmetric(bindPass, key);
       updateQuery.encryptedBindPass = encryptedBindPass;
       updateQuery.bindPassIV = bindPassIV;
       updateQuery.bindPassTag = bindPassTag;
     }
 
-    if (caCert) {
+    if (caCert !== undefined) {
       const { ciphertext: encryptedCACert, iv: caCertIV, tag: caCertTag } = encryptSymmetric(caCert, key);
       updateQuery.encryptedCACert = encryptedCACert;
       updateQuery.caCertIV = caCertIV;

@@ -104,24 +104,26 @@ export const OrgLDAPSection = (): JSX.Element => {
         </div>
         <p className="text-sm text-mineshaft-300">Manage LDAP authentication configuration</p>
       </div>
-      <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">Enable LDAP</h2>
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Ldap}>
-              {(isAllowed) => (
-                <Switch
-                  id="enable-saml-sso"
-                  onCheckedChange={(value) => handleLDAPToggle(value)}
-                  isChecked={data ? data.isActive : false}
-                  isDisabled={!isAllowed}
-                >
-                  Enable
-                </Switch>
-              )}
-            </OrgPermissionCan>
+      {data && (
+        <div className="py-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-md text-mineshaft-100">Enable LDAP</h2>
+            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Ldap}>
+                {(isAllowed) => (
+                  <Switch
+                    id="enable-saml-sso"
+                    onCheckedChange={(value) => handleLDAPToggle(value)}
+                    isChecked={data ? data.isActive : false}
+                    isDisabled={!isAllowed}
+                  >
+                    Enable
+                  </Switch>
+                )}
+              </OrgPermissionCan>
+          </div>
+          <p className="text-sm text-mineshaft-300">Allow members to authenticate into Infisical with LDAP</p>
         </div>
-        <p className="text-sm text-mineshaft-300">Allow members to authenticate into Infisical with LDAP</p>
-      </div>
+      )}
         <LDAPModal
           popUp={popUp}
           handlePopUpClose={handlePopUpClose}

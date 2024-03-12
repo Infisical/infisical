@@ -164,15 +164,17 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
-      body: z.object({
-        organizationId: z.string().trim(),
-        isActive: z.boolean().optional(),
-        url: z.string().trim().optional(),
-        bindDN: z.string().trim().optional(),
-        bindPass: z.string().trim().optional(),
-        searchBase: z.string().trim().optional(),
-        caCert: z.string().trim().optional()
-      }),
+      body: z
+        .object({
+          isActive: z.boolean(),
+          url: z.string().trim(),
+          bindDN: z.string().trim(),
+          bindPass: z.string().trim(),
+          searchBase: z.string().trim(),
+          caCert: z.string().trim()
+        })
+        .partial()
+        .merge(z.object({ organizationId: z.string() })),
       response: {
         200: LdapConfigsSchema
       }

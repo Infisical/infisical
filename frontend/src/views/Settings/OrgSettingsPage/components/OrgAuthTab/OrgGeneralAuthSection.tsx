@@ -60,7 +60,7 @@ export const OrgGeneralAuthSection = () => {
 
     return (
         <>
-            <div className="py-4">
+            {/* <div className="py-4">
                 <div className="mb-2 flex justify-between">
                     <h3 className="text-md text-mineshaft-100">Allow users to send invites</h3>
                     <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
@@ -75,7 +75,7 @@ export const OrgGeneralAuthSection = () => {
                     </OrgPermissionCan>
                 </div>
                 <p className="text-sm text-mineshaft-300">Allow members to invite new users to this organization</p>
-            </div>
+            </div> */}
             <div className="py-4">
                 <div className="mb-2 flex justify-between"> 
                     <h3 className="text-md text-mineshaft-100">Enforce SAML SSO</h3>

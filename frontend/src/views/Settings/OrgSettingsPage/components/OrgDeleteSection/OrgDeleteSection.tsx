@@ -45,18 +45,21 @@ export const OrgDeleteSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-4 text-xl font-semibold text-mineshaft-100">Danger Zone</p>
-      <Button
-        isLoading={isLoading}
-        colorSchema="danger"
-        variant="outline_bg"
-        type="submit"
-        onClick={() => handlePopUpOpen("deleteOrg")}
-        isDisabled={Boolean(membership && membership.role !== "admin")}
-      >
-        {`Delete ${currentOrg?.name}`}
-      </Button>
+    <>
+      <hr className="border-mineshaft-600" />
+      <div className="py-4">
+        <p className="mb-4 text-md text-mineshaft-100">Danger Zone</p>
+        <Button
+          isLoading={isLoading}
+          colorSchema="danger"
+          variant="outline_bg"
+          type="submit"
+          onClick={() => handlePopUpOpen("deleteOrg")}
+          isDisabled={Boolean(membership && membership.role !== "admin")}
+        >
+          {`Delete ${currentOrg?.name}`}
+        </Button>
+      </div>
       <DeleteActionModal
         isOpen={popUp.deleteOrg.isOpen}
         title="Are you sure want to delete this organization?"
@@ -65,6 +68,6 @@ export const OrgDeleteSection = () => {
         deleteKey="confirm"
         onDeleteApproved={handleDeleteOrgSubmit}
       />
-    </div>
+    </>
   );
 };

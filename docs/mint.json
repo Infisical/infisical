@@ -159,14 +159,6 @@
           ]
         },
         {
-          "group": "LDAP",
-          "pages": [
-            "documentation/platform/ldap/overview",
-            "documentation/platform/ldap/jumpcloud",
-            "documentation/platform/ldap/general"
-          ]
-        },
-        {
           "group": "SCIM",
           "pages": [
             "documentation/platform/scim/overview",
