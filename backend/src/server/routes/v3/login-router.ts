@@ -65,9 +65,9 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       // The decoded JWT token, which contains the auth method.
       const decodedToken = jwt.verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
 
-      if (decodedToken.organizationId) {
-        throw new UnauthorizedError({ message: "You have already selected an organization" });
-      }
+      // if (decodedToken.organizationId) {
+      //   throw new UnauthorizedError({ message: "You have already selected an organization" });
+      // }
 
       const user = await server.services.user.getMe(decodedToken.userId);
 

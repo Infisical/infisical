@@ -6,8 +6,7 @@ import { TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 
-import { AuthMethod, AuthModeJwtTokenPayload } from "../auth/auth-type";
-import { TOrgDALFactory } from "../org/org-dal";
+import { AuthModeJwtTokenPayload } from "../auth/auth-type";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTokenDALFactory } from "./auth-token-dal";
 import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenForUserDTO } from "./auth-token-types";
@@ -15,7 +14,6 @@ import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenFo
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
   userDAL: Pick<TUserDALFactory, "findById">;
-  orgDAL: TOrgDALFactory;
 };
 export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
 
@@ -56,7 +54,7 @@ export const getTokenConfig = (tokenType: TokenType) => {
   }
 };
 
-export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL }: TAuthTokenServiceFactoryDep) => {
+export const tokenServiceFactory = ({ tokenDAL, userDAL }: TAuthTokenServiceFactoryDep) => {
   const createTokenForUser = async ({ type, userId, orgId }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
@@ -143,18 +141,6 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL }: TAuthTokenSer
 
     const user = await userDAL.findById(session.userId);
     if (!user || !user.isAccepted) throw new UnauthorizedError({ name: "Token user not found" });
-
-    if (token.organizationId) {
-      const organization = await orgDAL.findById(token.organizationId);
-
-      if (organization.authEnforced) {
-        const tokenAuthMode = token.authMethod;
-
-        if (![AuthMethod.AZURE_SAML, AuthMethod.OKTA_SAML, AuthMethod.JUMPCLOUD_SAML].includes(tokenAuthMode)) {
-          throw new UnauthorizedError({ name: "Organization enforces SAML" });
-        }
-      }
-    }
 
     return { user, tokenVersionId: token.tokenVersionId, orgId: token.organizationId };
   };
