@@ -19,7 +19,7 @@ import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
@@ -59,6 +59,7 @@ declare module "fastify" {
     // identity injection. depending on which kinda of token the information is filled in auth
     auth: TAuthMode;
     permission: {
+      authMethod: ActorAuthMethod;
       type: ActorType;
       id: string;
       orgId?: string;
