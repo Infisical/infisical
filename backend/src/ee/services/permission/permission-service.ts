@@ -180,10 +180,6 @@ export const permissionServiceFactory = ({
       throw new BadRequestError({ name: "Custom permission not found" });
     }
 
-    if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
-      throw new BadRequestError({ name: "Custom permission not found" });
-    }
-
     if (membership.orgId !== userOrgId) {
       throw new UnauthorizedError({ name: "You are not a member of this organization" });
     }
