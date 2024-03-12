@@ -53,11 +53,11 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
 
       const members = sqlNestRelationships({
         data: docs,
-        parentMapper: ({ email, firstName, lastName, publicKey, isGhost, id, userId }) => ({
+        parentMapper: ({ email, firstName, username, lastName, publicKey, isGhost, id, userId }) => ({
           id,
           userId,
           projectId,
-          user: { email, firstName, lastName, id: userId, publicKey, isGhost }
+          user: { email, username, firstName, lastName, id: userId, publicKey, isGhost }
         }),
         key: "id",
         childrenMapper: [

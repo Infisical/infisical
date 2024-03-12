@@ -68,6 +68,7 @@ export type TWorkspaceUser = {
   id: string;
   user: {
     email: string;
+    username: string;
     firstName: string;
     lastName: string;
     id: string;
