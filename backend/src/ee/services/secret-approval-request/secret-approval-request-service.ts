@@ -275,7 +275,6 @@ export const secretApprovalRequestServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerId !== membership.id &&
