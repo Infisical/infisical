@@ -113,8 +113,8 @@ export const OrgMembersSection = () => {
       />
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
-        title={`Are you sure want to remove member with email ${
-          (popUp?.removeMember?.data as { email: string })?.email || ""
+        title={`Are you sure want to remove member with username ${
+          (popUp?.removeMember?.data as { username: string })?.username || ""
         }?`}
         onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
         deleteKey="confirm"

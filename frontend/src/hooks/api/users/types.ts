@@ -7,13 +7,15 @@ export enum AuthMethod {
   GITLAB = "gitlab",
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
-  JUMPCLOUD_SAML = "jumpcloud-saml"
+  JUMPCLOUD_SAML = "jumpcloud-saml",
+  LDAP = "ldap"
 }
 
 export type User = {
   createdAt: Date;
   updatedAt: Date;
-  email: string;
+  username: string;
+  email?: string;
   superAdmin: boolean;
   firstName?: string;
   lastName?: string;
@@ -38,7 +40,8 @@ export type UserEnc = {
 export type OrgUser = {
   id: string;
   user: {
-    email: string;
+    username: string;
+    email?: string;
     firstName: string;
     lastName: string;
     id: string;
@@ -75,7 +78,7 @@ export type AddUserToWsDTOE2EE = {
 
 export type AddUserToWsDTONonE2EE = {
   projectId: string;
-  emails: string[];
+  usernames: string[];
 };
 
 export type UpdateOrgUserRoleDTO = {

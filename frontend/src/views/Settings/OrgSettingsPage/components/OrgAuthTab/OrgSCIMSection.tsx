@@ -66,7 +66,7 @@ export const OrgScimSection = () => {
     return (
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <div className="mb-8 flex items-center">
-                <h2 className="flex-1 text-xl font-semibold text-white">SCIM Configuration</h2>
+                <h2 className="flex-1 text-xl font-semibold text-white">SCIM</h2>
                 <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Scim}>
                     {(isAllowed) => (
                         <Button
@@ -75,7 +75,7 @@ export const OrgScimSection = () => {
                             isDisabled={!isAllowed}
                             leftIcon={<FontAwesomeIcon icon={faPlus} />}
                         >
-                            Manage SCIM Tokens
+                            Configure
                         </Button>
                     )}
                 </OrgPermissionCan>
@@ -94,7 +94,7 @@ export const OrgScimSection = () => {
                         isChecked={currentOrg?.scimEnabled ?? false}
                         isDisabled={!isAllowed}
                     >
-                        Enable SCIM Provisioning
+                        Enable
                     </Switch>
                 )}
             </OrgPermissionCan>

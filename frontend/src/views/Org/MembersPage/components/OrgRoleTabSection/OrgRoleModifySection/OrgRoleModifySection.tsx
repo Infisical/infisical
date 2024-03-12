@@ -83,6 +83,12 @@ const SIMPLE_PERMISSION_OPTIONS = [
     formName: "sso"
   },
   {
+    title: "LDAP",
+    subtitle: "Define organization level LDAP requirements",
+    icon: faSignIn,
+    formName: "ldap"
+  },
+  {
     title: "SCIM",
     subtitle: "Define organization level SCIM requirements",
     icon: faUsers,

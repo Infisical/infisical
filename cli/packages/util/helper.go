@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/Infisical/infisical-merge/packages/models"
+	"github.com/spf13/cobra"
 )
 
 type DecodedSymmetricEncryptionDetails = struct {
@@ -61,6 +62,20 @@ func IsSecretTypeValid(s string) bool {
 		return true
 	}
 	return false
+}
+
+func GetInfisicalServiceToken(cmd *cobra.Command) (serviceToken string, err error) {
+	infisicalToken, err := cmd.Flags().GetString("token")
+
+	if infisicalToken == "" {
+		infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	return infisicalToken, nil
 }
 
 // Checks if the passed in email already exists in the users slice

@@ -126,9 +126,38 @@ services:
     ports:
       - 1025:1025 # SMTP server
       - 8025:8025 # Web UI
+  
+  openldap: # note: more advanced configuration is available
+    image: osixia/openldap:1.5.0
+    restart: always
+    environment:
+      LDAP_ORGANISATION: Acme
+      LDAP_DOMAIN: acme.com
+      LDAP_ADMIN_PASSWORD: admin
+    ports:
+      - 389:389
+      - 636:636
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+    profiles: [ldap]
+
+  phpldapadmin: # username: cn=admin,dc=acme,dc=com, pass is admin
+    image: osixia/phpldapadmin:latest
+    restart: always
+    environment:
+      - PHPLDAPADMIN_LDAP_HOSTS=openldap
+      - PHPLDAPADMIN_HTTPS=false
+    ports:
+      - 6433:80
+    depends_on:
+      - openldap
+    profiles: [ldap]
 
 volumes:
   postgres-data:
     driver: local
   redis_data:
     driver: local
+  ldap_data:
+  ldap_config:

@@ -92,9 +92,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.AdminInit,
-        distinctId: user.user.email,
+        distinctId: user.user.username ?? "",
         properties: {
-          email: user.user.email,
+          username: user.user.username,
+          email: user.user.email ?? "",
           lastName: user.user.lastName || "",
           firstName: user.user.firstName || ""
         }

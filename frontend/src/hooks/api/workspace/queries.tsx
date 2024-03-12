@@ -323,11 +323,11 @@ export const useDeleteUserFromWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ emails, workspaceId }: { workspaceId: string; emails: string[] }) => {
+    mutationFn: async ({ usernames, workspaceId }: { workspaceId: string; usernames: string[] }) => {
       const {
         data: { deletedMembership }
       } = await apiRequest.delete(`/api/v2/workspace/${workspaceId}/memberships`, {
-        data: { emails }
+        data: { usernames }
       });
       return deletedMembership;
     },

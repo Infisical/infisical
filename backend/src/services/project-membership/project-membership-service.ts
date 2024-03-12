@@ -45,7 +45,7 @@ type TProjectMembershipServiceFactoryDep = {
   projectMembershipDAL: TProjectMembershipDALFactory;
   userDAL: Pick<TUserDALFactory, "findById" | "findOne" | "findUserByProjectMembershipId" | "find">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByEmail">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByUsername">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -134,8 +134,8 @@ export const projectMembershipServiceFactory = ({
       const appCfg = getConfig();
       await smtpService.sendMail({
         template: SmtpTemplates.WorkspaceInvite,
-        subjectLine: "Infisical workspace invitation",
-        recipients: invitees.map((i) => i.email),
+        subjectLine: "Infisical project invitation",
+        recipients: invitees.filter((i) => i.email).map((i) => i.email as string),
         substitutions: {
           workspaceName: project.name,
           callback_url: `${appCfg.SITE_URL}/login`
@@ -206,8 +206,8 @@ export const projectMembershipServiceFactory = ({
       const appCfg = getConfig();
       await smtpService.sendMail({
         template: SmtpTemplates.WorkspaceInvite,
-        subjectLine: "Infisical workspace invitation",
-        recipients: orgMembers.map(({ email }) => email).filter(Boolean),
+        subjectLine: "Infisical project invitation",
+        recipients: orgMembers.filter((i) => i.email).map((i) => i.email as string),
         substitutions: {
           workspaceName: project.name,
           callback_url: `${appCfg.SITE_URL}/login`
@@ -222,6 +222,7 @@ export const projectMembershipServiceFactory = ({
     actorId,
     actor,
     emails,
+    usernames,
     sendEmails = true
   }: TAddUsersToWorkspaceNonE2EEDTO) => {
     const project = await projectDAL.findById(projectId);
@@ -234,9 +235,14 @@ export const projectMembershipServiceFactory = ({
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
 
-    const orgMembers = await orgDAL.findOrgMembersByEmail(project.orgId, emails);
+    const usernamesAndEmails = [...emails, ...usernames];
 
-    if (orgMembers.length !== emails.length) throw new BadRequestError({ message: "Some users are not part of org" });
+    const orgMembers = await orgDAL.findOrgMembersByUsername(project.orgId, [
+      ...new Set(usernamesAndEmails.map((element) => element.toLowerCase()))
+    ]);
+
+    if (orgMembers.length !== usernamesAndEmails.length)
+      throw new BadRequestError({ message: "Some users are not part of org" });
 
     if (!orgMembers.length) return [];
 
@@ -315,16 +321,21 @@ export const projectMembershipServiceFactory = ({
     });
 
     if (sendEmails) {
+      const recipients = orgMembers.filter((i) => i.user.email).map((i) => i.user.email as string);
+
       const appCfg = getConfig();
-      await smtpService.sendMail({
-        template: SmtpTemplates.WorkspaceInvite,
-        subjectLine: "Infisical workspace invitation",
-        recipients: orgMembers.map(({ user }) => user.email).filter(Boolean),
-        substitutions: {
-          workspaceName: project.name,
-          callback_url: `${appCfg.SITE_URL}/login`
-        }
-      });
+
+      if (recipients.length) {
+        await smtpService.sendMail({
+          template: SmtpTemplates.WorkspaceInvite,
+          subjectLine: "Infisical project invitation",
+          recipients: orgMembers.filter((i) => i.user.email).map((i) => i.user.email as string),
+          substitutions: {
+            workspaceName: project.name,
+            callback_url: `${appCfg.SITE_URL}/login`
+          }
+        });
+      }
     }
     return members;
   };
@@ -407,7 +418,8 @@ export const projectMembershipServiceFactory = ({
     actor,
     actorOrgId,
     projectId,
-    emails
+    emails,
+    usernames
   }: TDeleteProjectMembershipsDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
@@ -421,9 +433,13 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
-    const projectMembers = await projectMembershipDAL.findMembershipsByEmail(projectId, emails);
+    const usernamesAndEmails = [...emails, ...usernames];
 
-    if (projectMembers.length !== emails.length) {
+    const projectMembers = await projectMembershipDAL.findMembershipsByUsername(projectId, [
+      ...new Set(usernamesAndEmails.map((element) => element.toLowerCase()))
+    ]);
+
+    if (projectMembers.length !== usernamesAndEmails.length) {
       throw new BadRequestError({
         message: "Some users are not part of project",
         name: "Delete project membership"

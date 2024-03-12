@@ -64,7 +64,7 @@ export const secretScanningQueueFactory = ({
       orgId: organizationId,
       role: OrgMembershipRole.Admin
     });
-    return adminsOfWork.map((userObject) => userObject.email);
+    return adminsOfWork.filter((userObject) => userObject.email).map((userObject) => userObject.email as string);
   };
 
   queueService.start(QueueName.SecretPushEventScan, async (job) => {
@@ -149,7 +149,7 @@ export const secretScanningQueueFactory = ({
       await smtpService.sendMail({
         template: SmtpTemplates.SecretLeakIncident,
         subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.fullName}`,
-        recipients: adminEmails,
+        recipients: adminEmails.filter((email) => email).map((email) => email),
         substitutions: {
           numberOfSecrets: Object.keys(allFindingsByFingerprint).length,
           pusher_email: pusher.email,
@@ -221,7 +221,7 @@ export const secretScanningQueueFactory = ({
       await smtpService.sendMail({
         template: SmtpTemplates.SecretLeakIncident,
         subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.fullName}`,
-        recipients: adminEmails,
+        recipients: adminEmails.filter((email) => email).map((email) => email),
         substitutions: {
           numberOfSecrets: findings.length
         }

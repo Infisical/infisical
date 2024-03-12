@@ -5,7 +5,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 // this is a unique id for sending posthog event
 export const getTelemetryDistinctId = (req: FastifyRequest) => {
   if (req.auth.actor === ActorType.USER) {
-    return req.auth.user.email;
+    return req.auth.user.username;
   }
   if (req.auth.actor === ActorType.IDENTITY) {
     return `identity-${req.auth.identityId}`;

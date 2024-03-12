@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  UserAliases = "user_aliases",
   UserEncryptionKey = "user_encryption_keys",
   AuthTokens = "auth_tokens",
   AuthTokenSession = "auth_token_sessions",
@@ -50,6 +51,7 @@ export enum TableName {
   SecretRotation = "secret_rotations",
   SecretRotationOutput = "secret_rotation_outputs",
   SamlConfig = "saml_configs",
+  LdapConfig = "ldap_configs",
   AuditLog = "audit_logs",
   GitAppInstallSession = "git_app_install_sessions",
   GitAppOrg = "git_app_org",

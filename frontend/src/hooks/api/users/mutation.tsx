@@ -50,9 +50,9 @@ export const useAddUserToWsNonE2EE = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, AddUserToWsDTONonE2EE>({
-    mutationFn: async ({ projectId, emails }) => {
+    mutationFn: async ({ projectId, usernames }) => {
       const { data } = await apiRequest.post(`/api/v2/workspace/${projectId}/memberships`, {
-        emails
+        usernames
       });
       return data;
     },

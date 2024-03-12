@@ -11,6 +11,10 @@ export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 
 export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
   const toggleUserMfa = async (userId: string, isMfaEnabled: boolean) => {
+    const user = await userDAL.findById(userId);
+
+    if (!user || !user.email) throw new BadRequestError({ name: "Failed to toggle MFA" });
+
     const updatedUser = await userDAL.updateById(userId, {
       isMfaEnabled,
       mfaMethods: isMfaEnabled ? ["email"] : []
@@ -29,6 +33,12 @@ export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
   const updateAuthMethods = async (userId: string, authMethods: AuthMethod[]) => {
     const user = await userDAL.findById(userId);
     if (!user) throw new BadRequestError({ name: "Update auth methods" });
+
+    if (user.authMethods?.includes(AuthMethod.LDAP))
+      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
+
+    if (authMethods.includes(AuthMethod.LDAP))
+      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
 
     const updatedUser = await userDAL.updateById(userId, { authMethods });
     return updatedUser;
