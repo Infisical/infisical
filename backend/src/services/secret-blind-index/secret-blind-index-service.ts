@@ -28,16 +28,17 @@ export const secretBlindIndexServiceFactory = ({
     actor,
     projectId,
     actorId,
+    actorAuthMethod,
     actorOrgId
   }: TGetProjectBlindIndexStatusDTO) => {
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
 
     const secretCount = await secretBlindIndexDAL.countOfSecretsWithNullSecretBlindIndex(projectId);
     return Number(secretCount);
   };
 
-  const getProjectSecrets = async ({ projectId, actorId, actor }: TGetProjectSecretsDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getProjectSecrets = async ({ projectId, actorId, actorAuthMethod, actor }: TGetProjectSecretsDTO) => {
+    const { hasRole } = await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod);
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new UnauthorizedError({ message: "User must be admin" });
     }
@@ -50,10 +51,17 @@ export const secretBlindIndexServiceFactory = ({
     projectId,
     actor,
     actorId,
+    actorAuthMethod,
     actorOrgId,
     secretsToUpdate
   }: TUpdateProjectSecretNameDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { hasRole } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new UnauthorizedError({ message: "User must be admin" });
     }

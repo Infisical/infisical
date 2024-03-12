@@ -43,6 +43,7 @@ export const serviceTokenServiceFactory = ({
     name,
     actor,
     actorOrgId,
+    actorAuthMethod,
     scopes,
     actorId,
     projectId,
@@ -50,7 +51,13 @@ export const serviceTokenServiceFactory = ({
     permissions,
     encryptedKey
   }: TCreateServiceTokenDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
 
     scopes.forEach(({ environment, secretPath }) => {
@@ -94,7 +101,7 @@ export const serviceTokenServiceFactory = ({
     return { token, serviceToken };
   };
 
-  const deleteServiceToken = async ({ actorId, actor, actorOrgId, id }: TDeleteServiceTokenDTO) => {
+  const deleteServiceToken = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TDeleteServiceTokenDTO) => {
     const serviceToken = await serviceTokenDAL.findById(id);
     if (!serviceToken) throw new BadRequestError({ message: "Token not found" });
 
@@ -102,6 +109,7 @@ export const serviceTokenServiceFactory = ({
       actor,
       actorId,
       serviceToken.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens);
@@ -122,8 +130,20 @@ export const serviceTokenServiceFactory = ({
     return { serviceToken, user: serviceTokenUser };
   };
 
-  const getProjectServiceTokens = async ({ actorId, actor, actorOrgId, projectId }: TProjectServiceTokensDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+  const getProjectServiceTokens = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TProjectServiceTokensDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
 
     const tokens = await serviceTokenDAL.find({ projectId }, { sort: [["createdAt", "desc"]] });

@@ -34,12 +34,19 @@ export const secretFolderServiceFactory = ({
     projectId,
     actor,
     actorId,
+    actorAuthMethod,
     actorOrgId,
     name,
     environment,
     path: secretPath
   }: TCreateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -114,12 +121,19 @@ export const secretFolderServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    actorAuthMethod,
     name,
     environment,
     path: secretPath,
     id
   }: TUpdateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -162,11 +176,18 @@ export const secretFolderServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    actorAuthMethod,
     environment,
     path: secretPath,
     idOrName
   }: TDeleteFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -196,12 +217,13 @@ export const secretFolderServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    actorAuthMethod,
     environment,
     path: secretPath
   }: TGetFolderDTO) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new BadRequestError({ message: "Environment not found", name: "get folders" });
