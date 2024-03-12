@@ -8,12 +8,13 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import jwt_decode from "jwt-decode";
 
 import { Button, Spinner } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { useGetOrganizations, useLogoutUser, useSelectOrganization } from "@app/hooks/api";
 import { Organization } from "@app/hooks/api/types";
-import { isLoggedIn } from "@app/reactQuery";
+import { getAuthToken, isLoggedIn } from "@app/reactQuery";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 
 const LoadingScreen = () => {
@@ -64,6 +65,16 @@ export default function LoginPage() {
   );
 
   useEffect(() => {
+    const authToken = getAuthToken();
+
+    if (authToken) {
+      const decodedJwt = jwt_decode(authToken) as any;
+
+      if (decodedJwt?.organizationId) {
+        navigateUserToOrg(router, decodedJwt.organizationId);
+      }
+    }
+
     if (!isLoggedIn()) {
       router.push("/login");
     }
