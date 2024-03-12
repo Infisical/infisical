@@ -5,12 +5,8 @@ import axios from "axios";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { getAuthToken, isLoggedIn } from "@app/reactQuery";
 
-import { 
-    InitialStep,
-    LDAPStep,
-    MFAStep,
-    SAMLSSOStep} from "./components";
-import { navigateUserToOrg } from "./Login.utils";
+import { InitialStep, LDAPStep, MFAStep, SAMLSSOStep } from "./components";
+import { navigateUserToSelectOrg } from "./Login.utils";
 
 export const Login = () => {
   const router = useRouter();
@@ -52,38 +48,33 @@ export const Login = () => {
     }
   }, []);
 
-    const renderView = () => {
-        switch (step) {
-            case 0:
-                return (
-                    <InitialStep 
-                        setStep={setStep}
-                        email={email}
-                        setEmail={setEmail}
-                        password={password}
-                        setPassword={setPassword}
-                    />
-                );
-            case 1:
-                return (
-                    <MFAStep 
-                        email={email}
-                        password={password}
-                        providerAuthToken={undefined}
-                        callbackPort={queryParams.get("callback_port")}
-                    />
-                );
-            case 2:
-                return (
-                    <SAMLSSOStep setStep={setStep} />
-                );
-            case 3:
-                return (
-                    <LDAPStep setStep={setStep} />
-                );
-            default:
-                return <div />;
-        }
+  const renderView = () => {
+    switch (step) {
+      case 0:
+        return (
+          <InitialStep
+            setStep={setStep}
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+          />
+        );
+      case 1:
+        return (
+          <MFAStep
+            email={email}
+            password={password}
+            providerAuthToken={undefined}
+            callbackPort={queryParams.get("callback_port")}
+          />
+        );
+      case 2:
+        return <SAMLSSOStep setStep={setStep} />;
+      case 3:
+        return <LDAPStep setStep={setStep} />;
+      default:
+        return <div />;
     }
   };
 
