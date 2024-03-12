@@ -97,6 +97,11 @@ func RequireLogin() {
 	}
 }
 
+func IsLoggedIn() bool {
+	configFile, _ := GetConfigFile()
+	return configFile.LoggedInUserEmail != ""
+}
+
 func RequireServiceToken() {
 	serviceToken := os.Getenv(INFISICAL_TOKEN_NAME)
 	if serviceToken == "" {
