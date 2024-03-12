@@ -4,11 +4,13 @@ import { TUsers, UserDeviceSchema } from "@app/db/schemas";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
+import { TTokenDALFactory } from "../auth-token/auth-token-dal";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { validateProviderAuthToken } from "./auth-fns";
@@ -18,16 +20,24 @@ import {
   TOauthLoginDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
-import { AuthMethod, AuthModeMfaJwtTokenPayload, AuthTokenType } from "./auth-type";
+import { AuthMethod, AuthModeJwtTokenPayload, AuthModeMfaJwtTokenPayload, AuthTokenType } from "./auth-type";
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;
+  orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
+  tokenDAL: TTokenDALFactory;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
-export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: TAuthLoginServiceFactoryDep) => {
+export const authLoginServiceFactory = ({
+  userDAL,
+  tokenService,
+  smtpService,
+  orgDAL,
+  tokenDAL
+}: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
    * Not exported. This is to update user device list
@@ -240,6 +250,53 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     return { token, isMfaEnabled: false, user: userEnc } as const;
   };
 
+  const selectOrganization = async ({
+    userAgentHeader,
+    authorizationHeader,
+    ipAddress,
+    organizationId
+  }: {
+    userAgentHeader: string | undefined;
+    authorizationHeader: string | undefined;
+    ipAddress: string;
+    organizationId: string;
+  }) => {
+    const cfg = getConfig();
+
+    if (!authorizationHeader) throw new UnauthorizedError({ name: "Authorization header is required" });
+    if (!userAgentHeader) throw new UnauthorizedError({ name: "user agent header is required" });
+
+    const userAgent = userAgentHeader;
+    const authToken = authorizationHeader.slice(7); // slice of after Bearer
+
+    // The decoded JWT token, which contains the auth method.
+    const decodedToken = jwt.verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
+
+    if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
+
+    const user = await userDAL.findUserEncKeyByUserId(decodedToken.userId);
+    if (!user) throw new BadRequestError({ message: "user not found", name: "Get Me" });
+
+    // Check if the user actually has access to the specified organization.
+    const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
+
+    if (!userOrgs.some((org) => org.id === organizationId)) {
+      throw new UnauthorizedError({ message: "User does not have access to the organization" });
+    }
+
+    await tokenDAL.incrementTokenSessionVersion(user.id, decodedToken.tokenVersionId);
+
+    const tokens = await generateUserTokens({
+      authMethod: decodedToken.authMethod,
+      user,
+      userAgent,
+      ip: ipAddress,
+      organizationId
+    });
+
+    return tokens;
+  };
+
   /*
    * Multi factor authentication re-send code, Get user id from token
    * saved in frontend
@@ -356,6 +413,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     oauth2Login,
     resendMfaToken,
     verifyMfaToken,
+    selectOrganization,
     generateUserTokens
   };
 };
