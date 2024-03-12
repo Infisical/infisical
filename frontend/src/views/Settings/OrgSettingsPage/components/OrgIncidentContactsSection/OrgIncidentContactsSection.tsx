@@ -18,9 +18,10 @@ export const OrgIncidentContactsSection = () => {
   const { permission } = useOrgPermission();
 
   return (
-    <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
-      <div className="flex justify-between mb-4">
-        <p className="min-w-max text-xl font-semibold">{t("section.incident.incident-contacts")}</p>
+    <>
+      <hr className="border-mineshaft-600" />
+      <div className="flex items-center justify-between pt-4">
+        <p className="text-md text-mineshaft-100">{t("section.incident.incident-contacts")}</p>
         <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.IncidentAccount}>
           {(isAllowed) => (
             <Button
@@ -35,16 +36,18 @@ export const OrgIncidentContactsSection = () => {
           )}
         </OrgPermissionCan>
       </div>
-      {permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount) ? (
-        <OrgIncidentContactsTable />
-      ) : (
-        <PermissionDeniedBanner />
-      )}
+      <div className="py-4">
+        {permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount) ? (
+          <OrgIncidentContactsTable />
+        ) : (
+          <PermissionDeniedBanner />
+        )}
+      </div>
       <AddOrgIncidentContactModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-    </div>
+    </>
   );
 };

@@ -6,7 +6,7 @@ import { OrgGeneralTab } from "../OrgGeneralTab";
 
 const tabs = [
   { name: "General", key: "tab-org-general" },
-  { name: "Authentication", key: "tab-org-auth" }
+  { name: "Security", key: "tab-org-security" }
 ];
 export const OrgTabGroup = () => {
   return (

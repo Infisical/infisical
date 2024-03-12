@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
@@ -32,16 +32,16 @@ const ssoAuthProviders = [
   { label: "Google SAML", value: AuthProvider.GOOGLE_SAML }
 ];
 
-const schema = yup
+const schema = z
   .object({
-    authProvider: yup.string().required("SSO Type is required"),
-    entryPoint: yup.string().required("IdP entrypoint is required"),
-    issuer: yup.string().required("Issuer string is required"),
-    cert: yup.string().required("IdP's public signing certificate is required")
+    authProvider: z.string().min(1, "SSO Type is required"),
+    entryPoint: z.string().default(""),
+    issuer: z.string().default(""),
+    cert: z.string().default("")
   })
   .required();
 
-export type AddSSOFormData = yup.InferType<typeof schema>;
+export type AddSSOFormData = z.infer<typeof schema>;
 
 type Props = {
   popUp: UsePopUpState<["addSSO"]>;
@@ -60,7 +60,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) 
     defaultValues: {
       authProvider: AuthProvider.OKTA_SAML
     },
-    resolver: yupResolver(schema)
+    resolver: zodResolver(schema)
   });
 
   useEffect(() => {
@@ -173,7 +173,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) 
         reset();
       }}
     >
-      <ModalContent title="Add SSO">
+      <ModalContent title="Manage SAML configuration">
         <form onSubmit={handleSubmit(onSSOModalSubmit)}>
           <Controller
             control={control}

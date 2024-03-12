@@ -21,10 +21,10 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const LDAPFormSchema = z.object({
-    url: z.string().min(1, "URL is requiredx"),
-    bindDN: z.string().min(1, "Bind DN is requiredx"),
-    bindPass: z.string().min(1, "Bind Pass is required"),
-    searchBase: z.string().min(1, "Search Base is required"),
+    url: z.string().default(""),
+    bindDN: z.string().default(""),
+    bindPass: z.string().default(""),
+    searchBase: z.string().default(""),
     caCert: z.string().optional()
 });
 
@@ -122,7 +122,7 @@ export const LDAPModal = ({
                 reset();
             }}
         >
-            <ModalContent title="Add LDAP">
+            <ModalContent title="Manage LDAP configuration">
                 <form onSubmit={handleSubmit(onSSOModalSubmit)}>
                     <Controller
                             control={control}

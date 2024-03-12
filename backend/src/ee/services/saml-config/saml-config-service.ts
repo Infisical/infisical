@@ -172,7 +172,7 @@ export const samlConfigServiceFactory = ({
       keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
     });
 
-    if (entryPoint) {
+    if (entryPoint !== undefined) {
       const {
         ciphertext: encryptedEntryPoint,
         iv: entryPointIV,
@@ -182,18 +182,19 @@ export const samlConfigServiceFactory = ({
       updateQuery.entryPointIV = entryPointIV;
       updateQuery.entryPointTag = entryPointTag;
     }
-    if (issuer) {
+    if (issuer !== undefined) {
       const { ciphertext: encryptedIssuer, iv: issuerIV, tag: issuerTag } = encryptSymmetric(issuer, key);
       updateQuery.encryptedIssuer = encryptedIssuer;
       updateQuery.issuerIV = issuerIV;
       updateQuery.issuerTag = issuerTag;
     }
-    if (cert) {
+    if (cert !== undefined) {
       const { ciphertext: encryptedCert, iv: certIV, tag: certTag } = encryptSymmetric(cert, key);
       updateQuery.encryptedCert = encryptedCert;
       updateQuery.certIV = certIV;
       updateQuery.certTag = certTag;
     }
+
     const [ssoConfig] = await samlConfigDAL.update({ orgId }, updateQuery);
     await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false });
 
