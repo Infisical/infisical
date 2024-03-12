@@ -27,7 +27,14 @@ export const navigateUserToOrg = async (router: NextRouter, organizationId?: str
   }
 };
 
-export const navigateUserToSelectOrg = (router: NextRouter) => {
+export const navigateUserToSelectOrg = (router: NextRouter, cliCallbackPort?: string) => {
   queryClient.invalidateQueries(userKeys.getUser);
-  router.push("/login/select-organization", undefined, { shallow: true });
+
+  let redirectTo = "/login/select-organization";
+
+  if (cliCallbackPort) {
+    redirectTo += `?callback_port=${cliCallbackPort}`;
+  }
+
+  router.push(redirectTo, undefined, { shallow: true });
 };
