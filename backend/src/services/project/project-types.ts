@@ -43,6 +43,7 @@ export type TGetProjectDTO = {
 export type TToggleProjectAutoCapitalizationDTO = {
   autoCapitalization: boolean;
 } & TProjectPermission;
+
 export type TUpdateProjectNameDTO = {
   name: string;
 } & TProjectPermission;
