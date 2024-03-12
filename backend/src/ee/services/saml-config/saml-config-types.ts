@@ -1,5 +1,5 @@
 import { TOrgPermission } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 export enum SamlProviders {
   OKTA_SAML = "okta-saml",
@@ -26,7 +26,14 @@ export type TUpdateSamlCfgDTO = Partial<{
   TOrgPermission;
 
 export type TGetSamlCfgDTO =
-  | { type: "org"; orgId: string; actor: ActorType; actorId: string; actorOrgId?: string }
+  | {
+      type: "org";
+      orgId: string;
+      actor: ActorType;
+      actorId: string;
+      actorAuthMethod: ActorAuthMethod;
+      actorOrgId?: string;
+    }
   | {
       type: "orgSlug";
       orgSlug: string;
