@@ -30,6 +30,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         projectId: req.params.projectId,
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         actor: req.permission.type,
         emails: req.body.emails,
         usernames: req.body.usernames
