@@ -188,7 +188,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 10, opacity: 0 }}
               >
-                <Tooltip content="Copy secret">
+                <Tooltip content="Copy secret name">
                   <IconButton
                     ariaLabel="copy-value"
                     variant="plain"
