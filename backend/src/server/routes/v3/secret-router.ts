@@ -83,6 +83,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           actor: req.permission.type,
           actorOrgId: req.permission.orgId
         });
+
+        if (!workspace) throw new BadRequestError({ message: `No project found with slug ${req.query.workspaceSlug}` });
+
         workspaceId = workspace.id;
       }
 
