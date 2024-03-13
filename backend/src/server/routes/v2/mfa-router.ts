@@ -77,8 +77,6 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
         userAgent,
         mfaJwtToken,
         ip: req.realIp,
-        mfaJwtToken,
-        ip: req.realIp,
         userId: req.mfa.userId,
         orgId: req.mfa.orgId,
         mfaToken: req.body.mfaToken
