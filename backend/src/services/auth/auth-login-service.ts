@@ -251,36 +251,36 @@ export const authLoginServiceFactory = ({
   };
 
   const selectOrganization = async ({
-    userAgentHeader,
-    authorizationHeader,
+    userAgent,
+    authJwtToken,
     ipAddress,
     organizationId
   }: {
-    userAgentHeader: string | undefined;
-    authorizationHeader: string | undefined;
+    userAgent: string | undefined;
+    authJwtToken: string | undefined;
     ipAddress: string;
     organizationId: string;
   }) => {
     const cfg = getConfig();
 
-    if (!authorizationHeader) throw new UnauthorizedError({ name: "Authorization header is required" });
-    if (!userAgentHeader) throw new UnauthorizedError({ name: "user agent header is required" });
+    if (!authJwtToken) throw new UnauthorizedError({ name: "Authorization header is required" });
+    if (!userAgent) throw new UnauthorizedError({ name: "user agent header is required" });
 
-    const userAgent = userAgentHeader;
-    const authToken = authorizationHeader.slice(7); // slice of after Bearer
+    // eslint-disable-next-line no-param-reassign
+    authJwtToken = authJwtToken.replace("Bearer ", ""); // remove bearer from token
 
     // The decoded JWT token, which contains the auth method.
-    const decodedToken = jwt.verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
-
+    const decodedToken = jwt.verify(authJwtToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
     if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
 
     const user = await userDAL.findUserEncKeyByUserId(decodedToken.userId);
-    if (!user) throw new BadRequestError({ message: "user not found", name: "Get Me" });
+    if (!user) throw new BadRequestError({ message: "User not found", name: "Find user from token" });
 
     // Check if the user actually has access to the specified organization.
     const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
+    const hasOrganizationMembership = userOrgs.some((org) => org.id === organizationId);
 
-    if (!userOrgs.some((org) => org.id === organizationId)) {
+    if (!hasOrganizationMembership) {
       throw new UnauthorizedError({ message: "User does not have access to the organization" });
     }
 
