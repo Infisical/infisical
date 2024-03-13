@@ -81,7 +81,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           projectId,
           actorId: req.permission.id,
           actor: req.permission.type,
-          emails: [userEmail] // Since it's a single email for a single project
+          emails: [userEmail],
+          usernames: []
         });
 
         // Return a promise to create an audit log for the current project

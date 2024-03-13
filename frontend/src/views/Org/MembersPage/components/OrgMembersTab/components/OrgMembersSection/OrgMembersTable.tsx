@@ -223,7 +223,6 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                   const name = u && u.firstName ? `${u.firstName} ${u.lastName}` : "-";
                   const email = u?.email || inviteEmail;
 
-                  console.log("u", u);
                   const username = u?.username ?? inviteEmail ?? "-";
                   return (
                     <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
