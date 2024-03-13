@@ -12,8 +12,8 @@ export const injectPermission = fp(async (server) => {
       req.permission = {
         type: ActorType.USER,
         id: req.auth.userId,
-        orgId: req.auth.orgId,
-        authMethod: req.auth.authMethod
+        orgId: req.auth.orgId, // if the req.auth.authMode is AuthMode.API_KEY, the orgId will be "API_KEY"
+        authMethod: req.auth.authMethod // if the req.auth.authMode is AuthMode.API_KEY, the authMethod will be null
       };
     } else if (req.auth.actor === ActorType.IDENTITY) {
       req.permission = {
