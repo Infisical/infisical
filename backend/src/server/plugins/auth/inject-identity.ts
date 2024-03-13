@@ -19,13 +19,14 @@ export type TAuthMode =
       orgId?: string;
       authMethod: AuthMethod;
     }
-  // | {
-  //     authMode: AuthMode.API_KEY;
-  //     actor: ActorType.USER;
-  //     userId: string;
-  //     user: TUsers;
-  //     orgId?: string;
-  //   }
+  | {
+      authMode: AuthMode.API_KEY;
+      authMethod: null;
+      actor: ActorType.USER;
+      userId: string;
+      user: TUsers;
+      orgId: string;
+    }
   | {
       authMode: AuthMode.SERVICE_TOKEN;
       serviceToken: TServiceTokens & { createdByEmail: string };
@@ -78,8 +79,8 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         actor: ActorType.USER
       } as const;
     case AuthTokenType.API_KEY:
-      throw new Error("API Key auth is no longer supported.");
-    // return { authMode: AuthMode.API_KEY, token: decodedToken, actor: ActorType.USER } as const;
+      // throw new Error("API Key auth is no longer supported.");
+      return { authMode: AuthMode.API_KEY, token: decodedToken, actor: ActorType.USER } as const;
     case AuthTokenType.IDENTITY_ACCESS_TOKEN:
       return {
         authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
@@ -148,11 +149,18 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
         };
         break;
       }
-      // case AuthMode.API_KEY: {
-      //   const user = await server.services.apiKey.fnValidateApiKey(token as string);
-      //   req.auth = { authMode: AuthMode.API_KEY as const, userId: user.id, actor, user };
-      //   break;
-      // }
+      case AuthMode.API_KEY: {
+        const user = await server.services.apiKey.fnValidateApiKey(token as string);
+        req.auth = {
+          authMode: AuthMode.API_KEY as const,
+          userId: user.id,
+          actor,
+          user,
+          orgId: "API_KEY",
+          authMethod: null
+        }; // We set the orgId to an arbitrary value, since we can't link an API key to a specific org. We have to deprecate API keys soon!
+        break;
+      }
       case AuthMode.SCIM_TOKEN: {
         const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
         req.auth = { authMode: AuthMode.SCIM_TOKEN, actor, scimTokenId, orgId, authMethod: null };
