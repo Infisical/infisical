@@ -135,7 +135,6 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL }: TAuthTokenServiceFact
       id: token.tokenVersionId,
       userId: token.userId
     });
-
     if (!session) throw new UnauthorizedError({ name: "Session not found" });
     if (token.accessVersion !== session.accessVersion) throw new UnauthorizedError({ name: "Stale session" });
 
