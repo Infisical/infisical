@@ -184,10 +184,6 @@ export const authLoginServiceFactory = ({
     if (!userEnc) throw new Error("Failed to find user");
     const cfg = getConfig();
 
-    // let organizationId;
-
-    // let authMethod = (providerAuthToken as AuthMethod) || AuthMethod.EMAIL;
-
     let authMethod = AuthMethod.EMAIL;
     let organizationId: string | undefined;
 
