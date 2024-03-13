@@ -102,29 +102,29 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
 
   return (
     <QueryClientProvider client={queryClient}>
-      <UserProvider>
-        <TooltipProvider>
-          <NotificationProvider>
-            <ServerConfigProvider>
-              <AuthProvider>
-                <OrgProvider>
-                  <OrgPermissionProvider>
-                    <WorkspaceProvider>
-                      <ProjectPermissionProvider>
-                        <SubscriptionProvider>
+      <TooltipProvider>
+        <NotificationProvider>
+          <ServerConfigProvider>
+            <AuthProvider>
+              <OrgProvider>
+                <OrgPermissionProvider>
+                  <WorkspaceProvider>
+                    <ProjectPermissionProvider>
+                      <SubscriptionProvider>
+                        <UserProvider>
                           <Layout>
                             <Component {...pageProps} />
                           </Layout>
-                        </SubscriptionProvider>
-                      </ProjectPermissionProvider>
-                    </WorkspaceProvider>
-                  </OrgPermissionProvider>
-                </OrgProvider>
-              </AuthProvider>
-            </ServerConfigProvider>
-          </NotificationProvider>
-        </TooltipProvider>
-      </UserProvider>
+                        </UserProvider>
+                      </SubscriptionProvider>
+                    </ProjectPermissionProvider>
+                  </WorkspaceProvider>
+                </OrgPermissionProvider>
+              </OrgProvider>
+            </AuthProvider>
+          </ServerConfigProvider>
+        </NotificationProvider>
+      </TooltipProvider>
     </QueryClientProvider>
   );
 };

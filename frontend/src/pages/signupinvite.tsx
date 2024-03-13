@@ -25,7 +25,7 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import { useServerConfig } from "@app/context";
 import {
   completeAccountSignupInvite,
-  selectOrganization,
+  useSelectOrganization,
   verifySignupInvite
 } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
@@ -62,6 +62,8 @@ export default function SignupInvite() {
   const organizationId = parsedUrl.organization_id as string;
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
   const { config } = useServerConfig();
+
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   useEffect(() => {
     if (!config.allowSignUp) {
@@ -175,8 +177,9 @@ export default function SignupInvite() {
 
               const orgId = userOrgs[0].id;
 
-              const { token: newJwtToken } = await selectOrganization({ organizationId: orgId });
-              SecurityClient.setToken(newJwtToken);
+              if (!orgId) throw new Error("You are not part of any organization");
+
+              await selectOrganization({ organizationId: orgId });
 
               localStorage.setItem("orgData.id", orgId);
 

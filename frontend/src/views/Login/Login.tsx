@@ -17,7 +17,6 @@ export const Login = () => {
   useEffect(() => {
     // TODO(akhilmhdh): workspace will be controlled by a workspace context
     const handleRedirects = async () => {
-      // TODO(daniel): Move this to select-organization page.
       try {
         const callbackPort = queryParams?.get("callback_port");
         // case: a callback port is set, meaning it's a cli login request: redirect to select org with callback port
