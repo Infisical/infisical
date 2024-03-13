@@ -29,6 +29,7 @@ import {
   verifySignupInvite
 } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -221,11 +222,11 @@ export default function SignupInvite() {
                   SecurityClient.setSignupToken(response.token);
                   setStep(2);
                 } else {
-                  const { token: newJwtToken } = await selectOrganization({ organizationId });
-                  SecurityClient.setToken(newJwtToken);
+                  await selectOrganization({ organizationId });
+
                   // user will be redirected to dashboard
                   // if not logged in gets kicked out to login
-                  router.push(`/org/${organizationId}/overview`);
+                  await navigateUserToOrg(router, organizationId);
                 }
               }
             } catch (err) {
