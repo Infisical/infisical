@@ -261,7 +261,9 @@ export const MemberListTab = () => {
                                 ariaLabel="update"
                                 className="ml-4"
                                 isDisabled={userId === u?.id || !isAllowed}
-                                onClick={() => handlePopUpOpen("removeMember", { email: u.email })}
+                                onClick={() =>
+                                  handlePopUpOpen("removeMember", { username: u.username })
+                                }
                               >
                                 <FontAwesomeIcon icon={faXmark} />
                               </IconButton>
