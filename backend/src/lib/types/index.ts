@@ -1,4 +1,4 @@
-import { ActorAuthMethod, ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 export type TOrgPermission = {
   actor: ActorType;
@@ -12,7 +12,7 @@ export type TProjectPermission = {
   actor: ActorType;
   actorId: string;
   projectId: string;
-  actorAuthMethod: AuthMethod | null;
+  actorAuthMethod: ActorAuthMethod;
   actorOrgId: string | undefined;
 };
 
