@@ -45,7 +45,7 @@ export const PersonalTabGroup = () => {
             <div className="mt-4 flex w-full flex-row items-center rounded-md border border-primary-600/70 bg-primary/[.07] p-4 text-base text-white">
               <FontAwesomeIcon icon={faWarning} className="pr-6 text-4xl text-white/80" />
               <div className="flex w-full flex-col text-sm">
-                <span className="mb-4 text-lg font-semibold">API Keys are deprecated</span>
+                <span className="mb-4 text-lg font-semibold">Deprecation Notice</span>
                 <p>
                   API Keys are deprecated and will be removed in the future.
                   <br /> Please use Machine Identity authentication for your applications and
