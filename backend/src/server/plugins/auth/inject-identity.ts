@@ -124,7 +124,6 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
         };
         break;
       }
-      // Will always contain an orgId.
       case AuthMode.IDENTITY_ACCESS_TOKEN: {
         const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
         req.auth = {
@@ -156,9 +155,9 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           userId: user.id,
           actor,
           user,
-          orgId: "API_KEY",
+          orgId: "API_KEY", // We set the orgId to an arbitrary value, since we can't link an API key to a specific org. We have to deprecate API keys soon!
           authMethod: null
-        }; // We set the orgId to an arbitrary value, since we can't link an API key to a specific org. We have to deprecate API keys soon!
+        };
         break;
       }
       case AuthMode.SCIM_TOKEN: {
