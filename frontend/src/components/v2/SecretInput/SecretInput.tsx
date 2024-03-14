@@ -113,7 +113,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         return;
       }
 
-      // Move to react query
+      // Todo: Move to react query
       const [encryptSecrets, folders] = await Promise.all([
         fetchProjectEncryptedSecrets({
           workspaceId,
@@ -198,6 +198,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         const newValue = `${value.slice(0, currCaretPos)}}${value.slice(currCaretPos)}`;
 
         setValue(newValue);
+        // TODO: there should be a better way to do
         onChange?.({ target: { value: newValue } } as any);
 
         if (event.currentTarget) {
@@ -273,6 +274,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       }
       newValue = `${start}$\{${replaceReference}}${end}`;
       setValue(newValue);
+      // TODO: there should be a better way to do
       onChange?.({ target: { value: newValue } } as any);
       setCaretPos(start.length + replaceReference.length + offset);
       if (type !== "secret") extractReference(replaceReference);
