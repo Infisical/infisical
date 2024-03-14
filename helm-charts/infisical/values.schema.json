@@ -13,11 +13,13 @@
           "type": "object"
         },
         "enabled": {
+          "default": "true",
           "description": "Enable backend",
           "title": "enabled",
           "type": "boolean"
         },
         "fullnameOverride": {
+          "default": "",
           "description": "Backend fullnameOverride",
           "title": "fullnameOverride",
           "type": "string"
@@ -25,16 +27,19 @@
         "image": {
           "properties": {
             "pullPolicy": {
+              "default": "IfNotPresent",
               "description": "Backend image pullPolicy",
               "title": "pullPolicy",
               "type": "string"
             },
             "repository": {
+              "default": "infisical/infisical",
               "description": "Backend image repository",
               "title": "repository",
               "type": "string"
             },
             "tag": {
+              "default": "latest",
               "description": "Backend image tag",
               "title": "tag",
               "type": "string"
@@ -45,11 +50,13 @@
           "type": "object"
         },
         "kubeSecretRef": {
+          "default": "",
           "description": "Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))",
           "title": "kubeSecretRef",
           "type": "string"
         },
         "name": {
+          "default": "backend",
           "description": "Backend name",
           "title": "name",
           "type": "string"
@@ -60,6 +67,7 @@
           "type": "object"
         },
         "replicaCount": {
+          "default": "2",
           "description": "Backend replica count",
           "title": "replicaCount",
           "type": "integer"
@@ -72,11 +80,13 @@
               "type": "object"
             },
             "nodePort": {
+              "default": "",
               "description": "Backend service nodePort (used if above type is `NodePort`)",
               "title": "nodePort",
               "type": "string"
             },
             "type": {
+              "default": "ClusterIP",
               "description": "Backend service type",
               "title": "type",
               "type": "string"
@@ -94,91 +104,109 @@
     "backendEnvironmentVariables": {
       "properties": {
         "ENCRYPTION_KEY": {
+          "default": "",
           "description": "Command to generate the required value (linux) : 'hexdump -vn16 -e'4/4 \"%08X\" 1 \"\\n\"' /dev/urandom', 'openssl rand -hex 16'\n**Required** Backend encryption key (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))\u003c/br\u003e\u003ckbd\u003eauto-generated\u003c/kbd\u003e variable (if not provided, and not found in an existing secret)",
           "title": "ENCRYPTION_KEY",
           "type": "string"
         },
         "INVITE_ONLY_SIGNUP": {
+          "default": "false",
           "description": "To disable account creation from the login page (invites only)",
           "title": "INVITE_ONLY_SIGNUP",
           "type": "boolean"
         },
         "JWT_AUTH_SECRET": {
+          "default": "",
           "description": "**Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))\u003c/br\u003e\u003ckbd\u003eauto-generated\u003c/kbd\u003e variable (if not provided, and not found in an existing secret)",
           "title": "JWT_AUTH_SECRET",
           "type": "string"
         },
         "JWT_MFA_SECRET": {
+          "default": "",
           "description": "**Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))\u003c/br\u003e\u003ckbd\u003eauto-generated\u003c/kbd\u003e variable (if not provided, and not found in an existing secret)",
           "title": "JWT_MFA_SECRET",
           "type": "string"
         },
         "JWT_PROVIDER_AUTH_SECRET": {
+          "default": "",
           "description": "**Required** Secrets to sign JWT OAuth tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))\u003c/br\u003e\u003ckbd\u003eauto-generated\u003c/kbd\u003e variable (if not provided, and not found in an existing secret)",
           "title": "JWT_PROVIDER_AUTH_SECRET",
           "type": "string"
         },
         "JWT_REFRESH_SECRET": {
+          "default": "",
           "description": "**Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))\u003c/br\u003e\u003ckbd\u003eauto-generated\u003c/kbd\u003e variable (if not provided, and not found in an existing secret)",
           "title": "JWT_REFRESH_SECRET",
           "type": "string"
         },
         "JWT_SERVICE_SECRET": {
+          "default": "",
           "description": "**Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))\u003c/br\u003e\u003ckbd\u003eauto-generated\u003c/kbd\u003e variable (if not provided, and not found in an existing secret)",
           "title": "JWT_SERVICE_SECRET",
           "type": "string"
         },
         "JWT_SIGNUP_SECRET": {
+          "default": "",
           "description": "Command to generate the required value (linux) : 'hexdump -vn16 -e'4/4 \"%08X\" 1 \"\\n\"' /dev/urandom', 'openssl rand -hex 16'\n**Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))\u003c/br\u003e\u003ckbd\u003eauto-generated\u003c/kbd\u003e variable (if not provided, and not found in an existing secret)",
           "title": "JWT_SIGNUP_SECRET",
           "type": "string"
         },
         "MONGO_URL": {
+          "default": "",
           "description": "## By default the backend will automatically be connected to a Mongo instance within the cluster\n## However, it is recommended to add a managed document DB connection string for production-use (DBaaS)\n## Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/\n## e.g. \"mongodb://\u003cuser\u003e:\u003cpass\u003e@\u003chost\u003e:\u003cport\u003e/\u003cdatabase-name\u003e\"\nMongoDB connection string (external or internal)\u003c/br\u003eLeave it empty for auto-generated connection string",
           "title": "MONGO_URL",
           "type": "string"
         },
         "REDIS_URL": {
+          "default": "redis://redis-master:6379",
           "description": "By default, the backend will use the Redis that is auto deployed along with Infisical\nRedis URL (cache service)",
           "title": "REDIS_URL",
           "type": "string"
         },
         "SITE_URL": {
+          "default": "infisical.local",
           "description": "Absolute URL including the protocol (e.g. https://app.infisical.com)",
           "title": "SITE_URL",
           "type": "string"
         },
         "SMTP_FROM_ADDRESS": {
+          "default": "",
           "description": "**Required** Email address to be used for sending emails (e.g. dev@infisical.com)",
           "title": "SMTP_FROM_ADDRESS",
           "type": "string"
         },
         "SMTP_FROM_NAME": {
+          "default": "Infisical",
           "description": "Name label to be used in From field (e.g. Infisical)",
           "title": "SMTP_FROM_NAME",
           "type": "string"
         },
         "SMTP_HOST": {
+          "default": "",
           "description": "**Required** Hostname to connect to for establishing SMTP connections",
           "title": "SMTP_HOST",
           "type": "string"
         },
         "SMTP_PASSWORD": {
+          "default": "",
           "description": "**Required** Credential to connect to host",
           "title": "SMTP_PASSWORD",
           "type": "string"
         },
         "SMTP_PORT": {
+          "default": "587",
           "description": "Port to connect to for establishing SMTP connections",
           "title": "SMTP_PORT",
           "type": "integer"
         },
         "SMTP_SECURE": {
+          "default": "false",
           "description": "If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported",
           "title": "SMTP_SECURE",
           "type": "boolean"
         },
         "SMTP_USERNAME": {
+          "default": "",
           "description": "**Required** Credential to connect to host (e.g. team@infisical.com)",
           "title": "SMTP_USERNAME",
           "type": "string"
@@ -189,6 +217,7 @@
       "type": "object"
     },
     "fullnameOverride": {
+      "default": "",
       "description": "Override release fullname",
       "title": "fullnameOverride",
       "type": "string"
@@ -206,16 +235,19 @@
           "type": "object"
         },
         "enabled": {
+          "default": "true",
           "description": "Enable ingress",
           "title": "enabled",
           "type": "boolean"
         },
         "hostName": {
+          "default": "",
           "description": "kubernetes.io/ingress.class: \"nginx\"\ncert-manager.io/issuer: letsencrypt-nginx\nIngress hostname (your custom domain name, e.g. `infisical.example.org`).\nReplace with your own domain",
           "title": "hostName",
           "type": "string"
         },
         "ingressClassName": {
+          "default": "nginx",
           "description": "Ingress class name",
           "title": "ingressClassName",
           "type": "string"
@@ -223,6 +255,7 @@
         "nginx": {
           "properties": {
             "enabled": {
+              "default": "false",
               "description": "Enable and install `ingress-nginx` controller",
               "title": "enabled",
               "type": "boolean"
@@ -249,10 +282,12 @@
             "http": {
               "properties": {
                 "name": {
+                  "default": "http",
                   "title": "name",
                   "type": "string"
                 },
                 "port": {
+                  "default": "8025",
                   "title": "port",
                   "type": "integer"
                 }
@@ -264,10 +299,12 @@
             "smtp": {
               "properties": {
                 "name": {
+                  "default": "tcp-smtp",
                   "title": "name",
                   "type": "string"
                 },
                 "port": {
+                  "default": "1025",
                   "title": "port",
                   "type": "integer"
                 }
@@ -281,11 +318,13 @@
           "type": "object"
         },
         "enabled": {
+          "default": "false",
           "description": "Enable Mailhog",
           "title": "enabled",
           "type": "boolean"
         },
         "fullnameOverride": {
+          "default": "mailhog",
           "description": "Fullname override",
           "title": "fullnameOverride",
           "type": "string"
@@ -293,16 +332,19 @@
         "image": {
           "properties": {
             "pullPolicy": {
+              "default": "IfNotPresent",
               "description": "Image pull policy",
               "title": "pullPolicy",
               "type": "string"
             },
             "repository": {
+              "default": "lytrax/mailhog",
               "description": "Why we use this version : https://github.com/mailhog/MailHog/issues/353#issuecomment-821137362\nImage repository",
               "title": "repository",
               "type": "string"
             },
             "tag": {
+              "default": "latest",
               "description": "Image tag",
               "title": "tag",
               "type": "string"
@@ -319,6 +361,7 @@
               "type": "object"
             },
             "enabled": {
+              "default": "true",
               "description": "Enable ingress",
               "title": "enabled",
               "type": "boolean"
@@ -329,6 +372,7 @@
                   {
                     "properties": {
                       "host": {
+                        "default": "mailhog.infisical.local",
                         "title": "host",
                         "type": "string"
                       },
@@ -338,10 +382,12 @@
                             {
                               "properties": {
                                 "path": {
+                                  "default": "/",
                                   "title": "path",
                                   "type": "string"
                                 },
                                 "pathType": {
+                                  "default": "Prefix",
                                   "title": "pathType",
                                   "type": "string"
                                 }
@@ -361,6 +407,7 @@
               "type": "array"
             },
             "ingressClassName": {
+              "default": "nginx",
               "description": "Ingress class name",
               "title": "ingressClassName",
               "type": "string"
@@ -376,6 +423,7 @@
           "type": "object"
         },
         "nameOverride": {
+          "default": "",
           "description": "Name override",
           "title": "nameOverride",
           "type": "string"
@@ -387,6 +435,7 @@
               "type": "object"
             },
             "clusterIP": {
+              "default": "",
               "title": "clusterIP",
               "type": "string"
             },
@@ -401,6 +450,7 @@
               "type": "array"
             },
             "loadBalancerIP": {
+              "default": "",
               "title": "loadBalancerIP",
               "type": "string"
             },
@@ -410,6 +460,7 @@
               "type": "array"
             },
             "namedTargetPort": {
+              "default": "true",
               "description": "Named target ports are not supported by GCE health checks, so when deploying on GKE\nand exposing it via GCE ingress, the health checks fail and the load balancer returns a 502.",
               "title": "namedTargetPort",
               "type": "boolean"
@@ -417,10 +468,12 @@
             "nodePort": {
               "properties": {
                 "http": {
+                  "default": "",
                   "title": "http",
                   "type": "string"
                 },
                 "smtp": {
+                  "default": "",
                   "title": "smtp",
                   "type": "string"
                 }
@@ -431,10 +484,12 @@
             "port": {
               "properties": {
                 "http": {
+                  "default": "8025",
                   "title": "http",
                   "type": "integer"
                 },
                 "smtp": {
+                  "default": "1025",
                   "title": "smtp",
                   "type": "integer"
                 }
@@ -443,6 +498,7 @@
               "type": "object"
             },
             "type": {
+              "default": "ClusterIP",
               "title": "type",
               "type": "string"
             }
@@ -458,6 +514,7 @@
     "mongodb": {
       "properties": {
         "architecture": {
+          "default": "standalone",
           "description": "MongoDB(\u0026reg;) architecture (`standalone` or `replicaset`)",
           "title": "architecture",
           "type": "string"
@@ -477,11 +534,13 @@
               "type": "array"
             },
             "enabled": {
+              "default": "true",
               "description": "Enable custom authentication",
               "title": "enabled",
               "type": "boolean"
             },
             "existingSecret": {
+              "default": "",
               "description": "NOTE: When it's set the previous parameters are ignored.\nExisting secret with MongoDB(\u0026reg;) credentials (keys: `mongodb-passwords`, `mongodb-root-password`, `mongodb-metrics-password`, `mongodb-replica-set-key`)",
               "title": "existingSecret",
               "type": "string"
@@ -499,11 +558,13 @@
               "type": "array"
             },
             "rootPassword": {
+              "default": "root",
               "description": "Database root user password",
               "title": "rootPassword",
               "type": "string"
             },
             "rootUser": {
+              "default": "root",
               "description": "Database root user name",
               "title": "rootUser",
               "type": "string"
@@ -526,11 +587,13 @@
           "type": "object"
         },
         "enabled": {
+          "default": "true",
           "description": "Enable MongoDB(\u0026reg;)",
           "title": "enabled",
           "type": "boolean"
         },
         "fullnameOverride": {
+          "default": "mongodb",
           "description": "Fullname override",
           "title": "fullnameOverride",
           "type": "string"
@@ -538,16 +601,19 @@
         "image": {
           "properties": {
             "pullPolicy": {
+              "default": "IfNotPresent",
               "description": "MongoDB(\u0026reg;) image pull policy",
               "title": "pullPolicy",
               "type": "string"
             },
             "repository": {
+              "default": "bitnami/mongodb",
               "description": "MongoDB(\u0026reg;) image registry",
               "title": "repository",
               "type": "string"
             },
             "tag": {
+              "default": "6.0.4-debian-11-r0",
               "description": "MongoDB(\u0026reg;) image tag (immutable tags are recommended)",
               "title": "tag",
               "type": "string"
@@ -560,31 +626,37 @@
         "livenessProbe": {
           "properties": {
             "enabled": {
+              "default": "true",
               "description": "Enable livenessProbe",
               "title": "enabled",
               "type": "boolean"
             },
             "failureThreshold": {
+              "default": "6",
               "description": "Failure threshold for livenessProbe",
               "title": "failureThreshold",
               "type": "integer"
             },
             "initialDelaySeconds": {
+              "default": "30",
               "description": "Initial delay seconds for livenessProbe",
               "title": "initialDelaySeconds",
               "type": "integer"
             },
             "periodSeconds": {
+              "default": "20",
               "description": "Period seconds for livenessProbe",
               "title": "periodSeconds",
               "type": "integer"
             },
             "successThreshold": {
+              "default": "1",
               "description": "Success threshold for livenessProbe",
               "title": "successThreshold",
               "type": "integer"
             },
             "timeoutSeconds": {
+              "default": "10",
               "description": "Timeout seconds for livenessProbe",
               "title": "timeoutSeconds",
               "type": "integer"
@@ -595,11 +667,13 @@
           "type": "object"
         },
         "name": {
+          "default": "mongodb",
           "description": "Name used to build variables (deprecated)",
           "title": "name",
           "type": "string"
         },
         "nameOverride": {
+          "default": "mongodb",
           "description": "Name override",
           "title": "nameOverride",
           "type": "string"
@@ -619,21 +693,25 @@
               "type": "array"
             },
             "enabled": {
+              "default": "true",
               "description": "Enable database persistence",
               "title": "enabled",
               "type": "boolean"
             },
             "existingClaim": {
+              "default": "",
               "description": "Existing persistent volume claim name",
               "title": "existingClaim",
               "type": "string"
             },
             "resourcePolicy": {
+              "default": "keep",
               "description": "Keep the persistent volume even on deletion (`keep` or `\"\"`)",
               "title": "resourcePolicy",
               "type": "string"
             },
             "size": {
+              "default": "8Gi",
               "description": "Persistent storage request size",
               "title": "size",
               "type": "string"
@@ -651,31 +729,37 @@
         "readinessProbe": {
           "properties": {
             "enabled": {
+              "default": "true",
               "description": "Enable readinessProbe",
               "title": "enabled",
               "type": "boolean"
             },
             "failureThreshold": {
+              "default": "6",
               "description": "Failure threshold for readinessProbe",
               "title": "failureThreshold",
               "type": "integer"
             },
             "initialDelaySeconds": {
+              "default": "5",
               "description": "Initial delay seconds for readinessProbe",
               "title": "initialDelaySeconds",
               "type": "integer"
             },
             "periodSeconds": {
+              "default": "10",
               "description": "Period seconds for readinessProbe",
               "title": "periodSeconds",
               "type": "integer"
             },
             "successThreshold": {
+              "default": "1",
               "description": "Success threshold for readinessProbe",
               "title": "successThreshold",
               "type": "integer"
             },
             "timeoutSeconds": {
+              "default": "10",
               "description": "Timeout seconds for readinessProbe",
               "title": "timeoutSeconds",
               "type": "integer"
@@ -697,6 +781,7 @@
           "type": "object"
         },
         "useStatefulSet": {
+          "default": "true",
           "description": "Set to true to use a StatefulSet instead of a Deployment (only when `architecture: standalone`)",
           "title": "useStatefulSet",
           "type": "boolean"
@@ -709,6 +794,7 @@
     "mongodbConnection": {
       "properties": {
         "externalMongoDBConnectionString": {
+          "default": "",
           "description": "By default the backend will be connected to a Mongo instance within the cluster\nHowever, it is recommended to add a managed document DB connection string for production-use (DBaaS)\nLearn about connection string type here https://www/docs/manual/reference/connection-string/\ne.g. \"mongodb://\u003cuser\u003e:\u003cpass\u003e@\u003chost\u003e:\u003cport\u003e/\u003cdatabase-name\u003e\"\nDeprecated :warning: External MongoDB connection string\u003c/br\u003eUse `backendEnvironmentVariables.MONGO_URL` instead",
           "title": "externalMongoDBConnectionString",
           "type": "string"
@@ -718,6 +804,7 @@
       "type": "object"
     },
     "nameOverride": {
+      "default": "",
       "description": "Override release name",
       "title": "nameOverride",
       "type": "string"
@@ -725,6 +812,7 @@
     "redis": {
       "properties": {
         "architecture": {
+          "default": "standalone",
           "description": "Redis architecture",
           "title": "architecture",
           "type": "string"
@@ -732,6 +820,7 @@
         "auth": {
           "properties": {
             "enabled": {
+              "default": "false",
               "description": "Redis authentication",
               "title": "enabled",
               "type": "boolean"
@@ -741,16 +830,19 @@
           "type": "object"
         },
         "enabled": {
+          "default": "true",
           "description": "Enable Redis",
           "title": "enabled",
           "type": "boolean"
         },
         "fullnameOverride": {
+          "default": "redis",
           "description": "Redis fullname override",
           "title": "fullnameOverride",
           "type": "string"
         },
         "name": {
+          "default": "redis",
           "description": "Redis deployment name",
           "title": "name",
           "type": "string"

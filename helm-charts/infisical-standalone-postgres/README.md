@@ -114,9 +114,9 @@ Here's the migration instructions : https://infisical.com/docs/self-hosting/guid
 |-----|------|---------|-------------|
 | nameOverride | string | `""` | Override release name |
 | fullnameOverride | string | `""` | Override release fullname |
-| infisical.enabled | bool | `true` | Enable backend |
+| infisical.enabled | bool | `true` | Enable Infisical |
 | infisical.name | string | `"infisical"` | Backend deployment name |
-| infisical.autoDatabaseSchemaMigration | bool | `true` | Automatically migrate database |
+| infisical.autoDatabaseSchemaMigration | bool | `true` | Automatically apply database schema migration |
 | infisical.fullnameOverride | string | `""` | Backend deployment fullname override |
 | infisical.podAnnotations | object | `{}` | Backend pod annotations |
 | infisical.deploymentAnnotations | object | `{}` | Backend deployment annotations |
@@ -148,7 +148,7 @@ Here's the migration instructions : https://infisical.com/docs/self-hosting/guid
 | postgresql.persistence.existingClaim | string | `""` | Name of an existing PVC to use |
 | postgresql.persistence.mountPath | string | `"/bitnami/postgresql"` | The path the volume will be mounted at. Useful when using custom PostgreSQL images |
 | postgresql.persistence.storageClass | string | `""` | PVC Storage Class for PostgreSQL Primary data volume. If defined, `storageClassName: <storageClass>` If set to `"-"`, `storageClassName: ""`, which disables dynamic provisioning Default is undefined/null, no `storageClassName` spec is set. Using default provisioner |
-| postgresql.persistence.accessModes | list | `["ReadWriteOnce"]` | PVC Access Mode for PostgreSQL volume |
+| postgresql.persistence.accessModes | list | `["ReadWriteOnce"]` | PVC [Access Mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes) for PostgreSQL volume |
 | postgresql.persistence.size | string | `"8Gi"` | PVC Storage Request for PostgreSQL volume |
 | postgresql.persistence.annotations | object | `{}` | Annotations for the PVC |
 | postgresql.persistence.labels | object | `{}` | Labels for the PVC |
@@ -158,6 +158,8 @@ Here's the migration instructions : https://infisical.com/docs/self-hosting/guid
 | redis.name | string | `"redis"` | Redis deployment name |
 | redis.fullnameOverride | string | `"redis"` | Redis deployment fullname override |
 | redis.auth.enabled | bool | `true` | Enable Redis password authentication |
+| redis.auth.existingSecret | string | `""` | The name of an existing secret with Redis&reg; credentials. |
+| redis.auth.existingSecretPasswordKey | string | `""` | Password key to be retrieved from existing secret (ignored unless `existingSecret` parameter is set). |
 | redis.auth.password | string | `"mysecretpassword"` | Redis [password](https://github.com/bitnami/containers/tree/main/bitnami/redis#setting-the-server-password-on-first-run) (ignored if `existingSecret` set). Defaults to a random 10-character alphanumeric string if not set and `usePassword` is true |
 | redis.architecture | string | `"standalone"` | Redis architecture. Allowed values: `standalone` or `replication` |
 
