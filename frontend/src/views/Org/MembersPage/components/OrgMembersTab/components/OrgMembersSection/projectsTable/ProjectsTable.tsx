@@ -1,11 +1,9 @@
-import { ChangeEventHandler, FC, useEffect, useState } from "react";
-import { faMagnifyingGlass, faProjectDiagram } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ChangeEventHandler, FC } from "react";
+import { faProjectDiagram } from "@fortawesome/free-solid-svg-icons";
 
 import {
   Checkbox,
   EmptyState,
-  Input,
   Table,
   TableContainer,
   TableSkeleton,
@@ -16,65 +14,18 @@ import {
   Tr
 } from "@app/components/v2";
 
-import {
-  CheckedProjectsMap,
-  OnCheckProjectProps,
-  ProjectProps,
-  ProjectsTableProps,
-  SearchProjectProps
-} from "./types";
-
-const SearchProjects: FC<SearchProjectProps> = ({ onSearch, searchValue, placeholder = "" }) => {
-  return (
-    <Input
-      value={searchValue}
-      onChange={onSearch}
-      leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-      placeholder={placeholder}
-    />
-  );
-};
-
-const monitorCheckAll = ({ state }: { state: CheckedProjectsMap }): CheckedProjectsMap => {
-  const newState = { ...state };
-  // check if all projects are enabled to check all checkbox programmatically
-  const { all, ...projects } = newState;
-  const numOfProjects = Object.keys(projects).length;
-
-  let numOfCheckedProjects: number = 0;
-  Object.keys(projects).forEach((projectKey) => {
-    if (projects[projectKey]) {
-      numOfCheckedProjects += 1;
-    }
-  });
-
-  if (numOfProjects === numOfCheckedProjects) {
-    newState.all = true;
-  }
-
-  return newState;
-};
+import { CheckedProjectsMap, OnCheckProjectProps, ProjectsTableProps } from "../types";
+import monitorCheckAll from "./monitorCheckAll";
+import SearchProjects from "./SearchProjects";
 
 const ProjectsTable: FC<ProjectsTableProps> = ({
   projects,
-  userProjects,
   checkedProjects,
-  setCheckedProjects
+  setCheckedProjects,
+  searchValue,
+  setSearchValue
 }) => {
-  const [searchValue, setSearchValue] = useState("");
-  const [filteredProjects, setFilteredProjects] = useState<Array<ProjectProps>>([]);
-
   const isLoading = false;
-
-  useEffect(() => {
-    const filtered = projects.filter((project) => {
-      const projectAlreadyExist = userProjects.join(",").indexOf(project.name) >= 0;
-
-      return project.name.includes(searchValue) && !projectAlreadyExist;
-    });
-
-    setFilteredProjects([...filtered]);
-  }, [searchValue]);
 
   const onSearch: ChangeEventHandler<HTMLInputElement> = (e) => {
     const { value } = e.target;
@@ -115,7 +66,7 @@ const ProjectsTable: FC<ProjectsTableProps> = ({
   return (
     <div>
       <SearchProjects onSearch={onSearch} searchValue={searchValue} placeholder="Search projects" />
-      <TableContainer className="mt-4">
+      <TableContainer className="mt-4 max-h-80">
         <Table>
           <THead>
             <Tr>
@@ -134,7 +85,7 @@ const ProjectsTable: FC<ProjectsTableProps> = ({
           <TBody>
             {isLoading && <TableSkeleton columns={5} innerKey="org-projects" />}
             {!isLoading &&
-              filteredProjects?.map((project) => {
+              projects?.map((project) => {
                 const { name, id } = project;
 
                 return (
@@ -153,7 +104,7 @@ const ProjectsTable: FC<ProjectsTableProps> = ({
               })}
           </TBody>
         </Table>
-        {!isLoading && filteredProjects?.length === 0 && (
+        {!isLoading && projects?.length === 0 && (
           <EmptyState title="No projects found" icon={faProjectDiagram} />
         )}
       </TableContainer>

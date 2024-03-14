@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -6,57 +7,28 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { Button, FormControl, Modal, ModalContent } from "@app/components/v2";
 import { useOrganization, useWorkspace } from "@app/context";
 import { useAddWorkspaceProjectsToUserNonE2EE, useFetchServerStatus } from "@app/hooks/api";
-import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import ProjectsTable from "./ProjectsTable";
-import { CheckedProjectsMap, ProjectProps } from "./types";
-
-const addProjectFormSchema = yup.object({
-  projects: yup
-    .object()
-    .shape(
-      Object.keys({} as CheckedProjectsMap).reduce((acc, key) => {
-        acc[key] = yup.boolean().default(false);
-        return acc;
-      }, {} as Record<string, yup.BooleanSchema>)
-    )
-    .test("at-least-one-selected", "Select at least one project", (value) => {
-      // Check if any of the projects is checked
-      return value && Object.values(value).some((selected) => selected === true);
-    })
-    .required("Selection of projects is required")
-    .label("Projects")
-});
+import ProjectsTable from "./projectsTable/ProjectsTable";
+import addProjectFormSchema from "./addProjectFormSchema";
+import getInitialCheckedProjects from "./getInitialCheckedProjects";
+import { CheckedProjectsMap, Props } from "./types";
+import useFilteredProjects from "./useFilteredProjects";
 
 type TAddProjectForm = yup.InferType<typeof addProjectFormSchema>;
-
-type Props = {
-  popUp: UsePopUpState<["addProject"]>;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["addProject"]>, state?: boolean) => void;
-  handlePopUpClose: (popUpName: keyof UsePopUpState<["addProject"]>) => void;
-};
-
-const getInitialCheckedProjects = (projects: Array<ProjectProps>): CheckedProjectsMap => {
-  const initialCheckProjectsMap: CheckedProjectsMap = {
-    all: false
-  };
-
-  projects.forEach((project: ProjectProps) => {
-    initialCheckProjectsMap[project.id] = false;
-  });
-
-  return initialCheckProjectsMap;
-};
 
 export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: Props) => {
   const { createNotification } = useNotificationContext();
   const { currentOrg } = useOrganization();
   const { workspaces } = useWorkspace();
   const email = popUp.addProject?.data?.email || "";
-  const userProjects = popUp.addProject?.data?.projects || [];
+  const userProjects = useMemo(() => popUp.addProject?.data?.projects || [], [popUp.addProject]);
 
   const { data: serverDetails } = useFetchServerStatus();
 
+  const { filteredProjects, searchValue, setSearchValue } = useFilteredProjects({
+    userProjects,
+    workspaces
+  });
   const { mutateAsync: addProjectsToUserAsync } = useAddWorkspaceProjectsToUserNonE2EE();
 
   const {
@@ -107,6 +79,7 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
       isOpen={popUp?.addProject?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("addProject", isOpen);
+        reset();
       }}
     >
       <ModalContent
@@ -117,17 +90,16 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
           <Controller
             control={control}
             name="projects"
-            defaultValue={getInitialCheckedProjects([...workspaces])}
+            defaultValue={getInitialCheckedProjects([...filteredProjects])}
             render={({ field, fieldState: { error } }) => {
               return (
                 <FormControl label="Projects" isError={Boolean(error)} errorText={error?.message}>
                   <ProjectsTable
-                    projects={workspaces}
-                    userProjects={userProjects}
-                    checkedProjects={field.value} // Use field.value to get the value controlled by the Controller
-                    setCheckedProjects={(newValue) => {
-                      return field.onChange(newValue);
-                    }} // Use field.onChange to update the value controlled by the Controller
+                    projects={filteredProjects}
+                    checkedProjects={field.value}
+                    setCheckedProjects={(newValue) => field.onChange(newValue)}
+                    searchValue={searchValue}
+                    setSearchValue={setSearchValue}
                   />
                 </FormControl>
               );
@@ -146,7 +118,9 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
             <Button
               colorSchema="secondary"
               variant="plain"
-              onClick={() => handlePopUpToggle("addProject", false)}
+              onClick={() => {
+                handlePopUpToggle("addProject", false);
+              }}
             >
               Cancel
             </Button>

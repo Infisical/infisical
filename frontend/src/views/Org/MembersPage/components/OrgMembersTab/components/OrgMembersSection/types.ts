@@ -1,17 +1,17 @@
 import { ChangeEventHandler } from "react";
 
-export type ProjectProps = {
-  id: string;
-  name: string;
-};
+import { Organization } from "@app/hooks/api/types";
+import { ProjectProps } from "@app/hooks/api/users/types";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 export type CheckedProjectsMap = Record<string, boolean>;
 
 export type ProjectsTableProps = {
-  projects: Array<ProjectProps>;
-  userProjects: Array<ProjectProps>;
+  projects: ProjectProps[];
   checkedProjects: CheckedProjectsMap;
   setCheckedProjects: (value: CheckedProjectsMap) => void;
+  searchValue: string;
+  setSearchValue: (value: string) => void;
 };
 
 export type SearchProjectProps = {
@@ -23,4 +23,36 @@ export type SearchProjectProps = {
 export type OnCheckProjectProps = {
   isChecked: boolean | string;
   project: ProjectProps;
+};
+
+export type Props = {
+  popUp: UsePopUpState<["addProject"]>;
+  handlePopUpToggle: (popUpName: keyof UsePopUpState<["addProject"]>, state?: boolean) => void;
+  handlePopUpClose: (popUpName: keyof UsePopUpState<["addProject"]>) => void;
+};
+
+export type OrgMembersTableProps = {
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["removeMember", "upgradePlan"]>,
+    data?: {
+      orgMembershipId?: string;
+      username?: string;
+      description?: string;
+    }
+  ) => void;
+  setCompleteInviteLink: (link: string) => void;
+};
+
+export type AddProjectProps = {
+  handlePopUpOpen: any;
+  currentOrg: Organization | undefined;
+  createNotification: any;
+  orgMembershipId: string;
+  email: string;
+  projects: ProjectProps[];
+};
+
+export type UseFilteredProjectsProps = {
+  userProjects: string[];
+  workspaces: ProjectProps[];
 };

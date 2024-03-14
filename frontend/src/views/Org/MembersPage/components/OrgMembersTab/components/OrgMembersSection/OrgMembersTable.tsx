@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { faMagnifyingGlass, faPlus, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -25,7 +25,8 @@ import {
   OrgPermissionSubjects,
   useOrganization,
   useSubscription,
-  useUser
+  useUser,
+  useWorkspace
 } from "@app/context";
 import {
   useAddUserToOrg,
@@ -34,67 +35,15 @@ import {
   useGetOrgUsersWithProjects,
   useUpdateOrgUserRole
 } from "@app/hooks/api";
-import { UsePopUpState } from "@app/hooks/usePopUp";
 
-type Props = {
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeMember", "upgradePlan"]>,
-    data?: {
-      orgMembershipId?: string;
-      username?: string;
-      description?: string;
-    }
-  ) => void;
-  setCompleteInviteLink: (link: string) => void;
-};
+import AddProject from "./AddProject";
+import ProjectsCell from "./ProjectsCell";
+import { OrgMembersTableProps } from "./types";
 
-type AddProjectProps = {
-  handlePopUpOpen: any;
-  currentOrg: string;
-  createNotification: any;
-  orgMembershipId: string;
-  email: string;
-  projects: string[];
-};
-
-const AddProject = ({
+export const OrgMembersTable = ({
   handlePopUpOpen,
-  currentOrg,
-  createNotification,
-  orgMembershipId,
-  email,
-  projects
-}: AddProjectProps) => {
-  return (
-    <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Member}>
-      {(isAllowed) => (
-        <IconButton
-          onClick={() => {
-            if (currentOrg?.authEnforced) {
-              createNotification({
-                text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
-                type: "error"
-              });
-              return;
-            }
-
-            handlePopUpOpen("addProject", { orgMembershipId, email, projects });
-          }}
-          size="lg"
-          colorSchema="primary"
-          variant="plain"
-          ariaLabel="update"
-          className="ml-4"
-          isDisabled={!isAllowed}
-        >
-          <FontAwesomeIcon icon={faPlus} />
-        </IconButton>
-      )}
-    </OrgPermissionCan>
-  );
-};
-
-export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Props) => {
+  setCompleteInviteLink
+}: OrgMembersTableProps) => {
   const { createNotification } = useNotificationContext();
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
@@ -103,6 +52,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
   const orgId = currentOrg?.id || "";
 
   const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(orgId);
+  const { workspaces } = useWorkspace();
 
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 
@@ -224,6 +174,14 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                   const email = u?.email || inviteEmail;
 
                   const username = u?.username ?? inviteEmail ?? "-";
+
+                  const availableWorkspaces = workspaces.filter((workspace) => {
+                    const workspaceAlreadyExist = projects.join(",").indexOf(workspace.name) >= 0;
+                    return !workspaceAlreadyExist;
+                  });
+
+                  const hasMoreProjectsToAdd = Boolean(availableWorkspaces.length);
+
                   return (
                     <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
                       <Td>{name}</Td>
@@ -273,16 +231,18 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                           )}
                         </OrgPermissionCan>
                       </Td>
-                      <Td>
-                        {projects?.join(", ")}
-                        <AddProject
-                          handlePopUpOpen={handlePopUpOpen}
-                          createNotification={createNotification}
-                          currentOrg={currentOrg}
-                          orgMembershipId={orgMembershipId}
-                          email={email}
-                          projects={projects}
-                        />
+                      <Td className="flex items-center">
+                        <ProjectsCell projects={projects} />
+                        {hasMoreProjectsToAdd && (
+                          <AddProject
+                            handlePopUpOpen={handlePopUpOpen}
+                            createNotification={createNotification}
+                            currentOrg={currentOrg}
+                            orgMembershipId={orgMembershipId}
+                            email={email}
+                            projects={projects}
+                          />
+                        )}
                       </Td>
                       <Td>
                         {userId !== u?.id && (
