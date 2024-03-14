@@ -260,20 +260,44 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
  * Return list of services for Render integration
  */
 const getAppsRender = async ({ accessToken }: { accessToken: string }) => {
-  const res = (
-    await request.get<{ service: { name: string; id: string } }[]>(`${IntegrationUrls.RENDER_API_URL}/v1/services`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-        "Accept-Encoding": "application/json"
-      }
-    })
-  ).data;
+  const apps: Array<{ name: string; appId: string }> = [];
+  let hasMorePages = true;
+  const perPage = 100;
+  let cursor;
 
-  const apps = res.map((a) => ({
-    name: a.service.name,
-    appId: a.service.id
-  }));
+  interface RenderService {
+    cursor: string;
+    service: { name: string; id: string };
+  }
+
+  while (hasMorePages) {
+    const res: RenderService[] = (
+      await request.get<RenderService[]>(`${IntegrationUrls.RENDER_API_URL}/v1/services`, {
+        params: new URLSearchParams({
+          ...(cursor ? { cursor: String(cursor) } : {}),
+          limit: String(perPage)
+        }),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+          "Accept-Encoding": "application/json"
+        }
+      })
+    ).data;
+
+    res.forEach((a) => {
+      apps.push({
+        name: a.service.name,
+        appId: a.service.id
+      });
+    });
+
+    if (res.length < perPage) {
+      hasMorePages = false;
+    } else {
+      cursor = res[res.length - 1].cursor;
+    }
+  }
 
   return apps;
 };
