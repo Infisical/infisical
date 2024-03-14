@@ -8,7 +8,7 @@ import jsrp from "jsrp";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 
-import { completeAccountSignup } from "@app/hooks/api/auth/queries";
+import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import ProjectService from "@app/services/ProjectService";
 
@@ -79,6 +79,7 @@ export default function UserInfoStep({
 
   const [errors, setErrors] = useState<Errors>({});
 
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
 
@@ -180,6 +181,10 @@ export default function UserInfoStep({
               SecurityClient.setSignupToken("");
               SecurityClient.setToken(response.token);
               SecurityClient.setProviderAuthToken("");
+
+              if (response.organizationId) {
+                await selectOrganization({ organizationId: response.organizationId });
+              }
 
               saveTokenToLocalStorage({
                 publicKey,
