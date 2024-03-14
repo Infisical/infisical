@@ -9,8 +9,8 @@ import { useOrganization, useWorkspace } from "@app/context";
 import { useAddWorkspaceProjectsToUserNonE2EE, useFetchServerStatus } from "@app/hooks/api";
 
 import ProjectsTable from "./projectsTable/ProjectsTable";
-import addProjectFormSchema from "./addProjectFormSchema";
-import getInitialCheckedProjects from "./getInitialCheckedProjects";
+import addProjectFormSchema from "./utils/addProjectFormSchema";
+import getInitialCheckedProjects from "./utils/getInitialCheckedProjects";
 import { CheckboxKeys, CheckedProjectsMap, Props } from "./types";
 import useFilteredProjects from "./useFilteredProjects";
 

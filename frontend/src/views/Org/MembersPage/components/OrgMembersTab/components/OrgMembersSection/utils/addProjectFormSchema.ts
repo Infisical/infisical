@@ -1,6 +1,6 @@
 import * as yup from "yup";
 
-import { CheckedProjectsMap } from "./types";
+import { CheckedProjectsMap } from "../types";
 
 const addProjectFormSchema = yup.object({
   projects: yup

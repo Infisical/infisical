@@ -36,8 +36,8 @@ import {
   useUpdateOrgUserRole
 } from "@app/hooks/api";
 
+import checkIfThereAreMoreProjectsToAdd from "./utils/checkIfThereAreMoreProjectsToAdd";
 import AddProject from "./AddProject";
-import checkIfThereAreMoreProjectsToAdd from "./checkIfThereAreMoreProjectsToAdd";
 import ProjectsCell from "./ProjectsCell";
 import { OrgMembersTableProps } from "./types";
 
