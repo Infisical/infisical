@@ -49,19 +49,22 @@
       "url": "api-reference"
     },
     {
-      "name": "Libraries",
+      "name": "SDKs",
       "url": "sdks"
     },
     {
       "name": "Contributing",
       "url": "contributing"
-    },
-    {
-      "name": "Internals",
-      "url": "internals"
     }
   ],
   "anchors": [
+   
+    {
+      "name": "Contributing",
+      "icon": "code",
+      "url": "contributing"
+    },
+    
     {
       "name": "Blog",
       "icon": "newspaper",
@@ -76,6 +79,11 @@
       "name": "GitHub",
       "icon": "github",
       "url": "https://github.com/Infisical/infisical"
+    },
+    {
+      "name": "Internals",
+      "icon": "sitemap",
+      "url": "internals"
     }
   ],
   "navigation": [
