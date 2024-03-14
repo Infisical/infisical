@@ -108,7 +108,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           message: z.string(),
           user: UsersSchema,
-          token: z.string()
+          token: z.string(),
+          organizationId: z.string().nullish()
         })
       }
     },
@@ -124,12 +125,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         });
       }
 
-      const { user, accessToken, refreshToken } = await server.services.signup.completeEmailAccountSignup({
-        ...req.body,
-        ip: req.realIp,
-        userAgent,
-        authorization: req.headers.authorization as string
-      });
+      const { user, accessToken, refreshToken, organizationId } =
+        await server.services.signup.completeEmailAccountSignup({
+          ...req.body,
+          ip: req.realIp,
+          userAgent,
+          authorization: req.headers.authorization as string
+        });
 
       if (user.email) {
         void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
@@ -152,7 +154,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         secure: appCfg.HTTPS_ENABLED
       });
 
-      return { message: "Successfully set up account", user, token: accessToken };
+      return { message: "Successfully set up account", user, token: accessToken, organizationId };
     }
   });
 
