@@ -39,32 +39,29 @@
     "name": "Start for Free",
     "url": "https://app.infisical.com/signup"
   },
-  "anchors": [
-    {
-      "name": "Internals",
-      "icon": "sitemap",
-      "url": "internals"
-    },
-    {
-      "name": "SDKs",
-      "icon": "puzzle-piece",
-      "url": "sdks"
-    },
-    {
-      "name": "API Reference",
-      "icon": "cloud",
-      "url": "api-reference"
-    },
+  "tabs": [
     {
       "name": "Changelog",
-      "icon": "timer",
       "url": "changelog"
     },
     {
+      "name": "API Reference",
+      "url": "api-reference"
+    },
+    {
+      "name": "Libraries",
+      "url": "sdks"
+    },
+    {
       "name": "Contributing",
-      "icon": "code",
       "url": "contributing"
     },
+    {
+      "name": "Internals",
+      "url": "internals"
+    }
+  ],
+  "anchors": [
     {
       "name": "Blog",
       "icon": "newspaper",
@@ -356,7 +353,18 @@
     },
     {
       "group": "Overview",
-      "pages": ["sdks/overview"]
+      "pages": [
+        "sdks/overview",
+        {
+          "group": "Libraries",
+          "pages": [
+            "sdks/languages/node",
+            "sdks/languages/python",
+            "sdks/languages/java",
+            "sdks/languages/csharp"
+          ]
+        }
+      ]
     },
     {
       "group": "Overview",
