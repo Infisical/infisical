@@ -114,9 +114,9 @@ export const orgDALFactory = (db: TDbClient) => {
             `${TableName.Project}.name`,
             `${TableName.Project}.name`,
             "projects"
-          ]) // Adjust the table alias
+          ])
         )
-        .where({ isGhost: false }) // MAKE SURE USER IS NOT A GHOST USER
+        .where({ isGhost: false })
         .groupBy(
           `${TableName.Users}.id`,
           `${TableName.OrgMembership}.role`,

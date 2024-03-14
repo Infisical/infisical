@@ -99,7 +99,6 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
             name="projects"
             defaultValue={getInitialCheckedProjects([...filteredProjects])}
             render={({ field, fieldState: { error } }) => {
-              console.log("field.value", field.value);
               return (
                 <FormControl label="Projects" isError={Boolean(error)} errorText={error?.message}>
                   <ProjectsTable
