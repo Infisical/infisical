@@ -8,6 +8,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
+import { verifyOfflineLicense } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -26,6 +27,7 @@ import {
   TFeatureSet,
   TGetOrgBillInfoDTO,
   TGetOrgTaxIdDTO,
+  TOfflineLicenseContents,
   TOrgInvoiceDTO,
   TOrgLicensesDTO,
   TOrgPlanDTO,
@@ -96,6 +98,36 @@ export const licenseServiceFactory = ({
         }
         return;
       }
+
+      if (appCfg.LICENSE_KEY_OFFLINE) {
+        let isValidOfflineLicense = true;
+        const contents: TOfflineLicenseContents = JSON.parse(
+          Buffer.from(appCfg.LICENSE_KEY_OFFLINE, "base64").toString("utf8")
+        );
+        const isVerified = await verifyOfflineLicense(JSON.stringify(contents.license), contents.signature);
+
+        if (!isVerified) {
+          isValidOfflineLicense = false;
+          logger.warn(`Infisical EE offline license verification failed`);
+        }
+
+        if (contents.license.terminatesAt) {
+          const terminationDate = new Date(contents.license.terminatesAt);
+          if (terminationDate < new Date()) {
+            isValidOfflineLicense = false;
+            logger.warn(`Infisical EE offline license has expired`);
+          }
+        }
+
+        if (isValidOfflineLicense) {
+          onPremFeatures = contents.license.features;
+          instanceType = InstanceType.EnterpriseOnPrem;
+          logger.info(`Instance type: ${InstanceType.EnterpriseOnPrem}`);
+          isValidLicense = true;
+          return;
+        }
+      }
+
       // this means this is self hosted oss version
       // else it would reach catch statement
       isValidLicense = true;
