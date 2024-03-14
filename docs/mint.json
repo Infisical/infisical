@@ -366,7 +366,7 @@
       ]
     }, 
     {
-      "group": "Libraries",
+      "group": "SDK's",
       "pages": [
         "sdks/languages/node",
         "sdks/languages/python",
