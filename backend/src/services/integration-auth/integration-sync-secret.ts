@@ -459,7 +459,7 @@ const syncSecretsAWSParameterStore = async ({
 
   const params = {
     Path: integration.path as string,
-    Recursive: true,
+    Recursive: false,
     WithDecryption: true
   };
 
