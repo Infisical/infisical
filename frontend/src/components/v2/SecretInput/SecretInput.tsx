@@ -190,7 +190,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       }
 
       if (event.key === "{") {
-        // auto close the tag
+        // auto close the bracket
         const currCaretPos = event.currentTarget.selectionEnd;
         const isPrevDollar = value[currCaretPos - 2] === "$";
         if (!isPrevDollar) return;
@@ -198,6 +198,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         const newValue = `${value.slice(0, currCaretPos)}}${value.slice(currCaretPos)}`;
 
         setValue(newValue);
+        onChange?.({ target: { value: newValue } } as any);
+
         if (event.currentTarget) {
           setCaretPos(currCaretPos);
           setTimeout(() => {
@@ -219,7 +221,6 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     function handleMouseClick(event: React.MouseEvent<HTMLTextAreaElement, MouseEvent>) {
       handleReferencePopup(event.currentTarget);
     }
-
 
     async function handleReferenceSelect({
       name,
@@ -250,7 +251,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         value.slice(referenceEndIndex)
       ];
 
-      const oldReferenceStr = oldReference.slice(2, oldReference.length - 1); // remove template
+      let oldReferenceStr = oldReference.slice(2, oldReference.length - 1);
+
       let replaceReference = "";
       let offset = 3;
       switch (type) {
@@ -258,9 +260,11 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
           replaceReference = `${oldReferenceStr}${name}.`;
           offset -= 1;
           break;
-        case "secret":
+        case "secret": {
+          if (oldReferenceStr.indexOf(".") === -1) oldReferenceStr = "";
           replaceReference = `${oldReferenceStr}${name}`;
           break;
+        }
         case "environment":
           replaceReference = `${slug}.`;
           offset -= 1;
@@ -269,16 +273,18 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       }
       newValue = `${start}$\{${replaceReference}}${end}`;
       setValue(newValue);
+      onChange?.({ target: { value: newValue } } as any);
       setCaretPos(start.length + replaceReference.length + offset);
       if (type !== "secret") extractReference(replaceReference);
     }
 
     function handleChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
       setValue(event.target.value);
-      return onChange;
+      if (typeof onChange === "function") onChange(event);
     }
 
     return (
+      // TODO: hide popup if the focus within the child component left
       <div>
         <div
           className={twMerge("w-full overflow-auto rounded-md no-scrollbar", containerClassName)}
