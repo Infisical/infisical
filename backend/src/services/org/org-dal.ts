@@ -141,8 +141,6 @@ export const orgDALFactory = (db: TDbClient) => {
       const members = await db(TableName.OrgMembership)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .join(TableName.ProjectMembership, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
-        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
         .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
