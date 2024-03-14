@@ -9,6 +9,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PROJECTS } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
@@ -26,7 +27,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim().describe(PROJECTS.GET_USER_MEMBERSHIPS.workspaceId)
       }),
       response: {
         200: z.object({
@@ -134,8 +135,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim(),
-        membershipId: z.string().trim()
+        workspaceId: z.string().trim().describe(PROJECTS.UPDATE_USER_MEMBERSHIP.workspaceId),
+        membershipId: z.string().trim().describe(PROJECTS.UPDATE_USER_MEMBERSHIP.membershipId)
       }),
       body: z.object({
         roles: z
@@ -156,6 +157,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           )
           .min(1)
           .refine((data) => data.some(({ isTemporary }) => !isTemporary), "At least long lived role is required")
+          .describe(PROJECTS.UPDATE_USER_MEMBERSHIP.roles)
       }),
       response: {
         200: z.object({

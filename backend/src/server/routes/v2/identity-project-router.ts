@@ -7,6 +7,7 @@ import {
   ProjectMembershipRole,
   ProjectUserMembershipRolesSchema
 } from "@app/db/schemas";
+import { PROJECTS } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
@@ -55,8 +56,8 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        projectId: z.string().trim(),
-        identityId: z.string().trim()
+        projectId: z.string().trim().describe(PROJECTS.UPDATE_IDENTITY_MEMBERSHIP.projectId),
+        identityId: z.string().trim().describe(PROJECTS.UPDATE_IDENTITY_MEMBERSHIP.identityId)
       }),
       body: z.object({
         roles: z
@@ -76,6 +77,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
             ])
           )
           .min(1)
+          .describe(PROJECTS.UPDATE_IDENTITY_MEMBERSHIP.roles)
       }),
       response: {
         200: z.object({
@@ -108,8 +110,8 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        projectId: z.string().trim(),
-        identityId: z.string().trim()
+        projectId: z.string().trim().describe(PROJECTS.DELETE_IDENTITY_MEMBERSHIP.projectId),
+        identityId: z.string().trim().describe(PROJECTS.DELETE_IDENTITY_MEMBERSHIP.identityId)
       }),
       response: {
         200: z.object({
@@ -141,7 +143,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        projectId: z.string().trim()
+        projectId: z.string().trim().describe(PROJECTS.LIST_IDENTITY_MEMBERSHIPS.projectId)
       }),
       response: {
         200: z.object({

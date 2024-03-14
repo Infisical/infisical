@@ -10,6 +10,7 @@ import {
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CommitType } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { RAW_SECRETS } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -33,13 +34,14 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        workspaceId: z.string().trim().optional(),
-        environment: z.string().trim().optional(),
-        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceId),
+        environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.LIST.secretPath),
         include_imports: z
           .enum(["true", "false"])
           .default("false")
           .transform((value) => value === "true")
+          .describe(RAW_SECRETS.LIST.includeImports)
       }),
       response: {
         200: z.object({
@@ -123,18 +125,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: z.string().trim()
+        secretName: z.string().trim().describe(RAW_SECRETS.GET.secretName)
       }),
       querystring: z.object({
-        workspaceId: z.string().trim().optional(),
-        environment: z.string().trim().optional(),
-        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        version: z.coerce.number().optional(),
-        type: z.nativeEnum(SecretType).default(SecretType.Shared),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.GET.workspaceId),
+        environment: z.string().trim().optional().describe(RAW_SECRETS.GET.environment),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.GET.secretPath),
+        version: z.coerce.number().optional().describe(RAW_SECRETS.GET.version),
+        type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.GET.type),
         include_imports: z
           .enum(["true", "false"])
           .default("false")
           .transform((value) => value === "true")
+          .describe(RAW_SECRETS.GET.includeImports)
       }),
       response: {
         200: z.object({
@@ -213,16 +216,24 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: z.string().trim()
+        secretName: z.string().trim().describe(RAW_SECRETS.CREATE.secretName)
       }),
       body: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
-        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        secretValue: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
-        secretComment: z.string().trim().optional().default(""),
-        skipMultilineEncoding: z.boolean().optional(),
-        type: z.nativeEnum(SecretType).default(SecretType.Shared)
+        workspaceId: z.string().trim().describe(RAW_SECRETS.CREATE.workspaceId),
+        environment: z.string().trim().describe(RAW_SECRETS.CREATE.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(RAW_SECRETS.CREATE.secretPath),
+        secretValue: z
+          .string()
+          .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+          .describe(RAW_SECRETS.CREATE.secretValue),
+        secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
+        skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+        type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.CREATE.type)
       }),
       response: {
         200: z.object({
@@ -290,15 +301,23 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: z.string().trim()
+        secretName: z.string().trim().describe(RAW_SECRETS.UPDATE.secretName)
       }),
       body: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
-        secretValue: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
-        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        skipMultilineEncoding: z.boolean().optional(),
-        type: z.nativeEnum(SecretType).default(SecretType.Shared)
+        workspaceId: z.string().trim().describe(RAW_SECRETS.UPDATE.workspaceId),
+        environment: z.string().trim().describe(RAW_SECRETS.UPDATE.environment),
+        secretValue: z
+          .string()
+          .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+          .describe(RAW_SECRETS.UPDATE.secretValue),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(RAW_SECRETS.UPDATE.secretPath),
+        skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
+        type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.UPDATE.type)
       }),
       response: {
         200: z.object({
@@ -364,13 +383,18 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: z.string().trim()
+        secretName: z.string().trim().describe(RAW_SECRETS.DELETE.secretName)
       }),
       body: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
-        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        type: z.nativeEnum(SecretType).default(SecretType.Shared)
+        workspaceId: z.string().trim().describe(RAW_SECRETS.DELETE.workspaceId),
+        environment: z.string().trim().describe(RAW_SECRETS.DELETE.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(RAW_SECRETS.DELETE.secretPath),
+        type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.DELETE.type)
       }),
       response: {
         200: z.object({

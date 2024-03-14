@@ -7,6 +7,7 @@ import {
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { PROJECTS } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -125,7 +126,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     schema: {
       params: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim().describe(PROJECTS.GET.workspaceId)
       }),
       response: {
         200: z.object({
@@ -177,7 +178,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "DELETE",
     schema: {
       params: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim().describe(PROJECTS.DELETE.workspaceId)
       }),
       response: {
         200: z.object({
@@ -235,11 +236,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     schema: {
       params: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim().describe(PROJECTS.UPDATE.workspaceId)
       }),
       body: z.object({
-        name: z.string().trim().max(64, { message: "Name must be 64 or fewer characters" }).optional(),
-        autoCapitalization: z.boolean().optional()
+        name: z
+          .string()
+          .trim()
+          .max(64, { message: "Name must be 64 or fewer characters" })
+          .optional()
+          .describe(PROJECTS.UPDATE.name),
+        autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization)
       }),
       response: {
         200: z.object({

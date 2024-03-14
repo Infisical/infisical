@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { OrganizationsSchema, OrgMembershipsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
+import { ORGANIZATIONS } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
@@ -17,7 +18,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        organizationId: z.string().trim()
+        organizationId: z.string().trim().describe(ORGANIZATIONS.LIST_USER_MEMBERSHIPS.organizationId)
       }),
       response: {
         200: z.object({
@@ -62,7 +63,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        organizationId: z.string().trim()
+        organizationId: z.string().trim().describe(ORGANIZATIONS.GET_PROJECTS.organizationId)
       }),
       response: {
         200: z.object({
@@ -106,9 +107,12 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           apiKeyAuth: []
         }
       ],
-      params: z.object({ organizationId: z.string().trim(), membershipId: z.string().trim() }),
+      params: z.object({
+        organizationId: z.string().trim().describe(ORGANIZATIONS.UPDATE_USER_MEMBERSHIP.organizationId),
+        membershipId: z.string().trim().describe(ORGANIZATIONS.UPDATE_USER_MEMBERSHIP.membershipId)
+      }),
       body: z.object({
-        role: z.string().trim()
+        role: z.string().trim().describe(ORGANIZATIONS.UPDATE_USER_MEMBERSHIP.role)
       }),
       response: {
         200: z.object({
@@ -142,7 +146,10 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           apiKeyAuth: []
         }
       ],
-      params: z.object({ organizationId: z.string().trim(), membershipId: z.string().trim() }),
+      params: z.object({
+        organizationId: z.string().trim().describe(ORGANIZATIONS.DELETE_USER_MEMBERSHIP.organizationId),
+        membershipId: z.string().trim().describe(ORGANIZATIONS.DELETE_USER_MEMBERSHIP.membershipId)
+      }),
       response: {
         200: z.object({
           membership: OrgMembershipsSchema

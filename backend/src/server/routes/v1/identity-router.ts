@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { IdentitiesSchema, OrgMembershipRole } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { IDENTITIES } from "@app/lib/api-docs";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -20,9 +21,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        name: z.string().trim(),
-        organizationId: z.string().trim(),
-        role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess)
+        name: z.string().trim().describe(IDENTITIES.CREATE.name),
+        organizationId: z.string().trim().describe(IDENTITIES.CREATE.organizationId),
+        role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(IDENTITIES.CREATE.role)
       }),
       response: {
         200: z.object({
@@ -78,11 +79,11 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(IDENTITIES.UPDATE.identityId)
       }),
       body: z.object({
-        name: z.string().trim().optional(),
-        role: z.string().trim().min(1).optional()
+        name: z.string().trim().optional().describe(IDENTITIES.UPDATE.name),
+        role: z.string().trim().min(1).optional().describe(IDENTITIES.UPDATE.role)
       }),
       response: {
         200: z.object({
@@ -127,7 +128,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(IDENTITIES.DELETE.identityId)
       }),
       response: {
         200: z.object({

@@ -39,32 +39,32 @@
     "name": "Start for Free",
     "url": "https://app.infisical.com/signup"
   },
-  "anchors": [
+  "tabs": [
     {
-      "name": "Internals",
-      "icon": "sitemap",
-      "url": "internals"
-    },
-    {
-      "name": "SDKs",
-      "icon": "puzzle-piece",
-      "url": "sdks"
+      "name": "Changelog",
+      "url": "changelog"
     },
     {
       "name": "API Reference",
-      "icon": "cloud",
       "url": "api-reference"
     },
     {
-      "name": "Changelog",
-      "icon": "timer",
-      "url": "changelog"
+      "name": "SDKs",
+      "url": "sdks"
     },
+    {
+      "name": "Contributing",
+      "url": "contributing"
+    }
+  ],
+  "anchors": [
+   
     {
       "name": "Contributing",
       "icon": "code",
       "url": "contributing"
     },
+    
     {
       "name": "Blog",
       "icon": "newspaper",
@@ -79,6 +79,11 @@
       "name": "GitHub",
       "icon": "github",
       "url": "https://github.com/Infisical/infisical"
+    },
+    {
+      "name": "Internals",
+      "icon": "sitemap",
+      "url": "internals"
     }
   ],
   "navigation": [
@@ -357,7 +362,18 @@
     },
     {
       "group": "Overview",
-      "pages": ["sdks/overview"]
+      "pages": [
+        "sdks/overview"
+      ]
+    }, 
+    {
+      "group": "SDK's",
+      "pages": [
+        "sdks/languages/node",
+        "sdks/languages/python",
+        "sdks/languages/java",
+        "sdks/languages/csharp"
+      ]
     },
     {
       "group": "Overview",
