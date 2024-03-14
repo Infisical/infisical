@@ -354,16 +354,16 @@
     {
       "group": "Overview",
       "pages": [
-        "sdks/overview",
-        {
-          "group": "Libraries",
-          "pages": [
-            "sdks/languages/node",
-            "sdks/languages/python",
-            "sdks/languages/java",
-            "sdks/languages/csharp"
-          ]
-        }
+        "sdks/overview"
+      ]
+    }, 
+    {
+      "group": "Libraries",
+      "pages": [
+        "sdks/languages/node",
+        "sdks/languages/python",
+        "sdks/languages/java",
+        "sdks/languages/csharp"
       ]
     },
     {
