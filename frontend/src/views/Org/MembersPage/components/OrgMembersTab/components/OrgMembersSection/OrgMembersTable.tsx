@@ -37,6 +37,7 @@ import {
 } from "@app/hooks/api";
 
 import AddProject from "./AddProject";
+import checkIfThereAreMoreProjectsToAdd from "./checkIfThereAreMoreProjectsToAdd";
 import ProjectsCell from "./ProjectsCell";
 import { OrgMembersTableProps } from "./types";
 
@@ -175,12 +176,10 @@ export const OrgMembersTable = ({
 
                   const username = u?.username ?? inviteEmail ?? "-";
 
-                  const availableWorkspaces = workspaces.filter((workspace) => {
-                    const workspaceAlreadyExist = projects.join(",").indexOf(workspace.name) >= 0;
-                    return !workspaceAlreadyExist;
+                  const hasMoreProjectsToAdd = checkIfThereAreMoreProjectsToAdd({
+                    workspaces,
+                    userProjects: projects
                   });
-
-                  const hasMoreProjectsToAdd = Boolean(availableWorkspaces.length);
 
                   return (
                     <Tr key={`org-membership-${orgMembershipId}`} className="w-full">

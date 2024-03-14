@@ -1,10 +1,10 @@
 import { ProjectProps } from "@app/hooks/api/users/types";
 
-import { CheckedProjectsMap } from "./types";
+import { CheckboxKeys, CheckedProjectsMap } from "./types";
 
 const getInitialCheckedProjects = (projects: Array<ProjectProps>): CheckedProjectsMap => {
   const initialCheckProjectsMap: CheckedProjectsMap = {
-    all: false
+    [CheckboxKeys.ALL]: false
   };
 
   projects.forEach((project: ProjectProps) => {

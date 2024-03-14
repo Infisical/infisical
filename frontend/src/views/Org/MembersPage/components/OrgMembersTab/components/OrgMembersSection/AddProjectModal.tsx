@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -11,7 +11,7 @@ import { useAddWorkspaceProjectsToUserNonE2EE, useFetchServerStatus } from "@app
 import ProjectsTable from "./projectsTable/ProjectsTable";
 import addProjectFormSchema from "./addProjectFormSchema";
 import getInitialCheckedProjects from "./getInitialCheckedProjects";
-import { CheckedProjectsMap, Props } from "./types";
+import { CheckboxKeys, CheckedProjectsMap, Props } from "./types";
 import useFilteredProjects from "./useFilteredProjects";
 
 type TAddProjectForm = yup.InferType<typeof addProjectFormSchema>;
@@ -22,6 +22,7 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
   const { workspaces } = useWorkspace();
   const email = popUp.addProject?.data?.email || "";
   const userProjects = useMemo(() => popUp.addProject?.data?.projects || [], [popUp.addProject]);
+  const [formKey, setFormKey] = useState(1);
 
   const { data: serverDetails } = useFetchServerStatus();
 
@@ -38,13 +39,18 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
     formState: { isSubmitting }
   } = useForm<TAddProjectForm>({ resolver: yupResolver(addProjectFormSchema) });
 
+  const resetForm = () => {
+    reset();
+    setFormKey(formKey + 1);
+  };
+
   const onAddProject = async ({ projects }: { projects: CheckedProjectsMap }) => {
     if (!currentOrg?.id) return;
 
     try {
       const selectedProjects: Array<string> = [];
       Object.keys(projects).forEach((projectKey) => {
-        if (projectKey !== "all" && projects[projectKey]) {
+        if (projectKey !== CheckboxKeys.ALL && projects[projectKey]) {
           selectedProjects.push(projectKey);
         }
       });
@@ -71,7 +77,7 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
       handlePopUpToggle("addProject", false);
     }
 
-    reset();
+    resetForm();
   };
 
   return (
@@ -79,8 +85,9 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
       isOpen={popUp?.addProject?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("addProject", isOpen);
-        reset();
+        resetForm();
       }}
+      key={formKey}
     >
       <ModalContent
         title={`Add projects to user ${email}`}
@@ -92,10 +99,11 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
             name="projects"
             defaultValue={getInitialCheckedProjects([...filteredProjects])}
             render={({ field, fieldState: { error } }) => {
+              console.log("field.value", field.value);
               return (
                 <FormControl label="Projects" isError={Boolean(error)} errorText={error?.message}>
                   <ProjectsTable
-                    projects={filteredProjects}
+                    projects={[...filteredProjects]}
                     checkedProjects={field.value}
                     setCheckedProjects={(newValue) => field.onChange(newValue)}
                     searchValue={searchValue}
@@ -120,6 +128,7 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
               variant="plain"
               onClick={() => {
                 handlePopUpToggle("addProject", false);
+                resetForm();
               }}
             >
               Cancel

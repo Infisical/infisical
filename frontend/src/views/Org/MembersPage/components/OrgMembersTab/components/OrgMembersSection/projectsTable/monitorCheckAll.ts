@@ -1,9 +1,9 @@
-import { CheckedProjectsMap } from "../types";
+import { CheckboxKeys, CheckedProjectsMap } from "../types";
 
 const monitorCheckAll = ({ state }: { state: CheckedProjectsMap }): CheckedProjectsMap => {
   const newState = { ...state };
   // check if all projects are enabled to check all checkbox programmatically
-  const { all, ...projects } = newState;
+  const { [CheckboxKeys.ALL]: all, ...projects } = newState;
   const numOfProjects = Object.keys(projects).length;
 
   let numOfCheckedProjects: number = 0;
@@ -14,7 +14,7 @@ const monitorCheckAll = ({ state }: { state: CheckedProjectsMap }): CheckedProje
   });
 
   if (numOfProjects === numOfCheckedProjects) {
-    newState.all = true;
+    newState[CheckboxKeys.ALL] = true;
   }
 
   return newState;

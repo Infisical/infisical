@@ -74,9 +74,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const userEmail = req.params.email;
       const { projects } = req.body;
 
-      // Prepare an array to hold all promises
       const promises = projects.map(async (projectId) => {
-        // Register user for the current project
         const membershipsPromise = server.services.projectMembership.addUsersToProjectNonE2EE({
           projectId,
           actorId: req.permission.id,
@@ -85,7 +83,6 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           usernames: []
         });
 
-        // Return a promise to create an audit log for the current project
         return membershipsPromise.then(async (memberships) => {
           await server.services.auditLog.createAuditLog({
             projectId,
@@ -95,19 +92,17 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
               metadata: memberships.map(({ userId, id }) => ({
                 userId: userId || "",
                 membershipId: id,
-                email: userEmail // Use the user's email for the audit log
+                email: userEmail
               }))
             }
           });
 
-          return memberships; // Resolve with the memberships for this project
+          return memberships;
         });
       });
 
-      // Execute all promises concurrently
       const allMemberships = await Promise.all(promises);
 
-      // Flatten the array of arrays into a single array
       const flattenedMemberships = allMemberships.flat();
 
       return { memberships: flattenedMemberships };

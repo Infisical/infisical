@@ -6,7 +6,6 @@ import {
   EmptyState,
   Table,
   TableContainer,
-  TableSkeleton,
   TBody,
   Td,
   Th,
@@ -14,7 +13,12 @@ import {
   Tr
 } from "@app/components/v2";
 
-import { CheckedProjectsMap, OnCheckProjectProps, ProjectsTableProps } from "../types";
+import {
+  CheckboxKeys,
+  CheckedProjectsMap,
+  OnCheckProjectProps,
+  ProjectsTableProps
+} from "../types";
 import monitorCheckAll from "./monitorCheckAll";
 import SearchProjects from "./SearchProjects";
 
@@ -25,8 +29,6 @@ const ProjectsTable: FC<ProjectsTableProps> = ({
   searchValue,
   setSearchValue
 }) => {
-  const isLoading = false;
-
   const onSearch: ChangeEventHandler<HTMLInputElement> = (e) => {
     const { value } = e.target;
 
@@ -59,7 +61,7 @@ const ProjectsTable: FC<ProjectsTableProps> = ({
     setCheckedProjects({
       ...checkedProjects,
       [project.id]: false,
-      all: false
+      [CheckboxKeys.ALL]: false
     });
   };
 
@@ -83,30 +85,26 @@ const ProjectsTable: FC<ProjectsTableProps> = ({
             </Tr>
           </THead>
           <TBody>
-            {isLoading && <TableSkeleton columns={5} innerKey="org-projects" />}
-            {!isLoading &&
-              projects?.map((project) => {
-                const { name, id } = project;
+            {projects?.map((project) => {
+              const { name, id } = project;
 
-                return (
-                  <Tr key={`org-project-${id}`} className="w-full">
-                    <Td>
-                      <Checkbox
-                        id={`check-project-${id}`}
-                        isChecked={checkedProjects[project.id]}
-                        onCheckedChange={(isChecked) => onCheckProject({ isChecked, project })}
-                        isDisabled={false}
-                      />
-                    </Td>
-                    <Td>{name}</Td>
-                  </Tr>
-                );
-              })}
+              return (
+                <Tr key={`org-project-${id}`} className="w-full">
+                  <Td>
+                    <Checkbox
+                      id={`check-project-${id}`}
+                      isChecked={checkedProjects[project.id]}
+                      onCheckedChange={(isChecked) => onCheckProject({ isChecked, project })}
+                      isDisabled={false}
+                    />
+                  </Td>
+                  <Td>{name}</Td>
+                </Tr>
+              );
+            })}
           </TBody>
         </Table>
-        {!isLoading && projects?.length === 0 && (
-          <EmptyState title="No projects found" icon={faProjectDiagram} />
-        )}
+        {projects?.length === 0 && <EmptyState title="No projects found" icon={faProjectDiagram} />}
       </TableContainer>
     </div>
   );

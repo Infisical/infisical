@@ -4,6 +4,10 @@ import { Organization } from "@app/hooks/api/types";
 import { ProjectProps } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+export enum CheckboxKeys {
+  ALL = "all"
+}
+
 export type CheckedProjectsMap = Record<string, boolean>;
 
 export type ProjectsTableProps = {
