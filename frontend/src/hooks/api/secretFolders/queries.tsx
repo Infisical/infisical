@@ -24,7 +24,7 @@ export const folderQueryKeys = {
     ["secret-folders", { projectId, environment, path }] as const
 };
 
-const fetchProjectFolders = async (workspaceId: string, environment: string, path = "/") => {
+export const fetchProjectFolders = async (workspaceId: string, environment: string, path = "/") => {
   const { data } = await apiRequest.get<{ folders: TSecretFolder[] }>("/api/v1/folders", {
     params: {
       workspaceId,
