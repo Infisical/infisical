@@ -67,40 +67,41 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const [isSecretFocused, setIsSecretFocused] = useToggle();
 
     return (
-      // <>
-      <div
-        className={twMerge("w-full overflow-auto rounded-md no-scrollbar", containerClassName)}
-        style={{ maxHeight: `${21 * 7}px` }}
-      >
-        <div className="relative overflow-hidden">
-          <pre aria-hidden className="m-0 ">
-            <code className={`inline-block w-full  ${commonClassName}`}>
-              <span style={{ whiteSpace: "break-spaces" }}>
-                {syntaxHighlight(value, isVisible || isSecretFocused)}
-              </span>
-            </code>
-          </pre>
+      <div>
+        <div
+          className={twMerge("w-full overflow-auto rounded-md no-scrollbar", containerClassName)}
+          style={{ maxHeight: `${21 * 7}px` }}
+        >
+          <div className="relative overflow-hidden">
+            <pre aria-hidden className="m-0 ">
+              <code className={`inline-block w-full  ${commonClassName}`}>
+                <span style={{ whiteSpace: "break-spaces" }}>
+                  {syntaxHighlight(value, isVisible || isSecretFocused)}
+                </span>
+              </code>
+            </pre>
 
-          <textarea
-            style={{ whiteSpace: "break-spaces" }}
-            aria-label="secret value"
-            ref={ref}
-            className={`absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent no-scrollbar focus:border-0 ${commonClassName}`}
-            onFocus={() => setIsSecretFocused.on()}
-            disabled={isDisabled}
-            spellCheck={false}
-            onBlur={(evt) => {
-              onBlur?.(evt);
-              setIsSecretFocused.off();
-            }}
-            value={value || ""}
-            {...props}
-            readOnly={isReadOnly}
-          />
+            <textarea
+              style={{ whiteSpace: "break-spaces" }}
+              aria-label="secret value"
+              ref={ref}
+              className={`absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent no-scrollbar focus:border-0 ${commonClassName}`}
+              onFocus={() => setIsSecretFocused.on()}
+              disabled={isDisabled}
+              spellCheck={false}
+              onBlur={(evt) => {
+                onBlur?.(evt);
+                setIsSecretFocused.off();
+              }}
+              value={value || ""}
+              {...props}
+              readOnly={isReadOnly}
+            />
+          </div>
         </div>
-
-        <div className="absolute z-10 w-60 rounded-md border border-mineshaft-600 bg-mineshaft-700 text-sm text-bunker-200">
-          <div className="z-10 h-full w-60 flex-col items-center justify-center rounded-md py-4 text-white">
+        {isSecretFocused && (
+        <div className="absolute z-10 mt-2 w-60 rounded-md border border-mineshaft-600 bg-mineshaft-700 text-sm text-bunker-200">
+          <div className="h-full w-full flex-col items-center justify-center rounded-md py-4 text-white">
             {[
               { name: "SECRET NAME", type: "secret" },
               { name: "Folder", type: "folder" },
@@ -151,7 +152,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
               );
             })}
           </div>
-        </div>
+          </div>
+          )}
       </div>
     );
   }
