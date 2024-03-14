@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { IdentitiesSchema, IdentityOrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
+import { ORGANIZATIONS } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -18,7 +19,7 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        orgId: z.string().trim()
+        orgId: z.string().trim().describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.orgId)
       }),
       response: {
         200: z.object({

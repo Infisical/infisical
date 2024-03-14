@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PROJECTS } from "@app/lib/api-docs";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -29,7 +30,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim().describe(PROJECTS.GET_KEY.workspaceId)
       }),
       response: {
         200: ProjectKeysSchema.merge(
@@ -127,7 +128,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        projectName: z.string().trim(),
+        projectName: z.string().trim().describe(PROJECTS.CREATE.projectName),
         slug: z
           .string()
           .min(5)
@@ -135,8 +136,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .refine((v) => slugify(v) === v, {
             message: "Slug must be a valid slug"
           })
-          .optional(),
-        organizationId: z.string().trim()
+          .optional()
+          .describe(PROJECTS.CREATE.slug),
+        organizationId: z.string().trim().describe(PROJECTS.CREATE.organizationId)
       }),
       response: {
         200: z.object({

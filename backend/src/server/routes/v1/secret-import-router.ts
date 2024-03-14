@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { SecretImportsSchema, SecretsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { SECRET_IMPORTS } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -19,12 +20,12 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         }
       ],
       body: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash),
+        workspaceId: z.string().trim().describe(SECRET_IMPORTS.CREATE.workspaceId),
+        environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.environment),
+        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.CREATE.path),
         import: z.object({
-          environment: z.string().trim(),
-          path: z.string().trim().transform(removeTrailingSlash)
+          environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.import.environment),
+          path: z.string().trim().transform(removeTrailingSlash).describe(SECRET_IMPORTS.CREATE.import.path)
         })
       }),
       response: {
@@ -80,20 +81,21 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         }
       ],
       params: z.object({
-        secretImportId: z.string().trim()
+        secretImportId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.secretImportId)
       }),
       body: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash),
+        workspaceId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.workspaceId),
+        environment: z.string().trim().describe(SECRET_IMPORTS.UPDATE.environment),
+        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.UPDATE.path),
         import: z.object({
-          environment: z.string().trim().optional(),
+          environment: z.string().trim().optional().describe(SECRET_IMPORTS.UPDATE.import.environment),
           path: z
             .string()
             .trim()
             .optional()
-            .transform((val) => (val ? removeTrailingSlash(val) : val)),
-          position: z.number().optional()
+            .transform((val) => (val ? removeTrailingSlash(val) : val))
+            .describe(SECRET_IMPORTS.UPDATE.import.path),
+          position: z.number().optional().describe(SECRET_IMPORTS.UPDATE.import.position)
         })
       }),
       response: {
@@ -150,12 +152,12 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         }
       ],
       params: z.object({
-        secretImportId: z.string().trim()
+        secretImportId: z.string().trim().describe(SECRET_IMPORTS.DELETE.secretImportId)
       }),
       body: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash)
+        workspaceId: z.string().trim().describe(SECRET_IMPORTS.DELETE.workspaceId),
+        environment: z.string().trim().describe(SECRET_IMPORTS.DELETE.environment),
+        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.DELETE.path)
       }),
       response: {
         200: z.object({
@@ -210,9 +212,9 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         }
       ],
       querystring: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash)
+        workspaceId: z.string().trim().describe(SECRET_IMPORTS.LIST.workspaceId),
+        environment: z.string().trim().describe(SECRET_IMPORTS.LIST.environment),
+        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.LIST.path)
       }),
       response: {
         200: z.object({

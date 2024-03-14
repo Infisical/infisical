@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { ProjectEnvironmentsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ENVIRONMENTS } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -18,11 +19,11 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim().describe(ENVIRONMENTS.CREATE.workspaceId)
       }),
       body: z.object({
-        name: z.string().trim(),
-        slug: z.string().trim()
+        name: z.string().trim().describe(ENVIRONMENTS.CREATE.name),
+        slug: z.string().trim().describe(ENVIRONMENTS.CREATE.slug)
       }),
       response: {
         200: z.object({
@@ -73,13 +74,13 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim(),
-        id: z.string().trim()
+        workspaceId: z.string().trim().describe(ENVIRONMENTS.UPDATE.workspaceId),
+        id: z.string().trim().describe(ENVIRONMENTS.UPDATE.id)
       }),
       body: z.object({
-        slug: z.string().trim().optional(),
-        name: z.string().trim().optional(),
-        position: z.number().optional()
+        slug: z.string().trim().optional().describe(ENVIRONMENTS.UPDATE.slug),
+        name: z.string().trim().optional().describe(ENVIRONMENTS.UPDATE.name),
+        position: z.number().optional().describe(ENVIRONMENTS.UPDATE.position)
       }),
       response: {
         200: z.object({
@@ -136,8 +137,8 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim(),
-        id: z.string().trim()
+        workspaceId: z.string().trim().describe(ENVIRONMENTS.DELETE.workspaceId),
+        id: z.string().trim().describe(ENVIRONMENTS.DELETE.id)
       }),
       response: {
         200: z.object({
