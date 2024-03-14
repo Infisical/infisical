@@ -191,6 +191,7 @@
             "self-hosting/guides/mongo-to-postgres"
           ]
         },
+        "self-hosting/ee",
         "self-hosting/faq"
       ]
     },
