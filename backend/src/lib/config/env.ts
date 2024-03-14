@@ -106,6 +106,7 @@ const envSchema = z
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
+    LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
 
     // GENERIC
     STANDALONE_MODE: z
