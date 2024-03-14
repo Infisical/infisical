@@ -285,47 +285,23 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     return (
       // TODO: hide popup if the focus within the child component left
-      <div>
-        <div
-          className={twMerge("w-full overflow-auto rounded-md no-scrollbar", containerClassName)}
-          style={{ maxHeight: `${21 * 7}px` }}
-        >
-          <div className="relative overflow-hidden">
-            <pre aria-hidden className="m-0 ">
-              <code className={`inline-block w-full  ${commonClassName}`}>
-                <span style={{ whiteSpace: "break-spaces" }}>
-                  {syntaxHighlight(value, isVisible || isSecretFocused)}
-                </span>
-              </code>
-            </pre>
-
-            <textarea
-              style={{ whiteSpace: "break-spaces" }}
-              aria-label="secret value"
-              ref={childRef}
-              className={twMerge(
-                "absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent no-scrollbar focus:border-0",
-                commonClassName
-              )}
-              onFocus={() => setIsSecretFocused.on()}
-              onKeyUp={handleKeyUp}
-              onClick={handleMouseClick}
-              onChange={handleChange}
-              disabled={isDisabled}
-              spellCheck={false}
-              onBlur={(evt) => {
-                onBlur?.(evt);
-                if (!showReferencePopup) setIsSecretFocused.off();
-              }}
-              {...props}
-              value={value}
-              readOnly={isReadOnly}
-            />
-          </div>
-        </div>
+      <div
+        className={twMerge(
+          "flex w-full flex-col gap-4 overflow-auto rounded-md no-scrollbar",
+          containerClassName
+        )}
+        // style={{ maxHeight: `${21 * 7}px` }}
+      >
         {/* TODO(radix): Move to radix select component and scroll element */}
         {showReferencePopup && isSecretFocused && (
-          <div className="fixed z-[100] mt-2 w-60 rounded-md border border-mineshaft-600 bg-mineshaft-700 text-sm text-bunker-200">
+          <div
+            className={twMerge(
+              "fixed z-[100] w-60 translate-y-2 rounded-md border border-mineshaft-600 bg-mineshaft-700 text-sm text-bunker-200"
+            )}
+            style={{
+              marginTop: `${Math.min(childRef.current?.clientHeight || 21 * 7, 21 * 7)}px`
+            }}
+          >
             <div className="max-w-60 h-full w-full flex-col items-center justify-center rounded-md py-4 text-white">
               {listVariables.map((e, i) => {
                 return (
@@ -388,6 +364,41 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             </div>
           </div>
         )}
+
+        <div style={{ maxHeight: `${21 * 7}px` }}>
+          <div className="relative overflow-hidden">
+            <pre aria-hidden className="m-0 ">
+              <code className={`inline-block w-full  ${commonClassName}`}>
+                <span style={{ whiteSpace: "break-spaces" }}>
+                  {syntaxHighlight(value, isVisible || isSecretFocused)}
+                </span>
+              </code>
+            </pre>
+
+            <textarea
+              style={{ whiteSpace: "break-spaces" }}
+              aria-label="secret value"
+              ref={childRef}
+              className={twMerge(
+                "absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent no-scrollbar focus:border-0",
+                commonClassName
+              )}
+              onFocus={() => setIsSecretFocused.on()}
+              onKeyUp={handleKeyUp}
+              onClick={handleMouseClick}
+              onChange={handleChange}
+              disabled={isDisabled}
+              spellCheck={false}
+              onBlur={(evt) => {
+                onBlur?.(evt);
+                if (!showReferencePopup) setIsSecretFocused.off();
+              }}
+              {...props}
+              value={value}
+              readOnly={isReadOnly}
+            />
+          </div>
+        </div>
       </div>
     );
   }
