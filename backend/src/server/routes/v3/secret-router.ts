@@ -36,6 +36,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       ],
       querystring: z.object({
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceId),
+        workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.LIST.secretPath),
         include_imports: z

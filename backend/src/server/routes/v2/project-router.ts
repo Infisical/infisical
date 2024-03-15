@@ -151,7 +151,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           })
           .optional()
           .describe(PROJECTS.CREATE.slug),
-        organizationId: z.string().trim().describe(PROJECTS.CREATE.organizationId)
+        organizationSlug: z.string().trim().describe(PROJECTS.CREATE.organizationSlug)
       }),
       response: {
         200: z.object({
