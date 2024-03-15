@@ -74,6 +74,21 @@ var initCmd = &cobra.Command{
 
 		selectedOrganization := organizations[index]
 
+		tokenResponse, err := api.CallSelectOrganization(httpClient, api.SelectOrganizationRequest{OrganizationId: selectedOrganization.ID})
+
+		if err != nil {
+			util.HandleError(err, "Unable to select organization")
+		}
+
+		// set the config jwt token to the new token
+		userCreds.UserCredentials.JTWToken = tokenResponse.Token
+		err = util.StoreUserCredsInKeyRing(&userCreds.UserCredentials)
+		httpClient.SetAuthToken(tokenResponse.Token)
+
+		if err != nil {
+			util.HandleError(err, "Unable to store your user credentials")
+		}
+
 		workspaceResponse, err := api.CallGetAllWorkSpacesUserBelongsTo(httpClient)
 		if err != nil {
 			util.HandleError(err, "Unable to pull projects that belong to you")
