@@ -46,7 +46,7 @@ export const OrgMembersSection = () => {
   const handleAddMemberModal = () => {
     if (currentOrg?.authEnforced) {
       createNotification({
-        text: "You cannot invite users when org-level auth is configured for your organization",
+        text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
         type: "error"
       });
       return;
@@ -113,8 +113,8 @@ export const OrgMembersSection = () => {
       />
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
-        title={`Are you sure want to remove member with email ${
-          (popUp?.removeMember?.data as { email: string })?.email || ""
+        title={`Are you sure want to remove member with username ${
+          (popUp?.removeMember?.data as { username: string })?.username || ""
         }?`}
         onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
         deleteKey="confirm"

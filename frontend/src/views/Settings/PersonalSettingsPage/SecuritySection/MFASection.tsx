@@ -4,6 +4,7 @@ import {
   useGetUser,
   useUpdateMfaEnabled} from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+import { AuthMethod } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 export const MFASection = () => {
@@ -18,6 +19,15 @@ export const MFASection = () => {
   
   const toggleMfa = async (state: boolean) => {
     try {
+      if (!user) return;
+      if (user.authMethods.includes(AuthMethod.LDAP)) {
+        createNotification({
+          text: "Two-factor authentication is not available for LDAP users.",
+          type: "error"
+        });
+        return;
+      }
+      
       const newUser = await mutateAsync({
         isMfaEnabled: state
       });

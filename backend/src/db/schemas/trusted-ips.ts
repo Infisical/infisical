@@ -20,5 +20,5 @@ export const TrustedIpsSchema = z.object({
 });
 
 export type TTrustedIps = z.infer<typeof TrustedIpsSchema>;
-export type TTrustedIpsInsert = Omit<TTrustedIps, TImmutableDBKeys>;
-export type TTrustedIpsUpdate = Partial<Omit<TTrustedIps, TImmutableDBKeys>>;
+export type TTrustedIpsInsert = Omit<z.input<typeof TrustedIpsSchema>, TImmutableDBKeys>;
+export type TTrustedIpsUpdate = Partial<Omit<z.input<typeof TrustedIpsSchema>, TImmutableDBKeys>>;

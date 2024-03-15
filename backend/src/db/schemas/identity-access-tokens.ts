@@ -23,5 +23,5 @@ export const IdentityAccessTokensSchema = z.object({
 });
 
 export type TIdentityAccessTokens = z.infer<typeof IdentityAccessTokensSchema>;
-export type TIdentityAccessTokensInsert = Omit<TIdentityAccessTokens, TImmutableDBKeys>;
-export type TIdentityAccessTokensUpdate = Partial<Omit<TIdentityAccessTokens, TImmutableDBKeys>>;
+export type TIdentityAccessTokensInsert = Omit<z.input<typeof IdentityAccessTokensSchema>, TImmutableDBKeys>;
+export type TIdentityAccessTokensUpdate = Partial<Omit<z.input<typeof IdentityAccessTokensSchema>, TImmutableDBKeys>>;

@@ -81,7 +81,7 @@ export const CreateSecretImportForm = ({
       });
     } catch (err) {
       console.error(err);
-      const axiosError = err as AxiosError
+      const axiosError = err as AxiosError;
       if (axiosError?.response?.status === 401) {
         createNotification({
           text: "You do not have access to the selected environment/path",

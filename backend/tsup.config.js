@@ -23,7 +23,8 @@ export default defineConfig({
   loader: {
     ".handlebars": "copy",
     ".md": "copy",
-    ".txt": "copy"
+    ".txt": "copy",
+    ".pem": "copy"
   },
   external: ["../../../frontend/node_modules/next/dist/server/next-server.js"],
   outDir: "dist",

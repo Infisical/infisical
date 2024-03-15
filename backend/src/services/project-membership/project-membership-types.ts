@@ -1,24 +1,51 @@
 import { TProjectPermission } from "@app/lib/types";
 
 export type TGetProjectMembershipDTO = TProjectPermission;
+export enum ProjectUserMembershipTemporaryMode {
+  Relative = "relative"
+}
 
 export type TInviteUserToProjectDTO = {
-  email: string;
+  emails: string[];
 } & TProjectPermission;
 
 export type TUpdateProjectMembershipDTO = {
   membershipId: string;
-  role: string;
+  roles: (
+    | {
+        role: string;
+        isTemporary?: false;
+      }
+    | {
+        role: string;
+        isTemporary: true;
+        temporaryMode: ProjectUserMembershipTemporaryMode.Relative;
+        temporaryRange: string;
+        temporaryAccessStartTime: string;
+      }
+  )[];
 } & TProjectPermission;
 
-export type TDeleteProjectMembershipDTO = {
+export type TDeleteProjectMembershipOldDTO = {
   membershipId: string;
 } & TProjectPermission;
 
+export type TDeleteProjectMembershipsDTO = {
+  emails: string[];
+  usernames: string[];
+} & TProjectPermission;
+
 export type TAddUsersToWorkspaceDTO = {
+  sendEmails?: boolean;
   members: {
     orgMembershipId: string;
     workspaceEncryptedKey: string;
     workspaceEncryptedNonce: string;
   }[];
+} & TProjectPermission;
+
+export type TAddUsersToWorkspaceNonE2EEDTO = {
+  sendEmails?: boolean;
+  emails: string[];
+  usernames: string[];
 } & TProjectPermission;

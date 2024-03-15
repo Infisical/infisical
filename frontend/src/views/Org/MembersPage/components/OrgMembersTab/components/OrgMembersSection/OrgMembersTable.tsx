@@ -41,7 +41,7 @@ type Props = {
     popUpName: keyof UsePopUpState<["removeMember", "upgradePlan"]>,
     data?: {
       orgMembershipId?: string;
-      email?: string;
+      username?: string;
       description?: string;
     }
   ) => void;
@@ -141,10 +141,11 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
     () =>
       members?.filter(
         ({ user: u, inviteEmail }) =>
-          u?.firstName?.toLowerCase().includes(searchMemberFilter) ||
-          u?.lastName?.toLowerCase().includes(searchMemberFilter) ||
-          u?.email?.toLowerCase().includes(searchMemberFilter) ||
-          inviteEmail?.includes(searchMemberFilter)
+          u?.firstName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          u?.lastName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          u?.username?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          u?.email?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+          inviteEmail?.includes(searchMemberFilter.toLowerCase())
       ),
     [members, searchMemberFilter]
   );
@@ -162,7 +163,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
           <THead>
             <Tr>
               <Th>Name</Th>
-              <Th>Email</Th>
+              <Th>Username</Th>
               <Th>Role</Th>
               <Th className="w-5" />
             </Tr>
@@ -174,10 +175,11 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                 ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status }) => {
                   const name = u && u.firstName ? `${u.firstName} ${u.lastName}` : "-";
                   const email = u?.email || inviteEmail;
+                  const username = u?.username ?? inviteEmail ?? "-";
                   return (
                     <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
                       <Td>{name}</Td>
-                      <Td>{email}</Td>
+                      <Td>{username}</Td>
                       <Td>
                         <OrgPermissionCan
                           I={OrgPermissionActions.Edit}
@@ -206,7 +208,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     ))}
                                 </Select>
                               )}
-                              {(status === "invited" || status === "verified") &&
+                              {(status === "invited" || status === "verified") && email &&
                                 serverDetails?.emailConfigured && (
                                   <Button
                                     isDisabled={!isAllowed}
@@ -231,7 +233,15 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                             {(isAllowed) => (
                               <IconButton
                                 onClick={() => {
-                                  handlePopUpOpen("removeMember", { orgMembershipId, email });
+                                  if (currentOrg?.authEnforced) {
+                                    createNotification({
+                                      text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
+                                      type: "error"
+                                    });
+                                    return;
+                                  }
+                                  
+                                  handlePopUpOpen("removeMember", { orgMembershipId, username });
                                 }}
                                 size="lg"
                                 colorSchema="danger"

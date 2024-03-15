@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { IdentityUaClientSecretsSchema, IdentityUniversalAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { UNIVERSAL_AUTH } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -26,8 +27,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Login with Universal Auth",
       body: z.object({
-        clientId: z.string().trim(),
-        clientSecret: z.string().trim()
+        clientId: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientId),
+        clientSecret: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientSecret)
       }),
       response: {
         200: z.object({
@@ -39,11 +40,12 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { identityUa, accessToken, identityAccessToken, validClientSecretInfo } =
+      const { identityUa, accessToken, identityAccessToken, validClientSecretInfo, identityMembershipOrg } =
         await server.services.identityUa.login(req.body.clientId, req.body.clientSecret, req.realIp);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
+        orgId: identityMembershipOrg?.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,
           metadata: {
@@ -75,7 +77,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        identityId: z.string().trim()
+        identityId: z.string().trim().describe(UNIVERSAL_AUTH.ATTACH.identityId)
       }),
       body: z.object({
         clientSecretTrustedIps: z
@@ -84,14 +86,16 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           })
           .array()
           .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
+          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+          .describe(UNIVERSAL_AUTH.ATTACH.clientSecretTrustedIps),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
+          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+          .describe(UNIVERSAL_AUTH.ATTACH.accessTokenTrustedIps),
         accessTokenTTL: z
           .number()
           .int()
@@ -99,15 +103,22 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           .refine((value) => value !== 0, {
             message: "accessTokenTTL must have a non zero number"
           })
-          .default(2592000),
+          .default(2592000)
+          .describe(UNIVERSAL_AUTH.ATTACH.accessTokenTTL), // 30 days
         accessTokenMaxTTL: z
           .number()
           .int()
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
-          .default(2592000), // 30 days
-        accessTokenNumUsesLimit: z.number().int().min(0).default(0)
+          .default(2592000)
+          .describe(UNIVERSAL_AUTH.ATTACH.accessTokenMaxTTL), // 30 days
+        accessTokenNumUsesLimit: z
+          .number()
+          .int()
+          .min(0)
+          .default(0)
+          .describe(UNIVERSAL_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
         200: z.object({
@@ -155,7 +166,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(UNIVERSAL_AUTH.UPDATE.identityId)
       }),
       body: z.object({
         clientSecretTrustedIps: z
@@ -164,16 +175,23 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           })
           .array()
           .min(1)
-          .optional(),
+          .optional()
+          .describe(UNIVERSAL_AUTH.UPDATE.clientSecretTrustedIps),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .optional(),
-        accessTokenTTL: z.number().int().min(0).optional(),
-        accessTokenNumUsesLimit: z.number().int().min(0).optional(),
+          .optional()
+          .describe(UNIVERSAL_AUTH.UPDATE.accessTokenTrustedIps),
+        accessTokenTTL: z.number().int().min(0).optional().describe(UNIVERSAL_AUTH.UPDATE.accessTokenTTL),
+        accessTokenNumUsesLimit: z
+          .number()
+          .int()
+          .min(0)
+          .optional()
+          .describe(UNIVERSAL_AUTH.UPDATE.accessTokenNumUsesLimit),
         accessTokenMaxTTL: z
           .number()
           .int()
@@ -181,6 +199,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             message: "accessTokenMaxTTL must have a non zero number"
           })
           .optional()
+          .describe(UNIVERSAL_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
         200: z.object({
@@ -229,7 +248,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(UNIVERSAL_AUTH.RETRIEVE.identityId)
       }),
       response: {
         200: z.object({
@@ -272,12 +291,12 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(UNIVERSAL_AUTH.CREATE_CLIENT_SECRET.identityId)
       }),
       body: z.object({
-        description: z.string().trim().default(""),
-        numUsesLimit: z.number().min(0).default(0),
-        ttl: z.number().min(0).default(0)
+        description: z.string().trim().default("").describe(UNIVERSAL_AUTH.CREATE_CLIENT_SECRET.description),
+        numUsesLimit: z.number().min(0).default(0).describe(UNIVERSAL_AUTH.CREATE_CLIENT_SECRET.numUsesLimit),
+        ttl: z.number().min(0).default(0).describe(UNIVERSAL_AUTH.CREATE_CLIENT_SECRET.ttl)
       }),
       response: {
         200: z.object({
@@ -323,7 +342,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(UNIVERSAL_AUTH.LIST_CLIENT_SECRETS.identityId)
       }),
       response: {
         200: z.object({
@@ -365,8 +384,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        identityId: z.string(),
-        clientSecretId: z.string()
+        identityId: z.string().describe(UNIVERSAL_AUTH.REVOKE_CLIENT_SECRET.identityId),
+        clientSecretId: z.string().describe(UNIVERSAL_AUTH.REVOKE_CLIENT_SECRET.clientSecretId)
       }),
       response: {
         200: z.object({

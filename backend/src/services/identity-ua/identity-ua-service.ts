@@ -54,6 +54,8 @@ export const identityUaServiceFactory = ({
     const identityUa = await identityUaDAL.findOne({ clientId });
     if (!identityUa) throw new UnauthorizedError();
 
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityUa.identityId });
+
     checkIPAgainstBlocklist({
       ipAddress: ip,
       trustedIps: identityUa.clientSecretTrustedIps as TIp[]
@@ -69,9 +71,9 @@ export const identityUaServiceFactory = ({
     if (!validClientSecretInfo) throw new UnauthorizedError();
 
     const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
-    if (clientSecretTTL > 0) {
+    if (Number(clientSecretTTL) > 0) {
       const clientSecretCreated = new Date(validClientSecretInfo.createdAt);
-      const ttlInMilliseconds = clientSecretTTL * 1000;
+      const ttlInMilliseconds = Number(clientSecretTTL) * 1000;
       const currentDate = new Date();
       const expirationTime = new Date(clientSecretCreated.getTime() + ttlInMilliseconds);
 
@@ -124,11 +126,14 @@ export const identityUaServiceFactory = ({
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
       {
-        expiresIn: identityAccessToken.accessTokenMaxTTL === 0 ? undefined : identityAccessToken.accessTokenMaxTTL
+        expiresIn:
+          Number(identityAccessToken.accessTokenMaxTTL) === 0
+            ? undefined
+            : Number(identityAccessToken.accessTokenMaxTTL)
       }
     );
 
-    return { accessToken, identityUa, validClientSecretInfo, identityAccessToken };
+    return { accessToken, identityUa, validClientSecretInfo, identityAccessToken, identityMembershipOrg };
   };
 
   const attachUa = async ({

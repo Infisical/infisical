@@ -8,6 +8,9 @@ import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 
 import { getConfig } from "../config/env";
 
+export const decodeBase64 = (s: string) => naclUtils.decodeBase64(s);
+export const encodeBase64 = (u: Uint8Array) => naclUtils.encodeBase64(u);
+
 export type TDecryptSymmetricInput = {
   ciphertext: string;
   iv: string;
@@ -44,7 +47,7 @@ export const encryptSymmetric = (plaintext: string, key: string) => {
   };
 };
 
-export const encryptSymmetric128BitHexKeyUTF8 = (plaintext: string, key: string) => {
+export const encryptSymmetric128BitHexKeyUTF8 = (plaintext: string, key: string | Buffer) => {
   const iv = crypto.randomBytes(BLOCK_SIZE_BYTES_16);
   const cipher = crypto.createCipheriv(SecretEncryptionAlgo.AES_256_GCM, key, iv);
 
@@ -58,7 +61,12 @@ export const encryptSymmetric128BitHexKeyUTF8 = (plaintext: string, key: string)
   };
 };
 
-export const decryptSymmetric128BitHexKeyUTF8 = ({ ciphertext, iv, tag, key }: TDecryptSymmetricInput): string => {
+export const decryptSymmetric128BitHexKeyUTF8 = ({
+  ciphertext,
+  iv,
+  tag,
+  key
+}: Omit<TDecryptSymmetricInput, "key"> & { key: string | Buffer }): string => {
   const decipher = crypto.createDecipheriv(SecretEncryptionAlgo.AES_256_GCM, key, Buffer.from(iv, "base64"));
 
   decipher.setAuthTag(Buffer.from(tag, "base64"));

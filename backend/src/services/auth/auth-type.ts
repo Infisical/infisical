@@ -5,7 +5,8 @@ export enum AuthMethod {
   GITLAB = "gitlab",
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
-  JUMPCLOUD_SAML = "jumpcloud-saml"
+  JUMPCLOUD_SAML = "jumpcloud-saml",
+  LDAP = "ldap"
 }
 
 export enum AuthTokenType {
@@ -17,21 +18,24 @@ export enum AuthTokenType {
   API_KEY = "apiKey",
   SERVICE_ACCESS_TOKEN = "serviceAccessToken",
   SERVICE_REFRESH_TOKEN = "serviceRefreshToken",
-  IDENTITY_ACCESS_TOKEN = "identityAccessToken"
+  IDENTITY_ACCESS_TOKEN = "identityAccessToken",
+  SCIM_TOKEN = "scimToken"
 }
 
 export enum AuthMode {
   JWT = "jwt",
   SERVICE_TOKEN = "serviceToken",
   API_KEY = "apiKey",
-  IDENTITY_ACCESS_TOKEN = "identityAccessToken"
+  IDENTITY_ACCESS_TOKEN = "identityAccessToken",
+  SCIM_TOKEN = "scimToken"
 }
 
 export enum ActorType { // would extend to AWS, Azure, ...
   USER = "user", // userIdentity
   SERVICE = "service",
   IDENTITY = "identity",
-  Machine = "machine"
+  Machine = "machine",
+  SCIM_CLIENT = "scimClient"
 }
 
 export type AuthModeJwtTokenPayload = {
@@ -58,7 +62,7 @@ export type AuthModeRefreshJwtTokenPayload = {
 
 export type AuthModeProviderJwtTokenPayload = {
   authTokenType: AuthTokenType.PROVIDER_TOKEN;
-  email: string;
+  username: string;
   organizationId?: string;
 };
 

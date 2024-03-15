@@ -5,9 +5,10 @@
 // TODO(akhilmhdh): With tony find out the api structure and fill it here
 
 import { ForbiddenError } from "@casl/ability";
-import NodeCache from "node-cache";
 
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
+import { verifyOfflineLicense } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -26,6 +27,7 @@ import {
   TFeatureSet,
   TGetOrgBillInfoDTO,
   TGetOrgTaxIdDTO,
+  TOfflineLicenseContents,
   TOrgInvoiceDTO,
   TOrgLicensesDTO,
   TOrgPlanDTO,
@@ -39,6 +41,7 @@ type TLicenseServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseDAL: TLicenseDALFactory;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
 };
 
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
@@ -46,12 +49,18 @@ export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
 const LICENSE_SERVER_CLOUD_LOGIN = "/api/auth/v1/license-server-login";
 const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/license-login";
 
-const FEATURE_CACHE_KEY = (orgId: string, projectId?: string) => `${orgId}-${projectId || ""}`;
-export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }: TLicenseServiceFactoryDep) => {
+const LICENSE_SERVER_CLOUD_PLAN_TTL = 30; // 30 second
+const FEATURE_CACHE_KEY = (orgId: string) => `infisical-cloud-plan-${orgId}`;
+
+export const licenseServiceFactory = ({
+  orgDAL,
+  permissionService,
+  licenseDAL,
+  keyStore
+}: TLicenseServiceFactoryDep) => {
   let isValidLicense = false;
   let instanceType = InstanceType.OnPrem;
   let onPremFeatures: TFeatureSet = getDefaultOnPremFeatures();
-  const featureStore = new NodeCache({ stdTTL: 60 });
 
   const appCfg = getConfig();
   const licenseServerCloudApi = setupLicenceRequestWithStore(
@@ -75,6 +84,7 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
         isValidLicense = true;
         return;
       }
+
       if (appCfg.LICENSE_KEY) {
         const token = await licenseServerOnPremApi.refreshLicence();
         if (token) {
@@ -88,6 +98,36 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
         }
         return;
       }
+
+      if (appCfg.LICENSE_KEY_OFFLINE) {
+        let isValidOfflineLicense = true;
+        const contents: TOfflineLicenseContents = JSON.parse(
+          Buffer.from(appCfg.LICENSE_KEY_OFFLINE, "base64").toString("utf8")
+        );
+        const isVerified = await verifyOfflineLicense(JSON.stringify(contents.license), contents.signature);
+
+        if (!isVerified) {
+          isValidOfflineLicense = false;
+          logger.warn(`Infisical EE offline license verification failed`);
+        }
+
+        if (contents.license.terminatesAt) {
+          const terminationDate = new Date(contents.license.terminatesAt);
+          if (terminationDate < new Date()) {
+            isValidOfflineLicense = false;
+            logger.warn(`Infisical EE offline license has expired`);
+          }
+        }
+
+        if (isValidOfflineLicense) {
+          onPremFeatures = contents.license.features;
+          instanceType = InstanceType.EnterpriseOnPrem;
+          logger.info(`Instance type: ${InstanceType.EnterpriseOnPrem}`);
+          isValidLicense = true;
+          return;
+        }
+      }
+
       // this means this is self hosted oss version
       // else it would reach catch statement
       isValidLicense = true;
@@ -100,22 +140,21 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
     logger.info(`getPlan: attempting to fetch plan for [orgId=${orgId}] [projectId=${projectId}]`);
     try {
       if (instanceType === InstanceType.Cloud) {
-        const cachedPlan = featureStore.get<TFeatureSet>(FEATURE_CACHE_KEY(orgId, projectId));
-        if (cachedPlan) return cachedPlan;
+        const cachedPlan = await keyStore.getItem(FEATURE_CACHE_KEY(orgId));
+        if (cachedPlan) return JSON.parse(cachedPlan) as TFeatureSet;
 
         const org = await orgDAL.findOrgById(orgId);
         if (!org) throw new BadRequestError({ message: "Org not found" });
         const {
           data: { currentPlan }
         } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
-          `/api/license-server/v1/customers/${org.customerId}/cloud-plan`,
-          {
-            params: {
-              workspaceId: projectId
-            }
-          }
+          `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
         );
-        featureStore.set(FEATURE_CACHE_KEY(org.id, projectId), currentPlan);
+        await keyStore.setItemWithExpiry(
+          FEATURE_CACHE_KEY(org.id),
+          LICENSE_SERVER_CLOUD_PLAN_TTL,
+          JSON.stringify(currentPlan)
+        );
         return currentPlan;
       }
     } catch (error) {
@@ -123,26 +162,31 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
         `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`,
         error
       );
+      await keyStore.setItemWithExpiry(
+        FEATURE_CACHE_KEY(orgId),
+        LICENSE_SERVER_CLOUD_PLAN_TTL,
+        JSON.stringify(onPremFeatures)
+      );
       return onPremFeatures;
     }
     return onPremFeatures;
   };
 
-  const refreshPlan = async (orgId: string, projectId?: string) => {
+  const refreshPlan = async (orgId: string) => {
     if (instanceType === InstanceType.Cloud) {
-      featureStore.del(FEATURE_CACHE_KEY(orgId, projectId));
-      await getPlan(orgId, projectId);
+      await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
+      await getPlan(orgId);
     }
   };
 
-  const generateOrgCustomerId = async (orgName: string, email: string) => {
+  const generateOrgCustomerId = async (orgName: string, email?: string | null) => {
     if (instanceType === InstanceType.Cloud) {
       const {
         data: { customerId }
       } = await licenseServerCloudApi.request.post<{ customerId: string }>(
         "/api/license-server/v1/customers",
         {
-          email,
+          email: email ?? "",
           name: orgName
         },
         { timeout: 5000, signal: AbortSignal.timeout(5000) }
@@ -166,7 +210,7 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
           quantity: count
         });
       }
-      featureStore.del(orgId);
+      await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
       const usedSeats = await licenseDAL.countOfOrgMembers(null);
       await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, { usedSeats });
@@ -215,7 +259,7 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
       `/api/license-server/v1/customers/${organization.customerId}/session/trial`,
       { success_url }
     );
-    featureStore.del(FEATURE_CACHE_KEY(orgId));
+    await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     return { url };
   };
 
@@ -504,6 +548,9 @@ export const licenseServiceFactory = ({ orgDAL, permissionService, licenseDAL }:
     init,
     get isValidLicense() {
       return isValidLicense;
+    },
+    getInstanceType() {
+      return instanceType;
     },
     getPlan,
     updateSubscriptionOrgMemberCount,

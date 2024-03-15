@@ -16,5 +16,5 @@ export const IncidentContactsSchema = z.object({
 });
 
 export type TIncidentContacts = z.infer<typeof IncidentContactsSchema>;
-export type TIncidentContactsInsert = Omit<TIncidentContacts, TImmutableDBKeys>;
-export type TIncidentContactsUpdate = Partial<Omit<TIncidentContacts, TImmutableDBKeys>>;
+export type TIncidentContactsInsert = Omit<z.input<typeof IncidentContactsSchema>, TImmutableDBKeys>;
+export type TIncidentContactsUpdate = Partial<Omit<z.input<typeof IncidentContactsSchema>, TImmutableDBKeys>>;

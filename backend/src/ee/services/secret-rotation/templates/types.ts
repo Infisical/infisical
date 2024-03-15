@@ -1,6 +1,7 @@
 export enum TProviderFunctionTypes {
   HTTP = "http",
-  DB = "database"
+  DB = "database",
+  AWS = "aws"
 }
 
 export enum TDbProviderClients {
@@ -8,6 +9,10 @@ export enum TDbProviderClients {
   Pg = "pg",
   // mysql and maria db
   MySql = "mysql"
+}
+
+export enum TAwsProviderSystems {
+  IAM = "iam"
 }
 
 export enum TAssignOp {
@@ -42,7 +47,7 @@ export type TSecretRotationProviderTemplate = {
   title: string;
   image?: string;
   description?: string;
-  template: THttpProviderTemplate | TDbProviderTemplate;
+  template: THttpProviderTemplate | TDbProviderTemplate | TAwsProviderTemplate;
 };
 
 export type THttpProviderTemplate = {
@@ -63,6 +68,17 @@ export type THttpProviderTemplate = {
 export type TDbProviderTemplate = {
   type: TProviderFunctionTypes.DB;
   client: TDbProviderClients;
+  inputs: {
+    type: "object";
+    properties: Record<string, { type: string; [x: string]: unknown; desc?: string }>;
+    required?: string[];
+  };
+  outputs: Record<string, unknown>;
+};
+
+export type TAwsProviderTemplate = {
+  type: TProviderFunctionTypes.AWS;
+  client: TAwsProviderSystems;
   inputs: {
     type: "object";
     properties: Record<string, { type: string; [x: string]: unknown; desc?: string }>;

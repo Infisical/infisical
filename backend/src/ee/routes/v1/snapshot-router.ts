@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SecretSnapshotsSchema, SecretTagsSchema, SecretVersionsSchema } from "@app/db/schemas";
+import { PROJECTS } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -65,7 +66,7 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretSnapshotId: z.string().trim()
+        secretSnapshotId: z.string().trim().describe(PROJECTS.ROLLBACK_TO_SNAPSHOT.secretSnapshotId)
       }),
       response: {
         200: z.object({

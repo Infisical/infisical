@@ -24,10 +24,24 @@ export type TIntegration = {
   region?: string;
   scope?: string;
   integration: string;
-  metadata?: Record<string, any>;
   integrationAuthId: string;
   envId: string;
   secretPath: string;
   createdAt: string;
   updatedAt: string;
+  __v: number;
+  metadata?: {
+    secretSuffix?: string;
+    syncBehavior?: IntegrationSyncBehavior;
+    scope: string;
+    org: string;
+    project: string;
+    environment: string;
+  };
 };
+
+export enum IntegrationSyncBehavior {
+  OVERWRITE_TARGET = "overwrite-target",
+  PREFER_TARGET = "prefer-target",
+  PREFER_SOURCE = "prefer-source"
+}

@@ -6,6 +6,12 @@ import { BadRequestError } from "@app/lib/errors";
 import { isSamePath } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
+import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
+import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
+import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
@@ -29,18 +35,23 @@ export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 
 type TSecretQueueFactoryDep = {
   queueService: TQueueServiceFactory;
-  integrationDAL: Pick<TIntegrationDALFactory, "findByProjectIdV2">;
+  integrationDAL: Pick<TIntegrationDALFactory, "findByProjectIdV2" | "updateById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   integrationAuthService: Pick<TIntegrationAuthServiceFactory, "getIntegrationAccessToken">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findByManySecretPath">;
-  secretDAL: Pick<TSecretDALFactory, "findByFolderId" | "find">;
+  folderDAL: TSecretFolderDALFactory;
+  secretDAL: TSecretDALFactory;
   secretImportDAL: Pick<TSecretImportDALFactory, "find">;
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectDAL: TProjectDALFactory;
+  projectBotDAL: TProjectBotDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   smtpService: TSmtpService;
   orgDAL: Pick<TOrgDALFactory, "findOrgByProjectId">;
+  secretVersionDAL: TSecretVersionDALFactory;
+  secretBlindIndexDAL: TSecretBlindIndexDALFactory;
+  secretTagDAL: TSecretTagDALFactory;
+  secretVersionTagDAL: TSecretVersionTagDALFactory;
 };
 
 export type TGetSecrets = {
@@ -62,8 +73,35 @@ export const secretQueueFactory = ({
   orgDAL,
   smtpService,
   projectDAL,
-  projectMembershipDAL
+  projectBotDAL,
+  projectMembershipDAL,
+  secretVersionDAL,
+  secretBlindIndexDAL,
+  secretTagDAL,
+  secretVersionTagDAL
 }: TSecretQueueFactoryDep) => {
+  const createManySecretsRawFn = createManySecretsRawFnFactory({
+    projectDAL,
+    projectBotDAL,
+    secretDAL,
+    secretVersionDAL,
+    secretBlindIndexDAL,
+    secretTagDAL,
+    secretVersionTagDAL,
+    folderDAL
+  });
+
+  const updateManySecretsRawFn = updateManySecretsRawFnFactory({
+    projectDAL,
+    projectBotDAL,
+    secretDAL,
+    secretVersionDAL,
+    secretBlindIndexDAL,
+    secretTagDAL,
+    secretVersionTagDAL,
+    folderDAL
+  });
+
   const syncIntegrations = async (dto: TGetSecrets) => {
     await queueService.queue(QueueName.IntegrationSync, QueueJobs.IntegrationSync, dto, {
       attempts: 5,
@@ -307,6 +345,9 @@ export const secretQueueFactory = ({
       }
 
       await syncIntegrationSecrets({
+        createManySecretsRawFn,
+        updateManySecretsRawFn,
+        integrationDAL,
         integration,
         integrationAuth,
         secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets,
@@ -350,7 +391,7 @@ export const secretQueueFactory = ({
     await smtpService.sendMail({
       template: SmtpTemplates.SecretReminder,
       subjectLine: "Infisical secret reminder",
-      recipients: [...projectMembers.map((m) => m.user.email)],
+      recipients: [...projectMembers.map((m) => m.user.email)].filter((email) => email).map((email) => email as string),
       substitutions: {
         reminderNote: data.note, // May not be present.
         projectName: project.name,

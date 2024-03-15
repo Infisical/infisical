@@ -38,7 +38,12 @@ var secretsCmd = &cobra.Command{
 			}
 		}
 
-		infisicalToken, err := cmd.Flags().GetString("token")
+		infisicalToken, err := util.GetInfisicalServiceToken(cmd)
+
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -80,7 +85,9 @@ var secretsCmd = &cobra.Command{
 		}
 
 		if shouldExpandSecrets {
-			secrets = util.ExpandSecrets(secrets, infisicalToken, "")
+			secrets = util.ExpandSecrets(secrets, models.ExpandSecretsAuthentication{
+				InfisicalToken: infisicalToken,
+			}, "")
 		}
 
 		visualize.PrintAllSecretDetails(secrets)
@@ -391,7 +398,8 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	infisicalToken, err := cmd.Flags().GetString("token")
+	infisicalToken, err := util.GetInfisicalServiceToken(cmd)
+
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
@@ -402,6 +410,11 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	}
 
 	secretsPath, err := cmd.Flags().GetString("path")
+	if err != nil {
+		util.HandleError(err, "Unable to parse path flag")
+	}
+
+	showOnlyValue, err := cmd.Flags().GetBool("raw-value")
 	if err != nil {
 		util.HandleError(err, "Unable to parse path flag")
 	}
@@ -427,7 +440,15 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	visualize.PrintAllSecretDetails(requestedSecrets)
+	if showOnlyValue && len(requestedSecrets) > 1 {
+		util.PrintErrorMessageAndExit("--raw-value only works with one secret.")
+	}
+
+	if showOnlyValue {
+		fmt.Printf(requestedSecrets[0].Value)
+	} else {
+		visualize.PrintAllSecretDetails(requestedSecrets)
+	}
 	Telemetry.CaptureEvent("cli-command:secrets get", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 }
 
@@ -445,7 +466,8 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	infisicalToken, err := cmd.Flags().GetString("token")
+	infisicalToken, err := util.GetInfisicalServiceToken(cmd)
+
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
@@ -661,6 +683,7 @@ func init() {
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsCmd.AddCommand(secretsGetCmd)
 	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
+	secretsGetCmd.Flags().Bool("raw-value", false, "Returns only the value of secret, only works with one secret")
 
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)

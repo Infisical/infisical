@@ -18,6 +18,8 @@ export type SubscriptionPlan = {
   workspacesUsed: number;
   environmentLimit: number;
   samlSSO: boolean;
+  scim: boolean;
+  ldap: boolean;
   status:
     | "incomplete"
     | "incomplete_expired"

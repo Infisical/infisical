@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { UNIVERSAL_AUTH } from "@app/lib/api-docs";
+
 export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/token/renew",
@@ -7,7 +9,7 @@ export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvid
     schema: {
       description: "Renew access token",
       body: z.object({
-        accessToken: z.string().trim()
+        accessToken: z.string().trim().describe(UNIVERSAL_AUTH.RENEW_ACCESS_TOKEN.accessToken)
       }),
       response: {
         200: z.object({

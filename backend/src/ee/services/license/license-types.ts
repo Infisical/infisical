@@ -6,6 +6,21 @@ export enum InstanceType {
   Cloud = "cloud"
 }
 
+export type TOfflineLicenseContents = {
+  license: TOfflineLicense;
+  signature: string;
+};
+
+export type TOfflineLicense = {
+  issuedTo: string;
+  licenseId: string;
+  customerId: string | null;
+  issuedAt: string;
+  expiresAt: string | null;
+  terminatesAt: string | null;
+  features: TFeatureSet;
+};
+
 export type TFeatureSet = {
   _id: null;
   slug: null;
@@ -25,6 +40,8 @@ export type TFeatureSet = {
   auditLogs: false;
   auditLogsRetentionDays: 0;
   samlSSO: false;
+  scim: false;
+  ldap: false;
   status: null;
   trial_end: null;
   has_used_trial: true;

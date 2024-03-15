@@ -15,8 +15,16 @@ const envSchema = z
     PORT: z.coerce.number().default(4000),
     REDIS_URL: zpStr(z.string()),
     HOST: zpStr(z.string().default("localhost")),
-    DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")),
+    DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
+      `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
+    ),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
+    DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
+    DB_PORT: zpStr(z.string().describe("Postgres database port").optional()).default("5432"),
+    DB_USER: zpStr(z.string().describe("Postgres database username").optional()),
+    DB_PASSWORD: zpStr(z.string().describe("Postgres database password").optional()),
+    DB_NAME: zpStr(z.string().describe("Postgres database name").optional()),
+
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
     INITIAL_ORGANIZATION_NAME: zpStr(z.string().optional()),
@@ -94,14 +102,18 @@ const envSchema = z
     SECRET_SCANNING_WEBHOOK_SECRET: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_ID: zpStr(z.string().optional()),
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
-    // LICENCE
+    // LICENSE
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
+    LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
+
+    // GENERIC
     STANDALONE_MODE: z
       .enum(["true", "false"])
       .transform((val) => val === "true")
-      .optional()
+      .optional(),
+    INFISICAL_CLOUD: zodStrBool.default("false")
   })
   .transform((data) => ({
     ...data,

@@ -20,6 +20,8 @@
 │   Current installation (infisical) :
 │   • infisical          : {{ .Values.infisical.enabled }}
 |   • nginx              : {{ .Values.ingress.nginx.enabled }}
+|   • Postgres DB        : {{ .Values.postgresql.enabled }}
+|   • Redis              : {{ .Values.redis.enabled }}
 │
 ╰―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――┤
 

@@ -13,11 +13,10 @@ fullnameOverride: ""
 ##
 
 infisical:
-  ## @param backend.enabled Enable backend
-  ##
+  autoDatabaseSchemaMigration: false
+  
   enabled: false
-  ## @param backend.name Backend name
-  ##
+
   name: infisical
   replicaCount: 3
   image:
@@ -28,7 +27,7 @@ infisical:
   deploymentAnnotations:
     secrets.infisical.com/auto-reload: "true"
 
-  kubeSecretRef: "infisical-gamma-secrets"
+  kubeSecretRef: "managed-secret"
 
 ingress:
   ## @param ingress.enabled Enable ingress
@@ -50,3 +49,9 @@ ingress:
     - secretName: letsencrypt-prod
       hosts:
         - gamma.infisical.com
+
+postgresql:
+  enabled: false
+
+redis:
+  enabled: false

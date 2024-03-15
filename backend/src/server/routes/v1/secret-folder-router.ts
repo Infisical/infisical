@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { SecretFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { FOLDERS } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -19,12 +20,12 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         }
       ],
       body: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
-        name: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash),
+        workspaceId: z.string().trim().describe(FOLDERS.CREATE.workspaceId),
+        environment: z.string().trim().describe(FOLDERS.CREATE.environment),
+        name: z.string().trim().describe(FOLDERS.CREATE.name),
+        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.CREATE.path),
         // backward compatiability with cli
-        directory: z.string().trim().default("/").transform(removeTrailingSlash)
+        directory: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.CREATE.directory)
       }),
       response: {
         200: z.object({
@@ -73,15 +74,15 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       ],
       params: z.object({
         // old way this was name
-        folderId: z.string()
+        folderId: z.string().describe(FOLDERS.UPDATE.folderId)
       }),
       body: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
-        name: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash),
+        workspaceId: z.string().trim().describe(FOLDERS.UPDATE.workspaceId),
+        environment: z.string().trim().describe(FOLDERS.UPDATE.environment),
+        name: z.string().trim().describe(FOLDERS.UPDATE.name),
+        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.UPDATE.path),
         // backward compatiability with cli
-        directory: z.string().trim().default("/").transform(removeTrailingSlash)
+        directory: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.UPDATE.directory)
       }),
       response: {
         200: z.object({
@@ -119,8 +120,9 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     }
   });
 
+  // TODO(daniel): Expose this route in api reference and write docs for it.
   server.route({
-    url: "/:folderId",
+    url: "/:folderIdOrName",
     method: "DELETE",
     schema: {
       description: "Delete a folder",
@@ -131,14 +133,14 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         }
       ],
       params: z.object({
-        folderId: z.string()
+        folderIdOrName: z.string().describe(FOLDERS.DELETE.folderIdOrName)
       }),
       body: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash),
+        workspaceId: z.string().trim().describe(FOLDERS.DELETE.workspaceId),
+        environment: z.string().trim().describe(FOLDERS.DELETE.environment),
+        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.DELETE.path),
         // keep this here as cli need directory
-        directory: z.string().trim().default("/").transform(removeTrailingSlash)
+        directory: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.DELETE.directory)
       }),
       response: {
         200: z.object({
@@ -155,7 +157,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
-        id: req.params.folderId,
+        idOrName: req.params.folderIdOrName,
         path
       });
       await server.services.auditLog.createAuditLog({
@@ -187,11 +189,11 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         }
       ],
       querystring: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash),
+        workspaceId: z.string().trim().describe(FOLDERS.LIST.workspaceId),
+        environment: z.string().trim().describe(FOLDERS.LIST.environment),
+        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.LIST.path),
         // backward compatiability with cli
-        directory: z.string().trim().default("/").transform(removeTrailingSlash)
+        directory: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.LIST.directory)
       }),
       response: {
         200: z.object({

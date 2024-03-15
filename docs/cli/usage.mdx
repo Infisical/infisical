@@ -135,3 +135,38 @@ Another option to point the CLI to your self hosted Infisical instance is to set
 infisical <any-command> --domain="https://your-self-hosted-infisical.com/api"
 ```
 </Accordion>
+
+## History
+
+Your terminal keeps a history with the commands you run. When you create Infisical secrets directly from your terminal, they'll stay there for a while.
+
+For security and privacy concerns, we recommend you to configure your terminal to ignore those specific Infisical commands.
+
+<Accordion title="Ignore commands">
+
+<Tabs>
+   <Tab title="Unix/Linux">
+      <Tip>
+        `$HOME/.profile` is pretty common but, you could place it under `$HOME/.profile.d/infisical.sh` or any profile file run at login 
+      </Tip>
+
+      ```bash
+      cat <<EOF >> $HOME/.profile && source $HOME/.profile
+
+      # Ignoring specific Infisical CLI commands
+      DEFAULT_HISTIGNORE=$HISTIGNORE
+      export HISTIGNORE="*infisical secrets set*:$DEFAULT_HISTIGNORE"
+      EOF
+      ```
+
+   </Tab>
+   <Tab title="Windows">
+      If you're on WSL, then you can use the Unix/Linux method.
+
+      <Tip>
+        Here's some [documentation](https://superuser.com/a/1658331) about how to clear the terminal history, in PowerShell and CMD
+      </Tip>
+
+   </Tab>
+</Tabs>
+</Accordion>

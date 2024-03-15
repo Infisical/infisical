@@ -16,14 +16,17 @@ export type TUserDALFactory = ReturnType<typeof userDALFactory>;
 
 export const userDALFactory = (db: TDbClient) => {
   const userOrm = ormify(db, TableName.Users);
-  const findUserByEmail = async (email: string, tx?: Knex) => userOrm.findOne({ email }, tx);
+  const findUserByUsername = async (username: string, tx?: Knex) => userOrm.findOne({ username }, tx);
 
   // USER ENCRYPTION FUNCTIONS
   // -------------------------
-  const findUserEncKeyByEmail = async (email: string) => {
+  const findUserEncKeyByUsername = async ({ username }: { username: string }) => {
     try {
       return await db(TableName.Users)
-        .where({ email })
+        .where({
+          username,
+          isGhost: false
+        })
         .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .first();
     } catch (error) {
@@ -44,6 +47,17 @@ export const userDALFactory = (db: TDbClient) => {
       return user;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find user enc by user id" });
+    }
+  };
+
+  const findUserByProjectMembershipId = async (projectMembershipId: string) => {
+    try {
+      return await db(TableName.ProjectMembership)
+        .where({ [`${TableName.ProjectMembership}.id` as "id"]: projectMembershipId })
+        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find user by project membership id" });
     }
   };
 
@@ -107,10 +121,11 @@ export const userDALFactory = (db: TDbClient) => {
 
   return {
     ...userOrm,
-    findUserByEmail,
-    findUserEncKeyByEmail,
+    findUserByUsername,
+    findUserEncKeyByUsername,
     findUserEncKeyByUserId,
     updateUserEncryptionByUserId,
+    findUserByProjectMembershipId,
     upsertUserEncryptionKey,
     createUserEncryption,
     findOneUserAction,

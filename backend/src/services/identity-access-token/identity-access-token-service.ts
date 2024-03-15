@@ -35,12 +35,12 @@ export const identityAccessTokenServiceFactory = ({
     }
 
     // ttl check
-    if (accessTokenTTL > 0) {
+    if (Number(accessTokenTTL) > 0) {
       const currentDate = new Date();
       if (accessTokenLastRenewedAt) {
         // access token has been renewed
         const accessTokenRenewed = new Date(accessTokenLastRenewedAt);
-        const ttlInMilliseconds = accessTokenTTL * 1000;
+        const ttlInMilliseconds = Number(accessTokenTTL) * 1000;
         const expirationDate = new Date(accessTokenRenewed.getTime() + ttlInMilliseconds);
 
         if (currentDate > expirationDate)
@@ -50,7 +50,7 @@ export const identityAccessTokenServiceFactory = ({
       } else {
         // access token has never been renewed
         const accessTokenCreated = new Date(accessTokenCreatedAt);
-        const ttlInMilliseconds = accessTokenTTL * 1000;
+        const ttlInMilliseconds = Number(accessTokenTTL) * 1000;
         const expirationDate = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
 
         if (currentDate > expirationDate)
@@ -61,9 +61,9 @@ export const identityAccessTokenServiceFactory = ({
     }
 
     // max ttl checks
-    if (accessTokenMaxTTL > 0) {
+    if (Number(accessTokenMaxTTL) > 0) {
       const accessTokenCreated = new Date(accessTokenCreatedAt);
-      const ttlInMilliseconds = accessTokenMaxTTL * 1000;
+      const ttlInMilliseconds = Number(accessTokenMaxTTL) * 1000;
       const currentDate = new Date();
       const expirationDate = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
 
@@ -72,7 +72,7 @@ export const identityAccessTokenServiceFactory = ({
           message: "Failed to renew MI access token due to Max TTL expiration"
         });
 
-      const extendToDate = new Date(currentDate.getTime() + accessTokenTTL);
+      const extendToDate = new Date(currentDate.getTime() + Number(accessTokenTTL));
       if (extendToDate > expirationDate)
         throw new UnauthorizedError({
           message: "Failed to renew MI access token past its Max TTL expiration"

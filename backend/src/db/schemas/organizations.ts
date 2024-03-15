@@ -14,9 +14,10 @@ export const OrganizationsSchema = z.object({
   slug: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  authEnforced: z.boolean().default(false).nullable().optional()
+  authEnforced: z.boolean().default(false).nullable().optional(),
+  scimEnabled: z.boolean().default(false).nullable().optional()
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;
-export type TOrganizationsInsert = Omit<TOrganizations, TImmutableDBKeys>;
-export type TOrganizationsUpdate = Partial<Omit<TOrganizations, TImmutableDBKeys>>;
+export type TOrganizationsInsert = Omit<z.input<typeof OrganizationsSchema>, TImmutableDBKeys>;
+export type TOrganizationsUpdate = Partial<Omit<z.input<typeof OrganizationsSchema>, TImmutableDBKeys>>;

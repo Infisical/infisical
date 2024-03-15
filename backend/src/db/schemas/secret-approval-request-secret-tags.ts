@@ -16,5 +16,10 @@ export const SecretApprovalRequestSecretTagsSchema = z.object({
 });
 
 export type TSecretApprovalRequestSecretTags = z.infer<typeof SecretApprovalRequestSecretTagsSchema>;
-export type TSecretApprovalRequestSecretTagsInsert = Omit<TSecretApprovalRequestSecretTags, TImmutableDBKeys>;
-export type TSecretApprovalRequestSecretTagsUpdate = Partial<Omit<TSecretApprovalRequestSecretTags, TImmutableDBKeys>>;
+export type TSecretApprovalRequestSecretTagsInsert = Omit<
+  z.input<typeof SecretApprovalRequestSecretTagsSchema>,
+  TImmutableDBKeys
+>;
+export type TSecretApprovalRequestSecretTagsUpdate = Partial<
+  Omit<z.input<typeof SecretApprovalRequestSecretTagsSchema>, TImmutableDBKeys>
+>;

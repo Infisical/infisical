@@ -1,3 +1,10 @@
+import {
+  CreateAccessKeyCommand,
+  DeleteAccessKeyCommand,
+  GetAccessKeyLastUsedCommand,
+  IAMClient
+} from "@aws-sdk/client-iam";
+
 import { SecretKeyEncoding, SecretType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import {
@@ -18,7 +25,12 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TSecretRotationDALFactory } from "../secret-rotation-dal";
 import { rotationTemplates } from "../templates";
-import { TDbProviderClients, TProviderFunctionTypes, TSecretRotationProviderTemplate } from "../templates/types";
+import {
+  TAwsProviderSystems,
+  TDbProviderClients,
+  TProviderFunctionTypes,
+  TSecretRotationProviderTemplate
+} from "../templates/types";
 import {
   getDbSetQuery,
   secretRotationDbFn,
@@ -127,7 +139,10 @@ export const secretRotationQueueFactory = ({
         internal: {}
       };
 
-      // when its a database we keep cycling the variables accordingly
+      /* Rotation Function For Database
+       * A database like sql cannot have multiple password for a user
+       * thus we ask users to create two users with required permission and then we keep cycling between these two db users
+       */
       if (provider.template.type === TProviderFunctionTypes.DB) {
         const lastCred = variables.creds.at(-1);
         if (lastCred && variables.creds.length === 1) {
@@ -170,6 +185,65 @@ export const secretRotationQueueFactory = ({
         if (variables.creds.length === 2) variables.creds.pop();
       }
 
+      /*
+       * Rotation Function For AWS Services
+       * Due to complexity in AWS Authorization hashing signature process we keep it as seperate entity instead of http template mode
+       * We first delete old key before creating a new one because aws iam has a quota limit of 2 keys
+       * */
+      if (provider.template.type === TProviderFunctionTypes.AWS) {
+        if (provider.template.client === TAwsProviderSystems.IAM) {
+          const client = new IAMClient({
+            region: newCredential.inputs.manager_user_aws_region as string,
+            credentials: {
+              accessKeyId: newCredential.inputs.manager_user_access_key as string,
+              secretAccessKey: newCredential.inputs.manager_user_secret_key as string
+            }
+          });
+
+          const iamUserName = newCredential.inputs.iam_username as string;
+
+          if (variables.creds.length === 2) {
+            const deleteCycleCredential = variables.creds.pop();
+            if (deleteCycleCredential) {
+              const deletedIamAccessKey = await client.send(
+                new DeleteAccessKeyCommand({
+                  UserName: iamUserName,
+                  AccessKeyId: deleteCycleCredential.outputs.iam_user_access_key as string
+                })
+              );
+
+              if (
+                !deletedIamAccessKey?.$metadata?.httpStatusCode ||
+                deletedIamAccessKey?.$metadata?.httpStatusCode > 300
+              ) {
+                throw new DisableRotationErrors({
+                  message: "Failed to delete aws iam access key. Check managed iam user policy"
+                });
+              }
+            }
+          }
+
+          const newIamAccessKey = await client.send(new CreateAccessKeyCommand({ UserName: iamUserName }));
+          if (!newIamAccessKey.AccessKey)
+            throw new DisableRotationErrors({ message: "Failed to create access key. Check managed iam user policy" });
+
+          // test
+          const testAccessKey = await client.send(
+            new GetAccessKeyLastUsedCommand({ AccessKeyId: newIamAccessKey.AccessKey.AccessKeyId })
+          );
+          if (testAccessKey?.UserName !== iamUserName)
+            throw new DisableRotationErrors({ message: "Failed to create access key. Check managed iam user policy" });
+
+          newCredential.outputs.iam_user_access_key = newIamAccessKey.AccessKey.AccessKeyId;
+          newCredential.outputs.iam_user_secret_key = newIamAccessKey.AccessKey.SecretAccessKey;
+        }
+      }
+
+      /* Rotation function of HTTP infisical template
+       * This is a generic http based template system for rotation
+       * we use this for sendgrid and for custom secret rotation
+       * This will ensure user provided rotation is easier to make
+       * */
       if (provider.template.type === TProviderFunctionTypes.HTTP) {
         if (provider.template.functions.set?.pre) {
           secretRotationPreSetFn(provider.template.functions.set.pre, newCredential);
@@ -185,6 +259,9 @@ export const secretRotationQueueFactory = ({
           }
         }
       }
+
+      // insert the new variables to start
+      // encrypt the data - save it
       variables.creds.unshift({
         outputs: newCredential.outputs,
         internal: newCredential.internal
@@ -200,6 +277,7 @@ export const secretRotationQueueFactory = ({
           key
         )
       }));
+      // map the final values to output keys in the board
       await secretRotationDAL.transaction(async (tx) => {
         await secretRotationDAL.updateById(
           rotationId,
@@ -240,7 +318,7 @@ export const secretRotationQueueFactory = ({
         );
       });
 
-      telemetryService.sendPostHogEvents({
+      await telemetryService.sendPostHogEvents({
         event: PostHogEventTypes.SecretRotated,
         distinctId: "",
         properties: {

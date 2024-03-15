@@ -19,5 +19,5 @@ export const SecretImportsSchema = z.object({
 });
 
 export type TSecretImports = z.infer<typeof SecretImportsSchema>;
-export type TSecretImportsInsert = Omit<TSecretImports, TImmutableDBKeys>;
-export type TSecretImportsUpdate = Partial<Omit<TSecretImports, TImmutableDBKeys>>;
+export type TSecretImportsInsert = Omit<z.input<typeof SecretImportsSchema>, TImmutableDBKeys>;
+export type TSecretImportsUpdate = Partial<Omit<z.input<typeof SecretImportsSchema>, TImmutableDBKeys>>;

@@ -19,5 +19,5 @@ export const OrgRolesSchema = z.object({
 });
 
 export type TOrgRoles = z.infer<typeof OrgRolesSchema>;
-export type TOrgRolesInsert = Omit<TOrgRoles, TImmutableDBKeys>;
-export type TOrgRolesUpdate = Partial<Omit<TOrgRoles, TImmutableDBKeys>>;
+export type TOrgRolesInsert = Omit<z.input<typeof OrgRolesSchema>, TImmutableDBKeys>;
+export type TOrgRolesUpdate = Partial<Omit<z.input<typeof OrgRolesSchema>, TImmutableDBKeys>>;

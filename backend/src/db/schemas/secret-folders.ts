@@ -18,5 +18,5 @@ export const SecretFoldersSchema = z.object({
 });
 
 export type TSecretFolders = z.infer<typeof SecretFoldersSchema>;
-export type TSecretFoldersInsert = Omit<TSecretFolders, TImmutableDBKeys>;
-export type TSecretFoldersUpdate = Partial<Omit<TSecretFolders, TImmutableDBKeys>>;
+export type TSecretFoldersInsert = Omit<z.input<typeof SecretFoldersSchema>, TImmutableDBKeys>;
+export type TSecretFoldersUpdate = Partial<Omit<z.input<typeof SecretFoldersSchema>, TImmutableDBKeys>>;

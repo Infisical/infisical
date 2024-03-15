@@ -32,6 +32,9 @@ import {
   TIdentityOrgMemberships,
   TIdentityOrgMembershipsInsert,
   TIdentityOrgMembershipsUpdate,
+  TIdentityProjectMembershipRole,
+  TIdentityProjectMembershipRoleInsert,
+  TIdentityProjectMembershipRoleUpdate,
   TIdentityProjectMemberships,
   TIdentityProjectMembershipsInsert,
   TIdentityProjectMembershipsUpdate,
@@ -50,6 +53,9 @@ import {
   TIntegrations,
   TIntegrationsInsert,
   TIntegrationsUpdate,
+  TLdapConfigs,
+  TLdapConfigsInsert,
+  TLdapConfigsUpdate,
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
@@ -80,9 +86,15 @@ import {
   TProjects,
   TProjectsInsert,
   TProjectsUpdate,
+  TProjectUserMembershipRoles,
+  TProjectUserMembershipRolesInsert,
+  TProjectUserMembershipRolesUpdate,
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
+  TScimTokens,
+  TScimTokensInsert,
+  TScimTokensUpdate,
   TSecretApprovalPolicies,
   TSecretApprovalPoliciesApprovers,
   TSecretApprovalPoliciesApproversInsert,
@@ -158,6 +170,9 @@ import {
   TUserActions,
   TUserActionsInsert,
   TUserActionsUpdate,
+  TUserAliases,
+  TUserAliasesInsert,
+  TUserAliasesUpdate,
   TUserEncryptionKeys,
   TUserEncryptionKeysInsert,
   TUserEncryptionKeysUpdate,
@@ -172,6 +187,7 @@ import {
 declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
+    [TableName.UserAliases]: Knex.CompositeTableType<TUserAliases, TUserAliasesInsert, TUserAliasesUpdate>;
     [TableName.UserEncryptionKey]: Knex.CompositeTableType<
       TUserEncryptionKeys,
       TUserEncryptionKeysInsert,
@@ -211,6 +227,11 @@ declare module "knex/types/tables" {
       TProjectEnvironmentsUpdate
     >;
     [TableName.ProjectBot]: Knex.CompositeTableType<TProjectBots, TProjectBotsInsert, TProjectBotsUpdate>;
+    [TableName.ProjectUserMembershipRole]: Knex.CompositeTableType<
+      TProjectUserMembershipRoles,
+      TProjectUserMembershipRolesInsert,
+      TProjectUserMembershipRolesUpdate
+    >;
     [TableName.ProjectRoles]: Knex.CompositeTableType<TProjectRoles, TProjectRolesInsert, TProjectRolesUpdate>;
     [TableName.ProjectKeys]: Knex.CompositeTableType<TProjectKeys, TProjectKeysInsert, TProjectKeysUpdate>;
     [TableName.Secret]: Knex.CompositeTableType<TSecrets, TSecretsInsert, TSecretsUpdate>;
@@ -262,6 +283,12 @@ declare module "knex/types/tables" {
       TIdentityProjectMembershipsInsert,
       TIdentityProjectMembershipsUpdate
     >;
+    [TableName.IdentityProjectMembershipRole]: Knex.CompositeTableType<
+      TIdentityProjectMembershipRole,
+      TIdentityProjectMembershipRoleInsert,
+      TIdentityProjectMembershipRoleUpdate
+    >;
+    [TableName.ScimToken]: Knex.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
     [TableName.SecretApprovalPolicy]: Knex.CompositeTableType<
       TSecretApprovalPolicies,
       TSecretApprovalPoliciesInsert,
@@ -314,6 +341,7 @@ declare module "knex/types/tables" {
       TSecretSnapshotFoldersUpdate
     >;
     [TableName.SamlConfig]: Knex.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
+    [TableName.LdapConfig]: Knex.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
     [TableName.OrgBot]: Knex.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;
     [TableName.AuditLog]: Knex.CompositeTableType<TAuditLogs, TAuditLogsInsert, TAuditLogsUpdate>;
     [TableName.GitAppInstallSession]: Knex.CompositeTableType<

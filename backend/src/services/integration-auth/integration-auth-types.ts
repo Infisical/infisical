@@ -72,6 +72,10 @@ export type TIntegrationAuthQoveryScopesDTO = {
   environmentId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TIntegrationAuthHerokuPipelinesDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TIntegrationAuthRailwayEnvDTO = {
   id: string;
   appId: string;
@@ -137,6 +141,12 @@ export type TNorthflankSecretGroup = {
   description: string;
   priority: number;
   projectId: string;
+};
+
+export type THerokuPipelineCoupling = {
+  app: { id: string };
+  stage: string;
+  pipeline: { id: string; name: string };
 };
 
 export type TTeamCityBuildConfig = {

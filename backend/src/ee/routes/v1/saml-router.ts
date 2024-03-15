@@ -27,6 +27,7 @@ type TSAMLConfig = {
   cert: string;
   audience: string;
   wantAuthnResponseSigned?: boolean;
+  wantAssertionsSigned?: boolean;
   disableRequestedAuthnContext?: boolean;
 };
 
@@ -82,6 +83,10 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
                 samlConfig.audience = `spn:${ssoConfig.issuer}`;
               }
             }
+            if (ssoConfig.authProvider === SamlProviders.GOOGLE_SAML) {
+              samlConfig.wantAssertionsSigned = false;
+            }
+
             (req as unknown as FastifyRequest).ssoConfig = ssoConfig;
             done(null, samlConfig);
           } catch (error) {
@@ -94,14 +99,14 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       async (req, profile, cb) => {
         try {
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
-          const { firstName } = profile;
           const email = profile?.email ?? (profile?.emailAddress as string); // emailRippling is added because in Rippling the field `email` reserved
 
-          if (!email || !firstName) {
+          if (!profile.email || !profile.firstName) {
             throw new BadRequestError({ message: "Invalid request. Missing email or first name" });
           }
 
           const { isUserCompleted, providerAuthToken } = await server.services.saml.samlLogin({
+            username: profile.nameID ?? email,
             email,
             firstName: profile.firstName as string,
             lastName: profile.lastName as string,

@@ -12,6 +12,7 @@ export const Popover = PopoverPrimitive.Root;
 
 export type PopoverContentProps = {
   children?: ReactNode;
+  arrowClassName?: string;
   hideCloseBtn?: boolean;
 } & PopoverPrimitive.PopoverContentProps;
 
@@ -19,6 +20,7 @@ export const PopoverContent = ({
   children,
   className,
   hideCloseBtn,
+  arrowClassName,
   ...props
 }: PopoverContentProps) => (
   <PopoverPrimitive.Portal>
@@ -48,7 +50,7 @@ export const PopoverContent = ({
           </IconButton>
         </PopoverPrimitive.Close>
       )}
-      <PopoverPrimitive.Arrow className="fill-inherit" />
+      <PopoverPrimitive.Arrow className={twMerge("fill-inherit", arrowClassName)} />
     </PopoverPrimitive.Content>
   </PopoverPrimitive.Portal>
 );

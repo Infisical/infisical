@@ -62,7 +62,8 @@ var runCmd = &cobra.Command{
 			}
 		}
 
-		infisicalToken, err := cmd.Flags().GetString("token")
+		infisicalToken, err := util.GetInfisicalServiceToken(cmd)
+
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -110,7 +111,9 @@ var runCmd = &cobra.Command{
 		}
 
 		if shouldExpandSecrets {
-			secrets = util.ExpandSecrets(secrets, infisicalToken, projectConfigDir)
+			secrets = util.ExpandSecrets(secrets, models.ExpandSecretsAuthentication{
+				InfisicalToken: infisicalToken,
+			}, projectConfigDir)
 		}
 
 		secretsByKey := getSecretsByKeys(secrets)
