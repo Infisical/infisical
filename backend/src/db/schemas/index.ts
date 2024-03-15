@@ -28,6 +28,7 @@ export * from "./project-environments";
 export * from "./project-keys";
 export * from "./project-memberships";
 export * from "./project-roles";
+export * from "./project-user-additional-privilege";
 export * from "./project-user-membership-roles";
 export * from "./projects";
 export * from "./saml-configs";

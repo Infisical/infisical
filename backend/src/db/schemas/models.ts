@@ -20,6 +20,7 @@ export enum TableName {
   Environment = "project_environments",
   ProjectMembership = "project_memberships",
   ProjectRoles = "project_roles",
+  ProjectUserAdditionalPrivilege = "project_user_additional_privilege",
   ProjectUserMembershipRole = "project_user_membership_roles",
   ProjectKeys = "project_keys",
   Secret = "secrets",
