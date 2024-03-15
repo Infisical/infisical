@@ -129,11 +129,18 @@ export const permissionDALFactory = (db: TDbClient) => {
           `${TableName.IdentityProjectMembershipRole}.customRoleId`,
           `${TableName.ProjectRoles}.id`
         )
+        .join(
+          // Join the Project table to later select orgId
+          TableName.Project,
+          `${TableName.IdentityProjectMembership}.projectId`,
+          `${TableName.Project}.id`
+        )
         .where("identityId", identityId)
         .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
         .select(selectAllTableCols(TableName.IdentityProjectMembershipRole))
         .select(
           db.ref("id").withSchema(TableName.IdentityProjectMembership).as("membershipId"),
+          db.ref("orgId").withSchema(TableName.Project).as("orgId"), // Now you can select orgId from Project
           db.ref("role").withSchema(TableName.IdentityProjectMembership).as("oldRoleField"),
           db.ref("createdAt").withSchema(TableName.IdentityProjectMembership).as("membershipCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.IdentityProjectMembership).as("membershipUpdatedAt"),
@@ -144,16 +151,16 @@ export const permissionDALFactory = (db: TDbClient) => {
       const permission = sqlNestRelationships({
         data: docs,
         key: "membershipId",
-        parentMapper: ({ membershipId, membershipCreatedAt, membershipUpdatedAt, oldRoleField }) => ({
+        parentMapper: ({ membershipId, membershipCreatedAt, membershipUpdatedAt, oldRoleField, orgId }) => ({
           id: membershipId,
           identityId,
           projectId,
           role: oldRoleField,
           createdAt: membershipCreatedAt,
           updatedAt: membershipUpdatedAt,
+          orgId,
           // just a prefilled value
-          orgAuthEnforced: false,
-          orgId: ""
+          orgAuthEnforced: false
         }),
         childrenMapper: [
           {

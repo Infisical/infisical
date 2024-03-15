@@ -1,13 +1,16 @@
 import jwt from "jsonwebtoken";
 
 import { TUsers, UserDeviceSchema } from "@app/db/schemas";
+import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
+import { TTokenDALFactory } from "../auth-token/auth-token-dal";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { validateProviderAuthToken } from "./auth-fns";
@@ -17,16 +20,24 @@ import {
   TOauthLoginDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
-import { AuthMethod, AuthTokenType } from "./auth-type";
+import { AuthMethod, AuthModeJwtTokenPayload, AuthModeMfaJwtTokenPayload, AuthTokenType } from "./auth-type";
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;
+  orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
+  tokenDAL: TTokenDALFactory;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
-export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: TAuthLoginServiceFactoryDep) => {
+export const authLoginServiceFactory = ({
+  userDAL,
+  tokenService,
+  smtpService,
+  orgDAL,
+  tokenDAL
+}: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
    * Not exported. This is to update user device list
@@ -83,12 +94,14 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     user,
     ip,
     userAgent,
-    organizationId
+    organizationId,
+    authMethod
   }: {
     user: TUsers;
     ip: string;
     userAgent: string;
-    organizationId?: string;
+    organizationId: string | undefined;
+    authMethod: AuthMethod;
   }) => {
     const cfg = getConfig();
     await updateUserDeviceSession(user, ip, userAgent);
@@ -98,8 +111,10 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       userId: user.id
     });
     if (!tokenSession) throw new Error("Failed to create token");
+
     const accessToken = jwt.sign(
       {
+        authMethod,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: user.id,
         tokenVersionId: tokenSession.id,
@@ -112,6 +127,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
 
     const refreshToken = jwt.sign(
       {
+        authMethod,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: user.id,
         tokenVersionId: tokenSession.id,
@@ -158,9 +174,9 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
   const loginExchangeClientProof = async ({
     email,
     clientProof,
-    providerAuthToken,
     ip,
-    userAgent
+    userAgent,
+    providerAuthToken
   }: TLoginClientProofDTO) => {
     const userEnc = await userDAL.findUserEncKeyByUsername({
       username: email
@@ -168,14 +184,16 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     if (!userEnc) throw new Error("Failed to find user");
     const cfg = getConfig();
 
-    let organizationId;
-    if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
-      const { orgId } = validateProviderAuthToken(providerAuthToken as string, email);
-      organizationId = orgId;
-    } else if (providerAuthToken) {
-      // SAML SSO
-      const { orgId } = validateProviderAuthToken(providerAuthToken, email);
-      organizationId = orgId;
+    let authMethod = AuthMethod.EMAIL;
+    let organizationId: string | undefined;
+
+    if (providerAuthToken) {
+      const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
+
+      authMethod = decodedProviderToken.authMethod;
+      if (isAuthMethodSaml(authMethod) && decodedProviderToken.orgId) {
+        organizationId = decodedProviderToken.orgId;
+      }
     }
 
     if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey) throw new Error("Failed to authenticate. Try again?");
@@ -196,9 +214,9 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     if (userEnc.isMfaEnabled && userEnc.email) {
       const mfaToken = jwt.sign(
         {
+          authMethod,
           authTokenType: AuthTokenType.MFA_TOKEN,
-          userId: userEnc.userId,
-          organizationId
+          userId: userEnc.userId
         },
         cfg.AUTH_SECRET,
         {
@@ -221,10 +239,58 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       },
       ip,
       userAgent,
+      authMethod,
       organizationId
     });
 
     return { token, isMfaEnabled: false, user: userEnc } as const;
+  };
+
+  const selectOrganization = async ({
+    userAgent,
+    authJwtToken,
+    ipAddress,
+    organizationId
+  }: {
+    userAgent: string | undefined;
+    authJwtToken: string | undefined;
+    ipAddress: string;
+    organizationId: string;
+  }) => {
+    const cfg = getConfig();
+
+    if (!authJwtToken) throw new UnauthorizedError({ name: "Authorization header is required" });
+    if (!userAgent) throw new UnauthorizedError({ name: "user agent header is required" });
+
+    // eslint-disable-next-line no-param-reassign
+    authJwtToken = authJwtToken.replace("Bearer ", ""); // remove bearer from token
+
+    // The decoded JWT token, which contains the auth method.
+    const decodedToken = jwt.verify(authJwtToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
+    if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
+
+    const user = await userDAL.findUserEncKeyByUserId(decodedToken.userId);
+    if (!user) throw new BadRequestError({ message: "User not found", name: "Find user from token" });
+
+    // Check if the user actually has access to the specified organization.
+    const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
+    const hasOrganizationMembership = userOrgs.some((org) => org.id === organizationId);
+
+    if (!hasOrganizationMembership) {
+      throw new UnauthorizedError({ message: "User does not have access to the organization" });
+    }
+
+    await tokenDAL.incrementTokenSessionVersion(user.id, decodedToken.tokenVersionId);
+
+    const tokens = await generateUserTokens({
+      authMethod: decodedToken.authMethod,
+      user,
+      userAgent,
+      ip: ipAddress,
+      organizationId
+    });
+
+    return tokens;
   };
 
   /*
@@ -244,12 +310,15 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
    * Multi factor authentication verification of code
    * Third step of login in which user completes with mfa
    * */
-  const verifyMfaToken = async ({ userId, mfaToken, ip, userAgent, orgId }: TVerifyMfaTokenDTO) => {
+  const verifyMfaToken = async ({ userId, mfaToken, mfaJwtToken, ip, userAgent, orgId }: TVerifyMfaTokenDTO) => {
     await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_MFA,
       userId,
       code: mfaToken
     });
+
+    const decodedToken = jwt.verify(mfaJwtToken, getConfig().AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
+
     const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
 
@@ -260,7 +329,8 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       },
       ip,
       userAgent,
-      organizationId: orgId
+      organizationId: orgId,
+      authMethod: decodedToken.authMethod
     });
 
     return { token, user: userEnc };
@@ -339,6 +409,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     oauth2Login,
     resendMfaToken,
     verifyMfaToken,
+    selectOrganization,
     generateUserTokens
   };
 };

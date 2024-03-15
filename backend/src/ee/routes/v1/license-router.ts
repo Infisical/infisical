@@ -24,6 +24,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId,
+        actorAuthMethod: req.permission.authMethod,
         billingCycle: req.query.billingCycle
       });
       return data;
@@ -45,6 +46,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId
       });
       return { plan };
@@ -66,6 +68,8 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
       const data = await server.services.license.getOrgPlan({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId
       });
       return data;
@@ -89,6 +93,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId,
+        actorAuthMethod: req.permission.authMethod,
         success_url: req.body.success_url
       });
       return data;
@@ -110,6 +115,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId
       });
       return data;
@@ -131,6 +137,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId
       });
       return data;
@@ -152,6 +159,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId
       });
       return data;
@@ -173,6 +181,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId
       });
       return data;
@@ -198,6 +207,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId,
         name: req.body.name,
         email: req.body.email
@@ -221,6 +231,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId
       });
       return data;
@@ -246,6 +257,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId,
         success_url: req.body.success_url,
         cancel_url: req.body.cancel_url
@@ -271,6 +283,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
       const data = await server.services.license.delOrgPmtMethods({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId,
         pmtMethodId: req.params.pmtMethodId
@@ -295,6 +308,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
       const data = await server.services.license.getOrgTaxIds({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId
       });
@@ -322,6 +336,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
       const data = await server.services.license.addOrgTaxId({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId,
         type: req.body.type,
@@ -348,6 +363,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
       const data = await server.services.license.delOrgTaxId({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId,
         taxId: req.params.taxId
@@ -373,7 +389,8 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        orgId: req.params.organizationId
+        orgId: req.params.organizationId,
+        actorAuthMethod: req.permission.authMethod
       });
       return data;
     }
@@ -396,6 +413,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId
       });
       return data;

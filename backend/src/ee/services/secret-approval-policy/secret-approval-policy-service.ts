@@ -45,6 +45,7 @@ export const secretApprovalPolicyServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    actorAuthMethod,
     approvals,
     approvers,
     projectId,
@@ -54,7 +55,13 @@ export const secretApprovalPolicyServiceFactory = ({
     if (approvals > approvers.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
@@ -98,6 +105,7 @@ export const secretApprovalPolicyServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     approvals,
     secretPolicyId
   }: TUpdateSapDTO) => {
@@ -108,6 +116,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actor,
       actorId,
       secretApprovalPolicy.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
@@ -152,7 +161,13 @@ export const secretApprovalPolicyServiceFactory = ({
     };
   };
 
-  const deleteSecretApprovalPolicy = async ({ secretPolicyId, actor, actorId, actorOrgId }: TDeleteSapDTO) => {
+  const deleteSecretApprovalPolicy = async ({
+    secretPolicyId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TDeleteSapDTO) => {
     const sapPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
     if (!sapPolicy) throw new BadRequestError({ message: "Secret approval policy not found" });
 
@@ -160,6 +175,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actor,
       actorId,
       sapPolicy.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
@@ -171,8 +187,20 @@ export const secretApprovalPolicyServiceFactory = ({
     return sapPolicy;
   };
 
-  const getSecretApprovalPolicyByProjectId = async ({ actorId, actor, actorOrgId, projectId }: TListSapDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+  const getSecretApprovalPolicyByProjectId = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TListSapDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
     const sapPolicies = await secretApprovalPolicyDAL.find({ projectId });
@@ -201,10 +229,17 @@ export const secretApprovalPolicyServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    actorAuthMethod,
     environment,
     secretPath
   }: TGetBoardSapDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { secretPath, environment })

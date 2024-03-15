@@ -2,20 +2,22 @@ import React, { useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
-import axios from "axios"
+import axios from "axios";
 import jwt_decode from "jwt-decode";
 
 import Error from "@app/components/basic/Error"; // which to notification
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa"
+import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa";
 import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
-import { Button } from "@app/components/v2";    
+import { Button } from "@app/components/v2";
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
 import { useSendMfaToken } from "@app/hooks/api/auth";
+import { useSelectOrganization } from "@app/hooks/api/auth/queries";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
-import { navigateUserToOrg } from "../../Login.utils";
+import { navigateUserToOrg, navigateUserToSelectOrg } from "../../Login.utils";
 
 // The style for the verification code input
 const props = {
@@ -42,7 +44,7 @@ type Props = {
   password: string;
   providerAuthToken?: string;
   callbackPort?: string | null;
-}
+};
 
 interface VerifyMfaTokenError {
   response: {
@@ -56,11 +58,7 @@ interface VerifyMfaTokenError {
   };
 }
 
-export const MFAStep = ({
-  email,
-  password,
-  providerAuthToken
-}: Props) => {
+export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
   const { createNotification } = useNotificationContext();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -71,7 +69,8 @@ export const MFAStep = ({
   const { t } = useTranslation();
 
   const sendMfaToken = useSendMfaToken();
-    const { mutateAsync: updateUserAuthMethodsMutateAsync } = useUpdateUserAuthMethods();
+  const { mutateAsync: updateUserAuthMethodsMutateAsync } = useUpdateUserAuthMethods();
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   const handleLoginMfa = async () => {
     try {
@@ -79,16 +78,20 @@ export const MFAStep = ({
       let callbackPort: undefined | string;
       let authMethod: undefined | AuthMethod;
       let organizationId: undefined | string;
-      
+
+      const queryParams = new URLSearchParams(window.location.search);
+
+      callbackPort = queryParams.get("callback_port") || undefined;
+
       if (providerAuthToken) {
         const decodedToken = jwt_decode(providerAuthToken) as any;
-        
+
         isLinkingRequired = decodedToken.isLinkingRequired;
         callbackPort = decodedToken.callbackPort;
         authMethod = decodedToken.authMethod;
         organizationId = decodedToken?.organizationId;
       }
-      
+
       if (mfaCode.length !== 6) {
         createNotification({
           text: "Please enter a 6-digit MFA code and try again",
@@ -99,25 +102,44 @@ export const MFAStep = ({
 
       setIsLoading(true);
       if (callbackPort) {
-
         // attemptCliLogin
         const isCliLoginSuccessful = await attemptCliLoginMfa({
           email,
           password,
           providerAuthToken,
           mfaToken: mfaCode
-        })
+        });
 
-        if (isCliLoginSuccessful && isCliLoginSuccessful.success){
-          // case: login was successful
-          const cliUrl = `http://127.0.0.1:${callbackPort}/`
+        if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
+          const cliUrl = `http://127.0.0.1:${callbackPort}/`;
 
-          // send request to server endpoint 
-          const instance = axios.create()
-          await instance.post(cliUrl,{...isCliLoginSuccessful.loginResponse,email})
+          // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
+          if (organizationId) {
+            const { token: newJwtToken } = await selectOrganization({ organizationId });
 
-          // cli page
-          router.push("/cli-redirect");
+            const instance = axios.create();
+            await instance.post(cliUrl, {
+              ...isCliLoginSuccessful.loginResponse,
+              JTWToken: newJwtToken
+            });
+
+            await navigateUserToOrg(router, organizationId);
+          }
+          // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
+          // if the user has no orgs, navigate to the create org page
+          else {
+            const userOrgs = await fetchOrganizations();
+
+            // case: user has orgs, so we navigate the user to select an org
+            if (userOrgs.length > 0) {
+              navigateUserToSelectOrg(router, callbackPort);
+            }
+            // case: no orgs found, so we navigate the user to create an org
+            // cli login will fail in this case
+            else {
+              await navigateUserToOrg(router);
+            }
+          }
         }
       } else {
         const isLoginSuccessful = await attemptLoginMfa({
@@ -126,25 +148,29 @@ export const MFAStep = ({
           providerAuthToken,
           mfaToken: mfaCode
         });
-  
+
         if (isLoginSuccessful) {
           setIsLoading(false);
 
           // case: login does not require MFA step
           createNotification({
-              text: "Successfully logged in",
-              type: "success"
+            text: "Successfully logged in",
+            type: "success"
           });
 
           if (isLinkingRequired && authMethod) {
             const user = await fetchUserDetails();
-            const newAuthMethods = [...user.authMethods, authMethod] 
+            const newAuthMethods = [...user.authMethods, authMethod];
             await updateUserAuthMethodsMutateAsync({
-                authMethods: newAuthMethods
+              authMethods: newAuthMethods
             });
           }
-          
-          await navigateUserToOrg(router, organizationId);
+
+          if (organizationId) {
+            await navigateUserToOrg(router, organizationId);
+          } else {
+            navigateUserToSelectOrg(router);
+          }
         } else {
           createNotification({
             text: "Failed to log in",
@@ -152,7 +178,6 @@ export const MFAStep = ({
           });
         }
       }
-      
     } catch (err) {
       const error = err as VerifyMfaTokenError;
       createNotification({
@@ -184,11 +209,11 @@ export const MFAStep = ({
     }
   };
 
-    return (
-       <form className="mx-auto w-max md:px-8 pb-4 pt-4 md:mb-16">
+  return (
+    <form className="mx-auto w-max pb-4 pt-4 md:mb-16 md:px-8">
       <p className="text-l flex justify-center text-bunker-300">{t("mfa.step2-message")}</p>
       <p className="text-l my-1 flex justify-center font-semibold text-bunker-300">{email} </p>
-      <div className="hidden md:block w-max min-w-[20rem] mx-auto">
+      <div className="mx-auto hidden w-max min-w-[20rem] md:block">
         <ReactCodeInput
           name=""
           inputMode="tel"
@@ -199,7 +224,7 @@ export const MFAStep = ({
           className="mt-6 mb-2"
         />
       </div>
-      <div className="block md:hidden w-max mt-4 mx-auto">
+      <div className="mx-auto mt-4 block w-max md:hidden">
         <ReactCodeInput
           name=""
           inputMode="tel"
@@ -213,25 +238,28 @@ export const MFAStep = ({
       {typeof triesLeft === "number" && (
         <Error text={`${t("mfa.step2-code-error")} ${triesLeft}`} />
       )}
-      <div className="flex flex-col mt-6 items-center justify-center lg:w-[19%] w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
-        <div className="text-l py-1 text-lg w-full">
+      <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
+        <div className="text-l w-full py-1 text-lg">
           <Button
             onClick={() => handleLoginMfa()}
             size="sm"
             isFullWidth
-            className='h-14'
+            className="h-14"
             colorSchema="primary"
             variant="outline_bg"
             isLoading={isLoading}
-          > {String(t("mfa.verify"))} </Button>
+          >
+            {" "}
+            {String(t("mfa.verify"))}{" "}
+          </Button>
         </div>
       </div>
-      <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
+      <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
         <div className="flex flex-row items-baseline gap-1 text-sm">
           <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
-          <div className="mt-2 text-bunker-400 text-md flex flex-row">
+          <div className="text-md mt-2 flex flex-row text-bunker-400">
             <button disabled={isLoadingResend} onClick={handleResendMfaCode} type="button">
-              <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>
+              <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
                 {isLoadingResend
                   ? t("signup.step2-resend-progress")
                   : t("signup.step2-resend-submit")}
@@ -239,8 +267,8 @@ export const MFAStep = ({
             </button>
           </div>
         </div>
-        <p className="text-sm text-bunker-400 pb-2">{t("signup.step2-spam-alert")}</p>
+        <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
       </div>
-    </form> 
-    );
-}
+    </form>
+  );
+};

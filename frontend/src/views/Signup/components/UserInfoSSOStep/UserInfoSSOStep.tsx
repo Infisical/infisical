@@ -15,7 +15,7 @@ import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
-import { completeAccountSignup } from "@app/hooks/api/auth/queries";
+import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import ProjectService from "@app/services/ProjectService";
 
@@ -72,6 +72,7 @@ export const UserInfoSSOStep = ({
   const [errors, setErrors] = useState<Errors>({});
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   useEffect(() => {
     if (providerOrganizationName !== undefined) {
@@ -188,8 +189,14 @@ export const UserInfoSSOStep = ({
 
               const userOrgs = await fetchOrganizations();
               const orgId = userOrgs[0]?.id;
+              const orgSlug = userOrgs[0]?.slug;
+
+              await selectOrganization({
+                organizationId: orgId
+              });
+
               const project = await ProjectService.initProject({
-                organizationId: orgId,
+                organizationSlug: orgSlug,
                 projectName: "Example Project"
               });
 

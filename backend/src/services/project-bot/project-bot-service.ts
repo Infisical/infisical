@@ -37,10 +37,17 @@ export const projectBotServiceFactory = ({
     projectId,
     actorOrgId,
     privateKey,
+    actorAuthMethod,
     botKey,
     publicKey
   }: TFindBotByProjectIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     const bot = await projectBotDAL.transaction(async (tx) => {
@@ -88,11 +95,25 @@ export const projectBotServiceFactory = ({
     }
   };
 
-  const setBotActiveState = async ({ actor, botId, botKey, actorId, actorOrgId, isActive }: TSetActiveStateDTO) => {
+  const setBotActiveState = async ({
+    actor,
+    botId,
+    botKey,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    isActive
+  }: TSetActiveStateDTO) => {
     const bot = await projectBotDAL.findById(botId);
     if (!bot) throw new BadRequestError({ message: "Bot not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, bot.projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      bot.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
     const project = await projectBotDAL.findProjectByBotId(botId);

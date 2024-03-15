@@ -84,9 +84,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             slug: req.query.workspaceSlug
           },
           actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
           actor: req.permission.type,
           actorOrgId: req.permission.orgId
         });
+
+        if (!workspace) throw new BadRequestError({ message: `No project found with slug ${req.query.workspaceSlug}` });
+
         workspaceId = workspace.id;
       }
 
@@ -97,6 +101,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         environment,
+        actorAuthMethod: req.permission.authMethod,
         projectId: workspaceId,
         path: secretPath,
         includeImports: req.query.include_imports
@@ -180,6 +185,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const secret = await server.services.secret.getSecretByNameRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         environment,
         projectId: workspaceId,
@@ -257,6 +263,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         environment: req.body.environment,
+        actorAuthMethod: req.permission.authMethod,
         projectId: req.body.workspaceId,
         secretPath: req.body.secretPath,
         secretName: req.params.secretName,
@@ -332,6 +339,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         environment: req.body.environment,
         projectId: req.body.workspaceId,
         secretPath: req.body.secretPath,
@@ -403,6 +411,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const secret = await server.services.secret.deleteSecretRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         environment: req.body.environment,
         projectId: req.body.workspaceId,
@@ -498,6 +507,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const { secrets, imports } = await server.services.secret.getSecrets({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         environment: req.query.environment,
         projectId: req.query.workspaceId,
@@ -584,6 +594,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const secret = await server.services.secret.getSecretByName({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         environment: req.query.environment,
         projectId: req.query.workspaceId,
@@ -686,6 +697,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
         const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod,
           actor: req.permission.type,
           secretPath,
           environment,
@@ -695,6 +708,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
             actorId: req.permission.id,
             actor: req.permission.type,
+            actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
             secretPath,
             environment,
@@ -738,6 +752,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const secret = await server.services.secret.createSecret({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         path: secretPath,
         type,
@@ -862,6 +877,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           secretPath,
           environment,
@@ -871,6 +887,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
             actorId: req.permission.id,
             actor: req.permission.type,
+            actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
             secretPath,
             environment,
@@ -916,6 +933,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const secret = await server.services.secret.updateSecret({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         path: secretPath,
         type,
@@ -1006,6 +1024,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           secretPath,
           environment,
@@ -1015,6 +1034,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
             actorId: req.permission.id,
             actor: req.permission.type,
+            actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
             secretPath,
             environment,
@@ -1048,6 +1068,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const secret = await server.services.secret.deleteSecret({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         path: secretPath,
         type,
@@ -1130,6 +1151,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           secretPath,
           environment,
@@ -1139,6 +1161,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
             actorId: req.permission.id,
             actor: req.permission.type,
+            actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
             secretPath,
             environment,
@@ -1168,6 +1191,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const secrets = await server.services.secret.createManySecret({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         path: secretPath,
         environment,
@@ -1251,6 +1275,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           secretPath,
           environment,
@@ -1260,6 +1285,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
             actorId: req.permission.id,
             actor: req.permission.type,
+            actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
             secretPath,
             environment,
@@ -1288,6 +1314,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const secrets = await server.services.secret.updateManySecret({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         path: secretPath,
         environment,
@@ -1360,6 +1387,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           secretPath,
           environment,
@@ -1369,6 +1397,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
             actorId: req.permission.id,
             actor: req.permission.type,
+            actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
             secretPath,
             environment,
@@ -1396,6 +1425,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const secrets = await server.services.secret.deleteManySecret({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         path: req.body.secretPath,
         environment,

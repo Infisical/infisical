@@ -121,6 +121,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         ...req.body,
         identityId: req.params.identityId
       });
@@ -194,6 +195,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         ...req.body,
         identityId: req.params.identityId
       });
@@ -242,6 +244,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       const identityUniversalAuth = await server.services.identityUa.getIdentityUa({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         identityId: req.params.identityId
       });
@@ -291,6 +294,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       const { clientSecret, clientSecretData, orgId } = await server.services.identityUa.createUaClientSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         ...req.body
@@ -336,6 +340,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       const { clientSecrets: clientSecretData, orgId } = await server.services.identityUa.getUaClientSecrets({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         identityId: req.params.identityId
       });
@@ -379,6 +384,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       const clientSecretData = await server.services.identityUa.revokeUaClientSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         clientSecretId: req.params.clientSecretId

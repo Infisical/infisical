@@ -23,8 +23,13 @@ import issueBackupKey from "@app/components/utilities/cryptography/issueBackupKe
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { useServerConfig } from "@app/context";
-import { completeAccountSignupInvite, verifySignupInvite } from "@app/hooks/api/auth/queries";
+import {
+  completeAccountSignupInvite,
+  useSelectOrganization,
+  verifySignupInvite
+} from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -58,6 +63,8 @@ export default function SignupInvite() {
   const organizationId = parsedUrl.organization_id as string;
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
   const { config } = useServerConfig();
+
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   useEffect(() => {
     if (!config.allowSignUp) {
@@ -170,6 +177,11 @@ export default function SignupInvite() {
               const userOrgs = await fetchOrganizations();
 
               const orgId = userOrgs[0].id;
+
+              if (!orgId) throw new Error("You are not part of any organization");
+
+              await selectOrganization({ organizationId: orgId });
+
               localStorage.setItem("orgData.id", orgId);
 
               setStep(3);
@@ -210,9 +222,11 @@ export default function SignupInvite() {
                   SecurityClient.setSignupToken(response.token);
                   setStep(2);
                 } else {
+                  await selectOrganization({ organizationId });
+
                   // user will be redirected to dashboard
                   // if not logged in gets kicked out to login
-                  router.push(`/org/${organizationId}/overview`);
+                  await navigateUserToOrg(router, organizationId);
                 }
               }
             } catch (err) {

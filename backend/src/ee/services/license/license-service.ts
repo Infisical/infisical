@@ -192,9 +192,10 @@ export const licenseServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    actorAuthMethod,
     billingCycle
   }: TOrgPlansTableDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
     const { data } = await licenseServerCloudApi.request.get(
       `/api/license-server/v1/cloud-products?billing-cycle=${billingCycle}`
@@ -202,15 +203,22 @@ export const licenseServiceFactory = ({
     return data;
   };
 
-  const getOrgPlan = async ({ orgId, actor, actorId, actorOrgId, projectId }: TOrgPlanDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const getOrgPlan = async ({ orgId, actor, actorId, actorOrgId, actorAuthMethod, projectId }: TOrgPlanDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
     const plan = await getPlan(orgId, projectId);
     return plan;
   };
 
-  const startOrgTrial = async ({ orgId, actorId, actor, actorOrgId, success_url }: TStartOrgTrialDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const startOrgTrial = async ({
+    orgId,
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    success_url
+  }: TStartOrgTrialDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Billing);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Billing);
 
@@ -231,8 +239,14 @@ export const licenseServiceFactory = ({
     return { url };
   };
 
-  const createOrganizationPortalSession = async ({ orgId, actorId, actor, actorOrgId }: TCreateOrgPortalSession) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const createOrganizationPortalSession = async ({
+    orgId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TCreateOrgPortalSession) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Billing);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Billing);
 
@@ -278,8 +292,8 @@ export const licenseServiceFactory = ({
     return { url };
   };
 
-  const getOrgBillingInfo = async ({ orgId, actor, actorId, actorOrgId }: TGetOrgBillInfoDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const getOrgBillingInfo = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TGetOrgBillInfoDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -295,8 +309,8 @@ export const licenseServiceFactory = ({
   };
 
   // returns org current plan feature table
-  const getOrgPlanTable = async ({ orgId, actor, actorId, actorOrgId }: TGetOrgBillInfoDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const getOrgPlanTable = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TGetOrgBillInfoDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -311,8 +325,8 @@ export const licenseServiceFactory = ({
     return data;
   };
 
-  const getOrgBillingDetails = async ({ orgId, actor, actorId, actorOrgId }: TGetOrgBillInfoDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const getOrgBillingDetails = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TGetOrgBillInfoDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -332,11 +346,12 @@ export const licenseServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     orgId,
     name,
     email
   }: TUpdateOrgBillingDetailsDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -355,8 +370,8 @@ export const licenseServiceFactory = ({
     return data;
   };
 
-  const getOrgPmtMethods = async ({ orgId, actor, actorId, actorOrgId }: TOrgPmtMethodsDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const getOrgPmtMethods = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TOrgPmtMethodsDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -378,11 +393,12 @@ export const licenseServiceFactory = ({
     orgId,
     actor,
     actorId,
+    actorAuthMethod,
     actorOrgId,
     success_url,
     cancel_url
   }: TAddOrgPmtMethodDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -403,8 +419,15 @@ export const licenseServiceFactory = ({
     return { url };
   };
 
-  const delOrgPmtMethods = async ({ actorId, actor, actorOrgId, orgId, pmtMethodId }: TDelOrgPmtMethodDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const delOrgPmtMethods = async ({
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    orgId,
+    pmtMethodId
+  }: TDelOrgPmtMethodDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -420,8 +443,8 @@ export const licenseServiceFactory = ({
     return data;
   };
 
-  const getOrgTaxIds = async ({ orgId, actor, actorId, actorOrgId }: TGetOrgTaxIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const getOrgTaxIds = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TGetOrgTaxIdDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -438,8 +461,8 @@ export const licenseServiceFactory = ({
     return taxIds;
   };
 
-  const addOrgTaxId = async ({ actorId, actor, actorOrgId, orgId, type, value }: TAddOrgTaxIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const addOrgTaxId = async ({ actorId, actor, actorAuthMethod, actorOrgId, orgId, type, value }: TAddOrgTaxIdDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -459,8 +482,8 @@ export const licenseServiceFactory = ({
     return data;
   };
 
-  const delOrgTaxId = async ({ orgId, actor, actorId, actorOrgId, taxId }: TDelOrgTaxIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const delOrgTaxId = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId, taxId }: TDelOrgTaxIdDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -476,8 +499,8 @@ export const licenseServiceFactory = ({
     return data;
   };
 
-  const getOrgTaxInvoices = async ({ actorId, actor, actorOrgId, orgId }: TOrgInvoiceDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const getOrgTaxInvoices = async ({ actorId, actor, actorOrgId, actorAuthMethod, orgId }: TOrgInvoiceDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -493,8 +516,8 @@ export const licenseServiceFactory = ({
     return invoices;
   };
 
-  const getOrgLicenses = async ({ orgId, actor, actorId, actorOrgId }: TOrgLicensesDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const getOrgLicenses = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TOrgLicensesDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
 
     const organization = await orgDAL.findOrgById(orgId);
