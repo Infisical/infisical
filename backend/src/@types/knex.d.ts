@@ -38,6 +38,9 @@ import {
   TIdentityOrgMemberships,
   TIdentityOrgMembershipsInsert,
   TIdentityOrgMembershipsUpdate,
+  TIdentityProjectAdditionalPrivilege,
+  TIdentityProjectAdditionalPrivilegeInsert,
+  TIdentityProjectAdditionalPrivilegeUpdate,
   TIdentityProjectMembershipRole,
   TIdentityProjectMembershipRoleInsert,
   TIdentityProjectMembershipRoleUpdate,
@@ -301,6 +304,11 @@ declare module "knex/types/tables" {
       TIdentityProjectMembershipRole,
       TIdentityProjectMembershipRoleInsert,
       TIdentityProjectMembershipRoleUpdate
+    >;
+    [TableName.IdentityProjectAdditionalPrivilege]: Knex.CompositeTableType<
+      TIdentityProjectAdditionalPrivilege,
+      TIdentityProjectAdditionalPrivilegeInsert,
+      TIdentityProjectAdditionalPrivilegeUpdate
     >;
     [TableName.ScimToken]: Knex.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
     [TableName.SecretApprovalPolicy]: Knex.CompositeTableType<

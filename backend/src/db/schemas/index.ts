@@ -10,6 +10,7 @@ export * from "./git-app-org";
 export * from "./identities";
 export * from "./identity-access-tokens";
 export * from "./identity-org-memberships";
+export * from "./identity-project-additional-privilege";
 export * from "./identity-project-membership-role";
 export * from "./identity-project-memberships";
 export * from "./identity-ua-client-secrets";
