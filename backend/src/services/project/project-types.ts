@@ -23,8 +23,7 @@ export type TCreateProjectDTO = {
   actor: ActorType;
   actorId: string;
   actorOrgId?: string;
-  orgId?: string;
-  orgSlug?: string;
+  orgSlug: string;
   workspaceName: string;
   slug?: string;
 };

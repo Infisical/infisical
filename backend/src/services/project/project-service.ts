@@ -92,27 +92,20 @@ export const projectServiceFactory = ({
    * Create workspace. Make user the admin
    * */
   const createProject = async ({
-    orgId,
     orgSlug,
     actor,
     actorId,
     actorOrgId,
     workspaceName,
-    slug
+    slug: projectSlug
   }: TCreateProjectDTO) => {
-    if (orgSlug && orgId) {
+    if (!orgSlug) {
       throw new BadRequestError({
-        message: "Cannot provide both orgId and orgSlug"
+        message: "Must provide organization slug to create project"
       });
     }
 
-    if (!orgSlug && !orgId) {
-      throw new BadRequestError({
-        message: "Must provide either orgId or orgSlug"
-      });
-    }
-
-    const organization = orgSlug ? await orgDAL.findOne({ slug: orgSlug }) : await orgDAL.findOne({ id: orgId });
+    const organization = await orgDAL.findOne({ slug: orgSlug });
 
     const { permission, membership: orgMembership } = await permissionService.getOrgPermission(
       actor,
@@ -141,7 +134,7 @@ export const projectServiceFactory = ({
         {
           name: workspaceName,
           orgId: organization.id,
-          slug: slug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
+          slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
           version: ProjectVersion.V2
         },
         tx
