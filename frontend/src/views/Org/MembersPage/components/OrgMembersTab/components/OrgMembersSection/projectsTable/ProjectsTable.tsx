@@ -1,4 +1,4 @@
-import { ChangeEventHandler, FC } from "react";
+import { ChangeEventHandler, FC, useMemo } from "react";
 import { faProjectDiagram } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -25,11 +25,20 @@ import SearchProjects from "./SearchProjects";
 
 const ProjectsTable: FC<ProjectsTableProps> = ({
   projects,
-  checkedProjects,
+  preservedCheckedProjects,
   setCheckedProjects,
   searchValue,
   setSearchValue
 }) => {
+  const checkedProjects = useMemo(() => {
+    const newState: CheckedProjectsMap = {};
+    projects.forEach((project) => {
+      newState[project.id] = preservedCheckedProjects[project.id];
+    });
+    newState[CheckboxKeys.ALL] = preservedCheckedProjects[CheckboxKeys.ALL];
+    return newState;
+  }, [preservedCheckedProjects]);
+
   const onSearch: ChangeEventHandler<HTMLInputElement> = (e) => {
     const { value } = e.target;
 
@@ -107,7 +116,7 @@ const ProjectsTable: FC<ProjectsTableProps> = ({
         </Table>
         {projects?.length === 0 && <EmptyState title="No projects found" icon={faProjectDiagram} />}
       </TableContainer>
-      <NumOfCheckedProjects checkedProjects={checkedProjects} />
+      <NumOfCheckedProjects checkedProjects={preservedCheckedProjects} />
     </div>
   );
 };

@@ -12,7 +12,7 @@ export type CheckedProjectsMap = Record<string, boolean>;
 
 export type ProjectsTableProps = {
   projects: ProjectProps[];
-  checkedProjects: CheckedProjectsMap;
+  preservedCheckedProjects: CheckedProjectsMap;
   setCheckedProjects: (value: CheckedProjectsMap) => void;
   searchValue: string;
   setSearchValue: (value: string) => void;

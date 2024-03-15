@@ -107,7 +107,7 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
                 <FormControl label="Projects" isError={Boolean(error)} errorText={error?.message}>
                   <ProjectsTable
                     projects={[...filteredProjects]}
-                    checkedProjects={field.value}
+                    preservedCheckedProjects={field.value}
                     setCheckedProjects={(newValue) => field.onChange(newValue)}
                     searchValue={searchValue}
                     setSearchValue={setSearchValue}
