@@ -151,33 +151,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/",
-    method: "POST",
-    schema: {
-      body: z.object({
-        workspaceName: z.string().trim(),
-        organizationId: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          workspace: projectWithEnv
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const workspace = await server.services.project.createProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        orgId: req.body.organizationId,
-        actorOrgId: req.permission.orgId,
-        workspaceName: req.body.workspaceName
-      });
-      return { workspace };
-    }
-  });
-
-  server.route({
     url: "/:workspaceId",
     method: "DELETE",
     schema: {
