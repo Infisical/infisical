@@ -146,8 +146,8 @@ export const AdditionalPrivilegeSection = ({
             key={id}
           >
             <div className="flex flex-grow flex-col">
-              <div className="mb-1 flex items-center text-lg font-medium  capitalize">
-                {privilegeName}
+              <div className="mb-1 flex items-center text-lg font-medium">
+                <span className="capitalize">{privilegeName}</span>
                 <Tag size="xs" className="ml-2">
                   {slug}
                 </Tag>

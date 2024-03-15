@@ -19,7 +19,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { Button, FormControl, Input } from "@app/components/v2";
+import guidGenerator from "@app/components/utilities/randomId";
+import { Button, FormControl, Input, Spinner } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import {
   useCreateIdentityProjectAdditionalPrivilege,
@@ -134,17 +135,16 @@ export const AdditionalPrivilegeForm = ({
   isIdentity
 }: Props) => {
   const { createNotification } = useNotificationContext();
-  const isNewRole = !privilegeId;
+  const isEdit = Boolean(privilegeId);
 
-  const { data: projectUserPrivilegeDetails } = useGetProjectUserPrivilegeDetails(
-    privilegeId && !isIdentity ? privilegeId : ""
-  );
+  const { data: projectUserPrivilegeDetails, isLoading: isProjectUserPrivilegeLoading } =
+    useGetProjectUserPrivilegeDetails(privilegeId && !isIdentity ? privilegeId : "");
 
-  const { data: identityProjectPrivilegeDetails } = useGetIdentityProjectPrivilegeDetails(
-    isIdentity && privilegeId ? privilegeId : ""
-  );
+  const { data: identityProjectPrivilegeDetails, isLoading: isIdentityProjectPrivilegeLoading } =
+    useGetIdentityProjectPrivilegeDetails(isIdentity && privilegeId ? privilegeId : "");
 
   const privileges = isIdentity ? identityProjectPrivilegeDetails : projectUserPrivilegeDetails;
+  const isLoading = isIdentity ? isIdentityProjectPrivilegeLoading : isProjectUserPrivilegeLoading;
 
   const {
     handleSubmit,
@@ -155,6 +155,9 @@ export const AdditionalPrivilegeForm = ({
     control
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      slug: `privilege-${guidGenerator().slice(0, 4).toLowerCase()}`
+    },
     values: privileges && {
       ...privileges,
       description: privileges.description || "",
@@ -194,7 +197,7 @@ export const AdditionalPrivilegeForm = ({
   };
 
   const handleFormSubmit = async (el: TFormSchema) => {
-    if (!isNewRole) {
+    if (isEdit) {
       await handleRoleUpdate(el);
       return;
     }
@@ -223,12 +226,20 @@ export const AdditionalPrivilegeForm = ({
     }
   };
 
+  if (isEdit && isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Spinner />
+      </div>
+    );
+  }
+
   return (
     <div>
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <div className="mb-2 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-mineshaft-100">
-            {isNewRole ? "New" : "Edit"} user additional privilege
+            {!isEdit ? "New" : "Edit"} user additional privilege
           </h1>
           <Button
             onClick={onGoBack}
@@ -255,7 +266,6 @@ export const AdditionalPrivilegeForm = ({
           <FormControl
             label="Slug"
             helperText="Slugs are used for API access"
-            isRequired
             isError={Boolean(errors?.slug)}
             errorText={errors?.slug?.message}
           >
@@ -306,7 +316,7 @@ export const AdditionalPrivilegeForm = ({
         </div>
         <div className="mt-12 flex items-center space-x-4">
           <Button type="submit" isDisabled={isSubmitting || !isDirty} isLoading={isSubmitting}>
-            {isNewRole ? "Grant Privilege" : "Save Changes"}
+            {!isEdit ? "Grant Privilege" : "Save Changes"}
           </Button>
           <Button onClick={onGoBack} variant="outline_bg">
             Cancel

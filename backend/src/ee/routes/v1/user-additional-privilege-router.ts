@@ -1,8 +1,11 @@
+import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 import { z } from "zod";
 
 import { ProjectUserAdditionalPrivilegeSchema } from "@app/db/schemas";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-types";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { zpStr } from "@app/lib/zod";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -14,7 +17,18 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       body: z.union([
         z.object({
           projectMembershipId: z.string(),
-          slug: z.string().max(60).trim(),
+          // to disallow empty string
+          slug: zpStr(
+            z
+              .string()
+              .max(60)
+              .trim()
+              .optional()
+              .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
+              .refine((v) => slugify(v) === v, {
+                message: "Slug must be a valid slug"
+              })
+          ),
           name: z.string().trim(),
           description: z.string().trim().optional(),
           permissions: z.any().array(),
@@ -22,7 +36,17 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         }),
         z.object({
           projectMembershipId: z.string(),
-          slug: z.string().max(60).trim(),
+          slug: zpStr(
+            z
+              .string()
+              .max(60)
+              .trim()
+              .optional()
+              .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
+              .refine((v) => slugify(v) === v, {
+                message: "Slug must be a valid slug"
+              })
+          ),
           name: z.string().trim(),
           description: z.string().trim().optional(),
           permissions: z.any().array(),
@@ -60,7 +84,13 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       }),
       body: z
         .object({
-          slug: z.string().max(60).trim(),
+          slug: z
+            .string()
+            .max(60)
+            .trim()
+            .refine((v) => slugify(v) === v, {
+              message: "Slug must be a valid slug"
+            }),
           name: z.string().trim(),
           description: z.string().trim().optional(),
           permissions: z.any().array(),
