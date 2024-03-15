@@ -12,7 +12,7 @@ import useFilteredProjects from "./hooks/useFilteredProjects";
 import useInitialCheckedProjects from "./hooks/useInitialCheckedProjects";
 import ProjectsTable from "./projectsTable/ProjectsTable";
 import addProjectFormSchema from "./utils/addProjectFormSchema";
-import { CheckboxKeys, CheckedProjectsMap, Props } from "./types";
+import { CheckboxKeys, CheckedProjectsMap, DataProps, Props } from "./types";
 
 type TAddProjectForm = yup.InferType<typeof addProjectFormSchema>;
 
@@ -20,8 +20,10 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
   const { createNotification } = useNotificationContext();
   const { currentOrg } = useOrganization();
   const { workspaces } = useWorkspace();
-  const email = popUp.addProject?.data?.email || "";
-  const userProjects = useMemo(() => popUp.addProject?.data?.projects || [], [popUp.addProject]);
+  const data = popUp.addProject?.data as DataProps;
+
+  const email = data?.email || "";
+  const userProjects = useMemo(() => data?.projects || [], [popUp.addProject]);
 
   const { data: serverDetails } = useFetchServerStatus();
 

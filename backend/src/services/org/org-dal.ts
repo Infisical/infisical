@@ -126,11 +126,15 @@ export const orgDALFactory = (db: TDbClient) => {
           `${TableName.UserEncryptionKey}.publicKey`
         );
 
-      return members.map(({ email, firstName, lastName, userId, publicKey, projects, ...data }) => ({
-        ...data,
-        projects: projects || [],
-        user: { email, firstName, lastName, id: userId, publicKey }
-      }));
+      const users = members.map(({ email, firstName, lastName, userId, publicKey, projects, ...data }) => {
+        return {
+          ...data,
+          projects: projects || [],
+          user: { email, firstName, lastName, id: userId, publicKey }
+        };
+      });
+
+      return users;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org members" });
     }

@@ -8,6 +8,10 @@ export enum CheckboxKeys {
   ALL = "all"
 }
 
+export type DataProps = {
+  email: string;
+  projects: string[];
+};
 export type CheckedProjectsMap = Record<string, boolean>;
 
 export type ProjectsTableProps = {
