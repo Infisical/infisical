@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { ProjectProps } from "@app/hooks/api/users/types";
 
-import { UseFilteredProjectsProps } from "./types";
+import { UseFilteredProjectsProps } from "../types";
 
 const useFilteredProjects = ({ userProjects, workspaces }: UseFilteredProjectsProps) => {
   const [filteredProjects, setFilteredProjects] = useState<Array<ProjectProps>>([]);
@@ -20,7 +20,8 @@ const useFilteredProjects = ({ userProjects, workspaces }: UseFilteredProjectsPr
   return {
     filteredProjects,
     searchValue,
-    setSearchValue
+    setSearchValue,
+    setFilteredProjects
   };
 };
 

@@ -20,6 +20,7 @@ import {
   ProjectsTableProps
 } from "../types";
 import monitorCheckAll from "./monitorCheckAll";
+import NumOfCheckedProjects from "./NumOfCheckedProjects";
 import SearchProjects from "./SearchProjects";
 
 const ProjectsTable: FC<ProjectsTableProps> = ({
@@ -106,6 +107,7 @@ const ProjectsTable: FC<ProjectsTableProps> = ({
         </Table>
         {projects?.length === 0 && <EmptyState title="No projects found" icon={faProjectDiagram} />}
       </TableContainer>
+      <NumOfCheckedProjects checkedProjects={checkedProjects} />
     </div>
   );
 };

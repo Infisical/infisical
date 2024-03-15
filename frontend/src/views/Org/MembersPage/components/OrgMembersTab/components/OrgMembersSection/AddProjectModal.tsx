@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -8,11 +8,11 @@ import { Button, FormControl, Modal, ModalContent } from "@app/components/v2";
 import { useOrganization, useWorkspace } from "@app/context";
 import { useAddWorkspaceProjectsToUserNonE2EE, useFetchServerStatus } from "@app/hooks/api";
 
+import useFilteredProjects from "./hooks/useFilteredProjects";
+import useInitialCheckedProjects from "./hooks/useInitialCheckedProjects";
 import ProjectsTable from "./projectsTable/ProjectsTable";
 import addProjectFormSchema from "./utils/addProjectFormSchema";
-import getInitialCheckedProjects from "./utils/getInitialCheckedProjects";
 import { CheckboxKeys, CheckedProjectsMap, Props } from "./types";
-import useFilteredProjects from "./useFilteredProjects";
 
 type TAddProjectForm = yup.InferType<typeof addProjectFormSchema>;
 
@@ -22,26 +22,32 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
   const { workspaces } = useWorkspace();
   const email = popUp.addProject?.data?.email || "";
   const userProjects = useMemo(() => popUp.addProject?.data?.projects || [], [popUp.addProject]);
-  const [formKey, setFormKey] = useState(1);
 
   const { data: serverDetails } = useFetchServerStatus();
 
-  const { filteredProjects, searchValue, setSearchValue } = useFilteredProjects({
-    userProjects,
-    workspaces
-  });
   const { mutateAsync: addProjectsToUserAsync } = useAddWorkspaceProjectsToUserNonE2EE();
 
   const {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting }
+    formState: { isSubmitting },
+    setValue,
+    getValues
   } = useForm<TAddProjectForm>({ resolver: yupResolver(addProjectFormSchema) });
+
+  const { filteredProjects, searchValue, setSearchValue, setFilteredProjects } =
+    useFilteredProjects({
+      userProjects,
+      workspaces
+    });
+
+  useInitialCheckedProjects({ filteredProjects, getValues, workspaces, setValue });
 
   const resetForm = () => {
     reset();
-    setFormKey(formKey + 1);
+    setSearchValue("");
+    setFilteredProjects([]);
   };
 
   const onAddProject = async ({ projects }: { projects: CheckedProjectsMap }) => {
@@ -87,7 +93,6 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
         handlePopUpToggle("addProject", isOpen);
         resetForm();
       }}
-      key={formKey}
     >
       <ModalContent
         title={`Add projects to user ${email}`}
@@ -97,7 +102,6 @@ export const AddProjectModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: 
           <Controller
             control={control}
             name="projects"
-            defaultValue={getInitialCheckedProjects([...filteredProjects])}
             render={({ field, fieldState: { error } }) => {
               return (
                 <FormControl label="Projects" isError={Boolean(error)} errorText={error?.message}>
