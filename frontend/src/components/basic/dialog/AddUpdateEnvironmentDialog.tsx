@@ -17,6 +17,7 @@ type Props = {
 };
 
 // TODO: Migrate to better form management and validation. Preferable react-hook-form + yup
+// We should remove this?
 /**
  * The dialog modal for when the user wants to create a new workspace
  * @param {*} param0

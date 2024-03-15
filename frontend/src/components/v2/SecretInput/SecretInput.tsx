@@ -115,7 +115,6 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     });
 
     useEffect(() => {
-
       let currentEnvironment = propEnvironment;
       let currentSecretPath = propSecretPath || "/";
 
@@ -134,7 +133,13 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         currentSecretPath = `/${folderPaths?.join("/")}` || "/";
       }
 
-      if (!currentEnvironment || !decryptFileKey || !currentSecretPath || !currentWorkspace || !referenceKey) {
+      if (
+        !currentEnvironment ||
+        !decryptFileKey ||
+        !currentSecretPath ||
+        !currentWorkspace ||
+        !referenceKey
+      ) {
         // this need to clean up?
         setListReference(currentListReference);
         return;
@@ -142,8 +147,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       setSecretPath(currentSecretPath);
       setEnvironment(currentEnvironment);
       setShowReferencePopup(true);
-      
-    }, [referenceKey])
+    }, [referenceKey]);
 
     useEffect(() => {
       const currentListReference: ReferenceType[] = [];
@@ -195,7 +199,6 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         setLastSelectionIndex(pos);
         setReferenceKey(match?.[2]);
       }
-
       setShowReferencePopup(!!match);
     }
 
@@ -224,11 +227,10 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         setValue(newValue);
         // TODO: there should be a better way to do
         onChange?.({ target: { value: newValue } } as any);
+        setCaretPos(currCaretPos);
 
         if (event.currentTarget) {
-          setCaretPos(currCaretPos);
           setTimeout(() => {
-            // on next tick
             referencePopup(newValue, currCaretPos);
           }, 200);
 
@@ -277,25 +279,28 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       ];
 
       let oldReferenceStr = oldReference.slice(2, -1);
+      let currentPath = type === "environment" ? slug! : name;
+      currentPath = currentPath.replace(/\./g, "\\.");
 
       let replaceReference = "";
       let offset = 3;
       switch (type) {
         case "folder":
-          replaceReference = `${oldReferenceStr}${name}.`;
+          replaceReference = `${oldReferenceStr}${currentPath}.`;
           offset -= 1;
           break;
         case "secret": {
           if (oldReferenceStr.indexOf(".") === -1) oldReferenceStr = "";
-          replaceReference = `${oldReferenceStr}${name}`;
+          replaceReference = `${oldReferenceStr}${currentPath}`;
           break;
         }
         case "environment":
-          replaceReference = `${slug}.`;
+          replaceReference = `${currentPath}.`;
           offset -= 1;
           break;
         default:
       }
+      replaceReference = replaceReference.replace(/[//]/g, "");
       newValue = `${start}$\{${replaceReference}}${end}`;
       setValue(newValue);
       // TODO: there should be a better way to do

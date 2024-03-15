@@ -16,7 +16,7 @@ type Props = {
 
 const schema = yup.object({
   environmentName: yup.string().label("Environment Name").required(),
-  environmentSlug: yup.string().label("Environment Slug").required()
+  environmentSlug: yup.string().label("Environment Slug").matches(/^[^./]*$/g, { message: "Invalid [.] or [/] not allowed"}).required()
 });
 
 export type FormData = yup.InferType<typeof schema>;
