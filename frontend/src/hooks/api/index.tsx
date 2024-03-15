@@ -12,6 +12,7 @@ export * from "./integrations";
 export * from "./keys";
 export * from "./ldapConfig";
 export * from "./organization";
+export * from "./projectUserAdditionalPrivilege";
 export * from "./roles";
 export * from "./scim";
 export * from "./secretApproval";

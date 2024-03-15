@@ -76,6 +76,18 @@ export type TWorkspaceUser = {
   };
   inviteEmail: string;
   organization: string;
+  additionalPrivileges: {
+    id: string;
+    name: string;
+    description: string | null | undefined;
+    slug: string;
+    temporaryRange: string | null | undefined;
+    temporaryMode: string | null | undefined;
+    temporaryAccessEndTime: string | null | undefined;
+    temporaryAccessStartTime: string | null | undefined;
+    isTemporary: boolean;
+    createdAt: string;
+  }[];
   roles: {
     id: string;
     role: "owner" | "admin" | "member" | "no-access" | "custom";
