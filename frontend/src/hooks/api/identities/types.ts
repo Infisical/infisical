@@ -41,6 +41,18 @@ export type IdentityMembership = {
     temporaryAccessStartTime: string | null;
     temporaryAccessEndTime: string | null;
   }[];
+  additionalPrivileges: {
+    id: string;
+    name: string;
+    description: string | null | undefined;
+    slug: string;
+    temporaryRange: string | null | undefined;
+    temporaryMode: string | null | undefined;
+    temporaryAccessEndTime: string | null | undefined;
+    temporaryAccessStartTime: string | null | undefined;
+    isTemporary: boolean;
+    createdAt: string;
+  }[];
   createdAt: string;
   updatedAt: string;
 };

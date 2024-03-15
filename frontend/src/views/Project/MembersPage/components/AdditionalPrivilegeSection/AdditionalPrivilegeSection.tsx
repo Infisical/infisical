@@ -19,7 +19,10 @@ import {
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useDeleteProjectUserAdditionalPrivilege } from "@app/hooks/api";
+import {
+  useDeleteIdentityProjectAdditionalPrivilege,
+  useDeleteProjectUserAdditionalPrivilege
+} from "@app/hooks/api";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 
 import { AdditionalPrivilegeForm } from "./AdditionalPrivilegeForm";
@@ -28,40 +31,51 @@ import { AdditionalPrivilegeTemporaryAccess } from "./AdditionalPrivilegeTempora
 type Props = {
   onGoBack: VoidFunction;
   name: string;
-  projectMembershipId: string;
+  isIdentity?: boolean;
+  // isIdentity id - identity id else projectMembershipId
+  actorId: string;
   privileges: TWorkspaceUser["additionalPrivileges"];
 };
 
 export const AdditionalPrivilegeSection = ({
   onGoBack,
   privileges = [],
-  projectMembershipId,
-  name
+  actorId,
+  name,
+  isIdentity
 }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "modifyPrivilege",
     "deletePrivilege"
   ] as const);
   const { createNotification } = useNotificationContext();
-  const deleteProjectUserAdditionalPrivilege = useDeleteProjectUserAdditionalPrivilege();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
+  const deleteProjectUserAdditionalPrivilege = useDeleteProjectUserAdditionalPrivilege();
+  const deleteProjectIdentityAdditionalPrivilege = useDeleteIdentityProjectAdditionalPrivilege();
 
   const onPrivilegeDelete = async (privilegeId: string) => {
     try {
-      await deleteProjectUserAdditionalPrivilege.mutateAsync({
-        privilegeId,
-        workspaceId
-      });
+      if (isIdentity) {
+        await deleteProjectIdentityAdditionalPrivilege.mutateAsync({
+          privilegeId,
+          projectId: workspaceId
+        });
+      } else {
+        await deleteProjectUserAdditionalPrivilege.mutateAsync({
+          privilegeId,
+          workspaceId
+        });
+      }
       handlePopUpClose("deletePrivilege");
       createNotification({
         type: "success",
-        text: "Successfully removed user privilege"
+        text: "Successfully removed privilege"
       });
     } catch (err) {
       createNotification({
         type: "error",
-        text: "Failed to delete user privilege"
+        text: "Failed to delete privilege"
       });
     }
   };
@@ -83,7 +97,8 @@ export const AdditionalPrivilegeSection = ({
           onGoBack={() => handlePopUpClose("modifyPrivilege")}
           privilegeId={privilegeDetails?.id}
           workspaceId={workspaceId}
-          actorId={projectMembershipId}
+          isIdentity={isIdentity}
+          actorId={actorId}
         />
       </motion.div>
     );
@@ -119,7 +134,11 @@ export const AdditionalPrivilegeSection = ({
       </div>
       <div className="mt-6 flex flex-col space-y-4">
         {privileges.length === 0 && (
-          <EmptyState title="User has no additional privileges" iconSize="3x" icon={faUserShield} />
+          <EmptyState
+            title={`${isIdentity ? "Machine identity" : "User"} has no additional privileges`}
+            iconSize="3x"
+            icon={faUserShield}
+          />
         )}
         {privileges.map(({ id, name: privilegeName, description, slug, ...dto }) => (
           <div
@@ -137,6 +156,7 @@ export const AdditionalPrivilegeSection = ({
             </div>
             <div className="flex items-center space-x-4">
               <AdditionalPrivilegeTemporaryAccess
+                isIdentity={isIdentity}
                 privilegeId={id}
                 workspaceId={workspaceId}
                 temporaryConfig={!dto.isTemporary ? { isTemporary: false } : { ...dto }}

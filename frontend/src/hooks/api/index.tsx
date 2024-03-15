@@ -6,6 +6,7 @@ export * from "./bots";
 export * from "./dynamicSecret";
 export * from "./dynamicSecretLease";
 export * from "./identities";
+export * from "./identityProjectAdditionalPrivilege";
 export * from "./incidentContacts";
 export * from "./integrationAuth";
 export * from "./integrations";

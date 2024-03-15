@@ -18,7 +18,11 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
-import { useUpdateProjectUserAdditionalPrivilege } from "@app/hooks/api";
+import {
+  useUpdateIdentityProjectAdditionalPrivilege,
+  useUpdateProjectUserAdditionalPrivilege
+} from "@app/hooks/api";
+import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/identityProjectAdditionalPrivilege/types";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/projectUserAdditionalPrivilege/types";
 
 const temporaryRoleFormSchema = z.object({
@@ -30,6 +34,7 @@ type TTemporaryRoleFormSchema = z.infer<typeof temporaryRoleFormSchema>;
 type TTemporaryRoleFormProps = {
   privilegeId: string;
   workspaceId: string;
+  isIdentity?: boolean;
   temporaryConfig?: {
     isTemporary?: boolean;
     temporaryAccessEndTime?: string | null;
@@ -41,7 +46,8 @@ type TTemporaryRoleFormProps = {
 export const AdditionalPrivilegeTemporaryAccess = ({
   temporaryConfig: defaultValues = {},
   workspaceId,
-  privilegeId
+  privilegeId,
+  isIdentity
 }: TTemporaryRoleFormProps) => {
   const { popUp, handlePopUpToggle } = usePopUp(["setTempRole"] as const);
   const { createNotification } = useNotificationContext();
@@ -56,17 +62,29 @@ export const AdditionalPrivilegeTemporaryAccess = ({
     isTemporaryFieldValue && new Date() > new Date(defaultValues.temporaryAccessEndTime || "");
 
   const updateProjectUserAdditionalPrivilege = useUpdateProjectUserAdditionalPrivilege();
+  const updateProjectIdentityAdditionalPrivilege = useUpdateIdentityProjectAdditionalPrivilege();
 
   const handleGrantTemporaryAccess = async (el: TTemporaryRoleFormSchema) => {
     try {
-      await updateProjectUserAdditionalPrivilege.mutateAsync({
-        privilegeId: privilegeId as string,
-        workspaceId,
-        isTemporary: true,
-        temporaryRange: el.temporaryRange,
-        temporaryAccessStartTime: new Date().toISOString(),
-        temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative
-      });
+      if (isIdentity) {
+        await updateProjectIdentityAdditionalPrivilege.mutateAsync({
+          privilegeId: privilegeId as string,
+          projectId: workspaceId,
+          isTemporary: true,
+          temporaryRange: el.temporaryRange,
+          temporaryAccessStartTime: new Date().toISOString(),
+          temporaryMode: IdentityProjectAdditionalPrivilegeTemporaryMode.Relative
+        });
+      } else {
+        await updateProjectUserAdditionalPrivilege.mutateAsync({
+          privilegeId: privilegeId as string,
+          workspaceId,
+          isTemporary: true,
+          temporaryRange: el.temporaryRange,
+          temporaryAccessStartTime: new Date().toISOString(),
+          temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative
+        });
+      }
       createNotification({ type: "success", text: "Successfully updated access" });
       handlePopUpToggle("setTempRole");
     } catch (err) {
@@ -77,11 +95,19 @@ export const AdditionalPrivilegeTemporaryAccess = ({
 
   const handleRevokeTemporaryAccess = async () => {
     try {
-      await updateProjectUserAdditionalPrivilege.mutateAsync({
-        privilegeId: privilegeId as string,
-        workspaceId,
-        isTemporary: false
-      });
+      if (isIdentity) {
+        await updateProjectIdentityAdditionalPrivilege.mutateAsync({
+          privilegeId: privilegeId as string,
+          projectId: workspaceId,
+          isTemporary: false
+        });
+      } else {
+        await updateProjectUserAdditionalPrivilege.mutateAsync({
+          privilegeId: privilegeId as string,
+          workspaceId,
+          isTemporary: false
+        });
+      }
       createNotification({ type: "success", text: "Successfully updated access" });
       handlePopUpToggle("setTempRole");
     } catch (err) {

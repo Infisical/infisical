@@ -215,7 +215,7 @@ export const MemberListTab = () => {
           onGoBack={() => handlePopUpClose("additionalPrivilege")}
           privileges={members?.[privilegeDetails.index]?.additionalPrivileges || []}
           name={privilegeDetails.name}
-          projectMembershipId={privilegeDetails.projectMembershipId}
+          actorId={privilegeDetails.projectMembershipId}
         />
       </motion.div>
     );

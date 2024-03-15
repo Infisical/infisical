@@ -22,8 +22,11 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { Button, FormControl, Input } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import {
+  useCreateIdentityProjectAdditionalPrivilege,
   useCreateProjectUserAdditionalPrivilege,
+  useGetIdentityProjectPrivilegeDetails,
   useGetProjectUserPrivilegeDetails,
+  useUpdateIdentityProjectAdditionalPrivilege,
   useUpdateProjectUserAdditionalPrivilege
 } from "@app/hooks/api";
 
@@ -32,7 +35,6 @@ import {
   formRolePermission2API,
   formSchema,
   rolePermission2Form,
-  // rolePermission2Form,
   TFormSchema
 } from "../ProjectRoleListTab/components/ProjectRoleModifySection/ProjectRoleModifySection.utils";
 import { SecretRollbackPermission } from "../ProjectRoleListTab/components/ProjectRoleModifySection/SecretRollbackPermission";
@@ -124,13 +126,25 @@ type Props = {
   actorId: string;
 };
 
-export const AdditionalPrivilegeForm = ({ onGoBack, privilegeId, actorId, workspaceId }: Props) => {
+export const AdditionalPrivilegeForm = ({
+  onGoBack,
+  privilegeId,
+  actorId,
+  workspaceId,
+  isIdentity
+}: Props) => {
   const { createNotification } = useNotificationContext();
   const isNewRole = !privilegeId;
 
   const { data: projectUserPrivilegeDetails } = useGetProjectUserPrivilegeDetails(
-    privilegeId || ""
+    privilegeId && !isIdentity ? privilegeId : ""
   );
+
+  const { data: identityProjectPrivilegeDetails } = useGetIdentityProjectPrivilegeDetails(
+    isIdentity && privilegeId ? privilegeId : ""
+  );
+
+  const privileges = isIdentity ? identityProjectPrivilegeDetails : projectUserPrivilegeDetails;
 
   const {
     handleSubmit,
@@ -141,24 +155,36 @@ export const AdditionalPrivilegeForm = ({ onGoBack, privilegeId, actorId, worksp
     control
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    values: projectUserPrivilegeDetails && {
-      ...projectUserPrivilegeDetails,
-      description: projectUserPrivilegeDetails.description || "",
-      permissions: rolePermission2Form(projectUserPrivilegeDetails.permissions)
+    values: privileges && {
+      ...privileges,
+      description: privileges.description || "",
+      permissions: rolePermission2Form(privileges.permissions)
     }
   });
 
   const createProjectUserAdditionalPrivilege = useCreateProjectUserAdditionalPrivilege();
   const updateProjectUserAdditionalPrivilege = useUpdateProjectUserAdditionalPrivilege();
 
+  const createIdentityProjectAdditionalPrivilege = useCreateIdentityProjectAdditionalPrivilege();
+  const updateIdentityProjectAdditionalPrivilege = useUpdateIdentityProjectAdditionalPrivilege();
+
   const handleRoleUpdate = async (el: TFormSchema) => {
     try {
-      await updateProjectUserAdditionalPrivilege.mutateAsync({
-        ...el,
-        permissions: formRolePermission2API(el.permissions),
-        privilegeId: privilegeId as string,
-        workspaceId
-      });
+      if (isIdentity) {
+        await updateIdentityProjectAdditionalPrivilege.mutateAsync({
+          ...el,
+          permissions: formRolePermission2API(el.permissions),
+          privilegeId: privilegeId as string,
+          projectId: workspaceId
+        });
+      } else {
+        await updateProjectUserAdditionalPrivilege.mutateAsync({
+          ...el,
+          permissions: formRolePermission2API(el.permissions),
+          privilegeId: privilegeId as string,
+          workspaceId
+        });
+      }
       createNotification({ type: "success", text: "Successfully update privilege" });
       onGoBack();
     } catch (err) {
@@ -174,12 +200,21 @@ export const AdditionalPrivilegeForm = ({ onGoBack, privilegeId, actorId, worksp
     }
 
     try {
-      await createProjectUserAdditionalPrivilege.mutateAsync({
-        ...el,
-        permissions: formRolePermission2API(el.permissions),
-        projectMembershipId: actorId,
-        workspaceId
-      });
+      if (isIdentity) {
+        await createIdentityProjectAdditionalPrivilege.mutateAsync({
+          ...el,
+          permissions: formRolePermission2API(el.permissions),
+          identityId: actorId,
+          projectId: workspaceId
+        });
+      } else {
+        await createProjectUserAdditionalPrivilege.mutateAsync({
+          ...el,
+          permissions: formRolePermission2API(el.permissions),
+          projectMembershipId: actorId,
+          workspaceId
+        });
+      }
       createNotification({ type: "success", text: "Created new privilege" });
       onGoBack();
     } catch (err) {
