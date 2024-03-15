@@ -1,10 +1,13 @@
-import Link from "next/link";
-import { faArrowUpRightFromSquare, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+// import Link from "next/link";
+// import { faArrowUpRightFromSquare, faPlus } from "@fortawesome/free-solid-svg-icons";
+// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+// import { ProjectPermissionCan } from "@app/components/permissions";
+import { 
+  // Button, 
+  DeleteActionModal 
+} from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { useDeleteIdentityFromWorkspace } from "@app/hooks/api";
@@ -55,9 +58,10 @@ export const IdentitySection = withProjectPermission(
 
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
-          <div className="flex w-full justify-end pr-4">
+        <div className="py-4">
+          <p className="mb-2 text-md text-mineshaft-100">Machine Identities</p>
+          <p className="text-sm text-mineshaft-300">Manage which apps/services have access to this project</p>
+          {/* <div className="flex w-full justify-end pr-4">
             <Link href="https://infisical.com/docs/documentation/platform/identities/overview">
               <span className="w-max cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
                 Documentation{" "}
@@ -67,8 +71,8 @@ export const IdentitySection = withProjectPermission(
                 />
               </span>
             </Link>
-          </div>
-          <ProjectPermissionCan
+          </div> */}
+          {/* <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
             a={ProjectPermissionSub.Identity}
           >
@@ -83,7 +87,7 @@ export const IdentitySection = withProjectPermission(
                 Add identity
               </Button>
             )}
-          </ProjectPermissionCan>
+          </ProjectPermissionCan> */}
         </div>
         <IdentityTable handlePopUpOpen={handlePopUpOpen} />
         <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

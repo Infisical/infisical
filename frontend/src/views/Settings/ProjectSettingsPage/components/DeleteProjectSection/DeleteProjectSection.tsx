@@ -54,22 +54,25 @@ export const DeleteProjectSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-4 text-xl font-semibold text-mineshaft-100">Danger Zone</p>
-      <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Workspace}>
-        {(isAllowed) => (
-          <Button
-            isLoading={isDeleting}
-            isDisabled={!isAllowed || isDeleting}
-            colorSchema="danger"
-            variant="outline_bg"
-            type="submit"
-            onClick={() => handlePopUpOpen("deleteWorkspace")}
-          >
-            {`Delete ${currentWorkspace?.name}`}
-          </Button>
-        )}
-      </ProjectPermissionCan>
+    <>
+      <hr className="border-mineshaft-600" />
+      <div className="py-4">
+        <p className="mb-4 text-md text-mineshaft-100">Danger Zone</p>
+        <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Workspace}>
+          {(isAllowed) => (
+            <Button
+              isLoading={isDeleting}
+              isDisabled={!isAllowed || isDeleting}
+              colorSchema="danger"
+              variant="outline_bg"
+              type="submit"
+              onClick={() => handlePopUpOpen("deleteWorkspace")}
+            >
+              {`Delete ${currentWorkspace?.name}`}
+            </Button>
+          )}
+        </ProjectPermissionCan>
+      </div>
       <DeleteActionModal
         isOpen={popUp.deleteWorkspace.isOpen}
         title="Are you sure want to delete this project?"
@@ -79,6 +82,6 @@ export const DeleteProjectSection = () => {
         buttonText="Delete Project"
         onDeleteApproved={handleDeleteWorkspaceSubmit}
       />
-    </div>
+    </>
   );
 };

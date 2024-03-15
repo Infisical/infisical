@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { faMagnifyingGlass, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faPlus,faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -38,7 +38,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeMember", "upgradePlan"]>,
+    popUpName: keyof UsePopUpState<["addMember", "removeMember", "upgradePlan"]>,
     data?: {
       orgMembershipId?: string;
       username?: string;
@@ -65,6 +65,28 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
 
   const { mutateAsync: addUserMutateAsync } = useAddUserToOrg();
   const { mutateAsync: updateUserOrgRole } = useUpdateOrgUserRole();
+
+  const isMoreUsersNotAllowed = subscription?.memberLimit
+    ? subscription.membersUsed >= subscription.memberLimit
+    : false;
+  
+  const handleAddMemberModal = () => {
+    if (currentOrg?.authEnforced) {
+      createNotification({
+        text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
+        type: "error"
+      });
+      return;
+    }
+
+    if (isMoreUsersNotAllowed) {
+      handlePopUpOpen("upgradePlan", {
+        description: "You can add more members if you upgrade your Infisical plan."
+      });
+    } else {
+      handlePopUpOpen("addMember");
+    }
+  };
 
   const onRoleChange = async (membershipId: string, role: string) => {
     if (!currentOrg?.id) return;
@@ -152,12 +174,28 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
 
   return (
     <div>
-      <Input
-        value={searchMemberFilter}
-        onChange={(e) => setSearchMemberFilter(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search members..."
-      />
+      <div className="flex">
+        <Input
+          value={searchMemberFilter}
+          onChange={(e) => setSearchMemberFilter(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          placeholder="Search members..."
+        />
+        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+          {(isAllowed) => (
+            <Button
+              colorSchema="secondary"
+              type="submit"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => handleAddMemberModal()}
+              isDisabled={!isAllowed}
+              className="ml-4"
+            >
+              Add member
+            </Button>
+          )}
+        </OrgPermissionCan>
+      </div>
       <TableContainer className="mt-4">
         <Table>
           <THead>

@@ -7,7 +7,7 @@ import { SecretTagsSection } from "../SecretTagsSection";
 
 export const ProjectGeneralTab = () => {
   return (
-    <div>
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
       <ProjectNameChangeSection />
       <EnvironmentSection />
       <SecretTagsSection />

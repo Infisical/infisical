@@ -186,28 +186,32 @@ export const MemberListTab = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Members</p>
+      <div className="py-4">
+        <h2 className="mb-2 text-md text-mineshaft-100">Members</h2>
+        <p className="text-sm text-mineshaft-300">Manage who has access to this project</p>
+      </div>
+      <div className="flex">
+        <Input
+          value={searchMemberFilter}
+          onChange={(e) => setSearchMemberFilter(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          placeholder="Search members..."
+        />
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Member}>
           {(isAllowed) => (
             <Button
-              colorSchema="primary"
+              colorSchema="secondary"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => handlePopUpOpen("addMember")}
               isDisabled={!isAllowed}
+              className="ml-4"
             >
               Add Member
             </Button>
           )}
         </ProjectPermissionCan>
       </div>
-      <Input
-        value={searchMemberFilter}
-        onChange={(e) => setSearchMemberFilter(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search members..."
-      />
       <div className="mt-4">
         <TableContainer>
           <Table>

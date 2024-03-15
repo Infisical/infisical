@@ -1,9 +1,10 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { useState } from "react";
+import { faMagnifyingGlass,faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { PermissionDeniedBanner, ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal, UpgradePlanModal } from "@app/components/v2";
+import { Button, DeleteActionModal, Input, UpgradePlanModal } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -18,11 +19,15 @@ import { AddEnvironmentModal } from "./AddEnvironmentModal";
 import { EnvironmentTable } from "./EnvironmentTable";
 import { UpdateEnvironmentModal } from "./UpdateEnvironmentModal";
 
+// TODO: resolve strange subtitle spacing / design
+// TODO: resolve filtering stuff
+
 export const EnvironmentSection = () => {
   const { createNotification } = useNotificationContext();
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
   const { permission } = useProjectPermission();
+  const [searchEnv, setSearchEnv] = useState("");
 
   const deleteWsEnvironment = useDeleteWsEnvironment();
 
@@ -63,14 +68,21 @@ export const EnvironmentSection = () => {
   };
 
   return (
-    <div
-      id="environments"
-      className="mb-6 scroll-m-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-    >
-      <div className="mb-8 flex justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Environments</p>
-        <div>
-          <ProjectPermissionCan
+    <div id="environments">
+      <hr className="border-mineshaft-600" />
+      <p className="pt-4 text-md text-mineshaft-100">Environments</p>
+      <p className="pt-4 text-sm text-mineshaft-300">
+        Choose which environments will show up in your dashboard like development, staging,
+        production
+      </p>
+      <div className="flex pt-4">
+        <Input
+          value={searchEnv}
+          onChange={(e) => setSearchEnv(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          placeholder="Search environments by name/slug..."
+        />
+        <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
             a={ProjectPermissionSub.Environments}
           >
@@ -86,22 +98,20 @@ export const EnvironmentSection = () => {
                   }
                 }}
                 isDisabled={!isAllowed}
+                className="ml-4"
               >
-                Create environment
+                Create
               </Button>
             )}
           </ProjectPermissionCan>
-        </div>
       </div>
-      <p className="mb-8 text-gray-400">
-        Choose which environments will show up in your dashboard like development, staging,
-        production
-      </p>
-      {permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments) ? (
-        <EnvironmentTable handlePopUpOpen={handlePopUpOpen} />
-      ) : (
-        <PermissionDeniedBanner />
-      )}
+      <div className="py-4">
+        {permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments) ? (
+          <EnvironmentTable handlePopUpOpen={handlePopUpOpen} />
+        ) : (
+          <PermissionDeniedBanner />
+        )}
+      </div>
       <AddEnvironmentModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}

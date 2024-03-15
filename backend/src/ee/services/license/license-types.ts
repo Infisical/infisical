@@ -39,7 +39,7 @@ export type TFeatureSet = {
   customAlerts: false;
   auditLogs: false;
   auditLogsRetentionDays: 0;
-  samlSSO: false;
+  samlSSO: true;
   scim: false;
   ldap: false;
   status: null;

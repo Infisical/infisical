@@ -267,7 +267,7 @@
       "auto-generated": "Este é o identificador exclusivo - gerado automaticamente - do seu projeto. Não pode ser alterado.",
       "docs": "Documentação do Infisical",
       "auto-capitalization": "Converter em caixa alta automaticamente",
-      "auto-capitalization-description": "Por padrão, Infisical converte automaticamente as chaves em caixa alta. Se você quiser desativar essa funcionalidade, pode fazê-lo aqui."
+      "auto-capitalization-description": "Infisical converte automaticamente as chaves em caixa alta. Se você quiser desativar essa funcionalidade, pode fazê-lo aqui."
     }
   },
   "signup": {

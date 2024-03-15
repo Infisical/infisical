@@ -9,10 +9,15 @@ import { Button, FormControl, Input } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useRenameWorkspace } from "@app/hooks/api";
 
-import { CopyButton } from "./CopyButton";
+// import { CopyButton } from "./CopyButton";
 
 const formSchema = yup.object({
   name: yup.string().required().label("Project Name").max(64, "Too long, maximum length is 64 characters"),
+  slug: yup
+      .string()
+      .matches(/^[a-zA-Z0-9-]+$/, "Name must only contain alphanumeric characters or hyphens")
+      .required()
+      .label("Project Slug")
 });
 
 type FormData = yup.InferType<typeof formSchema>;
@@ -27,7 +32,8 @@ export const ProjectNameChangeSection = () => {
   useEffect(() => {
     if (currentWorkspace) {
       reset({
-        name: currentWorkspace.name
+        name: currentWorkspace.name,
+        slug: currentWorkspace.slug
       });
     }
   }, [currentWorkspace]);
@@ -55,11 +61,47 @@ export const ProjectNameChangeSection = () => {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onFormSubmit)}
-      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-    >
-      <div className="justify-betweens flex">
+    <form onSubmit={handleSubmit(onFormSubmit)} className="py-4">
+      <div>
+        <h2 className="mb-2 text-md text-mineshaft-100">Project Name</h2>
+        <Controller
+          defaultValue=""
+          render={({ field, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message} className="max-w-md">
+              <Input placeholder="Project Echo" {...field} />
+            </FormControl>
+          )}
+          control={control}
+          name="name"
+        />
+      </div>
+      {/* <div className="py-4">
+        <h2 className="mb-2 text-md text-mineshaft-100">Project Slug</h2>
+        <Controller
+          defaultValue=""
+          render={({ field, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message} className="max-w-md">
+              <Input placeholder="echo" {...field} />
+            </FormControl>
+          )}
+          control={control}
+          name="slug"
+        />
+      </div> */}
+      {/* <div className="py-4">
+        <h2 className="mb-2 text-md text-mineshaft-100">Project ID</h2>
+        <Controller
+          defaultValue=""
+          render={({ field, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message} className="max-w-md">
+              <Input placeholder="echo" {...field} />
+            </FormControl>
+          )}
+          control={control}
+          name="slug"
+        />
+      </div> */}
+      {/* <div className="justify-betweens flex">
         <h2 className="mb-8 flex-1 text-xl font-semibold text-mineshaft-100">Project Name</h2>
         <div className="space-x-2">
           <CopyButton
@@ -77,8 +119,8 @@ export const ProjectNameChangeSection = () => {
             Copy Project ID
           </CopyButton>
         </div>
-      </div>
-      <div className="max-w-md">
+      </div> */}
+      {/* <div className="max-w-md">
         <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Workspace}>
           {(isAllowed) => (
             <Controller
@@ -98,7 +140,7 @@ export const ProjectNameChangeSection = () => {
             />
           )}
         </ProjectPermissionCan>
-      </div>
+      </div> */}
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Workspace}>
         {(isAllowed) => (
           <Button

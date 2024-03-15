@@ -36,25 +36,28 @@ export const AutoCapitalizationSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-3 text-xl font-semibold">{t("settings.project.auto-capitalization")}</p>
-      <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
-        {(isAllowed) => (
-          <div className="w-max">
-            <Checkbox
-              className="data-[state=checked]:bg-primary"
-              id="autoCapitalization"
-              isDisabled={!isAllowed}
-              isChecked={currentWorkspace?.autoCapitalization ?? false}
-              onCheckedChange={(state) => {
-                handleToggleCapitalizationToggle(state as boolean);
-              }}
-            >
-              {t("settings.project.auto-capitalization-description")}
-            </Checkbox>
-          </div>
-        )}
-      </ProjectPermissionCan>
-    </div>
+    <>
+      <hr className="border-mineshaft-600" />
+      <div className="pt-4">
+        <p className="text-md text-mineshaft-100">{t("settings.project.auto-capitalization")}</p>
+        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
+          {(isAllowed) => (
+            <div className="w-max py-4">
+              <Checkbox
+                className="data-[state=checked]:bg-primary"
+                id="autoCapitalization"
+                isDisabled={!isAllowed}
+                isChecked={currentWorkspace?.autoCapitalization ?? false}
+                onCheckedChange={(state) => {
+                  handleToggleCapitalizationToggle(state as boolean);
+                }}
+              >
+                {t("settings.project.auto-capitalization-description")}
+              </Checkbox>
+            </div>
+          )}
+        </ProjectPermissionCan>
+      </div>
+    </>
   );
 };

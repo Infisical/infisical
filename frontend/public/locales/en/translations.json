@@ -302,7 +302,7 @@
       "auto-generated": "This is your project's auto-generated unique identifier. It can't be changed.",
       "docs": "Infisical Docs",
       "auto-capitalization": "Auto Capitalization",
-      "auto-capitalization-description": "According to standards, Infisical will automatically capitalize your keys. If you want to disable this feature, you can do so here."
+      "auto-capitalization-description": "Infisical will automatically capitalize your keys. If you want to disable this feature, you can do so here."
     }
   },
   "signup": {

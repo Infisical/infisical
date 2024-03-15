@@ -1,10 +1,13 @@
-import Link from "next/link";
-import { faArrowUpRightFromSquare, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+// import Link from "next/link";
+// import { faArrowUpRightFromSquare, faPlus } from "@fortawesome/free-solid-svg-icons";
+// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+// import { OrgPermissionCan } from "@app/components/permissions";
+import { 
+  // Button, 
+  DeleteActionModal 
+} from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { useDeleteIdentity } from "@app/hooks/api";
@@ -58,9 +61,10 @@ export const IdentitySection = withPermission(
 
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex justify-between">
-          <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
-          <div className="flex w-full justify-end pr-4">
+        <div className="py-4">
+          <p className="mb-2 text-md text-mineshaft-100">Machine Identities</p>
+          <p className="text-sm text-mineshaft-300">Manage which apps/services have access to this organization</p>
+          {/* <div className="flex w-full justify-end pr-4">
             <Link href="https://infisical.com/docs/documentation/platform/identities/overview">
               <a
                 target="_blank"
@@ -74,8 +78,8 @@ export const IdentitySection = withPermission(
                 />
               </a>
             </Link>
-          </div>
-          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Identity}>
+          </div> */}
+          {/* <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Identity}>
             {(isAllowed) => (
               <Button
                 colorSchema="primary"
@@ -87,7 +91,7 @@ export const IdentitySection = withPermission(
                 Create identity
               </Button>
             )}
-          </OrgPermissionCan>
+          </OrgPermissionCan> */}
         </div>
         <IdentityTable handlePopUpOpen={handlePopUpOpen} />
         <IdentityModal
