@@ -17,6 +17,8 @@ import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
+import { projectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
@@ -149,6 +151,7 @@ export const registerRoutes = async (
 
   const projectDAL = projectDALFactory(db);
   const projectMembershipDAL = projectMembershipDALFactory(db);
+  const projectUserAdditionalPrivilegeDAL = projectUserAdditionalPrivilegeDALFactory(db);
   const projectUserMembershipRoleDAL = projectUserMembershipRoleDALFactory(db);
   const projectRoleDAL = projectRoleDALFactory(db);
   const projectEnvDAL = projectEnvDALFactory(db);
@@ -344,6 +347,11 @@ export const registerRoutes = async (
     projectKeyDAL,
     projectRoleDAL,
     licenseService
+  });
+  const projectUserAdditionalPrivilegeService = projectUserAdditionalPrivilegeServiceFactory({
+    permissionService,
+    projectMembershipDAL,
+    projectUserAdditionalPrivilegeDAL
   });
   const projectKeyService = projectKeyServiceFactory({
     permissionService,
@@ -638,7 +646,8 @@ export const registerRoutes = async (
     trustedIp: trustedIpService,
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
-    telemetry: telemetryService
+    telemetry: telemetryService,
+    projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

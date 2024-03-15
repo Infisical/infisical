@@ -8,6 +8,7 @@ import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secr
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TProjectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -121,6 +122,7 @@ declare module "fastify" {
       telemetry: TTelemetryServiceFactory;
       dynamicSecret: TDynamicSecretServiceFactory;
       dynamicSecretLease: TDynamicSecretLeaseServiceFactory;
+      projectUserAdditionalPrivilege: TProjectUserAdditionalPrivilegeServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
