@@ -198,9 +198,17 @@ export const permissionServiceFactory = ({
 
     validateOrgSAML(authMethod, membership.orgAuthEnforced);
 
+    // join two permissions and pass to build the final permission set
+    const rolePermissions = userProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+    const additionalPrivileges =
+      userProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
+        role: ProjectMembershipRole.Custom,
+        permissions
+      })) || [];
+
     return {
-      permission: buildProjectPermission(membership.roles),
-      membership,
+      permission: buildProjectPermission(rolePermissions.concat(additionalPrivileges)),
+      membership: userProjectPermission,
       hasRole: (role: string) =>
         membership.roles.findIndex(({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug) !== -1
     };
