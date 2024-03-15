@@ -1,5 +1,5 @@
 /* eslint-disable react/no-danger */
-import React, { forwardRef, TextareaHTMLAttributes, useRef, useState } from "react";
+import React, { forwardRef, TextareaHTMLAttributes, useEffect, useRef, useState } from "react";
 import { faChevronRight, faFolder, faKey, faRecycle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
@@ -7,8 +7,8 @@ import { twMerge } from "tailwind-merge";
 import { useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useGetUserWsKey } from "@app/hooks/api";
-import { fetchProjectFolders } from "@app/hooks/api/secretFolders/queries";
-import { decryptSecrets, fetchProjectEncryptedSecrets } from "@app/hooks/api/secrets/queries";
+import { useGetFoldersByEnv } from "@app/hooks/api/secretFolders/queries";
+import { useGetProjectSecrets } from "@app/hooks/api/secrets/queries";
 
 const REGEX_REFERENCE = /(\${([^}]*)})/g;
 const replaceContentWithDot = (str: string) => {
@@ -26,7 +26,7 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
   if (!isVisible) return replaceContentWithDot(content);
 
   let skipNext = false;
-  const formatedContent = content.split(REGEX_REFERENCE).flatMap((el, i) => {
+  const formattedContent = content.split(REGEX_REFERENCE).flatMap((el, i) => {
     const isInterpolationSyntax = el.startsWith("${") && el.endsWith("}");
     if (isInterpolationSyntax) {
       skipNext = true;
@@ -46,7 +46,7 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
 
   // akhilmhdh: Dont remove this br. I am still clueless how this works but weirdly enough
   // when break is added a line break works properly
-  return formatedContent.concat(<br />);
+  return formattedContent.concat(<br />);
 };
 
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
@@ -59,7 +59,7 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   secretPath?: string;
 };
 
-type VariableType = {
+type ReferenceType = {
   name: string;
   type: "folder" | "secret";
   slug?: string;
@@ -77,66 +77,90 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       isDisabled,
       isReadOnly,
       onFocus,
-      secretPath,
-      environment,
+      secretPath: propSecretPath,
+      environment: propEnvironment,
       onChange,
       ...props
     },
     ref
   ) => {
+    const childRef = useRef<HTMLTextAreaElement>(null);
+
     const [isSecretFocused, setIsSecretFocused] = useToggle();
-    const [showReferencePopup, setShowReferencePopup] = useState<boolean>(false);
     const [value, setValue] = useState<string>(propValue || "");
     const { currentWorkspace } = useWorkspace();
-    const [listVariables, setListVariables] = useState<VariableType[]>([]);
+    const [listReference, setListReference] = useState<ReferenceType[]>([]);
+    const [showReferencePopup, setShowReferencePopup] = useState<boolean>(false);
+    const [referenceKey, setReferenceKey] = useState<string>();
     const [lastSelectionIndex, setLastSelectionIndex] = useState<number>(0);
-    const childRef = useRef<HTMLTextAreaElement>(null);
+    const [secretPath, setSecretPath] = useState<string>(
+      propSecretPath || currentWorkspace?.environments?.[0].slug!
+    );
+    const [environment, setEnvironment] = useState<string>(
+      propEnvironment || currentWorkspace?.environments?.[0].slug!
+    );
 
     const workspaceId = currentWorkspace?.id || "";
     const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
+    const { data: secrets } = useGetProjectSecrets({
+      decryptFileKey: decryptFileKey!,
+      environment,
+      secretPath,
+      workspaceId
+    });
+    const { folderNames: folders } = useGetFoldersByEnv({
+      path: secretPath,
+      environments: [environment],
+      projectId: workspaceId
+    });
 
-    async function extractReference(refValue: string) {
-      const isNested = refValue.includes(".");
-      const currentListVariable: VariableType[] = [];
+    useEffect(() => {
 
-      let currentEnvironment = environment;
-      let currentSecretPath = secretPath || "/";
+      let currentEnvironment = propEnvironment;
+      let currentSecretPath = propSecretPath || "/";
+
+      if (!referenceKey) {
+        setSecretPath(currentSecretPath);
+        setEnvironment(currentEnvironment!);
+        return;
+      }
+
+      const isNested = referenceKey.includes(".");
+      const currentListReference: ReferenceType[] = [];
 
       if (isNested) {
-        const [envSlug, ...folderPaths] = refValue.split(".");
+        const [envSlug, ...folderPaths] = referenceKey.split(".");
         currentEnvironment = envSlug;
         currentSecretPath = `/${folderPaths?.join("/")}` || "/";
       }
 
-      if (!currentEnvironment || !decryptFileKey || !currentSecretPath || !currentWorkspace) {
-        setListVariables(currentListVariable);
+      if (!currentEnvironment || !decryptFileKey || !currentSecretPath || !currentWorkspace || !referenceKey) {
+        // this need to clean up?
+        setListReference(currentListReference);
         return;
       }
+      setSecretPath(currentSecretPath);
+      setEnvironment(currentEnvironment);
+      setShowReferencePopup(true);
+      
+    }, [referenceKey])
 
-      // Todo: Move to react query
-      const [encryptSecrets, folders] = await Promise.all([
-        fetchProjectEncryptedSecrets({
-          workspaceId,
-          environment: currentEnvironment,
-          secretPath: currentSecretPath
-        }),
-        // secret reference based on folder only support for nested reference that start with envs
-        isNested ? fetchProjectFolders(workspaceId, currentEnvironment, currentSecretPath) : []
-      ]);
+    useEffect(() => {
+      const currentListReference: ReferenceType[] = [];
+      const isNested = referenceKey?.includes(".");
 
-      folders?.forEach((folder) => {
-        currentListVariable.unshift({ name: folder.name, type: "folder" });
-      });
-
-      const secrets = decryptSecrets(encryptSecrets, decryptFileKey);
+      if (isNested) {
+        folders?.forEach((folder) => {
+          currentListReference.unshift({ name: folder, type: "folder" });
+        });
+      }
 
       secrets?.forEach((secret) => {
-        currentListVariable.unshift({ name: secret.key, type: "secret" });
+        currentListReference.unshift({ name: secret.key, type: "secret" });
       });
 
-      setListVariables(currentListVariable);
-      setShowReferencePopup(true);
-    }
+      setListReference(currentListReference);
+    }, [secrets, referenceKey]);
 
     function findMatch(str: string, start: number) {
       const matches = [...str.matchAll(REGEX_REFERENCE)];
@@ -169,7 +193,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       const match = findMatch(text, pos);
       if (match && typeof match.index !== "undefined") {
         setLastSelectionIndex(pos);
-        extractReference(match?.[2]);
+        setReferenceKey(match?.[2]);
       }
 
       setShowReferencePopup(!!match);
@@ -252,7 +276,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         value.slice(referenceEndIndex)
       ];
 
-      let oldReferenceStr = oldReference.slice(2, oldReference.length - 1);
+      let oldReferenceStr = oldReference.slice(2, -1);
 
       let replaceReference = "";
       let offset = 3;
@@ -277,7 +301,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       // TODO: there should be a better way to do
       onChange?.({ target: { value: newValue } } as any);
       setCaretPos(start.length + replaceReference.length + offset);
-      if (type !== "secret") extractReference(replaceReference);
+      if (type !== "secret") setReferenceKey(replaceReference);
     }
 
     function handleChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -305,7 +329,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             }}
           >
             <div className="max-w-60 h-full w-full flex-col items-center justify-center rounded-md py-4 text-white">
-              {listVariables.map((e, i) => {
+              {listReference.map((e, i) => {
                 return (
                   <button
                     className="flex items-center justify-between border-b border-mineshaft-600 px-2 py-1 text-left last:border-b-0"
