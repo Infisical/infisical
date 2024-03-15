@@ -7,6 +7,7 @@ import {
   encryptSymmetric
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
+import { isValidSecretReferenceValue } from "@app/helpers/secret-reference";
 
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
@@ -83,6 +84,7 @@ export const useCreateSecretV3 = ({
       secretComment,
       skipMultilineEncoding
     }) => {
+      if (!isValidSecretReferenceValue(secretValue)) throw new Error("Invalid secret reference");
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
       const randomBytes = latestFileKey
@@ -144,6 +146,7 @@ export const useUpdateSecretV3 = ({
       newSecretName,
       skipMultilineEncoding
     }) => {
+      if (!isValidSecretReferenceValue(secretValue)) throw new Error("Invalid secret reference");
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
       const randomBytes = latestFileKey

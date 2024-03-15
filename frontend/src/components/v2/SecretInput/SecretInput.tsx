@@ -5,13 +5,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { useWorkspace } from "@app/context";
+import { REGEX_SECRET_REFERENCE_FIND, REGEX_SECRET_REFERENCE_INVALID } from "@app/helpers/secret-reference";
 import { useToggle } from "@app/hooks";
 import { useGetUserWsKey } from "@app/hooks/api";
 import { useGetFoldersByEnv } from "@app/hooks/api/secretFolders/queries";
 import { useGetProjectSecrets } from "@app/hooks/api/secrets/queries";
-
-const REGEX_REFERENCE = /(\${([^}]*)})/g;
-const REGEX_REFERENCE_INVALID = /(?:\/|\\|\n|\.$|^\.)/g;
 
 const replaceContentWithDot = (str: string) => {
   let finalStr = "";
@@ -28,7 +26,7 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
   if (!isVisible) return replaceContentWithDot(content);
 
   let skipNext = false;
-  const formattedContent = content.split(REGEX_REFERENCE).flatMap((el, i) => {
+  const formattedContent = content.split(REGEX_SECRET_REFERENCE_FIND).flatMap((el, i) => {
     const isInterpolationSyntax = el.startsWith("${") && el.endsWith("}");
     if (isInterpolationSyntax) {
       skipNext = true;
@@ -38,7 +36,7 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
           <span
             className={twMerge(
               "ph-no-capture text-yellow-200/80",
-              REGEX_REFERENCE_INVALID.test(el.slice(2, -1)) &&
+              REGEX_SECRET_REFERENCE_INVALID.test(el.slice(2, -1)) &&
                 "underline decoration-red decoration-wavy"
             )}
           >
@@ -169,7 +167,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     }, [secrets, environment, referenceKey]);
 
     function findMatch(str: string, start: number) {
-      const matches = [...str.matchAll(REGEX_REFERENCE)];
+      const matches = [...str.matchAll(REGEX_SECRET_REFERENCE_FIND)];
       for (let i = 0; i < matches.length; i += 1) {
         const match = matches[i];
         if (
