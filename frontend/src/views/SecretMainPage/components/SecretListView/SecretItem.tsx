@@ -267,6 +267,8 @@ export const SecretItem = memo(
                         key="value-overriden"
                         isVisible={isVisible}
                         isReadOnly={isReadOnly}
+                        environment={environment}
+                        secretPath={secretPath}
                         {...field}
                         containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2"
                       />
@@ -282,6 +284,8 @@ export const SecretItem = memo(
                         isReadOnly={isReadOnly}
                         key="secret-value"
                         isVisible={isVisible}
+                        environment={environment}
+                        secretPath={secretPath}
                         {...field}
                         containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2"
                       />

@@ -206,6 +206,8 @@ export const SecretDetailSidebar = ({
                       <FormControl label="Value">
                         <SecretInput
                           isReadOnly={isReadOnly}
+                          environment={environment}
+                          secretPath={secretPath}
                           key="secret-value"
                           isDisabled={isOverridden || !isAllowed}
                           containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
@@ -242,6 +244,8 @@ export const SecretDetailSidebar = ({
                     <FormControl label="Value Override">
                       <SecretInput
                         isReadOnly={isReadOnly}
+                        environment={environment}
+                        secretPath={secretPath}
                         containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
                         {...field}
                       />

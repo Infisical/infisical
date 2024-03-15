@@ -120,7 +120,9 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                   <Td className="border-r border-mineshaft-600">Value</Td>
                   {isModified && (
                     <Td className="border-r border-mineshaft-600">
-                      <SecretInput value={preSecret?.value} />
+                      <SecretInput
+                        value={preSecret?.value}
+                      />
                     </Td>
                   )}
                   <Td>

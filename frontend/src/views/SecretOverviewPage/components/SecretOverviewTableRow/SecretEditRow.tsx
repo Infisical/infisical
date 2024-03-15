@@ -93,7 +93,7 @@ export const SecretEditRow = ({
           control={control}
           name="value"
           render={({ field }) => (
-            <SecretInput {...field} value={field.value as string} isVisible={isVisible} />
+            <SecretInput {...field} value={field.value as string} isVisible={isVisible} secretPath={secretPath} environment={environment} />
           )}
         />
       </div>
