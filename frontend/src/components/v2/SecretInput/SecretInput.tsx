@@ -11,6 +11,7 @@ import { useGetFoldersByEnv } from "@app/hooks/api/secretFolders/queries";
 import { useGetProjectSecrets } from "@app/hooks/api/secrets/queries";
 
 const REGEX_REFERENCE = /(\${([^}]*)})/g;
+const REGEX_REFERENCE_INVALID = /(?:\/|\\|\n|\.$|^\.)/g
 const replaceContentWithDot = (str: string) => {
   let finalStr = "";
   for (let i = 0; i < str.length; i += 1) {
@@ -32,7 +33,12 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
       skipNext = true;
       return (
         <span className="ph-no-capture text-yellow" key={`secret-value-${i + 1}`}>
-          &#36;&#123;<span className="ph-no-capture text-yellow-200/80">{el.slice(2, -1)}</span>
+          &#36;&#123;<span
+            className={twMerge(
+              "ph-no-capture text-yellow-200/80",
+              REGEX_REFERENCE_INVALID.test(el.slice(2, -1)) && "underline decoration-wavy decoration-red"
+            )}
+          >{el.slice(2, -1)}</span>
           &#125;
         </span>
       );
