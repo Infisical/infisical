@@ -11,7 +11,8 @@ import { useGetFoldersByEnv } from "@app/hooks/api/secretFolders/queries";
 import { useGetProjectSecrets } from "@app/hooks/api/secrets/queries";
 
 const REGEX_REFERENCE = /(\${([^}]*)})/g;
-const REGEX_REFERENCE_INVALID = /(?:\/|\\|\n|\.$|^\.)/g
+const REGEX_REFERENCE_INVALID = /(?:\/|\\|\n|\.$|^\.)/g;
+
 const replaceContentWithDot = (str: string) => {
   let finalStr = "";
   for (let i = 0; i < str.length; i += 1) {
@@ -33,12 +34,16 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
       skipNext = true;
       return (
         <span className="ph-no-capture text-yellow" key={`secret-value-${i + 1}`}>
-          &#36;&#123;<span
+          &#36;&#123;
+          <span
             className={twMerge(
               "ph-no-capture text-yellow-200/80",
-              REGEX_REFERENCE_INVALID.test(el.slice(2, -1)) && "underline decoration-wavy decoration-red"
+              REGEX_REFERENCE_INVALID.test(el.slice(2, -1)) &&
+                "underline decoration-red decoration-wavy"
             )}
-          >{el.slice(2, -1)}</span>
+          >
+            {el.slice(2, -1)}
+          </span>
           &#125;
         </span>
       );
@@ -98,25 +103,21 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const [listReference, setListReference] = useState<ReferenceType[]>([]);
     const [showReferencePopup, setShowReferencePopup] = useState<boolean>(false);
     const [referenceKey, setReferenceKey] = useState<string>();
-    const [lastSelectionIndex, setLastSelectionIndex] = useState<number>(0);
-    const [secretPath, setSecretPath] = useState<string>(
-      propSecretPath || currentWorkspace?.environments?.[0].slug!
-    );
-    const [environment, setEnvironment] = useState<string>(
-      propEnvironment || currentWorkspace?.environments?.[0].slug!
-    );
+    const [lastCaretPos, setLastCaretPos] = useState<number>(0);
+    const [secretPath, setSecretPath] = useState<string>(propSecretPath || "/");
+    const [environment, setEnvironment] = useState<string | undefined>(propEnvironment);
 
     const workspaceId = currentWorkspace?.id || "";
     const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
     const { data: secrets } = useGetProjectSecrets({
       decryptFileKey: decryptFileKey!,
-      environment,
+      environment: environment || currentWorkspace?.environments?.[0].slug!,
       secretPath,
       workspaceId
     });
     const { folderNames: folders } = useGetFoldersByEnv({
       path: secretPath,
-      environments: [environment],
+      environments: [environment || currentWorkspace?.environments?.[0].slug!],
       projectId: workspaceId
     });
 
@@ -131,33 +132,27 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       }
 
       const isNested = referenceKey.includes(".");
-      const currentListReference: ReferenceType[] = [];
 
       if (isNested) {
         const [envSlug, ...folderPaths] = referenceKey.split(".");
-        currentEnvironment = envSlug;
+        const isValidEnvSlug = currentWorkspace?.environments.find((e) => e.slug === envSlug);
+        currentEnvironment = isValidEnvSlug ? envSlug : undefined;
         currentSecretPath = `/${folderPaths?.join("/")}` || "/";
       }
 
-      if (
-        !currentEnvironment ||
-        !decryptFileKey ||
-        !currentSecretPath ||
-        !currentWorkspace ||
-        !referenceKey
-      ) {
-        // this need to clean up?
-        setListReference(currentListReference);
-        return;
-      }
       setSecretPath(currentSecretPath);
       setEnvironment(currentEnvironment);
-      setShowReferencePopup(true);
     }, [referenceKey]);
 
     useEffect(() => {
       const currentListReference: ReferenceType[] = [];
       const isNested = referenceKey?.includes(".");
+
+      if (!environment) {
+        setListReference(currentListReference);
+        setShowReferencePopup(true);
+        return;
+      }
 
       if (isNested) {
         folders?.forEach((folder) => {
@@ -170,15 +165,15 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       });
 
       setListReference(currentListReference);
-    }, [secrets, referenceKey]);
+      setShowReferencePopup(true);
+    }, [secrets, environment, referenceKey]);
 
     function findMatch(str: string, start: number) {
       const matches = [...str.matchAll(REGEX_REFERENCE)];
       for (let i = 0; i < matches.length; i += 1) {
         const match = matches[i];
         if (
-          match &&
-          typeof match.index !== "undefined" &&
+          typeof match?.index !== "undefined" &&
           match.index <= start &&
           start < match.index + match[0].length
         ) {
@@ -202,7 +197,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     function referencePopup(text: string, pos: number) {
       const match = findMatch(text, pos);
       if (match && typeof match.index !== "undefined") {
-        setLastSelectionIndex(pos);
+        setLastCaretPos(pos);
         setReferenceKey(match?.[2]);
       }
       setShowReferencePopup(!!match);
@@ -275,7 +270,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       }
 
       let newValue = value || "";
-      const match = findMatch(newValue, lastSelectionIndex);
+      const match = findMatch(newValue, lastCaretPos);
       const referenceStartIndex = match?.index || 0;
       const referenceEndIndex = referenceStartIndex + (match?.[0]?.length || 0);
       const [start, oldReference, end] = [
