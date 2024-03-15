@@ -2,9 +2,17 @@ import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import { faMagnifyingGlass, faPlus, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faMagnifyingGlass,
+  faPlus,
+  faUsers,
+  faUserShield,
+  faXmark
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
+import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -48,6 +56,7 @@ import {
 } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
+import { AdditionalPrivilegeSection } from "../AdditionalPrivilegeSection";
 import { MemberRoles } from "./MemberRoles";
 
 const addMemberFormSchema = z.object({
@@ -77,7 +86,8 @@ export const MemberListTab = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addMember",
     "removeMember",
-    "upgradePlan"
+    "upgradePlan",
+    "additionalPrivilege"
   ] as const);
 
   const {
@@ -185,8 +195,41 @@ export const MemberListTab = () => {
     );
   }, [orgUsers, members]);
 
+  if (popUp.additionalPrivilege.isOpen) {
+    const privilegeDetails = popUp?.additionalPrivilege?.data as {
+      name: string;
+      index: number;
+      projectMembershipId: string;
+    };
+
+    return (
+      <motion.div
+        key="panel-additional-permission"
+        className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+        transition={{ duration: 0.15 }}
+        initial={{ opacity: 0, translateX: 30 }}
+        animate={{ opacity: 1, translateX: 0 }}
+        exit={{ opacity: 0, translateX: 30 }}
+      >
+        <AdditionalPrivilegeSection
+          onGoBack={() => handlePopUpClose("additionalPrivilege")}
+          privileges={members?.[privilegeDetails.index]?.additionalPrivileges || []}
+          name={privilegeDetails.name}
+          projectMembershipId={privilegeDetails.projectMembershipId}
+        />
+      </motion.div>
+    );
+  }
+
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <motion.div
+      key="panel-1"
+      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      transition={{ duration: 0.15 }}
+      initial={{ opacity: 0, translateX: 30 }}
+      animate={{ opacity: 1, translateX: 0 }}
+      exit={{ opacity: 0, translateX: 30 }}
+    >
       <div className="mb-4 flex items-center justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Members</p>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Member}>
@@ -223,58 +266,90 @@ export const MemberListTab = () => {
             <TBody>
               {isMembersLoading && <TableSkeleton columns={4} innerKey="project-members" />}
               {!isMembersLoading &&
-                filterdUsers?.map(({ user: u, inviteEmail, id: membershipId, roles }) => {
-                  const name = u ? `${u.firstName} ${u.lastName}` : "-";
-                  const email = u?.email || inviteEmail;
+                filterdUsers?.map(
+                  (
+                    { user: u, inviteEmail, id: membershipId, roles, additionalPrivileges },
+                    index
+                  ) => {
+                    const name = u ? `${u.firstName} ${u.lastName}` : "-";
+                    const email = u?.email || inviteEmail;
+                    const hasAdditionalPrivilege = Boolean(additionalPrivileges.length);
 
-                  return (
-                    <Tr key={`membership-${membershipId}`} className="w-full">
-                      <Td>{name}</Td>
-                      <Td>{email}</Td>
-                      <Td>
-                        <ProjectPermissionCan
-                          I={ProjectPermissionActions.Edit}
-                          a={ProjectPermissionSub.Member}
-                        >
-                          {(isAllowed) => (
-                            <MemberRoles
-                              roles={roles}
-                              disableEdit={u.id === user?.id || !isAllowed}
-                              onOpenUpgradeModal={(description) =>
-                                handlePopUpOpen("upgradePlan", { description })
-                              }
-                              membershipId={membershipId}
-                            />
-                          )}
-                        </ProjectPermissionCan>
-                      </Td>
-                      <Td>
-                        {userId !== u?.id && (
+                    return (
+                      <Tr key={`membership-${membershipId}`} className="w-full">
+                        <Td>{name}</Td>
+                        <Td>{email}</Td>
+                        <Td>
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Delete}
+                            I={ProjectPermissionActions.Edit}
                             a={ProjectPermissionSub.Member}
                           >
                             {(isAllowed) => (
-                              <IconButton
-                                size="lg"
-                                colorSchema="danger"
-                                variant="plain"
-                                ariaLabel="update"
-                                className="ml-4"
-                                isDisabled={userId === u?.id || !isAllowed}
-                                onClick={() =>
-                                  handlePopUpOpen("removeMember", { username: u.username })
+                              <MemberRoles
+                                roles={roles}
+                                disableEdit={u.id === user?.id || !isAllowed}
+                                onOpenUpgradeModal={(description) =>
+                                  handlePopUpOpen("upgradePlan", { description })
                                 }
-                              >
-                                <FontAwesomeIcon icon={faXmark} />
-                              </IconButton>
+                                membershipId={membershipId}
+                              />
                             )}
                           </ProjectPermissionCan>
-                        )}
-                      </Td>
-                    </Tr>
-                  );
-                })}
+                        </Td>
+                        <Td>
+                          {userId !== u?.id && (
+                            <div className="flex items-center space-x-2">
+                              <ProjectPermissionCan
+                                I={ProjectPermissionActions.Edit}
+                                a={ProjectPermissionSub.Member}
+                                allowedLabel="Additional Privilege"
+                              >
+                                {(isAllowed) => (
+                                  <IconButton
+                                    size="lg"
+                                    variant="plain"
+                                    ariaLabel="update"
+                                    className={twMerge(hasAdditionalPrivilege && "text-primary")}
+                                    isDisabled={userId === u?.id || !isAllowed}
+                                    onClick={() =>
+                                      handlePopUpOpen("additionalPrivilege", {
+                                        name: `${user.firstName} ${user.lastName || ""}`,
+                                        index,
+                                        projectMembershipId: membershipId
+                                      })
+                                    }
+                                  >
+                                    <FontAwesomeIcon icon={faUserShield} />
+                                  </IconButton>
+                                )}
+                              </ProjectPermissionCan>
+                              <ProjectPermissionCan
+                                I={ProjectPermissionActions.Delete}
+                                a={ProjectPermissionSub.Member}
+                              >
+                                {(isAllowed) => (
+                                  <IconButton
+                                    size="lg"
+                                    colorSchema="danger"
+                                    variant="plain"
+                                    ariaLabel="update"
+                                    className="ml-4"
+                                    isDisabled={userId === u?.id || !isAllowed}
+                                    onClick={() =>
+                                      handlePopUpOpen("removeMember", { username: u.username })
+                                    }
+                                  >
+                                    <FontAwesomeIcon icon={faXmark} />
+                                  </IconButton>
+                                )}
+                              </ProjectPermissionCan>
+                            </div>
+                          )}
+                        </Td>
+                      </Tr>
+                    );
+                  }
+                )}
             </TBody>
           </Table>
           {!isMembersLoading && filterdUsers?.length === 0 && (
@@ -355,6 +430,6 @@ export const MemberListTab = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={(popUp.upgradePlan?.data as { description: string })?.description}
       />
-    </div>
+    </motion.div>
   );
 };

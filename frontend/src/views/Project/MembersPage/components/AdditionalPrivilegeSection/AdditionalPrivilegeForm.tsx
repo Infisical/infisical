@@ -18,22 +18,26 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { createNotification } from "@app/components/notifications";
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useCreateProjectRole, useUpdateProjectRole } from "@app/hooks/api";
-import { TProjectRole } from "@app/hooks/api/roles/types";
+import { ProjectPermissionSub } from "@app/context";
+import {
+  useCreateProjectUserAdditionalPrivilege,
+  useGetProjectUserPrivilegeDetails,
+  useUpdateProjectUserAdditionalPrivilege
+} from "@app/hooks/api";
 
-import { MultiEnvProjectPermission } from "./MultiEnvProjectPermission";
+import { MultiEnvProjectPermission } from "../ProjectRoleListTab/components/ProjectRoleModifySection/MultiEnvProjectPermission";
 import {
   formRolePermission2API,
   formSchema,
   rolePermission2Form,
+  // rolePermission2Form,
   TFormSchema
-} from "./ProjectRoleModifySection.utils";
-import { SecretRollbackPermission } from "./SecretRollbackPermission";
-import { SingleProjectPermission } from "./SingleProjectPermission";
-import { WsProjectPermission } from "./WsProjectPermission";
+} from "../ProjectRoleListTab/components/ProjectRoleModifySection/ProjectRoleModifySection.utils";
+import { SecretRollbackPermission } from "../ProjectRoleListTab/components/ProjectRoleModifySection/SecretRollbackPermission";
+import { SingleProjectPermission } from "../ProjectRoleListTab/components/ProjectRoleModifySection/SingleProjectPermission";
+import { WsProjectPermission } from "../ProjectRoleListTab/components/ProjectRoleModifySection/WsProjectPermission";
 
 const SINGLE_PERMISSION_LIST = [
   {
@@ -111,17 +115,22 @@ const SINGLE_PERMISSION_LIST = [
 ] as const;
 
 type Props = {
-  role?: TProjectRole;
   onGoBack: VoidFunction;
+  isIdentity?: boolean;
+  privilegeId?: string;
+  workspaceId: string;
+  // isIdentity true -> actorId is identity Id
+  // isIdentity false -> actorId is projectMembershipId
+  actorId: string;
 };
 
-export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
-  const isNonEditable = ["admin", "member", "viewer", "no-access"].includes(role?.slug || "");
-  const isNewRole = !role?.slug;
+export const AdditionalPrivilegeForm = ({ onGoBack, privilegeId, actorId, workspaceId }: Props) => {
+  const { createNotification } = useNotificationContext();
+  const isNewRole = !privilegeId;
 
-  
-  const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
+  const { data: projectUserPrivilegeDetails } = useGetProjectUserPrivilegeDetails(
+    privilegeId || ""
+  );
 
   const {
     handleSubmit,
@@ -131,27 +140,30 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
     getValues,
     control
   } = useForm<TFormSchema>({
-    defaultValues: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : {},
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema),
+    values: projectUserPrivilegeDetails && {
+      ...projectUserPrivilegeDetails,
+      description: projectUserPrivilegeDetails.description || "",
+      permissions: rolePermission2Form(projectUserPrivilegeDetails.permissions)
+    }
   });
-  const { mutateAsync: createRole } = useCreateProjectRole();
-  const { mutateAsync: updateRole } = useUpdateProjectRole();
+
+  const createProjectUserAdditionalPrivilege = useCreateProjectUserAdditionalPrivilege();
+  const updateProjectUserAdditionalPrivilege = useUpdateProjectUserAdditionalPrivilege();
 
   const handleRoleUpdate = async (el: TFormSchema) => {
-    if (!role?.id) return;
-
     try {
-      await updateRole({
-        id: role?.id,
-        projectId: workspaceId,
+      await updateProjectUserAdditionalPrivilege.mutateAsync({
         ...el,
-        permissions: formRolePermission2API(el.permissions)
+        permissions: formRolePermission2API(el.permissions),
+        privilegeId: privilegeId as string,
+        workspaceId
       });
-      createNotification({ type: "success", text: "Successfully updated role" });
+      createNotification({ type: "success", text: "Successfully update privilege" });
       onGoBack();
     } catch (err) {
       console.log(err);
-      createNotification({ type: "error", text: "Failed to update role" });
+      createNotification({ type: "error", text: "Failed to update privilege" });
     }
   };
 
@@ -162,16 +174,17 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
     }
 
     try {
-      await createRole({
-        projectId: workspaceId,
+      await createProjectUserAdditionalPrivilege.mutateAsync({
         ...el,
-        permissions: formRolePermission2API(el.permissions)
+        permissions: formRolePermission2API(el.permissions),
+        projectMembershipId: actorId,
+        workspaceId
       });
-      createNotification({ type: "success", text: "Created new role" });
+      createNotification({ type: "success", text: "Created new privilege" });
       onGoBack();
     } catch (err) {
       console.log(err);
-      createNotification({ type: "error", text: "Failed to create role" });
+      createNotification({ type: "error", text: "Failed to create privilege" });
     }
   };
 
@@ -180,7 +193,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <div className="mb-2 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-mineshaft-100">
-            {isNewRole ? "New" : "Edit"} Role
+            {isNewRole ? "New" : "Edit"} user additional privilege
           </h1>
           <Button
             onClick={onGoBack}
@@ -191,44 +204,44 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
           </Button>
         </div>
         <p className="mb-8 text-gray-400">
-          Project-level roles allow you to define permissions for resources within projects at a
-          granular level
+          Select multiple privilege that can be granted to the user
         </p>
         <div className="flex flex-col space-y-6">
           <FormControl
             label="Name"
+            helperText="Use descriptive names to clearly identify permissions"
             isRequired
             className="mb-0"
             isError={Boolean(errors?.name)}
             errorText={errors?.name?.message}
           >
-            <Input {...register("name")} placeholder="Billing Team" isReadOnly={isNonEditable} />
+            <Input {...register("name")} />
           </FormControl>
           <FormControl
             label="Slug"
+            helperText="Slugs are used for API access"
             isRequired
             isError={Boolean(errors?.slug)}
             errorText={errors?.slug?.message}
           >
-            <Input {...register("slug")} placeholder="biller" isReadOnly={isNonEditable} />
+            <Input {...register("slug")} placeholder="biller" />
           </FormControl>
           <FormControl
             label="Description"
-            helperText="A short description about this role"
+            helperText="A short description about this privilege"
             isError={Boolean(errors?.description)}
             errorText={errors?.description?.message}
           >
-            <Input {...register("description")} isReadOnly={isNonEditable} />
+            <Input {...register("description")} />
           </FormControl>
           <div className="flex items-center justify-between border-t border-t-mineshaft-800 pt-6">
             <div>
-              <h2 className="text-xl font-medium">Add Permission</h2>
+              <h2 className="text-xl font-medium">Add Privilege</h2>
             </div>
           </div>
           <div>
             <MultiEnvProjectPermission
               getValue={getValues}
-              isNonEditable={isNonEditable}
               control={control}
               setValue={setValue}
               icon={faLock}
@@ -238,16 +251,11 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
             />
           </div>
           <div key="permission-ws">
-            <WsProjectPermission
-              control={control}
-              setValue={setValue}
-              isNonEditable={isNonEditable}
-            />
+            <WsProjectPermission control={control} setValue={setValue} />
           </div>
           {SINGLE_PERMISSION_LIST.map(({ title, subtitle, icon, formName }) => (
             <div key={`permission-${title}`}>
               <SingleProjectPermission
-                isNonEditable={isNonEditable}
                 control={control}
                 setValue={setValue}
                 icon={icon}
@@ -258,20 +266,12 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
             </div>
           ))}
           <div key="permission-secret-rollback">
-            <SecretRollbackPermission
-              control={control}
-              setValue={setValue}
-              isNonEditable={isNonEditable}
-            />
+            <SecretRollbackPermission control={control} setValue={setValue} />
           </div>
         </div>
         <div className="mt-12 flex items-center space-x-4">
-          <Button
-            type="submit"
-            isDisabled={isSubmitting || isNonEditable || !isDirty}
-            isLoading={isSubmitting}
-          >
-            {isNewRole ? "Create Role" : "Save Role"}
+          <Button type="submit" isDisabled={isSubmitting || !isDirty} isLoading={isSubmitting}>
+            {isNewRole ? "Grant Privilege" : "Save Changes"}
           </Button>
           <Button onClick={onGoBack} variant="outline_bg">
             Cancel
