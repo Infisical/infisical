@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,7 +11,9 @@ import {
   faCircleInfo
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
 import queryString from "query-string";
+import * as yup from "yup";
 
 import { useCreateIntegration } from "@app/hooks/api";
 
@@ -21,7 +24,8 @@ import {
   FormControl,
   Input,
   Select,
-  SelectItem
+  SelectItem,
+  Switch
 } from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
@@ -29,9 +33,28 @@ import {
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
+const schema = yup.object({
+  selectedSourceEnvironment: yup.string().required("Source environment is required"),
+  secretPath: yup.string().required("Secret path is required"),
+  targetAppId: yup.string().required("Render service is required"),
+  shouldAutoRedeploy: yup.boolean()
+});
+
+type FormData = yup.InferType<typeof schema>;
+
 export default function RenderCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
+  
+  const { control, handleSubmit, setValue, watch } = useForm<FormData>({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      secretPath: "/",
+      shouldAutoRedeploy: false
+    }
+  });
+
+  const selectedSourceEnvironment = watch("selectedSourceEnvironment");
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
@@ -44,28 +67,29 @@ export default function RenderCreateIntegrationPage() {
       integrationAuthId: (integrationAuthId as string) ?? ""
     });
 
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [targetApp, setTargetApp] = useState("");
-  const [secretPath, setSecretPath] = useState("/");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (workspace) {
-      setSelectedSourceEnvironment(workspace.environments[0].slug);
+      setValue("selectedSourceEnvironment", workspace.environments[0].slug);
     }
   }, [workspace]);
 
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
-        setTargetApp(integrationAuthApps[0].name);
+        setValue("targetAppId", integrationAuthApps[0].appId as string);
       } else {
-        setTargetApp("none");
+        setValue("targetAppId", "none");
       }
     }
   }, [integrationAuthApps]);
-
-  const handleButtonClick = async () => {
+  
+  const onFormSubmit = async ({
+    secretPath,
+    targetAppId,
+    shouldAutoRedeploy
+  }: FormData) => {
     try {
       if (!integrationAuth?.id) return;
 
@@ -74,12 +98,15 @@ export default function RenderCreateIntegrationPage() {
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
-        app: targetApp,
-        appId: integrationAuthApps?.find(
-          (integrationAuthApp) => integrationAuthApp.name === targetApp
-        )?.appId,
+        app: integrationAuthApps?.find(
+          (integrationAuthApp) => integrationAuthApp.appId === targetAppId
+        )?.name,
+        appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
-        secretPath
+        secretPath,
+        metadata: {
+          shouldAutoRedeploy
+        }
       });
 
       setIsLoading(false);
@@ -88,14 +115,16 @@ export default function RenderCreateIntegrationPage() {
     } catch (err) {
       console.error(err);
     }
-  };
+  }
 
   return integrationAuth &&
     workspace &&
     selectedSourceEnvironment &&
-    integrationAuthApps &&
-    targetApp ? (
-    <div className="flex h-full w-full flex-col items-center justify-center">
+    integrationAuthApps ? (
+    <form 
+      onSubmit={handleSubmit(onFormSubmit)}
+      className="flex h-full w-full flex-col items-center justify-center"
+    >
       <Head>
         <title>Set Up Render Integration</title>
         <link rel="icon" href="/infisical.ico" />
@@ -129,57 +158,107 @@ export default function RenderCreateIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
-        <FormControl label="Project Environment" className="px-6">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
+        <div className="px-6">
+          <Controller
+            control={control}
+            name="selectedSourceEnvironment"
+            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <FormControl
+                label="Project Environment"
+                errorText={error?.message}
+                isError={Boolean(error)}
               >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path" className="px-6">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl label="Render Service" className="px-6">
-          <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-mineshaft-500"
-            isDisabled={integrationAuthApps.length === 0}
-          >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.name}
-                  key={`target-app-${integrationAuthApp.name}`}
+                <Select
+                  defaultValue={field.value}
+                  {...field}
+                  onValueChange={(e) => onChange(e)}
+                  className="w-full"
                 >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No services found
-              </SelectItem>
+                  {workspace?.environments.map((sourceEnvironment) => (
+                    <SelectItem
+                      value={sourceEnvironment.slug}
+                      key={`source-environment-${sourceEnvironment.slug}`}
+                    >
+                      {sourceEnvironment.name}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
             )}
-          </Select>
-        </FormControl>
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="secretPath"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Secrets Path"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="/" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="targetAppId"
+            render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+              return (
+                <FormControl
+                  label="Render Service"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Select
+                    {...field}
+                    onValueChange={(e) => {
+                      if (e === "") return;
+                      onChange(e);
+                    }}
+                    className="w-full"
+                  >
+                    {integrationAuthApps.length > 0 ? (
+                      integrationAuthApps.map((integrationAuthApp) => (
+                        <SelectItem
+                          value={String(integrationAuthApp.appId as string)}
+                          key={`target-app-${String(integrationAuthApp.appId)}`}
+                        >
+                          {integrationAuthApp.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" key="target-app-none">
+                        No services found
+                      </SelectItem>
+                    )}
+                  </Select>
+                </FormControl>
+              );
+            }}
+          />
+          <div className="mt-8 mb-[2.36rem] ml-1">
+            <Controller
+              control={control}
+              name="shouldAutoRedeploy"
+              render={({ field: { onChange, value } }) => (
+                <Switch
+                  id="redeploy-render"
+                  onCheckedChange={(isChecked) => onChange(isChecked)}
+                  isChecked={value}
+                >
+                  Auto-redeploy service upon secret change
+                </Switch>
+              )}
+            />
+          </div>
+        </div>
         <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
+          colorSchema="primary"
           variant="outline_bg"
-          className="mb-6 mt-2 ml-auto mr-6"
+          className="mb-8 ml-auto mr-6 w-min mt-4"
+          size="sm"
+          type="submit"
           isLoading={isLoading}
           isDisabled={integrationAuthApps.length === 0}
         >
@@ -197,7 +276,7 @@ export default function RenderCreateIntegrationPage() {
           cause an unexpected override of current secrets in Render with secrets from Infisical.
         </span>
       </div>
-    </div>
+    </form>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
       <Head>
