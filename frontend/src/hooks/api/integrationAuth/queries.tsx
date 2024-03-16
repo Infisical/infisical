@@ -331,8 +331,6 @@ const fetchIntegrationAuthHerokuPipelines = async ({ integrationAuthId }: {
     `/api/v1/integration-auth/${integrationAuthId}/heroku/pipelines`
   );
 
-  console.log(99999, pipelines)
-
   return pipelines;
 };
 

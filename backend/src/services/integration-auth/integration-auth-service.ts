@@ -410,6 +410,7 @@ export const integrationAuthServiceFactory = ({
       }
     });
     if (!data) return [];
+
     return data.map(({ login: name, id: orgId }) => ({ name, orgId: String(orgId) }));
   };
 

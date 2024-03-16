@@ -133,7 +133,7 @@ export default function GitHubCreateIntegrationPage() {
     repoName,
     repoOwner
   );
-
+  
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -205,9 +205,8 @@ export default function GitHubCreateIntegrationPage() {
             sourceEnvironment: data.selectedSourceEnvironment,
             scope: data.scope,
             app: repoName,
+            appId: data.repoId,
             owner: repoOwner,
-            targetService: "Repository",
-            targetServiceId: data.repoId, // github repo id is needed for sync secret
             targetEnvironmentId: data.envId,
             metadata: {
               secretSuffix: data.secretSuffix
@@ -238,7 +237,7 @@ export default function GitHubCreateIntegrationPage() {
   };
 
   return integrationAuth && workspace && integrationAuthApps ? (
-    <div className="flex w-full flex-col items-center justify-center py-4">
+    <div className="flex w-full h-full flex-col items-center justify-center py-4">
       <Head>
         <title>Set Up GitHub Integration</title>
         <link rel="icon" href="/infisical.ico" />
@@ -337,9 +336,9 @@ export default function GitHubCreateIntegrationPage() {
                         onValueChange={onChange}
                         className="w-full border border-mineshaft-500"
                       >
-                        <SelectItem value="github-repo">Github Repositories</SelectItem>
-                        <SelectItem value="github-org">Github Organization</SelectItem>
-                        <SelectItem value="github-env">Github Environment</SelectItem>
+                        <SelectItem value="github-org">Organization</SelectItem>
+                        <SelectItem value="github-repo">Repository</SelectItem>
+                        <SelectItem value="github-env">Repository Environment</SelectItem>
                       </Select>
                     </FormControl>
                   )}
