@@ -1,15 +1,14 @@
 /* eslint-disable react/no-danger */
-import React, { forwardRef, TextareaHTMLAttributes, useEffect, useRef, useState } from "react";
-import { faChevronRight, faFolder, faKey, faRecycle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import React, { forwardRef, TextareaHTMLAttributes, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
-import { useWorkspace } from "@app/context";
-import { REGEX_SECRET_REFERENCE_FIND, REGEX_SECRET_REFERENCE_INVALID } from "@app/helpers/secret-reference";
+import {
+  REGEX_SECRET_REFERENCE_FIND,
+  REGEX_SECRET_REFERENCE_INVALID
+} from "@app/helpers/secret-reference";
 import { useToggle } from "@app/hooks";
-import { useGetUserWsKey } from "@app/hooks/api";
-import { useGetFoldersByEnv } from "@app/hooks/api/secretFolders/queries";
-import { useGetProjectSecrets } from "@app/hooks/api/secrets/queries";
+
+import SecretReferenceSelect from "./SecretReferenceSelect";
 
 const replaceContentWithDot = (str: string) => {
   let finalStr = "";
@@ -68,12 +67,6 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   secretPath?: string;
 };
 
-type ReferenceType = {
-  name: string;
-  type: "folder" | "secret";
-  slug?: string;
-};
-
 const commonClassName = "font-mono text-sm caret-white border-none outline-none w-full break-all";
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
@@ -97,76 +90,11 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const [isSecretFocused, setIsSecretFocused] = useToggle();
     const [value, setValue] = useState<string>(propValue || "");
-    const { currentWorkspace } = useWorkspace();
-    const [listReference, setListReference] = useState<ReferenceType[]>([]);
     const [showReferencePopup, setShowReferencePopup] = useState<boolean>(false);
     const [referenceKey, setReferenceKey] = useState<string>();
     const [lastCaretPos, setLastCaretPos] = useState<number>(0);
-    const [secretPath, setSecretPath] = useState<string>(propSecretPath || "/");
-    const [environment, setEnvironment] = useState<string | undefined>(propEnvironment);
 
-    const workspaceId = currentWorkspace?.id || "";
-    const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
-    const { data: secrets } = useGetProjectSecrets({
-      decryptFileKey: decryptFileKey!,
-      environment: environment || currentWorkspace?.environments?.[0].slug!,
-      secretPath,
-      workspaceId
-    });
-    const { folderNames: folders } = useGetFoldersByEnv({
-      path: secretPath,
-      environments: [environment || currentWorkspace?.environments?.[0].slug!],
-      projectId: workspaceId
-    });
-
-    useEffect(() => {
-      let currentEnvironment = propEnvironment;
-      let currentSecretPath = propSecretPath || "/";
-
-      if (!referenceKey) {
-        setSecretPath(currentSecretPath);
-        setEnvironment(currentEnvironment!);
-        return;
-      }
-
-      const isNested = referenceKey.includes(".");
-
-      if (isNested) {
-        const [envSlug, ...folderPaths] = referenceKey.split(".");
-        const isValidEnvSlug = currentWorkspace?.environments.find((e) => e.slug === envSlug);
-        currentEnvironment = isValidEnvSlug ? envSlug : undefined;
-        currentSecretPath = `/${folderPaths?.join("/")}` || "/";
-      }
-
-      setSecretPath(currentSecretPath);
-      setEnvironment(currentEnvironment);
-    }, [referenceKey]);
-
-    useEffect(() => {
-      const currentListReference: ReferenceType[] = [];
-      const isNested = referenceKey?.includes(".");
-
-      if (!environment) {
-        setListReference(currentListReference);
-        setShowReferencePopup(true);
-        return;
-      }
-
-      if (isNested) {
-        folders?.forEach((folder) => {
-          currentListReference.unshift({ name: folder, type: "folder" });
-        });
-      }
-
-      secrets?.forEach((secret) => {
-        currentListReference.unshift({ name: secret.key, type: "secret" });
-      });
-
-      setListReference(currentListReference);
-      setShowReferencePopup(true);
-    }, [secrets, environment, referenceKey]);
-
-    function findMatch(str: string, start: number) {
+    function isCaretInsideReference(str: string, start: number) {
       const matches = [...str.matchAll(REGEX_SECRET_REFERENCE_FIND)];
       for (let i = 0; i < matches.length; i += 1) {
         const match = matches[i];
@@ -193,7 +121,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     }
 
     function referencePopup(text: string, pos: number) {
-      const match = findMatch(text, pos);
+      const match = isCaretInsideReference(text, pos);
       if (match && typeof match.index !== "undefined") {
         setLastCaretPos(pos);
         setReferenceKey(match?.[2]);
@@ -236,12 +164,22 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
           return;
         }
       }
-      // On Key up or down if the popup is open ignore it
-      if ((showReferencePopup && event.key === "ArrowUp") || event.key === "ArrowDown") {
-        event.preventDefault();
+      if (!(event.key.startsWith("Arrow") || event.key === "Backspace" || event.key === "Delete")) {
+        handleReferencePopup(event.currentTarget);
       }
+    }
 
-      handleReferencePopup(event.currentTarget);
+    function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+      if (
+        !(
+          event.key.startsWith("Arrow") ||
+          ["Backspace", "Delete", "."].includes(event.key) ||
+          (event.metaKey && event.key.toLowerCase() === "a")
+        )
+      ) {
+        const match = isCaretInsideReference(value, event.currentTarget.selectionEnd);
+        if (match) event.preventDefault();
+      }
     }
 
     function handleMouseClick(event: React.MouseEvent<HTMLTextAreaElement, MouseEvent>) {
@@ -268,7 +206,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       }
 
       let newValue = value || "";
-      const match = findMatch(newValue, lastCaretPos);
+      const match = isCaretInsideReference(newValue, lastCaretPos);
       const referenceStartIndex = match?.index || 0;
       const referenceEndIndex = referenceStartIndex + (match?.[0]?.length || 0);
       const [start, oldReference, end] = [
@@ -304,8 +242,13 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       setValue(newValue);
       // TODO: there should be a better way to do
       onChange?.({ target: { value: newValue } } as any);
-      setCaretPos(start.length + replaceReference.length + offset);
-      if (type !== "secret") setReferenceKey(replaceReference);
+      setShowReferencePopup(type !== "secret");
+      setTimeout(() => {
+        setIsSecretFocused.on();
+        if (type !== "secret") setReferenceKey(replaceReference);
+        const caretPos = start.length + replaceReference.length + offset;
+        setCaretPos(caretPos);
+      }, 100);
     }
 
     function handleChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -313,88 +256,17 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       if (typeof onChange === "function") onChange(event);
     }
 
+    function handleReferenceOpenChange(currOpen: boolean) {
+      if (!currOpen) setShowReferencePopup(false);
+    }
+
     return (
-      // TODO: hide popup if the focus within the child component left
       <div
         className={twMerge(
-          "flex w-full flex-col gap-4 overflow-auto rounded-md no-scrollbar",
+          "flex w-full flex-col overflow-auto rounded-md no-scrollbar",
           containerClassName
         )}
-        // style={{ maxHeight: `${21 * 7}px` }}
       >
-        {/* TODO(radix): Move to radix select component and scroll element */}
-        {showReferencePopup && isSecretFocused && (
-          <div
-            className={twMerge(
-              "fixed z-[100] w-60 translate-y-2 rounded-md border border-mineshaft-600 bg-mineshaft-700 text-sm text-bunker-200"
-            )}
-            style={{
-              marginTop: `${Math.min(childRef.current?.clientHeight || 21 * 7, 21 * 7)}px`
-            }}
-          >
-            <div className="max-w-60 h-full w-full flex-col items-center justify-center rounded-md py-4 text-white">
-              {listReference.map((e, i) => {
-                return (
-                  <button
-                    className="flex items-center justify-between border-b border-mineshaft-600 px-2 py-1 text-left last:border-b-0"
-                    key={`key-${i + 1}`}
-                    onClick={() => handleReferenceSelect({ name: e.name, type: e.type })}
-                    type="button"
-                  >
-                    {e.type === "folder" && (
-                      <>
-                        <div className="flex gap-2">
-                          <div className="flex items-center text-yellow-700">
-                            <FontAwesomeIcon icon={faFolder} />
-                          </div>
-                          <div className="w-48 truncate">{e.name}</div>
-                        </div>
-                        <div className="flex items-center text-bunker-200">
-                          <FontAwesomeIcon icon={faChevronRight} />
-                        </div>
-                      </>
-                    )}
-
-                    {e.type === "secret" && (
-                      <div className="flex gap-2">
-                        <div className="flex items-center text-yellow-700">
-                          <FontAwesomeIcon icon={faKey} />
-                        </div>
-                        <div className="w-48 truncate text-left">{e.name}</div>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-
-              <div className="flex w-full justify-center gap-2 pt-1 text-xs text-bunker-300">
-                All Secrets
-              </div>
-
-              {currentWorkspace?.environments.map((env, i) => (
-                <button
-                  className="flex items-center justify-between border-b border-mineshaft-600 px-2 py-1 last:border-b-0"
-                  key={`key-${i + 1}`}
-                  onClick={() =>
-                    handleReferenceSelect({ name: env.name, type: "environment", slug: env.slug })
-                  }
-                  type="button"
-                >
-                  <div className="flex gap-2">
-                    <div className="flex items-center text-yellow-700">
-                      <FontAwesomeIcon icon={faRecycle} />
-                    </div>
-                    <div className="w-48 truncate text-left">{env.name}</div>
-                  </div>
-                  <div className="flex items-center text-bunker-200">
-                    <FontAwesomeIcon icon={faChevronRight} />
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div style={{ maxHeight: `${21 * 7}px` }}>
           <div className="relative overflow-hidden">
             <pre aria-hidden className="m-0 ">
@@ -415,6 +287,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
               )}
               onFocus={() => setIsSecretFocused.on()}
               onKeyUp={handleKeyUp}
+              onKeyDown={handleKeyDown}
               onClick={handleMouseClick}
               onChange={handleChange}
               disabled={isDisabled}
@@ -429,6 +302,20 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             />
           </div>
         </div>
+
+        <SecretReferenceSelect
+          reference={referenceKey}
+          secretPath={propSecretPath}
+          environment={propEnvironment}
+          open={showReferencePopup}
+          handleOpenChange={(isOpen) => handleReferenceOpenChange(isOpen)}
+          onSelect={(refValue) => handleReferenceSelect(refValue)}
+          onEscapeKeyDown={() => {
+            setTimeout(() => {
+              setCaretPos(lastCaretPos);
+            }, 200);
+          }}
+        />
       </div>
     );
   }
