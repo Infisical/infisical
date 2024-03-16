@@ -3,29 +3,14 @@ title: "GitHub Actions"
 description: "How to sync secrets from Infisical to GitHub Actions"
 ---
 
+Infisical lets you sync secrets to GitHub at the organization-level, repository-level, and repository environment-level.
+
+Prerequisites:
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- Ensure that you have admin privileges to the repository you want to sync secrets to.
+
 <Tabs>
   <Tab title="Usage">
-    Infisical provides a different way to sync secrets to GitHub that can be used in Github Actions workflows.
-    You can sync secrets to the following GitHub scopes:
-
-    - Repository
-    - Github Organization
-    - Repository Environment
-
-
-    <Info>
-     To know more about usage and limitation of secrets in GitHub Actions, please visit the [Official Github documentation](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions).
-    </Info>
-
-
-    #### Prerequisites:
-      - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
-      - Ensure you have admin privileges to the repository you want to sync secrets to.
-      - For Organizations only,
-        - During the oAuth ensure you gave access to the respective Organization.
-      - For Environment only
-        - Require access to the repository and create the environment under repository settings if it doesn't exist.
-
     <Steps>
       <Step title="Authorize Infisical for GitHub">
         Navigate to your project's integrations tab in Infisical.
@@ -42,29 +27,21 @@ description: "How to sync secrets from Infisical to GitHub Actions"
         </Info>
       </Step>
       <Step title="Configure Infisical GitHub integration">
-        - Select Source Project Environment that needs to be synced ( Development, Staging or Production )
-        - Enter Secret path ( Default to root folder `/`)
-        - Select a scope ( Repository, Organization, Repository Environment ) based on the scope of the repository you want to sync secrets to.
+        Select which Infisical environment secrets you want to sync to which GitHub organization, repository, or repository environment.
 
         <Tabs>
           <Tab title="Repository">
-            - Select one or more repositories to sync secrets to.
-
             ![integrations github](../../images/integrations/github/integrations-github-scope-repo.png)
           </Tab>
           <Tab title="Organization">
-            - Select the organization to sync secrets to.
             ![integrations github](../../images/integrations/github/integrations-github-scope-org.png)
-
           </Tab>
           <Tab title="Repository Environment">
-          - Select the repository
-          - Select the target environment you want to sync secrets to. if you can't find the environment, create one under repository settings > Environments > New environment and try again.
           ![integrations github](../../images/integrations/github/integrations-github-scope-env.png)
           </Tab>
         </Tabs>
 
-        - Once configured, press on the "Create Integration" button.
+        Finally, press create integration to start syncing secrets to GitHub.
 
         ![integrations github](../../images/integrations/github/integrations-github.png)
       </Step>
