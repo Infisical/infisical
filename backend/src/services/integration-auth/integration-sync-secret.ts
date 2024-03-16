@@ -1280,53 +1280,6 @@ const syncSecretsGitHub = async ({
       }
     }
   });
-
-  // for await (const key of Object.keys(secrets)) {
-  //   sodium.ready.then(async () => {
-  //     // convert secret & base64 key to Uint8Array.
-  //     const binkey = sodium.from_base64(repoPublicKey.key, sodium.base64_variants.ORIGINAL);
-  //     const binsec = sodium.from_string(secrets[key].value);
-
-  //     // encrypt secret using libsodium
-  //     const encBytes = sodium.crypto_box_seal(binsec, binkey);
-
-  //     // convert encrypted Uint8Array to base64
-  //     const encryptedSecret = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
-
-  //     switch (integration.scope) {
-  //       case GithubScope.Org:
-  //         await octokit.request("PUT /orgs/{org}/actions/secrets/{secret_name}", {
-  //           org: integration.owner as string,
-  //           secret_name: key,
-  //           visibility: "all",
-  //           encrypted_value: encryptedSecret,
-  //           key_id: repoPublicKey.key_id
-  //         });
-  //         break;
-  //       case GithubScope.Env:
-  //         await octokit.request(
-  //           "PUT /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
-  //           {
-  //             repository_id: Number(integration.appId),
-  //             environment_name: integration.targetEnvironmentId as string,
-  //             secret_name: key,
-  //             encrypted_value: encryptedSecret,
-  //             key_id: repoPublicKey.key_id
-  //           }
-  //         );
-  //         break;
-  //       default:
-  //         await octokit.request("PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
-  //           owner: integration.owner as string,
-  //           repo: integration.app as string,
-  //           secret_name: key,
-  //           encrypted_value: encryptedSecret,
-  //           key_id: repoPublicKey.key_id
-  //         });
-  //         break;
-  //     }
-  //   });
-  // }
 };
 
 /**
