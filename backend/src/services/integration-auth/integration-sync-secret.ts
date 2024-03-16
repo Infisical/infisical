@@ -1307,6 +1307,22 @@ const syncSecretsRender = async ({
       }
     }
   );
+
+  if (integration.metadata) {
+    const metadata = z.record(z.any()).parse(integration.metadata);
+    if (metadata.shouldAutoRedeploy === true) {
+      await request.post(
+        `${IntegrationUrls.RENDER_API_URL}/v1/services/${integration.appId}/deploys`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      );
+    }
+  }
 };
 
 /**
