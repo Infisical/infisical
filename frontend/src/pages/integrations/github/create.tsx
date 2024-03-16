@@ -17,6 +17,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import axios from "axios";
 import { motion } from "framer-motion";
 import queryString from "query-string";
+import { twMerge } from "tailwind-merge";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -124,6 +125,7 @@ export default function GitHubCreateIntegrationPage() {
   });
 
   const scope = watch("scope");
+  const repoId = watch("repoId");
   const repoIds = watch("repoIds");
   const repoName = watch("repoName");
   const repoOwner = watch("repoOwner");
@@ -133,7 +135,7 @@ export default function GitHubCreateIntegrationPage() {
     repoName,
     repoOwner
   );
-  
+
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -237,7 +239,7 @@ export default function GitHubCreateIntegrationPage() {
   };
 
   return integrationAuth && workspace && integrationAuthApps ? (
-    <div className="flex w-full h-full flex-col items-center justify-center py-4">
+    <div className="flex h-full w-full flex-col items-center justify-center py-4">
       <Head>
         <title>Set Up GitHub Integration</title>
         <link rel="icon" href="/infisical.ico" />
@@ -508,7 +510,11 @@ export default function GitHubCreateIntegrationPage() {
                         <Select
                           value={field.value}
                           onValueChange={onChange}
-                          className="w-full border border-mineshaft-500"
+                          isDisabled={!repoId}
+                          className={twMerge(
+                            "w-full border border-mineshaft-500",
+                            !repoId && "h-10 cursor-not-allowed"
+                          )}
                         >
                           {integrationAuthGithubEnvs?.length ? (
                             integrationAuthGithubEnvs.map((githubEnv) => {
