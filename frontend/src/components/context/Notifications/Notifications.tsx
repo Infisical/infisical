@@ -11,7 +11,7 @@ const Notifications = ({ notifications, clearNotification }: NoticationsProps) =
   }
 
   return (
-    <div className="hidden fixed z-50 md:flex md:flex-col-reverse gap-y-2 w-96 h-full right-2 bottom-2 pointer-events-none">
+    <div className="pointer-events-none fixed right-2 bottom-2 z-[100] hidden h-full w-96 gap-y-2 md:flex md:flex-col-reverse">
       {notifications.map((notif) => (
         <Notification key={notif.text} notification={notif} clearNotification={clearNotification} />
       ))}
