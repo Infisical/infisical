@@ -371,6 +371,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         id: req.params.integrationAuthId
       });
       if (!orgs) throw new Error("No organization found.");
@@ -403,6 +404,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         id: req.params.integrationAuthId,
+        actorAuthMethod: req.permission.authMethod,
         repoName: req.query.repoName,
         repoOwner: req.query.repoOwner
       });
