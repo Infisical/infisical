@@ -28,7 +28,9 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const memberships = await server.services.projectMembership.addUsersToProjectNonE2EE({
         projectId: req.params.projectId,
+        actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
         actor: req.permission.type,
         emails: req.body.emails,
         usernames: req.body.usernames
@@ -74,6 +76,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const memberships = await server.services.projectMembership.deleteProjectMemberships({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.projectId,
         emails: req.body.emails,

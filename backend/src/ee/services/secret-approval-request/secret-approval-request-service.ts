@@ -82,13 +82,14 @@ export const secretApprovalRequestServiceFactory = ({
   secretVersionDAL,
   secretQueueService
 }: TSecretApprovalRequestServiceFactoryDep) => {
-  const requestCount = async ({ projectId, actor, actorId, actorOrgId }: TApprovalRequestCountDTO) => {
+  const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const { membership } = await permissionService.getProjectPermission(
       actor as ActorType.USER,
       actorId,
       projectId,
+      actorAuthMethod,
       actorOrgId
     );
 
@@ -100,6 +101,7 @@ export const secretApprovalRequestServiceFactory = ({
     projectId,
     actorId,
     actor,
+    actorAuthMethod,
     actorOrgId,
     status,
     environment,
@@ -109,7 +111,13 @@ export const secretApprovalRequestServiceFactory = ({
   }: TListApprovalsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { membership } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     const approvals = await secretApprovalRequestDAL.findByProjectId({
       projectId,
       committer,
@@ -122,7 +130,13 @@ export const secretApprovalRequestServiceFactory = ({
     return approvals;
   };
 
-  const getSecretApprovalDetails = async ({ actor, actorId, actorOrgId, id }: TSecretApprovalDetailsDTO) => {
+  const getSecretApprovalDetails = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    id
+  }: TSecretApprovalDetailsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(id);
@@ -133,6 +147,7 @@ export const secretApprovalRequestServiceFactory = ({
       actor,
       actorId,
       secretApprovalRequest.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     if (
@@ -150,7 +165,14 @@ export const secretApprovalRequestServiceFactory = ({
     return { ...secretApprovalRequest, secretPath: secretPath?.[0]?.path || "/", commits: secrets };
   };
 
-  const reviewApproval = async ({ approvalId, actor, status, actorId, actorOrgId }: TReviewRequestDTO) => {
+  const reviewApproval = async ({
+    approvalId,
+    actor,
+    status,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TReviewRequestDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
@@ -160,6 +182,7 @@ export const secretApprovalRequestServiceFactory = ({
       ActorType.USER,
       actorId,
       secretApprovalRequest.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     if (
@@ -192,7 +215,14 @@ export const secretApprovalRequestServiceFactory = ({
     return reviewStatus;
   };
 
-  const updateApprovalStatus = async ({ actorId, status, approvalId, actor, actorOrgId }: TStatusChangeDTO) => {
+  const updateApprovalStatus = async ({
+    actorId,
+    status,
+    approvalId,
+    actor,
+    actorOrgId,
+    actorAuthMethod
+  }: TStatusChangeDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
@@ -202,6 +232,7 @@ export const secretApprovalRequestServiceFactory = ({
       ActorType.USER,
       actorId,
       secretApprovalRequest.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     if (
@@ -229,7 +260,8 @@ export const secretApprovalRequestServiceFactory = ({
     approvalId,
     actor,
     actorId,
-    actorOrgId
+    actorOrgId,
+    actorAuthMethod
   }: TMergeSecretApprovalRequestDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
@@ -240,8 +272,10 @@ export const secretApprovalRequestServiceFactory = ({
       ActorType.USER,
       actorId,
       projectId,
+      actorAuthMethod,
       actorOrgId
     );
+
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerId !== membership.id &&
@@ -438,6 +472,7 @@ export const secretApprovalRequestServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     policy,
     projectId,
     secretPath,
@@ -449,6 +484,7 @@ export const secretApprovalRequestServiceFactory = ({
       actor,
       actorId,
       projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(

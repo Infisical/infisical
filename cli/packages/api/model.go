@@ -135,6 +135,14 @@ type GetOrganizationsResponse struct {
 	} `json:"organizations"`
 }
 
+type SelectOrganizationResponse struct {
+	Token string `json:"token"`
+}
+
+type SelectOrganizationRequest struct {
+	OrganizationId string `json:"organizationId"`
+}
+
 type Secret struct {
 	SecretKeyCiphertext     string `json:"secretKeyCiphertext,omitempty"`
 	SecretKeyIV             string `json:"secretKeyIV,omitempty"`

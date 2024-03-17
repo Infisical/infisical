@@ -44,6 +44,7 @@ import {
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
+  useOrganization,
   useSubscription,
   useUser,
   useWorkspace
@@ -468,8 +469,9 @@ const OrganizationPage = withPermission(
     const router = useRouter();
 
     const { workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
-    const currentOrg = String(router.query.id);
-    const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === currentOrg) || [];
+    const { currentOrg } = useOrganization();
+    const routerOrgId = String(router.query.id);
+    const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === routerOrgId) || [];
     const { createNotification } = useNotificationContext();
     const addUsersToProject = useAddUserToWsNonE2EE();
 
@@ -505,12 +507,12 @@ const OrganizationPage = withPermission(
             project: { id: newProjectId }
           }
         } = await createWs.mutateAsync({
-          organizationId: currentOrg,
+          organizationSlug: currentOrg.slug,
           projectName: name
         });
 
         if (addMembers) {
-          const orgUsers = await fetchOrgUsers(currentOrg);
+          const orgUsers = await fetchOrgUsers(currentOrg.id);
 
           await addUsersToProject.mutateAsync({
             usernames: orgUsers
@@ -540,7 +542,7 @@ const OrganizationPage = withPermission(
 
     useEffect(() => {
       onboardingCheck({
-        orgId: currentOrg,
+        orgId: routerOrgId,
         setHasUserClickedIntro,
         setHasUserClickedSlack,
         setHasUserPushedSecrets,

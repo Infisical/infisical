@@ -39,6 +39,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         projectId: req.params.workspaceId,
         ...req.body
       });
@@ -95,6 +96,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       const { environment, old } = await server.services.projectEnv.updateEnvironment({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         id: req.params.id,
@@ -153,6 +155,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       const environment = await server.services.projectEnv.deleteEnvironment({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         id: req.params.id

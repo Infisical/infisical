@@ -84,7 +84,7 @@ export const ORGANIZATIONS = {
 
 export const PROJECTS = {
   CREATE: {
-    organizationId: "The ID of the organization to create the project in.",
+    organizationSlug: "The slug of the organization to create the project in.",
     projectName: "The name of the project to create.",
     slug: "An optional slug for the project."
   },
@@ -197,6 +197,7 @@ export const FOLDERS = {
 export const RAW_SECRETS = {
   LIST: {
     workspaceId: "The ID of the project to list secrets from.",
+    workspaceSlug: "The slug of the project to list secrets from. This parameter is only usable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
     includeImports: "Weather to include imported secrets or not."

@@ -122,6 +122,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.query.organizationId,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
       return ldap;
@@ -151,6 +152,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.body.organizationId,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
       });
@@ -184,6 +186,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.body.organizationId,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
       });
