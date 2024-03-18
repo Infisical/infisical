@@ -70,9 +70,9 @@ spec:
     hostAPI: https://app.infisical.com/api
     resyncInterval: 10
     authentication:
-        # Make sure to only have 1 authentication method defined, serviceAccount/serviceToken/universalAuthMachineIdentity.
+        # Make sure to only have 1 authentication method defined, serviceToken/universalAuth.
         # If you have multiple authentication methods defined, it may cause issues.
-        universalAuthMachineIdentity:
+        universalAuth:
             secretsScope:
                 projectSlug: <project-slug>
                 envSlug: <env-slug> # "dev", "staging", "prod", etc..
@@ -80,13 +80,6 @@ spec:
             credentials:
                 secretName: universal-auth-credentials
                 secretNamespace: default
-
-        serviceAccount:
-            serviceAccountSecretReference:
-                secretName: service-account
-                secretNamespace: default
-            projectId: "<project-id>"
-            environmentName: "<env-name>"
 
         serviceToken:
             serviceTokenSecretReference:
@@ -130,23 +123,30 @@ Default re-sync interval is every 1 minute.
   This block defines the method that will be used to authenticate with Infisical so that secrets can be fetched
 </Accordion>
 
-<Accordion title="authentication.universalAuthMachineIdentity">
+<Accordion title="authentication.universalAuth">
   The universal machine identity authentication method is used to authenticate with Infisical. The client ID and client secret needs to be stored in a Kubernetes secret. This block defines the reference to the name and namespace of secret that stores these credentials.
 
-  #### 1. Create a machine identity
-  You need to create a machine identity, and give it access to the project(s) you want to interact with. You can [read more about machine identities here](/documentation/platform/identities/universal-auth).
+  <Steps>
+    <Step title="Create a machine identity">
+      You need to create a machine identity, and give it access to the project(s) you want to interact with. You can [read more about machine identities here](/documentation/platform/identities/universal-auth).
+    </Step>
+    <Step title="Create Kubernetes secret containing machine identity credentials">
+      Once you have created your machine identity and added it to your project(s), you will need to create a Kubernetes secret containing the identity credentials.
+      To quickly create a Kubernetes secret containing the identity credentials, you can run the command below.
+      
+      Make sure you replace `<your-identity-client-id>` with the identity client ID and `<your-identity-client-secret>` with the identity client secret.
 
-  #### 2. Create Kubernetes secret containing machine identity credentials
+      ``` bash
+        kubectl create secret generic universal-auth-credentials --from-literal=clientId="<your-identity-client-id>" --from-literal=clientSecret="<your-identity-client-secret>"
+      ```
+    </Step>
 
-  Once you have created your machine identity and added it to your project(s), you will need to create a Kubernetes secret containing the identity credentials.
-  To quickly create a Kubernetes secret containing the identity credentials, you can run the command below. Make sure you replace `<your-identity-client-id>` with the identity client ID and `<your-identity-client-secret>` with the identity client secret.
+    <Step title="Add reference for the Kubernetes secret containing the identity credentials">
+      Once the secret is created, add the `secretName` and `secretNamespace` of the secret that was just created under `authentication.universalAuth.credentials` field in the InfisicalSecret resource.
+    </Step>
+  </Steps>
 
-  ``` bash
-    kubectl create secret generic universal-auth-credentials --from-literal=clientId="<your-identity-client-id>" --from-literal=clientSecret="<your-identity-client-secret>"
-  ```
 
-  #### 3. Add reference for the Kubernetes secret containing the identity credentials
-  Once the secret is created, add the name and namespace of the secret that was just created under `authentication.serviceToken.universalAuthMachineIdentity` field in the InfisicalSecret resource.
 
   <Info>
     Make sure to also populate the `secretsScope` field with the project slug _`projectSlug`_, environment slug _`envSlug`_, and secrets path _`secretsPath`_ that you want to fetch secrets from. Please see the example below.
@@ -160,7 +160,7 @@ Default re-sync interval is every 1 minute.
     name: infisicalsecret-sample-crd
   spec:
     authentication:
-        universalAuthMachineIdentity:
+        universalAuth:
             secretsScope:
                 projectSlug: <project-slug> # <-- project slug
                 envSlug: <env-slug> # "dev", "staging", "prod", etc..
