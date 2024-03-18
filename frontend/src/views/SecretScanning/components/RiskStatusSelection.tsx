@@ -32,7 +32,7 @@ export const RiskStatusSelection = ({
           disabled={!isAllowed}
           value={selectedRiskStatus}
           onChange={(e) => setSelectedRiskStatus(e.target.value)}
-          className="block w-full py-2 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          className="block w-full rounded-md py-2 px-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
         >
           <option>Unresolved</option>
           <option value={RiskStatus.RESOLVED_FALSE_POSITIVE}>

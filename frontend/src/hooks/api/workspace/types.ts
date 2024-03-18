@@ -82,16 +82,16 @@ export type TUpdateWorkspaceUserRoleDTO = {
   workspaceId: string;
   roles: (
     | {
-      role: string;
-      isTemporary?: false;
-    }
+        role: string;
+        isTemporary?: false;
+      }
     | {
-      role: string;
-      isTemporary: true;
-      temporaryMode: ProjectUserMembershipTemporaryMode;
-      temporaryRange: string;
-      temporaryAccessStartTime: string;
-    }
+        role: string;
+        isTemporary: true;
+        temporaryMode: ProjectUserMembershipTemporaryMode;
+        temporaryRange: string;
+        temporaryAccessStartTime: string;
+      }
   )[];
 };
 
@@ -100,15 +100,15 @@ export type TUpdateWorkspaceIdentityRoleDTO = {
   workspaceId: string;
   roles: (
     | {
-      role: string;
-      isTemporary?: false;
-    }
+        role: string;
+        isTemporary?: false;
+      }
     | {
-      role: string;
-      isTemporary: true;
-      temporaryMode: ProjectUserMembershipTemporaryMode;
-      temporaryRange: string;
-      temporaryAccessStartTime: string;
-    }
+        role: string;
+        isTemporary: true;
+        temporaryMode: ProjectUserMembershipTemporaryMode;
+        temporaryRange: string;
+        temporaryAccessStartTime: string;
+      }
   )[];
 };

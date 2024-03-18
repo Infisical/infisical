@@ -208,7 +208,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     ))}
                                 </Select>
                               )}
-                              {(status === "invited" || status === "verified") && email &&
+                              {(status === "invited" || status === "verified") &&
+                                email &&
                                 serverDetails?.emailConfigured && (
                                   <Button
                                     isDisabled={!isAllowed}
@@ -240,7 +241,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     });
                                     return;
                                   }
-                                  
+
                                   handlePopUpOpen("removeMember", { orgMembershipId, username });
                                 }}
                                 size="lg"

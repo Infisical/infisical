@@ -68,8 +68,8 @@ const integrationAuthKeys = {
     environmentId: string;
     scope: "job" | "application" | "container";
   }) => [{ integrationAuthId, environmentId, scope }, "integrationAuthQoveryScopes"] as const,
-  getIntegrationAuthHerokuPipelines: ({ integrationAuthId }: { integrationAuthId: string; }) => 
-  [{ integrationAuthId}, "integrationAuthHerokuPipelines"] as const,
+  getIntegrationAuthHerokuPipelines: ({ integrationAuthId }: { integrationAuthId: string }) =>
+    [{ integrationAuthId }, "integrationAuthHerokuPipelines"] as const,
   getIntegrationAuthRailwayEnvironments: ({
     integrationAuthId,
     appId
@@ -322,8 +322,10 @@ const fetchIntegrationAuthQoveryScopes = async ({
   return undefined;
 };
 
-const fetchIntegrationAuthHerokuPipelines = async ({ integrationAuthId }: { 
-  integrationAuthId: string; 
+const fetchIntegrationAuthHerokuPipelines = async ({
+  integrationAuthId
+}: {
+  integrationAuthId: string;
 }) => {
   const {
     data: { pipelines }

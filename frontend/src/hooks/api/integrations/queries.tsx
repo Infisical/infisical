@@ -63,9 +63,11 @@ export const useCreateIntegration = () => {
         secretSuffix?: string;
         initialSyncBehavior?: string;
         shouldAutoRedeploy?: boolean;
-      }
+      };
     }) => {
-      const { data: { integration } } = await apiRequest.post("/api/v1/integration", {
+      const {
+        data: { integration }
+      } = await apiRequest.post("/api/v1/integration", {
         integrationAuthId,
         isActive,
         app,

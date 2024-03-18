@@ -318,7 +318,7 @@ export const IdentityRoles = ({
                               icon={faClock}
                               className={twMerge(
                                 new Date() > new Date(temporaryAccessEndTime as string) &&
-                                "text-red-600"
+                                  "text-red-600"
                               )}
                             />
                           </Tooltip>
@@ -391,14 +391,14 @@ export const IdentityRoles = ({
                               defaultValue={
                                 userProjectRoleDetails?.isTemporary
                                   ? {
-                                    isTemporary: true,
-                                    temporaryAccessStartTime:
-                                      userProjectRoleDetails.temporaryAccessStartTime as string,
-                                    temporaryRange:
-                                      userProjectRoleDetails.temporaryRange as string,
-                                    temporaryAccessEndTime:
-                                      userProjectRoleDetails.temporaryAccessEndTime
-                                  }
+                                      isTemporary: true,
+                                      temporaryAccessStartTime:
+                                        userProjectRoleDetails.temporaryAccessStartTime as string,
+                                      temporaryRange:
+                                        userProjectRoleDetails.temporaryRange as string,
+                                      temporaryAccessEndTime:
+                                        userProjectRoleDetails.temporaryAccessEndTime
+                                    }
                                   : false
                               }
                               render={({ field }) => (

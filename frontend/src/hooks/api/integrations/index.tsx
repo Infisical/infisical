@@ -1,5 +1,1 @@
-export { 
-    useCreateIntegration,
-    useDeleteIntegration,
-    useGetCloudIntegrations 
-} from "./queries";
+export { useCreateIntegration, useDeleteIntegration, useGetCloudIntegrations } from "./queries";

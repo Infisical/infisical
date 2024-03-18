@@ -1,5 +1,6 @@
 export {
-    useAddTrustedIp,
-    useDeleteTrustedIp,
-    useGetTrustedIps,
-    useUpdateTrustedIp} from "./queries";
+  useAddTrustedIp,
+  useDeleteTrustedIp,
+  useGetTrustedIps,
+  useUpdateTrustedIp
+} from "./queries";

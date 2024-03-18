@@ -28,10 +28,7 @@ import {
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
-import {
-    useCreateScimToken,
-    useDeleteScimToken,
-    useGetScimTokens} from "@app/hooks/api";
+import { useCreateScimToken, useDeleteScimToken, useGetScimTokens } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup.object({
@@ -46,53 +43,47 @@ type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["deleteScimToken"]>,
     data?: {
-        scimTokenId: string;
+      scimTokenId: string;
     }
   ) => void;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<
-      ["scimToken", "deleteScimToken"]
-    >,
+    popUpName: keyof UsePopUpState<["scimToken", "deleteScimToken"]>,
     state?: boolean
   ) => void;
 };
 
-export const ScimTokenModal = ({
-  popUp,
-  handlePopUpOpen,
-  handlePopUpToggle
-}: Props) => {
-    const { currentOrg } = useOrganization();
-    const { t } = useTranslation();
-    const { createNotification } = useNotificationContext();
-    const [token, setToken] = useState("");
+export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
+  const { currentOrg } = useOrganization();
+  const { t } = useTranslation();
+  const { createNotification } = useNotificationContext();
+  const [token, setToken] = useState("");
 
-    const [isScimUrlCopied, setIsScimUrlCopied] = useToggle(false);
-    const [isScimTokenCopied, setIsScimTokenCopied] = useToggle(false);
-    
-    const { data, isLoading } = useGetScimTokens(currentOrg?.id ?? "");
-    const { mutateAsync: createScimTokenMutateAsync  } = useCreateScimToken();
-    const { mutateAsync: deleteScimTokenMutateAsync  } = useDeleteScimToken();
+  const [isScimUrlCopied, setIsScimUrlCopied] = useToggle(false);
+  const [isScimTokenCopied, setIsScimTokenCopied] = useToggle(false);
 
-    const {
-        control,
-        handleSubmit,
-        reset,
-        formState: { isSubmitting }
-    } = useForm<FormData>({
-        resolver: yupResolver(schema),
-        defaultValues: {
-            description: "",
-            ttlDays: "365"
-        }
-    });
+  const { data, isLoading } = useGetScimTokens(currentOrg?.id ?? "");
+  const { mutateAsync: createScimTokenMutateAsync } = useCreateScimToken();
+  const { mutateAsync: deleteScimTokenMutateAsync } = useDeleteScimToken();
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting }
+  } = useForm<FormData>({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      description: "",
+      ttlDays: "365"
+    }
+  });
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (isScimUrlCopied) {
       timer = setTimeout(() => setIsScimUrlCopied.off(), 2000);
     }
-    
+
     if (isScimTokenCopied) {
       timer = setTimeout(() => setIsScimTokenCopied.off(), 2000);
     }
@@ -102,36 +93,36 @@ export const ScimTokenModal = ({
 
   const onFormSubmit = async ({ description, ttlDays }: FormData) => {
     try {
-        if (!currentOrg?.id) return;
-      
-        const { scimToken } = await createScimTokenMutateAsync({
-          organizationId: currentOrg.id,
-          description,
-          ttlDays: Number(ttlDays)
-        });
-        
-        setToken(scimToken);
+      if (!currentOrg?.id) return;
 
-        createNotification({
-            text: "Successfully created SCIM token",
-            type: "success"
-        });
+      const { scimToken } = await createScimTokenMutateAsync({
+        organizationId: currentOrg.id,
+        description,
+        ttlDays: Number(ttlDays)
+      });
+
+      setToken(scimToken);
+
+      createNotification({
+        text: "Successfully created SCIM token",
+        type: "success"
+      });
     } catch (err) {
-        console.error(err);
-        createNotification({
-            text: "Failed to create SCIM token",
-            type: "error"
-        });
+      console.error(err);
+      createNotification({
+        text: "Failed to create SCIM token",
+        type: "error"
+      });
     }
   };
 
   const onDeleteScimTokenSubmit = async (scimTokenId: string) => {
     try {
       if (!currentOrg?.id) return;
-      
+
       await deleteScimTokenMutateAsync({
-          organizationId: currentOrg.id,
-          scimTokenId
+        organizationId: currentOrg.id,
+        scimTokenId
       });
 
       handlePopUpToggle("deleteScimToken", false);
@@ -170,8 +161,8 @@ export const ScimTokenModal = ({
             colorSchema="secondary"
             className="group relative"
             onClick={() => {
-                navigator.clipboard.writeText(scimUrl);
-                setIsScimUrlCopied.on();
+              navigator.clipboard.writeText(scimUrl);
+              setIsScimUrlCopied.on();
             }}
           >
             <FontAwesomeIcon icon={isScimUrlCopied ? faCheck : faCopy} />
@@ -203,8 +194,8 @@ export const ScimTokenModal = ({
                 colorSchema="secondary"
                 className="group relative"
                 onClick={() => {
-                    navigator.clipboard.writeText(token);
-                    setIsScimTokenCopied.on();
+                  navigator.clipboard.writeText(token);
+                  setIsScimTokenCopied.on();
                 }}
               >
                 <FontAwesomeIcon icon={isScimTokenCopied ? faCheck : faCopy} />
@@ -230,31 +221,27 @@ export const ScimTokenModal = ({
                 </FormControl>
               )}
             />
-              <Controller
-                control={control}
-                defaultValue="365"
-                name="ttlDays"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="TTL (days)"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <div className="flex">
-                        <Input {...field} placeholder="0" type="number" min="0" step="1" />
-                        <Button
-                            className="ml-4"
-                            size="sm"
-                            type="submit"
-                            isLoading={isSubmitting}
-                            isDisabled={isSubmitting}
-                        >
-                            Create
-                        </Button>
-                    </div>
-                  </FormControl>
-                )}
-              />
+            <Controller
+              control={control}
+              defaultValue="365"
+              name="ttlDays"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl label="TTL (days)" isError={Boolean(error)} errorText={error?.message}>
+                  <div className="flex">
+                    <Input {...field} placeholder="0" type="number" min="0" step="1" />
+                    <Button
+                      className="ml-4"
+                      size="sm"
+                      type="submit"
+                      isLoading={isSubmitting}
+                      isDisabled={isSubmitting}
+                    >
+                      Create
+                    </Button>
+                  </div>
+                </FormControl>
+              )}
+            />
           </form>
         )}
         <h2 className="mb-4">SCIM Tokens</h2>
@@ -273,53 +260,42 @@ export const ScimTokenModal = ({
               {!isLoading &&
                 data &&
                 data.length > 0 &&
-                data.map(
-                  ({
-                    id,
-                    description,
-                    ttlDays,
-                    createdAt
-                  }) => {
-                    
-                    let expiresAt;
-                    if (ttlDays > 0) {
-                      expiresAt = new Date(new Date(createdAt).getTime() + ttlDays * 86400 * 1000);
-                    }
-
-                    return (
-                      <Tr className="h-10 items-center" key={`mi-client-secret-${id}`}>
-                        <Td>{description === "" ? "-" : description}</Td>
-                        <Td>{expiresAt ? format(expiresAt, "yyyy-MM-dd HH:mm:ss") : "-"}</Td>
-                        <Td>{format(new Date(createdAt), "yyyy-MM-dd HH:mm:ss")}</Td>
-                        <Td>
-                          <IconButton
-                            onClick={() => {
-                              handlePopUpOpen("deleteScimToken", {
-                                scimTokenId: id
-                              });
-                            }}
-                            size="lg"
-                            colorSchema="primary"
-                            variant="plain"
-                            ariaLabel="update"
-                          >
-                            <FontAwesomeIcon icon={faXmark} />
-                          </IconButton>
-                        </Td>
-                      </Tr>
-                    );
+                data.map(({ id, description, ttlDays, createdAt }) => {
+                  let expiresAt;
+                  if (ttlDays > 0) {
+                    expiresAt = new Date(new Date(createdAt).getTime() + ttlDays * 86400 * 1000);
                   }
-                )}
-                {!isLoading && data && data?.length === 0 && (
-                    <Tr>
-                        <Td colSpan={4}>
-                            <EmptyState
-                            title="No SCIM tokens have been created yet"
-                            icon={faKey}
-                            />
-                        </Td>
+
+                  return (
+                    <Tr className="h-10 items-center" key={`mi-client-secret-${id}`}>
+                      <Td>{description === "" ? "-" : description}</Td>
+                      <Td>{expiresAt ? format(expiresAt, "yyyy-MM-dd HH:mm:ss") : "-"}</Td>
+                      <Td>{format(new Date(createdAt), "yyyy-MM-dd HH:mm:ss")}</Td>
+                      <Td>
+                        <IconButton
+                          onClick={() => {
+                            handlePopUpOpen("deleteScimToken", {
+                              scimTokenId: id
+                            });
+                          }}
+                          size="lg"
+                          colorSchema="primary"
+                          variant="plain"
+                          ariaLabel="update"
+                        >
+                          <FontAwesomeIcon icon={faXmark} />
+                        </IconButton>
+                      </Td>
                     </Tr>
-                )}
+                  );
+                })}
+              {!isLoading && data && data?.length === 0 && (
+                <Tr>
+                  <Td colSpan={4}>
+                    <EmptyState title="No SCIM tokens have been created yet" icon={faKey} />
+                  </Td>
+                </Tr>
+              )}
             </TBody>
           </Table>
         </TableContainer>
@@ -329,9 +305,8 @@ export const ScimTokenModal = ({
           onChange={(isOpen) => handlePopUpToggle("scimToken", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() => {
-        
             const deleteScimTokenData = popUp?.deleteScimToken?.data as {
-                scimTokenId: string;
+              scimTokenId: string;
             };
 
             return onDeleteScimTokenSubmit(deleteScimTokenData.scimTokenId);

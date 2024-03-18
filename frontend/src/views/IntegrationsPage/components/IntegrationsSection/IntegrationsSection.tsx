@@ -207,7 +207,11 @@ export const IntegrationsSection = ({
           (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
         } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || " "}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
-        deleteKey={(popUp?.deleteConfirmation?.data as TIntegration)?.app || (popUp?.deleteConfirmation?.data as TIntegration)?.owner || ""}
+        deleteKey={
+          (popUp?.deleteConfirmation?.data as TIntegration)?.app ||
+          (popUp?.deleteConfirmation?.data as TIntegration)?.owner ||
+          ""
+        }
         onDeleteApproved={async () =>
           onIntegrationDelete(popUp?.deleteConfirmation.data as TIntegration, () =>
             handlePopUpClose("deleteConfirmation")

@@ -1,6 +1,6 @@
 import { forwardRef, ReactNode } from "react";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
-import { faCaretDown, faCaretUp,faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faCaretDown, faCaretUp, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { twMerge } from "tailwind-merge";
@@ -57,7 +57,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
         <SelectPrimitive.Portal>
           <SelectPrimitive.Content
             className={twMerge(
-              "relative top-1 z-[100] overflow-hidden rounded-md bg-mineshaft-900 border border-mineshaft-600 font-inter text-bunker-100 shadow-md",
+              "relative top-1 z-[100] overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md",
               dropdownContainerClassName
             )}
             position={position}

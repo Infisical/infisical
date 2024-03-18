@@ -325,14 +325,12 @@ export const MemberRoles = ({
                       <div>{formatRoleName(role, customRoleName)}</div>
                       {isTemporary && (
                         <div>
-                          <Tooltip
-                            content={isExpired ? "Access expired" : "Temporary access"}
-                          >
+                          <Tooltip content={isExpired ? "Access expired" : "Temporary access"}>
                             <FontAwesomeIcon
                               icon={faClock}
                               className={twMerge(
                                 new Date() > new Date(temporaryAccessEndTime as string) &&
-                                "text-red-600"
+                                  "text-red-600"
                               )}
                             />
                           </Tooltip>
@@ -405,14 +403,14 @@ export const MemberRoles = ({
                               defaultValue={
                                 userProjectRoleDetails?.isTemporary
                                   ? {
-                                    isTemporary: true,
-                                    temporaryAccessStartTime:
-                                      userProjectRoleDetails.temporaryAccessStartTime as string,
-                                    temporaryRange:
-                                      userProjectRoleDetails.temporaryRange as string,
-                                    temporaryAccessEndTime:
-                                      userProjectRoleDetails.temporaryAccessEndTime
-                                  }
+                                      isTemporary: true,
+                                      temporaryAccessStartTime:
+                                        userProjectRoleDetails.temporaryAccessStartTime as string,
+                                      temporaryRange:
+                                        userProjectRoleDetails.temporaryRange as string,
+                                      temporaryAccessEndTime:
+                                        userProjectRoleDetails.temporaryAccessEndTime
+                                    }
                                   : false
                               }
                               render={({ field }) => (

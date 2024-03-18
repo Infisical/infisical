@@ -27,7 +27,7 @@ export const OrgMembersSection = () => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id ?? "";
-  
+
   const [completeInviteLink, setCompleteInviteLink] = useState<string>("");
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
