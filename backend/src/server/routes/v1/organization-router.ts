@@ -114,6 +114,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const users = await server.services.org.findAllOrgMembersWithProjects(
         req.permission.id,
         req.params.organizationId,
+        req.permission.authMethod,
         req.permission.orgId
       );
 

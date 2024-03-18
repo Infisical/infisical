@@ -77,7 +77,9 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const promises = projects.map(async (projectId) => {
         const membershipsPromise = server.services.projectMembership.addUsersToProjectNonE2EE({
           projectId,
+          actorAuthMethod: req.permission.authMethod,
           actorId: req.permission.id,
+          actorOrgId: req.permission.orgId,
           actor: req.permission.type,
           emails: [userEmail],
           usernames: []
