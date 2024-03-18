@@ -36,25 +36,28 @@ const Notification = ({ notification, clearNotification }: NotificationProps) =>
 
   return (
     <div
-      className="relative w-full flex items-center justify-between px-6 py-4 rounded-md border border-bunker-500 pointer-events-auto bg-mineshaft-700 mb-3 right-3"
+      className="pointer-events-auto relative right-3 mb-3 flex w-full items-center justify-between rounded-md border border-bunker-500 bg-mineshaft-700 px-6 py-4"
       role="alert"
     >
       {notification.type === "error" && (
-        <div className="absolute w-full h-1 bg-red top-0 left-0 rounded-t-md" />
+        <div className="absolute top-0 left-0 h-1 w-full rounded-t-md bg-red" />
       )}
       {notification.type === "success" && (
-        <div className="absolute w-full h-1 bg-green top-0 left-0 rounded-t-md" />
+        <div className="absolute top-0 left-0 h-1 w-full rounded-t-md bg-green" />
       )}
       {notification.type === "info" && (
-        <div className="absolute w-full h-1 bg-yellow top-0 left-0 rounded-t-md" />
+        <div className="absolute top-0 left-0 h-1 w-full rounded-t-md bg-yellow" />
       )}
-      <p className="text-bunker-200 text-md font-base mt-0.5">{notification.text}</p>
+      <p className="text-md font-base mt-0.5 text-bunker-200">{notification.text}</p>
       <button
         type="button"
         className="rounded-lg"
         onClick={() => clearNotification(notification.text)}
       >
-        <FontAwesomeIcon className="absolute right-2 top-3 text-bunker-300 pl-2 w-4 h-4 hover:text-white" icon={faXmark} />
+        <FontAwesomeIcon
+          className="absolute right-2 top-3 h-4 w-4 pl-2 text-bunker-300 hover:text-white"
+          icon={faXmark}
+        />
       </button>
     </div>
   );
