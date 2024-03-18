@@ -114,11 +114,11 @@ func (r *InfisicalSecretReconciler) GetInfisicalTokenFromKubeSecret(ctx context.
 	return strings.Replace(string(infisicalServiceToken), " ", "", -1), nil
 }
 
-func (r *InfisicalSecretReconciler) GetInfisicalUniversalAuthMachineIdentityFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (machineIdentityDetails model.MachineIdentityDetails, err error) {
+func (r *InfisicalSecretReconciler) GetInfisicalUniversalAuthFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (machineIdentityDetails model.MachineIdentityDetails, err error) {
 
 	universalAuthCredsFromKubeSecret, err := r.GetKubeSecretByNamespacedName(ctx, types.NamespacedName{
-		Namespace: infisicalSecret.Spec.Authentication.UniversalAuthMachineIdentity.Credentials.SecretNamespace,
-		Name:      infisicalSecret.Spec.Authentication.UniversalAuthMachineIdentity.Credentials.SecretName,
+		Namespace: infisicalSecret.Spec.Authentication.UniversalAuth.Credentials.SecretNamespace,
+		Name:      infisicalSecret.Spec.Authentication.UniversalAuth.Credentials.SecretName,
 	})
 
 	if errors.IsNotFound(err) {
@@ -255,7 +255,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		return fmt.Errorf("ReconcileInfisicalSecret: unable to get service account creds from kube secret [err=%s]", err)
 	}
 
-	infisicalMachineIdentityCreds, err := r.GetInfisicalUniversalAuthMachineIdentityFromKubeSecret(ctx, infisicalSecret)
+	infisicalMachineIdentityCreds, err := r.GetInfisicalUniversalAuthFromKubeSecret(ctx, infisicalSecret)
 	if err != nil {
 		return fmt.Errorf("ReconcileInfisicalSecret: unable to get machine identity creds from kube secret [err=%s]", err)
 	}
@@ -331,8 +331,8 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 			return nil
 		}
 
-		scope := infisicalSecret.Spec.Authentication.UniversalAuthMachineIdentity.SecretsScope
-		plainTextSecretsFromApi, updateAttributes, err = util.GetPlainTextSecretsViaUniversalAuthMachineIdentity(accessToken, secretVersionBasedOnETag, scope)
+		scope := infisicalSecret.Spec.Authentication.UniversalAuth.SecretsScope
+		plainTextSecretsFromApi, updateAttributes, err = util.GetPlainTextSecretsViaUniversalAuth(accessToken, secretVersionBasedOnETag, scope)
 
 		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via universal auth")
 		if err != nil {

@@ -51,7 +51,7 @@ func GetServiceTokenDetails(infisicalToken string) (api.GetServiceTokenDetailsRe
 	return serviceTokenDetails, nil
 }
 
-func GetPlainTextSecretsViaUniversalAuthMachineIdentity(accessToken string, etag string, secretScope v1alpha1.MachineIdentityScopeInWorkspace) ([]model.SingleEnvironmentVariable, model.UpdateAttributes, error) {
+func GetPlainTextSecretsViaUniversalAuth(accessToken string, etag string, secretScope v1alpha1.MachineIdentityScopeInWorkspace) ([]model.SingleEnvironmentVariable, model.UpdateAttributes, error) {
 
 	httpClient := resty.New()
 	httpClient.SetAuthScheme("Bearer")
