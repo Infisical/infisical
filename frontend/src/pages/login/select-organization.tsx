@@ -1,5 +1,3 @@
-/* eslint-disable jsx-a11y/no-static-element-interactions */
-/* eslint-disable jsx-a11y/click-events-have-key-events */
 import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
@@ -76,25 +74,18 @@ export default function LoginPage() {
       if (callbackPort) {
         const privateKey = localStorage.getItem("PRIVATE_KEY");
 
-        if (!privateKey) {
-          createNotification({
-            text: "Private key not found",
-            type: "error"
-          });
-        }
+        let error: string | null = null;
 
-        if (!user.email) {
-          createNotification({
-            text: "User email not found",
-            type: "error"
-          });
-        }
+        if (!privateKey) error = "Private key not found";
+        if (!user.email) error = "User email not found";
+        if (!token) error = "No token found";
 
-        if (!token) {
+        if (error) {
           createNotification({
-            text: "No token found",
+            text: error,
             type: "error"
           });
+          return;
         }
 
         const payload = {
@@ -177,33 +168,22 @@ export default function LoginPage() {
               <Spinner />
             ) : (
               organizations.data?.map((org) => (
+                // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
                 <div
                   onClick={() => handleSelectOrganization(org)}
                   key={org.id}
                   className="group flex cursor-pointer items-center justify-between rounded-md bg-mineshaft-700 px-4 py-3 capitalize text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600"
                 >
-                  <p className="transition-colors">{org.name}</p>
+                  <p className="truncate transition-colors">{org.name}</p>
 
                   <FontAwesomeIcon
                     icon={faArrowRight}
-                    className="text-gray-400 transition-colors group-hover:text-primary-500"
+                    className="text-gray-400 transition-all group-hover:translate-x-2 group-hover:text-primary-500"
                   />
                 </div>
               ))
             )}
           </div>
-
-          <Button
-            className="mt-8"
-            colorSchema="primary"
-            isLoading={logout.isLoading}
-            isDisabled={logout.isLoading}
-            variant="solid"
-            size="lg"
-            onClick={handleLogout}
-          >
-            Logout
-          </Button>
         </form>
       </div>
 
