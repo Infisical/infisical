@@ -10,10 +10,10 @@ type Authentication struct {
 	// +kubebuilder:validation:Optional
 	ServiceToken ServiceTokenDetails `json:"serviceToken"`
 	// +kubebuilder:validation:Optional
-	UniversalAuthMachineIdentity UniversalAuthMachineIdentityDetails `json:"universalAuthMachineIdentity"`
+	UniversalAuth UniversalAuthDetails `json:"universalAuth"`
 }
 
-type UniversalAuthMachineIdentityDetails struct {
+type UniversalAuthDetails struct {
 	// +kubebuilder:validation:Required
 	Credentials KubeSecretReference `json:"credentials"`
 	// +kubebuilder:validation:Required
