@@ -60,6 +60,7 @@ export type FormControlProps = {
   errorText?: ReactNode;
   children: JSX.Element;
   className?: string;
+  labelClassName?: string;
   icon?: ReactNode;
 };
 
@@ -72,12 +73,13 @@ export const FormControl = ({
   id,
   isError,
   icon,
-  className
+  className,
+  labelClassName
 }: FormControlProps): JSX.Element => {
   return (
     <div className={twMerge("mb-4", className)}>
       {typeof label === "string" ? (
-        <FormLabel label={label} isRequired={isRequired} id={id} icon={icon} />
+        <FormLabel label={label} isRequired={isRequired} id={id} icon={icon} className={labelClassName} />
       ) : (
         label
       )}

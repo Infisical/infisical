@@ -31,10 +31,14 @@ export const buildFindFilter =
     return bd;
   };
 
+export type TFindOptSort<R extends object = object> = Array<
+  [keyof R, "asc" | "desc"] | [keyof R, "asc" | "desc", "first" | "last"]
+>;
+
 export type TFindOpt<R extends object = object> = {
   limit?: number;
   offset?: number;
-  sort?: Array<[keyof R, "asc" | "desc"] | [keyof R, "asc" | "desc", "first" | "last"]>;
+  sort?: TFindOptSort<R>;
   tx?: Knex;
 };
 

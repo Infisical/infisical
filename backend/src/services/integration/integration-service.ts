@@ -1,8 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { TIntegrations } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
+import { TFindOptSort } from "@app/lib/knex";
 import { TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
@@ -145,11 +147,23 @@ export const integrationServiceFactory = ({
     return { ...integration, ...deletedIntegration };
   };
 
-  const listIntegrationByProject = async ({ actor, actorId, actorOrgId, projectId }: TProjectPermission) => {
+  type TProjectFilterAndSort = {
+    filter: Partial<TIntegrations>;
+    sort?: string[][];
+  };
+
+  const listIntegrationByProject = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    projectId,
+    filter,
+    sort
+  }: TProjectPermission & TProjectFilterAndSort) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
-    const integrations = await integrationDAL.findByProjectId(projectId);
+    const integrations = await integrationDAL.findByProjectId(projectId, filter, sort as TFindOptSort<TIntegrations>);
     return integrations;
   };
 

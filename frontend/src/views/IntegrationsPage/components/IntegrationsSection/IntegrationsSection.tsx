@@ -1,27 +1,45 @@
+import { Controller, useForm } from "react-hook-form";
 import Link from "next/link";
 import { faArrowRight, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
+import * as yup from "yup";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
   AlertDescription,
+  Button,
   DeleteActionModal,
   EmptyState,
+  FormControl,
   FormLabel,
   IconButton,
+  Select,
+  SelectItem,
   Skeleton,
   Tooltip
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { TIntegration } from "@app/hooks/api/types";
+import { TCloudIntegration, TIntegration } from "@app/hooks/api/types";
+
+const filterIntegrationSchema = yup.object({
+  environment: yup.string().trim().optional(),
+  integration: yup.string().trim().optional(),
+  sort: yup.string().required()
+});
+
+export type FilterIntegrationData = yup.InferType<typeof filterIntegrationSchema>;
 
 type Props = {
   environments: Array<{ name: string; slug: string; id: string }>;
   integrations?: TIntegration[];
+  cloudIntegrations?: TCloudIntegration[];
+  isCloudIntegrationLoading?: boolean;
   isLoading?: boolean;
+  onFilterChange: (data: FilterIntegrationData) => void;
   onIntegrationDelete: (integration: TIntegration, cb: () => void) => void;
   isBotActive: boolean | undefined;
   workspaceId: string;
@@ -29,15 +47,41 @@ type Props = {
 
 export const IntegrationsSection = ({
   integrations = [],
+  cloudIntegrations = [],
   environments = [],
   isLoading,
   onIntegrationDelete,
+  onFilterChange,
   isBotActive,
   workspaceId
 }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteConfirmation"
   ] as const);
+
+  const {
+    control,
+    reset,
+    getValues,
+    formState: { isDirty }
+  } = useForm<FilterIntegrationData>({
+    resolver: yupResolver(filterIntegrationSchema),
+    defaultValues: {
+      environment: "",
+      integration: "",
+      sort: "integration:asc"
+    }
+  });
+
+  function handleDropdownChange(value: string, onChange: (value: string) => void) {
+    onChange(value);
+    onFilterChange(getValues());
+  }
+
+  function handleReset() {
+    reset();
+    onFilterChange(getValues());
+  }
 
   return (
     <div className="mb-8">
@@ -65,6 +109,122 @@ export const IntegrationsSection = ({
         </div>
       )}
 
+      {isBotActive && (
+        <div className="my-2 flex w-full items-end justify-between px-6">
+          <div className="flex gap-4">
+            <Controller
+              control={control}
+              name="environment"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Environment"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Select
+                    className="w-60 bg-mineshaft-700"
+                    dropdownContainerClassName="bg-mineshaft-700"
+                    defaultValue={field.value}
+                    onValueChange={(value) => handleDropdownChange(value, onChange)}
+                    {...field}
+                  >
+                    {environments.map((e) => (
+                      <SelectItem value={e.id} key={`filter-env-${e.slug}`}>
+                        {e.name}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="integration"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Integration"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Select
+                    className="w-60 bg-mineshaft-700"
+                    dropdownContainerClassName="bg-mineshaft-700"
+                    defaultValue={field.value}
+                    onValueChange={(value) => handleDropdownChange(value, onChange)}
+                    {...field}
+                  >
+                    {cloudIntegrations.map((e) => (
+                      <SelectItem value={e.slug} key={`filter-int-${e.slug}`}>
+                        {e.name}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            {isDirty && (
+              <Button
+                onClick={() => handleReset()}
+                aria-label="reset"
+                colorSchema="secondary"
+                variant="star"
+                className="mt-1 h-9 self-center border border-red hover:bg-red"
+              >
+                <FontAwesomeIcon icon={faXmark} className="pr-3" />
+                <span>Clear filter</span>
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-4">
+            <Controller
+              control={control}
+              name="sort"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Sort by"
+                  labelClassName="justify-end"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Select
+                    className="w-44 bg-mineshaft-700"
+                    dropdownContainerClassName="bg-mineshaft-700"
+                    defaultValue={field.value}
+                    onValueChange={(value) => handleDropdownChange(value, onChange)}
+                    {...field}
+                  >
+                    <SelectItem value="app:asc" key="sort-asc-app">
+                      App (A-&gt;Z)
+                    </SelectItem>
+                    <SelectItem value="app:desc" key="sort-dsc-app">
+                      App (Z-&gt;A)
+                    </SelectItem>
+                    <SelectItem value="project_environments.name:asc" key="sort-asc-env">
+                      Environment (A-&gt;Z)
+                    </SelectItem>
+                    <SelectItem value="project_environments.name:desc" key="sort-dsc-env">
+                      Environment (Z-&gt;A)
+                    </SelectItem>
+                    <SelectItem value="integration:asc" key="sort-asc-integration">
+                      Integration (A-&gt;Z)
+                    </SelectItem>
+                    <SelectItem value="integration:desc" key="sort-dsc-integration">
+                      Integration (Z-&gt;A)
+                    </SelectItem>
+                    <SelectItem value="secretPath:asc" key="sort-asc-secret-path">
+                      Secret path (A-&gt;Z)
+                    </SelectItem>
+                    <SelectItem value="secretPath:desc" key="sort-dsc-secret-path">
+                      Secret path (Z-&gt;A)
+                    </SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
+          </div>
+        </div>
+      )}
+
       {!isLoading && !integrations.length && isBotActive && (
         <div className="mx-6">
           <EmptyState
@@ -73,6 +233,7 @@ export const IntegrationsSection = ({
           />
         </div>
       )}
+
       {!isLoading && isBotActive && (
         <div className="flex flex-col space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
@@ -207,7 +368,11 @@ export const IntegrationsSection = ({
           (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
         } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || " "}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
-        deleteKey={(popUp?.deleteConfirmation?.data as TIntegration)?.app || (popUp?.deleteConfirmation?.data as TIntegration)?.owner || ""}
+        deleteKey={
+          (popUp?.deleteConfirmation?.data as TIntegration)?.app ||
+          (popUp?.deleteConfirmation?.data as TIntegration)?.owner ||
+          ""
+        }
         onDeleteApproved={async () =>
           onIntegrationDelete(popUp?.deleteConfirmation.data as TIntegration, () =>
             handlePopUpClose("deleteConfirmation")

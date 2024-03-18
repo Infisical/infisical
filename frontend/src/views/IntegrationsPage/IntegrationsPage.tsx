@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -21,7 +21,7 @@ import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { CloudIntegrationSection } from "./components/CloudIntegrationSection";
 import { FrameworkIntegrationSection } from "./components/FrameworkIntegrationSection";
-import { IntegrationsSection } from "./components/IntegrationsSection";
+import { type FilterIntegrationData, IntegrationsSection } from "./components/IntegrationsSection";
 import { generateBotKey, redirectForProviderAuth } from "./IntegrationPage.utils";
 
 type Props = {
@@ -32,6 +32,10 @@ export const IntegrationsPage = withProjectPermission(
   ({ frameworkIntegrations }: Props) => {
     const { t } = useTranslation();
     const { createNotification } = useNotificationContext();
+
+    const [filterEnvironment, setFilterEnvironment] = useState<string>();
+    const [filterIntegrationSlug, setFilterIntegrationSlug] = useState<string>();
+    const [sortIntegration, setSortIntegration] = useState<string>();
 
     const { currentWorkspace } = useWorkspace();
     const workspaceId = currentWorkspace?.id || "";
@@ -66,7 +70,13 @@ export const IntegrationsPage = withProjectPermission(
       data: integrations,
       isLoading: isIntegrationLoading,
       isFetching: isIntegrationFetching
-    } = useGetWorkspaceIntegrations(workspaceId);
+    } = useGetWorkspaceIntegrations({
+      workspaceId,
+      envId: filterEnvironment,
+      slug: filterIntegrationSlug,
+      sort: sortIntegration
+    });
+    console.log(filterEnvironment);
 
     const { data: bot } = useGetWorkspaceBot(workspaceId);
 
@@ -83,7 +93,7 @@ export const IntegrationsPage = withProjectPermission(
     const isIntegrationsAuthorizedEmpty = !Object.keys(integrationAuths || {}).length;
     const isIntegrationsEmpty = !integrations?.length;
     // summary: this use effect is trigger when all integration auths are removed thus deactivate bot
-    // details: so on successfully deleting an integration auth, immediately integration list is refeteched
+    // details: so on successfully deleting an integration auth, immediately integration list is refetched
     // After the refetch is completed check if its empty. Then set bot active and reset the submit hook for isSuccess to go back to false
     useEffect(() => {
       if (
@@ -130,7 +140,7 @@ export const IntegrationsPage = withProjectPermission(
       }
     };
 
-    // function to strat integration for a provider
+    // function to start integration for a provider
     // confirmation to user passing the bot key for provider to get secret access
     const handleProviderIntegrationStart = (provider: string) => {
       if (!bot?.isActive) {
@@ -186,10 +196,19 @@ export const IntegrationsPage = withProjectPermission(
       }
     };
 
+    function handleFilterIntegration(data: FilterIntegrationData) {
+      console.log({ filter: data });
+      setFilterEnvironment(data.environment);
+      setFilterIntegrationSlug(data.integration);
+      setSortIntegration(data.sort);
+    }
+
     return (
       <div className="container mx-auto max-w-7xl pb-12 text-white">
         <IntegrationsSection
           isLoading={isIntegrationLoading}
+          onFilterChange={(data) => handleFilterIntegration(data)}
+          cloudIntegrations={cloudIntegrations}
           integrations={integrations}
           environments={environments}
           onIntegrationDelete={({ id }, cb) => handleIntegrationDelete(id, cb)}

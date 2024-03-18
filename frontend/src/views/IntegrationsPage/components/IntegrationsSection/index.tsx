@@ -1,1 +1,1 @@
-export { IntegrationsSection } from "./IntegrationsSection";
+export { type FilterIntegrationData,IntegrationsSection } from "./IntegrationsSection";

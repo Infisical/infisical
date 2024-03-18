@@ -366,5 +366,5 @@ export const getIntegrationOptions = async () => {
     }
   ];
 
-  return INTEGRATION_OPTIONS;
+  return INTEGRATION_OPTIONS.sort((a, b) => a.name.localeCompare(b.name));
 };

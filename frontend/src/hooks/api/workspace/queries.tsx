@@ -30,7 +30,10 @@ export const workspaceKeys = {
   getProjectUpgradeStatus: (workspaceId: string) => [{ workspaceId }, "workspace-upgrade-status"],
   getWorkspaceMemberships: (orgId: string) => [{ orgId }, "workspace-memberships"],
   getWorkspaceAuthorization: (workspaceId: string) => [{ workspaceId }, "workspace-authorizations"],
-  getWorkspaceIntegrations: (workspaceId: string) => [{ workspaceId }, "workspace-integrations"],
+  getWorkspaceIntegrations: (workspaceId: string, slug?: string, envSlug?: string, sort?: string) => [
+    { workspaceId, slug, envSlug, sort },
+    "workspace-integrations"
+  ],
   getAllUserWorkspace: ["workspaces"] as const,
   getWorkspaceAuditLogs: (workspaceId: string) =>
     [{ workspaceId }, "workspace-audit-logs"] as const,
@@ -184,18 +187,37 @@ export const useGetWorkspaceAuthorizations = <TData=IntegrationAuth[]>(
     select
   });
 
-const fetchWorkspaceIntegrations = async (workspaceId: string) => {
+type WorkspaceIntegrationsOpts = {
+  workspaceId: string;
+  envId?: string;
+  slug?: string;
+  sort?: string;
+};
+
+const fetchWorkspaceIntegrations = async (opts: WorkspaceIntegrationsOpts) => {
   const { data } = await apiRequest.get<{ integrations: TIntegration[] }>(
-    `/api/v1/workspace/${workspaceId}/integrations`
+    `/api/v1/workspace/${opts.workspaceId}/integrations`,
+    {
+      params: {
+        envId: opts.envId,
+        slug: opts.slug,
+        sort: opts.sort
+      }
+    }
   );
   return data.integrations;
 };
 
-export const useGetWorkspaceIntegrations = (workspaceId: string) =>
+export const useGetWorkspaceIntegrations = (opts: WorkspaceIntegrationsOpts) =>
   useQuery({
-    queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId),
-    queryFn: () => fetchWorkspaceIntegrations(workspaceId),
-    enabled: Boolean(workspaceId)
+    queryKey: workspaceKeys.getWorkspaceIntegrations(
+      opts.workspaceId,
+      opts.slug,
+      opts.envId,
+      opts.sort
+    ),
+    queryFn: () => fetchWorkspaceIntegrations(opts),
+    enabled: Boolean(opts.workspaceId)
   });
 
 export const createWorkspace = ({

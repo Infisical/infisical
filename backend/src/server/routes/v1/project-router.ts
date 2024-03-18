@@ -311,6 +311,19 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         workspaceId: z.string().trim()
       }),
+      querystring: z
+        .object({
+          envId: z.string().trim().optional(),
+          slug: z.string().trim().optional(),
+          sort: z
+            .string()
+            .trim()
+            .optional()
+            .transform((str): string[][] => {
+              return typeof str === "string" ? str.split(",").map((currSort) => currSort.split(":")) : [];
+            })
+        })
+        .optional(),
       response: {
         200: z.object({
           integrations: IntegrationsSchema.merge(
@@ -331,8 +344,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId
+        projectId: req.params.workspaceId,
+        filter: {
+          envId: req.query?.envId,
+          integration: req.query?.slug
+        },
+        sort: req.query?.sort
       });
+
       return { integrations };
     }
   });

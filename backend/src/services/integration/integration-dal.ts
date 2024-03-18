@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TIntegrations } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, TFindOptSort } from "@app/lib/knex";
 
 export type TIntegrationDALFactory = ReturnType<typeof integrationDALFactory>;
 
@@ -62,16 +62,32 @@ export const integrationDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByProjectId = async (projectId: string, tx?: Knex) => {
+  const findByProjectId = async (
+    projectId: string,
+    filter?: Partial<TIntegrations>,
+    sort?: TFindOptSort<TIntegrations>,
+    tx?: Knex
+  ) => {
     try {
-      const integrations = await (tx || db)(TableName.Integration)
-        .where(`${TableName.Environment}.projectId`, projectId)
+      const filterWithoutNull = filter ? Object.fromEntries(Object.entries(filter).filter((data) => !!data?.[1])) : {};
+      const query = (tx || db)(TableName.Integration)
+        .where({
+          ...filterWithoutNull,
+          ...{ [`${TableName.Environment}.projectId`]: projectId }
+        })
         .join(TableName.Environment, `${TableName.Integration}.envId`, `${TableName.Environment}.id`)
-        .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
-        .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
-        .select(db.ref("id").withSchema(TableName.Environment).as("envId"))
-        .select(db.ref("projectId").withSchema(TableName.Environment))
+        .select((tx || db).ref("name").withSchema(TableName.Environment).as("envName"))
+        .select((tx || db).ref("slug").withSchema(TableName.Environment).as("envSlug"))
+        .select((tx || db).ref("id").withSchema(TableName.Environment).as("envId"))
+        .select((tx || db).ref("projectId").withSchema(TableName.Environment))
         .select(selectAllTableCols(TableName.Integration));
+
+      if (sort) {
+        const sortObj = sort.map(([sortDir, sortCol]) => ({ column: sortDir, order: sortCol }));
+        void query.orderBy(sortObj);
+      }
+
+      const integrations = await query;
 
       return integrations.map(({ envId, envSlug, envName, ...el }) => ({
         ...el,
