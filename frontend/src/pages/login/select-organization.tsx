@@ -54,19 +54,24 @@ export default function LoginPage() {
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
+      const callbackPort = queryParams.get("callback_port");
+
       if (organization.authEnforced) {
         // org has an org-level auth method enabled (e.g. SAML)
         // -> logout + redirect to SAML SSO
+        let samlUrl = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
+
+        if (callbackPort) {
+          samlUrl += `?callback_port=${callbackPort}`;
+        }
 
         await logout.mutateAsync();
-        window.open(`/api/v1/sso/redirect/saml2/organizations/${organization.slug}`);
+        window.open(samlUrl);
         window.close();
         return;
       }
 
       const { token } = await selectOrg.mutateAsync({ organizationId: organization.id });
-
-      const callbackPort = queryParams.get("callback_port");
 
       if (callbackPort) {
         const privateKey = localStorage.getItem("PRIVATE_KEY");
