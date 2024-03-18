@@ -37,7 +37,7 @@ spec:
                 envSlug: <env-slug>
                 secretsPath: <secrets-path> # Root is "/"
 
-        universalAuthMachineIdentity:
+        universalAuth:
             secretsScope:
                 projectSlug: <project-slug>
                 envSlug: <env-slug> # "dev", "staging", "prod", etc..
