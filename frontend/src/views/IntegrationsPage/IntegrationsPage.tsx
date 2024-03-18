@@ -76,7 +76,6 @@ export const IntegrationsPage = withProjectPermission(
       slug: filterIntegrationSlug,
       sort: sortIntegration
     });
-    console.log(filterEnvironment);
 
     const { data: bot } = useGetWorkspaceBot(workspaceId);
 
@@ -165,7 +164,7 @@ export const IntegrationsPage = withProjectPermission(
           text: "Deleted integration"
         });
       } catch (err) {
-        console.log(err);
+        console.error(err);
         createNotification({
           type: "error",
           text: "Failed to delete integration"
@@ -197,7 +196,6 @@ export const IntegrationsPage = withProjectPermission(
     };
 
     function handleFilterIntegration(data: FilterIntegrationData) {
-      console.log({ filter: data });
       setFilterEnvironment(data.environment);
       setFilterIntegrationSlug(data.integration);
       setSortIntegration(data.sort);
