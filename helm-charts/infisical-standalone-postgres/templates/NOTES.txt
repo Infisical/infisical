@@ -1,6 +1,6 @@
 ##
 
--- Infisical Helm Chart --
+-- ∞ Infisical Helm Chart --
 
 ██╗███╗   ██╗███████╗██╗███████╗██╗ ██████╗ █████╗ ██╗     
 ██║████╗  ██║██╔════╝██║██╔════╝██║██╔════╝██╔══██╗██║     
@@ -19,25 +19,28 @@
 │
 │   Current installation (infisical) :
 │   • infisical          : {{ .Values.infisical.enabled }}
-|   • nginx              : {{ .Values.ingress.nginx.enabled }}
-|   • Postgres DB        : {{ .Values.postgresql.enabled }}
-|   • Redis              : {{ .Values.redis.enabled }}
+|   • ingress-nginx      : {{ .Values.ingress.nginx.enabled }}
+|   • postgresql         : {{ .Values.postgresql.enabled }}
+|   • redis              : {{ .Values.redis.enabled }}
 │
 ╰―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――┤
 
 ――― Here's a list of helpful commands to get you started 📝  ―――――――――――――――――――――――――――――――――――――――――┤
 
 → Get all the Infisical resources (excluding secrets/pvcs)
-$ kubectl get all -n {{ .Release.Namespace }}
+kubectl get all -n {{ .Release.Namespace }}
  
 → Get your release status
-$ helm status -n {{ .Release.Namespace }} {{ .Release.Name }}
+helm status -n {{ .Release.Namespace }} {{ .Release.Name }}
 
 → Get your release resources
-$ helm get all -n {{ .Release.Namespace }} {{ .Release.Name }}
+helm get all -n {{ .Release.Namespace }} {{ .Release.Name }}
 
 → Uninstall your release
-$ helm uninstall -n {{ .Release.Namespace }} {{ .Release.Name }}
+helm uninstall -n {{ .Release.Namespace }} {{ .Release.Name }}
+
+→ Access the Infisical dashboard
+kubectl port-forward -n {{ .Release.Namespace }} $(kubectl get pods -n {{ .Release.Namespace }} -l "app=infisical-standalone" -o jsonpath="{.items[0].metadata.name}") 8080 &
  
 ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――┤
 

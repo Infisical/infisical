@@ -1,0 +1,106 @@
+# Infisical Helm Chart
+
+{{ template "infisical.description" . }}
+
+## Services
+
+| Service      | Description      |
+| ------------ | ---------------- |
+| `infisical`  | Infisical's API  |
+| `ingress`    | Ingress service  |
+| `postgresql` | Database service |
+| `redis`      | Cache service    |
+
+{{ template "infisical.installation.repo" . }}
+
+{{ template "infisical.installation.secrets" . }}
+
+{{ template "infisical.installation.chart" . }}
+
+{{ template "infisical.encryptionKeys" . }}
+
+{{ template "infisical.upgrading" . }}
+
+---
+
+### **`0.0.1`** (`v0.44.0`)
+<details open>
+<summary><strong>Click for details</strong> (MongoDB to PostgreSQL migration)</summary>
+
+Since the new `infisical-standalone-postgres` chart, Infisical moved away from MongoDB to PostgreSQL.
+
+Here's the migration instructions : https://infisical.com/docs/self-hosting/guides/mongo-to-postgres
+</details>
+
+## Parameters
+
+{{ template "chart.valuesTable" . }}
+
+{{ template "infisical.yamlValidation" . }}
+
+## Persistence
+
+The database persistence is enabled by default, your volumes will remain on your cluster even after uninstalling the chart. To disable persistence, set this value `postgres.persistence.enabled: false`
+
+## Local development
+
+Find the resources and configuration about how to setup your local development environment on a k8s cluster (locally or remotely).
+
+### Requirements
+
+To create a local k8s environment, you'll need at least :
+
+- [`helm`](https://helm.sh/docs/intro/install/) <kbd>required</kbd>
+  - to generate the manifests and deploy the chart 
+- local/remote k8s cluster <kbd>required</kbd>
+  - e.g. [`kind`](https://kubernetes.io/docs/tasks/tools/), [`minikube`](https://kubernetes.io/docs/tasks/tools/) or an online provider
+- [`kubectl`](https://kubernetes.io/docs/tasks/tools/) <kbd>required</kbd>
+  - to interact with the cluster
+
+### Setup
+
+Run one of the below scripts for easy setup :
+
+> [!WARNING]
+> The environment might take some minutes to setup the first time as it need to pull all required images and dependencies
+
+```sh
+cd infisical/helm-charts/infisical-standalone-postgres/examples
+
+# With 'kind' + 'helm', to create a local cluster and deploy the chart using 'ingress-nginx'
+./infisical-kind.sh
+
+# With 'helm' only, if you already have a cluster (local/remote) to deploy the chart
+./infisical-helm.sh
+```
+
+> [!NOTE]
+> Find complete setup scripts in [**./examples**](./examples). Comments make it easy to understand how to setup your local development environment step-by-step
+
+Above examples will deploy the following :
+
+- [**infisical.local**](https://infisical.local)
+  - Your local Infisical instance
+  - You may have to add `infisical.local` to your `/etc/hosts` or similar depending your OS
+    - The corresponding IP will depend on the tool or the way you're exposing the services ([learn more](https://minikube.sigs.k8s.io/docs/handbook/host-access/))
+  - Or access it directly on your [localhost](http://localhost:8080) with
+    - `kubectl port-forward -n infisical-dev $(kubectl get pods -n infisical-dev -l "app=infisical-standalone" -o jsonpath="{.items[0].metadata.name}") 8080 &`
+    - and stop the port-forward with `%` + <kbd>CTRL+C</kbd>
+
+- [**mailhog.infisical.local**](https://mailhog.infisical.local)
+  - Local SMTP server used to receive the emails (e.g. signup verification code)
+  - You may have to add `mailhog.infisical.local` to your `/etc/hosts` or similar depending your OS
+    - The corresponding IP will depend on the tool or the way you're exposing the services ([learn more](https://minikube.sigs.k8s.io/docs/handbook/host-access/))
+  - Or access it directly on your [localhost](http://localhost:8025) with:
+      - `kubectl port-forward -n infisical-dev $(kubectl get pods -n infisical-dev -l "app.kubernetes.io/name=mailhog,app.kubernetes.io/instance=infisical-mailhog-dev" -o jsonpath="{.items[0].metadata.name}") 8025 &`
+      - and stop the port-forward with `%` + <kbd>CTRL+C</kbd>
+
+Default credentials will be used (local use only, since unsecure):
+- **infisical**
+  - admin user is created at first login (if database is empty)
+- **database** (postgres)
+  - username: `infisical`
+  - password: `root`
+  - database: `infisicalDB`
+- **cache** (redis)
+  - password: `mysecretpassword`

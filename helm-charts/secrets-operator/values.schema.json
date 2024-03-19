@@ -1,0 +1,172 @@
+{
+  "properties": {
+    "controllerManager": {
+      "properties": {
+        "kubeRbacProxy": {
+          "properties": {
+            "image": {
+              "properties": {
+                "repository": {
+                  "title": "repository",
+                  "type": "string"
+                },
+                "tag": {
+                  "title": "tag",
+                  "type": "string"
+                }
+              },
+              "title": "image",
+              "type": "object"
+            },
+            "resources": {
+              "properties": {
+                "limits": {
+                  "properties": {
+                    "cpu": {
+                      "title": "cpu",
+                      "type": "string"
+                    },
+                    "memory": {
+                      "title": "memory",
+                      "type": "string"
+                    }
+                  },
+                  "title": "limits",
+                  "type": "object"
+                },
+                "requests": {
+                  "properties": {
+                    "cpu": {
+                      "title": "cpu",
+                      "type": "string"
+                    },
+                    "memory": {
+                      "title": "memory",
+                      "type": "string"
+                    }
+                  },
+                  "title": "requests",
+                  "type": "object"
+                }
+              },
+              "title": "resources",
+              "type": "object"
+            }
+          },
+          "title": "kubeRbacProxy",
+          "type": "object"
+        },
+        "manager": {
+          "properties": {
+            "image": {
+              "properties": {
+                "repository": {
+                  "title": "repository",
+                  "type": "string"
+                },
+                "tag": {
+                  "title": "tag",
+                  "type": "string"
+                }
+              },
+              "title": "image",
+              "type": "object"
+            },
+            "resources": {
+              "properties": {
+                "limits": {
+                  "properties": {
+                    "cpu": {
+                      "title": "cpu",
+                      "type": "string"
+                    },
+                    "memory": {
+                      "title": "memory",
+                      "type": "string"
+                    }
+                  },
+                  "title": "limits",
+                  "type": "object"
+                },
+                "requests": {
+                  "properties": {
+                    "cpu": {
+                      "title": "cpu",
+                      "type": "string"
+                    },
+                    "memory": {
+                      "title": "memory",
+                      "type": "string"
+                    }
+                  },
+                  "title": "requests",
+                  "type": "object"
+                }
+              },
+              "title": "resources",
+              "type": "object"
+            }
+          },
+          "title": "manager",
+          "type": "object"
+        },
+        "replicas": {
+          "title": "replicas",
+          "type": "integer"
+        }
+      },
+      "description": "test",
+      "title": "controllerManager",
+      "type": "object"
+    },
+    "global": {
+      "description": "Global values are values that can be accessed from any chart or subchart by exactly the same name.",
+      "title": "global",
+      "type": "object"
+    },
+    "kubernetesClusterDomain": {
+      "title": "kubernetesClusterDomain",
+      "type": "string"
+    },
+    "metricsService": {
+      "properties": {
+        "ports": {
+          "items": {
+            "anyOf": [
+              {
+                "properties": {
+                  "name": {
+                    "title": "name",
+                    "type": "string"
+                  },
+                  "port": {
+                    "title": "port",
+                    "type": "integer"
+                  },
+                  "protocol": {
+                    "title": "protocol",
+                    "type": "string"
+                  },
+                  "targetPort": {
+                    "title": "targetPort",
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "title": "ports",
+          "type": "array"
+        },
+        "type": {
+          "title": "type",
+          "type": "string"
+        }
+      },
+      "title": "metricsService",
+      "type": "object"
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object"
+}

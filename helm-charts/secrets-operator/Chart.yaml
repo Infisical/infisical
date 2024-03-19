@@ -1,21 +1,44 @@
 apiVersion: v2
 name: secrets-operator
-description: A Helm chart for Infisical secrets
+description: Infisical secrets k8s operator. Sync your secrets from Infisical to your clusters
+home: https://infisical.com/docs/integrations/platforms/kubernetes#install-operator
+
 # A chart can be either an 'application' or a 'library' chart.
-#
 # Application charts are a collection of templates that can be packaged into versioned archives
 # to be deployed.
-#
 # Library charts provide useful utilities or functions for the chart developer. They're included as
 # a dependency of application charts to inject those utilities and functions into the rendering
 # pipeline. Library charts do not define any templates and therefore cannot be deployed.
 type: application
+
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.3.3
+version: 0.3.4
+
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "0.3.0"
+# https://hub.docker.com/r/infisical/kubernetes-operator/tags
+appVersion: "v0.3.3"
+
+# A URL to an SVG or PNG image to be used as an icon (optional).
+icon: https://raw.githubusercontent.com/Infisical/infisical/main/img/logotransparent.png
+
+# A list of keywords about this project (optional)
+keywords:
+- secretops
+- operator
+- security
+- inject
+- kubernetes
+
+# Maintainers list (name required, optional email/url)
+maintainers:
+- name: Infisical
+  url: https://infisical.com/
+  email: team@infisical.com
+
+# Deprecation notice (https://helm.sh/docs/topics/charts/#deprecating-charts)
+deprecated: false

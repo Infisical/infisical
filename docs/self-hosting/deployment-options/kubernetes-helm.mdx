@@ -1,8 +1,10 @@
 ---
 title: "Kubernetes via Helm Chart"
 description: "Use Helm chart to install Infisical on your Kubernetes cluster"
---- 
+---
+
 **Prerequisites**
+
 - You have extensive understanding of [Kubernetes](https://kubernetes.io/)
 - Installed [Helm package manager](https://helm.sh/) version v3.11.3 or greater
 - You have [kubectl](https://kubernetes.io/docs/reference/kubectl/kubectl/) installed and connected to your kubernetes cluster
@@ -18,23 +20,24 @@ description: "Use Helm chart to install Infisical on your Kubernetes cluster"
   </Step>
   <Step title="Add Helm values">
     Create a `values.yaml` file. This will be used to configure settings for the Infisical Helm chart.
-    To explore all configurable properties for your values file, [visit this page](https://raw.githubusercontent.com/Infisical/infisical/main/helm-charts/infisical-standalone-postgres/values.yaml).
+    To explore all configurable properties for your values file, [visit this page](https://github.com/Infisical/infisical/tree/main/helm-charts/infisical-standalone-postgres/README.md#parameters).
   </Step>
   <Step title="Select Infisical version">
     By default, the Infisical version set in your helm chart will likely be outdated. 
     Choose the latest Infisical docker image tag from here [here](https://hub.docker.com/r/infisical/infisical/tags).
-    
+
 
     ```yaml values.yaml
     infisical:
       image:
         repository: infisical/infisical
-        tag: "v0.46.2-postgres" #<-- update
+        tag: "v0.46.2-postgres" # <-- update
         pullPolicy: IfNotPresent
     ```
     <Warning>
       Do you not use the latest docker image tag in production deployments as they can introduce unexpected changes
     </Warning>
+
   </Step>
 
   <Step title="Configure environment variables">
@@ -47,7 +50,7 @@ description: "Use Helm chart to install Infisical on your Kubernetes cluster"
     <Tabs>
       <Tab title="Proof of concept deployment">
         For test or proof-of-concept purposes, you may omit `DB_CONNECTION_URI` and `REDIS_URL` from `infisical-secrets`. This is because the Helm chart will automatically provision and connect to the in-cluster instances of Postgres and Redis by default.
-        ```yaml simple-values-example.yaml 
+        ```yaml simple-values-example.yaml
         apiVersion: v1
         kind: Secret
         metadata:
@@ -60,7 +63,7 @@ description: "Use Helm chart to install Infisical on your Kubernetes cluster"
       </Tab>
       <Tab title="Production deployment">
         For production environments, we recommend using Cloud-based Platform as a Service (PaaS) solutions for PostgreSQL and Redis to ensure high availability. In on-premise setups, it's recommended to configure Redis and Postgres for high availability, either by using Bitnami charts or a custom configuration.
-        ```yaml simple-values-example.yaml 
+        ```yaml simple-values-example.yaml
         apiVersion: v1
         kind: Secret
         metadata:
@@ -74,6 +77,7 @@ description: "Use Helm chart to install Infisical on your Kubernetes cluster"
         ```
       </Tab>
     </Tabs>
+
   </Step>
 
   <Step title="Database schema migration ">
@@ -86,16 +90,18 @@ description: "Use Helm chart to install Infisical on your Kubernetes cluster"
       If you are using in-cluster Postgres, you may notice the migration job failing initially.
       This is expected as it is waiting for the database to be in ready state.
     </Info>
+
   </Step>
 
   <Step title="Routing traffic to Infisical">
     By default, this chart uses Nginx as its Ingress controller to direct traffic to Infisical services.
 
-    ```yaml values.yaml 
+    ```yaml values.yaml
     ingress:
       nginx:
-        enabled: true 
+        enabled: true
     ```
+
   </Step>
 
   <Step title="Install the Helm chart ">
@@ -168,6 +174,7 @@ description: "Use Helm chart to install Infisical on your Kubernetes cluster"
         architecture: standalone
       ```
       </Accordion>
+
   </Step>
 
   <Step title="Access Infisical">

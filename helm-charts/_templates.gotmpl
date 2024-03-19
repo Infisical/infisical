@@ -1,0 +1,104 @@
+{{ define "infisical.description" -}}
+| Name | Chart | Application |
+| - | - | - |
+| [{{ template "chart.name" . }}]({{ template "chart.homepage" . }}) | [![Latest version of '{{ template "chart.name" . }}' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/infisical/helm-charts/helm/{{ template "chart.name" . }}/latest/x/?render=true&show_latest=true)](https://cloudsmith.io/~infisical/repos/helm-charts/packages/detail/helm/{{ template "chart.name" . }}/latest/) | `{{ template "chart.appVersion" . }}` |
+
+{{ template "chart.description" . }}
+
+{{- end }}
+
+{{ define "infisical.installation.repo" -}}
+## Installation & upgrade
+
+To install or upgrade the `{{ template "chart.name" . }}` chart, run the following:
+
+```sh
+# add the Infisical Helm repository
+helm repo add infisical 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' && helm repo update
+```
+{{- end }}
+
+{{ define "infisical.installation.secrets" -}}
+```sh
+# create the required configuration secret (auto-generated secrets)
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: infisical-dev
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: infisical-dev
+  name: infisical-secrets
+type: Opaque
+stringData:
+  ENCRYPTION_KEY: "$(tr -dc '[:alnum:]' </dev/urandom | dd bs=4 count=8 2>/dev/null | tr '[:upper:]' '[:lower:]')"
+  AUTH_SECRET: "$(tr -dc '[:alnum:]' </dev/urandom | dd bs=4 count=8 2>/dev/null | tr '[:upper:]' '[:lower:]' | base64)"
+EOF
+```
+{{- end }}
+
+{{ define "infisical.installation.chart" -}}
+```sh
+# with default values
+helm upgrade --install --atomic \
+  -n infisical-dev --create-namespace \
+  {{ template "chart.name" . }} infisical/{{ template "chart.name" . }}
+
+# with custom inline values (replace with your own values)
+helm upgrade --install --atomic \
+  -n infisical-dev --create-namespace \
+  --set ingress.hostName=custom.example.org \
+  {{ template "chart.name" . }} infisical/{{ template "chart.name" . }}
+
+# with custom values file (replace with your own values file)
+helm upgrade --install --atomic \
+  -n infisical-dev --create-namespace \
+  -f custom-values.yaml \
+  {{ template "chart.name" . }} infisical/{{ template "chart.name" . }}
+```
+
+Documentation is also available here : https://infisical.com/docs/self-hosting/deployment-options/kubernetes-helm
+
+> [!IMPORTANT]
+> If you change the configuration variables in the `infisical-secrets` resource, you might have to restart the infisical deployment to take effect
+{{- end }}
+
+{{ define "infisical.encryptionKeys" -}}
+### Encryption keys
+
+If you did not explicitly set required environment variables, the local setup ([./examples](./examples)) auto-generated them by default. It's recommended to save these credentials somewhere safe. Run the following command in your cluster where Infisical chart is installed. 
+  
+> [!NOTE]
+> Requires [`jq`](https://stedolan.github.io/jq/download/)
+
+```sh
+# export secrets to a given file
+kubectl get secrets -n infisical-dev infisical-secrets \
+  -o json | jq '.data | map_values(@base64d)' > \
+  infisical-secrets.$(date +%s).bak
+```
+{{- end }}
+
+{{ define "infisical.upgrading" -}}
+### Upgrading
+
+Find the chart upgrade instructions below. When upgrading from your version to one of the listed below, please follow every instructions in between to correctly migrate all your data and avoid loss and unexpected issues. 
+
+#### Instructions
+
+1. Make sure **you have all the required environment variables** defined in the value file (`values.yaml` or inline `--set`) you'll provide to `helm`
+   1. e.g. All the above mentioned variables
+1. **Backup your existing secrets** (before the upgrade, for safety precaution)
+   1. e.g. `kubectl get secret infisical-secrets --namespace infisical-dev -o json | jq '{name: .metadata.name,data: .data|map_values(@base64d)}'`
+2. **Upgrade the chart**, with the [instructions](#upgrading)
+3. You're all set!
+{{- end }}
+
+{{ define "infisical.yamlValidation" -}}
+## Validation
+
+You can automatically validate your custom `values.yaml` schema and get YAML auto-completion in your IDE, refer to this [section](../README.md#validation)
+{{- end }}

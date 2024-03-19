@@ -59,9 +59,15 @@ spec:
         - name: REDIS_URL
           value: {{ include "infisical.redisConnectionString" . }}
         {{- end }}
+        {{- range $key, $value := $infisicalValues.config }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- if $infisicalValues.kubeSecretRef }}
         envFrom:
         - secretRef:
             name: {{ $infisicalValues.kubeSecretRef }}
+        {{- end }}
         {{- if  $infisicalValues.resources }}
         resources: {{- toYaml $infisicalValues.resources | nindent 12 }}
         {{- end }}
@@ -83,7 +89,7 @@ spec:
     {{- include "infisical.matchLabels" . | nindent 8 }}
   ports:
     - protocol: TCP
-      port: 8080
+      port: 80
       targetPort: 8080
       {{- if eq $infisicalValues.service.type "NodePort" }}
       nodePort: {{ $infisicalValues.service.nodePort }}

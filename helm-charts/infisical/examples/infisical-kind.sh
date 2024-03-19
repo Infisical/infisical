@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-
+##
 ## Infisical local k8s development environment setup script
 ## using 'kind' and 'ingress-nginx'
 ## https://kind.sigs.k8s.io/docs/user/ingress/
-##
-
 ##
 ## DEVELOPMENT USE ONLY
 ## DO NOT USE IN PRODUCTION
