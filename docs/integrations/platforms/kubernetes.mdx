@@ -77,7 +77,7 @@ spec:
                 projectSlug: <project-slug>
                 envSlug: <env-slug> # "dev", "staging", "prod", etc..
                 secretsPath: "<secrets-path>" # Root is "/"
-            credentials:
+            credentialsRef:
                 secretName: universal-auth-credentials
                 secretNamespace: default
 
@@ -142,7 +142,7 @@ Default re-sync interval is every 1 minute.
     </Step>
 
     <Step title="Add reference for the Kubernetes secret containing the identity credentials">
-      Once the secret is created, add the `secretName` and `secretNamespace` of the secret that was just created under `authentication.universalAuth.credentials` field in the InfisicalSecret resource.
+      Once the secret is created, add the `secretName` and `secretNamespace` of the secret that was just created under `authentication.universalAuth.credentialsRef` field in the InfisicalSecret resource.
     </Step>
   </Steps>
 
@@ -165,7 +165,7 @@ Default re-sync interval is every 1 minute.
                 projectSlug: <project-slug> # <-- project slug
                 envSlug: <env-slug> # "dev", "staging", "prod", etc..
                 secretsPath: "<secrets-path>" # Root is "/"
-            credentials:
+            credentialsRef:
                 secretName: universal-auth-credentials # <-- name of the Kubernetes secret that stores our machine identity credentials
                 secretNamespace: default # <-- namespace of the Kubernetes secret that stores our machine identity credentials
     ...

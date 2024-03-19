@@ -43,7 +43,7 @@ spec:
                 envSlug: <env-slug> # "dev", "staging", "prod", etc..
                 secretsPath: "<secrets-path>" # Root is "/"
 
-            credentials:
+            credentialsRef:
                 secretName: universal-auth-credentials
                 secretNamespace: default
 

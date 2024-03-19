@@ -117,8 +117,8 @@ func (r *InfisicalSecretReconciler) GetInfisicalTokenFromKubeSecret(ctx context.
 func (r *InfisicalSecretReconciler) GetInfisicalUniversalAuthFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (machineIdentityDetails model.MachineIdentityDetails, err error) {
 
 	universalAuthCredsFromKubeSecret, err := r.GetKubeSecretByNamespacedName(ctx, types.NamespacedName{
-		Namespace: infisicalSecret.Spec.Authentication.UniversalAuth.Credentials.SecretNamespace,
-		Name:      infisicalSecret.Spec.Authentication.UniversalAuth.Credentials.SecretName,
+		Namespace: infisicalSecret.Spec.Authentication.UniversalAuth.CredentialsRef.SecretNamespace,
+		Name:      infisicalSecret.Spec.Authentication.UniversalAuth.CredentialsRef.SecretName,
 	})
 
 	if errors.IsNotFound(err) {

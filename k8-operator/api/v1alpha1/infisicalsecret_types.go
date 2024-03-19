@@ -15,7 +15,7 @@ type Authentication struct {
 
 type UniversalAuthDetails struct {
 	// +kubebuilder:validation:Required
-	Credentials KubeSecretReference `json:"credentials"`
+	CredentialsRef KubeSecretReference `json:"credentialsRef"`
 	// +kubebuilder:validation:Required
 	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
 }
