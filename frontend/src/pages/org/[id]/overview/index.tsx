@@ -454,7 +454,12 @@ const LearningItemSquare = ({
 };
 
 const formSchema = yup.object({
-  name: yup.string().required().label("Project Name").trim().max(64, "Too long, maximum length is 64 characters"),
+  name: yup
+    .string()
+    .required()
+    .label("Project Name")
+    .trim()
+    .max(64, "Too long, maximum length is 64 characters"),
   addMembers: yup.bool().required().label("Add Members")
 });
 
@@ -507,7 +512,6 @@ const OrganizationPage = withPermission(
             project: { id: newProjectId }
           }
         } = await createWs.mutateAsync({
-          organizationSlug: currentOrg.slug,
           projectName: name
         });
 
@@ -631,22 +635,21 @@ const OrganizationPage = withPermission(
             {orgWorkspaces
               .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
               .map((workspace) => (
+                // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
                 <div
+                  onClick={() => {
+                    router.push(`/project/${workspace.id}/secrets/overview`);
+                    localStorage.setItem("projectData.id", workspace.id);
+                  }}
                   key={workspace.id}
-                  className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+                  className="min-w-72 group flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
                 >
                   <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
                   <div className="mt-0 pb-6 text-sm text-mineshaft-300">
                     {workspace.environments?.length || 0} environments
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      router.push(`/project/${workspace.id}/secrets/overview`);
-                      localStorage.setItem("projectData.id", workspace.id);
-                    }}
-                  >
-                    <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
+                  <button type="button">
+                    <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all group-hover:border-primary-500/80 group-hover:bg-primary-800/20 group-hover:text-mineshaft-200">
                       Explore{" "}
                       <FontAwesomeIcon
                         icon={faArrowRight}
@@ -693,7 +696,7 @@ const OrganizationPage = withPermission(
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group ml-auto w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200"
+                    className="group ml-auto w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200"
                     href={feature.link}
                   >
                     Learn more{" "}

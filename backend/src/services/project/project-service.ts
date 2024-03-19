@@ -92,7 +92,6 @@ export const projectServiceFactory = ({
    * Create workspace. Make user the admin
    * */
   const createProject = async ({
-    orgSlug,
     actor,
     actorId,
     actorOrgId,
@@ -100,13 +99,7 @@ export const projectServiceFactory = ({
     workspaceName,
     slug: projectSlug
   }: TCreateProjectDTO) => {
-    if (!orgSlug) {
-      throw new BadRequestError({
-        message: "Must provide organization slug to create project"
-      });
-    }
-
-    const organization = await orgDAL.findOne({ slug: orgSlug });
+    const organization = await orgDAL.findOne({ id: actorOrgId });
 
     const { permission, membership: orgMembership } = await permissionService.getOrgPermission(
       actor,

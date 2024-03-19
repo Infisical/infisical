@@ -150,8 +150,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             message: "Slug must be a valid slug"
           })
           .optional()
-          .describe(PROJECTS.CREATE.slug),
-        organizationSlug: z.string().trim().describe(PROJECTS.CREATE.organizationSlug)
+          .describe(PROJECTS.CREATE.slug)
       }),
       response: {
         200: z.object({
@@ -166,7 +165,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        orgSlug: req.body.organizationSlug,
         workspaceName: req.body.projectName,
         slug: req.body.slug
       });

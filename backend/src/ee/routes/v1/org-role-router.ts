@@ -19,7 +19,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
           .min(1)
           .trim()
           .refine(
-            (val) => Object.keys(OrgMembershipRole).includes(val),
+            (val) => !Object.keys(OrgMembershipRole).includes(val),
             "Please choose a different slug, the slug you have entered is reserved"
           )
           .refine((v) => slugify(v) === v, {

@@ -4,6 +4,7 @@
 /* eslint-disable vars-on-top */
 /* eslint-disable no-var */
 /* eslint-disable func-names */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 
 import { useTranslation } from "react-i18next";
@@ -91,7 +92,7 @@ export const AdminLayout = ({ children }: LayoutProps) => {
       console.error(error);
     }
   };
-  
+
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
