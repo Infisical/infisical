@@ -118,9 +118,6 @@ WORKDIR /backend
 
 ENV TELEMETRY_ENABLED true
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \  
-  CMD node healthcheck.js
-
 EXPOSE 8080
 EXPOSE 443
 
