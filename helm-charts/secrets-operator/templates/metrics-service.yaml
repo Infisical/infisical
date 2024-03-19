@@ -14,4 +14,4 @@ spec:
     control-plane: controller-manager
   {{- include "secrets-operator.selectorLabels" . | nindent 4 }}
   ports:
-	{{- .Values.metricsService.ports | toYaml | nindent 2 -}}
+	{{- .Values.metricsService.ports | toYaml | nindent 2 }}

@@ -77,7 +77,7 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 		return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
 	}
 
-	if response.StatusCode() == 304 {
+	if response.Header().Get("etag") == request.ETag {
 		secretsResponse.Modified = false
 	} else {
 		secretsResponse.Modified = true
