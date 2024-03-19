@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TGroup } from "../groups/types";
+import { TGroupOrgMembership } from "../groups/types";
 import { IdentityMembershipOrg } from "../identities/types";
 import {
   BillingDetails,
@@ -412,7 +412,7 @@ export const useGetOrganizationGroups = (organizationId: string) => {
     queryFn: async () => {
       const {
         data: { groups }
-      } = await apiRequest.get<{ groups: TGroup[] }>(`/api/v1/organization/${organizationId}/groups`);
+      } = await apiRequest.get<{ groups: TGroupOrgMembership[] }>(`/api/v1/organization/${organizationId}/groups`);
       
       return groups;
     }

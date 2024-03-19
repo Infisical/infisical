@@ -5,6 +5,7 @@ import {
   IncidentContactsSchema,
   OrganizationsSchema,
   OrgMembershipsSchema,
+  OrgRolesSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -212,7 +213,17 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          groups: GroupsSchema.array()
+          groups: GroupsSchema.merge(
+            z.object({
+              customRole: OrgRolesSchema.pick({
+                id: true,
+                name: true,
+                slug: true,
+                permissions: true,
+                description: true
+              }).optional()
+            })
+          ).array()
         })
       }
     },

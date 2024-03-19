@@ -105,7 +105,7 @@ export const groupServiceFactory = ({ groupDAL, permissionService, licenseServic
         ...(role
           ? {
               role: customRole ? OrgMembershipRole.Custom : role,
-              roleId: customRole?.id
+              roleId: customRole?.id ?? null
             }
           : {})
       }

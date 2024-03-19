@@ -1,16 +1,15 @@
 import { useState } from "react";
-// import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { faMagnifyingGlass, faPencil, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-//   Button,
   EmptyState,
   IconButton,
   Input,
-//   Select,
-//   SelectItem,
+  Select,
+  SelectItem,
   Table,
   TableContainer,
   TableSkeleton,
@@ -19,14 +18,16 @@ import {
   Th,
   THead,
   Tooltip,
-  Tr} from "@app/components/v2";
+  Tr
+} from "@app/components/v2";
 import {
     OrgPermissionActions,
     OrgPermissionSubjects,
     useOrganization} from "@app/context";
 import { 
     useGetOrganizationGroups, 
-    // useGetOrgRoles 
+    useGetOrgRoles,
+    useUpdateGroup
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -39,6 +40,11 @@ type Props = {
         groupId?: string;
         name?: string;
         slug?: string;
+        role?: string;
+        customRole?: {
+            name: string;
+            slug: string;
+        }
       }
     ) => void;
   };
@@ -46,41 +52,40 @@ type Props = {
 export const OrgGroupsTable = ({
     handlePopUpOpen
 }: Props) => {
-    // const { createNotification } = useNotificationContext();
+    const { createNotification } = useNotificationContext();
     const [searchGroupsFilter, setSearchGroupsFilter] = useState("");
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
     const { isLoading, data: groups } = useGetOrganizationGroups(orgId);
+    const { mutateAsync: updateMutateAsync } = useUpdateGroup();
     
-    // const { data: roles } = useGetOrgRoles(orgId);
+    const { data: roles } = useGetOrgRoles(orgId);
     
-    console.log("OrgGroupsTable groups: ", groups);
-    console.log("OrgGroupsTable roles: ", groups);
-    
-    // const handleChangeRole = ({
-    //     groupId,
-    //     role
-    // }: {
-    //     groupId: string;
-    //     role: string;
-    // }) => {
-    //     try {
+    const handleChangeRole = async ({
+        currentSlug,
+        role
+    }: {
+        currentSlug: string;
+        role: string;
+    }) => {
+        try {
+            await updateMutateAsync({
+                currentSlug,
+                role
+            });
             
-    //         // TODO
-            
-    //         createNotification({
-    //             text: "Successfully updated group role",
-    //             type: "success"
-    //         });
-    //     } catch (err) {
-    //         console.error(err);
-            
-    //         createNotification({
-    //             text: "Failed to update group role",
-    //             type: "error"
-    //         });
-    //     }
-    // }
+            createNotification({
+                text: "Successfully updated group role",
+                type: "success"
+            });
+        } catch (err) {
+            console.error(err);
+            createNotification({
+                text: "Failed to update group role",
+                type: "error"
+            });
+        }
+    }
     
     return (
         <div>
@@ -102,12 +107,40 @@ export const OrgGroupsTable = ({
                     </THead>
                     <TBody>
                         {isLoading && <TableSkeleton columns={4} innerKey="org-groups" />}
-                        {!isLoading && groups?.map(({ id, name, slug }) => {
+                        {!isLoading && groups?.map(({ id, name, slug, role, customRole }) => {
                             return (
                                 <Tr className="h-10" key={`org-group-${id}`}>
                                     <Td>{name}</Td>
                                     <Td>{slug}</Td>
-                                    <Td>N/A</Td>
+                                    <Td>
+                                    <OrgPermissionCan
+                                        I={OrgPermissionActions.Edit}
+                                        a={OrgPermissionSubjects.Identity}
+                                    >
+                                        {(isAllowed) => {
+                                            return (
+                                                <Select
+                                                    value={role === "custom" ? (customRole?.slug as string) : role}
+                                                    isDisabled={!isAllowed}
+                                                    className="w-40 bg-mineshaft-600"
+                                                    dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
+                                                    onValueChange={(selectedRole) =>
+                                                        handleChangeRole({
+                                                            currentSlug: slug,
+                                                            role: selectedRole
+                                                        })
+                                                    }
+                                                >
+                                                    {(roles || []).map(({ slug: roleSlug, name: roleName }) => (
+                                                    <SelectItem value={roleSlug} key={`role-option-${roleSlug}`}>
+                                                        {roleName}
+                                                    </SelectItem>
+                                                    ))}
+                                                </Select>
+                                            );
+                                        }}
+                                    </OrgPermissionCan>
+                                    </Td>
                                     <Td>
                                         <div className="flex items-center justify-end">
                                             <OrgPermissionCan
@@ -121,7 +154,9 @@ export const OrgGroupsTable = ({
                                                                 handlePopUpOpen("group", {
                                                                     groupId: id,
                                                                     name,
-                                                                    slug
+                                                                    slug,
+                                                                    role,
+                                                                    customRole
                                                                 });
                                                             }}
                                                             size="lg"
@@ -143,7 +178,6 @@ export const OrgGroupsTable = ({
                                                     <Tooltip content="Delete group">
                                                         <IconButton
                                                             onClick={() => {
-                                                                console.log("Delete group");
                                                                 handlePopUpOpen("deleteGroup", {
                                                                     slug,
                                                                     name

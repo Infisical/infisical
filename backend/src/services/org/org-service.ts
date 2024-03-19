@@ -119,7 +119,7 @@ export const orgServiceFactory = ({
 
   const getOrgGroups = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TGetOrgGroupsDTO) => {
     await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    const groups = await groupDAL.find({ orgId });
+    const groups = await groupDAL.findByOrgId(orgId);
     return groups;
   };
 

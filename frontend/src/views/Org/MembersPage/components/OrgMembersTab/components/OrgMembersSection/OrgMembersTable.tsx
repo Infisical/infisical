@@ -62,8 +62,6 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
 
   const { data: serverDetails } = useFetchServerStatus();
   const { data: members, isLoading: isMembersLoading } = useGetOrgUsers(orgId);
-  
-  console.log("OrgGroupsTable members: ", members);
 
   const { mutateAsync: addUserMutateAsync } = useAddUserToOrg();
   const { mutateAsync: updateUserOrgRole } = useUpdateOrgUserRole();
