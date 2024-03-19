@@ -20,6 +20,7 @@ export type SubscriptionPlan = {
   samlSSO: boolean;
   scim: boolean;
   ldap: boolean;
+  groups: boolean;
   status:
     | "incomplete"
     | "incomplete_expired"

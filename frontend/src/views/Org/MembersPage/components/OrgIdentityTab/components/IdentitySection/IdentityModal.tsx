@@ -140,7 +140,7 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
       const error = err as any;
       const text =
         error?.response?.data?.message ??
-        `Failed to ${popUp?.identity?.data ? "updated" : "created"} identity`;
+        `Failed to ${popUp?.identity?.data ? "update" : "create"} identity`;
 
       createNotification({
         text,

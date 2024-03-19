@@ -1,17 +1,17 @@
 import { motion } from "framer-motion";
 
-import { OrgMembersSection } from "./components";
+import { OrgGroupsSection } from "./components";
 
-export const OrgMembersTab = () => {
+export const OrgGroupsTab = () => {
     return (
         <motion.div
-            key="panel-org-members"
+            key="panel-org-groups"
             transition={{ duration: 0.15 }}
             initial={{ opacity: 0, translateX: 30 }}
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: 30 }}
         >
-            <OrgMembersSection />
+            <OrgGroupsSection />
         </motion.div>
     );
 }

@@ -5,6 +5,8 @@ import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
+import { groupDALFactory } from "@app/ee/services/group/group-dal";
+import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
@@ -194,6 +196,7 @@ export const registerRoutes = async (
 
   const gitAppInstallSessionDAL = gitAppInstallSessionDALFactory(db);
   const gitAppOrgDAL = gitAppDALFactory(db);
+  const groupDAL = groupDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
 
@@ -232,6 +235,11 @@ export const registerRoutes = async (
     orgDAL,
     userDAL,
     samlConfigDAL,
+    licenseService
+  });
+  const groupService = groupServiceFactory({
+    groupDAL,
+    permissionService,
     licenseService
   });
   const scimService = scimServiceFactory({
@@ -287,6 +295,7 @@ export const registerRoutes = async (
     projectKeyDAL,
     smtpService,
     userDAL,
+    groupDAL,
     orgBotDAL
   });
   const signupService = authSignupServiceFactory({
@@ -564,6 +573,7 @@ export const registerRoutes = async (
     password: passwordService,
     signup: signupService,
     user: userService,
+    group: groupService,
     permission: permissionService,
     org: orgService,
     orgRole: orgRoleService,

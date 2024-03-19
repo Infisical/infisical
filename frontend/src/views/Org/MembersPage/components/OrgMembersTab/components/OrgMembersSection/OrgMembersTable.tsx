@@ -62,6 +62,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
 
   const { data: serverDetails } = useFetchServerStatus();
   const { data: members, isLoading: isMembersLoading } = useGetOrgUsers(orgId);
+  
+  console.log("OrgGroupsTable members: ", members);
 
   const { mutateAsync: addUserMutateAsync } = useAddUserToOrg();
   const { mutateAsync: updateUserOrgRole } = useUpdateOrgUserRole();
@@ -263,7 +265,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
           </TBody>
         </Table>
         {!isLoading && filterdUser?.length === 0 && (
-          <EmptyState title="No project members found" icon={faUsers} />
+          <EmptyState title="No organization members found" icon={faUsers} />
         )}
       </TableContainer>
     </div>

@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import { IncidentContactsSchema, OrganizationsSchema, OrgMembershipsSchema, UsersSchema } from "@app/db/schemas";
+import {
+  GroupsSchema,
+  IncidentContactsSchema,
+  OrganizationsSchema,
+  OrgMembershipsSchema,
+  UsersSchema
+} from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -194,6 +200,33 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         req.permission.orgId
       );
       return { incidentContactsOrg };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:organizationId/groups",
+    schema: {
+      params: z.object({
+        organizationId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          groups: GroupsSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const groups = await server.services.org.getOrgGroups({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId as string,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { groups };
     }
   });
 };

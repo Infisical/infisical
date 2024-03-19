@@ -3,6 +3,7 @@ import "fastify";
 import { TUsers } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -85,6 +86,7 @@ declare module "fastify" {
       orgRole: TOrgRoleServiceFactory;
       superAdmin: TSuperAdminServiceFactory;
       user: TUserServiceFactory;
+      group: TGroupServiceFactory;
       apiKey: TApiKeyServiceFactory;
       project: TProjectServiceFactory;
       projectMembership: TProjectMembershipServiceFactory;

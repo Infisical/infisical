@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { TGroup } from "../groups/types";
 import { IdentityMembershipOrg } from "../identities/types";
 import {
   BillingDetails,
@@ -27,8 +28,8 @@ export const organizationKeys = {
   getOrgTaxIds: (orgId: string) => [{ orgId }, "organization-tax-ids"] as const,
   getOrgInvoices: (orgId: string) => [{ orgId }, "organization-invoices"] as const,
   getOrgLicenses: (orgId: string) => [{ orgId }, "organization-licenses"] as const,
-  getOrgIdentityMemberships: (orgId: string) =>
-    [{ orgId }, "organization-identity-memberships"] as const
+  getOrgIdentityMemberships: (orgId: string) => [{ orgId }, "organization-identity-memberships"] as const,
+  getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const
 };
 
 export const fetchOrganizations = async () => {
@@ -401,6 +402,19 @@ export const useDeleteOrgById = () => {
       queryClient.invalidateQueries(organizationKeys.getOrgTaxIds(dto.organizationId));
       queryClient.invalidateQueries(organizationKeys.getOrgInvoices(dto.organizationId));
       queryClient.invalidateQueries(organizationKeys.getOrgLicenses(dto.organizationId));
+    }
+  });
+};
+
+export const useGetOrganizationGroups = (organizationId: string) => {
+  return useQuery({
+    queryKey: organizationKeys.getOrgGroups(organizationId),
+    queryFn: async () => {
+      const {
+        data: { groups }
+      } = await apiRequest.get<{ groups: TGroup[] }>(`/api/v1/organization/${organizationId}/groups`);
+      
+      return groups;
     }
   });
 };

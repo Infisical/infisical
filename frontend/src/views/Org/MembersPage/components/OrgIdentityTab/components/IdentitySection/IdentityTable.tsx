@@ -52,6 +52,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const { data, isLoading } = useGetIdentityMembershipOrgs(orgId);
 
   const { data: roles } = useGetOrgRoles(orgId);
+  
+  console.log("IdentityTable data: ", data);
+  console.log("IdentityTable roles: ", roles);
 
   const handleChangeRole = async ({ identityId, role }: { identityId: string; role: string }) => {
     try {
