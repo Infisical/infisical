@@ -38,22 +38,31 @@ export const ServerConfigProvider = ({ children }: Props): JSX.Element => {
       <div className="relative mx-auto flex h-screen w-full flex-col items-center justify-center space-y-8 bg-bunker-800 px-8 text-mineshaft-50 dark:[color-scheme:dark]">
         <Head>
           <title>Infisical Maintenance Mode</title>
-          <link rel='icon' href='/infisical.ico' />
+          <link rel="icon" href="/infisical.ico" />
         </Head>
-        <img src="/images/maintenance.png" height={175} width={300} alt="maintenance mode" className="w-[40rem]"/>
+        <img
+          src="/images/maintenance.png"
+          height={175}
+          width={300}
+          alt="maintenance mode"
+          className="w-[40rem]"
+        />
         <p className="mx-8 mb-4 flex justify-center bg-gradient-to-tr from-mineshaft-300 to-white bg-clip-text text-4xl font-bold text-transparent md:mx-16">
           Scheduled Maintenance
         </p>
         <div className="mt-2 text-center text-lg text-bunker-300">
-          Infisical is undergoing planned maintenance. <br /> No action is required on your end — your applications will continue to fetch secrets. 
-          <br /> If you have questions, please <a
-            className="text-bunker-300 underline underline-offset-4 decoration-primary-800 hover:decoration-primary-600 hover:text-mineshaft-100 duration-200"
+          Infisical is undergoing planned maintenance. <br /> No action is required on your end —
+          your applications will continue to fetch secrets.
+          <br /> If you have questions, please{" "}
+          <a
+            className="text-bunker-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
             href="https://infisical.com/slack"
             target="_blank"
             rel="noopener noreferrer"
           >
             join our Slack community
-          </a>.
+          </a>
+          .
         </div>
       </div>
     );

@@ -5,7 +5,6 @@ import Button from "../buttons/Button";
 import InputField from "../InputField";
 import { Checkbox } from "../table/Checkbox";
 
-
 type Props = {
   isOpen: boolean;
   closeModal: () => void;
@@ -26,8 +25,8 @@ const AddWorkspaceDialog = ({
   workspaceName,
   setWorkspaceName,
   error,
-  loading,
-}:Props) => {
+  loading
+}: Props) => {
   const [addAllUsers, setAddAllUsers] = useState(true);
   const submit = () => {
     submitModal(workspaceName, addAllUsers);
@@ -60,11 +59,8 @@ const AddWorkspaceDialog = ({
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">
-                  <Dialog.Title
-                    as="h3"
-                    className="text-lg font-medium leading-6 text-gray-400"
-                  >
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-md border border-gray-700 bg-bunker-800 p-6 text-left align-middle shadow-xl transition-all">
+                  <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-400">
                     Create a new project
                   </Dialog.Title>
                   <div className="mt-2">
@@ -72,7 +68,7 @@ const AddWorkspaceDialog = ({
                       This project will contain your secrets and configs.
                     </p>
                   </div>
-                  <div className="max-h-28 mt-4">
+                  <div className="mt-4 max-h-28">
                     <InputField
                       label="Project Name"
                       onChangeHandler={setWorkspaceName}
@@ -84,10 +80,7 @@ const AddWorkspaceDialog = ({
                     />
                   </div>
                   <div className="mt-4 ml-1">
-                    <Checkbox
-                      addAllUsers={addAllUsers}
-                      setAddAllUsers={setAddAllUsers}
-                    />
+                    <Checkbox addAllUsers={addAllUsers} setAddAllUsers={setAddAllUsers} />
                   </div>
                   <div className="mt-4 max-w-min">
                     <Button

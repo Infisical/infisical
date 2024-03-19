@@ -13,7 +13,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
-import { ActorType } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TProjectRoleDALFactory } from "./project-role-dal";
 
 type TProjectRoleServiceFactoryDep = {
@@ -29,9 +29,16 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
     actorId: string,
     projectId: string,
     data: Omit<TProjectRolesInsert, "projectId">,
-    actorOrgId?: string
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId: string | undefined
   ) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
     const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId });
     if (existingRole) throw new BadRequestError({ name: "Create Role", message: "Duplicate role" });
@@ -49,9 +56,16 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
     projectId: string,
     roleId: string,
     data: Omit<TOrgRolesUpdate, "orgId">,
-    actorOrgId?: string
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId: string | undefined
   ) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
     if (data?.slug) {
       const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId });
@@ -71,9 +85,16 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
     actorId: string,
     projectId: string,
     roleId: string,
-    actorOrgId?: string
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId: string | undefined
   ) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Role);
     const [deletedRole] = await projectRoleDAL.delete({ id: roleId, projectId });
     if (!deletedRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
@@ -81,8 +102,20 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
     return deletedRole;
   };
 
-  const listRoles = async (actor: ActorType, actorId: string, projectId: string, actorOrgId?: string) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+  const listRoles = async (
+    actor: ActorType,
+    actorId: string,
+    projectId: string,
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId: string | undefined
+  ) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
     const customRoles = await projectRoleDAL.find({ projectId });
     const roles = [
@@ -135,8 +168,18 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
     return roles;
   };
 
-  const getUserPermission = async (userId: string, projectId: string, actorOrgId?: string) => {
-    const { permission, membership } = await permissionService.getUserProjectPermission(userId, projectId, actorOrgId);
+  const getUserPermission = async (
+    userId: string,
+    projectId: string,
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId: string | undefined
+  ) => {
+    const { permission, membership } = await permissionService.getUserProjectPermission(
+      userId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     return { permissions: packRules(permission.rules), membership };
   };
 

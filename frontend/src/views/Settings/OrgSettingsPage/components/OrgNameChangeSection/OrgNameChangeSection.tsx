@@ -10,12 +10,16 @@ import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@a
 import { useUpdateOrg } from "@app/hooks/api";
 
 const formSchema = yup.object({
-  name: yup.string().required().label("Organization Name").max(64, "Too long, maximum length is 64 characters"),
+  name: yup
+    .string()
+    .required()
+    .label("Organization Name")
+    .max(64, "Too long, maximum length is 64 characters"),
   slug: yup
-      .string()
-      .matches(/^[a-zA-Z0-9-]+$/, "Name must only contain alphanumeric characters or hyphens")
-      .required()
-      .label("Organization Slug")
+    .string()
+    .matches(/^[a-zA-Z0-9-]+$/, "Name must only contain alphanumeric characters or hyphens")
+    .required()
+    .label("Organization Slug")
 });
 
 type FormData = yup.InferType<typeof formSchema>;
@@ -30,7 +34,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
 
   useEffect(() => {
     if (currentOrg) {
-      reset({ 
+      reset({
         name: currentOrg.name,
         slug: currentOrg.slug
       });
@@ -41,12 +45,12 @@ export const OrgNameChangeSection = (): JSX.Element => {
     try {
       if (!currentOrg?.id) return;
 
-      await mutateAsync({ 
-        orgId: currentOrg?.id, 
+      await mutateAsync({
+        orgId: currentOrg?.id,
         name,
         slug
       });
-      
+
       createNotification({
         text: "Successfully updated organization details",
         type: "success"
@@ -63,7 +67,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="py-4">
       <div className="">
-        <h2 className="mb-2 text-md text-mineshaft-100">Organization Name</h2>
+        <h2 className="text-md mb-2 text-mineshaft-100">Organization Name</h2>
         <Controller
           defaultValue=""
           render={({ field, fieldState: { error } }) => (
@@ -76,7 +80,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
         />
       </div>
       <div className="py-4">
-        <h2 className="mb-2 text-md text-mineshaft-100">Organization Slug</h2>
+        <h2 className="text-md mb-2 text-mineshaft-100">Organization Slug</h2>
         <Controller
           defaultValue=""
           render={({ field, fieldState: { error } }) => (

@@ -145,10 +145,17 @@ export const secretServiceFactory = ({
     actorId,
     actorOrgId,
     environment,
+    actorAuthMethod,
     projectId,
     ...inputSecret
   }: TCreateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -230,10 +237,17 @@ export const secretServiceFactory = ({
     actorId,
     actorOrgId,
     environment,
+    actorAuthMethod,
     projectId,
     ...inputSecret
   }: TUpdateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -341,11 +355,18 @@ export const secretServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    actorAuthMethod,
     environment,
     projectId,
     ...inputSecret
   }: TDeleteSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -401,9 +422,16 @@ export const secretServiceFactory = ({
     projectId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     includeImports
   }: TGetSecretsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -445,6 +473,7 @@ export const secretServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     projectId,
     environment,
     path,
@@ -453,7 +482,13 @@ export const secretServiceFactory = ({
     version,
     includeImports
   }: TGetASecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -534,12 +569,19 @@ export const secretServiceFactory = ({
     path,
     actor,
     actorId,
+    actorAuthMethod,
     actorOrgId,
     environment,
     projectId,
     secrets: inputSecrets
   }: TCreateBulkSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -597,11 +639,18 @@ export const secretServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    actorAuthMethod,
     environment,
     projectId,
     secrets: inputSecrets
   }: TUpdateBulkSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -678,9 +727,16 @@ export const secretServiceFactory = ({
     projectId,
     actor,
     actorId,
+    actorAuthMethod,
     actorOrgId
   }: TDeleteBulkSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -728,6 +784,7 @@ export const secretServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    actorAuthMethod,
     environment,
     includeImports
   }: TGetSecretsRawDTO) => {
@@ -740,6 +797,7 @@ export const secretServiceFactory = ({
       environment,
       actor,
       actorOrgId,
+      actorAuthMethod,
       path,
       includeImports
     });
@@ -763,6 +821,7 @@ export const secretServiceFactory = ({
     projectId,
     actorId,
     actorOrgId,
+    actorAuthMethod,
     secretName,
     includeImports,
     version
@@ -773,6 +832,7 @@ export const secretServiceFactory = ({
     const secret = await getSecretByName({
       actorId,
       projectId,
+      actorAuthMethod,
       environment,
       actor,
       actorOrgId,
@@ -792,6 +852,7 @@ export const secretServiceFactory = ({
     environment,
     actor,
     actorOrgId,
+    actorAuthMethod,
     type,
     secretPath,
     secretValue,
@@ -813,6 +874,7 @@ export const secretServiceFactory = ({
       path: secretPath,
       actor,
       actorId,
+      actorAuthMethod,
       actorOrgId,
       secretKeyCiphertext: secretKeyEncrypted.ciphertext,
       secretKeyIV: secretKeyEncrypted.iv,
@@ -839,6 +901,7 @@ export const secretServiceFactory = ({
     environment,
     actor,
     actorOrgId,
+    actorAuthMethod,
     type,
     secretPath,
     secretValue,
@@ -858,6 +921,7 @@ export const secretServiceFactory = ({
       actor,
       actorId,
       actorOrgId,
+      actorAuthMethod,
       secretValueCiphertext: secretValueEncrypted.ciphertext,
       secretValueIV: secretValueEncrypted.iv,
       secretValueTag: secretValueEncrypted.tag,
@@ -877,6 +941,7 @@ export const secretServiceFactory = ({
     environment,
     actor,
     actorOrgId,
+    actorAuthMethod,
     type,
     secretPath
   }: TDeleteSecretRawDTO) => {
@@ -891,7 +956,8 @@ export const secretServiceFactory = ({
       path: secretPath,
       actor,
       actorId,
-      actorOrgId
+      actorOrgId,
+      actorAuthMethod
     });
 
     await snapshotService.performSnapshot(secret.folderId);
@@ -904,6 +970,7 @@ export const secretServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     limit = 20,
     offset = 0,
     secretId
@@ -914,7 +981,13 @@ export const secretServiceFactory = ({
     const folder = await folderDAL.findById(secret.folderId);
     if (!folder) throw new BadRequestError({ message: "Failed to find secret" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, folder.projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      folder.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
     const secretVersions = await secretVersionDAL.find({ secretId }, { offset, limit, sort: [["createdAt", "desc"]] });

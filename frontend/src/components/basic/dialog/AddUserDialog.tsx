@@ -13,76 +13,63 @@ type Props = {
   orgName: string;
 };
 
-const AddUserDialog = ({
-  isOpen,
-  closeModal,
-  submitModal,
-  email,
-  setEmail,
-  orgName,
-}: Props) => {
+const AddUserDialog = ({ isOpen, closeModal, submitModal, email, setEmail, orgName }: Props) => {
   const submit = () => {
     submitModal(email);
   };
 
   return (
-    <div className='z-50'>
+    <div className="z-50">
       <Transition appear show={isOpen} as={Fragment}>
-        <Dialog as='div' className='relative' onClose={closeModal}>
+        <Dialog as="div" className="relative" onClose={closeModal}>
           <Transition.Child
             as={Fragment}
-            enter='ease-out duration-300'
-            enterFrom='opacity-0'
-            enterTo='opacity-100'
-            leave='ease-in duration-200'
-            leaveFrom='opacity-100'
-            leaveTo='opacity-0'
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
           >
-            <div className='fixed inset-0 bg-black bg-opacity-70' />
+            <div className="fixed inset-0 bg-black bg-opacity-70" />
           </Transition.Child>
 
-          <div className='fixed inset-0 overflow-y-auto'>
-            <div className='flex min-h-full items-center justify-center p-4 text-center'>
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
               <Transition.Child
                 as={Fragment}
-                enter='ease-out duration-300'
-                enterFrom='opacity-0 scale-95'
-                enterTo='opacity-100 scale-100'
-                leave='ease-in duration-200'
-                leaveFrom='opacity-100 scale-100'
-                leaveTo='opacity-0 scale-95'
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className='w-full max-w-lg transform overflow-hidden rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all'>
+                <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-md border border-gray-700 bg-bunker-800 p-6 text-left align-middle shadow-xl transition-all">
                   <Dialog.Title
-                    as='h3'
-                    className='text-lg font-medium leading-6 text-gray-400 z-50'
+                    as="h3"
+                    className="z-50 text-lg font-medium leading-6 text-gray-400"
                   >
                     Invite others to {orgName}
                   </Dialog.Title>
-                  <div className='mt-2 mb-4'>
-                    <p className='text-sm text-gray-500'>
-                      An invite is specific to an email address and expires
-                      after 1 day. For security reasons, you will need to
-                      separately add members to projects.
+                  <div className="mt-2 mb-4">
+                    <p className="text-sm text-gray-500">
+                      An invite is specific to an email address and expires after 1 day. For
+                      security reasons, you will need to separately add members to projects.
                     </p>
                   </div>
-                  <div className='max-h-28'>
+                  <div className="max-h-28">
                     <InputField
-                      label='Email'
+                      label="Email"
                       onChangeHandler={setEmail}
-                      type='varName'
+                      type="varName"
                       value={email}
-                      placeholder=''
+                      placeholder=""
                       isRequired
                     />
                   </div>
-                  <div className='mt-4 max-w-max'>
-                    <Button
-                      onButtonPressed={submit}
-                      color='mineshaft'
-                      text='Invite'
-                      size='md'
-                    />
+                  <div className="mt-4 max-w-max">
+                    <Button onButtonPressed={submit} color="mineshaft" text="Invite" size="md" />
                   </div>
                 </Dialog.Panel>
                 {/* <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">

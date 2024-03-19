@@ -201,7 +201,8 @@ export const registerRoutes = async (
     permissionDAL,
     orgRoleDAL,
     projectRoleDAL,
-    serviceTokenDAL
+    serviceTokenDAL,
+    projectDAL
   });
   const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL, keyStore });
   const trustedIpService = trustedIpServiceFactory({
@@ -266,7 +267,7 @@ export const registerRoutes = async (
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
   const userService = userServiceFactory({ userDAL });
-  const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService });
+  const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, tokenDAL: authTokenDAL });
   const passwordService = authPaswordServiceFactory({
     tokenService,
     smtpService,
@@ -372,6 +373,7 @@ export const registerRoutes = async (
     projectKeyDAL,
     userDAL,
     projectEnvDAL,
+    orgDAL,
     orgService,
     projectMembershipDAL,
     folderDAL,
@@ -517,7 +519,8 @@ export const registerRoutes = async (
     projectEnvDAL,
     serviceTokenDAL,
     userDAL,
-    permissionService
+    permissionService,
+    projectDAL
   });
 
   const identityService = identityServiceFactory({
@@ -525,7 +528,10 @@ export const registerRoutes = async (
     identityDAL,
     identityOrgMembershipDAL
   });
-  const identityAccessTokenService = identityAccessTokenServiceFactory({ identityAccessTokenDAL });
+  const identityAccessTokenService = identityAccessTokenServiceFactory({
+    identityAccessTokenDAL,
+    identityOrgMembershipDAL
+  });
   const identityProjectService = identityProjectServiceFactory({
     permissionService,
     projectDAL,

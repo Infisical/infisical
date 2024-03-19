@@ -77,18 +77,11 @@ const secretsToBeAdded = [
  * @param {String} obj.projectName - name of new project
  * @returns {Project} project - new project
  */
-const initProjectHelper = async ({
-  organizationId,
-  projectName
-}: {
-  organizationId: string;
-  projectName: string;
-}) => {
+const initProjectHelper = async ({ projectName }: { projectName: string }) => {
   // create new project
   const {
     data: { project }
   } = await createWorkspace({
-    organizationId,
     projectName
   });
 
@@ -99,27 +92,31 @@ const initProjectHelper = async ({
     env: "dev"
   });
 
-  secrets?.forEach((secret) => {
-    createSecret({
-      workspaceId: project.id,
-      environment: secret.environment,
-      type: secret.type,
-      secretKey: secret.secretName,
-      secretKeyCiphertext: secret.secretKeyCiphertext,
-      secretKeyIV: secret.secretKeyIV,
-      secretKeyTag: secret.secretKeyTag,
-      secretValueCiphertext: secret.secretValueCiphertext,
-      secretValueIV: secret.secretValueIV,
-      secretValueTag: secret.secretValueTag,
-      secretCommentCiphertext: secret.secretCommentCiphertext,
-      secretCommentIV: secret.secretCommentIV,
-      secretCommentTag: secret.secretCommentTag,
-      secretPath: "/",
-      metadata: {
-        source: "signup"
-      }
+  try {
+    secrets?.forEach((secret) => {
+      createSecret({
+        workspaceId: project.id,
+        environment: secret.environment,
+        type: secret.type,
+        secretKey: secret.secretName,
+        secretKeyCiphertext: secret.secretKeyCiphertext,
+        secretKeyIV: secret.secretKeyIV,
+        secretKeyTag: secret.secretKeyTag,
+        secretValueCiphertext: secret.secretValueCiphertext,
+        secretValueIV: secret.secretValueIV,
+        secretValueTag: secret.secretValueTag,
+        secretCommentCiphertext: secret.secretCommentCiphertext,
+        secretCommentIV: secret.secretCommentIV,
+        secretCommentTag: secret.secretCommentTag,
+        secretPath: "/",
+        metadata: {
+          source: "signup"
+        }
+      });
     });
-  });
+  } catch (err) {
+    console.error("Failed to upload secrets", err);
+  }
 
   return project;
 };

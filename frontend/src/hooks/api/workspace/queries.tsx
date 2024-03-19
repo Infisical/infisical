@@ -199,19 +199,17 @@ export const useGetWorkspaceIntegrations = (workspaceId: string) =>
   });
 
 export const createWorkspace = ({
-  organizationId,
   projectName
 }: CreateWorkspaceDTO): Promise<{ data: { project: Workspace } }> => {
-  return apiRequest.post("/api/v2/workspace", { projectName, organizationId });
+  return apiRequest.post("/api/v2/workspace", { projectName });
 };
 
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{ data: { project: Workspace } }, {}, CreateWorkspaceDTO>({
-    mutationFn: async ({ organizationId, projectName }) =>
+    mutationFn: async ({ projectName }) =>
       createWorkspace({
-        organizationId,
         projectName
       }),
     onSuccess: () => {
@@ -325,7 +323,13 @@ export const useDeleteUserFromWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ usernames, workspaceId }: { workspaceId: string; usernames: string[] }) => {
+    mutationFn: async ({
+      usernames,
+      workspaceId
+    }: {
+      workspaceId: string;
+      usernames: string[];
+    }) => {
       const {
         data: { deletedMembership }
       } = await apiRequest.delete(`/api/v2/workspace/${workspaceId}/memberships`, {
@@ -391,11 +395,7 @@ export const useAddIdentityToWorkspace = () => {
 export const useUpdateIdentityWorkspaceRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      identityId,
-      workspaceId,
-      roles
-    }:TUpdateWorkspaceIdentityRoleDTO)=> {
+    mutationFn: async ({ identityId, workspaceId, roles }: TUpdateWorkspaceIdentityRoleDTO) => {
       const {
         data: { identityMembership }
       } = await apiRequest.patch(

@@ -6,6 +6,8 @@ export {
   useGetIntegrationAuthBitBucketWorkspaces,
   useGetIntegrationAuthById,
   useGetIntegrationAuthChecklyGroups,
+  useGetIntegrationAuthGithubEnvs,
+  useGetIntegrationAuthGithubOrgs,
   useGetIntegrationAuthNorthflankSecretGroups,
   useGetIntegrationAuthRailwayEnvironments,
   useGetIntegrationAuthRailwayServices,

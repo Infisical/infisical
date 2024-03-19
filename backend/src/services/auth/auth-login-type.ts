@@ -17,6 +17,7 @@ export type TLoginClientProofDTO = {
 export type TVerifyMfaTokenDTO = {
   userId: string;
   mfaToken: string;
+  mfaJwtToken: string;
   ip: string;
   userAgent: string;
   orgId?: string;

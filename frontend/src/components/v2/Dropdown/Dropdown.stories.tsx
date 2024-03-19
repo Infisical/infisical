@@ -25,7 +25,7 @@ type Story = StoryObj<typeof DropdownMenuContent>;
 
 export const Basic: Story = {
   render: (args) => (
-    <div className="flex justify-center w-full">
+    <div className="flex w-full justify-center">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <IconButton ariaLabel="add">
@@ -43,7 +43,7 @@ export const Basic: Story = {
 
 export const Icons: Story = {
   render: (args) => (
-    <div className="flex justify-center w-full">
+    <div className="flex w-full justify-center">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <IconButton ariaLabel="add">
@@ -65,7 +65,7 @@ export const Icons: Story = {
 
 export const WithDivider: Story = {
   render: (args) => (
-    <div className="flex justify-center w-full">
+    <div className="flex w-full justify-center">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <IconButton ariaLabel="add">
@@ -86,7 +86,7 @@ export const WithDivider: Story = {
 
 export const Group: Story = {
   render: (args) => (
-    <div className="flex justify-center w-full">
+    <div className="flex w-full justify-center">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <IconButton ariaLabel="add">

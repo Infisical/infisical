@@ -9,11 +9,8 @@ import {
   AlertDescription,
   DeleteActionModal,
   EmptyState,
-  FormControl,
   FormLabel,
   IconButton,
-  Select,
-  SelectItem,
   Skeleton,
   Tooltip
 } from "@app/components/v2";
@@ -22,7 +19,7 @@ import { usePopUp } from "@app/hooks";
 import { TIntegration } from "@app/hooks/api/types";
 
 type Props = {
-  environments: Array<{ name: string; slug: string }>;
+  environments: Array<{ name: string; slug: string; id: string }>;
   integrations?: TIntegration[];
   isLoading?: boolean;
   onIntegrationDelete: (integration: TIntegration, cb: () => void) => void;
@@ -80,29 +77,15 @@ export const IntegrationsSection = ({
         <div className="flex flex-col space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
             <div
-              className="max-w-8xl flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3 pb-0"
+              className="max-w-8xl flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3"
               key={`integration-${integration?.id.toString()}`}
             >
               <div className="flex">
-                <div>
-                  <FormControl label="Environment">
-                    <Select
-                      value={integration.environment.slug}
-                      isDisabled={integration.isActive}
-                      className="min-w-[8rem] border border-mineshaft-700"
-                    >
-                      {environments.map((environment) => {
-                        return (
-                          <SelectItem
-                            value={environment.slug}
-                            key={`environment-${environment.slug}`}
-                          >
-                            {environment.name}
-                          </SelectItem>
-                        );
-                      })}
-                    </Select>
-                  </FormControl>
+                <div className="ml-2 flex flex-col">
+                  <FormLabel label="Environment" />
+                  <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                    {environments.find((e) => e.id === integration.envId)?.name || "-"}
+                  </div>
                 </div>
                 <div className="ml-2 flex flex-col">
                   <FormLabel label="Secret Path" />
@@ -142,11 +125,22 @@ export const IntegrationsSection = ({
                   </div>
                 )}
                 <div className="ml-2 flex flex-col">
-                  <FormLabel label={integration?.metadata?.scope || "App"} />
-                  <div className="min-w-[8rem] rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
-                    {integration.integration === "hashicorp-vault"
-                      ? `${integration.app} - path: ${integration.path}`
-                      : integration.app}
+                  <FormLabel
+                    label={
+                      (integration.integration === "qovery" && integration?.scope) ||
+                      (integration?.scope === "github-org" && "Organization") ||
+                      (["github-repo", "github-env"].includes(integration?.scope as string) &&
+                        "Repository") ||
+                      "App"
+                    }
+                  />
+                  <div className="min-w-[8rem] max-w-[12rem] overflow-clip text-ellipsis whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                    {(integration.integration === "hashicorp-vault" &&
+                      `${integration.app} - path: ${integration.path}`) ||
+                      (integration.scope === "github-org" && `${integration.owner}`) ||
+                      (integration.scope?.startsWith("github-") &&
+                        `${integration.owner}/${integration.app}`) ||
+                      integration.app}
                   </div>
                 </div>
                 {(integration.integration === "vercel" ||
@@ -154,32 +148,31 @@ export const IntegrationsSection = ({
                   integration.integration === "railway" ||
                   integration.integration === "gitlab" ||
                   integration.integration === "teamcity" ||
-                  integration.integration === "bitbucket") && (
+                  integration.integration === "bitbucket" ||
+                  (integration.integration === "github" && integration.scope === "github-env")) && (
                   <div className="ml-4 flex flex-col">
                     <FormLabel label="Target Environment" />
+                    <div className="overflow-clip text-ellipsis whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                      {integration.targetEnvironment || integration.targetEnvironmentId}
+                    </div>
+                  </div>
+                )}
+                {integration.integration === "checkly" && integration.targetService && (
+                  <div className="ml-2">
+                    <FormLabel label="Group" />
                     <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
-                      {integration.targetEnvironment}
+                      {integration.targetService}
                     </div>
                   </div>
                 )}
                 {(integration.integration === "checkly" ||
                   integration.integration === "github") && (
-                  <>
-                    {integration.targetService && (
-                      <div className="ml-2">
-                        <FormLabel label="Group" />
-                        <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
-                          {integration.targetService}
-                        </div>
-                      </div>
-                    )}
-                    <div className="ml-2">
-                      <FormLabel label="Secret Suffix" />
-                      <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
-                        {integration?.metadata?.secretSuffix || "-"}
-                      </div>
+                  <div className="ml-2">
+                    <FormLabel label="Secret Suffix" />
+                    <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                      {integration?.metadata?.secretSuffix || "-"}
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
               <div className="flex cursor-default items-center">
@@ -214,7 +207,11 @@ export const IntegrationsSection = ({
           (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
         } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || " "}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
-        deleteKey={(popUp?.deleteConfirmation?.data as TIntegration)?.app || ""}
+        deleteKey={
+          (popUp?.deleteConfirmation?.data as TIntegration)?.app ||
+          (popUp?.deleteConfirmation?.data as TIntegration)?.owner ||
+          ""
+        }
         onDeleteApproved={async () =>
           onIntegrationDelete(popUp?.deleteConfirmation.data as TIntegration, () =>
             handlePopUpClose("deleteConfirmation")

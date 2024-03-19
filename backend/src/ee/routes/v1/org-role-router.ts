@@ -19,7 +19,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
           .min(1)
           .trim()
           .refine(
-            (val) => Object.keys(OrgMembershipRole).includes(val),
+            (val) => !Object.keys(OrgMembershipRole).includes(val),
             "Please choose a different slug, the slug you have entered is reserved"
           )
           .refine((v) => slugify(v) === v, {
@@ -41,6 +41,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.organizationId,
         req.body,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { role };
@@ -84,6 +85,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         req.params.organizationId,
         req.params.roleId,
         req.body,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { role };
@@ -110,6 +112,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.organizationId,
         req.params.roleId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { role };
@@ -138,6 +141,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       const roles = await server.services.orgRole.listRoles(
         req.permission.id,
         req.params.organizationId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { data: { roles } };
@@ -163,6 +167,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       const { permissions, membership } = await server.services.orgRole.getUserPermission(
         req.permission.id,
         req.params.organizationId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { permissions, membership };

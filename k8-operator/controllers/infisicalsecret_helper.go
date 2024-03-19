@@ -142,8 +142,18 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 	}
 
 	annotations := map[string]string{}
+	systemPrefixes := []string{"kubectl.kubernetes.io/", "kubernetes.io/", "k8s.io/", "helm.sh/"}
 	for k, v := range infisicalSecret.Annotations {
-		annotations[k] = v
+		isSystem := false
+		for _, prefix := range systemPrefixes {
+			if strings.HasPrefix(k, prefix) {
+				isSystem = true
+				break
+			}
+		}
+		if !isSystem {
+			annotations[k] = v
+		}
 	}
 
 	annotations[SECRET_VERSION_ANNOTATION] = encryptedSecretsResponse.ETag
@@ -160,13 +170,15 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 		Data: plainProcessedSecrets,
 	}
 
-	// Set InfisicalSecret instance as the owner and controller
-	err := ctrl.SetControllerReference(&infisicalSecret, newKubeSecretInstance, r.Scheme)
-	if err != nil {
-		return err
+	if infisicalSecret.Spec.ManagedSecretReference.CreationPolicy == "Owner" {
+		// Set InfisicalSecret instance as the owner and controller of the managed secret
+		err := ctrl.SetControllerReference(&infisicalSecret, newKubeSecretInstance, r.Scheme)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = r.Client.Create(ctx, newKubeSecretInstance)
+	err := r.Client.Create(ctx, newKubeSecretInstance)
 	if err != nil {
 		return fmt.Errorf("unable to create the managed Kubernetes secret : %w", err)
 	}

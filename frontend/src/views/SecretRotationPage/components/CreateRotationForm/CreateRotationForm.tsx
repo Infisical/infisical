@@ -90,7 +90,7 @@ export const CreateRotationForm = ({
       <ModalContent
         title={`Secret rotation for ${provider.name}`}
         subTitle="Provide the required inputs needed for the rotation"
-        className="max-w-2xl max-h-screen overflow-scroll my-4"
+        className="my-4 max-h-screen max-w-2xl overflow-scroll"
       >
         <Stepper activeStep={wizardStep} direction="horizontal" className="mb-4">
           {WIZARD_STEPS.map(({ title, description }, index) => (

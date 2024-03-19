@@ -5,9 +5,9 @@ metadata:
   labels:
     label-to-be-passed-to-managed-secret: sample-value
   annotations:
-    example.com/annotation-to-be-passed-to-managed-secret: "sample-value"
+    reflector.v1.k8s.emberstack.com/reflection-allowed: 'true'
 spec:
-  hostAPI: https://app.infisical.com/api
+  hostAPI: http://localhost:8888/api
   resyncInterval: 10
   authentication:
     serviceAccount:
@@ -26,6 +26,7 @@ spec:
   managedSecretReference:
     secretName: managed-secret
     secretNamespace: default
+    creationPolicy: "Orphan" ## Owner | Orphan
     # secretType: kubernetes.io/dockerconfigjson
 
   # # To be depreciated soon

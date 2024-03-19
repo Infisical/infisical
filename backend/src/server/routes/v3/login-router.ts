@@ -36,6 +36,42 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
+    url: "/select-organization",
+    config: {
+      rateLimit: authRateLimit
+    },
+    schema: {
+      body: z.object({
+        organizationId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          token: z.string()
+        })
+      }
+    },
+    handler: async (req, res) => {
+      const cfg = getConfig();
+      const tokens = await server.services.login.selectOrganization({
+        userAgent: req.headers["user-agent"],
+        authJwtToken: req.headers.authorization,
+        organizationId: req.body.organizationId,
+        ipAddress: req.realIp
+      });
+
+      void res.setCookie("jid", tokens.refresh, {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: cfg.HTTPS_ENABLED
+      });
+
+      return { token: tokens.access };
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/login2",
     config: {
       rateLimit: authRateLimit

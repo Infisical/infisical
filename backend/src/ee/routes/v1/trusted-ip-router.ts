@@ -22,6 +22,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const trustedIps = await server.services.trustedIp.listIpsByProjectId({
+        actorAuthMethod: req.permission.authMethod,
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -52,6 +53,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { trustedIp, project } = await server.services.trustedIp.addProjectIp({
+        actorAuthMethod: req.permission.authMethod,
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -99,6 +101,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         trustedIpId: req.params.trustedIpId,
         ...req.body
@@ -140,6 +143,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         trustedIpId: req.params.trustedIpId
       });

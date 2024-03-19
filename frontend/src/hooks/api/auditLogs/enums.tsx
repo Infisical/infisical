@@ -38,7 +38,7 @@ export enum EventType {
   UPDATE_IDENTITY_UNIVERSAL_AUTH = "update-identity-universal-auth",
   GET_IDENTITY_UNIVERSAL_AUTH = "get-identity-universal-auth",
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
-  REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET =  "revoke-identity-universal-auth-client-secret",
+  REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",

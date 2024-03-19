@@ -15,12 +15,12 @@ export const fastifySwagger = fp(async (fastify) => {
       },
       servers: [
         {
-          url: "http://localhost:8080",
-          description: "Local server"
-        },
-        {
           url: "https://app.infisical.com",
           description: "Production server"
+        },
+        {
+          url: "http://localhost:8080",
+          description: "Local server"
         }
       ],
       components: {

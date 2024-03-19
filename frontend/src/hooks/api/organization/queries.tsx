@@ -27,7 +27,8 @@ export const organizationKeys = {
   getOrgTaxIds: (orgId: string) => [{ orgId }, "organization-tax-ids"] as const,
   getOrgInvoices: (orgId: string) => [{ orgId }, "organization-invoices"] as const,
   getOrgLicenses: (orgId: string) => [{ orgId }, "organization-licenses"] as const,
-  getOrgIdentityMemberships: (orgId: string) => [{ orgId }, "organization-identity-memberships"] as const,
+  getOrgIdentityMemberships: (orgId: string) =>
+    [{ orgId }, "organization-identity-memberships"] as const
 };
 
 export const fetchOrganizations = async () => {
@@ -46,7 +47,7 @@ export const useGetOrganizations = () => {
   });
 };
 
-export const useCreateOrg = () => {
+export const useCreateOrg = (options: { invalidate: boolean } = { invalidate: true }) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -60,7 +61,9 @@ export const useCreateOrg = () => {
       return organization;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      if (options?.invalidate) {
+        queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      }
     }
   });
 };
@@ -68,15 +71,9 @@ export const useCreateOrg = () => {
 export const useUpdateOrg = () => {
   const queryClient = useQueryClient();
   return useMutation<{}, {}, UpdateOrgDTO>({
-    mutationFn: ({ 
-      name, 
-      authEnforced,
-      scimEnabled,
-      slug,
-      orgId 
-    }) => {
-      return apiRequest.patch(`/api/v1/organization/${orgId}`, { 
-        name, 
+    mutationFn: ({ name, authEnforced, scimEnabled, slug, orgId }) => {
+      return apiRequest.patch(`/api/v1/organization/${orgId}`, {
+        name,
         authEnforced,
         scimEnabled,
         slug

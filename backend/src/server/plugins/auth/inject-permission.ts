@@ -9,13 +9,33 @@ export const injectPermission = fp(async (server) => {
     if (!req.auth) return;
 
     if (req.auth.actor === ActorType.USER) {
-      req.permission = { type: ActorType.USER, id: req.auth.userId, orgId: req.auth?.orgId };
+      req.permission = {
+        type: ActorType.USER,
+        id: req.auth.userId,
+        orgId: req.auth.orgId, // if the req.auth.authMode is AuthMode.API_KEY, the orgId will be "API_KEY"
+        authMethod: req.auth.authMethod // if the req.auth.authMode is AuthMode.API_KEY, the authMethod will be null
+      };
     } else if (req.auth.actor === ActorType.IDENTITY) {
-      req.permission = { type: ActorType.IDENTITY, id: req.auth.identityId };
+      req.permission = {
+        type: ActorType.IDENTITY,
+        id: req.auth.identityId,
+        orgId: req.auth.orgId,
+        authMethod: null
+      };
     } else if (req.auth.actor === ActorType.SERVICE) {
-      req.permission = { type: ActorType.SERVICE, id: req.auth.serviceTokenId };
+      req.permission = {
+        type: ActorType.SERVICE,
+        id: req.auth.serviceTokenId,
+        orgId: req.auth.orgId,
+        authMethod: null
+      };
     } else if (req.auth.actor === ActorType.SCIM_CLIENT) {
-      req.permission = { type: ActorType.SCIM_CLIENT, id: req.auth.scimTokenId, orgId: req.auth.orgId };
+      req.permission = {
+        type: ActorType.SCIM_CLIENT,
+        id: req.auth.scimTokenId,
+        orgId: req.auth.orgId,
+        authMethod: null
+      };
     }
   });
 });

@@ -9,7 +9,7 @@ export const Checkbox = ({ addAllUsers, setAddAllUsers }: Props) => (
     {addAllUsers === true ? (
       <input
         type="checkbox"
-        className="accent-primary h-4 w-4"
+        className="h-4 w-4 accent-primary"
         checked
         readOnly
         onClick={() => setAddAllUsers(!addAllUsers)}
@@ -20,12 +20,12 @@ export const Checkbox = ({ addAllUsers, setAddAllUsers }: Props) => (
         role="button"
         tabIndex={0}
         aria-label="add all users"
-        className="h-4 w-4 bg-bunker border border-gray-600 rounded-sm"
+        className="h-4 w-4 rounded-sm border border-gray-600 bg-bunker"
         onClick={() => setAddAllUsers(!addAllUsers)}
       />
     )}
 
-    <label className="ml-2 text-gray-500 text-sm">
+    <label className="ml-2 text-sm text-gray-500">
       Add all members of my organization to this project.
     </label>
   </div>

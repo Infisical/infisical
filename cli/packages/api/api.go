@@ -164,6 +164,28 @@ func CallGetAllOrganizations(httpClient *resty.Client) (GetOrganizationsResponse
 	return orgResponse, nil
 }
 
+func CallSelectOrganization(httpClient *resty.Client, request SelectOrganizationRequest) (SelectOrganizationResponse, error) {
+	var selectOrgResponse SelectOrganizationResponse
+
+	response, err := httpClient.
+		R().
+		SetBody(request).
+		SetResult(&selectOrgResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		Post(fmt.Sprintf("%v/v3/auth/select-organization", config.INFISICAL_URL))
+
+	if err != nil {
+		return SelectOrganizationResponse{}, err
+	}
+
+	if response.IsError() {
+		return SelectOrganizationResponse{}, fmt.Errorf("CallSelectOrganization: Unsuccessful response: [response=%v]", response)
+	}
+
+	return selectOrgResponse, nil
+
+}
+
 func CallGetAllWorkSpacesUserBelongsTo(httpClient *resty.Client) (GetWorkSpacesResponse, error) {
 	var workSpacesResponse GetWorkSpacesResponse
 	response, err := httpClient.

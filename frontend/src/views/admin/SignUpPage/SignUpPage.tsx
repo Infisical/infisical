@@ -12,7 +12,7 @@ import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLo
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, ContentLoader, FormControl, Input } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
-import { useCreateAdminUser } from "@app/hooks/api";
+import { useCreateAdminUser, useSelectOrganization } from "@app/hooks/api";
 import { generateUserBackupKey, generateUserPassKey } from "@app/lib/crypto";
 import { isLoggedIn } from "@app/reactQuery";
 
@@ -64,6 +64,7 @@ export const SignUpPage = () => {
   }, []);
 
   const { mutateAsync: createAdminUser } = useCreateAdminUser();
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   const handleFormSubmit = async ({ email, password, firstName, lastName }: TFormSchema) => {
     // avoid multi submission
@@ -76,6 +77,7 @@ export const SignUpPage = () => {
         lastName,
         ...userPass
       });
+
       SecurityClient.setToken(res.token);
       saveTokenToLocalStorage({
         publicKey: userPass.publicKey,
@@ -84,6 +86,8 @@ export const SignUpPage = () => {
         tag: userPass.encryptedPrivateKeyTag,
         privateKey
       });
+      await selectOrganization({ organizationId: res.organization.id });
+
       // TODO(akhilmhdh): This is such a confusing pattern and too unreliable
       // Will be refactored in next iteration to make it url based rather than local storage ones
       // Part of migration to nextjs 14
