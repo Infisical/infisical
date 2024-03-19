@@ -77,18 +77,11 @@ const secretsToBeAdded = [
  * @param {String} obj.projectName - name of new project
  * @returns {Project} project - new project
  */
-const initProjectHelper = async ({
-  organizationSlug,
-  projectName
-}: {
-  organizationSlug: string;
-  projectName: string;
-}) => {
+const initProjectHelper = async ({ projectName }: { projectName: string }) => {
   // create new project
   const {
     data: { project }
   } = await createWorkspace({
-    organizationSlug,
     projectName
   });
 

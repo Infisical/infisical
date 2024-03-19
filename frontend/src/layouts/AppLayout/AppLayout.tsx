@@ -236,7 +236,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
           project: { id: newProjectId }
         }
       } = await createWs.mutateAsync({
-        organizationSlug: currentOrg.slug,
         projectName: name
       });
 

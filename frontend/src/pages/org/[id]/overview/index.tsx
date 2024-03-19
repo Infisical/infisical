@@ -512,7 +512,6 @@ const OrganizationPage = withPermission(
             project: { id: newProjectId }
           }
         } = await createWs.mutateAsync({
-          organizationSlug: currentOrg.slug,
           projectName: name
         });
 
