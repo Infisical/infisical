@@ -1,7 +1,7 @@
 /* eslint-disable prefer-destructuring */
 import jsrp from "jsrp";
 
-import { login1 , verifyMfaToken } from "@app/hooks/api/auth/queries";
+import { login1, verifyMfaToken } from "@app/hooks/api/auth/queries";
 import KeyService from "@app/services/KeyService";
 
 import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
@@ -18,75 +18,78 @@ const client = new jsrp.client();
  * @param {String} obj.mfaToken - MFA code/token
  */
 const attemptLoginMfa = async ({
-    email,
-    password,
-    providerAuthToken,
-    mfaToken
+  email,
+  password,
+  providerAuthToken,
+  mfaToken
 }: {
-    email: string;
-    password: string;
-    providerAuthToken?: string,
-    mfaToken: string;
+  email: string;
+  password: string;
+  providerAuthToken?: string;
+  mfaToken: string;
 }): Promise<Boolean> => {
-    return new Promise((resolve, reject) => {
-        client.init({
-            username: email,
-            password
-        }, async () => {
-            try {
-                const clientPublicKey = client.getPublicKey();
-                const { salt } = await login1({
-                    email,
-                    clientPublicKey,
-                    providerAuthToken,
-                });
-                
-                const {
-                    encryptionVersion,
-                    protectedKey,
-                    protectedKeyIV,
-                    protectedKeyTag,
-                    token, 
-                    publicKey, 
-                    encryptedPrivateKey, 
-                    iv, 
-                    tag
-                } = await verifyMfaToken({
-                    email,
-                    mfaCode: mfaToken
-                });
+  return new Promise((resolve, reject) => {
+    client.init(
+      {
+        username: email,
+        password
+      },
+      async () => {
+        try {
+          const clientPublicKey = client.getPublicKey();
+          const { salt } = await login1({
+            email,
+            clientPublicKey,
+            providerAuthToken
+          });
 
-                // unset temporary (MFA) JWT token and set JWT token
-                SecurityClient.setMfaToken("");
-                SecurityClient.setToken(token);
-                SecurityClient.setProviderAuthToken("");
+          const {
+            encryptionVersion,
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag,
+            token,
+            publicKey,
+            encryptedPrivateKey,
+            iv,
+            tag
+          } = await verifyMfaToken({
+            email,
+            mfaCode: mfaToken
+          });
 
-                const privateKey = await KeyService.decryptPrivateKey({
-                    encryptionVersion,
-                    encryptedPrivateKey,
-                    iv,
-                    tag,
-                    password,
-                    salt,
-                    protectedKey,
-                    protectedKeyIV,
-                    protectedKeyTag
-                });
-                
-                saveTokenToLocalStorage({
-                    publicKey,
-                    encryptedPrivateKey,
-                    iv,
-                    tag,
-                    privateKey
-                });
+          // unset temporary (MFA) JWT token and set JWT token
+          SecurityClient.setMfaToken("");
+          SecurityClient.setToken(token);
+          SecurityClient.setProviderAuthToken("");
 
-                resolve(true);
-            } catch (err) {
-                reject(err);
-            }
-        });
-    });
-}
+          const privateKey = await KeyService.decryptPrivateKey({
+            encryptionVersion,
+            encryptedPrivateKey,
+            iv,
+            tag,
+            password,
+            salt,
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag
+          });
+
+          saveTokenToLocalStorage({
+            publicKey,
+            encryptedPrivateKey,
+            iv,
+            tag,
+            privateKey
+          });
+
+          resolve(true);
+        } catch (err) {
+          reject(err);
+        }
+      }
+    );
+  });
+};
 
 export default attemptLoginMfa;

@@ -87,7 +87,7 @@ export const useUpdateSSOConfig = () => {
       if (isActive === false) {
         queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
       }
-    
+
       queryClient.invalidateQueries(ssoConfigKeys.getSSOConfig(organizationId));
     }
   });

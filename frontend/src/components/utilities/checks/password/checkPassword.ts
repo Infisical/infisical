@@ -1,5 +1,11 @@
 import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
-import { escapeCharRegex, letterCharRegex, lowEntropyRegexes,numAndSpecialCharRegex, repeatedCharRegex } from "./passwordRegexes";
+import {
+  escapeCharRegex,
+  letterCharRegex,
+  lowEntropyRegexes,
+  numAndSpecialCharRegex,
+  repeatedCharRegex
+} from "./passwordRegexes";
 
 type Errors = {
   tooShort?: string;
@@ -44,40 +50,38 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
     {
       name: "tooShort",
       validator: (pwd: string) => pwd.length >= 14,
-      errorText: "at least 14 characters",
+      errorText: "at least 14 characters"
     },
     {
       name: "tooLong",
       validator: (pwd: string) => pwd.length < 101,
-      errorText: "at most 100 characters",
+      errorText: "at most 100 characters"
     },
     {
       name: "noLetterChar",
       validator: (pwd: string) => letterCharRegex.test(pwd),
-      errorText: "at least 1 letter character",
+      errorText: "at least 1 letter character"
     },
     {
       name: "noNumOrSpecialChar",
       validator: (pwd: string) => numAndSpecialCharRegex.test(pwd),
-      errorText: "at least 1 number or special character",
+      errorText: "at least 1 number or special character"
     },
     {
       name: "repeatedChar",
       validator: (pwd: string) => !repeatedCharRegex.test(pwd),
-      errorText: "at most 3 repeated, consecutive characters",
+      errorText: "at most 3 repeated, consecutive characters"
     },
     {
       name: "escapeChar",
       validator: (pwd: string) => !escapeCharRegex.test(pwd),
-      errorText: "No escape characters allowed.",
+      errorText: "No escape characters allowed."
     },
     {
       name: "lowEntropy",
-      validator: (pwd: string) => (
-        !lowEntropyRegexes.some(regex => regex.test(pwd))
-      ),
-      errorText: "Password contains personal info.",
-    },
+      validator: (pwd: string) => !lowEntropyRegexes.some((regex) => regex.test(pwd)),
+      errorText: "Password contains personal info."
+    }
   ];
 
   const isBreached = await checkIsPasswordBreached(password);

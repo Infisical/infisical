@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: Props): JSX.Element => {
   // wait for app to load the auth state
   if (isLoading || !isReady) {
     return (
-      <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
+      <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
         <img
           src="/images/loading/loading.gif"
           height={70}

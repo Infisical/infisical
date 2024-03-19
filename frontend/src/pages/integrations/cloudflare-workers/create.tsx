@@ -6,7 +6,15 @@ import queryString from "query-string";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { useCreateIntegration, useGetWorkspaceById } from "@app/hooks/api";
 
-import { Button, Card, CardTitle, FormControl, Input, Select, SelectItem } from "../../../components/v2";
+import {
+  Button,
+  Card,
+  CardTitle,
+  FormControl,
+  Input,
+  Select,
+  SelectItem
+} from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById

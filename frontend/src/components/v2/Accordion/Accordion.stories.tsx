@@ -14,7 +14,7 @@ type Story = StoryObj<typeof Accordion>;
 
 export const Basic: Story = {
   render: (args) => (
-    <div className="flex justify-center w-full">
+    <div className="flex w-full justify-center">
       <Accordion {...args}>
         <AccordionItem value="section-1">
           <AccordionTrigger>Section 1</AccordionTrigger>

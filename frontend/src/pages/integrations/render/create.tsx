@@ -45,7 +45,7 @@ type FormData = yup.InferType<typeof schema>;
 export default function RenderCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
-  
+
   const { control, handleSubmit, setValue, watch } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
@@ -84,12 +84,8 @@ export default function RenderCreateIntegrationPage() {
       }
     }
   }, [integrationAuthApps]);
-  
-  const onFormSubmit = async ({
-    secretPath,
-    targetAppId,
-    shouldAutoRedeploy
-  }: FormData) => {
+
+  const onFormSubmit = async ({ secretPath, targetAppId, shouldAutoRedeploy }: FormData) => {
     try {
       if (!integrationAuth?.id) return;
 
@@ -115,13 +111,10 @@ export default function RenderCreateIntegrationPage() {
     } catch (err) {
       console.error(err);
     }
-  }
+  };
 
-  return integrationAuth &&
-    workspace &&
-    selectedSourceEnvironment &&
-    integrationAuthApps ? (
-    <form 
+  return integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps ? (
+    <form
       onSubmit={handleSubmit(onFormSubmit)}
       className="flex h-full w-full flex-col items-center justify-center"
     >
@@ -191,11 +184,7 @@ export default function RenderCreateIntegrationPage() {
             defaultValue=""
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Secrets Path"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
+              <FormControl label="Secrets Path" isError={Boolean(error)} errorText={error?.message}>
                 <Input {...field} placeholder="/" />
               </FormControl>
             )}
@@ -256,7 +245,7 @@ export default function RenderCreateIntegrationPage() {
         <Button
           colorSchema="primary"
           variant="outline_bg"
-          className="mb-8 ml-auto mr-6 w-min mt-4"
+          className="mb-8 ml-auto mr-6 mt-4 w-min"
           size="sm"
           type="submit"
           isLoading={isLoading}

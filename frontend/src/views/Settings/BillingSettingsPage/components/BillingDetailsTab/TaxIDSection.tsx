@@ -15,9 +15,9 @@ export const TaxIDSection = () => {
   ] as const);
 
   return (
-    <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
-      <div className="flex items-center mb-8">
-        <h2 className="text-xl font-semibold flex-1 text-white">Tax ID</h2>
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-8 flex items-center">
+        <h2 className="flex-1 text-xl font-semibold text-white">Tax ID</h2>
         <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Billing}>
           {(isAllowed) => (
             <Button

@@ -6,7 +6,7 @@ import { CreateOrgModal } from "../components";
 
 export const NonePage = () => {
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
-  
+
   useEffect(() => {
     handlePopUpToggle("createOrg", true);
   }, []);

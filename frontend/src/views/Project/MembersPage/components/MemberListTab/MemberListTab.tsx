@@ -71,7 +71,7 @@ export const MemberListTab = () => {
   const { data: wsKey } = useGetUserWsKey(workspaceId);
   const { data: members, isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
-  
+
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -105,7 +105,8 @@ export const MemberListTab = () => {
     const orgUser = (orgUsers || []).find(({ id }) => id === orgMembershipId);
     if (!orgUser) return;
 
-    try { // TODO: update
+    try {
+      // TODO: update
       if (currentWorkspace.version === ProjectVersion.V1) {
         await addUserToWorkspace({
           workspaceId,
@@ -236,14 +237,14 @@ export const MemberListTab = () => {
                           a={ProjectPermissionSub.Member}
                         >
                           {(isAllowed) => (
-                              <MemberRoles
-                                roles={roles}
-                                disableEdit={u.id === user?.id || !isAllowed}
-                                onOpenUpgradeModal={(description) =>
-                                  handlePopUpOpen("upgradePlan", { description })
-                                }
-                                membershipId={membershipId}
-                              />
+                            <MemberRoles
+                              roles={roles}
+                              disableEdit={u.id === user?.id || !isAllowed}
+                              onOpenUpgradeModal={(description) =>
+                                handlePopUpOpen("upgradePlan", { description })
+                              }
+                              membershipId={membershipId}
+                            />
                           )}
                         </ProjectPermissionCan>
                       </Td>

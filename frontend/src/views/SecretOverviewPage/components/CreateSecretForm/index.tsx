@@ -1,1 +1,1 @@
-export { CreateSecretForm } from "./CreateSecretForm"
+export { CreateSecretForm } from "./CreateSecretForm";

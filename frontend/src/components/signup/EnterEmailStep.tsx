@@ -52,13 +52,13 @@ export default function EnterEmailStep({
       try {
         await mutateAsync({ email });
         incrementStep();
-      } catch(e) {
+      } catch (e) {
         if (axios.isAxiosError(e)) {
-          const { message = "Something went wrong" } = e.response?.data as { message: string};
+          const { message = "Something went wrong" } = e.response?.data as { message: string };
           createNotification({
             type: "error",
-            text:  message
-          })
+            text: message
+          });
         }
       }
     }
@@ -66,11 +66,11 @@ export default function EnterEmailStep({
 
   return (
     <div>
-      <div className="w-full md:px-6 mx-auto">
-        <p className="text-xl font-medium flex justify-center text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
+      <div className="mx-auto w-full md:px-6">
+        <p className="flex justify-center bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-xl font-medium text-transparent">
           {t("signup.step1-start")}
         </p>
-        <div className="flex flex-col items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] m-auto rounded-lg mt-8">
+        <div className="m-auto mt-8 flex w-1/4 min-w-[20rem] flex-col items-center justify-center rounded-lg lg:w-1/6">
           <Input
             placeholder="Enter your email address..."
             onChange={(e) => setEmail(e.target.value)}
@@ -79,28 +79,35 @@ export default function EnterEmailStep({
             autoComplete="username"
             className="h-12"
           />
-          {emailError && <p className="text-red-600 text-xs text-left w-full ml-1.5 mt-1.5">Please enter a valid email.</p>}
+          {emailError && (
+            <p className="ml-1.5 mt-1.5 w-full text-left text-xs text-red-600">
+              Please enter a valid email.
+            </p>
+          )}
         </div>
-        <div className="flex flex-col items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
-          <div className="text-l py-1 text-lg w-full">
+        <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-1/6">
+          <div className="text-l w-full py-1 text-lg">
             <Button
               type="submit"
               onClick={emailCheck}
               size="sm"
               isFullWidth
-              className='h-14'
+              className="h-14"
               colorSchema="primary"
               variant="outline_bg"
               isLoading={isLoading}
               isDisabled={isLoading}
-            > {String(t("signup.step1-submit"))} </Button>
+            >
+              {" "}
+              {String(t("signup.step1-submit"))}{" "}
+            </Button>
           </div>
         </div>
       </div>
       <div className="mx-auto mb-48 mt-2 flex w-full max-w-md flex-col items-center justify-center pt-2 md:mb-16 md:pb-2">
         <Link href="/login">
           <button type="button" className="w-max pb-3 duration-200 hover:opacity-90">
-            <span className="text-sm text-mineshaft-400 hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer">
+            <span className="cursor-pointer text-sm text-mineshaft-400 duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
               {t("signup.already-have-account")}
             </span>
           </button>

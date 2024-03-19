@@ -1,4 +1,4 @@
-export * from "./admin"
+export * from "./admin";
 export * from "./apiKeys";
 export * from "./auditLogs";
 export * from "./auth";

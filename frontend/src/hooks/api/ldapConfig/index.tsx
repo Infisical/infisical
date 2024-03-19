@@ -1,5 +1,1 @@
-export {
-    useCreateLDAPConfig,
-    useGetLDAPConfig,
-    useUpdateLDAPConfig
-} from "./queries";
+export { useCreateLDAPConfig, useGetLDAPConfig, useUpdateLDAPConfig } from "./queries";

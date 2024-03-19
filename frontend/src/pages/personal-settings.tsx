@@ -7,7 +7,7 @@ export default function PersonalSettings() {
   const { t } = useTranslation();
 
   return (
-    <div className="bg-bunker-800 text-white h-full">
+    <div className="h-full bg-bunker-800 text-white">
       <Head>
         <title>{t("common.head-title", { title: t("settings.personal.title") })}</title>
         <link rel="icon" href="/infisical.ico" />

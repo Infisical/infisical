@@ -1,1 +1,1 @@
-export { useFetchServerStatus } from "./queries"
+export { useFetchServerStatus } from "./queries";

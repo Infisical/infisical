@@ -23,7 +23,7 @@ export const FormLabel = ({ id, label, isRequired, icon, className }: FormLabelP
     {label}
     {isRequired && <span className="ml-1 text-red">*</span>}
     {icon && (
-      <span className="ml-2 text-mineshaft-300 hover:text-mineshaft-200 cursor-default">
+      <span className="ml-2 cursor-default text-mineshaft-300 hover:text-mineshaft-200">
         {icon}
       </span>
     )}
