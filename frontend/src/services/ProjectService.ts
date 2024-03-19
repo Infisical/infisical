@@ -9,15 +9,8 @@ class ProjectService {
    * @param {String} obj.projectName - name of new project
    * @returns {Project} project - new project
    */
-  static async initProject({
-    organizationSlug,
-    projectName
-  }: {
-    organizationSlug: string;
-    projectName: string;
-  }) {
+  static async initProject({ projectName }: { projectName: string }) {
     return initProjectHelper({
-      organizationSlug,
       projectName
     });
   }
