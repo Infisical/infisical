@@ -4,6 +4,7 @@ import { Tables } from "knex/types/tables";
 
 import { DatabaseError } from "../errors";
 
+export * from "./connection";
 export * from "./join";
 export * from "./select";
 
