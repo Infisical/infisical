@@ -56,6 +56,14 @@ type MangedKubeSecretConfig struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default:=Opaque
 	SecretType string `json:"secretType"`
+
+	// The Kubernetes Secret creation policy.
+	// Enum with values: 'Owner', 'Orphan'.
+	// Owner creates the secret and sets .metadata.ownerReferences of the InfisicalSecret CRD that created it.
+	// Orphan will not set the secret owner. This will result in the secret being orphaned and not deleted when the resource is deleted.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=Orphan
+	CreationPolicy string `json:"creationPolicy"`
 }
 
 // InfisicalSecretSpec defines the desired state of InfisicalSecret
