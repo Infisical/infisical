@@ -189,14 +189,12 @@ export const UserInfoSSOStep = ({
 
               const userOrgs = await fetchOrganizations();
               const orgId = userOrgs[0]?.id;
-              const orgSlug = userOrgs[0]?.slug;
 
               await selectOrganization({
                 organizationId: orgId
               });
 
               const project = await ProjectService.initProject({
-                organizationSlug: orgSlug,
                 projectName: "Example Project"
               });
 
