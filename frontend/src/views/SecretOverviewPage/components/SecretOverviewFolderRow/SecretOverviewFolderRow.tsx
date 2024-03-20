@@ -1,13 +1,14 @@
-import { faCheck, faFolder, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faFileImport, faFolder, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Td, Tr } from "@app/components/v2";
+import { Td, Tooltip, Tr } from "@app/components/v2";
 
 type Props = {
   folderName: string;
   environments: { name: string; slug: string }[];
   isFolderPresentInEnv: (name: string, env: string) => boolean;
+  isImportedFolderPresentInEnv: (name: string, env: string) => boolean;
   onClick: (path: string) => void;
 };
 
@@ -15,6 +16,7 @@ export const SecretOverviewFolderRow = ({
   folderName,
   environments = [],
   isFolderPresentInEnv,
+  isImportedFolderPresentInEnv,
   onClick
 }: Props) => {
   return (
@@ -29,17 +31,24 @@ export const SecretOverviewFolderRow = ({
       </Td>
       {environments.map(({ slug }, i) => {
         const isPresent = isFolderPresentInEnv(folderName, slug);
+        const isImportPresent = isImportedFolderPresentInEnv(folderName, slug);
         return (
           <Td
             key={`sec-overview-${slug}-${i + 1}-folder`}
             className={twMerge(
               "border-r border-mineshaft-600 py-3 group-hover:bg-mineshaft-700",
-              isPresent ? "text-green-600" : "text-red-600"
+              // eslint-disable-next-line no-nested-ternary
+              isPresent || isImportPresent ? "text-green-600" : "text-red-600"
             )}
           >
-            <div className="flex justify-center">
-              <FontAwesomeIcon icon={isPresent ? faCheck : faXmark} />
-            </div>
+            <Tooltip isDisabled={!isImportPresent} content="Folder is imported">
+              <div className="flex justify-center">
+                <FontAwesomeIcon
+                  // eslint-disable-next-line no-nested-ternary
+                  icon={isPresent ? faCheck : isImportPresent ? faFileImport : faXmark}
+                />
+              </div>
+            </Tooltip>
           </Td>
         );
       })}

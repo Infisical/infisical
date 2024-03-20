@@ -104,7 +104,7 @@ export const SecretMainPage = () => {
     }
   });
   // fetch folders
-  const { data: folders, isLoading: isFoldersLoading } = useGetProjectFolders({
+  const { data: folderData, isLoading: isFoldersLoading } = useGetProjectFolders({
     projectId: workspaceId,
     environment,
     path: secretPath
@@ -163,7 +163,9 @@ export const SecretMainPage = () => {
     isPaused: !canDoReadRollback
   });
 
-  const isNotEmtpy = Boolean(secrets?.length || folders?.length || secretImports?.length);
+  const isNotEmtpy = Boolean(
+    secrets?.length || folderData?.folders?.length || secretImports?.length
+  );
 
   const handleSortToggle = () =>
     setSortDir((state) => (state === SortDir.ASC ? SortDir.DESC : SortDir.ASC));
@@ -292,7 +294,7 @@ export const SecretMainPage = () => {
                   />
                 )}
                 <FolderListView
-                  folders={folders}
+                  folders={folderData?.folders}
                   environment={environment}
                   workspaceId={workspaceId}
                   secretPath={secretPath}
@@ -312,7 +314,7 @@ export const SecretMainPage = () => {
                     isProtectedBranch={isProtectedBranch}
                   />
                 )}
-                {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
+                {!canReadSecret && folderData?.folders?.length === 0 && <PermissionDeniedBanner />}
               </div>
             </div>
             <CreateSecretForm
@@ -352,7 +354,7 @@ export const SecretMainPage = () => {
             workspaceId={workspaceId}
             secretPath={secretPath}
             secrets={secrets}
-            folders={folders}
+            folders={folderData?.folders}
             snapshotCount={snapshotCount}
             onGoBack={handleResetSnapshot}
             onClickListSnapshot={() => handlePopUpToggle("snapshots", true)}

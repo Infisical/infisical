@@ -13,9 +13,9 @@ import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import {
   TCreateFolderDTO,
   TDeleteFolderDTO,
+  TFetchProjectFoldersResponse,
   TGetFoldersByEnvDTO,
   TGetProjectFoldersDTO,
-  TSecretFolder,
   TUpdateFolderDTO
 } from "./types";
 
@@ -25,14 +25,14 @@ export const folderQueryKeys = {
 };
 
 const fetchProjectFolders = async (workspaceId: string, environment: string, path = "/") => {
-  const { data } = await apiRequest.get<{ folders: TSecretFolder[] }>("/api/v1/folders", {
+  const { data } = await apiRequest.get<TFetchProjectFoldersResponse>("/api/v1/folders", {
     params: {
       workspaceId,
       environment,
       path
     }
   });
-  return data.folders;
+  return data;
 };
 
 export const useGetProjectFolders = ({
@@ -43,9 +43,9 @@ export const useGetProjectFolders = ({
 }: TGetProjectFoldersDTO & {
   options?: Omit<
     UseQueryOptions<
-      TSecretFolder[],
+      TFetchProjectFoldersResponse,
       unknown,
-      TSecretFolder[],
+      TFetchProjectFoldersResponse,
       ReturnType<typeof folderQueryKeys.getSecretFolders>
     >,
     "queryKey" | "queryFn"
@@ -74,7 +74,7 @@ export const useGetFoldersByEnv = ({
   const folderNames = useMemo(() => {
     const names = new Set<string>();
     folders?.forEach(({ data }) => {
-      data?.forEach(({ name }) => {
+      data?.folders?.forEach(({ name }) => {
         names.add(name);
       });
     });
@@ -85,16 +85,34 @@ export const useGetFoldersByEnv = ({
     (name: string, env: string) => {
       const selectedEnvIndex = environments.indexOf(env);
       if (selectedEnvIndex !== -1) {
-        return Boolean(
-          folders?.[selectedEnvIndex]?.data?.find(({ name: folderName }) => folderName === name)
+        const isPresent = folders?.[selectedEnvIndex]?.data?.folders.find(
+          ({ name: folderName }) => folderName === name
         );
+
+        return Boolean(isPresent);
       }
       return false;
     },
     [(folders || []).map((folder) => folder.data)]
   );
 
-  return { folders, folderNames, isFolderPresentInEnv };
+  const isImportedFolderPresentInEnv = useCallback(
+    (name: string, env: string) => {
+      const selectedEnvIndex = environments.indexOf(env);
+
+      if (selectedEnvIndex !== -1) {
+        const isPresent = folders?.[selectedEnvIndex]?.data?.importedFolders.find(
+          ({ importPath }) => importPath === `/${name}`
+        );
+
+        return Boolean(isPresent);
+      }
+      return false;
+    },
+    [(folders || []).map((folder) => folder.data)]
+  );
+
+  return { folders, folderNames, isFolderPresentInEnv, isImportedFolderPresentInEnv };
 };
 
 export const useCreateFolder = () => {

@@ -125,11 +125,12 @@ export const SecretOverviewPage = () => {
     secretPath,
     decryptFileKey: latestFileKey!
   });
-  const { folders, folderNames, isFolderPresentInEnv } = useGetFoldersByEnv({
-    projectId: workspaceId,
-    path: secretPath,
-    environments: userAvailableEnvs.map(({ slug }) => slug)
-  });
+  const { folders, folderNames, isFolderPresentInEnv, isImportedFolderPresentInEnv } =
+    useGetFoldersByEnv({
+      projectId: workspaceId,
+      path: secretPath,
+      environments: userAvailableEnvs.map(({ slug }) => slug)
+    });
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
@@ -639,6 +640,7 @@ export const SecretOverviewPage = () => {
                     <SecretOverviewFolderRow
                       folderName={folderName}
                       isFolderPresentInEnv={isFolderPresentInEnv}
+                      isImportedFolderPresentInEnv={isImportedFolderPresentInEnv}
                       environments={visibleEnvs}
                       key={`overview-${folderName}-${index + 1}`}
                       onClick={handleFolderClick}
