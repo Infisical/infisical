@@ -16,6 +16,7 @@ import {
 import { useDeleteGroup } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { OrgGroupMembersModal } from "./OrgGroupMembersModal";
 import { OrgGroupModal } from "./OrgGroupModal";
 import { OrgGroupsTable } from "./OrgGroupsTable";
 
@@ -26,6 +27,7 @@ export const OrgGroupsSection = () => {
         
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
         "group",
+        "groupMembers",
         "deleteGroup",
         "upgradePlan"
     ] as const);
@@ -88,6 +90,11 @@ export const OrgGroupsSection = () => {
                 handlePopUpOpen={handlePopUpOpen}
             />
             <OrgGroupModal
+                popUp={popUp}
+                handlePopUpClose={handlePopUpClose}
+                handlePopUpToggle={handlePopUpToggle}
+            />
+            <OrgGroupMembersModal
                 popUp={popUp}
                 handlePopUpClose={handlePopUpClose}
                 handlePopUpToggle={handlePopUpToggle}

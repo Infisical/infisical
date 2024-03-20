@@ -126,10 +126,7 @@ export const OrgGroupModal = ({
                 reset();
             }}
         >
-            <ModalContent
-                title={`${popUp?.group?.data ? "Update" : "Create"} Group`}
-                subTitle="Manage users more easily with groups"
-            >
+            <ModalContent title={`${popUp?.group?.data ? "Update" : "Create"} Group`}>
                 <form onSubmit={handleSubmit(onGroupModalSubmit)}>
                     <Controller
                         control={control}

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { organizationKeys } from "../organization/queries";
+import { groupKeys } from "./queries";
 import { TGroup } from "./types";
 
 export const useCreateGroup = () => {
@@ -82,6 +83,50 @@ export const useDeleteGroup = () => {
         },
         onSuccess: ({ orgId }) => {
             queryClient.invalidateQueries(organizationKeys.getOrgGroups(orgId));
+        }
+    });
+};
+
+export const useCreateGroupUserMembership = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ 
+            slug,
+            username
+        }: { 
+            slug: string;
+            username: string;
+        }) => {
+            const {
+                data
+            } = await apiRequest.post<TGroup>(`/api/v1/groups/${slug}/users/${username}`);
+
+            return data;
+        },
+        onSuccess: (_, { slug }) => {
+            queryClient.invalidateQueries(groupKeys.getGroupUserMembership(slug));
+        }
+    });
+};
+
+export const useDeleteGroupUserMembership = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ 
+            slug,
+            username
+        }: { 
+            slug: string;
+            username: string;
+        }) => {
+            const {
+                data
+            } = await apiRequest.delete<TGroup>(`/api/v1/groups/${slug}/users/${username}`);
+
+            return data;
+        },
+        onSuccess: (_, { slug }) => {
+            queryClient.invalidateQueries(groupKeys.getGroupUserMembership(slug));
         }
     });
 };

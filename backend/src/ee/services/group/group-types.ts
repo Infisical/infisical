@@ -16,5 +16,19 @@ export type TUpdateGroupDTO = {
   TOrgPermission;
 
 export type TDeleteGroupDTO = {
+  groupSlug: string;
+} & TOrgPermission;
+
+export type TGetGroupUserMembershipsDTO = {
   slug: string;
+} & TOrgPermission;
+
+export type TCreateGroupUserMembershipDTO = {
+  groupSlug: string;
+  username: string;
+} & TOrgPermission;
+
+export type TDeleteGroupUserMembershipDTO = {
+  groupSlug: string;
+  username: string;
 } & TOrgPermission;

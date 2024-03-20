@@ -58,5 +58,6 @@ export * from "./trusted-ips";
 export * from "./user-actions";
 export * from "./user-aliases";
 export * from "./user-encryption-keys";
+export * from "./user-group-membership";
 export * from "./users";
 export * from "./webhooks";

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { GroupsSchema, OrgMembershipRole } from "@app/db/schemas";
+import { GroupsSchema, OrgMembershipRole, UsersSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -69,12 +69,12 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:slug",
+    url: "/:groupSlug",
     method: "DELETE",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
-        slug: z.string().trim()
+        groupSlug: z.string().trim()
       }),
       response: {
         200: GroupsSchema
@@ -82,7 +82,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const group = await server.services.group.deleteGroup({
-        slug: req.params.slug,
+        groupSlug: req.params.groupSlug,
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.permission.orgId as string, // note
@@ -91,6 +91,98 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       });
 
       return group;
+    }
+  });
+
+  // TODO: GET users part of group
+  server.route({
+    method: "GET",
+    url: "/:slug/users", // TODO: revise to users?
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        slug: z.string().trim()
+      }),
+      response: {
+        200: UsersSchema.pick({
+          email: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          id: true
+        })
+          .merge(
+            z.object({
+              isPartOfGroup: z.boolean()
+            })
+          )
+          .array()
+      }
+    },
+    handler: async (req) => {
+      const users = await server.services.group.getGroupUserMemberships({
+        slug: req.params.slug,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId as string,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return users;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:groupSlug/users/:username",
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        groupSlug: z.string().trim(),
+        username: z.string().trim()
+      }),
+      response: {
+        200: z.object({})
+      }
+    },
+    handler: async (req) => {
+      await server.services.group.createGroupUserMemberships({
+        groupSlug: req.params.groupSlug,
+        username: req.params.username,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId as string,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return {};
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:groupSlug/users/:username",
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        groupSlug: z.string().trim(),
+        username: z.string().trim()
+      }),
+      response: {
+        200: z.object({})
+      }
+    },
+    handler: async (req) => {
+      await server.services.group.deleteGroupUserMemberships({
+        groupSlug: req.params.groupSlug,
+        username: req.params.username,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId as string,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return {};
     }
   });
 };

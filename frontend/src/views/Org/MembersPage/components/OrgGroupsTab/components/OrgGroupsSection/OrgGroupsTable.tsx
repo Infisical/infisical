@@ -34,7 +34,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 type Props = {
     handlePopUpOpen: (
       popUpName: keyof UsePopUpState<
-        ["group", "deleteGroup"]
+        ["group", "deleteGroup", "groupMembers"]
       >,
       data?: {
         groupId?: string;
@@ -148,6 +148,29 @@ export const OrgGroupsTable = ({
                                                 a={OrgPermissionSubjects.Groups}
                                             >
                                                 {(isAllowed) => (
+                                                    <Tooltip content="Manage group members">
+                                                        <IconButton
+                                                            onClick={() => {
+                                                                handlePopUpOpen("groupMembers", {
+                                                                    slug
+                                                                });
+                                                            }}
+                                                            size="lg"
+                                                            colorSchema="primary"
+                                                            variant="plain"
+                                                            ariaLabel="update"
+                                                            isDisabled={!isAllowed}
+                                                        >
+                                                            <FontAwesomeIcon icon={faUsers} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
+                                            </OrgPermissionCan>
+                                            <OrgPermissionCan
+                                                I={OrgPermissionActions.Edit}
+                                                a={OrgPermissionSubjects.Groups}
+                                            >
+                                                {(isAllowed) => (
                                                     <Tooltip content="Edit group">
                                                         <IconButton
                                                             onClick={async () => {
@@ -163,6 +186,7 @@ export const OrgGroupsTable = ({
                                                             colorSchema="primary"
                                                             variant="plain"
                                                             ariaLabel="update"
+                                                            className="ml-4"
                                                             isDisabled={!isAllowed}
                                                         >
                                                             <FontAwesomeIcon icon={faPencil} />

@@ -7,6 +7,7 @@ import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-lo
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
+import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
@@ -197,6 +198,7 @@ export const registerRoutes = async (
   const gitAppInstallSessionDAL = gitAppInstallSessionDALFactory(db);
   const gitAppOrgDAL = gitAppDALFactory(db);
   const groupDAL = groupDALFactory(db);
+  const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
 
@@ -238,7 +240,10 @@ export const registerRoutes = async (
     licenseService
   });
   const groupService = groupServiceFactory({
+    userDAL,
     groupDAL,
+    orgDAL,
+    userGroupMembershipDAL,
     permissionService,
     licenseService
   });

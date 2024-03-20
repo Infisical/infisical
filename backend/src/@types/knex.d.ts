@@ -179,6 +179,9 @@ import {
   TUserEncryptionKeys,
   TUserEncryptionKeysInsert,
   TUserEncryptionKeysUpdate,
+  TUserGroupMembership,
+  TUserGroupMembershipInsert,
+  TUserGroupMembershipUpdate,
   TUsers,
   TUsersInsert,
   TUsersUpdate,
@@ -191,6 +194,11 @@ declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.Groups]: Knex.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.UserGroupMembership]: Knex.CompositeTableType<
+      TUserGroupMembership,
+      TUserGroupMembershipInsert,
+      TUserGroupMembershipUpdate
+    >;
     [TableName.UserAliases]: Knex.CompositeTableType<TUserAliases, TUserAliasesInsert, TUserAliasesUpdate>;
     [TableName.UserEncryptionKey]: Knex.CompositeTableType<
       TUserEncryptionKeys,

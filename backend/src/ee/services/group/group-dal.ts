@@ -39,8 +39,47 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  // special query
+  const findAllGroupMembers = async (orgId: string, groupId: string) => {
+    try {
+      const members = await db(TableName.OrgMembership)
+        .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.UserGroupMembership, function () {
+          this.on(`${TableName.UserGroupMembership}.userId`, "=", `${TableName.Users}.id`).andOn(
+            `${TableName.UserGroupMembership}.groupId`,
+            "=",
+            db.raw("?", [groupId])
+          );
+        })
+        .select(
+          db.ref("id").withSchema(TableName.OrgMembership),
+          db.ref("groupId").withSchema(TableName.UserGroupMembership),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.ref("id").withSchema(TableName.Users).as("userId")
+          // db.raw(`CASE WHEN "${TableName.UserGroupMembership}"."groupId" IS NOT NULL THEN TRUE ELSE FALSE END as isPartOfGroup`)
+        )
+        .where({ isGhost: false }); // MAKE SURE USER IS NOT A GHOST USER
+
+      return members.map(({ email, username, firstName, lastName, userId, groupId: memberGroupId }) => ({
+        id: userId,
+        email,
+        username,
+        firstName,
+        lastName,
+        isPartOfGroup: !!memberGroupId
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all org members" });
+    }
+  };
+
   return {
     findByOrgId,
+    findAllGroupMembers,
     ...groupOrm
   };
 };
