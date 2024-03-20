@@ -40,7 +40,11 @@ export const SecretOverviewFolderRow = ({
               isPresent || isImportPresent ? "text-green-600" : "text-red-600"
             )}
           >
-            <Tooltip isDisabled={!isImportPresent} content="Folder is imported">
+            <Tooltip
+              center
+              isDisabled={!isImportPresent}
+              content="Folder is imported from another environment"
+            >
               <div className="flex justify-center">
                 <FontAwesomeIcon
                   // eslint-disable-next-line no-nested-ternary
