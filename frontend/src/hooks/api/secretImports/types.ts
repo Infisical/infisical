@@ -12,19 +12,6 @@ export type TSecretImport = {
   updatedAt: string;
 };
 
-export type TImportedSecretFolder = {
-  id: string;
-  folderId: string;
-  importEnv: {
-    id: string;
-    name: string;
-    slug: string;
-  };
-  importPath: string;
-
-  // ... It got more fields, but we won't need them.
-};
-
 export type TGetImportedFoldersByEnvDTO = {
   projectId: string;
   environment: string;
@@ -43,6 +30,13 @@ export type TGetSecretImports = {
   projectId: string;
   environment: string;
   path?: string;
+};
+
+export type TGetSecretImportsAllEnvs = {
+  projectId: string;
+  decryptFileKey: UserWsKeyPair;
+  path?: string;
+  environments: string[];
 };
 
 export type TGetImportedSecrets = {
