@@ -95,7 +95,7 @@ export const useGetFoldersByEnv = ({
       }
       return false;
     },
-    [(folders || []).map((folder) => folder.data)]
+    [(folders || []).map((response) => response.data)]
   );
 
   const isImportedFolderPresentInEnv = useCallback(
@@ -113,7 +113,7 @@ export const useGetFoldersByEnv = ({
       }
       return false;
     },
-    [(folders || []).map((folder) => folder.data)]
+    [(folders || []).map((response) => response.data)]
   );
 
   return { folders, folderNames, isFolderPresentInEnv, isImportedFolderPresentInEnv };
