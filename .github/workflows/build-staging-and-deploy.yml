@@ -46,6 +46,21 @@ jobs:
           tags: infisical/infisical:test
       - name: 🏗️ Build backend and push to docker hub
         uses: depot/build-push-action@v1
+        with:
+          project: 64mmf0n610
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          push: true
+          context: .
+          file: Dockerfile.standalone-infisical
+          tags: |
+            infisical/staging_infisical:${{ steps.commit.outputs.short }}
+            infisical/staging_infisical:latest
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+      - name: 🏗️ Build backend and push to ECR
+        uses: depot/build-push-action@v1
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPO_NAME }}
@@ -56,14 +71,14 @@ jobs:
           context: .
           file: Dockerfile.standalone-infisical
           tags: |
-            infisical/staging_infisical:${{ steps.commit.outputs.short }}
-            infisical/staging_infisical:latest
             ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ steps.commit.outputs.short }}
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
             INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+      
+      
 
 
     
