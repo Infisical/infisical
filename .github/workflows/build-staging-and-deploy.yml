@@ -44,20 +44,13 @@ jobs:
           context: .
           file: Dockerfile.standalone-infisical
           tags: infisical/infisical:test
-      # - name: ⏻ Spawn backend container and dependencies
-      #   run: |
-      #     docker compose -f .github/resources/docker-compose.be-test.yml up --wait --quiet-pull
-      # - name: 🧪 Test backend image
-      #   run: |
-      #     ./.github/resources/healthcheck.sh infisical-backend-test
-      # - name: ⏻ Shut down backend container and dependencies
-      #   run: |
-      #     docker compose -f .github/resources/docker-compose.be-test.yml down
+      - name: print env 
+        run: "echo ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest"
       - name: 🏗️ Build backend and push to docker hub
         uses: depot/build-push-action@v1
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.REPO_NAME }}
+          ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPO_NAME }}
         with:
           project: 64mmf0n610
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
