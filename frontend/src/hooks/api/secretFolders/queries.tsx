@@ -63,6 +63,8 @@ export const useGetFoldersByEnv = ({
   projectId,
   environments
 }: TGetFoldersByEnvDTO) => {
+  const queryParams = new URLSearchParams(window.location.search);
+
   const folders = useQueries({
     queries: environments.map((environment) => ({
       queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path }),
@@ -101,8 +103,16 @@ export const useGetFoldersByEnv = ({
       const selectedEnvIndex = environments.indexOf(env);
 
       if (selectedEnvIndex !== -1) {
+        const currentlyBrowsingPath = queryParams.get("secretPath") || "";
+
+        if (env === "staging") {
+          console.log("selectedEnvIndex", selectedEnvIndex);
+          console.log(`name /${name}`);
+          console.log("importedFolders", folders?.[selectedEnvIndex]?.data?.importedFolders);
+        }
+
         const isPresent = folders?.[selectedEnvIndex]?.data?.importedFolders.find(
-          ({ importPath }) => importPath === `/${name}`
+          ({ importPath }) => importPath === `${currentlyBrowsingPath}/${name}`
         );
 
         return Boolean(isPresent);
