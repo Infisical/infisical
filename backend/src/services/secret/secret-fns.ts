@@ -9,6 +9,7 @@ import {
   TSecretBlindIndexes,
   TSecrets
 } from "@app/db/schemas";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
 import {
   buildSecretBlindIndexFromName,
@@ -17,8 +18,10 @@ import {
 } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
@@ -43,6 +46,68 @@ export const generateSecretBlindIndexBySalt = async (secretName: string, secretB
     iv: secretBlindIndexDoc.saltIV
   });
   return secretBlindIndex;
+};
+
+type TRecursivelyFetchSecretsFromFoldersArg = {
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "find">;
+};
+
+export const recursivelyGetSecretPaths = ({ folderDAL, projectEnvDAL }: TRecursivelyFetchSecretsFromFoldersArg) => {
+  const getPaths = async (projectId: string, environment: string, currentPath: string) => {
+    let secretPaths: string[] = [];
+
+    // Get secrets in the current folder.
+    try {
+      const folder = await folderDAL.findBySecretPath(projectId, environment, currentPath);
+
+      if (!folder) {
+        throw new Error(`Base directory '${currentPath}' not found.`);
+      }
+
+      secretPaths.push(currentPath);
+    } catch (error) {
+      logger.error(error, "Error fetching secrets from base directory");
+      throw error;
+    }
+
+    // List all subfolders in the current folder.
+    try {
+      const env = await projectEnvDAL.findOne({ projectId, slug: environment });
+      const parentFolder = await folderDAL.findBySecretPath(projectId, environment, currentPath);
+
+      if (!env) {
+        throw new Error(`Environment with not found`);
+      }
+
+      if (!parentFolder) {
+        throw new Error(`Parent folder not found`);
+      }
+
+      const folders = await folderDAL.find({ envId: env.id, parentId: parentFolder.id });
+
+      // Use Promise.all to handle recursive calls concurrently for efficiency.
+      const secretsFromSubFolders = await Promise.all(
+        folders.map(async (folder) => {
+          // Ensure the path is correctly formatted for the next level.
+          const subFolderPath = `${currentPath}${currentPath !== "/" ? "/" : ""}${folder.name}`;
+
+          return getPaths(projectId, environment, subFolderPath);
+        })
+      );
+
+      // Flatten the array of arrays and concatenate with the current secrets array.
+      secretPaths = secretPaths.concat(...secretsFromSubFolders);
+    } catch (error) {
+      logger.error(error, "Error fetching secrets from subdirectories");
+      throw error;
+    }
+
+    return secretPaths;
+  };
+
+  return getPaths;
 };
 
 type TInterpolateSecretArg = {
@@ -202,9 +267,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
       );
 
       // eslint-disable-next-line
-      secrets[key].value = secrets[key].skipMultilineEncoding
-        ? expandedVal
-        : formatMultiValueEnv(expandedVal);
+      secrets[key].value = secrets[key].skipMultilineEncoding ? expandedVal : formatMultiValueEnv(expandedVal);
     }
 
     return secrets;

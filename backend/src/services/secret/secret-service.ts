@@ -13,13 +13,20 @@ import { logger } from "@app/lib/logger";
 import { ActorType } from "../auth/auth-type";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretDALFactory } from "./secret-dal";
-import { decryptSecretRaw, fnSecretBlindIndexCheck, fnSecretBulkInsert, fnSecretBulkUpdate } from "./secret-fns";
+import {
+  decryptSecretRaw,
+  fnSecretBlindIndexCheck,
+  fnSecretBulkInsert,
+  fnSecretBulkUpdate,
+  recursivelyGetSecretPaths
+} from "./secret-fns";
 import { TSecretQueueFactory } from "./secret-queue";
 import {
   TAttachSecretTagsDTO,
@@ -47,8 +54,12 @@ type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  folderDAL: Pick<
+    TSecretFolderDALFactory,
+    "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find"
+  >;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
@@ -61,6 +72,7 @@ type TSecretServiceFactoryDep = {
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
 export const secretServiceFactory = ({
   secretDAL,
+  projectEnvDAL,
   secretTagDAL,
   secretVersionDAL,
   folderDAL,
@@ -789,21 +801,64 @@ export const secretServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     environment,
-    includeImports
+    includeImports,
+    recursive
   }: TGetSecretsRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
-    const { secrets, imports } = await getSecrets({
-      actorId,
-      projectId,
-      environment,
-      actor,
-      actorOrgId,
-      actorAuthMethod,
-      path,
-      includeImports
-    });
+    let secrets: Awaited<ReturnType<typeof getSecrets>>["secrets"];
+    let imports: Awaited<ReturnType<typeof getSecrets>>["imports"];
+
+    if (recursive) {
+      const getPaths = recursivelyGetSecretPaths({
+        permissionService,
+        folderDAL,
+        projectEnvDAL
+      });
+
+      const paths = await getPaths(projectId, environment, path);
+
+      const result = await Promise.all(
+        paths.map(async (currentPath) => {
+          const secs = await getSecrets({
+            actorId,
+            projectId,
+            environment,
+            actor,
+            actorOrgId,
+            actorAuthMethod,
+            path: currentPath,
+            includeImports
+          });
+
+          return {
+            secrets: {
+              ...secs.secrets,
+              secretPath: currentPath
+            },
+            imports: secs.imports
+          };
+        })
+      );
+
+      secrets = result.flatMap((el) => el.secrets);
+      imports = result.flatMap((el) => el.imports || []);
+    } else {
+      const result = await getSecrets({
+        actorId,
+        projectId,
+        environment,
+        actor,
+        actorOrgId,
+        actorAuthMethod,
+        path,
+        includeImports
+      });
+
+      secrets = result.secrets;
+      imports = result.imports;
+    }
 
     return {
       secrets: secrets.map((el) => decryptSecretRaw(el, botKey)),
