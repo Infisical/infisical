@@ -105,12 +105,6 @@ export const useGetFoldersByEnv = ({
       if (selectedEnvIndex !== -1) {
         const currentlyBrowsingPath = queryParams.get("secretPath") || "";
 
-        if (env === "staging") {
-          console.log("selectedEnvIndex", selectedEnvIndex);
-          console.log(`name /${name}`);
-          console.log("importedFolders", folders?.[selectedEnvIndex]?.data?.importedFolders);
-        }
-
         const isPresent = folders?.[selectedEnvIndex]?.data?.importedFolders.find(
           ({ importPath }) => importPath === `${currentlyBrowsingPath}/${name}`
         );
