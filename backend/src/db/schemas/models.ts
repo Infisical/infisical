@@ -59,6 +59,8 @@ export enum TableName {
   GitAppOrg = "git_app_org",
   SecretScanningGitRisk = "secret_scanning_git_risks",
   TrustedIps = "trusted_ips",
+  DynamicSecret = "dynamic_secrets",
+  DynamicSecretLease = "dynamic_secret_leases",
   // junction tables with tags
   JnSecretTag = "secret_tag_junction",
   SecretVersionTag = "secret_version_tag_junction"

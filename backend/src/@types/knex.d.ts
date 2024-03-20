@@ -17,6 +17,12 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
+  TDynamicSecretLeases,
+  TDynamicSecretLeasesInsert,
+  TDynamicSecretLeasesUpdate,
+  TDynamicSecrets,
+  TDynamicSecretsInsert,
+  TDynamicSecretsUpdate,
   TGitAppInstallSessions,
   TGitAppInstallSessionsInsert,
   TGitAppInstallSessionsUpdate,
@@ -339,6 +345,12 @@ declare module "knex/types/tables" {
       TSecretSnapshotFolders,
       TSecretSnapshotFoldersInsert,
       TSecretSnapshotFoldersUpdate
+    >;
+    [TableName.DynamicSecret]: Knex.CompositeTableType<TDynamicSecrets, TDynamicSecretsInsert, TDynamicSecretsUpdate>;
+    [TableName.DynamicSecretLease]: Knex.CompositeTableType<
+      TDynamicSecretLeases,
+      TDynamicSecretLeasesInsert,
+      TDynamicSecretLeasesUpdate
     >;
     [TableName.SamlConfig]: Knex.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
     [TableName.LdapConfig]: Knex.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
