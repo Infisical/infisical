@@ -27,7 +27,7 @@ type Props = {
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
   onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
-  isImportedSecretPresentInEnv: (name: string, env: string) => boolean;
+  isImportedSecretPresentInEnv: (name: string, env: string, secretName: string) => boolean;
 };
 
 export const SecretOverviewTableRow = ({
@@ -65,7 +65,8 @@ export const SecretOverviewTableRow = ({
         {environments.map(({ slug }, i) => {
           const secret = getSecretByKey(slug, secretKey);
 
-          const isSecretImported = isImportedSecretPresentInEnv(secretPath, slug);
+          const isSecretImported = isImportedSecretPresentInEnv(secretPath, slug, secretKey);
+
           const isSecretPresent = Boolean(secret);
           const isSecretEmpty = secret?.value === "";
           return (
