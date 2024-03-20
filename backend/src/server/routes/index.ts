@@ -415,6 +415,7 @@ export const registerRoutes = async (
   const folderService = secretFolderServiceFactory({
     permissionService,
     folderDAL,
+    secretImportDAL,
     folderVersionDAL,
     projectEnvDAL,
     snapshotService
@@ -471,7 +472,8 @@ export const registerRoutes = async (
     snapshotService,
     secretQueueService,
     secretImportDAL,
-    projectBotService
+    projectBotService,
+    projectEnvDAL
   });
   const sarService = secretApprovalRequestServiceFactory({
     permissionService,

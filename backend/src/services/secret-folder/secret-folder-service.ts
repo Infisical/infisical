@@ -9,6 +9,7 @@ import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/
 import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import { TCreateFolderDTO, TDeleteFolderDTO, TGetFolderDTO, TUpdateFolderDTO } from "./secret-folder-types";
 import { TSecretFolderVersionDALFactory } from "./secret-folder-version-dal";
@@ -17,6 +18,7 @@ type TSecretFolderServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   folderDAL: TSecretFolderDALFactory;
+  secretImportDAL: TSecretImportDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   folderVersionDAL: TSecretFolderVersionDALFactory;
 };
@@ -26,6 +28,7 @@ export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceF
 export const secretFolderServiceFactory = ({
   folderDAL,
   snapshotService,
+  secretImportDAL,
   permissionService,
   projectEnvDAL,
   folderVersionDAL
@@ -229,10 +232,13 @@ export const secretFolderServiceFactory = ({
     if (!env) throw new BadRequestError({ message: "Environment not found", name: "get folders" });
 
     const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!parentFolder) return [];
+    if (!parentFolder) return { folders: [], importedFolders: [] };
 
     const folders = await folderDAL.find({ envId: env.id, parentId: parentFolder.id });
-    return folders;
+
+    const importedFolders = await secretImportDAL.find({ folderId: parentFolder.id });
+
+    return { folders, importedFolders };
   };
 
   return {
