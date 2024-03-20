@@ -1,8 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
+import slugify from "@sindresorhus/slugify";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TOrgDALFactory } from "../../../services/org/org-dal";
 import { TUserDALFactory } from "../../../services/user/user-dal";
@@ -21,11 +23,10 @@ import {
 import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
-  // TODO: Pick
-  userDAL: TUserDALFactory;
-  groupDAL: TGroupDALFactory;
-  orgDAL: TOrgDALFactory;
-  userGroupMembershipDAL: TUserGroupMembershipDALFactory;
+  userDAL: Pick<TUserDALFactory, "findOne">;
+  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "update" | "delete" | "findAllGroupMembers">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findOne" | "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -69,7 +70,7 @@ export const groupServiceFactory = ({
 
     const group = await groupDAL.create({
       name,
-      slug, // TODO: slugify
+      slug: slug || slugify(`${name}-${alphaNumericNanoId(4)}`),
       orgId,
       role: isCustomRole ? OrgMembershipRole.Custom : role,
       roleId: customRole?.id
@@ -122,7 +123,7 @@ export const groupServiceFactory = ({
       },
       {
         name,
-        slug, // TODO: slugify
+        slug: slug ? slugify(slug) : undefined,
         ...(role
           ? {
               role: customRole ? OrgMembershipRole.Custom : role,

@@ -2,7 +2,7 @@ import { TOrgPermission } from "@app/lib/types";
 
 export type TCreateGroupDTO = {
   name: string;
-  slug: string;
+  slug?: string;
   role: string;
 } & TOrgPermission;
 

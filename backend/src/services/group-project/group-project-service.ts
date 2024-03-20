@@ -22,12 +22,12 @@ import {
 } from "./group-project-types";
 
 type TGroupProjectServiceFactoryDep = {
-  groupProjectDAL: TGroupProjectDALFactory;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "findOne" | "transaction" | "create" | "delete" | "findByProjectId">;
   groupProjectMembershipRoleDAL: Pick<
     TGroupProjectMembershipRoleDALFactory,
     "create" | "transaction" | "insertMany" | "delete"
   >;
-  projectDAL: TProjectDALFactory;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
