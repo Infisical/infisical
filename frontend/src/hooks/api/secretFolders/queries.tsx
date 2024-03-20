@@ -85,15 +85,13 @@ export const useGetFoldersByEnv = ({
     (name: string, env: string) => {
       const selectedEnvIndex = environments.indexOf(env);
       if (selectedEnvIndex !== -1) {
-        const isPresent = folders?.[selectedEnvIndex]?.data?.find(
-          ({ name: folderName }) => folderName === name
+        return Boolean(
+          folders?.[selectedEnvIndex]?.data?.find(({ name: folderName }) => folderName === name)
         );
-
-        return Boolean(isPresent);
       }
       return false;
     },
-    [(folders || []).map((response) => response.data)]
+    [(folders || []).map((folder) => folder.data)]
   );
 
   return { folders, folderNames, isFolderPresentInEnv };
