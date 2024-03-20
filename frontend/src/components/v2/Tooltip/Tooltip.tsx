@@ -12,6 +12,7 @@ export type TooltipProps = Omit<TooltipPrimitive.TooltipContentProps, "open" | "
   defaultOpen?: boolean;
   position?: "top" | "bottom" | "left" | "right";
   isDisabled?: boolean;
+  center?: boolean;
 };
 
 export const Tooltip = ({
@@ -21,6 +22,7 @@ export const Tooltip = ({
   onOpenChange,
   defaultOpen,
   className,
+  center,
   asChild = true,
   isDisabled,
   position = "top",
@@ -40,12 +42,13 @@ export const Tooltip = ({
       {...props}
       className={twMerge(
         `z-50 max-w-[15rem] select-none rounded-md border border-mineshaft-600 bg-mineshaft-800 py-2 px-4 text-sm font-light text-bunker-200 shadow-md 
-data-[state=delayed-open]:data-[side=top]:animate-slideDownAndFade
-data-[state=delayed-open]:data-[side=right]:animate-slideLeftAndFade
-data-[state=delayed-open]:data-[side=left]:animate-slideRightAndFade
-data-[state=delayed-open]:data-[side=bottom]:animate-slideUpAndFade
-`,
+        data-[state=delayed-open]:data-[side=top]:animate-slideDownAndFade
+        data-[state=delayed-open]:data-[side=right]:animate-slideLeftAndFade
+        data-[state=delayed-open]:data-[side=left]:animate-slideRightAndFade
+        data-[state=delayed-open]:data-[side=bottom]:animate-slideUpAndFade
+      `,
         isDisabled && "!hidden",
+        center && "text-center",
         className
       )}
     >
