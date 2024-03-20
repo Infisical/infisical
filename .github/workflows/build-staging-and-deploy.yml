@@ -66,9 +66,9 @@ jobs:
           file: Dockerfile.standalone-infisical
           tags: |
             infisical/staging_infisical:${{ steps.commit.outputs.short }}
-            infisical/staging_infisical:$ECR_REGISTRY/$ECR_REPOSITORY:latest
-            infisical/staging_infisical:$ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.commit.outputs.short }}
             infisical/staging_infisical:latest
+            $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            $ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.commit.outputs.short }}
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
