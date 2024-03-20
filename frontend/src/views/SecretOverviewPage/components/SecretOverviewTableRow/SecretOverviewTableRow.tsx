@@ -4,6 +4,7 @@ import {
   faCheck,
   faEye,
   faEyeSlash,
+  faFileImport,
   faKey,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
@@ -26,6 +27,7 @@ type Props = {
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
   onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
+  isImportedSecretPresentInEnv: (name: string, env: string) => boolean;
 };
 
 export const SecretOverviewTableRow = ({
@@ -36,6 +38,7 @@ export const SecretOverviewTableRow = ({
   onSecretUpdate,
   onSecretCreate,
   onSecretDelete,
+  isImportedSecretPresentInEnv,
   expandableColWidth
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
@@ -61,6 +64,8 @@ export const SecretOverviewTableRow = ({
         </Td>
         {environments.map(({ slug }, i) => {
           const secret = getSecretByKey(slug, secretKey);
+
+          const isSecretImported = isImportedSecretPresentInEnv(secretPath, slug);
           const isSecretPresent = Boolean(secret);
           const isSecretEmpty = secret?.value === "";
           return (
@@ -69,16 +74,29 @@ export const SecretOverviewTableRow = ({
               className={twMerge(
                 "py-0 px-0 group-hover:bg-mineshaft-700",
                 isFormExpanded && "border-t-2 border-mineshaft-500",
-                isSecretPresent && !isSecretEmpty ? "text-green-600" : "",
-                isSecretPresent && isSecretEmpty ? "text-yellow" : "",
-                !isSecretPresent && !isSecretEmpty ? "text-red-600" : ""
+                (isSecretPresent && !isSecretEmpty) || isSecretImported ? "text-green-600" : "",
+                isSecretPresent && isSecretEmpty && !isSecretImported ? "text-yellow" : "",
+                !isSecretPresent && !isSecretEmpty && !isSecretImported ? "text-red-600" : ""
               )}
             >
               <div className="h-full w-full border-r border-mineshaft-600 py-[0.85rem] px-5">
                 <div className="flex justify-center">
                   {!isSecretEmpty && (
-                    <Tooltip content={isSecretPresent ? "Present secret" : "Missing secret"}>
-                      <FontAwesomeIcon icon={isSecretPresent ? faCheck : faXmark} />
+                    <Tooltip
+                      center
+                      content={
+                        // eslint-disable-next-line no-nested-ternary
+                        isSecretPresent
+                          ? "Present secret"
+                          : isSecretImported
+                          ? "Secret is imported from another environment"
+                          : "Missing secret"
+                      }
+                    >
+                      <FontAwesomeIcon
+                        // eslint-disable-next-line no-nested-ternary
+                        icon={isSecretPresent ? faCheck : isSecretImported ? faFileImport : faXmark}
+                      />
                     </Tooltip>
                   )}
                   {isSecretEmpty && (
