@@ -200,15 +200,14 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       }),
       response: {
         200: z.object({
-          folders: SecretFoldersSchema.array(),
-          importedFolders: z.any().array()
+          folders: SecretFoldersSchema.array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const path = req.query.path || req.query.directory;
-      const { folders, importedFolders } = await server.services.folder.getFolders({
+      const folders = await server.services.folder.getFolders({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
@@ -217,7 +216,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         projectId: req.query.workspaceId,
         path
       });
-      return { folders, importedFolders };
+      return { folders };
     }
   });
 };

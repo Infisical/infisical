@@ -415,7 +415,6 @@ export const registerRoutes = async (
   const folderService = secretFolderServiceFactory({
     permissionService,
     folderDAL,
-    secretImportDAL,
     folderVersionDAL,
     projectEnvDAL,
     snapshotService
