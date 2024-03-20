@@ -8,6 +8,15 @@ jobs:
     steps:
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_FOR_ECR }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_FOR_ECR }}
+          aws-region: us-east-1
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
       - name: 📦 Install dependencies to test all dependencies
         run: npm ci --only-production
         working-directory: backend
@@ -59,6 +68,9 @@ jobs:
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
             INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+
+
+    
   postgres-migration:
     name: Run latest migration files
     runs-on: ubuntu-latest
