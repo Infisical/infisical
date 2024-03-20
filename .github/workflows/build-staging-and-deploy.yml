@@ -53,8 +53,11 @@ jobs:
       # - name: ⏻ Shut down backend container and dependencies
       #   run: |
       #     docker compose -f .github/resources/docker-compose.be-test.yml down
-      - name: 🏗️ Build backend and push
+      - name: 🏗️ Build backend and push to docker hub
         uses: depot/build-push-action@v1
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.REPO_NAME }}
         with:
           project: 64mmf0n610
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
@@ -63,6 +66,8 @@ jobs:
           file: Dockerfile.standalone-infisical
           tags: |
             infisical/staging_infisical:${{ steps.commit.outputs.short }}
+            infisical/staging_infisical:$ECR_REGISTRY/$ECR_REPOSITORY:latest
+            infisical/staging_infisical:$ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.commit.outputs.short }}
             infisical/staging_infisical:latest
           platforms: linux/amd64,linux/arm64
           build-args: |
