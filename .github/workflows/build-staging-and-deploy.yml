@@ -68,6 +68,7 @@ jobs:
           project: 64mmf0n610
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           push: true
+          provenance: false
           context: .
           file: Dockerfile.standalone-infisical
           tags: |
