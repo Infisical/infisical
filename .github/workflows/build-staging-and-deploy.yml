@@ -44,8 +44,6 @@ jobs:
           context: .
           file: Dockerfile.standalone-infisical
           tags: infisical/infisical:test
-      - name: print env 
-        run: "echo ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest"
       - name: 🏗️ Build backend and push to docker hub
         uses: depot/build-push-action@v1
         env:
