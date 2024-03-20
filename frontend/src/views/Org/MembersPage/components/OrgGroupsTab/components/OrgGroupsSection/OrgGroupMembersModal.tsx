@@ -1,9 +1,13 @@
-import { faUsers } from "@fortawesome/free-solid-svg-icons";
+import { useMemo,useState } from "react";
+import { faMagnifyingGlass,faUsers } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
     Button,
     EmptyState,
+    Input,
     Modal,
     ModalContent,
     Table,
@@ -15,6 +19,10 @@ import {
     THead,
     Tr
 } from "@app/components/v2";
+import {
+    OrgPermissionActions,
+    OrgPermissionSubjects
+} from "@app/context";
 import { 
     useCreateGroupUserMembership,
     useDeleteGroupUserMembership,
@@ -23,7 +31,6 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   popUp: UsePopUpState<["groupMembers"]>;
-//   handlePopUpClose: (popUpName: keyof UsePopUpState<["groupMembers"]>) => void;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["groupMembers"]>, state?: boolean) => void;
 };
 
@@ -31,6 +38,7 @@ export const OrgGroupMembersModal = ({
     popUp,
     handlePopUpToggle
 }: Props) => {
+    const [searchMemberFilter, setSearchMemberFilter] = useState("");
     const { createNotification } = useNotificationContext();
     
     const popUpData = popUp?.groupMembers?.data as {
@@ -69,6 +77,17 @@ export const OrgGroupMembersModal = ({
         }
     }
     
+    const filterdUser = useMemo(
+        () =>
+        users?.filter(
+            ({ firstName, lastName, username }) =>
+              firstName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+              lastName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
+              username?.toLowerCase().includes(searchMemberFilter.toLowerCase())
+          ),
+        [users, searchMemberFilter]
+      );
+    
     return (
         <Modal
             isOpen={popUp?.groupMembers?.isOpen}
@@ -77,17 +96,23 @@ export const OrgGroupMembersModal = ({
             }}
         >
             <ModalContent title="Manage Group Members">
-                <TableContainer>
+                <Input
+                    value={searchMemberFilter}
+                    onChange={(e) => setSearchMemberFilter(e.target.value)}
+                    leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+                    placeholder="Search members..."
+                />
+                <TableContainer className="mt-4">
                     <Table>
                         <THead>
                             <Tr>
                                 <Th>User</Th>
-                                <Th>Status</Th>
+                                <Th />
                             </Tr>
                         </THead>
                         <TBody>
                             {isLoading && <TableSkeleton columns={2} innerKey="group-users" />}
-                            {!isLoading && users?.map(({
+                            {!isLoading && filterdUser?.map(({
                                 id,
                                 firstName,
                                 lastName,
@@ -100,24 +125,33 @@ export const OrgGroupMembersModal = ({
                                             <p>{`${firstName} ${lastName}`}</p>
                                             <p>{username}</p>
                                         </Td>
-                                        <Td>
-                                            <Button
-                                                // isLoading={isLoading}
-                                                // isDisabled={!isAllowed}
-                                                colorSchema="primary"
-                                                variant="outline_bg"
-                                                type="submit"
-                                                onClick={() => handleAssignment(username, !isPartOfGroup)}
+                                        <Td className="flex justify-end">
+                                            <OrgPermissionCan
+                                                I={OrgPermissionActions.Edit}
+                                                a={OrgPermissionSubjects.Groups}
                                             >
-                                                {isPartOfGroup ? "Unassign" : "Assign"}
-                                            </Button>
+                                                {(isAllowed) => {
+                                                    return (
+                                                        <Button
+                                                            isLoading={isLoading}
+                                                            isDisabled={!isAllowed}
+                                                            colorSchema="primary"
+                                                            variant="outline_bg"
+                                                            type="submit"
+                                                            onClick={() => handleAssignment(username, !isPartOfGroup)}
+                                                        >
+                                                            {isPartOfGroup ? "Unassign" : "Assign"}
+                                                        </Button>
+                                                    );
+                                                }}
+                                            </OrgPermissionCan>
                                         </Td>
                                     </Tr>
                                 );
                             })}
                         </TBody>
                     </Table>
-                    {!isLoading && !users?.length && (
+                    {!isLoading && !filterdUser?.length && (
                         <EmptyState
                             title="No users found"
                             icon={faUsers}

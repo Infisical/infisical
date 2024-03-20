@@ -115,7 +115,7 @@ export const OrgGroupsTable = ({
                                     <Td>
                                     <OrgPermissionCan
                                         I={OrgPermissionActions.Edit}
-                                        a={OrgPermissionSubjects.Identity}
+                                        a={OrgPermissionSubjects.Groups}
                                     >
                                         {(isAllowed) => {
                                             return (

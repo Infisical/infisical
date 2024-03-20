@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { TGroupMembership } from "../groups/types";
 import { IdentityMembership } from "../identities/types";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
@@ -16,6 +17,7 @@ import {
   RenameWorkspaceDTO,
   TGetUpgradeProjectStatusDTO,
   ToggleAutoCapitalizationDTO,
+  TUpdateWorkspaceGroupRoleDTO,
   TUpdateWorkspaceIdentityRoleDTO,
   TUpdateWorkspaceUserRoleDTO,
   UpdateEnvironmentDTO,
@@ -36,7 +38,9 @@ export const workspaceKeys = {
     [{ workspaceId }, "workspace-audit-logs"] as const,
   getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }, "workspace-users"] as const,
   getWorkspaceIdentityMemberships: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-identity-memberships"] as const
+    [{ workspaceId }, "workspace-identity-memberships"] as const,
+  getWorkspaceGroupMemberships: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-group-memberships"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -446,6 +450,93 @@ export const useGetWorkspaceIdentityMemberships = (workspaceId: string) => {
         `/api/v2/workspace/${workspaceId}/identity-memberships`
       );
       return identityMemberships;
+    },
+    enabled: true
+  });
+};
+
+export const useAddGroupToWorkspace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      groupSlug,
+      workspaceId,
+      role
+    }: {
+      groupSlug: string;
+      workspaceId: string;
+      role?: string;
+    }) => {
+      const {
+        data: { groupMembership }
+      } = await apiRequest.post(
+        `/api/v2/workspace/${workspaceId}/group-memberships/${groupSlug}`,
+        {
+          role
+        }
+      );
+      return groupMembership;
+    },
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(workspaceId));
+    }
+  });
+};
+
+export const useUpdateGroupWorkspaceRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ groupSlug, workspaceId, roles }: TUpdateWorkspaceGroupRoleDTO) => {
+      const {
+        data: { groupMembership }
+      } = await apiRequest.patch(
+        `/api/v2/workspace/${workspaceId}/group-memberships/${groupSlug}`,
+        {
+          roles
+        }
+      );
+
+      return groupMembership;
+    },
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(workspaceId));
+    }
+  });
+};
+
+export const useDeleteGroupFromWorkspace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      groupSlug,
+      workspaceId
+    }: {
+      groupSlug: string;
+      workspaceId: string;
+    }) => {
+      const {
+        data: { groupMembership }
+      } = await apiRequest.delete(
+        `/api/v2/workspace/${workspaceId}/group-memberships/${groupSlug}`
+      );
+      return groupMembership;
+    },
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(workspaceId));
+    }
+  });
+};
+
+export const useGetWorkspaceGroupMemberships = (workspaceId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceGroupMemberships(workspaceId),
+    queryFn: async () => {
+      const {
+        data: { groupMemberships } 
+      } = await apiRequest.get<{ groupMemberships: TGroupMembership[] }>(
+        `/api/v2/workspace/${workspaceId}/group-memberships`
+      );
+      return groupMemberships;
     },
     enabled: true
   });

@@ -96,7 +96,6 @@ export const OrgGroupsSection = () => {
             />
             <OrgGroupMembersModal
                 popUp={popUp}
-                handlePopUpClose={handlePopUpClose}
                 handlePopUpToggle={handlePopUpToggle}
             />
             <DeleteActionModal

@@ -50,6 +50,9 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
+import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
+import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
@@ -198,6 +201,8 @@ export const registerRoutes = async (
   const gitAppInstallSessionDAL = gitAppInstallSessionDALFactory(db);
   const gitAppOrgDAL = gitAppDALFactory(db);
   const groupDAL = groupDALFactory(db);
+  const groupProjectDAL = groupProjectDALFactory(db);
+  const groupProjectMembershipRoleDAL = groupProjectMembershipRoleDALFactory(db);
   const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
@@ -246,6 +251,14 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     permissionService,
     licenseService
+  });
+  const groupProjectService = groupProjectServiceFactory({
+    groupDAL,
+    groupProjectDAL,
+    groupProjectMembershipRoleDAL,
+    projectDAL,
+    projectRoleDAL,
+    permissionService
   });
   const scimService = scimServiceFactory({
     licenseService,
@@ -579,6 +592,7 @@ export const registerRoutes = async (
     signup: signupService,
     user: userService,
     group: groupService,
+    groupProject: groupProjectService,
     permission: permissionService,
     org: orgService,
     orgRole: orgRoleService,

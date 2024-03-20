@@ -5,6 +5,8 @@ export * from "./auth-tokens";
 export * from "./backup-private-key";
 export * from "./git-app-install-sessions";
 export * from "./git-app-org";
+export * from "./group-project-membership-roles";
+export * from "./group-project-memberships";
 export * from "./groups";
 export * from "./identities";
 export * from "./identity-access-tokens";

@@ -22,6 +22,7 @@ import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
@@ -87,6 +88,7 @@ declare module "fastify" {
       superAdmin: TSuperAdminServiceFactory;
       user: TUserServiceFactory;
       group: TGroupServiceFactory;
+      groupProject: TGroupProjectServiceFactory;
       apiKey: TApiKeyServiceFactory;
       project: TProjectServiceFactory;
       projectMembership: TProjectMembershipServiceFactory;

@@ -94,10 +94,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // TODO: GET users part of group
   server.route({
     method: "GET",
-    url: "/:slug/users", // TODO: revise to users?
+    url: "/:slug/users",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -120,8 +119,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const users = await server.services.group.getGroupUserMemberships({
-        slug: req.params.slug,
+      const users = await server.services.group.listGroupUsers({
+        groupSlug: req.params.slug,
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.permission.orgId as string,
@@ -134,20 +133,26 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/:groupSlug/users/:username",
+    url: "/:slug/users/:username",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
-        groupSlug: z.string().trim(),
+        slug: z.string().trim(),
         username: z.string().trim()
       }),
       response: {
-        200: z.object({})
+        200: UsersSchema.pick({
+          email: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          id: true
+        })
       }
     },
     handler: async (req) => {
-      await server.services.group.createGroupUserMemberships({
-        groupSlug: req.params.groupSlug,
+      const user = await server.services.group.addUserToGroup({
+        groupSlug: req.params.slug,
         username: req.params.username,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -155,26 +160,33 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
-      return {};
+
+      return user;
     }
   });
 
   server.route({
     method: "DELETE",
-    url: "/:groupSlug/users/:username",
+    url: "/:slug/users/:username",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
-        groupSlug: z.string().trim(),
+        slug: z.string().trim(),
         username: z.string().trim()
       }),
       response: {
-        200: z.object({})
+        200: UsersSchema.pick({
+          email: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          id: true
+        })
       }
     },
     handler: async (req) => {
-      await server.services.group.deleteGroupUserMemberships({
-        groupSlug: req.params.groupSlug,
+      const user = await server.services.group.removeUserFromGroup({
+        groupSlug: req.params.slug,
         username: req.params.username,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -182,7 +194,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
-      return {};
+
+      return user;
     }
   });
 };

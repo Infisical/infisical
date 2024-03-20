@@ -154,8 +154,8 @@ export const groupServiceFactory = ({
     return group;
   };
 
-  const getGroupUserMemberships = async ({
-    slug,
+  const listGroupUsers = async ({
+    groupSlug,
     actor,
     actorId,
     orgId,
@@ -167,19 +167,19 @@ export const groupServiceFactory = ({
 
     const group = await groupDAL.findOne({
       orgId,
-      slug
+      slug: groupSlug
     });
 
     if (!group)
       throw new BadRequestError({
-        message: `Failed to find group with slug ${slug}`
+        message: `Failed to find group with slug ${groupSlug}`
       });
 
     const users = await groupDAL.findAllGroupMembers(group.orgId, group.id);
     return users;
   };
 
-  const createGroupUserMemberships = async ({
+  const addUserToGroup = async ({
     groupSlug,
     username,
     actor,
@@ -241,15 +241,15 @@ export const groupServiceFactory = ({
         message: `User ${username} is not part of the organization`
       });
 
-    const t = await userGroupMembershipDAL.create({
+    await userGroupMembershipDAL.create({
       userId: user.id,
       groupId: group.id
     });
 
-    return t;
+    return user;
   };
 
-  const deleteGroupUserMemberships = async ({
+  const removeUserFromGroup = async ({
     groupSlug,
     username,
     actor,
@@ -279,7 +279,6 @@ export const groupServiceFactory = ({
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to delete user from more privileged group" });
 
-    // get user with username
     const user = await userDAL.findOne({
       username
     });
@@ -300,20 +299,20 @@ export const groupServiceFactory = ({
         message: `User ${username} is not part of the group ${groupSlug}`
       });
 
-    const t = await userGroupMembershipDAL.delete({
+    await userGroupMembershipDAL.delete({
       groupId: group.id,
       userId: user.id
     });
 
-    return t;
+    return user;
   };
 
   return {
     createGroup,
     updateGroup,
     deleteGroup,
-    getGroupUserMemberships,
-    createGroupUserMemberships,
-    deleteGroupUserMemberships
+    listGroupUsers,
+    addUserToGroup,
+    removeUserFromGroup
   };
 };

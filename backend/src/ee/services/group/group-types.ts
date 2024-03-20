@@ -20,7 +20,7 @@ export type TDeleteGroupDTO = {
 } & TOrgPermission;
 
 export type TGetGroupUserMembershipsDTO = {
-  slug: string;
+  groupSlug: string;
 } & TOrgPermission;
 
 export type TCreateGroupUserMembershipDTO = {

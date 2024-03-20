@@ -23,6 +23,12 @@ import {
   TGitAppOrg,
   TGitAppOrgInsert,
   TGitAppOrgUpdate,
+  TGroupProjectMembershipRoles,
+  TGroupProjectMembershipRolesInsert,
+  TGroupProjectMembershipRolesUpdate,
+  TGroupProjectMemberships,
+  TGroupProjectMembershipsInsert,
+  TGroupProjectMembershipsUpdate,
   TGroups,
   TGroupsInsert,
   TGroupsUpdate,
@@ -198,6 +204,16 @@ declare module "knex/types/tables" {
       TUserGroupMembership,
       TUserGroupMembershipInsert,
       TUserGroupMembershipUpdate
+    >;
+    [TableName.GroupProjectMembership]: Knex.CompositeTableType<
+      TGroupProjectMemberships,
+      TGroupProjectMembershipsInsert,
+      TGroupProjectMembershipsUpdate
+    >;
+    [TableName.GroupProjectMembershipRole]: Knex.CompositeTableType<
+      TGroupProjectMembershipRoles,
+      TGroupProjectMembershipRolesInsert,
+      TGroupProjectMembershipRolesUpdate
     >;
     [TableName.UserAliases]: Knex.CompositeTableType<TUserAliases, TUserAliasesInsert, TUserAliasesUpdate>;
     [TableName.UserEncryptionKey]: Knex.CompositeTableType<

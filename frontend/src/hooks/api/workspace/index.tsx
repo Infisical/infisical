@@ -1,7 +1,9 @@
 export {
+  useAddGroupToWorkspace,
   useAddIdentityToWorkspace,
   useCreateWorkspace,
   useCreateWsEnvironment,
+  useDeleteGroupFromWorkspace,
   useDeleteIdentityFromWorkspace,
   useDeleteUserFromWorkspace,
   useDeleteWorkspace,
@@ -11,6 +13,7 @@ export {
   useGetUserWorkspaces,
   useGetWorkspaceAuthorizations,
   useGetWorkspaceById,
+  useGetWorkspaceGroupMemberships,
   useGetWorkspaceIdentityMemberships,
   useGetWorkspaceIndexStatus,
   useGetWorkspaceIntegrations,
@@ -19,8 +22,8 @@ export {
   useNameWorkspaceSecrets,
   useRenameWorkspace,
   useToggleAutoCapitalization,
+  useUpdateGroupWorkspaceRole,
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
-  useUpgradeProject
-} from "./queries";
+  useUpgradeProject} from "./queries";

@@ -1,3 +1,4 @@
+import { registerGroupProjectRouter } from "./group-project-router";
 import { registerIdentityOrgRouter } from "./identity-org-router";
 import { registerIdentityProjectRouter } from "./identity-project-router";
 import { registerMfaRouter } from "./mfa-router";
@@ -22,6 +23,7 @@ export const registerV2Routes = async (server: FastifyZodProvider) => {
     async (projectServer) => {
       await projectServer.register(registerProjectRouter);
       await projectServer.register(registerIdentityProjectRouter);
+      await projectServer.register(registerGroupProjectRouter);
       await projectServer.register(registerProjectMembershipRouter);
     },
     { prefix: "/workspace" }
