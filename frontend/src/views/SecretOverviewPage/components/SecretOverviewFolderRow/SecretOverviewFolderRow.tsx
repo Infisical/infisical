@@ -37,7 +37,6 @@ export const SecretOverviewFolderRow = ({
             key={`sec-overview-${slug}-${i + 1}-folder`}
             className={twMerge(
               "border-r border-mineshaft-600 py-3 group-hover:bg-mineshaft-700",
-              // eslint-disable-next-line no-nested-ternary
               isPresent || isImportPresent ? "text-green-600" : "text-red-600"
             )}
           >
