@@ -3,24 +3,6 @@ export type TSecretFolder = {
   name: string;
 };
 
-export type TImportedSecretFolder = {
-  id: string;
-  folderId: string;
-  importEnv: {
-    id: string;
-    name: string;
-    slug: string;
-  };
-  importPath: string;
-
-  // ... It got more fields, but we won't need them.
-};
-
-export type TFetchProjectFoldersResponse = {
-  folders: TSecretFolder[];
-  importedFolders: TImportedSecretFolder[];
-};
-
 export type TGetProjectFoldersDTO = {
   projectId: string;
   environment: string;

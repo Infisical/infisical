@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import {
   decryptAssymmetric,
@@ -7,7 +7,15 @@ import {
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 
-import { TGetImportedSecrets, TGetSecretImports, TImportedSecrets, TSecretImport } from "./types";
+import {
+  TGetImportedFoldersByEnvDTO,
+  TGetImportedSecrets,
+  TGetSecretImports,
+  TImportedSecretFolder,
+  TImportedSecrets,
+  TSecretImport,
+  TuseGetImportedFoldersByEnv
+} from "./types";
 
 export const secretImportKeys = {
   getProjectSecretImports: ({ environment, projectId, path }: TGetSecretImports) =>
@@ -17,7 +25,9 @@ export const secretImportKeys = {
     projectId,
     path
   }: Omit<TGetImportedSecrets, "decryptFileKey">) =>
-    [{ environment, path, projectId }, "secrets-import-sec"] as const
+    [{ environment, path, projectId }, "secrets-import-sec"] as const,
+  getImportedFoldersByEnv: ({ environment, projectId, path }: TGetImportedFoldersByEnvDTO) =>
+    [{ environment, projectId, path }, "imported-folders"] as const
 };
 
 const fetchSecretImport = async ({ projectId, environment, path = "/" }: TGetSecretImports) => {
@@ -73,6 +83,24 @@ const fetchImportedSecrets = async (
     }
   );
   return data.secrets;
+};
+
+const fetchImportedFolders = async ({
+  projectId,
+  environment,
+  path
+}: TGetImportedFoldersByEnvDTO) => {
+  const { data } = await apiRequest.get<{ secretImports: TImportedSecretFolder[] }>(
+    "/api/v1/secret-imports",
+    {
+      params: {
+        workspaceId: projectId,
+        environment,
+        path
+      }
+    }
+  );
+  return data.secretImports;
 };
 
 export const useGetImportedSecrets = ({
@@ -159,3 +187,43 @@ export const useGetImportedSecrets = ({
       [decryptFileKey]
     )
   });
+
+export const useGetImportedFoldersByEnv = ({
+  projectId,
+  environments,
+  path = "/"
+}: TuseGetImportedFoldersByEnv) => {
+  const queryParams = new URLSearchParams(window.location.search);
+
+  const importedFolders = useQueries({
+    queries: environments.map((env) => ({
+      queryKey: secretImportKeys.getImportedFoldersByEnv({
+        projectId,
+        environment: env,
+        path
+      }),
+      queryFn: async () => fetchImportedFolders({ projectId, environment: env, path }),
+      enabled: Boolean(projectId) && Boolean(env)
+    }))
+  });
+
+  const isImportedFolderPresentInEnv = useCallback(
+    (name: string, env: string) => {
+      const selectedEnvIndex = environments.indexOf(env);
+
+      if (selectedEnvIndex !== -1) {
+        const currentlyBrowsingPath = queryParams.get("secretPath") || "";
+
+        const isPresent = importedFolders?.[selectedEnvIndex]?.data?.find(
+          ({ importPath }) => importPath === `${currentlyBrowsingPath}/${name}`
+        );
+
+        return Boolean(isPresent);
+      }
+      return false;
+    },
+    [(importedFolders || []).map((response) => response.data)]
+  );
+
+  return { importedFolders, isImportedFolderPresentInEnv };
+};

@@ -1,2 +1,2 @@
 export { useCreateSecretImport, useDeleteSecretImport, useUpdateSecretImport } from "./mutation";
-export { useGetImportedSecrets, useGetSecretImports } from "./queries";
+export { useGetImportedFoldersByEnv, useGetImportedSecrets, useGetSecretImports } from "./queries";
