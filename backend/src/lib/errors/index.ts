@@ -59,6 +59,18 @@ export class BadRequestError extends Error {
   }
 }
 
+export class DisableRotationErrors extends Error {
+  name: string;
+
+  error: unknown;
+
+  constructor({ name, error, message }: { message: string; name?: string; error?: unknown }) {
+    super(message);
+    this.name = name || "DisableRotationErrors";
+    this.error = error;
+  }
+}
+
 export class ScimRequestError extends Error {
   name: string;
 
