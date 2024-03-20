@@ -11,6 +11,7 @@ export type TooltipProps = Omit<TooltipPrimitive.TooltipContentProps, "open" | "
   onOpenChange?: (isOpen: boolean) => void;
   defaultOpen?: boolean;
   position?: "top" | "bottom" | "left" | "right";
+  isDisabled?: boolean;
 };
 
 export const Tooltip = ({
@@ -21,6 +22,7 @@ export const Tooltip = ({
   defaultOpen,
   className,
   asChild = true,
+  isDisabled,
   position = "top",
   ...props
 }: TooltipProps) => (
@@ -43,6 +45,7 @@ data-[state=delayed-open]:data-[side=right]:animate-slideLeftAndFade
 data-[state=delayed-open]:data-[side=left]:animate-slideRightAndFade
 data-[state=delayed-open]:data-[side=bottom]:animate-slideUpAndFade
 `,
+        isDisabled && "!hidden",
         className
       )}
     >
