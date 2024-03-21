@@ -1,35 +1,42 @@
 apiVersion: secrets.infisical.com/v1alpha1
 kind: InfisicalSecret
 metadata:
-  name: infisicalsecret-sample
-  labels:
-    label-to-be-passed-to-managed-secret: sample-value
-  annotations:
-    reflector.v1.k8s.emberstack.com/reflection-allowed: 'true'
+    name: infisicalsecret-sample
+    labels:
+        label-to-be-passed-to-managed-secret: sample-value
+    annotations:
+        example.com/annotation-to-be-passed-to-managed-secret: "sample-value"
 spec:
-  hostAPI: http://localhost:8888/api
-  resyncInterval: 10
-  authentication:
-    serviceAccount:
-      serviceAccountSecretReference:
-        secretName: service-account
-        secretNamespace: default
-      projectId: "6439ec224cfbf7ea2a95b651"
-      environmentName: "dev"
-    serviceToken:
-      serviceTokenSecretReference:
-        secretName: service-token
-        secretNamespace: default
-      secretsScope:
-        envSlug: dev
-        secretsPath: "/"
-  managedSecretReference:
-    secretName: managed-secret
-    secretNamespace: default
-    creationPolicy: "Orphan" ## Owner | Orphan
-    # secretType: kubernetes.io/dockerconfigjson
+    hostAPI: https://app.infisical.com/api
+    resyncInterval: 10
+    authentication:
+        # Make sure to only have 1 authentication method defined, serviceToken/universalAuth.
+        # If you have multiple authentication methods defined, it may cause issues.
+        serviceToken:
+            serviceTokenSecretReference:
+                secretName: service-token
+                secretNamespace: default
+            secretsScope:
+                envSlug: <env-slug>
+                secretsPath: <secrets-path> # Root is "/"
 
-  # # To be depreciated soon
-  # tokenSecretReference:
-  #   secretName: service-token
-  #   secretNamespace: default
+        universalAuth:
+            secretsScope:
+                projectSlug: <project-slug>
+                envSlug: <env-slug> # "dev", "staging", "prod", etc..
+                secretsPath: "<secrets-path>" # Root is "/"
+
+            credentialsRef:
+                secretName: universal-auth-credentials
+                secretNamespace: default
+
+    managedSecretReference:
+        secretName: managed-secret
+        secretNamespace: default
+        creationPolicy: "Orphan" ## Owner | Orphan
+        # secretType: kubernetes.io/dockerconfigjson
+
+    # # To be depreciated soon
+    # tokenSecretReference:
+    #   secretName: service-token
+    #   secretNamespace: default

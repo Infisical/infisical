@@ -65,6 +65,17 @@ type EncryptedSecretV3 struct {
 	UpdatedAt               time.Time `json:"updatedAt"`
 }
 
+type DecryptedSecretV3 struct {
+	ID            string `json:"id"`
+	Workspace     string `json:"workspace"`
+	Environment   string `json:"environment"`
+	Version       int    `json:"version"`
+	Type          string `json:"string"`
+	SecretKey     string `json:"secretKey"`
+	SecretValue   string `json:"secretValue"`
+	SecretComment string `json:"secretComment"`
+}
+
 type ImportedSecretV3 struct {
 	Environment string              `json:"environment"`
 	FolderId    string              `json:"folderId"`
@@ -77,6 +88,19 @@ type GetEncryptedSecretsV3Response struct {
 	ImportedSecrets []ImportedSecretV3  `json:"imports,omitempty"`
 	Modified        bool                `json:"modified,omitempty"`
 	ETag            string              `json:"ETag,omitempty"`
+}
+
+type GetDecryptedSecretsV3Response struct {
+	Secrets  []DecryptedSecretV3 `json:"secrets"`
+	ETag     string              `json:"ETag,omitempty"`
+	Modified bool                `json:"modified,omitempty"`
+}
+
+type GetDecryptedSecretsV3Request struct {
+	ProjectSlug string `json:"workspaceSlug"`
+	Environment string `json:"environment"`
+	SecretPath  string `json:"secretPath"`
+	ETag        string `json:"etag,omitempty"`
 }
 
 type GetServiceTokenDetailsResponse struct {
@@ -99,6 +123,13 @@ type ServiceAccountDetailsResponse struct {
 		LastUsed     time.Time `json:"lastUsed"`
 		ExpiresAt    time.Time `json:"expiresAt"`
 	} `json:"serviceAccount"`
+}
+
+type MachineIdentityDetailsResponse struct {
+	AccessToken       string `json:"accessToken"`
+	ExpiresIn         int    `json:"expiresIn"`
+	AccessTokenMaxTTL int    `json:"accessTokenMaxTTL"`
+	TokenType         string `json:"tokenType"`
 }
 
 type ServiceAccountWorkspacePermission struct {
@@ -126,6 +157,15 @@ type ServiceAccountWorkspacePermissions struct {
 
 type GetServiceAccountKeysRequest struct {
 	ServiceAccountId string `json:"id"`
+}
+
+type MachineIdentityUniversalAuthLoginRequest struct {
+	ClientId     string `json:"clientId"`
+	ClientSecret string `json:"clientSecret"`
+}
+
+type MachineIdentityUniversalAuthRefreshRequest struct {
+	AccessToken string `json:"accessToken"`
 }
 
 type ServiceAccountKey struct {
