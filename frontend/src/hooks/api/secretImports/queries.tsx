@@ -269,8 +269,8 @@ export const useGetImportedSecretsAllEnvs = ({
 
       if (selectedEnvIndex !== -1) {
         const isPresent = secretImports?.[selectedEnvIndex]?.data?.find(
-          ({ secretPath, ...rest }) =>
-            secretPath === secPath && rest.secrets.some((s) => s.key === secretName)
+          ({ secretPath, secrets }) =>
+            secretPath === secPath && secrets.some((s) => s.key === secretName)
         );
 
         return Boolean(isPresent);

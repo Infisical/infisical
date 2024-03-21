@@ -90,7 +90,7 @@ export const SecretOverviewTableRow = ({
                         isSecretPresent
                           ? "Present secret"
                           : isSecretImported
-                          ? "Secret is imported from another environment"
+                          ? "Imported secret"
                           : "Missing secret"
                       }
                     >
@@ -162,6 +162,12 @@ export const SecretOverviewTableRow = ({
                       const secret = getSecretByKey(slug, secretKey);
                       const isCreatable = !secret;
 
+                      const isImportedSecret = isImportedSecretPresentInEnv(
+                        secretPath,
+                        slug,
+                        secretKey
+                      );
+
                       return (
                         <tr
                           key={`secret-expanded-${slug}-${secretKey}`}
@@ -182,6 +188,7 @@ export const SecretOverviewTableRow = ({
                               secretName={secretKey}
                               defaultValue={secret?.value}
                               secretId={secret?.id}
+                              isImportedSecret={isImportedSecret}
                               isCreatable={isCreatable}
                               onSecretDelete={onSecretDelete}
                               onSecretCreate={onSecretCreate}

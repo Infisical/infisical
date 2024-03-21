@@ -14,7 +14,8 @@ const replaceContentWithDot = (str: string) => {
   return finalStr;
 };
 
-const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
+const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?: boolean) => {
+  if (isImport) return "IMPORTED";
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
   if (!isVisible) return replaceContentWithDot(content);
@@ -46,6 +47,7 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   value?: string | null;
   isVisible?: boolean;
+  isImport?: boolean;
   isReadOnly?: boolean;
   isDisabled?: boolean;
   containerClassName?: string;
@@ -55,7 +57,17 @@ const commonClassName = "font-mono text-sm caret-white border-none outline-none 
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (
-    { value, isVisible, containerClassName, onBlur, isDisabled, isReadOnly, onFocus, ...props },
+    {
+      value,
+      isVisible,
+      isImport,
+      containerClassName,
+      onBlur,
+      isDisabled,
+      isReadOnly,
+      onFocus,
+      ...props
+    },
     ref
   ) => {
     const [isSecretFocused, setIsSecretFocused] = useToggle();
@@ -69,7 +81,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
           <pre aria-hidden className="m-0 ">
             <code className={`inline-block w-full  ${commonClassName}`}>
               <span style={{ whiteSpace: "break-spaces" }}>
-                {syntaxHighlight(value, isVisible || isSecretFocused)}
+                {syntaxHighlight(value, isVisible || isSecretFocused, isImport)}
               </span>
             </code>
           </pre>

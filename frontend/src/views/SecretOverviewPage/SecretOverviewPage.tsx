@@ -55,7 +55,6 @@ import {
   useCreateSecretV3,
   useDeleteSecretV3,
   useGetFoldersByEnv,
-  useGetImportedFoldersByEnv,
   useGetImportedSecretsAllEnvs,
   useGetProjectSecretsAllEnv,
   useGetUserWsKey,
@@ -130,11 +129,6 @@ export const SecretOverviewPage = () => {
   const { folders, folderNames, isFolderPresentInEnv } = useGetFoldersByEnv({
     projectId: workspaceId,
     path: secretPath,
-    environments: userAvailableEnvs.map(({ slug }) => slug)
-  });
-
-  const { isImportedFolderPresentInEnv } = useGetImportedFoldersByEnv({
-    projectId: workspaceId,
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
 
@@ -652,7 +646,6 @@ export const SecretOverviewPage = () => {
                     <SecretOverviewFolderRow
                       folderName={folderName}
                       isFolderPresentInEnv={isFolderPresentInEnv}
-                      isImportedFolderPresentInEnv={isImportedFolderPresentInEnv}
                       environments={visibleEnvs}
                       key={`overview-${folderName}-${index + 1}`}
                       onClick={handleFolderClick}
