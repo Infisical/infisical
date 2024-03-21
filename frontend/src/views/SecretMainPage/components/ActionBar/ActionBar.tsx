@@ -9,6 +9,7 @@ import {
   faEyeSlash,
   faFileImport,
   faFilter,
+  faFingerprint,
   faFolderPlus,
   faMagnifyingGlass,
   faMinusSquare,
@@ -52,6 +53,7 @@ import {
   useSelectedSecrets
 } from "../../SecretMainPage.store";
 import { Filter, GroupBy } from "../../SecretMainPage.types";
+import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
 
@@ -93,6 +95,7 @@ export const ActionBar = ({
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addFolder",
+    "addDynamicSecret",
     "addSecretImport",
     "bulkDeleteSecrets",
     "misc",
@@ -311,7 +314,6 @@ export const ActionBar = ({
               </Button>
             )}
           </ProjectPermissionCan>
-
           <DropdownMenu
             open={popUp.misc.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("misc", isOpen)}
@@ -344,6 +346,26 @@ export const ActionBar = ({
                       isFullWidth
                     >
                       Add Folder
+                    </Button>
+                  )}
+                </ProjectPermissionCan>
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Create}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                >
+                  {(isAllowed) => (
+                    <Button
+                      leftIcon={<FontAwesomeIcon icon={faFingerprint} />}
+                      onClick={() => {
+                        handlePopUpOpen("addDynamicSecret");
+                        handlePopUpClose("misc");
+                      }}
+                      isDisabled={!isAllowed}
+                      variant="outline_bg"
+                      className="h-10"
+                      isFullWidth
+                    >
+                      Add Dynamic Secret
                     </Button>
                   )}
                 </ProjectPermissionCan>
@@ -417,6 +439,13 @@ export const ActionBar = ({
         isOpen={popUp.addSecretImport.isOpen}
         onClose={() => handlePopUpClose("addSecretImport")}
         onTogglePopUp={(isOpen) => handlePopUpToggle("addSecretImport", isOpen)}
+      />
+      <CreateDynamicSecretForm
+        isOpen={popUp.addDynamicSecret.isOpen}
+        onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
+        workspaceId={workspaceId}
+        environment={environment}
+        secretPath={secretPath}
       />
       <Modal
         isOpen={popUp.addFolder.isOpen}

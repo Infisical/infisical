@@ -17,6 +17,7 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
+  useGetDynamicSecrets,
   useGetImportedSecretsSingleEnv,
   useGetProjectFolders,
   useGetProjectSecrets,
@@ -31,6 +32,7 @@ import {
 import { ProjectIndexSecretsSection } from "../SecretOverviewPage/components/ProjectIndexSecretsSection";
 import { ActionBar } from "./components/ActionBar";
 import { CreateSecretForm } from "./components/CreateSecretForm";
+import { DynamicSecretListView } from "./components/DynamicSecretListView";
 import { FolderListView } from "./components/FolderListView";
 import { PitDrawer } from "./components/PitDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
@@ -103,12 +105,14 @@ export const SecretMainPage = () => {
       enabled: canReadSecret
     }
   });
+
   // fetch folders
   const { data: folders, isLoading: isFoldersLoading } = useGetProjectFolders({
     projectId: workspaceId,
     environment,
     path: secretPath
   });
+
   // fetch secret imports
   const {
     data: secretImports,
@@ -133,6 +137,13 @@ export const SecretMainPage = () => {
       enabled: canReadSecret
     }
   });
+
+  const { data: dynamicSecrets, isLoading: isDynamicSecretLoading } = useGetDynamicSecrets({
+    projectId: workspaceId,
+    environment,
+    path: secretPath
+  });
+
   // fech tags
   const { data: tags } = useGetWsTags(canReadSecret ? workspaceId : "");
 
@@ -163,7 +174,9 @@ export const SecretMainPage = () => {
     isPaused: !canDoReadRollback
   });
 
-  const isNotEmtpy = Boolean(secrets?.length || folders?.length || secretImports?.length);
+  const isNotEmtpy = Boolean(
+    secrets?.length || folders?.length || secretImports?.length || dynamicSecrets?.length
+  );
 
   const handleSortToggle = () =>
     setSortDir((state) => (state === SortDir.ASC ? SortDir.DESC : SortDir.ASC));
@@ -213,7 +226,8 @@ export const SecretMainPage = () => {
 
   // loading screen when u have permission
   const loadingOnAccess =
-    canReadSecret && (isSecretsLoading || isSecretImportsLoading || isFoldersLoading);
+    canReadSecret &&
+    (isSecretsLoading || isSecretImportsLoading || isFoldersLoading || isDynamicSecretLoading);
   // loading screen when you don't have permission but as folder's is viewable need to wait for that
   const loadingOnDenied = !canReadSecret && isFoldersLoading;
   if (loadingOnAccess || loadingOnDenied) {
@@ -298,6 +312,15 @@ export const SecretMainPage = () => {
                   secretPath={secretPath}
                   sortDir={sortDir}
                 />
+                {canReadSecret && (
+                  <DynamicSecretListView
+                    sortDir={sortDir}
+                    environment={environment}
+                    workspaceId={workspaceId}
+                    secretPath={secretPath}
+                    dynamicSecrets={dynamicSecrets || []}
+                  />
+                )}
                 {canReadSecret && (
                   <SecretListView
                     secrets={secrets}
