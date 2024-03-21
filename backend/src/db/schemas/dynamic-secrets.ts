@@ -20,8 +20,8 @@ export const DynamicSecretsSchema = z.object({
   algorithm: z.string().default("aes-256-gcm"),
   keyEncoding: z.string().default("utf8"),
   folderId: z.string().uuid(),
-  isDeleting: z.boolean().default(false).nullable().optional(),
   status: z.string().nullable().optional(),
+  statusDetails: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -11,9 +11,11 @@ import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import {
+  DynamicSecretStatus,
   TCreateDynamicSecretDTO,
-  TDeleteDyanmicSecretDTO,
-  TListDyanmicSecretsDTO,
+  TDeleteDynamicSecretDTO,
+  TDetailsDynamicSecretDTO,
+  TListDynamicSecretsDTO,
   TUpdateDynamicSecretDTO
 } from "./dynamic-secret-types";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./providers/models";
@@ -146,7 +148,9 @@ export const dynamicSecretServiceFactory = ({
       keyEncoding: encryptedInput.encoding,
       maxTTL,
       defaultTTL,
-      slug: newSlug ?? slug
+      slug: newSlug ?? slug,
+      status: null,
+      statusDetails: null
     });
 
     return updatedDynamicCfg;
@@ -161,7 +165,7 @@ export const dynamicSecretServiceFactory = ({
     slug,
     path,
     environment
-  }: TDeleteDyanmicSecretDTO) => {
+  }: TDeleteDynamicSecretDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -184,13 +188,55 @@ export const dynamicSecretServiceFactory = ({
     // if leases exist we should flag it as deleting and then remove leases in background
     // then delete the main one
     if (leases.length) {
-      const updatedDynamicSecretCfg = await dynamicSecretDAL.updateById(dynamicSecretCfg.id, { isDeleting: true });
+      const updatedDynamicSecretCfg = await dynamicSecretDAL.updateById(dynamicSecretCfg.id, {
+        status: DynamicSecretStatus.Deleting
+      });
       await dynamicSecretQueueService.pruneDynamicSecret(updatedDynamicSecretCfg.id);
       return updatedDynamicSecretCfg;
     }
     // if no leases just delete the config
     const deletedDynamicSecretCfg = await dynamicSecretDAL.deleteById(dynamicSecretCfg.id);
     return deletedDynamicSecretCfg;
+  };
+
+  const getDetails = async ({
+    slug,
+    projectId,
+    path,
+    environment,
+    actorAuthMethod,
+    actorOrgId,
+    actorId,
+    actor
+  }: TDetailsDynamicSecretDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+    );
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+    if (!folder) throw new BadRequestError({ message: "Folder not found" });
+
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ slug, folderId: folder.id });
+    if (!dynamicSecretCfg) throw new BadRequestError({ message: "Dynamic secret not found" });
+    const decryptedStoredInput = JSON.parse(
+      infisicalSymmetricDecrypt({
+        keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
+        ciphertext: dynamicSecretCfg.inputCiphertext,
+        tag: dynamicSecretCfg.inputTag,
+        iv: dynamicSecretCfg.inputIV
+      })
+    ) as object;
+    const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
+    const providerInputs = (await selectedProvider.validateProviderInputs(decryptedStoredInput)) as object;
+    return { ...dynamicSecretCfg, inputs: providerInputs };
   };
 
   const list = async ({
@@ -201,7 +247,7 @@ export const dynamicSecretServiceFactory = ({
     projectId,
     path,
     environment
-  }: TListDyanmicSecretsDTO) => {
+  }: TListDynamicSecretsDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -225,6 +271,7 @@ export const dynamicSecretServiceFactory = ({
     create,
     updateBySlug,
     deleteBySlug,
+    getDetails,
     list
   };
 };

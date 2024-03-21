@@ -5,13 +5,14 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
+import { DynamicSecretStatus } from "../dynamic-secret/dynamic-secret-types";
 import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
 
 type TDynamicSecretLeaseQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
-  dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findById" | "deleteById" | "find">;
-  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findById" | "deleteById">;
+  dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findById" | "deleteById" | "find" | "updateById">;
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findById" | "deleteById" | "updateById">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
 };
 
@@ -89,42 +90,58 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         logger.info("Dynamic secret pruning started: ", dynamicSecretCfgId, job.id);
         const dynamicSecretCfg = await dynamicSecretDAL.findById(dynamicSecretCfgId);
         if (!dynamicSecretCfg) throw new DisableRotationErrors({ message: "Dynamic secret not found" });
-        if (!dynamicSecretCfg.isDeleting) throw new DisableRotationErrors({ message: "Document not deleted" });
+        if ((dynamicSecretCfg.status as DynamicSecretStatus) !== DynamicSecretStatus.Deleting)
+          throw new DisableRotationErrors({ message: "Document not deleted" });
 
         const dynamicSecretLeases = await dynamicSecretLeaseDAL.find({ dynamicSecretId: dynamicSecretCfgId });
-        if (dynamicSecretLeases.length) throw new DisableRotationErrors({ message: "Dynamic secret lease not found" });
+        if (dynamicSecretLeases.length) {
+          const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
+          const decryptedStoredInput = JSON.parse(
+            infisicalSymmetricDecrypt({
+              keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
+              ciphertext: dynamicSecretCfg.inputCiphertext,
+              tag: dynamicSecretCfg.inputTag,
+              iv: dynamicSecretCfg.inputIV
+            })
+          ) as object;
 
-        const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
-        const decryptedStoredInput = JSON.parse(
-          infisicalSymmetricDecrypt({
-            keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
-            ciphertext: dynamicSecretCfg.inputCiphertext,
-            tag: dynamicSecretCfg.inputTag,
-            iv: dynamicSecretCfg.inputIV
-          })
-        ) as object;
-
-        await Promise.allSettled(dynamicSecretLeases.map(({ id }) => unsetLeaseRevocation(id)));
-        await Promise.allSettled(
-          dynamicSecretLeases.map(({ externalEntityId }) =>
-            selectedProvider.revoke(decryptedStoredInput, externalEntityId)
-          )
-        );
+          await Promise.allSettled(dynamicSecretLeases.map(({ id }) => unsetLeaseRevocation(id)));
+          await Promise.allSettled(
+            dynamicSecretLeases.map(({ externalEntityId }) =>
+              selectedProvider.revoke(decryptedStoredInput, externalEntityId)
+            )
+          );
+        }
 
         await dynamicSecretDAL.deleteById(dynamicSecretCfgId);
       }
       logger.info("Finished dynamic secret job", job.id);
     } catch (error) {
+      logger.error(error);
+
+      if (job?.name === QueueJobs.DynamicSecretPruning) {
+        const { dynamicSecretCfgId } = job.data as { dynamicSecretCfgId: string };
+        await dynamicSecretDAL.updateById(dynamicSecretCfgId, {
+          status: DynamicSecretStatus.FailedDeletion,
+          statusDetails: (error as Error)?.message?.slice(0, 255)
+        });
+      }
+
+      if (job?.name === QueueJobs.DynamicSecretRevocation) {
+        const { leaseId } = job.data as { leaseId: string };
+        await dynamicSecretLeaseDAL.updateById(leaseId, {
+          status: DynamicSecretStatus.FailedDeletion,
+          statusDetails: (error as Error)?.message?.slice(0, 255)
+        });
+      }
       if (error instanceof DisableRotationErrors) {
         if (job.id) {
           await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretRevocation, job.id);
         }
       }
+      // propogate to next part
+      throw error;
     }
-  });
-
-  queueService.listen(QueueName.AuditLogPrune, "failed", (err) => {
-    logger.error(err, `${QueueName.AuditLogPrune}: log pruning failed`);
   });
 
   return {

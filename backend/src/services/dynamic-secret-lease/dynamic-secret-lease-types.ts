@@ -1,5 +1,9 @@
 import { TProjectPermission } from "@app/lib/types";
 
+export enum DynamicSecretLeaseStatus {
+  FailedDeletion = "Failed to delete"
+}
+
 export type TCreateDynamicSecretLeaseDTO = {
   slug: string;
   path: string;

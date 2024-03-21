@@ -19,9 +19,9 @@ export async function up(knex: Knex): Promise<void> {
       t.string("algorithm").notNullable().defaultTo(SecretEncryptionAlgo.AES_256_GCM);
       t.string("keyEncoding").notNullable().defaultTo(SecretKeyEncoding.UTF8);
       t.uuid("folderId").notNullable();
-      t.boolean("isDeleting").defaultTo(false);
-      // used for flag why delete is failing
+      // for background process communication
       t.string("status");
+      t.string("statusDetails");
       t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
       t.unique(["slug", "folderId"]);
       t.timestamps(true, true, true);
@@ -36,8 +36,10 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.integer("version").notNullable();
       t.string("externalEntityId").notNullable();
-      t.string("maxTTL");
       t.datetime("expireAt").notNullable();
+      // for background process communication
+      t.string("status");
+      t.string("statusDetails");
       t.uuid("dynamicSecretId").notNullable();
       t.foreign("dynamicSecretId").references("id").inTable(TableName.DynamicSecret).onDelete("CASCADE");
       t.timestamps(true, true, true);

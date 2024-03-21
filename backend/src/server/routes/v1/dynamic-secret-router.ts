@@ -1,10 +1,13 @@
 import ms from "ms";
 import { z } from "zod";
 
-import { DynamicSecretsSchema } from "@app/db/schemas";
+import { daysToMillisecond } from "@app/lib/dates";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { DynamicSecretProviderSchema } from "@app/services/dynamic-secret/providers/models";
+
+import { SanitizedDynamicSecretSchema } from "../sanitizedSchemas";
 
 export const registerDynamicSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -14,18 +17,32 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       body: z.object({
         projectId: z.string(),
         provider: DynamicSecretProviderSchema,
-        defaultTTL: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
+        defaultTTL: z.string().superRefine((val, ctx) => {
+          const valMs = ms(val);
+          if (valMs < 60 * 1000)
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
+          if (valMs > daysToMillisecond(1))
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+        }),
         maxTTL: z
           .string()
           .optional()
-          .refine((val) => typeof val === "undefined" || ms(val) > 0, "Max TTL must be a positive number"),
-        path: z.string().default("/"),
+          .superRefine((val, ctx) => {
+            if (!val) return;
+            const valMs = ms(val);
+            if (valMs < 60 * 1000)
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
+            if (valMs > daysToMillisecond(1))
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+          })
+          .nullable(),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         environment: z.string(),
         slug: z.string().toLowerCase()
       }),
       response: {
         200: z.object({
-          dynamicSecret: DynamicSecretsSchema
+          dynamicSecret: SanitizedDynamicSecretSchema
         })
       }
     },
@@ -51,22 +68,39 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       }),
       body: z.object({
         projectId: z.string(),
-        inputs: z.any().optional(),
-        defaultTTL: z
-          .string()
-          .optional()
-          .refine((val) => typeof val === "undefined" || ms(val) > 0, "TTL must be a positive number"),
-        maxTTL: z
-          .string()
-          .optional()
-          .refine((val) => typeof val === "undefined" || ms(val) > 0, "Max TTL must be a positive number"),
-        path: z.string(),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         environment: z.string(),
-        newSlug: z.string()
+        data: z.object({
+          inputs: z.any().optional(),
+          defaultTTL: z
+            .string()
+            .optional()
+            .superRefine((val, ctx) => {
+              if (!val) return;
+              const valMs = ms(val);
+              if (valMs < 60 * 1000)
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
+              if (valMs > daysToMillisecond(1))
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+            }),
+          maxTTL: z
+            .string()
+            .optional()
+            .superRefine((val, ctx) => {
+              if (!val) return;
+              const valMs = ms(val);
+              if (valMs < 60 * 1000)
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
+              if (valMs > daysToMillisecond(1))
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+            })
+            .nullable(),
+          newSlug: z.string().optional()
+        })
       }),
       response: {
         200: z.object({
-          dynamicSecret: DynamicSecretsSchema
+          dynamicSecret: SanitizedDynamicSecretSchema
         })
       }
     },
@@ -78,7 +112,10 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         slug: req.params.slug,
-        ...req.body
+        path: req.body.path,
+        projectId: req.body.projectId,
+        environment: req.body.environment,
+        ...req.body.data
       });
       return { dynamicSecret: dynamicSecretCfg };
     }
@@ -93,12 +130,12 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       }),
       body: z.object({
         projectId: z.string(),
-        path: z.string(),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         environment: z.string()
       }),
       response: {
         200: z.object({
-          dynamicSecret: DynamicSecretsSchema
+          dynamicSecret: SanitizedDynamicSecretSchema
         })
       }
     },
@@ -117,17 +154,51 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
   });
 
   server.route({
+    url: "/:slug",
+    method: "GET",
+    schema: {
+      params: z.object({
+        slug: z.string()
+      }),
+      querystring: z.object({
+        projectId: z.string(),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
+        environment: z.string()
+      }),
+      response: {
+        200: z.object({
+          dynamicSecret: SanitizedDynamicSecretSchema.extend({
+            inputs: z.unknown()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const dynamicSecretCfg = await server.services.dynamicSecret.getDetails({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        slug: req.params.slug,
+        ...req.query
+      });
+      return { dynamicSecret: dynamicSecretCfg };
+    }
+  });
+
+  server.route({
     url: "/",
     method: "GET",
     schema: {
       querystring: z.object({
         projectId: z.string(),
-        path: z.string(),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         environment: z.string()
       }),
       response: {
         200: z.object({
-          dynamicSecrets: DynamicSecretsSchema.array()
+          dynamicSecrets: SanitizedDynamicSecretSchema.array()
         })
       }
     },

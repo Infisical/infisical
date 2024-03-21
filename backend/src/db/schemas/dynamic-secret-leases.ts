@@ -11,8 +11,9 @@ export const DynamicSecretLeasesSchema = z.object({
   id: z.string().uuid(),
   version: z.number(),
   externalEntityId: z.string(),
-  maxTTL: z.string().nullable().optional(),
   expireAt: z.date(),
+  status: z.string().nullable().optional(),
+  statusDetails: z.string().nullable().optional(),
   dynamicSecretId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date()

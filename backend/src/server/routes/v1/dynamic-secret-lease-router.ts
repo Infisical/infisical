@@ -2,6 +2,8 @@ import ms from "ms";
 import { z } from "zod";
 
 import { DynamicSecretLeasesSchema } from "@app/db/schemas";
+import { daysToMillisecond } from "@app/lib/dates";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -16,8 +18,15 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         ttl: z
           .string()
           .optional()
-          .refine((val) => typeof val === "undefined" || ms(val) > 0, "TTL must be a positive number"),
-        path: z.string().default("/"),
+          .superRefine((val, ctx) => {
+            if (!val) return;
+            const valMs = ms(val);
+            if (valMs < 60 * 1000)
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
+            if (valMs > daysToMillisecond(1))
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+          }),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         environment: z.string()
       }),
       response: {
@@ -49,7 +58,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       }),
       body: z.object({
         projectId: z.string(),
-        path: z.string(),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         environment: z.string()
       }),
       response: {
@@ -80,8 +89,19 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         leaseId: z.string()
       }),
       body: z.object({
+        ttl: z
+          .string()
+          .optional()
+          .superRefine((val, ctx) => {
+            if (!val) return;
+            const valMs = ms(val);
+            if (valMs < 60 * 1000)
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
+            if (valMs > daysToMillisecond(1))
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+          }),
         projectId: z.string(),
-        path: z.string(),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         environment: z.string()
       }),
       response: {
@@ -113,7 +133,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       }),
       querystring: z.object({
         projectId: z.string(),
-        path: z.string(),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         environment: z.string()
       }),
       response: {
