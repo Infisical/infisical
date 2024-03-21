@@ -11,7 +11,7 @@ type MachineIdentityDetails struct {
 	ClientSecret string
 }
 
-type UpdateAttributes struct {
+type RequestUpdateUpdateDetails struct {
 	Modified bool
 	ETag     string
 }

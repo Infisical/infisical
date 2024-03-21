@@ -299,10 +299,10 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	}
 
 	var plainTextSecretsFromApi []model.SingleEnvironmentVariable
-	var updateAttributes model.UpdateAttributes
+	var updateDetails model.RequestUpdateUpdateDetails
 
 	if authStrategy == AuthStrategy.SERVICE_ACCOUNT { // Service Account
-		plainTextSecretsFromApi, updateAttributes, err = util.GetPlainTextSecretsViaServiceAccount(serviceAccountCreds, infisicalSecret.Spec.Authentication.ServiceAccount.ProjectId, infisicalSecret.Spec.Authentication.ServiceAccount.EnvironmentName, secretVersionBasedOnETag)
+		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaServiceAccount(serviceAccountCreds, infisicalSecret.Spec.Authentication.ServiceAccount.ProjectId, infisicalSecret.Spec.Authentication.ServiceAccount.EnvironmentName, secretVersionBasedOnETag)
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
@@ -313,7 +313,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		envSlug := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.EnvSlug
 		secretsPath := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.SecretsPath
 
-		plainTextSecretsFromApi, updateAttributes, err = util.GetPlainTextSecretsViaServiceToken(infisicalToken, secretVersionBasedOnETag, envSlug, secretsPath)
+		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaServiceToken(infisicalToken, secretVersionBasedOnETag, envSlug, secretsPath)
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
@@ -327,7 +327,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 			return fmt.Errorf("%s", "Waiting for access token to become available")
 		}
 		scope := infisicalSecret.Spec.Authentication.UniversalAuth.SecretsScope
-		plainTextSecretsFromApi, updateAttributes, err = util.GetPlainTextSecretsViaUniversalAuth(accessToken, secretVersionBasedOnETag, scope)
+		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaUniversalAuth(accessToken, secretVersionBasedOnETag, scope)
 
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
@@ -338,15 +338,15 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		return fmt.Errorf("no authentication method provided. You must provide either a valid service token or a service account details to fetch secrets")
 	}
 
-	if !updateAttributes.Modified {
+	if !updateDetails.Modified {
 		fmt.Println("No secrets modified so reconcile not needed")
 		return nil
 	}
 
 	if managedKubeSecret == nil {
-		return r.CreateInfisicalManagedKubeSecret(ctx, infisicalSecret, plainTextSecretsFromApi, updateAttributes.ETag)
+		return r.CreateInfisicalManagedKubeSecret(ctx, infisicalSecret, plainTextSecretsFromApi, updateDetails.ETag)
 	} else {
-		return r.UpdateInfisicalManagedKubeSecret(ctx, *managedKubeSecret, plainTextSecretsFromApi, updateAttributes.ETag)
+		return r.UpdateInfisicalManagedKubeSecret(ctx, *managedKubeSecret, plainTextSecretsFromApi, updateDetails.ETag)
 	}
 
 }
