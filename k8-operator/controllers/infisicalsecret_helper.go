@@ -40,6 +40,8 @@ var AuthStrategy = struct {
 	UNIVERSAL_MACHINE_IDENTITY: "UNIVERSAL_MACHINE_IDENTITY",
 }
 
+var machineIdentityTokenInstance *util.MachineIdentityToken
+
 func (r *InfisicalSecretReconciler) GetInfisicalConfigMap(ctx context.Context) (configMap map[string]string, errToReturn error) {
 	// default key values
 	defaultConfigMapData := make(map[string]string)
@@ -291,15 +293,10 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		secretVersionBasedOnETag = managedKubeSecret.Annotations[SECRET_VERSION_ANNOTATION]
 	}
 
-	if authStrategy == AuthStrategy.UNIVERSAL_MACHINE_IDENTITY && util.MachineIdentityTokenInstance == nil {
+	if authStrategy == AuthStrategy.UNIVERSAL_MACHINE_IDENTITY && machineIdentityTokenInstance == nil {
 		// Create new machine identity token instance
-		util.MachineIdentityTokenInstance = util.NewMachineIdentityToken(infisicalMachineIdentityCreds.ClientId, infisicalMachineIdentityCreds.ClientSecret)
+		machineIdentityTokenInstance = util.NewMachineIdentityToken(infisicalMachineIdentityCreds.ClientId, infisicalMachineIdentityCreds.ClientSecret)
 	}
-
-	// TODO: Also save a timestamp of when the token expires, so we know when to refetch an access token
-
-	// if infisicalMachineIdentityCreds.ClientId != "" && infisicalMachineIdentityCreds.ClientSecret != "" {
-	// }
 
 	var plainTextSecretsFromApi []model.SingleEnvironmentVariable
 	var updateAttributes model.UpdateAttributes
@@ -324,7 +321,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via service token")
 	} else if authStrategy == AuthStrategy.UNIVERSAL_MACHINE_IDENTITY { // Machine Identity
 
-		accessToken, err := util.MachineIdentityTokenInstance.GetToken()
+		accessToken, err := machineIdentityTokenInstance.GetToken()
 
 		if err != nil {
 			return fmt.Errorf("%s", "Waiting for access token to become available")
