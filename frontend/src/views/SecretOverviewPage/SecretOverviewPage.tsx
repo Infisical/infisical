@@ -55,6 +55,7 @@ import {
   useCreateSecretV3,
   useDeleteSecretV3,
   useGetFoldersByEnv,
+  useGetImportedSecretsAllEnvs,
   useGetProjectSecretsAllEnv,
   useGetUserWsKey,
   useUpdateSecretV3
@@ -128,6 +129,12 @@ export const SecretOverviewPage = () => {
   const { folders, folderNames, isFolderPresentInEnv } = useGetFoldersByEnv({
     projectId: workspaceId,
     path: secretPath,
+    environments: userAvailableEnvs.map(({ slug }) => slug)
+  });
+
+  const { isImportedSecretPresentInEnv } = useGetImportedSecretsAllEnvs({
+    projectId: workspaceId,
+    decryptFileKey: latestFileKey!,
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
 
@@ -649,6 +656,7 @@ export const SecretOverviewPage = () => {
                   filteredSecretNames.map((key, index) => (
                     <SecretOverviewTableRow
                       secretPath={secretPath}
+                      isImportedSecretPresentInEnv={isImportedSecretPresentInEnv}
                       onSecretCreate={handleSecretCreate}
                       onSecretDelete={handleSecretDelete}
                       onSecretUpdate={handleSecretUpdate}

@@ -17,7 +17,7 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
-  useGetImportedSecrets,
+  useGetImportedSecretsSingleEnv,
   useGetProjectFolders,
   useGetProjectSecrets,
   useGetSecretApprovalPolicyOfABoard,
@@ -124,7 +124,7 @@ export const SecretMainPage = () => {
   });
 
   // fetch imported secrets to show user the overriden ones
-  const { data: importedSecrets } = useGetImportedSecrets({
+  const { data: importedSecrets } = useGetImportedSecretsSingleEnv({
     projectId: workspaceId,
     environment,
     decryptFileKey: decryptFileKey!,

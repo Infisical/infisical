@@ -15,6 +15,7 @@ export const SecretOverviewFolderRow = ({
   folderName,
   environments = [],
   isFolderPresentInEnv,
+
   onClick
 }: Props) => {
   return (
@@ -29,6 +30,7 @@ export const SecretOverviewFolderRow = ({
       </Td>
       {environments.map(({ slug }, i) => {
         const isPresent = isFolderPresentInEnv(folderName, slug);
+
         return (
           <Td
             key={`sec-overview-${slug}-${i + 1}-folder`}
@@ -38,7 +40,10 @@ export const SecretOverviewFolderRow = ({
             )}
           >
             <div className="flex justify-center">
-              <FontAwesomeIcon icon={isPresent ? faCheck : faXmark} />
+              <FontAwesomeIcon
+                // eslint-disable-next-line no-nested-ternary
+                icon={isPresent ? faCheck : faXmark}
+              />
             </div>
           </Td>
         );
