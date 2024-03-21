@@ -327,17 +327,16 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		accessToken, err := util.MachineIdentityTokenInstance.GetToken()
 
 		if err != nil {
-			fmt.Println("\nReconcileInfisicalSecret: Waiting for access token to become available")
-			return nil
+			return fmt.Errorf("%s", "Waiting for access token to become available")
 		}
-
 		scope := infisicalSecret.Spec.Authentication.UniversalAuth.SecretsScope
 		plainTextSecretsFromApi, updateAttributes, err = util.GetPlainTextSecretsViaUniversalAuth(accessToken, secretVersionBasedOnETag, scope)
 
-		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via universal auth")
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
+		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via universal auth")
+
 	} else {
 		return fmt.Errorf("no authentication method provided. You must provide either a valid service token or a service account details to fetch secrets")
 	}
