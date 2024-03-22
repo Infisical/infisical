@@ -1,3 +1,5 @@
+/* eslint-disable no-unreachable-loop */
+/* eslint-disable no-await-in-loop */
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, SecretsSchema, SecretType } from "@app/db/schemas";
@@ -437,51 +439,98 @@ export const secretServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
-    includeImports
+    includeImports,
+    deep
   }: TGetSecretsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-    );
+    const importsArray: Awaited<ReturnType<typeof fnSecretsFromImports>> = [];
+    const secretsArray: (Awaited<ReturnType<typeof secretDAL.findByFolderId>>[number] & {
+      secretPath: string;
+      environment: string;
+      workspace: string;
+    })[] = [];
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-    if (!folder) return { secrets: [], imports: [] };
-    const folderId = folder.id;
+    let paths = [path];
 
-    const secrets = await secretDAL.findByFolderId(folderId, actorId);
+    if (deep) {
+      const getPaths = recursivelyGetSecretPaths({
+        permissionService,
+        folderDAL,
+        projectEnvDAL
+      });
+
+      const deepPaths = await getPaths({
+        projectId,
+        environment,
+        currentPath: path,
+        auth: {
+          actor,
+          actorId,
+          actorAuthMethod,
+          actorOrgId
+        }
+      });
+
+      paths = deepPaths.length === 0 ? paths : deepPaths;
+    }
+
+    for (const currentPath of paths) {
+      const { permission } = await permissionService.getProjectPermission(
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath: currentPath })
+      );
+
+      const folder = await folderDAL.findBySecretPath(projectId, environment, currentPath);
+      if (!folder) return { secrets: [], imports: [] };
+      const folderId = folder.id;
+
+      const secrets = await secretDAL.findByFolderId(folderId, actorId);
+      if (includeImports) {
+        const secretImports = await secretImportDAL.find({ folderId });
+        const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
+          // if its service token allow full access over imported one
+          actor === ActorType.SERVICE
+            ? true
+            : permission.can(
+                ProjectPermissionActions.Read,
+                subject(ProjectPermissionSub.Secrets, {
+                  environment: importEnv.slug,
+                  secretPath: importPath
+                })
+              )
+        );
+        const importedSecrets = await fnSecretsFromImports({
+          allowedImports,
+          secretDAL,
+          folderDAL
+        });
+
+        secretsArray.push(
+          ...secrets.map((secret) => ({ ...secret, secretPath: currentPath, workspace: projectId, environment }))
+        );
+        importsArray.push(...importedSecrets);
+      }
+      secretsArray.push(
+        ...secrets.map((secret) => ({ ...secret, secretPath: currentPath, workspace: projectId, environment }))
+      );
+    }
 
     if (includeImports) {
-      const secretImports = await secretImportDAL.find({ folderId });
-      const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
-        // if its service token allow full access over imported one
-        actor === ActorType.SERVICE
-          ? true
-          : permission.can(
-              ProjectPermissionActions.Read,
-              subject(ProjectPermissionSub.Secrets, {
-                environment: importEnv.slug,
-                secretPath: importPath
-              })
-            )
-      );
-      const importedSecrets = await fnSecretsFromImports({
-        allowedImports,
-        secretDAL,
-        folderDAL
-      });
       return {
-        secrets: secrets.map((el) => ({ ...el, workspace: projectId, environment })),
-        imports: importedSecrets
+        secrets: secretsArray,
+        imports: importsArray
       };
     }
-    return { secrets: secrets.map((el) => ({ ...el, workspace: projectId, environment })) };
+
+    return {
+      secrets: secretsArray
+    };
   };
 
   const getSecretByName = async ({
@@ -802,70 +851,32 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     environment,
     includeImports,
-    recursive
+    deep
   }: TGetSecretsRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
-    let secrets: Awaited<ReturnType<typeof getSecrets>>["secrets"];
-    let imports: Awaited<ReturnType<typeof getSecrets>>["imports"];
-
-    if (recursive) {
-      const getPaths = recursivelyGetSecretPaths({
-        permissionService,
-        folderDAL,
-        projectEnvDAL
-      });
-
-      const paths = await getPaths(projectId, environment, path);
-
-      const result = await Promise.all(
-        paths.map(async (currentPath) => {
-          const secs = await getSecrets({
-            actorId,
-            projectId,
-            environment,
-            actor,
-            actorOrgId,
-            actorAuthMethod,
-            path: currentPath,
-            includeImports
-          });
-
-          return {
-            secrets: {
-              ...secs.secrets,
-              secretPath: currentPath
-            },
-            imports: secs.imports
-          };
-        })
-      );
-
-      secrets = result.flatMap((el) => el.secrets);
-      imports = result.flatMap((el) => el.imports || []);
-    } else {
-      const result = await getSecrets({
-        actorId,
-        projectId,
-        environment,
-        actor,
-        actorOrgId,
-        actorAuthMethod,
-        path,
-        includeImports
-      });
-
-      secrets = result.secrets;
-      imports = result.imports;
-    }
+    const { secrets, imports } = await getSecrets({
+      actorId,
+      projectId,
+      environment,
+      actor,
+      actorOrgId,
+      actorAuthMethod,
+      path,
+      includeImports,
+      deep
+    });
 
     return {
       secrets: secrets.map((el) => decryptSecretRaw(el, botKey)),
       imports: (imports || [])?.map(({ secrets: importedSecrets, ...el }) => ({
         ...el,
         secrets: importedSecrets.map((sec) =>
-          decryptSecretRaw({ ...sec, environment: el.environment, workspace: projectId }, botKey)
+          decryptSecretRaw(
+            { ...sec, environment: el.environment, workspace: projectId, secretPath: el.secretPath },
+            botKey
+          )
         )
       }))
     };

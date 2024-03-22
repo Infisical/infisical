@@ -157,11 +157,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.LIST.secretPath),
-        recursive: z
+        deep: z
           .enum(["true", "false"])
           .default("false")
           .transform((value) => value === "true")
-          .describe(RAW_SECRETS.LIST.recursive),
+          .describe(RAW_SECRETS.LIST.deep),
         include_imports: z
           .enum(["true", "false"])
           .default("false")
@@ -230,7 +230,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         projectId: workspaceId,
         path: secretPath,
         includeImports: req.query.include_imports,
-        recursive: req.query.recursive
+        deep: req.query.deep
       });
 
       await server.services.auditLog.createAuditLog({
@@ -608,6 +608,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        deep: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true"),
         include_imports: z
           .enum(["true", "false"])
           .default("false")
@@ -621,6 +625,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 _id: z.string(),
                 workspace: z.string(),
                 environment: z.string(),
+                secretPath: z.string().optional(),
                 tags: SecretTagsSchema.pick({
                   id: true,
                   slug: true,
@@ -660,7 +665,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment: req.query.environment,
         projectId: req.query.workspaceId,
         path: req.query.secretPath,
-        includeImports: req.query.include_imports
+        includeImports: req.query.include_imports,
+        deep: req.query.deep
       });
 
       await server.services.auditLog.createAuditLog({

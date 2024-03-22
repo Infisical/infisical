@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop */
+import { subject } from "@casl/ability";
 import path from "path";
 
 import {
@@ -10,6 +11,7 @@ import {
   TSecrets
 } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import {
   buildSecretBlindIndexFromName,
@@ -20,6 +22,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -54,8 +57,25 @@ type TRecursivelyFetchSecretsFromFoldersArg = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "find">;
 };
 
-export const recursivelyGetSecretPaths = ({ folderDAL, projectEnvDAL }: TRecursivelyFetchSecretsFromFoldersArg) => {
-  const getPaths = async (projectId: string, environment: string, currentPath: string) => {
+type TGetPathsDTO = {
+  projectId: string;
+  environment: string;
+  currentPath: string;
+
+  auth: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string | undefined;
+  };
+};
+
+export const recursivelyGetSecretPaths = ({
+  folderDAL,
+  projectEnvDAL,
+  permissionService
+}: TRecursivelyFetchSecretsFromFoldersArg) => {
+  const getPaths = async ({ projectId, environment, currentPath }: Omit<TGetPathsDTO, "auth">) => {
     let secretPaths: string[] = [];
 
     // Get secrets in the current folder.
@@ -93,7 +113,7 @@ export const recursivelyGetSecretPaths = ({ folderDAL, projectEnvDAL }: TRecursi
           // Ensure the path is correctly formatted for the next level.
           const subFolderPath = `${currentPath}${currentPath !== "/" ? "/" : ""}${folder.name}`;
 
-          return getPaths(projectId, environment, subFolderPath);
+          return getPaths({ projectId, environment, currentPath: subFolderPath });
         })
       );
 
@@ -107,7 +127,32 @@ export const recursivelyGetSecretPaths = ({ folderDAL, projectEnvDAL }: TRecursi
     return secretPaths;
   };
 
-  return getPaths;
+  return async ({ projectId, environment, currentPath, auth }: TGetPathsDTO) => {
+    const paths = await getPaths({ projectId, environment, currentPath });
+
+    const { permission } = await permissionService.getProjectPermission(
+      auth.actor,
+      auth.actorId,
+      projectId,
+      auth.actorAuthMethod,
+      auth.actorOrgId
+    );
+
+    const allowedPaths = paths.filter((p) =>
+      // if its service token allow full access over imported one
+      auth.actor === ActorType.SERVICE
+        ? true
+        : permission.can(
+            ProjectPermissionActions.Read,
+            subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath: p
+            })
+          )
+    );
+
+    return allowedPaths;
+  };
 };
 
 type TInterpolateSecretArg = {
@@ -275,7 +320,10 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
   return expandSecrets;
 };
 
-export const decryptSecretRaw = (secret: TSecrets & { workspace: string; environment: string }, key: string) => {
+export const decryptSecretRaw = (
+  secret: TSecrets & { workspace: string; environment: string; secretPath?: string },
+  key: string
+) => {
   const secretKey = decryptSymmetric128BitHexKeyUTF8({
     ciphertext: secret.secretKeyCiphertext,
     iv: secret.secretKeyIV,
@@ -303,6 +351,7 @@ export const decryptSecretRaw = (secret: TSecrets & { workspace: string; environ
 
   return {
     secretKey,
+    secretPath: secret.secretPath,
     workspace: secret.workspace,
     environment: secret.environment,
     secretValue,
