@@ -18,7 +18,8 @@ export type TCreateDynamicSecretDTO = {
   path: string;
   environment: string;
   slug: string;
-} & TProjectPermission;
+  projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateDynamicSecretDTO = {
   slug: string;
@@ -28,21 +29,25 @@ export type TUpdateDynamicSecretDTO = {
   path: string;
   environment: string;
   inputs?: TProvider["inputs"];
-} & TProjectPermission;
+  projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteDynamicSecretDTO = {
   slug: string;
   path: string;
   environment: string;
-} & TProjectPermission;
+  projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TDetailsDynamicSecretDTO = {
   slug: string;
   path: string;
   environment: string;
-} & TProjectPermission;
+  projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TListDynamicSecretsDTO = {
   path: string;
   environment: string;
-} & TProjectPermission;
+  projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;

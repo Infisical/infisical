@@ -13,7 +13,7 @@ import { DynamicSecretSqlDBSchema, TDynamicProviderFns } from "./models";
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 const generatePassword = (size?: number) => {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%^&*()_+-=[]{}|;,./<>";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*'$#";
   return customAlphabet(charset, 20)(size);
 };
 
@@ -62,7 +62,7 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
 
     await db.raw(creationStatement.toString());
     await db.destroy();
-    return { entityId: username, data: { username, password } };
+    return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
   };
 
   const revoke = async (inputs: unknown, entityId: string) => {

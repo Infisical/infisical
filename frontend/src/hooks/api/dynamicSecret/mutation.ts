@@ -21,8 +21,8 @@ export const useCreateDynamicSecret = () => {
       );
       return data.dynamicSecret;
     },
-    onSuccess: (_, { path, environment, projectId }) => {
-      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectId, environment }));
+    onSuccess: (_, { path, environment, projectSlug }) => {
+      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environment }));
     }
   });
 };
@@ -38,8 +38,8 @@ export const useUpdateDynamicSecret = () => {
       );
       return data.dynamicSecret;
     },
-    onSuccess: (_, { path, environment, projectId }) => {
-      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectId, environment }));
+    onSuccess: (_, { path, environment, projectSlug }) => {
+      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environment }));
     }
   });
 };
@@ -55,8 +55,8 @@ export const useDeleteDynamicSecret = () => {
       );
       return data.dynamicSecret;
     },
-    onSuccess: (_, { path, environment, projectId }) => {
-      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectId, environment }));
+    onSuccess: (_, { path, environment, projectSlug }) => {
+      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environment }));
     }
   });
 };

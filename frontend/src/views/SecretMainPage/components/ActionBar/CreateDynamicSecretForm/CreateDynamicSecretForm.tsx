@@ -11,7 +11,7 @@ import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
 type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
-  workspaceId: string;
+  projectSlug:string;
   environment: string;
   secretPath: string;
 };
@@ -24,7 +24,7 @@ enum WizardSteps {
 export const CreateDynamicSecretForm = ({
   isOpen,
   onToggle,
-  workspaceId,
+  projectSlug,
   environment,
   secretPath
 }: Props) => {
@@ -92,7 +92,7 @@ export const CreateDynamicSecretForm = ({
                 <SqlDatabaseInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectId={workspaceId}
+                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environment={environment}
                 />

@@ -61,8 +61,8 @@ type Props = {
   onClose: () => void;
   dynamicSecret: TDynamicSecret & { inputs: unknown };
   secretPath: string;
-  projectId: string;
   environment: string;
+  projectSlug: string;
 };
 
 export const EditDynamicSecretSqlProviderForm = ({
@@ -70,7 +70,7 @@ export const EditDynamicSecretSqlProviderForm = ({
   dynamicSecret,
   environment,
   secretPath,
-  projectId
+  projectSlug
 }: Props) => {
   const {
     control,
@@ -97,7 +97,7 @@ export const EditDynamicSecretSqlProviderForm = ({
       await updateDynamicSecret.mutateAsync({
         slug: dynamicSecret.slug,
         path: secretPath,
-        projectId,
+        projectSlug,
         environment,
         data: {
           maxTTL: maxTTL || undefined,

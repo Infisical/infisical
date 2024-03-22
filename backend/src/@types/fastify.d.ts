@@ -64,7 +64,7 @@ declare module "fastify" {
       authMethod: ActorAuthMethod;
       type: ActorType;
       id: string;
-      orgId?: string;
+      orgId: string;
     };
     // passport data
     passportUser: {

@@ -62,7 +62,9 @@ type Props = {
   // swtich the secrets type as it gets decrypted after api call
   importedSecrets?: Array<Omit<TImportedSecrets, "secrets"> & { secrets: DecryptedSecret[] }>;
   environment: string;
+  // @depreciated will be moving all these details to zustand
   workspaceId: string;
+  projectSlug: string;
   secretPath?: string;
   filter: Filter;
   tags?: WsTag[];
@@ -81,6 +83,7 @@ export const ActionBar = ({
   importedSecrets = [],
   environment,
   workspaceId,
+  projectSlug,
   secretPath = "/",
   filter,
   tags = [],
@@ -443,7 +446,7 @@ export const ActionBar = ({
       <CreateDynamicSecretForm
         isOpen={popUp.addDynamicSecret.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
-        workspaceId={workspaceId}
+        projectSlug={projectSlug}
         environment={environment}
         secretPath={secretPath}
       />

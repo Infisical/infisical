@@ -6,25 +6,25 @@ import { TDetailsDynamicSecretDTO, TDynamicSecret, TListDynamicSecretDTO } from 
 
 export const dynamicSecretKeys = {
   list: ({
-    projectId,
+    projectSlug,
     environment,
     path
-  }: Pick<TListDynamicSecretDTO, "path" | "environment" | "projectId">) =>
-    [{ projectId, environment, path }, "dynamic-secrets"] as const,
-  details: ({ path, environment, projectId, slug }: TDetailsDynamicSecretDTO) =>
-    [{ projectId, path, environment, slug }, "dynamic-secret-details"] as const
+  }: Pick<TListDynamicSecretDTO, "path" | "environment" | "projectSlug">) =>
+    [{ projectSlug, environment, path }, "dynamic-secrets"] as const,
+  details: ({ path, environment, projectSlug, slug }: TDetailsDynamicSecretDTO) =>
+    [{ projectSlug, path, environment, slug }, "dynamic-secret-details"] as const
 };
 
-export const useGetDynamicSecrets = ({ projectId, environment, path }: TListDynamicSecretDTO) => {
+export const useGetDynamicSecrets = ({ projectSlug, environment, path }: TListDynamicSecretDTO) => {
   return useQuery({
-    queryKey: dynamicSecretKeys.list({ path, environment, projectId }),
-    enabled: Boolean(projectId && environment && path),
+    queryKey: dynamicSecretKeys.list({ path, environment, projectSlug }),
+    enabled: Boolean(projectSlug && environment && path),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ dynamicSecrets: TDynamicSecret[] }>(
         "/api/v1/dynamic-secrets",
         {
           params: {
-            projectId,
+            projectSlug,
             environment,
             path
           }
@@ -37,20 +37,20 @@ export const useGetDynamicSecrets = ({ projectId, environment, path }: TListDyna
 };
 
 export const useGetDynamicSecretDetails = ({
-  projectId,
+  projectSlug,
   environment,
   path,
   slug
 }: TDetailsDynamicSecretDTO) => {
   return useQuery({
-    queryKey: dynamicSecretKeys.details({ path, environment, projectId, slug }),
-    enabled: Boolean(projectId && environment && path && slug),
+    queryKey: dynamicSecretKeys.details({ path, environment, projectSlug, slug }),
+    enabled: Boolean(projectSlug && environment && path && slug),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         dynamicSecret: TDynamicSecret & { inputs: unknown };
       }>(`/api/v1/dynamic-secrets/${slug}`, {
         params: {
-          projectId,
+          projectSlug,
           environment,
           path
         }

@@ -1,6 +1,7 @@
 import ms from "ms";
 import { z } from "zod";
 
+import { DynamicSecretLeasesSchema } from "@app/db/schemas";
 import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -15,7 +16,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     method: "POST",
     schema: {
       body: z.object({
-        projectId: z.string(),
+        projectSlug: z.string().min(1),
         provider: DynamicSecretProviderSchema,
         defaultTTL: z.string().superRefine((val, ctx) => {
           const valMs = ms(val);
@@ -37,8 +38,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
           })
           .nullable(),
         path: z.string().trim().default("/").transform(removeTrailingSlash),
-        environment: z.string(),
-        slug: z.string().toLowerCase()
+        environment: z.string().min(1),
+        slug: z.string().min(1).toLowerCase()
       }),
       response: {
         200: z.object({
@@ -67,9 +68,9 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         slug: z.string()
       }),
       body: z.object({
-        projectId: z.string(),
+        projectSlug: z.string().min(1),
         path: z.string().trim().default("/").transform(removeTrailingSlash),
-        environment: z.string(),
+        environment: z.string().min(1),
         data: z.object({
           inputs: z.any().optional(),
           defaultTTL: z
@@ -113,7 +114,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId,
         slug: req.params.slug,
         path: req.body.path,
-        projectId: req.body.projectId,
+        projectSlug: req.body.projectSlug,
         environment: req.body.environment,
         ...req.body.data
       });
@@ -129,9 +130,9 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         slug: z.string()
       }),
       body: z.object({
-        projectId: z.string(),
+        projectSlug: z.string().min(1),
         path: z.string().trim().default("/").transform(removeTrailingSlash),
-        environment: z.string()
+        environment: z.string().min(1)
       }),
       response: {
         200: z.object({
@@ -161,9 +162,9 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         slug: z.string()
       }),
       querystring: z.object({
-        projectId: z.string(),
+        projectSlug: z.string().min(1),
         path: z.string().trim().default("/").transform(removeTrailingSlash),
-        environment: z.string()
+        environment: z.string().min(1)
       }),
       response: {
         200: z.object({
@@ -192,9 +193,9 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     method: "GET",
     schema: {
       querystring: z.object({
-        projectId: z.string(),
+        projectSlug: z.string().min(1),
         path: z.string().trim().default("/").transform(removeTrailingSlash),
-        environment: z.string()
+        environment: z.string().min(1)
       }),
       response: {
         200: z.object({
@@ -212,6 +213,38 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         ...req.query
       });
       return { dynamicSecrets: dynamicSecretCfgs };
+    }
+  });
+
+  server.route({
+    url: "/:slug/leases",
+    method: "GET",
+    schema: {
+      params: z.object({
+        slug: z.string()
+      }),
+      querystring: z.object({
+        projectSlug: z.string().min(1),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
+        environment: z.string().min(1)
+      }),
+      response: {
+        200: z.object({
+          leases: DynamicSecretLeasesSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const leases = await server.services.dynamicSecretLease.listLeases({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        slug: req.params.slug,
+        ...req.query
+      });
+      return { leases };
     }
   });
 };

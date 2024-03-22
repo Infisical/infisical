@@ -9,23 +9,34 @@ export type TCreateDynamicSecretLeaseDTO = {
   path: string;
   environment: string;
   ttl?: string;
-} & TProjectPermission;
+  projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TDetailsDynamicSecretLeaseDTO = {
+  leaseId: string;
+  path: string;
+  environment: string;
+  projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TListDynamicSecretLeasesDTO = {
   slug: string;
   path: string;
   environment: string;
-} & TProjectPermission;
+  projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteDynamicSecretLeaseDTO = {
   leaseId: string;
   path: string;
   environment: string;
-} & TProjectPermission;
+  projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TRenewDynamicSecretLeaseDTO = {
   leaseId: string;
   path: string;
   environment: string;
   ttl?: string;
-} & TProjectPermission;
+  projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;

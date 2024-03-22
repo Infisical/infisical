@@ -58,7 +58,7 @@ type Props = {
   onCompleted: () => void;
   onCancel: () => void;
   secretPath: string;
-  projectId: string;
+  projectSlug: string;
   environment: string;
 };
 
@@ -67,7 +67,7 @@ export const SqlDatabaseInputForm = ({
   onCancel,
   environment,
   secretPath,
-  projectId
+  projectSlug
 }: Props) => {
   const {
     control,
@@ -89,7 +89,7 @@ export const SqlDatabaseInputForm = ({
         slug,
         path: secretPath,
         defaultTTL,
-        projectId,
+        projectSlug,
         environment
       });
       onCompleted();

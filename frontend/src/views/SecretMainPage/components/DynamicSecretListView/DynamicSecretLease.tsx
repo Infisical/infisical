@@ -28,7 +28,7 @@ import { RenewDynamicSecretLease } from "./RenewDynamicSecretLease";
 
 type Props = {
   slug: string;
-  projectId: string;
+  projectSlug: string;
   environment: string;
   secretPath: string;
   onClickNewLease: () => void;
@@ -36,7 +36,7 @@ type Props = {
 };
 
 export const DynamicSecretLease = ({
-  projectId,
+  projectSlug,
   slug,
   environment,
   secretPath,
@@ -48,7 +48,7 @@ export const DynamicSecretLease = ({
     "renewSecret"
   ] as const);
   const { data: leases, isLoading: isLeaseLoading } = useGetDynamicSecretLeases({
-    projectId,
+    projectSlug,
     environment,
     path: secretPath,
     slug
@@ -62,7 +62,7 @@ export const DynamicSecretLease = ({
       const { leaseId } = popUp.deleteSecret.data as { leaseId: string };
       await deleteDynamicSecretLease.mutateAsync({
         environment,
-        projectId,
+        projectSlug,
         path: secretPath,
         slug,
         leaseId
@@ -193,7 +193,7 @@ export const DynamicSecretLease = ({
         <ModalContent title="Renew Lease">
           <RenewDynamicSecretLease
             onClose={() => handlePopUpClose("renewSecret")}
-            projectId={projectId}
+            projectSlug={projectSlug}
             leaseId={(popUp.renewSecret?.data as { leaseId: string })?.leaseId}
             slug={slug}
             secretPath={secretPath}

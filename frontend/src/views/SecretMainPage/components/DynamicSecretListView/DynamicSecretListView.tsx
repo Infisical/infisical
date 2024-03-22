@@ -40,7 +40,7 @@ const formatProviderName = (type: DynamicSecretProviders) => {
 type Props = {
   dynamicSecrets: TDynamicSecret[];
   environment: string;
-  workspaceId: string;
+  projectSlug: string;
   secretPath?: string;
   sortDir: SortDir;
 };
@@ -48,7 +48,7 @@ type Props = {
 export const DynamicSecretListView = ({
   dynamicSecrets = [],
   environment,
-  workspaceId,
+  projectSlug,
   secretPath = "/",
   sortDir = SortDir.ASC
 }: Props) => {
@@ -67,7 +67,7 @@ export const DynamicSecretListView = ({
       const { slug } = popUp.deleteDynamicSecret.data as TDynamicSecret;
       await deleteDynamicSecret.mutateAsync({
         environment,
-        projectId: workspaceId,
+        projectSlug,
         path: secretPath,
         slug
       });
@@ -206,7 +206,7 @@ export const DynamicSecretListView = ({
                 <DynamicSecretLease
                   onClickNewLease={() => handlePopUpOpen("createDynamicSecretLease", secret)}
                   onClose={() => handlePopUpClose("dynamicSecretLeases")}
-                  projectId={workspaceId}
+                  projectSlug={projectSlug}
                   key={secret.id}
                   slug={secret.slug}
                   secretPath={secretPath}
@@ -226,7 +226,7 @@ export const DynamicSecretListView = ({
               (popUp.createDynamicSecretLease?.data as { type: DynamicSecretProviders })?.type
             }
             onClose={() => handlePopUpClose("createDynamicSecretLease")}
-            projectId={workspaceId}
+            projectSlug={projectSlug}
             slug={(popUp.createDynamicSecretLease?.data as { slug: string })?.slug}
             secretPath={secretPath}
             environment={environment}
@@ -240,7 +240,7 @@ export const DynamicSecretListView = ({
         <ModalContent title="Edit dynamic secret" className="max-w-3xl">
           <EditDynamicSecretForm
             onClose={() => handlePopUpClose("updateDynamicSecret")}
-            projectId={workspaceId}
+            projectSlug={projectSlug}
             slug={(popUp.updateDynamicSecret?.data as TDynamicSecret)?.slug}
             secretPath={secretPath}
             environment={environment}

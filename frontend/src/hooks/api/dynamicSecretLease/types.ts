@@ -15,7 +15,7 @@ export type TDynamicSecretLease = {
 
 export type TCreateDynamicSecretLeaseDTO = {
   slug: string;
-  projectId: string;
+  projectSlug: string;
   ttl?: string;
   path: string;
   environment: string;
@@ -25,14 +25,14 @@ export type TRenewDynamicSecretLeaseDTO = {
   leaseId: string;
   slug: string;
   ttl?: string;
-  projectId: string;
+  projectSlug: string;
   path: string;
   environment: string;
 };
 
 export type TListDynamicSecretLeaseDTO = {
   slug: string;
-  projectId: string;
+  projectSlug: string;
   path: string;
   environment: string;
   enabled?: boolean;
@@ -41,7 +41,7 @@ export type TListDynamicSecretLeaseDTO = {
 export type TRevokeDynamicSecretLeaseDTO = {
   leaseId: string;
   slug: string;
-  projectId: string;
+  projectSlug: string;
   path: string;
   environment: string;
 };

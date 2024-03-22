@@ -7,14 +7,16 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+import { SanitizedDynamicSecretSchema } from "../sanitizedSchemas";
+
 export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
     method: "POST",
     schema: {
       body: z.object({
-        slug: z.string(),
-        projectId: z.string(),
+        slug: z.string().min(1),
+        projectSlug: z.string().min(1),
         ttl: z
           .string()
           .optional()
@@ -27,7 +29,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
               ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
           }),
         path: z.string().trim().default("/").transform(removeTrailingSlash),
-        environment: z.string()
+        environment: z.string().min(1)
       }),
       response: {
         200: z.object({
@@ -57,9 +59,9 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         leaseId: z.string()
       }),
       body: z.object({
-        projectId: z.string(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash),
-        environment: z.string()
+        projectSlug: z.string().min(1),
+        path: z.string().min(1).trim().default("/").transform(removeTrailingSlash),
+        environment: z.string().min(1)
       }),
       response: {
         200: z.object({
@@ -100,9 +102,9 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
             if (valMs > daysToMillisecond(1))
               ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
           }),
-        projectId: z.string(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash),
-        environment: z.string()
+        projectSlug: z.string().min(1),
+        path: z.string().min(1).trim().default("/").transform(removeTrailingSlash),
+        environment: z.string().min(1)
       }),
       response: {
         200: z.object({
@@ -125,34 +127,36 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
   });
 
   server.route({
-    url: "/:slug",
+    url: "/:leaseId",
     method: "GET",
     schema: {
       params: z.object({
-        slug: z.string()
+        leaseId: z.string()
       }),
       querystring: z.object({
-        projectId: z.string(),
+        projectSlug: z.string().min(1),
         path: z.string().trim().default("/").transform(removeTrailingSlash),
-        environment: z.string()
+        environment: z.string().min(1)
       }),
       response: {
         200: z.object({
-          leases: DynamicSecretLeasesSchema.array()
+          lease: DynamicSecretLeasesSchema.extend({
+            dynamicSecret: SanitizedDynamicSecretSchema
+          })
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const leases = await server.services.dynamicSecretLease.listLeases({
+      const lease = await server.services.dynamicSecretLease.getLeaseDetails({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        slug: req.params.slug,
+        leaseId: req.params.leaseId,
         ...req.query
       });
-      return { leases };
+      return { lease };
     }
   });
 };

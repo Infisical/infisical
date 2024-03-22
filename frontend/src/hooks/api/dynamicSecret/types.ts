@@ -40,7 +40,7 @@ export type TDynamicSecretProvider = {
 };
 
 export type TCreateDynamicSecretDTO = {
-  projectId: string;
+  projectSlug: string;
   provider: TDynamicSecretProvider;
   defaultTTL: string;
   maxTTL?: string;
@@ -51,7 +51,7 @@ export type TCreateDynamicSecretDTO = {
 
 export type TUpdateDynamicSecretDTO = {
   slug: string;
-  projectId: string;
+  projectSlug: string;
   path: string;
   environment: string;
   data: {
@@ -63,20 +63,20 @@ export type TUpdateDynamicSecretDTO = {
 };
 
 export type TListDynamicSecretDTO = {
-  projectId: string;
+  projectSlug: string;
   path: string;
   environment: string;
 };
 
 export type TDeleteDynamicSecretDTO = {
-  projectId: string;
+  projectSlug: string;
   path: string;
   environment: string;
   slug: string;
 };
 
 export type TDetailsDynamicSecretDTO = {
-  projectId: string;
+  projectSlug: string;
   path: string;
   environment: string;
   slug: string;

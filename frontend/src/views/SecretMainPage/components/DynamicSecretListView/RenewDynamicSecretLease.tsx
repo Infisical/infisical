@@ -25,14 +25,14 @@ type Props = {
   onClose: () => void;
   leaseId: string;
   slug: string;
-  projectId: string;
+  projectSlug: string;
   environment: string;
   secretPath: string;
 };
 
 export const RenewDynamicSecretLease = ({
   onClose,
-  projectId,
+  projectSlug,
   slug,
   leaseId,
   secretPath,
@@ -57,7 +57,7 @@ export const RenewDynamicSecretLease = ({
     try {
       await renewDynamicSecretLease.mutateAsync({
         environment,
-        projectId,
+        projectSlug,
         path: secretPath,
         ttl,
         slug,

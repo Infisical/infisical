@@ -69,6 +69,7 @@ export const SecretMainPage = () => {
   // env slug
   const environment = router.query.env as string;
   const workspaceId = currentWorkspace?.id || "";
+  const projectSlug = currentWorkspace?.slug || "";
   const secretPath = (router.query.secretPath as string) || "/";
   const canReadSecret = permission.can(
     ProjectPermissionActions.Read,
@@ -139,7 +140,7 @@ export const SecretMainPage = () => {
   });
 
   const { data: dynamicSecrets, isLoading: isDynamicSecretLoading } = useGetDynamicSecrets({
-    projectId: workspaceId,
+    projectSlug,
     environment,
     path: secretPath
   });
@@ -258,6 +259,7 @@ export const SecretMainPage = () => {
               importedSecrets={importedSecrets}
               environment={environment}
               workspaceId={workspaceId}
+              projectSlug={projectSlug}
               secretPath={secretPath}
               isVisible={isVisible}
               filter={filter}
@@ -316,7 +318,7 @@ export const SecretMainPage = () => {
                   <DynamicSecretListView
                     sortDir={sortDir}
                     environment={environment}
-                    workspaceId={workspaceId}
+                    projectSlug={projectSlug}
                     secretPath={secretPath}
                     dynamicSecrets={dynamicSecrets || []}
                   />

@@ -8,6 +8,7 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/dynamic-secret-lease-queue";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import {
@@ -26,6 +27,7 @@ type TDynamicSecretServiceFactoryDep = {
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: Pick<TDynamicSecretLeaseQueueServiceFactory, "pruneDynamicSecret">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
@@ -37,7 +39,8 @@ export const dynamicSecretServiceFactory = ({
   folderDAL,
   dynamicSecretProviders,
   permissionService,
-  dynamicSecretQueueService
+  dynamicSecretQueueService,
+  projectDAL
 }: TDynamicSecretServiceFactoryDep) => {
   const create = async ({
     path,
@@ -47,11 +50,15 @@ export const dynamicSecretServiceFactory = ({
     maxTTL,
     provider,
     environment,
-    projectId,
+    projectSlug,
     actorOrgId,
     defaultTTL,
     actorAuthMethod
   }: TCreateDynamicSecretDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new BadRequestError({ message: "Project not found" });
+
+    const projectId = project.id;
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -96,7 +103,7 @@ export const dynamicSecretServiceFactory = ({
     defaultTTL,
     inputs,
     environment,
-    projectId,
+    projectSlug,
     path,
     actor,
     actorId,
@@ -104,6 +111,11 @@ export const dynamicSecretServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TUpdateDynamicSecretDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new BadRequestError({ message: "Project not found" });
+
+    const projectId = project.id;
+
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -161,11 +173,16 @@ export const dynamicSecretServiceFactory = ({
     actorOrgId,
     actorId,
     actor,
-    projectId,
+    projectSlug,
     slug,
     path,
     environment
   }: TDeleteDynamicSecretDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new BadRequestError({ message: "Project not found" });
+
+    const projectId = project.id;
+
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -201,7 +218,7 @@ export const dynamicSecretServiceFactory = ({
 
   const getDetails = async ({
     slug,
-    projectId,
+    projectSlug,
     path,
     environment,
     actorAuthMethod,
@@ -209,6 +226,10 @@ export const dynamicSecretServiceFactory = ({
     actorId,
     actor
   }: TDetailsDynamicSecretDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new BadRequestError({ message: "Project not found" });
+
+    const projectId = project.id;
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -244,10 +265,14 @@ export const dynamicSecretServiceFactory = ({
     actorOrgId,
     actorId,
     actor,
-    projectId,
+    projectSlug,
     path,
     environment
   }: TListDynamicSecretsDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new BadRequestError({ message: "Project not found" });
+
+    const projectId = project.id;
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,

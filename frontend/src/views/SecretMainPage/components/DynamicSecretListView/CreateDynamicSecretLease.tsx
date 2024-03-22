@@ -13,20 +13,6 @@ import { useTimedReset } from "@app/hooks";
 import { useCreateDynamicSecretLease } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
-const formSchema = z.object({
-  ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
-});
-type TForm = z.infer<typeof formSchema>;
-
-type Props = {
-  onClose: () => void;
-  slug: string;
-  provider: DynamicSecretProviders;
-  projectId: string;
-  environment: string;
-  secretPath: string;
-};
-
 const OutputDisplay = ({
   value,
   label,
@@ -68,14 +54,14 @@ const OutputDisplay = ({
 };
 
 const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
-  const { username, password } = data as { username: string; password: string };
+  const { DB_PASSWORD, DB_USERNAME } = data as { DB_USERNAME: string; DB_PASSWORD: string };
   if (provider === DynamicSecretProviders.SqlDatabase) {
     return (
       <div>
-        <OutputDisplay label="Database User" value={username} />
+        <OutputDisplay label="Database User" value={DB_USERNAME} />
         <OutputDisplay
           label="Database Password"
-          value={password}
+          value={DB_PASSWORD}
           helperText="Important: Copy this information now. It will disappear after this.opy this values as you won't be able to see it again."
         />
       </div>
@@ -84,9 +70,23 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
   return null;
 };
 
+const formSchema = z.object({
+  ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
+});
+type TForm = z.infer<typeof formSchema>;
+
+type Props = {
+  onClose: () => void;
+  slug: string;
+  provider: DynamicSecretProviders;
+  projectSlug: string;
+  environment: string;
+  secretPath: string;
+};
+
 export const CreateDynamicSecretLease = ({
   onClose,
-  projectId,
+  projectSlug,
   slug,
   provider,
   secretPath,
@@ -107,11 +107,11 @@ export const CreateDynamicSecretLease = ({
   const createDynamicSecretLease = useCreateDynamicSecretLease();
 
   const handleDynamicSecretLeaseCreate = async ({ ttl }: TForm) => {
-    if(createDynamicSecretLease.isLoading) return;
+    if (createDynamicSecretLease.isLoading) return;
     try {
       await createDynamicSecretLease.mutateAsync({
         environment,
-        projectId,
+        projectSlug,
         path: secretPath,
         ttl,
         slug

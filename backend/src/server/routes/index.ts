@@ -566,6 +566,7 @@ export const registerRoutes = async (
     dynamicSecretDAL
   });
   const dynamicSecretService = dynamicSecretServiceFactory({
+    projectDAL,
     dynamicSecretQueueService,
     dynamicSecretDAL,
     dynamicSecretLeaseDAL,
@@ -574,6 +575,7 @@ export const registerRoutes = async (
     permissionService
   });
   const dynamicSecretLeaseService = dynamicSecretLeaseServiceFactory({
+    projectDAL,
     permissionService,
     dynamicSecretQueueService,
     dynamicSecretDAL,
