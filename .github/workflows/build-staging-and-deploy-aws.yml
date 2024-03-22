@@ -1,6 +1,10 @@
 name: Build, Publish and Deploy to Gamma
 on: [workflow_dispatch]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   infisical-image:
     name: Build backend image
