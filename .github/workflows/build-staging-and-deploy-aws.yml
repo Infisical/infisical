@@ -86,7 +86,7 @@ jobs:
   gamma-deployment:
     name: Deploy to gamma
     runs-on: ubuntu-latest
-    # needs: [postgres-migration]
+    needs: [postgres-migration]
     steps:
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
