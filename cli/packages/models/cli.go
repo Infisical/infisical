@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type UserCredentials struct {
 	Email        string `json:"email"`
 	PrivateKey   string `json:"privateKey"`
@@ -49,8 +51,8 @@ type DynamicSecret struct {
 
 type DynamicSecretLease struct {
 	Lease struct {
-		Id       string `json:"id"`
-		ExpireAt string `json:"expireAt"`
+		Id       string    `json:"id"`
+		ExpireAt time.Time `json:"expireAt"`
 	} `json:"lease"`
 	DynamicSecret DynamicSecret `json:"dynamicSecret"`
 	// this is a varying dict based on provider

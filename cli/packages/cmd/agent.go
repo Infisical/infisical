@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"path"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -84,6 +85,15 @@ type Template struct {
 	} `yaml:"config"`
 }
 
+func newAgentTemplateChannels(templates []Template) map[string]chan bool {
+	// we keep each destination as an identifier for various channel
+	templateChannel := make(map[string]chan bool)
+	for _, template := range templates {
+		templateChannel[template.DestinationPath] = make(chan bool)
+	}
+	return templateChannel
+}
+
 type DynamicSecretLease struct {
 	LeaseID     string
 	ExpireAt    time.Time
@@ -92,21 +102,100 @@ type DynamicSecretLease struct {
 	Slug        string
 	ProjectSlug string
 	Data        map[string]interface{}
+	Templates   []string
 }
 
-type DynamicSecretLeaseManger []DynamicSecretLease
+type DynamicSecretLeaseManager struct {
+	leases []DynamicSecretLease
+	mutex  sync.Mutex
+}
 
-func (d DynamicSecretLeaseManger) FindLease(projectSlug, environment, secretPath, slug string) *DynamicSecretLease {
-	for _, lease := range d {
-		// presentTime := time.Now()
-		// isExpired := presentTime.Before(lease.ExpireAt.Add(-15 * time.Second))
+func (d *DynamicSecretLeaseManager) Prune() {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	d.leases = slices.DeleteFunc(d.leases, func(s DynamicSecretLease) bool {
+		return time.Now().After(s.ExpireAt.Add(-15 * time.Second))
+	})
+}
+
+func (d *DynamicSecretLeaseManager) Append(lease DynamicSecretLease) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	index := slices.IndexFunc(d.leases, func(s DynamicSecretLease) bool {
+		if lease.SecretPath == s.SecretPath && lease.Environment == s.Environment && lease.ProjectSlug == s.ProjectSlug && lease.Slug == s.Slug {
+			return true
+		}
+		return false
+	})
+
+	if index != -1 {
+		d.leases[index].Templates = append(d.leases[index].Templates, lease.Templates...)
+		return
+	}
+	d.leases = append(d.leases, lease)
+}
+
+func (d *DynamicSecretLeaseManager) RegisterTemplate(projectSlug, environment, secretPath, slug, templateName string) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	index := slices.IndexFunc(d.leases, func(lease DynamicSecretLease) bool {
+		if lease.SecretPath == secretPath && lease.Environment == environment && lease.ProjectSlug == projectSlug && lease.Slug == slug {
+			return true
+		}
+		return false
+	})
+
+	if index != -1 {
+		d.leases[index].Templates = append(d.leases[index].Templates, templateName)
+	}
+}
+
+func (d *DynamicSecretLeaseManager) GetLease(projectSlug, environment, secretPath, slug string) *DynamicSecretLease {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	for _, lease := range d.leases {
 		if lease.SecretPath == secretPath && lease.Environment == environment && lease.ProjectSlug == projectSlug && lease.Slug == slug {
 			return &lease
 		}
 	}
+
 	return nil
 }
 
+// this is like etag for dynamic secret
+func (d *DynamicSecretLeaseManager) GetDynamicSecretTemplateTag(templateName string) string {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	tag := ""
+	for _, el := range d.leases {
+		if slices.Contains(el.Templates, templateName) {
+			tag += el.LeaseID
+		}
+	}
+	return tag
+}
+
+func NewDynamicSecretLeaseManager(sigChan chan os.Signal) *DynamicSecretLeaseManager {
+	manager := &DynamicSecretLeaseManager{}
+
+	go func() {
+		for {
+			select {
+			case <-sigChan:
+				return
+			default:
+				time.Sleep(5 * time.Second)
+				manager.Prune()
+			}
+		}
+	}()
+	return manager
+}
 
 func ReadFile(filePath string) ([]byte, error) {
 	return ioutil.ReadFile(filePath)
@@ -258,27 +347,33 @@ func secretTemplateFunction(accessToken string, existingEtag string, currentEtag
 	}
 }
 
-func dynamicSecretTemplateFunction(accessToken string) func(string, string, string, string) (map[string]interface{}, error) {
+func dynamicSecretTemplateFunction(accessToken string, dynamicSecretManager *DynamicSecretLeaseManager, templateName string) func(string, string, string, string) (map[string]interface{}, error) {
 	return func(projectSlug, envSlug, secretPath, slug string) (map[string]interface{}, error) {
+		dynamicSecretData := dynamicSecretManager.GetLease(projectSlug, envSlug, secretPath, slug)
+		if dynamicSecretData != nil {
+			dynamicSecretManager.RegisterTemplate(projectSlug, envSlug, secretPath, slug, templateName)
+			return dynamicSecretData.Data, nil
+		}
+
 		res, err := util.CreateDynamicSecretLease(accessToken, projectSlug, envSlug, secretPath, slug)
 		if err != nil {
 			return nil, err
 		}
 
+		dynamicSecretManager.Append(DynamicSecretLease{LeaseID: res.Lease.Id, ExpireAt: res.Lease.ExpireAt, Environment: envSlug, SecretPath: secretPath, Slug: slug, ProjectSlug: projectSlug, Data: res.Data, Templates: []string{templateName}})
 		return res.Data, nil
 	}
 }
 
-func ProcessTemplate(templatePath string, data interface{}, accessToken string, existingEtag string, currentEtag *string) (*bytes.Buffer, error) {
+func ProcessTemplate(templatePath string, data interface{}, accessToken string, existingEtag string, currentEtag *string, dynamicSecretManager *DynamicSecretLeaseManager) (*bytes.Buffer, error) {
+	templateName := path.Base(templatePath)
 	// custom template function to fetch secrets from Infisical
 	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag)
-	dynamicSecretFunction := dynamicSecretTemplateFunction(accessToken)
+	dynamicSecretFunction := dynamicSecretTemplateFunction(accessToken, dynamicSecretManager, templateName)
 	funcs := template.FuncMap{
 		"secret":         secretFunction,
 		"dynamic_secret": dynamicSecretFunction,
 	}
-
-	templateName := path.Base(templatePath)
 
 	tmpl, err := template.New(templateName).Funcs(funcs).ParseFiles(templatePath)
 	if err != nil {
@@ -293,7 +388,7 @@ func ProcessTemplate(templatePath string, data interface{}, accessToken string, 
 	return &buf, nil
 }
 
-func ProcessBase64Template(encodedTemplate string, data interface{}, accessToken string, existingEtag string, currentEtag *string) (*bytes.Buffer, error) {
+func ProcessBase64Template(encodedTemplate string, data interface{}, accessToken string, existingEtag string, currentEtag *string, dynamicSecretLeaser *DynamicSecretLeaseManager) (*bytes.Buffer, error) {
 	// custom template function to fetch secrets from Infisical
 	decoded, err := base64.StdEncoding.DecodeString(encodedTemplate)
 	if err != nil {
@@ -303,7 +398,7 @@ func ProcessBase64Template(encodedTemplate string, data interface{}, accessToken
 	templateString := string(decoded)
 
 	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag) // TODO: Fix this
-	dynamicSecretFunction := dynamicSecretTemplateFunction(accessToken)
+	dynamicSecretFunction := dynamicSecretTemplateFunction(accessToken, dynamicSecretLeaser, encodedTemplate)
 	funcs := template.FuncMap{
 		"secret":         secretFunction,
 		"dynamic_secret": dynamicSecretFunction,
@@ -333,7 +428,7 @@ type AgentManager struct {
 	mutex                          sync.Mutex
 	filePaths                      []Sink // Store file paths if needed
 	templates                      []Template
-	dynamicSecretLeases            []DynamicSecretLeaseManger
+	dynamicSecretLeases            *DynamicSecretLeaseManager
 	clientIdPath                   string
 	clientSecretPath               string
 	newAccessTokenNotificationChan chan bool
@@ -557,53 +652,73 @@ func (tm *AgentManager) MonitorSecretChanges(secretTemplate Template, sigChan ch
 
 	var existingEtag string
 	var currentEtag string
+	var dynamicSecretTag string
+	var currentDynamicSecretTag string
+	var templateName string
 	var firstRun = true
+	var pollingLapsed = pollingInterval
 
 	execTimeout := secretTemplate.Config.Execute.Timeout
 	execCommand := secretTemplate.Config.Execute.Command
 
 	for {
-		token := tm.GetToken()
+		select {
+		case <-sigChan:
+			return
+		default:
+			{
+				pollingLapsed = pollingLapsed - 5*time.Second
+				if !firstRun {
+					currentDynamicSecretTag = tm.dynamicSecretLeases.GetDynamicSecretTemplateTag(templateName)
+				}
+				shouldTrigger := currentDynamicSecretTag != dynamicSecretTag || pollingLapsed < 0
+				if shouldTrigger {
+					token := tm.GetToken()
+					if token != "" {
+						var processedTemplate *bytes.Buffer
+						var err error
 
-		if token != "" {
-
-			var processedTemplate *bytes.Buffer
-			var err error
-
-			if secretTemplate.SourcePath != "" {
-				processedTemplate, err = ProcessTemplate(secretTemplate.SourcePath, nil, token, existingEtag, &currentEtag)
-			} else {
-				processedTemplate, err = ProcessBase64Template(secretTemplate.Base64TemplateContent, nil, token, existingEtag, &currentEtag)
-			}
-
-			if err != nil {
-				log.Error().Msgf("unable to process template because %v", err)
-			} else {
-				if (existingEtag != currentEtag) || firstRun {
-
-					tm.WriteTemplateToFile(processedTemplate, &secretTemplate)
-					existingEtag = currentEtag
-
-					if !firstRun && execCommand != "" {
-						log.Info().Msgf("executing command: %s", execCommand)
-						err := ExecuteCommandWithTimeout(execCommand, execTimeout)
-
-						if err != nil {
-							log.Error().Msgf("unable to execute command because %v", err)
+						if secretTemplate.SourcePath != "" {
+							processedTemplate, err = ProcessTemplate(secretTemplate.SourcePath, nil, token, existingEtag, &currentEtag, tm.dynamicSecretLeases)
+							templateName = path.Base(secretTemplate.SourcePath)
+						} else {
+							processedTemplate, err = ProcessBase64Template(secretTemplate.Base64TemplateContent, nil, token, existingEtag, &currentEtag, tm.dynamicSecretLeases)
+							templateName = path.Base(secretTemplate.Base64TemplateContent)
 						}
 
+						if err != nil {
+							log.Error().Msgf("unable to process template because %v", err)
+						} else {
+							if (existingEtag != currentEtag) || firstRun {
+
+								tm.WriteTemplateToFile(processedTemplate, &secretTemplate)
+								existingEtag = currentEtag
+
+								if !firstRun && execCommand != "" {
+									log.Info().Msgf("executing command: %s", execCommand)
+									err := ExecuteCommandWithTimeout(execCommand, execTimeout)
+
+									if err != nil {
+										log.Error().Msgf("unable to execute command because %v", err)
+									}
+
+								}
+								if firstRun {
+									firstRun = false
+								}
+							}
+						}
+						dynamicSecretTag = tm.dynamicSecretLeases.GetDynamicSecretTemplateTag(templateName)
+						// restart the polling because latest changes have been picked
+						pollingLapsed = pollingInterval
 					}
-					if firstRun {
-						firstRun = false
-					}
+					time.Sleep(5 * time.Second)
+				} else {
+					// It fails to get the access token. So we will re-try in 3 seconds. We do this because if we don't, the user will have to wait for the next polling interval to get the first secret render.
+					time.Sleep(3 * time.Second)
 				}
 			}
-			time.Sleep(pollingInterval)
-		} else {
-			// It fails to get the access token. So we will re-try in 3 seconds. We do this because if we don't, the user will have to wait for the next polling interval to get the first secret render.
-			time.Sleep(3 * time.Second)
 		}
-
 	}
 }
 
@@ -686,6 +801,7 @@ var agentCmd = &cobra.Command{
 
 		filePaths := agentConfig.Sinks
 		tm := NewAgentManager(filePaths, agentConfig.Templates, configUniversalAuthType.ClientIDPath, configUniversalAuthType.ClientSecretPath, tokenRefreshNotifier, configUniversalAuthType.RemoveClientSecretOnRead, agentConfig.Infisical.ExitAfterAuth)
+		tm.dynamicSecretLeases = NewDynamicSecretLeaseManager(sigChan)
 
 		go tm.ManageTokenLifecycle()
 

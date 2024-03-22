@@ -512,7 +512,7 @@ type CreateDynamicSecretLeaseV1Request struct {
 type CreateDynamicSecretLeaseV1Response struct {
 	Lease struct {
 		Id       string `json:"id"`
-		ExpireAt string `json:"expireAt"`
+		ExpireAt time.Time `json:"expireAt"`
 	} `json:"lease"`
 	DynamicSecret struct {
 		Id         string `json:"id"`
