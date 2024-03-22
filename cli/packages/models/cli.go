@@ -40,6 +40,23 @@ type PlaintextSecretResult struct {
 	Etag    string
 }
 
+type DynamicSecret struct {
+	Id         string `json:"id"`
+	DefaultTTL string `json:"defaultTTL"`
+	MaxTTL     string `json:"maxTTL"`
+	Type       string `json:"type"`
+}
+
+type DynamicSecretLease struct {
+	Lease struct {
+		Id       string `json:"id"`
+		ExpireAt string `json:"expireAt"`
+	} `json:"lease"`
+	DynamicSecret DynamicSecret `json:"dynamicSecret"`
+	// this is a varying dict based on provider
+	Data map[string]interface{} `json:"data"`
+}
+
 type SingleFolder struct {
 	ID   string `json:"_id"`
 	Name string `json:"name"`

@@ -31,6 +31,10 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
       { dynamicSecretCfgId },
       {
         jobId: dynamicSecretCfgId,
+        backoff: {
+          type: "exponential",
+          delay: 3000
+        },
         removeOnFail: {
           count: 3
         },
@@ -46,6 +50,10 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
       { leaseId },
       {
         jobId: leaseId,
+        backoff: {
+          type: "exponential",
+          delay: 3000
+        },
         delay: expiry,
         removeOnFail: {
           count: 3
@@ -64,12 +72,11 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
       if (job.name === QueueJobs.DynamicSecretRevocation) {
         const { leaseId } = job.data as { leaseId: string };
         logger.info("Dynamic secret lease revocation started: ", leaseId, job.id);
+
         const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
         if (!dynamicSecretLease) throw new DisableRotationErrors({ message: "Dynamic secret lease not found" });
 
-        const dynamicSecretCfg = await dynamicSecretDAL.findById(dynamicSecretLease.dynamicSecretId);
-        if (!dynamicSecretCfg) throw new DisableRotationErrors({ message: "Dynamic secret not found" });
-
+        const dynamicSecretCfg = dynamicSecretLease.dynamicSecret;
         const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
         const decryptedStoredInput = JSON.parse(
           infisicalSymmetricDecrypt({

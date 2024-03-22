@@ -13,7 +13,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
   const findById = async (id: string, tx?: Knex) => {
     try {
       const doc = await (tx || db)(TableName.DynamicSecretLease)
-        .where({ id })
+        .where({ [`${TableName.DynamicSecretLease}.id` as "id"]: id })
         .first()
         .join(
           TableName.DynamicSecret,

@@ -14,7 +14,7 @@ const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 const generatePassword = (size?: number) => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*'$#";
-  return customAlphabet(charset, 20)(size);
+  return customAlphabet(charset, 32)(size);
 };
 
 export const SqlDatabaseProvider = (): TDynamicProviderFns => {
@@ -50,7 +50,7 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const db = await getClient(providerInputs);
 
-    const username = alphaNumericNanoId(16);
+    const username = alphaNumericNanoId(21);
     const password = generatePassword();
     const expiration = new Date(expireAt).toISOString();
 

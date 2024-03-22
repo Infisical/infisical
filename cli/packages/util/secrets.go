@@ -195,6 +195,29 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 	}, nil
 }
 
+func CreateDynamicSecretLease(accessToken string, projectSlug string, environmentName string, secretsPath string, slug string) (models.DynamicSecretLease, error) {
+	httpClient := resty.New()
+	httpClient.SetAuthToken(accessToken).
+		SetHeader("Accept", "application/json")
+
+	dynamicSecretRequest := api.CreateDynamicSecretLeaseV1Request{
+		ProjectSlug: projectSlug,
+		Environment: environmentName,
+		Slug:        slug,
+	}
+
+	dynamicSecret, err := api.CallCreateDynamicSecretLeaseV1(httpClient, dynamicSecretRequest)
+	if err != nil {
+		return models.DynamicSecretLease{}, err
+	}
+
+	return models.DynamicSecretLease{
+		Lease:         dynamicSecret.Lease,
+		Data:          dynamicSecret.Data,
+		DynamicSecret: dynamicSecret.DynamicSecret,
+	}, nil
+}
+
 func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleEnvironmentVariable, importedSecrets []api.ImportedSecretV3) ([]models.SingleEnvironmentVariable, error) {
 	if importedSecrets == nil {
 		return secrets, nil

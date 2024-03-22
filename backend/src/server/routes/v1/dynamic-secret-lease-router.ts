@@ -34,20 +34,21 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       response: {
         200: z.object({
           lease: DynamicSecretLeasesSchema,
+          dynamicSecret: SanitizedDynamicSecretSchema,
           data: z.unknown()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { data, lease } = await server.services.dynamicSecretLease.create({
+      const { data, lease, dynamicSecret } = await server.services.dynamicSecretLease.create({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
       });
-      return { lease, data };
+      return { lease, data, dynamicSecret };
     }
   });
 
