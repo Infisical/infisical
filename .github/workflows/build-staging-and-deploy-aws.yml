@@ -116,3 +116,4 @@ jobs:
           task-definition: ${{ steps.render-web-container.outputs.task-definition }}
           service: infisical-prod-platform
           cluster: infisical-prod-platform
+          wait-for-service-stability: true
