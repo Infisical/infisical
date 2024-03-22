@@ -13,12 +13,12 @@ export const E2EESection = () => {
 
   return bot && currentWorkspace.version === ProjectVersion.V1 ? (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-3 flex w-full items-center justify-between">
+      <div className="flex w-full items-center justify-between">
         <p className="text-xl font-semibold">End-to-End Encryption</p>
         <UpgradeProjectAlert transparent project={currentWorkspace} />
       </div>
 
-      <p className=" max-w-2xl text-sm text-gray-400">
+      <p className="mt-5 max-w-2xl text-sm text-gray-400">
         We are updating our encryption logic to make sure that Infisical can be the most versatile
         secret management platform. <br />
         <br />
