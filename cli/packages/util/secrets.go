@@ -195,7 +195,7 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 	}, nil
 }
 
-func CreateDynamicSecretLease(accessToken string, projectSlug string, environmentName string, secretsPath string, slug string) (models.DynamicSecretLease, error) {
+func CreateDynamicSecretLease(accessToken string, projectSlug string, environmentName string, secretsPath string, slug string, ttl string) (models.DynamicSecretLease, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
@@ -203,7 +203,9 @@ func CreateDynamicSecretLease(accessToken string, projectSlug string, environmen
 	dynamicSecretRequest := api.CreateDynamicSecretLeaseV1Request{
 		ProjectSlug: projectSlug,
 		Environment: environmentName,
+		SecretPath:  secretsPath,
 		Slug:        slug,
+		TTL:         ttl,
 	}
 
 	dynamicSecret, err := api.CallCreateDynamicSecretLeaseV1(httpClient, dynamicSecretRequest)
