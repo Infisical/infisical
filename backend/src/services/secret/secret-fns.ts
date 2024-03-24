@@ -8,6 +8,7 @@ import {
   SecretType,
   TableName,
   TSecretBlindIndexes,
+  TSecretFolders,
   TSecrets
 } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -20,7 +21,6 @@ import {
 } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
-import { logger } from "@app/lib/logger";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
@@ -53,8 +53,8 @@ export const generateSecretBlindIndexBySalt = async (secretName: string, secretB
 
 type TRecursivelyFetchSecretsFromFoldersArg = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "find">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
 };
 
 type TGetPathsDTO = {
@@ -70,65 +70,73 @@ type TGetPathsDTO = {
   };
 };
 
+// Introduce a new interface for mapping parent IDs to their children
+interface FolderMap {
+  [parentId: string]: TSecretFolders[];
+}
+
 export const recursivelyGetSecretPaths = ({
   folderDAL,
   projectEnvDAL,
   permissionService
 }: TRecursivelyFetchSecretsFromFoldersArg) => {
-  const getPaths = async ({ projectId, environment, currentPath }: Omit<TGetPathsDTO, "auth">) => {
-    let secretPaths: string[] = [];
+  const buildHierarchy = (folders: TSecretFolders[]): FolderMap => {
+    const map: FolderMap = {};
+    map.null = []; // Initialize mapping for root directory
 
-    // Get secrets in the current folder.
-    try {
-      const folder = await folderDAL.findBySecretPath(projectId, environment, currentPath);
-
-      if (!folder) {
-        throw new Error(`Base directory '${currentPath}' not found.`);
+    folders.forEach((folder) => {
+      const parentId = folder.parentId || "null";
+      if (!map[parentId]) {
+        map[parentId] = [];
       }
+      map[parentId].push(folder);
+    });
 
-      secretPaths.push(currentPath);
-    } catch (error) {
-      logger.error(error, "Error fetching secrets from base directory");
-      throw error;
-    }
+    return map;
+  };
 
-    // List all subfolders in the current folder.
-    try {
-      const env = await projectEnvDAL.findOne({ projectId, slug: environment });
-      const parentFolder = await folderDAL.findBySecretPath(projectId, environment, currentPath);
+  const generatePaths = (map: FolderMap, parentId: string = "null", basePath: string = ""): string[] => {
+    const children = map[parentId || "null"] || [];
+    let paths: string[] = [];
 
-      if (!env) {
-        throw new Error(`Environment with not found`);
-      }
+    children.forEach((child) => {
+      // Determine if this is the root folder of the environment. If no parentId is present and the name is root, it's the root folder
+      const isRootFolder = child.name === "root" && !child.parentId;
 
-      if (!parentFolder) {
-        throw new Error(`Parent folder not found`);
-      }
+      // Form the current path based on the base path and the current child
+      // eslint-disable-next-line no-nested-ternary
+      const currPath = basePath === "" ? (isRootFolder ? "/" : `/${child.name}`) : `${basePath}/${child.name}`;
 
-      const folders = await folderDAL.find({ envId: env.id, parentId: parentFolder.id });
+      paths.push(currPath); // Add the current path
 
-      // Use Promise.all to handle recursive calls concurrently for efficiency.
-      const secretsFromSubFolders = await Promise.all(
-        folders.map(async (folder) => {
-          // Ensure the path is correctly formatted for the next level.
-          const subFolderPath = `${currentPath}${currentPath !== "/" ? "/" : ""}${folder.name}`;
+      // Recursively generate paths for children, passing down the formatted pathh
+      const childPaths = generatePaths(map, child.id, currPath);
+      paths = paths.concat(childPaths);
+    });
 
-          return getPaths({ projectId, environment, currentPath: subFolderPath });
-        })
-      );
-
-      // Flatten the array of arrays and concatenate with the current secrets array.
-      secretPaths = secretPaths.concat(...secretsFromSubFolders);
-    } catch (error) {
-      logger.error(error, "Error fetching secrets from subdirectories");
-      throw error;
-    }
-
-    return secretPaths;
+    return paths;
   };
 
   return async ({ projectId, environment, currentPath, auth }: TGetPathsDTO) => {
-    const paths = await getPaths({ projectId, environment, currentPath });
+    const env = await projectEnvDAL.findOne({
+      projectId,
+      slug: environment
+    });
+
+    if (!env) {
+      throw new Error(`'${environment}' environment not found in project with ID ${projectId}`);
+    }
+
+    // Fetch all folders in env once with a single query
+    const folders = await folderDAL.find({
+      envId: env.id
+    });
+
+    // Build the folder hierarchy map
+    const folderMap = buildHierarchy(folders);
+
+    // Generate the paths paths and normalize the root path toe /
+    const paths = generatePaths(folderMap).map((p) => (p === "/" ? p : p.substring(1)));
 
     const { permission } = await permissionService.getProjectPermission(
       auth.actor,
@@ -138,17 +146,16 @@ export const recursivelyGetSecretPaths = ({
       auth.actorOrgId
     );
 
-    const allowedPaths = paths.filter((p) =>
-      // if its service token allow full access over imported one
-      auth.actor === ActorType.SERVICE
-        ? true
-        : permission.can(
-            ProjectPermissionActions.Read,
-            subject(ProjectPermissionSub.Secrets, {
-              environment,
-              secretPath: p
-            })
-          )
+    // Filter out paths that the user does not have permission to access, and paths that are not in the current path
+    const allowedPaths = paths.filter(
+      (p) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath: p
+          })
+        ) && p.startsWith(currentPath === "/" ? "" : currentPath)
     );
 
     return allowedPaths;
