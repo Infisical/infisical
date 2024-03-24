@@ -52,7 +52,7 @@ jobs:
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
             INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
     
-  gamma-postgres-migration:
+  gamma-deployment:
     name: Run latest migration in gamma
     runs-on: ubuntu-latest
     needs: [infisical-image]
@@ -72,22 +72,13 @@ jobs:
           cd backend
           npm install
           npm run migration:latest
-  gamma-deployment:
-    name: Deploy to gamma stage
-    runs-on: ubuntu-latest
-    needs: [gamma-postgres-migration]
-    environment:
-      name: Gamma
-      url: https://gamma.infisical.com
-    steps:
-      - name: ☁️ Checkout source
-        uses: actions/checkout@v3
-      - name: Configure AWS Credentials 
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          audience: sts.amazonaws.com
-          aws-region: us-east-1
-          role-to-assume: arn:aws:iam::135906656851:role/github-action-deploy-prod
+
+          - name: Configure AWS Credentials 
+          uses: aws-actions/configure-aws-credentials@v4
+          with:
+            audience: sts.amazonaws.com
+            aws-region: us-east-1
+            role-to-assume: arn:aws:iam::135906656851:role/github-action-deploy-prod
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
@@ -130,22 +121,12 @@ jobs:
           cd backend
           npm install
           npm run migration:latest
-  prod-deployment:
-    name: Deploy to production stage
-    runs-on: ubuntu-latest
-    needs: [production-postgres-migration]
-    environment:
-      name: Production
-      url: https://app.infisical.com
-    steps:
-      - name: ☁️ Checkout source
-        uses: actions/checkout@v3
-      - name: Configure AWS Credentials 
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          audience: sts.amazonaws.com
-          aws-region: us-east-1
-          role-to-assume: arn:aws:iam::135906656851:role/github-action-deploy-prod
+          - name: Configure AWS Credentials 
+          uses: aws-actions/configure-aws-credentials@v4
+          with:
+            audience: sts.amazonaws.com
+            aws-region: us-east-1
+            role-to-assume: arn:aws:iam::135906656851:role/github-action-deploy-prod
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
