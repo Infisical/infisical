@@ -112,8 +112,8 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
             })
           ) as object;
 
-          await Promise.allSettled(dynamicSecretLeases.map(({ id }) => unsetLeaseRevocation(id)));
-          await Promise.allSettled(
+          await Promise.all(dynamicSecretLeases.map(({ id }) => unsetLeaseRevocation(id)));
+          await Promise.all(
             dynamicSecretLeases.map(({ externalEntityId }) =>
               selectedProvider.revoke(decryptedStoredInput, externalEntityId)
             )

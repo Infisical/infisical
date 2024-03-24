@@ -37,6 +37,7 @@ export type TDeleteDynamicSecretDTO = {
   path: string;
   environment: string;
   projectSlug: string;
+  isForced?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDetailsDynamicSecretDTO = {

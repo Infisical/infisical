@@ -31,6 +31,7 @@ export type TDeleteDynamicSecretLeaseDTO = {
   path: string;
   environment: string;
   projectSlug: string;
+  isForced?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TRenewDynamicSecretLeaseDTO = {

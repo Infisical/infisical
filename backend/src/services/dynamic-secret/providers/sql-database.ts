@@ -46,6 +46,17 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     return db;
   };
 
+  const validateConnection = async (inputs: unknown) => {
+    const providerInputs = await validateProviderInputs(inputs);
+    const db = await getClient(providerInputs);
+    const isConnected = await db
+      .raw("SELECT NOW()")
+      .then(() => true)
+      .catch(() => false);
+    await db.destroy();
+    return isConnected;
+  };
+
   const create = async (inputs: unknown, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
     const db = await getClient(providerInputs);
@@ -94,6 +105,7 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
 
   return {
     validateProviderInputs,
+    validateConnection,
     create,
     revoke,
     renew

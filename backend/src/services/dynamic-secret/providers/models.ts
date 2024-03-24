@@ -27,6 +27,7 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
 
 export type TDynamicProviderFns = {
   create: (inputs: unknown, expireAt: number) => Promise<{ entityId: string; data: unknown }>;
+  validateConnection: (inputs: unknown) => Promise<boolean>;
   validateProviderInputs: (inputs: object) => Promise<unknown>;
   revoke: (inputs: unknown, entityId: string) => Promise<{ entityId: string }>;
   renew: (inputs: unknown, entityId: string, expireAt: number) => Promise<{ entityId: string }>;

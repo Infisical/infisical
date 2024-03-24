@@ -4,6 +4,7 @@ import ms from "ms";
 import { SecretKeyEncoding } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -14,6 +15,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "./dynamic-secret-lease-queue";
 import {
+  DynamicSecretLeaseStatus,
   TCreateDynamicSecretLeaseDTO,
   TDeleteDynamicSecretLeaseDTO,
   TDetailsDynamicSecretLeaseDTO,
@@ -53,6 +55,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     actorAuthMethod,
     ttl
   }: TCreateDynamicSecretLeaseDTO) => {
+    const appCfg = getConfig();
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new BadRequestError({ message: "Project not found" });
 
@@ -74,6 +77,10 @@ export const dynamicSecretLeaseServiceFactory = ({
 
     const dynamicSecretCfg = await dynamicSecretDAL.findOne({ slug, folderId: folder.id });
     if (!dynamicSecretCfg) throw new BadRequestError({ message: "Dynamic secret not found" });
+
+    const totalLeasesTaken = await dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id);
+    if (totalLeasesTaken >= appCfg.MAX_LEASE_LIMIT)
+      throw new BadRequestError({ message: `Max lease limit reached. Limit: ${appCfg.MAX_LEASE_LIMIT}` });
 
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
     const decryptedStoredInput = JSON.parse(
@@ -179,7 +186,8 @@ export const dynamicSecretLeaseServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
-    actorAuthMethod
+    actorAuthMethod,
+    isForced
   }: TDeleteDynamicSecretLeaseDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new BadRequestError({ message: "Project not found" });
@@ -214,7 +222,21 @@ export const dynamicSecretLeaseServiceFactory = ({
       })
     ) as object;
 
-    await selectedProvider.revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId);
+    const revokeResponse = await selectedProvider
+      .revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId)
+      .catch(async (err) => {
+        // only propogate this error if forced is false
+        if (!isForced) return { error: err as Error };
+      });
+
+    if ((revokeResponse as { error?: Error })?.error) {
+      const { error } = revokeResponse as { error?: Error };
+      const deletedDynamicSecretLease = await dynamicSecretLeaseDAL.updateById(dynamicSecretLease.id, {
+        status: DynamicSecretLeaseStatus.FailedDeletion,
+        statusDetails: error?.message?.slice(0, 255)
+      });
+      return deletedDynamicSecretLease;
+    }
 
     await dynamicSecretQueueService.unsetLeaseRevocation(dynamicSecretLease.id);
     const deletedDynamicSecretLease = await dynamicSecretLeaseDAL.deleteById(dynamicSecretLease.id);

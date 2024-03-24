@@ -25,7 +25,10 @@ type TDynamicSecretServiceFactoryDep = {
   dynamicSecretDAL: TDynamicSecretDALFactory;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "find">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
-  dynamicSecretQueueService: Pick<TDynamicSecretLeaseQueueServiceFactory, "pruneDynamicSecret">;
+  dynamicSecretQueueService: Pick<
+    TDynamicSecretLeaseQueueServiceFactory,
+    "pruneDynamicSecret" | "unsetLeaseRevocation"
+  >;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -80,6 +83,10 @@ export const dynamicSecretServiceFactory = ({
 
     const selectedProvider = dynamicSecretProviders[provider.type];
     const inputs = await selectedProvider.validateProviderInputs(provider.inputs);
+
+    const isConnected = await selectedProvider.validateConnection(provider.inputs);
+    if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
+
     const encryptedInput = infisicalSymmetricEncypt(JSON.stringify(inputs));
     const dynamicSecretCfg = await dynamicSecretDAL.create({
       type: provider.type,
@@ -151,6 +158,10 @@ export const dynamicSecretServiceFactory = ({
     ) as object;
     const newInput = { ...decryptedStoredInput, ...(inputs || {}) };
     const updatedInput = await selectedProvider.validateProviderInputs(newInput);
+
+    const isConnected = await selectedProvider.validateConnection(newInput);
+    if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
+
     const encryptedInput = infisicalSymmetricEncypt(JSON.stringify(updatedInput));
     const updatedDynamicCfg = await dynamicSecretDAL.updateById(dynamicSecretCfg.id, {
       inputIV: encryptedInput.iv,
@@ -176,7 +187,8 @@ export const dynamicSecretServiceFactory = ({
     projectSlug,
     slug,
     path,
-    environment
+    environment,
+    isForced
   }: TDeleteDynamicSecretDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new BadRequestError({ message: "Project not found" });
@@ -202,6 +214,16 @@ export const dynamicSecretServiceFactory = ({
     if (!dynamicSecretCfg) throw new BadRequestError({ message: "Dynamic secret not found" });
 
     const leases = await dynamicSecretLeaseDAL.find({ dynamicSecretId: dynamicSecretCfg.id });
+    // when not forced we check with the external system to first remove the things
+    // we introduce a forced concept because consider the external lease got deleted by some other external like a human or another system
+    // this allows user to clean up it from infisical
+    if (isForced) {
+      // clear all queues for lease revocations
+      await Promise.all(leases.map(({ id: leaseId }) => dynamicSecretQueueService.unsetLeaseRevocation(leaseId)));
+
+      const deletedDynamicSecretCfg = await dynamicSecretDAL.deleteById(dynamicSecretCfg.id);
+      return deletedDynamicSecretCfg;
+    }
     // if leases exist we should flag it as deleting and then remove leases in background
     // then delete the main one
     if (leases.length) {

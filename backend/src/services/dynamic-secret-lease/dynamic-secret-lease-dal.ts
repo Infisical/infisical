@@ -10,6 +10,15 @@ export type TDynamicSecretLeaseDALFactory = ReturnType<typeof dynamicSecretLease
 export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.DynamicSecretLease);
 
+  const countLeasesForDynamicSecret = async (dynamicSecretId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db)(TableName.DynamicSecretLease).count("*").where({ dynamicSecretId }).first();
+      return parseInt(doc || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DynamicSecretCountLeases" });
+    }
+  };
+
   const findById = async (id: string, tx?: Knex) => {
     try {
       const doc = await (tx || db)(TableName.DynamicSecretLease)
@@ -67,5 +76,5 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findById };
+  return { ...orm, findById, countLeasesForDynamicSecret };
 };

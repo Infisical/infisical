@@ -132,7 +132,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       body: z.object({
         projectSlug: z.string().min(1),
         path: z.string().trim().default("/").transform(removeTrailingSlash),
-        environment: z.string().min(1)
+        environment: z.string().min(1),
+        isForced: z.boolean().default(false)
       }),
       response: {
         200: z.object({
