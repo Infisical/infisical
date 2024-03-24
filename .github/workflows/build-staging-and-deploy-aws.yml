@@ -53,7 +53,7 @@ jobs:
             INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
     
   gamma-deployment:
-    name: Run latest migration in gamma
+    name: Deploy to gamma
     runs-on: ubuntu-latest
     needs: [infisical-image]
     environment:
@@ -102,7 +102,7 @@ jobs:
           wait-for-service-stability: true
 
   production-postgres-migration:
-    name: Run latest migration in production
+    name: Deploy to production
     runs-on: ubuntu-latest
     needs: [gamma-deployment]
     environment:
