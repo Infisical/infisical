@@ -118,13 +118,13 @@ export const CreateDynamicSecretLease = ({
       });
       createNotification({
         type: "success",
-        text: "Successfully deleted folder"
+        text: "Successfully created dynamic secret"
       });
     } catch (error) {
       console.log(error);
       createNotification({
         type: "error",
-        text: "Failed to delete folder"
+        text: "Failed to deleted dynamic secret"
       });
     }
   };

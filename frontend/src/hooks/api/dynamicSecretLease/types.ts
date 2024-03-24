@@ -44,4 +44,5 @@ export type TRevokeDynamicSecretLeaseDTO = {
   projectSlug: string;
   path: string;
   environment: string;
+  isForced?: boolean;
 };

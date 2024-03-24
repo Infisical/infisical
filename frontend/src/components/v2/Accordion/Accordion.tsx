@@ -27,7 +27,7 @@ export const AccordionTrigger = forwardRef<
   <AccordionPrimitive.Header className="flex">
     <AccordionPrimitive.Trigger
       className={twMerge(
-        "group flex h-11 flex-1 items-center justify-between py-2 px-4 outline-none hover:text-primary data-[state=open]:text-primary ",
+        "group flex h-11 flex-1 items-center justify-between py-2 px-4 outline-none hover:text-primary data-[state=open]:text-primary",
         className
       )}
       {...props}

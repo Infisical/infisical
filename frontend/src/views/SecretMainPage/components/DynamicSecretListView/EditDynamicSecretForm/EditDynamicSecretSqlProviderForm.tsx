@@ -6,6 +6,10 @@ import { z } from "zod";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { TtlFormLabel } from "@app/components/features";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Button,
   FormControl,
   Input,
@@ -280,70 +284,77 @@ export const EditDynamicSecretSqlProviderForm = ({
                   </FormControl>
                 )}
               />
-              <Controller
-                control={control}
-                name="inputs.creationStatement"
-                defaultValue={
-                  "CREATE USER \"{{username}}\" WITH SUPERUSER ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';\nGRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"{{username}}\";"
-                }
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Creation Statement"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    helperText="username, password and expiration are dynamically provisioned"
-                  >
-                    <TextArea
-                      {...field}
-                      reSize="none"
-                      rows={3}
-                      className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+              <Accordion type="multiple" className="w-full bg-mineshaft-700">
+                <AccordionItem value="modify-sql-statement">
+                  <AccordionTrigger>Modify SQL Statements</AccordionTrigger>
+                  <AccordionContent>
+                    <Controller
+                      control={control}
+                      name="inputs.creationStatement"
+                      defaultValue={
+                        "CREATE USER \"{{username}}\" WITH SUPERUSER ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';\nGRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"{{username}}\";"
+                      }
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Creation Statement"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                          helperText="username, password and expiration are dynamically provisioned"
+                        >
+                          <TextArea
+                            {...field}
+                            reSize="none"
+                            rows={3}
+                            className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                          />
+                        </FormControl>
+                      )}
                     />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="inputs.revocationStatement"
-                defaultValue={
-                  'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{{username}}";\nDROP OWNED BY "{{username}}"; DROP ROLE "{{username}}";'
-                }
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Revocation Statement"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    helperText="username is dynamically provisioned"
-                  >
-                    <TextArea
-                      {...field}
-                      reSize="none"
-                      rows={3}
-                      className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                    <Controller
+                      control={control}
+                      name="inputs.revocationStatement"
+                      defaultValue={
+                        'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{{username}}";\nDROP OWNED BY "{{username}}"; DROP ROLE "{{username}}";'
+                      }
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Revocation Statement"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                          helperText="username is dynamically provisioned"
+                        >
+                          <TextArea
+                            {...field}
+                            reSize="none"
+                            rows={3}
+                            className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                          />
+                        </FormControl>
+                      )}
                     />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="inputs.renewStatement"
-                defaultValue={"ALTER ROLE \"{{username}}\" VALID UNTIL '{{expiration}}';"}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Renew Statement"
-                    helperText="username and expiration are dynamically provisioned"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <TextArea
-                      {...field}
-                      reSize="none"
-                      rows={3}
-                      className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                    <Controller
+                      control={control}
+                      name="inputs.renewStatement"
+                      defaultValue={"ALTER ROLE \"{{username}}\" VALID UNTIL '{{expiration}}';"}
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Renew Statement"
+                          helperText="username and expiration are dynamically provisioned"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                        >
+                          <TextArea
+                            {...field}
+                            reSize="none"
+                            rows={3}
+                            className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                          />
+                        </FormControl>
+                      )}
                     />
-                  </FormControl>
-                )}
-              />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           </div>
         </div>

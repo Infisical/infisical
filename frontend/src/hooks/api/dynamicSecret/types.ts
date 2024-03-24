@@ -73,6 +73,7 @@ export type TDeleteDynamicSecretDTO = {
   path: string;
   environment: string;
   slug: string;
+  isForced?: boolean;
 };
 
 export type TDetailsDynamicSecretDTO = {

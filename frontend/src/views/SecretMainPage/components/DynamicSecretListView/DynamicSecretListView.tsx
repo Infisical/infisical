@@ -2,8 +2,8 @@ import { subject } from "@casl/ability";
 import {
   faClose,
   faFingerprint,
-  faInfoCircle,
-  faPencilSquare
+  faPencilSquare,
+  faWarning
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -64,23 +64,26 @@ export const DynamicSecretListView = ({
 
   const handleDynamicSecretDelete = async () => {
     try {
-      const { slug } = popUp.deleteDynamicSecret.data as TDynamicSecret;
+      const { slug, isForced } = popUp.deleteDynamicSecret.data as TDynamicSecret & {
+        isForced?: boolean;
+      };
       await deleteDynamicSecret.mutateAsync({
         environment,
         projectSlug,
         path: secretPath,
-        slug
+        slug,
+        isForced
       });
       handlePopUpClose("deleteDynamicSecret");
       createNotification({
         type: "success",
-        text: "Successfully deleted secret"
+        text: "Successfully deleted dynamic secret"
       });
     } catch (error) {
       console.log(error);
       createNotification({
         type: "error",
-        text: "Failed to delete secret"
+        text: "Failed to delete dynamic secret"
       });
     }
   };
@@ -132,13 +135,17 @@ export const DynamicSecretListView = ({
                   {Boolean(secret.status) && (
                     <Tooltip content={secret?.statusDetails || secret.status || ""}>
                       <FontAwesomeIcon
-                        className="relative bottom-2 text-red-600"
-                        icon={faInfoCircle}
+                        className={
+                          secret.status === DynamicSecretStatus.Deleting
+                            ? "text-yellow-600"
+                            : "text-red-600"
+                        }
+                        icon={faWarning}
                       />
                     </Tooltip>
                   )}
                 </div>
-                <div className="flex items-center px-4 py-2">
+                <div className="flex items-center space-x-2 px-4 py-2">
                   <Button
                     size="xs"
                     className="m-0 py-0.5 px-2 opacity-0 group-hover:opacity-100"
@@ -148,8 +155,27 @@ export const DynamicSecretListView = ({
                       handlePopUpOpen("createDynamicSecretLease", secret);
                     }}
                   >
-                    lease
+                    Generate
                   </Button>
+                  {secret.status === DynamicSecretStatus.FailedDeletion && (
+                    <Tooltip content="This action will remove the secret from internal storage, but it will remain in external systems. Use this option only after you've confirmed that your external leases are handled.">
+                      <Button
+                        size="xs"
+                        className="m-0 py-0.5 px-2"
+                        colorSchema="danger"
+                        isDisabled={isRevocking}
+                        onClick={(evt) => {
+                          evt.stopPropagation();
+                          handlePopUpOpen("deleteDynamicSecret", {
+                            ...secret,
+                            isForced: true
+                          });
+                        }}
+                      >
+                        Force Delete
+                      </Button>
+                    </Tooltip>
+                  )}
                 </div>
                 <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
                   <ProjectPermissionCan
@@ -250,7 +276,11 @@ export const DynamicSecretListView = ({
       <DeleteActionModal
         isOpen={popUp.deleteDynamicSecret.isOpen}
         deleteKey={(popUp.deleteDynamicSecret?.data as TDynamicSecret)?.slug}
-        title="Do you want to delete this dynamc secret?"
+        title={
+          (popUp.deleteDynamicSecret?.data as { isForced?: boolean })?.isForced
+            ? "Do you want to force delete this dynamic secret?"
+            : "Do you want to delete this dynamic secret?"
+        }
         onChange={(isOpen) => handlePopUpToggle("deleteDynamicSecret", isOpen)}
         onDeleteApproved={handleDynamicSecretDelete}
       />

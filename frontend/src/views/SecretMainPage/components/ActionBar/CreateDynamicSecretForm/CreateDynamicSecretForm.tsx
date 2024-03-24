@@ -53,8 +53,8 @@ export const CreateDynamicSecretForm = ({
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: -30 }}
             >
-              <div className="mb-4 text-center">Pick a service to connect</div>
-              <div className="flex items-center justify-center space-x-4">
+              <div className="mb-4 ">Pick a service to connect</div>
+              <div className="flex items-center space-x-4">
                 <div
                   className="flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded border border-mineshaft-500 bg-bunker-700 p-6 transition-all hover:bg-bunker-600"
                   role="button"

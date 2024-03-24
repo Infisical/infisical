@@ -1,5 +1,11 @@
 import { subject } from "@casl/ability";
-import { faClose, faFileContract, faInfoCircle, faRepeat } from "@fortawesome/free-solid-svg-icons";
+import {
+  faClose,
+  faFileContract,
+  faRepeat,
+  faTrash,
+  faWarning
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistance } from "date-fns";
 
@@ -23,6 +29,7 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetDynamicSecretLeases, useRevokeDynamicSecretLease } from "@app/hooks/api";
+import { DynamicSecretLeaseStatus } from "@app/hooks/api/dynamicSecretLease/types";
 
 import { RenewDynamicSecretLease } from "./RenewDynamicSecretLease";
 
@@ -59,13 +66,17 @@ export const DynamicSecretLease = ({
 
   const handleDynamicSecretDeleteLease = async () => {
     try {
-      const { leaseId } = popUp.deleteSecret.data as { leaseId: string };
+      const { leaseId, isForced } = popUp.deleteSecret.data as {
+        leaseId: string;
+        isForced?: boolean;
+      };
       await deleteDynamicSecretLease.mutateAsync({
         environment,
         projectSlug,
         path: secretPath,
         slug,
-        leaseId
+        leaseId,
+        isForced
       });
       handlePopUpClose("deleteSecret");
       createNotification({
@@ -115,10 +126,7 @@ export const DynamicSecretLease = ({
                   {id}
                   {Boolean(status) && (
                     <Tooltip content={statusDetails || status || ""}>
-                      <FontAwesomeIcon
-                        className="relative bottom-2 left-1 text-red-600"
-                        icon={faInfoCircle}
-                      />
+                      <FontAwesomeIcon className="ml-2 text-yellow-600" icon={faWarning} />
                     </Tooltip>
                   )}
                 </Td>
@@ -169,6 +177,29 @@ export const DynamicSecretLease = ({
                         </IconButton>
                       )}
                     </ProjectPermissionCan>
+                    {status === DynamicSecretLeaseStatus.FailedDeletion && (
+                      <ProjectPermissionCan
+                        I={ProjectPermissionActions.Delete}
+                        a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                        renderTooltip
+                        allowedLabel="Force Delete. This action will remove the secret from internal storage, but it will remain in external systems."
+                      >
+                        {(isAllowed) => (
+                          <IconButton
+                            ariaLabel="delete-folder"
+                            variant="plain"
+                            size="md"
+                            className="p-0 text-red-600"
+                            isDisabled={!isAllowed}
+                            onClick={() =>
+                              handlePopUpOpen("deleteSecret", { leaseId: id, isForced: true })
+                            }
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
+                        )}
+                      </ProjectPermissionCan>
+                    )}
                   </div>
                 </Td>
               </Tr>
