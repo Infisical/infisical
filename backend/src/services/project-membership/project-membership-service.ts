@@ -328,7 +328,7 @@ export const projectMembershipServiceFactory = ({
     );
     const hasCustomRole = Boolean(customInputRoles.length);
     if (hasCustomRole) {
-      const plan = await licenseService.getPlan(actorOrgId as string);
+      const plan = await licenseService.getPlan(actorOrgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
