@@ -401,7 +401,6 @@ type DeleteSecretV3Request struct {
 }
 
 type UpdateSecretByNameV3Request struct {
-	SecretName            string `json:"secretName"`
 	WorkspaceID           string `json:"workspaceId"`
 	Environment           string `json:"environment"`
 	Type                  string `json:"type"`

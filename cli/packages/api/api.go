@@ -406,14 +406,14 @@ func CallDeleteSecretsV3(httpClient *resty.Client, request DeleteSecretV3Request
 	return nil
 }
 
-func CallUpdateSecretsV3(httpClient *resty.Client, request UpdateSecretByNameV3Request) error {
+func CallUpdateSecretsV3(httpClient *resty.Client, request UpdateSecretByNameV3Request, secretName string) error {
 	var secretsResponse GetEncryptedSecretsV3Response
 	response, err := httpClient.
 		R().
 		SetResult(&secretsResponse).
 		SetHeader("User-Agent", USER_AGENT).
 		SetBody(request).
-		Patch(fmt.Sprintf("%v/v3/secrets/%s", config.INFISICAL_URL, request.SecretName))
+		Patch(fmt.Sprintf("%v/v3/secrets/%s", config.INFISICAL_URL, secretName))
 
 	if err != nil {
 		return fmt.Errorf("CallUpdateSecretsV3: Unable to complete api request [err=%s]", err)
