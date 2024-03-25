@@ -76,10 +76,10 @@ export const integrationDALFactory = (db: TDbClient) => {
           ...{ [`${TableName.Environment}.projectId`]: projectId }
         })
         .join(TableName.Environment, `${TableName.Integration}.envId`, `${TableName.Environment}.id`)
-        .select((tx || db).ref("name").withSchema(TableName.Environment).as("envName"))
-        .select((tx || db).ref("slug").withSchema(TableName.Environment).as("envSlug"))
-        .select((tx || db).ref("id").withSchema(TableName.Environment).as("envId"))
-        .select((tx || db).ref("projectId").withSchema(TableName.Environment))
+        .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
+        .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
+        .select(db.ref("id").withSchema(TableName.Environment).as("envId"))
+        .select(db.ref("projectId").withSchema(TableName.Environment))
         .select(selectAllTableCols(TableName.Integration));
 
       if (sort) {
