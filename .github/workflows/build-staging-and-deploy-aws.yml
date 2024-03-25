@@ -50,7 +50,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
-            INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+            INFISICAL_PLATFORM_VERSION=${{ steps.commit.outputs.short }}
     
   gamma-deployment:
     name: Deploy to gamma
