@@ -3,6 +3,7 @@ import Link from "next/link";
 import { faArrowRight, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { integrationSlugNameMapping } from "public/data/frequentConstants";
 import * as yup from "yup";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -36,7 +37,6 @@ type Props = {
   environments: Array<{ name: string; slug: string; id: string }>;
   integrations?: TIntegration[];
   cloudIntegrations?: TCloudIntegration[];
-  slugMapIntegration?: Record<string, TCloudIntegration>;
   isCloudIntegrationLoading?: boolean;
   isLoading?: boolean;
   onFilterChange: (data: FilterIntegrationData) => void;
@@ -49,7 +49,6 @@ export const IntegrationsSection = ({
   integrations = [],
   cloudIntegrations = [],
   environments = [],
-  slugMapIntegration = {},
   isLoading,
   onIntegrationDelete,
   onFilterChange,
@@ -243,20 +242,9 @@ export const IntegrationsSection = ({
               key={`integration-${integration?.id.toString()}`}
             >
               <div className="flex">
-                <div className="min-[70px] flex items-center">
-                  <Tooltip content={slugMapIntegration[integration?.integration]?.name}>
-                    <img
-                      src={`/images/integrations/${
-                        slugMapIntegration[integration?.integration]?.image
-                      }`}
-                      alt="integration logo"
-                      className="mr-2 h-8 w-8"
-                    />
-                  </Tooltip>
-                </div>
                 <div className="ml-2 flex flex-col">
                   <FormLabel label="Environment" />
-                  <div className="min-w-[8rem] max-w-[12rem] overflow-clip text-ellipsis whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                  <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                     {environments.find((e) => e.id === integration.envId)?.name || "-"}
                   </div>
                 </div>
@@ -268,6 +256,12 @@ export const IntegrationsSection = ({
                 </div>
                 <div className="flex h-full items-center">
                   <FontAwesomeIcon icon={faArrowRight} className="mx-4 text-gray-400" />
+                </div>
+                <div className="ml-4 flex flex-col">
+                  <FormLabel label="Integration" />
+                  <div className="min-w-[8rem] rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                    {integrationSlugNameMapping[integration.integration]}
+                  </div>
                 </div>
                 {integration.integration === "qovery" && (
                   <div className="flex flex-row">

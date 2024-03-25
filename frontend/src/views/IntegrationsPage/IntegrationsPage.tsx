@@ -16,7 +16,7 @@ import {
   useGetWorkspaceIntegrations,
   useUpdateBotActiveStatus
 } from "@app/hooks/api";
-import { IntegrationAuth, TCloudIntegration } from "@app/hooks/api/types";
+import { IntegrationAuth } from "@app/hooks/api/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { CloudIntegrationSection } from "./components/CloudIntegrationSection";
@@ -33,9 +33,6 @@ export const IntegrationsPage = withProjectPermission(
     const { t } = useTranslation();
     const { createNotification } = useNotificationContext();
 
-    const [slugMapIntegration, setSlugMapIntegration] = useState<Record<string, TCloudIntegration>>(
-      {}
-    );
     const [filterEnvironment, setFilterEnvironment] = useState<string>();
     const [filterIntegrationSlug, setFilterIntegrationSlug] = useState<string>();
     const [sortIntegration, setSortIntegration] = useState<string>();
@@ -67,15 +64,6 @@ export const IntegrationsPage = withProjectPermission(
         return groupBy;
       }, [])
     );
-
-    useEffect(() => {
-      const newSlugMapIntegration: Record<string, TCloudIntegration> = {};
-      cloudIntegrations?.forEach((int) => {
-        newSlugMapIntegration[int.slug] = int;
-      });
-
-      setSlugMapIntegration(newSlugMapIntegration);
-    }, [cloudIntegrations]);
 
     // mutation
     const {
@@ -217,11 +205,10 @@ export const IntegrationsPage = withProjectPermission(
       <div className="container mx-auto max-w-7xl pb-12 text-white">
         <IntegrationsSection
           isLoading={isIntegrationLoading}
+          onFilterChange={(data) => handleFilterIntegration(data)}
           cloudIntegrations={cloudIntegrations}
-          slugMapIntegration={slugMapIntegration}
           integrations={integrations}
           environments={environments}
-          onFilterChange={(data) => handleFilterIntegration(data)}
           onIntegrationDelete={({ id }, cb) => handleIntegrationDelete(id, cb)}
           isBotActive={bot?.isActive}
           workspaceId={workspaceId}
