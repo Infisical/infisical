@@ -244,7 +244,7 @@ export const IntegrationsSection = ({
               <div className="flex">
                 <div className="ml-2 flex flex-col">
                   <FormLabel label="Environment" />
-                  <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                  <div className="min-w-[8rem] rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                     {environments.find((e) => e.id === integration.envId)?.name || "-"}
                   </div>
                 </div>
