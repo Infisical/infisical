@@ -24,7 +24,7 @@ infisical:
 
   resources:
     limits:
-      memory: 350Mi
+      memory: 600Mi
     requests:
       cpu: 350m
 
