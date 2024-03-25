@@ -57,8 +57,8 @@ func init() {
 		}
 	}
 
-	isTelemetryOn, _ := rootCmd.PersistentFlags().GetBool("no-telemetry")
-	Telemetry = telemetry.NewTelemetry(!isTelemetryOn)
+	telemetryDisabled, _ := rootCmd.PersistentFlags().GetBool("no-telemetry")
+	Telemetry = telemetry.NewTelemetry(!telemetryDisabled)
 }
 
 func initLog() {

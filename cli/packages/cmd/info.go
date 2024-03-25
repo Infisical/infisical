@@ -32,9 +32,9 @@ var infoCmd = &cobra.Command{
 		sort.Strings(keys)
 
 		// print the version and the current configuration variables
-		boldWhite.Print("Version: ")
+		boldWhite.Print("\nVersion: ")
 		fmt.Println(util.CLI_VERSION)
-		boldWhite.Println("Configuration: ")
+		boldWhite.Println("\nConfiguration: ")
 		for _, key := range keys {
 			yellow.Printf(" %s: ", key)
 			fmt.Printf("%v\n", cfg[key])
