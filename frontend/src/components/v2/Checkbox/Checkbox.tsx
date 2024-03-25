@@ -37,9 +37,9 @@ export const Checkbox = ({
           className
         )}
         required={isRequired}
-        checked={isChecked}
         disabled={isDisabled}
         {...props}
+        checked={isChecked}
         id={id}
       >
         <CheckboxPrimitive.Indicator className={`${checkIndicatorBg || "text-bunker-800"}`}>

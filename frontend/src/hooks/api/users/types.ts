@@ -37,6 +37,11 @@ export type UserEnc = {
   tag?: string;
 };
 
+export type ProjectProps = {
+  id: string;
+  name: string;
+};
+
 export type OrgUser = {
   id: string;
   user: {
@@ -53,6 +58,7 @@ export type OrgUser = {
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
   roleId: string;
+  projects: ProjectProps[];
 };
 
 export type TProjectMembership = {
@@ -105,6 +111,12 @@ export type AddUserToWsDTOE2EE = {
 export type AddUserToWsDTONonE2EE = {
   projectId: string;
   usernames: string[];
+};
+
+export type AddWorkspaceToUserNonE2EE = {
+  projects: string[];
+  email: string;
+  orgId: string;
 };
 
 export type UpdateOrgUserRoleDTO = {

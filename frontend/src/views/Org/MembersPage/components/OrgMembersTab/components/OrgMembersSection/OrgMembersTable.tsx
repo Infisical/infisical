@@ -25,30 +25,26 @@ import {
   OrgPermissionSubjects,
   useOrganization,
   useSubscription,
-  useUser
+  useUser,
+  useWorkspace
 } from "@app/context";
 import {
   useAddUserToOrg,
   useFetchServerStatus,
   useGetOrgRoles,
-  useGetOrgUsers,
+  useGetOrgUsersWithProjects,
   useUpdateOrgUserRole
 } from "@app/hooks/api";
-import { UsePopUpState } from "@app/hooks/usePopUp";
 
-type Props = {
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeMember", "upgradePlan"]>,
-    data?: {
-      orgMembershipId?: string;
-      username?: string;
-      description?: string;
-    }
-  ) => void;
-  setCompleteInviteLink: (link: string) => void;
-};
+import checkIfThereAreMoreProjectsToAdd from "./utils/checkIfThereAreMoreProjectsToAdd";
+import AddProject from "./AddProject";
+import ProjectsCell from "./ProjectsCell";
+import { OrgMembersTableProps } from "./types";
 
-export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Props) => {
+export const OrgMembersTable = ({
+  handlePopUpOpen,
+  setCompleteInviteLink
+}: OrgMembersTableProps) => {
   const { createNotification } = useNotificationContext();
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
@@ -57,11 +53,12 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
   const orgId = currentOrg?.id || "";
 
   const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(orgId);
+  const { workspaces } = useWorkspace();
 
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 
   const { data: serverDetails } = useFetchServerStatus();
-  const { data: members, isLoading: isMembersLoading } = useGetOrgUsers(orgId);
+  const { data: members, isLoading: isMembersLoading } = useGetOrgUsersWithProjects(orgId);
 
   const { mutateAsync: addUserMutateAsync } = useAddUserToOrg();
   const { mutateAsync: updateUserOrgRole } = useUpdateOrgUserRole();
@@ -165,6 +162,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
               <Th>Name</Th>
               <Th>Username</Th>
               <Th>Role</Th>
+              <Th>Projects</Th>
               <Th className="w-5" />
             </Tr>
           </THead>
@@ -172,10 +170,17 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
             {isLoading && <TableSkeleton columns={5} innerKey="org-members" />}
             {!isLoading &&
               filterdUser?.map(
-                ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status }) => {
+                ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status, projects }) => {
                   const name = u && u.firstName ? `${u.firstName} ${u.lastName}` : "-";
                   const email = u?.email || inviteEmail;
+
                   const username = u?.username ?? inviteEmail ?? "-";
+
+                  const hasMoreProjectsToAdd = checkIfThereAreMoreProjectsToAdd({
+                    workspaces,
+                    userProjects: projects
+                  });
+
                   return (
                     <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
                       <Td>{name}</Td>
@@ -224,6 +229,19 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                             </>
                           )}
                         </OrgPermissionCan>
+                      </Td>
+                      <Td className="flex items-center">
+                        <ProjectsCell projects={projects} />
+                        {hasMoreProjectsToAdd && (
+                          <AddProject
+                            handlePopUpOpen={handlePopUpOpen}
+                            createNotification={createNotification}
+                            currentOrg={currentOrg}
+                            orgMembershipId={orgMembershipId}
+                            email={email}
+                            projects={projects}
+                          />
+                        )}
                       </Td>
                       <Td>
                         {userId !== u?.id && (

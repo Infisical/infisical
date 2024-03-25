@@ -16,6 +16,7 @@ export * from "./incident-contacts";
 export * from "./integration-auths";
 export * from "./integrations";
 export * from "./ldap-configs";
+export * from "./members";
 export * from "./models";
 export * from "./org-bots";
 export * from "./org-memberships";

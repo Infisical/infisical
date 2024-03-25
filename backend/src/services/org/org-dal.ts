@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
+  MembersProp,
   TableName,
   TOrganizations,
   TOrganizationsInsert,
@@ -84,6 +85,56 @@ export const orgDALFactory = (db: TDbClient) => {
         ...data,
         user: { email, username, firstName, lastName, id: userId, publicKey }
       }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all org members" });
+    }
+  };
+
+  const findAllOrgMembersWithProjects = async (orgId: string) => {
+    try {
+      const members: MembersProp = await db(TableName.OrgMembership)
+        .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.ProjectMembership, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
+        .select(
+          db.ref("id").withSchema(TableName.OrgMembership),
+          db.ref("inviteEmail").withSchema(TableName.OrgMembership),
+          db.ref("orgId").withSchema(TableName.OrgMembership),
+          db.ref("role").withSchema(TableName.OrgMembership),
+          db.ref("roleId").withSchema(TableName.OrgMembership),
+          db.ref("status").withSchema(TableName.OrgMembership),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("publicKey").withSchema(TableName.UserEncryptionKey),
+          db.raw("json_agg(??) FILTER (WHERE ?? IS NOT NULL) AS ??", [
+            `${TableName.Project}.name`,
+            `${TableName.Project}.name`,
+            "projects"
+          ])
+        )
+        .where({ isGhost: false })
+        .groupBy(
+          `${TableName.Users}.id`,
+          `${TableName.OrgMembership}.role`,
+          `${TableName.OrgMembership}.id`,
+          `${TableName.Users}.email`,
+          `${TableName.OrgMembership}.userId`,
+          `${TableName.UserEncryptionKey}.publicKey`
+        );
+
+      const users = members.map(({ email, firstName, lastName, userId, publicKey, projects, ...data }) => {
+        return {
+          ...data,
+          projects: projects || [],
+          user: { email, firstName, lastName, id: userId, publicKey }
+        };
+      });
+
+      return users;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org members" });
     }
@@ -273,6 +324,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findAllOrgsByUserId,
     ghostUserExists,
     findOrgMembersByUsername,
+    findAllOrgMembersWithProjects,
     findOrgGhostUser,
     create,
     updateById,

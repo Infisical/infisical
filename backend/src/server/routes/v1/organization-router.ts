@@ -85,6 +85,44 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:organizationId/users/projects",
+    schema: {
+      params: z.object({
+        organizationId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          users: OrgMembershipsSchema.merge(
+            z.object({
+              projects: z.array(z.string()),
+              user: UsersSchema.pick({
+                email: true,
+                firstName: true,
+                lastName: true,
+                id: true
+              }).merge(z.object({ publicKey: z.string().nullable() }))
+            })
+          )
+            .omit({ createdAt: true, updatedAt: true })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const users = await server.services.org.findAllOrgMembersWithProjects(
+        req.permission.id,
+        req.params.organizationId,
+        req.permission.authMethod,
+        req.permission.orgId
+      );
+
+      return { users };
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/:organizationId",
     schema: {

@@ -20,6 +20,7 @@ import { useDeleteOrgMembership } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddOrgMemberModal } from "./AddOrgMemberModal";
+import { AddProjectModal } from "./AddProjectModal";
 import { OrgMembersTable } from "./OrgMembersTable";
 
 export const OrgMembersSection = () => {
@@ -34,7 +35,8 @@ export const OrgMembersSection = () => {
     "addMember",
     "removeMember",
     "upgradePlan",
-    "setUpEmail"
+    "setUpEmail",
+    "addProject"
   ] as const);
 
   const { mutateAsync: deleteMutateAsync } = useDeleteOrgMembership();
@@ -110,6 +112,11 @@ export const OrgMembersSection = () => {
         handlePopUpToggle={handlePopUpToggle}
         completeInviteLink={completeInviteLink}
         setCompleteInviteLink={setCompleteInviteLink}
+      />
+      <AddProjectModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        handlePopUpClose={handlePopUpClose}
       />
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
