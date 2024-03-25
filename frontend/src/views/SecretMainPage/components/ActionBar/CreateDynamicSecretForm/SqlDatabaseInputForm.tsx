@@ -168,8 +168,9 @@ export const SqlDatabaseInputForm = ({
           </div>
         </div>
         <div>
-          <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
+          <div className="mb-4 border-b border-mineshaft-500 pb-2 text-mineshaft-200 pl-1 mt-4 font-medium">Configuration</div>
           <div className="flex flex-col">
+            <div className="text-sm text-mineshaft-400 pl-1 pb-0.5">Service</div>
             <Controller
               control={control}
               name="provider.client"
@@ -281,7 +282,7 @@ export const SqlDatabaseInputForm = ({
               <Accordion
                 type="single"
                 collapsible
-                className="w-full bg-mineshaft-700"
+                className="w-full bg-mineshaft-700 mb-2"
               >
                 <AccordionItem value="advance-statements">
                   <AccordionTrigger>Modify SQL Statements</AccordionTrigger>

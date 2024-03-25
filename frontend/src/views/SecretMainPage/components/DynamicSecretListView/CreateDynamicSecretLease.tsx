@@ -62,7 +62,7 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
         <OutputDisplay
           label="Database Password"
           value={DB_PASSWORD}
-          helperText="Important: Copy this information now. It will disappear after this.opy this values as you won't be able to see it again."
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
         />
       </div>
     );

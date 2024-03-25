@@ -41,7 +41,7 @@ export const CreateDynamicSecretForm = ({
     <Modal isOpen={isOpen} onOpenChange={(state) => handleFormReset(state)}>
       <ModalContent
         title="Dynamic secret setup"
-        subTitle="Secrets provisioned dynamically with a TTL"
+        subTitle="Set up secrets provisioned dynamically with a TTL."
         className="my-4 max-h-screen max-w-3xl overflow-scroll"
       >
         <AnimatePresence exitBeforeEnter>
@@ -53,10 +53,10 @@ export const CreateDynamicSecretForm = ({
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: -30 }}
             >
-              <div className="mb-4 ">Pick a service to connect</div>
+              <div className="mb-4 text-mineshaft-300">Select a service to connect to:</div>
               <div className="flex items-center space-x-4">
                 <div
-                  className="flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded border border-mineshaft-500 bg-bunker-700 p-6 transition-all hover:bg-bunker-600"
+                  className="flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:bg-primary/10 hover:border-primary/70 hover:text-white"
                   role="button"
                   tabIndex={0}
                   onClick={() => {

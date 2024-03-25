@@ -338,14 +338,14 @@ export const ActionBar = ({
                 >
                   {(isAllowed) => (
                     <Button
-                      leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
+                      leftIcon={<FontAwesomeIcon icon={faFolderPlus} className="pr-2" />}
                       onClick={() => {
                         handlePopUpOpen("addFolder");
                         handlePopUpClose("misc");
                       }}
                       isDisabled={!isAllowed}
                       variant="outline_bg"
-                      className="h-10"
+                      className="h-10 text-left"
                       isFullWidth
                     >
                       Add Folder
@@ -358,14 +358,14 @@ export const ActionBar = ({
                 >
                   {(isAllowed) => (
                     <Button
-                      leftIcon={<FontAwesomeIcon icon={faFingerprint} />}
+                      leftIcon={<FontAwesomeIcon icon={faFingerprint} className="pr-2" />}
                       onClick={() => {
                         handlePopUpOpen("addDynamicSecret");
                         handlePopUpClose("misc");
                       }}
                       isDisabled={!isAllowed}
                       variant="outline_bg"
-                      className="h-10"
+                      className="h-10 text-left"
                       isFullWidth
                     >
                       Add Dynamic Secret
@@ -378,13 +378,13 @@ export const ActionBar = ({
                 >
                   {(isAllowed) => (
                     <Button
-                      leftIcon={<FontAwesomeIcon icon={faFileImport} />}
+                      leftIcon={<FontAwesomeIcon icon={faFileImport} className="pr-2" />}
                       onClick={() => {
                         handlePopUpOpen("addSecretImport");
                         handlePopUpClose("misc");
                       }}
                       variant="outline_bg"
-                      className="h-10"
+                      className="h-10 text-left"
                       isFullWidth
                       isDisabled={!isAllowed}
                     >
