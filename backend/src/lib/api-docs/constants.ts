@@ -241,7 +241,6 @@ export const RAW_SECRETS = {
     includeImports: "Weather to include imported secrets or not."
   },
   UPDATE: {
-    tags: "An array of tag IDs to attach to the secret.",
     secretName: "The name of the secret to update.",
     environment: "The slug of the environment where the secret is located.",
     secretPath: "The path of the secret to update",
