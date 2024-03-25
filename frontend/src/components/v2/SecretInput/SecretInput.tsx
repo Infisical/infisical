@@ -21,13 +21,13 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?
   if (!isVisible) return replaceContentWithDot(content);
 
   let skipNext = false;
-  const formatedContent = content.split(REGEX).flatMap((el, i) => {
+  const formattedContent = content.split(REGEX).flatMap((el, i) => {
     const isInterpolationSyntax = el.startsWith("${") && el.endsWith("}");
     if (isInterpolationSyntax) {
       skipNext = true;
       return (
         <span className="ph-no-capture text-yellow" key={`secret-value-${i + 1}`}>
-          &#36;&#123;<span className="ph-no-capture text-yello-200/80">{el.slice(2, -1)}</span>
+          &#36;&#123;<span className="ph-no-capture text-yellow-200/80">{el.slice(2, -1)}</span>
           &#125;
         </span>
       );
@@ -41,7 +41,7 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?
 
   // akhilmhdh: Dont remove this br. I am still clueless how this works but weirdly enough
   // when break is added a line break works properly
-  return formatedContent.concat(<br />);
+  return formattedContent.concat(<br />);
 };
 
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
