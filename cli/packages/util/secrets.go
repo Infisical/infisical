@@ -159,7 +159,7 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
 
-	getSecretsRequest := api.GetEncryptedSecretsV3Request{
+	getSecretsRequest := api.GetRawSecretsV3Request{
 		WorkspaceId:   workspaceId,
 		Environment:   environmentName,
 		IncludeImport: includeImports,
@@ -171,7 +171,8 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 		getSecretsRequest.SecretPath = secretsPath
 	}
 
-	rawSecrets, err := api.CallGetRawSecretsV3(httpClient, api.GetRawSecretsV3Request{WorkspaceId: workspaceId, SecretPath: secretsPath, Environment: environmentName})
+	rawSecrets, err := api.CallGetRawSecretsV3(httpClient, getSecretsRequest)
+
 	if err != nil {
 		return models.PlaintextSecretResult{}, err
 	}
@@ -182,7 +183,7 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 	}
 
 	for _, secret := range rawSecrets.Secrets {
-		plainTextSecrets = append(plainTextSecrets, models.SingleEnvironmentVariable{Key: secret.SecretKey, Value: secret.SecretValue, WorkspaceId: secret.Workspace})
+		plainTextSecrets = append(plainTextSecrets, models.SingleEnvironmentVariable{Key: secret.SecretKey, Value: secret.SecretValue, Type: secret.Type, WorkspaceId: secret.Workspace})
 	}
 
 	// if includeImports {
@@ -355,6 +356,11 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			log.Debug().Msg("Trying to fetch secrets using service token")
 			secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
 		} else if params.UniversalAuthAccessToken != "" {
+
+			if params.WorkspaceId == "" {
+				PrintErrorMessageAndExit("Project ID is required when using machine identity")
+			}
+
 			log.Debug().Msg("Trying to fetch secrets using universal auth")
 			res, err := GetPlainTextSecretsViaMachineIdentity(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
 
