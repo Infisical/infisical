@@ -171,6 +171,50 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByFolderIds = async (folderIds: string[], userId?: string, tx?: Knex) => {
+    try {
+      // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
+      if (userId && !uuidValidate(userId)) {
+        // eslint-disable-next-line no-param-reassign
+        userId = undefined;
+      }
+
+      const secs = await (tx || db)(TableName.Secret)
+        .whereIn("folderId", folderIds)
+        .where((bd) => {
+          void bd.whereNull("userId").orWhere({ userId: userId || null });
+        })
+        .leftJoin(TableName.JnSecretTag, `${TableName.Secret}.id`, `${TableName.JnSecretTag}.${TableName.Secret}Id`)
+        .leftJoin(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
+        .select(selectAllTableCols(TableName.Secret))
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"))
+        .orderBy("id", "asc");
+      const data = sqlNestRelationships({
+        data: secs,
+        key: "id",
+        parentMapper: (el) => ({ _id: el.id, ...SecretsSchema.parse(el) }),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug, tagName: name }) => ({
+              id,
+              color,
+              slug,
+              name
+            })
+          }
+        ]
+      });
+      return data;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "get all secret" });
+    }
+  };
+
   const findByBlindIndexes = async (
     folderId: string,
     blindIndexes: Array<{ blindIndex: string; type: SecretType }>,
@@ -207,6 +251,7 @@ export const secretDALFactory = (db: TDbClient) => {
     bulkUpdateNoVersionIncrement,
     getSecretTags,
     findByFolderId,
+    findByFolderIds,
     findByBlindIndexes
   };
 };
