@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Modal, ModalContent, Step, Stepper } from "@app/components/v2";
 import { useCreateSecretRotation } from "@app/hooks/api";
 import { TSecretRotationProviderTemplate } from "@app/hooks/api/types";
@@ -43,7 +43,7 @@ export const CreateRotationForm = ({
     input?: Record<string, string>;
     output?: TRotationOutputSchema;
   }>({});
-  const { createNotification } = useNotificationContext();
+  
 
   const { mutateAsync: createSecretRotation } = useCreateSecretRotation();
 

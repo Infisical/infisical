@@ -1,4 +1,4 @@
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, Switch, UpgradePlanModal } from "@app/components/v2";
 import {
@@ -15,7 +15,7 @@ import { LDAPModal } from "./LDAPModal";
 export const OrgLDAPSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
-  const { createNotification } = useNotificationContext();
+  
   const { data } = useGetLDAPConfig(currentOrg?.id ?? "");
   const { mutateAsync } = useUpdateLDAPConfig();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([

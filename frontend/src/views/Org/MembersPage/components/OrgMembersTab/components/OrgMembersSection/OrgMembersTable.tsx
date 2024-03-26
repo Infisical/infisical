@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { faMagnifyingGlass, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -49,7 +49,7 @@ type Props = {
 };
 
 export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const { user } = useUser();

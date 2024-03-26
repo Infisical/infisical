@@ -1,7 +1,7 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner, ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import {
@@ -19,7 +19,7 @@ import { SecretTagsTable } from "./SecretTagsTable";
 type DeleteModalData = { name: string; id: string };
 
 export const SecretTagsSection = (): JSX.Element => {
-  const { createNotification } = useNotificationContext();
+  
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
     "CreateSecretTag",
     "deleteTagConfirmation"

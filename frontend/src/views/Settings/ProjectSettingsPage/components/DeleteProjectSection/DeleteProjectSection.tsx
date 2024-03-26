@@ -1,6 +1,6 @@
 import { useRouter } from "next/router";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import {
@@ -15,7 +15,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 export const DeleteProjectSection = () => {
   const router = useRouter();
-  const { createNotification } = useNotificationContext();
+  
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteWorkspace"
   ] as const);

@@ -1,4 +1,9 @@
-import { QueryClient } from "@tanstack/react-query";
+import { MutationCache, QueryClient } from "@tanstack/react-query";
+import axios from "axios";
+
+import { createNotification } from "@app/components/notifications";
+
+import { ApiErrorTypes, TApiErrors } from "./hooks/api/types";
 
 // this is saved in react-query cache
 export const SIGNUP_TEMP_TOKEN_CACHE_KEY = ["infisical__signup-temp-token"];
@@ -6,6 +11,40 @@ export const MFA_TEMP_TOKEN_CACHE_KEY = ["infisical__mfa-temp-token"];
 export const AUTH_TOKEN_CACHE_KEY = ["infisical__auth-token"];
 
 export const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      if (axios.isAxiosError(error)) {
+        const serverResponse = error.response?.data as TApiErrors;
+        if (serverResponse?.error === ApiErrorTypes.ValidationError) {
+          createNotification({
+            title: "Validation Error",
+            type: "error",
+            text: (
+              <div>
+                {serverResponse.message?.map(({ message, path }) => (
+                  <div className="flex space-y-2" key={path.join(".")}>
+                    <div>
+                      Field <i>{path.join(".")}</i> {message.toLowerCase()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          });
+          return;
+        }
+        if (serverResponse.statusCode === 401) {
+          createNotification({
+            title: "Forbidden Access",
+            type: "error",
+            text: serverResponse.message
+          });
+          return;
+        }
+        createNotification({ title: "Bad Request", type: "error", text: serverResponse.message });
+      }
+    }
+  }),
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,

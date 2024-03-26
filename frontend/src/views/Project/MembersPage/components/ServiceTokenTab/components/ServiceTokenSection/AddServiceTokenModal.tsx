@@ -9,7 +9,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { AxiosError } from "axios";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   decryptAssymmetric,
   encryptSymmetric
@@ -79,7 +79,7 @@ type Props = {
 
 export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { t } = useTranslation();
-  const { createNotification } = useNotificationContext();
+  
   const { currentWorkspace } = useWorkspace();
   const {
     control,

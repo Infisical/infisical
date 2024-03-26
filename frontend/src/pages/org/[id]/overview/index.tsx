@@ -28,7 +28,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
 import {
@@ -477,7 +477,7 @@ const OrganizationPage = withPermission(
     const { currentOrg } = useOrganization();
     const routerOrgId = String(router.query.id);
     const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === routerOrgId) || [];
-    const { createNotification } = useNotificationContext();
+    
     const addUsersToProject = useAddUserToWsNonE2EE();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([

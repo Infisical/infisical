@@ -9,7 +9,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
 import {
   usePerformSecretApprovalRequestMerge,
@@ -37,7 +37,7 @@ export const SecretApprovalRequestAction = ({
   workspaceId,
   canApprove
 }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const { mutateAsync: performSecretApprovalMerge, isLoading: isMerging } =
     usePerformSecretApprovalRequestMerge();
 

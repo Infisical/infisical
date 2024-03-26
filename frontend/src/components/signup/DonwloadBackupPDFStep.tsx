@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useToggle } from "@app/hooks";
 import { generateUserBackupKey } from "@app/lib/crypto";
 
-import { useNotificationContext } from "../context/Notifications/NotificationProvider";
+import { createNotification } from "../notifications";
 import { generateBackupPDFAsync } from "../utilities/generateBackupPDF";
 import { Button } from "../v2";
 
@@ -32,7 +32,7 @@ export default function DonwloadBackupPDFStep({
   name
 }: DownloadBackupPDFStepProps): JSX.Element {
   const { t } = useTranslation();
-  const { createNotification } = useNotificationContext();
+  
   const [isLoading, setIsLoading] = useToggle();
 
   const handleBackupKeyGenerate = async () => {

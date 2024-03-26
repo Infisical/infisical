@@ -7,7 +7,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -57,7 +57,7 @@ const addMemberFormSchema = z.object({
 type TAddMemberForm = z.infer<typeof addMemberFormSchema>;
 
 export const MemberListTab = () => {
-  const { createNotification } = useNotificationContext();
+  
   const { t } = useTranslation();
 
   const { currentOrg } = useOrganization();

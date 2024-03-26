@@ -3,7 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
@@ -22,7 +22,7 @@ const formSchema = yup.object({
 type FormData = yup.InferType<typeof formSchema>;
 
 export const ProjectNameChangeSection = () => {
-  const { createNotification } = useNotificationContext();
+  
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync, isLoading } = useRenameWorkspace();
 

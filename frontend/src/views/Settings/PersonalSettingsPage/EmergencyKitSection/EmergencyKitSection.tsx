@@ -2,7 +2,7 @@ import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import issueBackupKey from "@app/components/utilities/cryptography/issueBackupKey";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useUser } from "@app/context";
@@ -16,7 +16,7 @@ const schema = yup
 export type FormData = yup.InferType<typeof schema>;
 
 export const EmergencyKitSection = () => {
-  const { createNotification } = useNotificationContext();
+  
   const { user } = useUser();
   const { reset, control, handleSubmit } = useForm({
     defaultValues: {

@@ -1,4 +1,4 @@
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, Switch, UpgradePlanModal } from "@app/components/v2";
 import {
@@ -13,7 +13,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { ScimTokenModal } from "./ScimTokenModal";
 
 export const OrgScimSection = () => {
-  const { createNotification } = useNotificationContext();
+  
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([

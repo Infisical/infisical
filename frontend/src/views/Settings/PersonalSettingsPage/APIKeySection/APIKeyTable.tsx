@@ -2,7 +2,7 @@ import { faKey, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   EmptyState,
   IconButton,
@@ -18,7 +18,7 @@ import {
 import { useDeleteAPIKey, useGetMyAPIKeys } from "@app/hooks/api";
 
 export const APIKeyTable = () => {
-  const { createNotification } = useNotificationContext();
+  
   const { data, isLoading } = useGetMyAPIKeys();
   const { mutateAsync } = useDeleteAPIKey();
 

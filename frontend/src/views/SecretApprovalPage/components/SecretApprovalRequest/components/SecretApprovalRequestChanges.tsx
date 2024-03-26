@@ -11,7 +11,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, ContentLoader, EmptyState, IconButton, Tooltip } from "@app/components/v2";
 import { useUser } from "@app/context";
 import {
@@ -83,7 +83,7 @@ export const SecretApprovalRequestChanges = ({
   workspaceId,
   members = {}
 }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const { user } = useUser();
   const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
   const {

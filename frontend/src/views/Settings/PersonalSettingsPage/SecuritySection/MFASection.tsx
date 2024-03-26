@@ -1,4 +1,4 @@
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Checkbox, EmailServiceSetupModal } from "@app/components/v2";
 import { useGetUser, useUpdateMfaEnabled } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -8,7 +8,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 export const MFASection = () => {
   const { data: user } = useGetUser();
   const { mutateAsync } = useUpdateMfaEnabled();
-  const { createNotification } = useNotificationContext();
+  
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
   const { data: serverDetails } = useFetchServerStatus();

@@ -20,7 +20,7 @@ import queryString from "query-string";
 import { twMerge } from "tailwind-merge";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
@@ -98,7 +98,7 @@ type FormData = yup.InferType<typeof schema>;
 export default function GitHubCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
-  const { createNotification } = useNotificationContext();
+  
 
   const integrationAuthId =
     (queryString.parse(router.asPath.split("?")[1]).integrationAuthId as string) ?? "";

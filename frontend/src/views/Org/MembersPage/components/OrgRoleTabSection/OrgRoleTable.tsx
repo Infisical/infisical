@@ -2,7 +2,7 @@ import { useState } from "react";
 import { faEdit, faMagnifyingGlass, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -31,7 +31,7 @@ export const OrgRoleTable = ({ onSelectRole }: Props) => {
   const [searchRoles, setSearchRoles] = useState("");
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
-  const { createNotification } = useNotificationContext();
+  
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
 
   const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(orgId);

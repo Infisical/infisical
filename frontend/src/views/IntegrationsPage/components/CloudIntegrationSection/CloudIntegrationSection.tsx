@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal, Skeleton, Tooltip } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -31,7 +31,7 @@ export const CloudIntegrationSection = ({
     "deleteConfirmation"
   ] as const);
   const { permission } = useProjectPermission();
-  const { createNotification } = useNotificationContext();
+  
 
   const isEmpty = !isLoading && !cloudIntegrations?.length;
 

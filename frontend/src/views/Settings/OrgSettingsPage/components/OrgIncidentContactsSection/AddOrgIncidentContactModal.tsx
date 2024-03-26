@@ -2,7 +2,7 @@ import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useAddIncidentContact } from "@app/hooks/api";
@@ -26,7 +26,7 @@ export const AddOrgIncidentContactModal = ({
   handlePopUpClose,
   handlePopUpToggle
 }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const { currentOrg } = useOrganization();
   const { data: serverDetails } = useFetchServerStatus();
   const { control, handleSubmit, reset } = useForm<TAddContactForm>({

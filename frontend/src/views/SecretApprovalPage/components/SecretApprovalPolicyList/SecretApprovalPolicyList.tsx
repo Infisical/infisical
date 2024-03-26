@@ -1,7 +1,7 @@
 import { faFileShield, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -46,7 +46,7 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
   ] as const);
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
-  const { createNotification } = useNotificationContext();
+  
 
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const { data: policies, isLoading: isPoliciesLoading } = useGetSecretApprovalPolicies({

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -23,7 +23,7 @@ import { AddOrgMemberModal } from "./AddOrgMemberModal";
 import { OrgMembersTable } from "./OrgMembersTable";
 
 export const OrgMembersSection = () => {
-  const { createNotification } = useNotificationContext();
+  
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id ?? "";

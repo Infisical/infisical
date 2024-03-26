@@ -31,7 +31,7 @@ import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { twMerge } from "tailwind-merge";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { tempLocalStorage } from "@app/components/utilities/checks/tempLocalStorage";
 import {
@@ -115,7 +115,7 @@ type TAddProjectFormData = yup.InferType<typeof formSchema>;
 
 export const AppLayout = ({ children }: LayoutProps) => {
   const router = useRouter();
-  const { createNotification } = useNotificationContext();
+  
   const { mutateAsync } = useGetOrgTrialUrl();
 
   const { workspaces, currentWorkspace } = useWorkspace();

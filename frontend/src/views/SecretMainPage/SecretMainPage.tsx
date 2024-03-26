@@ -5,8 +5,8 @@ import { subject } from "@casl/ability";
 import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import NavHeader from "@app/components/navigation/NavHeader";
+import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
 import { ContentLoader } from "@app/components/v2";
 import {
@@ -53,7 +53,7 @@ export const SecretMainPage = () => {
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const router = useRouter();
   const { permission } = useProjectPermission();
-  const { createNotification } = useNotificationContext();
+  
 
   const [isVisible, setIsVisible] = useState(false);
   const [sortDir, setSortDir] = useState<SortDir>(SortDir.ASC);

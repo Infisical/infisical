@@ -7,7 +7,7 @@ import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import Error from "@app/components/basic/Error";
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
@@ -25,7 +25,7 @@ type Props = {
 
 export const InitialStep = ({ setStep, email, setEmail, password, setPassword }: Props) => {
   const router = useRouter();
-  const { createNotification } = useNotificationContext();
+  
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(false);

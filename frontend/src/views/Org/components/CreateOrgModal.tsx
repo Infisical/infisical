@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useCreateOrg, useSelectOrganization } from "@app/hooks/api";
 
@@ -22,7 +22,7 @@ interface CreateOrgModalProps {
 }
 
 export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => {
-  const { createNotification } = useNotificationContext();
+  
   const router = useRouter();
 
   const {

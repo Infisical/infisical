@@ -4,7 +4,7 @@ import { faCheck, faCopy, faTrash, faXmark } from "@fortawesome/free-solid-svg-i
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { IconButton, SecretInput, Tooltip } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
@@ -49,7 +49,7 @@ export const SecretEditRow = ({
     }
   });
   const [isDeleting, setIsDeleting] = useToggle();
-  const { createNotification } = useNotificationContext();
+  
 
   const handleFormReset = () => {
     reset();

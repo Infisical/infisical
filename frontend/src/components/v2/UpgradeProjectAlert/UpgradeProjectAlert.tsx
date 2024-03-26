@@ -5,7 +5,7 @@ import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { useProjectPermission } from "@app/context";
 import { useGetUpgradeProjectStatus, useUpgradeProject } from "@app/hooks/api";
 import { Workspace } from "@app/hooks/api/types";
@@ -25,7 +25,7 @@ export const UpgradeProjectAlert = ({
   project,
   transparent
 }: UpgradeProjectAlertProps): JSX.Element | null => {
-  const { createNotification } = useNotificationContext();
+  
   const router = useRouter();
   const { membership } = useProjectPermission();
   const upgradeProject = useUpgradeProject();

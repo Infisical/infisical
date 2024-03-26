@@ -2,7 +2,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, SecretInput } from "@app/components/v2";
 import { useCreateSecretV3 } from "@app/hooks/api";
 import { UserWsKeyPair } from "@app/hooks/api/types";
@@ -44,7 +44,7 @@ export const CreateSecretForm = ({
   const { isOpen } = usePopUpState(PopUpNames.CreateSecretForm);
   const { closePopUp, togglePopUp } = usePopUpAction();
 
-  const { createNotification } = useNotificationContext();
+  
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
 
