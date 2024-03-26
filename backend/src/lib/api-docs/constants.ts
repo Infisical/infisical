@@ -201,7 +201,7 @@ export const SECRETS = {
     type: "The type of the secret to attach tags to. (shared/personal)",
     environment: "The slug of the environment where the secret is located",
     projectSlug: "The slug of the project where the secret is located",
-    tagSlugs: "An array of tag slugs to attach to the secret."
+    tagSlugs: "An array of existing tag slugs to attach to the secret."
   },
   DETACH_TAGS: {
     secretName: "The name of the secret to detach tags from.",
@@ -209,7 +209,7 @@ export const SECRETS = {
     type: "The type of the secret to attach tags to. (shared/personal)",
     environment: "The slug of the environment where the secret is located",
     projectSlug: "The slug of the project where the secret is located",
-    tagSlugs: "An array of tag slugs to detach from the secret."
+    tagSlugs: "An array of existing tag slugs to detach from the secret."
   }
 } as const;
 

@@ -1058,13 +1058,13 @@ export const secretServiceFactory = ({
       throw new BadRequestError({ message: "One or more tags not found." });
     }
 
-    const secretTags = await secretDAL.getSecretTags(secret.id);
+    const existingSecretTags = await secretDAL.getSecretTags(secret.id);
 
-    if (secretTags.some((tag) => tagSlugs.includes(tag.slug))) {
+    if (existingSecretTags.some((tag) => tagSlugs.includes(tag.slug))) {
       throw new BadRequestError({ message: "One or more tags already exist on the secret" });
     }
 
-    const combinedTags = new Set([...secretTags.map((tag) => tag.id), ...tags.map((el) => el.id)]);
+    const combinedTags = new Set([...existingSecretTags.map((tag) => tag.id), ...tags.map((el) => el.id)]);
 
     const updatedSecret = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
@@ -1091,7 +1091,7 @@ export const secretServiceFactory = ({
 
     return {
       ...updatedSecret[0],
-      tags: [...secretTags, ...tags].map((t) => ({ id: t.id, slug: t.slug, name: t.name, color: t.color }))
+      tags: [...existingSecretTags, ...tags].map((t) => ({ id: t.id, slug: t.slug, name: t.name, color: t.color }))
     };
   };
 
@@ -1156,17 +1156,17 @@ export const secretServiceFactory = ({
       throw new BadRequestError({ message: "One or more tags not found." });
     }
 
-    const secretTags = await secretDAL.getSecretTags(secret.id);
+    const existingSecretTags = await secretDAL.getSecretTags(secret.id);
 
     // Make sure all the tags exist on the secret
     const tagIdsToRemove = tags.map((tag) => tag.id);
-    const secretTagIds = secretTags.map((tag) => tag.id);
+    const secretTagIds = existingSecretTags.map((tag) => tag.id);
 
     if (!tagIdsToRemove.every((el) => secretTagIds.includes(el))) {
       throw new BadRequestError({ message: "One or more tags not found on the secret" });
     }
 
-    const newTags = secretTags.filter((tag) => !tagIdsToRemove.includes(tag.id));
+    const newTags = existingSecretTags.filter((tag) => !tagIdsToRemove.includes(tag.id));
 
     const updatedSecret = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
