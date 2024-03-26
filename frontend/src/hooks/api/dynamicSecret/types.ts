@@ -82,3 +82,9 @@ export type TDetailsDynamicSecretDTO = {
   environmentSlug: string;
   name: string;
 };
+
+export type TGetDynamicSecretsByEnvsDTO = {
+  projectSlug: string;
+  path: string;
+  environmentSlugs: string[];
+};
