@@ -146,7 +146,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         offset: req.query.startIndex,
         limit: req.query.count,
         filter: req.query.filter,
-        orgId: req.permission.orgId as string
+        orgId: req.permission.orgId
       });
       return users;
     }
@@ -184,7 +184,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const user = await req.server.services.scim.getScimUser({
         userId: req.params.userId,
-        orgId: req.permission.orgId as string
+        orgId: req.permission.orgId
       });
       return user;
     }
@@ -243,7 +243,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         email: primaryEmail,
         firstName: req.body.name.givenName,
         lastName: req.body.name.familyName,
-        orgId: req.permission.orgId as string
+        orgId: req.permission.orgId
       });
 
       return user;
@@ -280,7 +280,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const user = await req.server.services.scim.updateScimUser({
         userId: req.params.userId,
-        orgId: req.permission.orgId as string,
+        orgId: req.permission.orgId,
         operations: req.body.Operations
       });
       return user;
@@ -330,7 +330,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const user = await req.server.services.scim.replaceScimUser({
         userId: req.params.userId,
-        orgId: req.permission.orgId as string,
+        orgId: req.permission.orgId,
         active: req.body.active
       });
       return user;

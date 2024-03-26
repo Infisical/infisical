@@ -535,3 +535,23 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 
 	return getRawSecretsV3Response, nil
 }
+
+func CallCreateDynamicSecretLeaseV1(httpClient *resty.Client, request CreateDynamicSecretLeaseV1Request) (CreateDynamicSecretLeaseV1Response, error) {
+	var createDynamicSecretLeaseResponse CreateDynamicSecretLeaseV1Response
+	response, err := httpClient.
+		R().
+		SetResult(&createDynamicSecretLeaseResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v1/dynamic-secrets/leases", config.INFISICAL_URL))
+
+	if err != nil {
+		return CreateDynamicSecretLeaseV1Response{}, fmt.Errorf("CreateDynamicSecretLeaseV1: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return CreateDynamicSecretLeaseV1Response{}, fmt.Errorf("CreateDynamicSecretLeaseV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return createDynamicSecretLeaseResponse, nil
+}

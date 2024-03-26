@@ -3,6 +3,8 @@ export * from "./apiKeys";
 export * from "./auditLogs";
 export * from "./auth";
 export * from "./bots";
+export * from "./dynamicSecret";
+export * from "./dynamicSecretLease";
 export * from "./identities";
 export * from "./incidentContacts";
 export * from "./integrationAuth";

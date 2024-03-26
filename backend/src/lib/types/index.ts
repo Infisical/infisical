@@ -13,7 +13,7 @@ export type TProjectPermission = {
   actorId: string;
   projectId: string;
   actorAuthMethod: ActorAuthMethod;
-  actorOrgId: string | undefined;
+  actorOrgId: string;
 };
 
 export type RequiredKeys<T> = {

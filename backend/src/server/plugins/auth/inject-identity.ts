@@ -16,7 +16,7 @@ export type TAuthMode =
       userId: string;
       tokenVersionId: string; // the session id of token used
       user: TUsers;
-      orgId?: string;
+      orgId: string;
       authMethod: AuthMethod;
     }
   | {
@@ -119,7 +119,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           userId: user.id,
           tokenVersionId,
           actor,
-          orgId,
+          orgId: orgId as string,
           authMethod: token.authMethod
         };
         break;

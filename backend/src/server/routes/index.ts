@@ -47,6 +47,12 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { dynamicSecretDALFactory } from "@app/services/dynamic-secret/dynamic-secret-dal";
+import { dynamicSecretServiceFactory } from "@app/services/dynamic-secret/dynamic-secret-service";
+import { buildDynamicSecretProviders } from "@app/services/dynamic-secret/providers";
+import { dynamicSecretLeaseDALFactory } from "@app/services/dynamic-secret-lease/dynamic-secret-lease-dal";
+import { dynamicSecretLeaseQueueServiceFactory } from "@app/services/dynamic-secret-lease/dynamic-secret-lease-queue";
+import { dynamicSecretLeaseServiceFactory } from "@app/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
@@ -196,6 +202,8 @@ export const registerRoutes = async (
   const gitAppOrgDAL = gitAppDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
+  const dynamicSecretDAL = dynamicSecretDALFactory(db);
+  const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -550,6 +558,34 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const dynamicSecretProviders = buildDynamicSecretProviders();
+  const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
+    queueService,
+    dynamicSecretLeaseDAL,
+    dynamicSecretProviders,
+    dynamicSecretDAL
+  });
+  const dynamicSecretService = dynamicSecretServiceFactory({
+    projectDAL,
+    dynamicSecretQueueService,
+    dynamicSecretDAL,
+    dynamicSecretLeaseDAL,
+    dynamicSecretProviders,
+    folderDAL,
+    permissionService,
+    licenseService
+  });
+  const dynamicSecretLeaseService = dynamicSecretLeaseServiceFactory({
+    projectDAL,
+    permissionService,
+    dynamicSecretQueueService,
+    dynamicSecretDAL,
+    dynamicSecretLeaseDAL,
+    dynamicSecretProviders,
+    folderDAL,
+    licenseService
+  });
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -591,6 +627,8 @@ export const registerRoutes = async (
     secretApprovalPolicy: sapService,
     secretApprovalRequest: sarService,
     secretRotation: secretRotationService,
+    dynamicSecret: dynamicSecretService,
+    dynamicSecretLease: dynamicSecretLeaseService,
     snapshot: snapshotService,
     saml: samlService,
     ldap: ldapService,

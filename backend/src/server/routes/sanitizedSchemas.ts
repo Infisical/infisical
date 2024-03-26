@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { IntegrationAuthsSchema, SecretApprovalPoliciesSchema, UsersSchema } from "@app/db/schemas";
+import {
+  DynamicSecretsSchema,
+  IntegrationAuthsSchema,
+  SecretApprovalPoliciesSchema,
+  UsersSchema
+} from "@app/db/schemas";
 
 // sometimes the return data must be santizied to avoid leaking important values
 // always prefer pick over omit in zod
@@ -55,4 +60,12 @@ export const secretRawSchema = z.object({
   secretKey: z.string(),
   secretValue: z.string(),
   secretComment: z.string().optional()
+});
+
+export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
+  inputIV: true,
+  inputTag: true,
+  inputCiphertext: true,
+  keyEncoding: true,
+  algorithm: true
 });
