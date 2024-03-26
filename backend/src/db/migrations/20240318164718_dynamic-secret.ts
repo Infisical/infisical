@@ -8,7 +8,7 @@ export async function up(knex: Knex): Promise<void> {
   if (!doesTableExist) {
     await knex.schema.createTable(TableName.DynamicSecret, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("slug").notNullable();
+      t.string("name").notNullable();
       t.integer("version").notNullable();
       t.string("type").notNullable();
       t.string("defaultTTL").notNullable();
@@ -23,7 +23,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("status");
       t.string("statusDetails");
       t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
-      t.unique(["slug", "folderId"]);
+      t.unique(["name", "folderId"]);
       t.timestamps(true, true, true);
     });
   }

@@ -32,7 +32,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.DynamicSecretLease))
         .select(
           db.ref("id").withSchema(TableName.DynamicSecret).as("dynId"),
-          db.ref("slug").withSchema(TableName.DynamicSecret).as("dynSlug"),
+          db.ref("name").withSchema(TableName.DynamicSecret).as("dynName"),
           db.ref("version").withSchema(TableName.DynamicSecret).as("dynVersion"),
           db.ref("type").withSchema(TableName.DynamicSecret).as("dynType"),
           db.ref("defaultTTL").withSchema(TableName.DynamicSecret).as("dynDefaultTTL"),
@@ -54,7 +54,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
         ...DynamicSecretLeasesSchema.parse(doc),
         dynamicSecret: {
           id: doc.dynId,
-          slug: doc.dynSlug,
+          name: doc.dynName,
           version: doc.dynVersion,
           type: doc.dynType,
           defaultTTL: doc.dynDefaultTTL,

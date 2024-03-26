@@ -5,9 +5,9 @@ export enum DynamicSecretLeaseStatus {
 }
 
 export type TCreateDynamicSecretLeaseDTO = {
-  slug: string;
+  name: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
   ttl?: string;
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
@@ -15,21 +15,21 @@ export type TCreateDynamicSecretLeaseDTO = {
 export type TDetailsDynamicSecretLeaseDTO = {
   leaseId: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TListDynamicSecretLeasesDTO = {
-  slug: string;
+  name: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteDynamicSecretLeaseDTO = {
   leaseId: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
   projectSlug: string;
   isForced?: boolean;
 } & Omit<TProjectPermission, "projectId">;
@@ -37,7 +37,7 @@ export type TDeleteDynamicSecretLeaseDTO = {
 export type TRenewDynamicSecretLeaseDTO = {
   leaseId: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
   ttl?: string;
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;

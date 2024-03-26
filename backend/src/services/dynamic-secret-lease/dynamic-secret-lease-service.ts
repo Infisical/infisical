@@ -45,9 +45,9 @@ export const dynamicSecretLeaseServiceFactory = ({
   projectDAL
 }: TDynamicSecretLeaseServiceFactoryDep) => {
   const create = async ({
-    environment,
+    environmentSlug,
     path,
-    slug,
+    name,
     projectSlug,
     actor,
     actorId,
@@ -69,13 +69,13 @@ export const dynamicSecretLeaseServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+    const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ slug, folderId: folder.id });
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
     if (!dynamicSecretCfg) throw new BadRequestError({ message: "Dynamic secret not found" });
 
     const totalLeasesTaken = await dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id);
@@ -119,7 +119,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     actor,
     projectSlug,
     path,
-    environment,
+    environmentSlug,
     leaseId
   }: TRenewDynamicSecretLeaseDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
@@ -135,10 +135,10 @@ export const dynamicSecretLeaseServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+    const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
     const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
@@ -180,7 +180,7 @@ export const dynamicSecretLeaseServiceFactory = ({
 
   const revokeLease = async ({
     leaseId,
-    environment,
+    environmentSlug,
     path,
     projectSlug,
     actor,
@@ -202,10 +202,10 @@ export const dynamicSecretLeaseServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+    const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
     const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
@@ -245,12 +245,12 @@ export const dynamicSecretLeaseServiceFactory = ({
 
   const listLeases = async ({
     path,
-    slug,
+    name,
     actor,
     actorId,
     projectSlug,
     actorOrgId,
-    environment,
+    environmentSlug,
     actorAuthMethod
   }: TListDynamicSecretLeasesDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
@@ -266,13 +266,13 @@ export const dynamicSecretLeaseServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+    const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ slug, folderId: folder.id });
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
     if (!dynamicSecretCfg) throw new BadRequestError({ message: "Dynamic secret not found" });
 
     const dynamicSecretLeases = await dynamicSecretLeaseDAL.find({ dynamicSecretId: dynamicSecretCfg.id });
@@ -283,7 +283,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     projectSlug,
     actorOrgId,
     path,
-    environment,
+    environmentSlug,
     actor,
     actorId,
     leaseId,
@@ -302,10 +302,10 @@ export const dynamicSecretLeaseServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+    const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
     const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);

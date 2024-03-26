@@ -9,7 +9,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const DynamicSecretsSchema = z.object({
   id: z.string().uuid(),
-  slug: z.string(),
+  name: z.string(),
   version: z.number(),
   type: z.string(),
   defaultTTL: z.string(),

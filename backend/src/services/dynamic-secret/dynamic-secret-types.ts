@@ -16,39 +16,39 @@ export type TCreateDynamicSecretDTO = {
   defaultTTL: string;
   maxTTL?: string | null;
   path: string;
-  environment: string;
-  slug: string;
+  environmentSlug: string;
+  name: string;
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateDynamicSecretDTO = {
-  slug: string;
-  newSlug?: string;
+  name: string;
+  newName?: string;
   defaultTTL?: string;
   maxTTL?: string | null;
   path: string;
-  environment: string;
+  environmentSlug: string;
   inputs?: TProvider["inputs"];
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteDynamicSecretDTO = {
-  slug: string;
+  name: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
   projectSlug: string;
   isForced?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDetailsDynamicSecretDTO = {
-  slug: string;
+  name: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TListDynamicSecretsDTO = {
   path: string;
-  environment: string;
+  environmentSlug: string;
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;

@@ -13,8 +13,8 @@ import { DynamicSecretSqlDBSchema, TDynamicProviderFns } from "./models";
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 const generatePassword = (size?: number) => {
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*'$#";
-  return customAlphabet(charset, 32)(size);
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
+  return customAlphabet(charset, 48)(size);
 };
 
 export const SqlDatabaseProvider = (): TDynamicProviderFns => {
@@ -61,13 +61,13 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const db = await getClient(providerInputs);
 
-    const username = alphaNumericNanoId(21);
+    const username = alphaNumericNanoId(32);
     const password = generatePassword();
     const expiration = new Date(expireAt).toISOString();
 
     const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
       username,
-      password: "infisical",
+      password,
       expiration
     });
 
