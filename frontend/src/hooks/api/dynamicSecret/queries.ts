@@ -1,8 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
+import { useQueries, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TDetailsDynamicSecretDTO, TDynamicSecret, TListDynamicSecretDTO } from "./types";
+import {
+  TDetailsDynamicSecretDTO,
+  TDynamicSecret,
+  TGetDynamicSecretsByEnvsDTO,
+  TListDynamicSecretDTO
+} from "./types";
 
 export const dynamicSecretKeys = {
   list: ({
@@ -15,7 +21,11 @@ export const dynamicSecretKeys = {
     [{ projectSlug, path, environmentSlug, name }, "dynamic-secret-details"] as const
 };
 
-export const useGetDynamicSecrets = ({ projectSlug, environmentSlug, path }: TListDynamicSecretDTO) => {
+export const useGetDynamicSecrets = ({
+  projectSlug,
+  environmentSlug,
+  path
+}: TListDynamicSecretDTO) => {
   return useQuery({
     queryKey: dynamicSecretKeys.list({ path, environmentSlug, projectSlug }),
     enabled: Boolean(projectSlug && environmentSlug && path),
@@ -59,4 +69,58 @@ export const useGetDynamicSecretDetails = ({
       return data.dynamicSecret;
     }
   });
+};
+
+export const useGetDynamicSecretsOfAllEnv = ({
+  path,
+  projectSlug,
+  environmentSlugs
+}: TGetDynamicSecretsByEnvsDTO) => {
+  const dynamicSecrets = useQueries({
+    queries: environmentSlugs.map((environment) => ({
+      queryKey: dynamicSecretKeys.list({ path, environmentSlug: environment, projectSlug }),
+      enabled: Boolean(projectSlug && environment && path),
+      queryFn: async () => {
+        const { data } = await apiRequest.get<{ dynamicSecrets: TDynamicSecret[] }>(
+          "/api/v1/dynamic-secrets",
+          {
+            params: {
+              projectSlug,
+              environmentSlug: environment,
+              path
+            }
+          }
+        );
+
+        return data.dynamicSecrets;
+      }
+    }))
+  });
+
+  const dynamicSecretNames = useMemo(() => {
+    const names = new Set<string>();
+    dynamicSecrets?.forEach(({ data }) => {
+      data?.forEach(({ name }) => {
+        names.add(name);
+      });
+    });
+    return [...names];
+  }, [(dynamicSecrets || []).map((dynamicSecret) => dynamicSecret.data)]);
+
+  const isDynamicSecretPresentInEnv = useCallback(
+    (name: string, env: string) => {
+      const selectedEnvIndex = environmentSlugs.indexOf(env);
+      if (selectedEnvIndex !== -1) {
+        return Boolean(
+          dynamicSecrets?.[selectedEnvIndex]?.data?.find(
+            ({ name: dynamicSecretName }) => dynamicSecretName === name
+          )
+        );
+      }
+      return false;
+    },
+    [(dynamicSecrets || []).map((el) => el.data)]
+  );
+
+  return { dynamicSecrets, isDynamicSecretPresentInEnv, dynamicSecretNames };
 };

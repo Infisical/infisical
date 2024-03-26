@@ -54,6 +54,7 @@ import {
   useCreateFolder,
   useCreateSecretV3,
   useDeleteSecretV3,
+  useGetDynamicSecretsOfAllEnv,
   useGetFoldersByEnv,
   useGetImportedSecretsAllEnvs,
   useGetProjectSecretsAllEnv,
@@ -66,12 +67,13 @@ import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
+import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
 
 export const SecretOverviewPage = () => {
   const { t } = useTranslation();
-  
+
   const router = useRouter();
 
   // this is to set expandable table width
@@ -98,6 +100,7 @@ export const SecretOverviewPage = () => {
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const { currentOrg } = useOrganization();
   const workspaceId = currentWorkspace?.id as string;
+  const projectSlug = currentWorkspace?.slug as string;
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
@@ -137,6 +140,13 @@ export const SecretOverviewPage = () => {
     decryptFileKey: latestFileKey!,
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
+
+  const { dynamicSecretNames, dynamicSecrets, isDynamicSecretPresentInEnv } =
+    useGetDynamicSecretsOfAllEnv({
+      projectSlug,
+      environmentSlugs: userAvailableEnvs.map(({ slug }) => slug),
+      path: secretPath
+    });
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
@@ -336,12 +346,19 @@ export const SecretOverviewPage = () => {
   const filteredFolderNames = folderNames?.filter((name) =>
     name.toLowerCase().includes(searchFilter.toLowerCase())
   );
+  const filteredDynamicSecrets = dynamicSecretNames?.filter((name) =>
+    name.toLowerCase().includes(searchFilter.toLowerCase())
+  );
+
   const isTableEmpty =
     !(
-      folders?.every(({ isLoading }) => isLoading) && secrets?.every(({ isLoading }) => isLoading)
+      folders?.every(({ isLoading }) => isLoading) &&
+      secrets?.every(({ isLoading }) => isLoading) &&
+      dynamicSecrets?.every(({ isLoading }) => isLoading)
     ) &&
     filteredSecretNames?.length === 0 &&
-    filteredFolderNames?.length === 0;
+    filteredFolderNames?.length === 0 &&
+    filteredDynamicSecrets?.length === 0;
 
   return (
     <>
@@ -649,6 +666,15 @@ export const SecretOverviewPage = () => {
                       environments={visibleEnvs}
                       key={`overview-${folderName}-${index + 1}`}
                       onClick={handleFolderClick}
+                    />
+                  ))}
+                {!isTableLoading &&
+                  filteredDynamicSecrets.map((dynamicSecretName, index) => (
+                    <SecretOverviewDynamicSecretRow
+                      dynamicSecretName={dynamicSecretName}
+                      isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
+                      environments={visibleEnvs}
+                      key={`overview-${dynamicSecretName}-${index + 1}`}
                     />
                   ))}
                 {!isTableLoading &&
