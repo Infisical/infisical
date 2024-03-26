@@ -63,12 +63,20 @@ var runCmd = &cobra.Command{
 		}
 
 		infisicalToken, err := util.GetInfisicalServiceToken(cmd)
-
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+		identityAccessToken, err := util.GetInfisicalUniversalAuthAccessToken(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
 
 		projectConfigDir, err := cmd.Flags().GetString("project-config-dir")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -103,7 +111,7 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports, Recursive: recursive}, projectConfigDir)
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, UniversalAuthAccessToken: identityAccessToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports, Recursive: recursive}, projectConfigDir)
 
 		if err != nil {
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
@@ -204,6 +212,9 @@ func filterReservedEnvVars(env map[string]models.SingleEnvironmentVariable) {
 func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	runCmd.Flags().String("universal-auth-client-id", "", "Machine Identity universal auth client ID")
+	runCmd.Flags().String("universal-auth-client-secret", "", "Machine Identity universal auth client secret")
+	runCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	runCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	runCmd.Flags().Bool("include-imports", true, "Import linked secrets ")
