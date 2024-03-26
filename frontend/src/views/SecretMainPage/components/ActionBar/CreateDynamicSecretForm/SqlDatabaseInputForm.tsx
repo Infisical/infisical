@@ -131,7 +131,7 @@ export const SqlDatabaseInputForm = ({
                   isError={Boolean(error)}
                   errorText={error?.message}
                 >
-                  <Input {...field} placeholder="DYN-1" />
+                  <Input {...field} placeholder="dynamic-postgres" />
                 </FormControl>
               )}
             />

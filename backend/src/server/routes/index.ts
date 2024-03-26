@@ -572,7 +572,8 @@ export const registerRoutes = async (
     dynamicSecretLeaseDAL,
     dynamicSecretProviders,
     folderDAL,
-    permissionService
+    permissionService,
+    licenseService
   });
   const dynamicSecretLeaseService = dynamicSecretLeaseServiceFactory({
     projectDAL,
@@ -581,7 +582,8 @@ export const registerRoutes = async (
     dynamicSecretDAL,
     dynamicSecretLeaseDAL,
     dynamicSecretProviders,
-    folderDAL
+    folderDAL,
+    licenseService
   });
 
   await superAdminService.initServerCfg();

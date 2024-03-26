@@ -41,7 +41,7 @@ export const CreateDynamicSecretForm = ({
     <Modal isOpen={isOpen} onOpenChange={(state) => handleFormReset(state)}>
       <ModalContent
         title="Dynamic secret setup"
-        subTitle="Set up secrets provisioned dynamically with a TTL."
+        subTitle="Configure dynamic secret parameters"
         className="my-4 max-h-screen max-w-3xl overflow-scroll"
       >
         <AnimatePresence exitBeforeEnter>
