@@ -380,6 +380,8 @@ export const DYNAMIC_SECRET_LEASES = {
     leaseId: "The ID of the dynamic secret lease.",
     isForced:
       "A boolean flag to delete the the dynamic secret from infisical without trying to remove it from external provider. Used when the dynamic secret got modified externally."
+  }
+} as const;
 export const SECRET_TAGS = {
   LIST: {
     projectId: "The ID of the project to list tags from."
