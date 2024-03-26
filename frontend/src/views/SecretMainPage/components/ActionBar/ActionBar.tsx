@@ -20,7 +20,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import FileSaver from "file-saver";
 import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -105,7 +105,6 @@ export const ActionBar = ({
     "upgradePlan"
   ] as const);
   const { subscription } = useSubscription();
-  const { createNotification } = useNotificationContext();
   const { openPopUp } = usePopUpAction();
 
   const { mutateAsync: createFolder } = useCreateFolder();

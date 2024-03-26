@@ -16,8 +16,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import NavHeader from "@app/components/navigation/NavHeader";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -71,7 +71,7 @@ import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
 
 export const SecretOverviewPage = () => {
   const { t } = useTranslation();
-  const { createNotification } = useNotificationContext();
+  
   const router = useRouter();
 
   // this is to set expandable table width

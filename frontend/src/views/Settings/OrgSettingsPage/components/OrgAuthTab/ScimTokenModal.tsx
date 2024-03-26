@@ -7,7 +7,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { format } from "date-fns";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   DeleteActionModal,
@@ -55,7 +55,7 @@ type Props = {
 export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
   const { t } = useTranslation();
-  const { createNotification } = useNotificationContext();
+  
   const [token, setToken] = useState("");
 
   const [isScimUrlCopied, setIsScimUrlCopied] = useToggle(false);

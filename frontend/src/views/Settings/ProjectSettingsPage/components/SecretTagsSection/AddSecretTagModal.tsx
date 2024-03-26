@@ -2,7 +2,7 @@ import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useCreateWsTag } from "@app/hooks/api";
@@ -26,7 +26,7 @@ type Props = {
 };
 
 export const AddSecretTagModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const { currentWorkspace } = useWorkspace();
   const createWsTag = useCreateWsTag();
   const {

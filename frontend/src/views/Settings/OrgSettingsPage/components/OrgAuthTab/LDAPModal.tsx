@@ -3,7 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, TextArea } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useCreateLDAPConfig, useGetLDAPConfig, useUpdateLDAPConfig } from "@app/hooks/api";
@@ -27,7 +27,7 @@ type Props = {
 
 export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
-  const { createNotification } = useNotificationContext();
+  
   const { mutateAsync: createMutateAsync, isLoading: createIsLoading } = useCreateLDAPConfig();
   const { mutateAsync: updateMutateAsync, isLoading: updateIsLoading } = useUpdateLDAPConfig();
   const { data } = useGetLDAPConfig(currentOrg?.id ?? "");

@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import axios from "axios";
 import queryString from "query-string";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { useCreateIntegration, useGetWorkspaceById } from "@app/hooks/api";
 
 import {
@@ -27,7 +27,7 @@ const cloudflareEnvironments = [
 export default function CloudflarePagesIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
-  const { createNotification } = useNotificationContext();
+  
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
   const [secretPath, setSecretPath] = useState("/");

@@ -3,8 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { TtlFormLabel } from "@app/components/features";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useRenewDynamicSecretLease } from "@app/hooks/api";
 
@@ -48,7 +48,7 @@ export const RenewDynamicSecretLease = ({
       ttl: "1h"
     }
   });
-  const { createNotification } = useNotificationContext();
+  
 
   const renewDynamicSecretLease = useRenewDynamicSecretLease();
 

@@ -3,7 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
@@ -26,7 +26,7 @@ type FormData = yup.InferType<typeof formSchema>;
 
 export const OrgNameChangeSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
-  const { createNotification } = useNotificationContext();
+  
   const { handleSubmit, control, reset } = useForm<FormData>({
     resolver: yupResolver(formSchema)
   });

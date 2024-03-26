@@ -1,4 +1,4 @@
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Switch, UpgradePlanModal } from "@app/components/v2";
 import {
@@ -11,7 +11,7 @@ import { useLogoutUser, useUpdateOrg } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 export const OrgGeneralAuthSection = () => {
-  const { createNotification } = useNotificationContext();
+  
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);

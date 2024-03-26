@@ -1,4 +1,4 @@
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, Switch, UpgradePlanModal } from "@app/components/v2";
 import {
@@ -15,7 +15,7 @@ import { SSOModal } from "./SSOModal";
 export const OrgSSOSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
-  const { createNotification } = useNotificationContext();
+  
   const { data, isLoading } = useGetSSOConfig(currentOrg?.id ?? "");
   const { mutateAsync } = useUpdateSSOConfig();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([

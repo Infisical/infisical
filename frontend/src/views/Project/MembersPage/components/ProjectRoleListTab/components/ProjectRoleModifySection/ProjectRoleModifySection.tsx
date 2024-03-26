@@ -18,7 +18,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useCreateProjectRole, useUpdateProjectRole } from "@app/hooks/api";
@@ -119,7 +119,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
   const isNonEditable = ["admin", "member", "viewer", "no-access"].includes(role?.slug || "");
   const isNewRole = !role?.slug;
 
-  const { createNotification } = useNotificationContext();
+  
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
 

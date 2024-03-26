@@ -1,6 +1,6 @@
 import { useRouter } from "next/router";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useOrganization, useOrgPermission } from "@app/context";
 import { useDeleteOrgById } from "@app/hooks/api";
@@ -10,7 +10,7 @@ import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 export const OrgDeleteSection = () => {
   const router = useRouter();
   const { currentOrg } = useOrganization();
-  const { createNotification } = useNotificationContext();
+  
   const { membership } = useOrgPermission();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Checkbox } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
@@ -8,7 +8,7 @@ import { useToggleAutoCapitalization } from "@app/hooks/api";
 
 export const AutoCapitalizationSection = () => {
   const { t } = useTranslation();
-  const { createNotification } = useNotificationContext();
+  
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync } = useToggleAutoCapitalization();
 

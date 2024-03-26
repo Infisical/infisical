@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
@@ -53,7 +53,7 @@ type Props = {
 export const AddAPIKeyModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [newAPIKey, setNewAPIKey] = useState("");
   const [isAPIKeyCopied, setIsAPIKeyCopied] = useToggle(false);
-  const { createNotification } = useNotificationContext();
+  
   const { mutateAsync, isLoading } = useCreateAPIKey();
 
   const { control, handleSubmit, reset } = useForm<FormData>({

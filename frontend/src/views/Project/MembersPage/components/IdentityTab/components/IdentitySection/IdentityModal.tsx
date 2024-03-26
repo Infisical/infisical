@@ -4,7 +4,7 @@ import Link from "next/link";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
@@ -30,7 +30,7 @@ type Props = {
 };
 
 export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
 

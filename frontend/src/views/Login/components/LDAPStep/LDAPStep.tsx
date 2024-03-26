@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, Input } from "@app/components/v2";
 import { loginLDAPRedirect } from "@app/hooks/api/auth/queries";
 
@@ -10,7 +10,7 @@ type Props = {
 };
 
 export const LDAPStep = ({ setStep }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const [organizationSlug, setOrganizationSlug] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

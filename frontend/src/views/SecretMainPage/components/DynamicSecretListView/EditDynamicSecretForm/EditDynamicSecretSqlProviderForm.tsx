@@ -3,8 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { TtlFormLabel } from "@app/components/features";
+import { createNotification } from "@app/components/notifications";
 import {
   Accordion,
   AccordionContent,
@@ -94,7 +94,7 @@ export const EditDynamicSecretSqlProviderForm = ({
       }
     }
   });
-  const { createNotification } = useNotificationContext();
+  
   const updateDynamicSecret = useUpdateDynamicSecret();
 
   const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {

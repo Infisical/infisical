@@ -7,7 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -59,7 +59,7 @@ export const DynamicSecretListView = ({
     "deleteDynamicSecret"
   ] as const);
 
-  const { createNotification } = useNotificationContext();
+  
   const deleteDynamicSecret = useDeleteDynamicSecret();
 
   const handleDynamicSecretDelete = async () => {

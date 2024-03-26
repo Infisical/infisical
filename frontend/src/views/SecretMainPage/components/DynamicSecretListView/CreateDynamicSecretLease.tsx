@@ -6,8 +6,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import ms from "ms";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { TtlFormLabel } from "@app/components/features";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input, SecretInput, Tooltip } from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";
 import { useCreateDynamicSecretLease } from "@app/hooks/api";
@@ -102,7 +102,7 @@ export const CreateDynamicSecretLease = ({
       ttl: "1h"
     }
   });
-  const { createNotification } = useNotificationContext();
+  
 
   const createDynamicSecretLease = useCreateDynamicSecretLease();
 

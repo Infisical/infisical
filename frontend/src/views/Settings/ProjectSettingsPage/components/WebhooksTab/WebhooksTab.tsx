@@ -3,7 +3,7 @@ import { faInfoCircle, faPlug, faPlus } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -34,7 +34,7 @@ import { AddWebhookForm, TFormSchema } from "./AddWebhookForm";
 export const WebhooksTab = withProjectPermission(
   () => {
     const { t } = useTranslation();
-    const { createNotification } = useNotificationContext();
+    
     const { currentWorkspace } = useWorkspace();
     const workspaceId = currentWorkspace?.id || "";
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([

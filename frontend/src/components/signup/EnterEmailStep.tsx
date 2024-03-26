@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import axios from "axios";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { useSendVerificationEmail } from "@app/hooks/api";
 
 import { Button, Input } from "../v2";
@@ -27,7 +27,7 @@ export default function EnterEmailStep({
   setEmail,
   incrementStep
 }: DownloadBackupPDFStepProps): JSX.Element {
-  const { createNotification } = useNotificationContext();
+  
   const { mutateAsync, isLoading } = useSendVerificationEmail();
   const [emailError, setEmailError] = useState(false);
   const { t } = useTranslation();

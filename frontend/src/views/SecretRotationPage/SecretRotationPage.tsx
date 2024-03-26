@@ -13,7 +13,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistance } from "date-fns";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -63,7 +63,7 @@ export const SecretRotationPage = withProjectPermission(
     const { currentWorkspace } = useWorkspace();
     const { t } = useTranslation();
     const { permission } = useProjectPermission();
-    const { createNotification } = useNotificationContext();
+    
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
       "createRotation",
       "activeBot",
