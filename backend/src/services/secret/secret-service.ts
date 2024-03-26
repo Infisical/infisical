@@ -67,7 +67,7 @@ type TSecretServiceFactoryDep = {
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
 };
 
@@ -442,14 +442,15 @@ export const secretServiceFactory = ({
     includeImports,
     deep
   }: TGetSecretsDTO) => {
-    const importsArray: Awaited<ReturnType<typeof fnSecretsFromImports>> = [];
-    const secretsArray: (Awaited<ReturnType<typeof secretDAL.findByFolderId>>[number] & {
-      secretPath: string;
-      environment: string;
-      workspace: string;
-    })[] = [];
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
-    let paths = [path];
+    let paths: { folderId: string; path: string }[] = [];
 
     if (deep) {
       const getPaths = recursivelyGetSecretPaths({
@@ -471,65 +472,62 @@ export const secretServiceFactory = ({
       });
 
       paths = deepPaths.length === 0 ? paths : deepPaths;
-    }
+    } else {
+      const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+      if (!folder) return { secrets: [], imports: [] };
+      paths = [{ folderId: folder.id, path }];
 
-    for (const currentPath of paths) {
-      const { permission } = await permissionService.getProjectPermission(
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId
-      );
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath: currentPath })
-      );
-
-      const folder = await folderDAL.findBySecretPath(projectId, environment, currentPath);
-      if (!folder) return { secrets: [], imports: [] };
-      const folderId = folder.id;
-
-      const secrets = await secretDAL.findByFolderId(folderId, actorId);
-      if (includeImports) {
-        const secretImports = await secretImportDAL.find({ folderId });
-        const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
-          // if its service token allow full access over imported one
-          actor === ActorType.SERVICE
-            ? true
-            : permission.can(
-                ProjectPermissionActions.Read,
-                subject(ProjectPermissionSub.Secrets, {
-                  environment: importEnv.slug,
-                  secretPath: importPath
-                })
-              )
-        );
-        const importedSecrets = await fnSecretsFromImports({
-          allowedImports,
-          secretDAL,
-          folderDAL
-        });
-
-        secretsArray.push(
-          ...secrets.map((secret) => ({ ...secret, secretPath: currentPath, workspace: projectId, environment }))
-        );
-        importsArray.push(...importedSecrets);
-      }
-      secretsArray.push(
-        ...secrets.map((secret) => ({ ...secret, secretPath: currentPath, workspace: projectId, environment }))
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath: folder.path })
       );
     }
 
+    const groupedPaths = groupBy(paths, (p) => p.folderId);
+
+    const secrets = await secretDAL.findByFolderIds(
+      paths.map((p) => p.folderId),
+      actorId
+    );
+
     if (includeImports) {
+      const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
+      const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
+        // if its service token allow full access over imported one
+        actor === ActorType.SERVICE
+          ? true
+          : permission.can(
+              ProjectPermissionActions.Read,
+              subject(ProjectPermissionSub.Secrets, {
+                environment: importEnv.slug,
+                secretPath: importPath
+              })
+            )
+      );
+      const importedSecrets = await fnSecretsFromImports({
+        allowedImports,
+        secretDAL,
+        folderDAL
+      });
+
       return {
-        secrets: secretsArray,
-        imports: importsArray
+        secrets: secrets.map((secret) => ({
+          ...secret,
+          workspace: projectId,
+          environment,
+          secretPath: groupedPaths[secret.folderId][0].path
+        })),
+        imports: importedSecrets
       };
     }
 
     return {
-      secrets: secretsArray
+      secrets: secrets.map((secret) => ({
+        ...secret,
+        workspace: projectId,
+        environment,
+        secretPath: groupedPaths[secret.folderId][0].path
+      }))
     };
   };
 
