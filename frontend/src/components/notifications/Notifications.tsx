@@ -23,7 +23,7 @@ export const createNotification = (
     position: "bottom-right",
     ...toastProps,
     theme: "dark",
-    type: myProps?.type || "info"
+    type: myProps?.type || "info",
   });
 
 export const NotificationContainer = () => <ToastContainer hideProgressBar />;

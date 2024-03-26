@@ -9,7 +9,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistance } from "date-fns";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -60,7 +60,7 @@ export const DynamicSecretLease = ({
     path: secretPath,
     dynamicSecretName
   });
-  const { createNotification } = useNotificationContext();
+  
 
   const deleteDynamicSecretLease = useRevokeDynamicSecretLease();
 
