@@ -97,10 +97,11 @@ type GetAllSecretsParameters struct {
 }
 
 type GetAllFoldersParameters struct {
-	WorkspaceId    string
-	Environment    string
-	FoldersPath    string
-	InfisicalToken string
+	WorkspaceId              string
+	Environment              string
+	FoldersPath              string
+	InfisicalToken           string
+	UniversalAuthAccessToken string
 }
 
 type CreateFolderParameters struct {
@@ -122,4 +123,9 @@ type DeleteFolderParameters struct {
 type ExpandSecretsAuthentication struct {
 	InfisicalToken           string
 	UniversalAuthAccessToken string
+}
+
+type MachineIdentityCredentials struct {
+	ClientId     string
+	ClientSecret string
 }
