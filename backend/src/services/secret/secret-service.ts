@@ -473,14 +473,15 @@ export const secretServiceFactory = ({
 
       if (!deepPaths) return { secrets: [], imports: [] };
     } else {
-      const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-      if (!folder) return { secrets: [], imports: [] };
-      paths = [{ folderId: folder.id, path }];
-
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath: folder.path })
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
       );
+
+      const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+      if (!folder) return { secrets: [], imports: [] };
+
+      paths = [{ folderId: folder.id, path }];
     }
 
     const groupedPaths = groupBy(paths, (p) => p.folderId);
