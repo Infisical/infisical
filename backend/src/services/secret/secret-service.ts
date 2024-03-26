@@ -471,7 +471,7 @@ export const secretServiceFactory = ({
         }
       });
 
-      paths = deepPaths.length === 0 ? paths : deepPaths;
+      if (!deepPaths) return { secrets: [], imports: [] };
     } else {
       const folder = await folderDAL.findBySecretPath(projectId, environment, path);
       if (!folder) return { secrets: [], imports: [] };
