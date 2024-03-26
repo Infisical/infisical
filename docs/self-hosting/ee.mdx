@@ -1,11 +1,11 @@
 ---
-title: "Using Infisical EE"
+title: "Infisical Enterprise"
 description: "How to activate Infisical Enterprise Edition (EE) features"
 ---
 
 While most features in Infisical are free to use, others are paid and require purchasing an enterprise license to use them.
 
-This guide walks through how you can use these paid features in Infisical.
+This guide walks through how you can use these paid features on a self hosted instance of Infisical.
 
 <Steps>
     <Step title="Purchase a license">
@@ -19,10 +19,11 @@ This guide walks through how you can use these paid features in Infisical.
         - If using a regular license, you should set the value of the environment variable `LICENSE_KEY` in Infisical to the issued license key.
         - If using an offline license, you should set the value of the environment variable `LICENSE_KEY_OFFLINE` in Infisical to the issued license key.
 
-        Once your instance starts up, the license key will be validated and you’ll be able to use the paid features.
-
         <Note>
-            Once the license expires, Infisical will continue to run, but EE features will be disabled until the license is renewed or a new one is purchased.
+            How you set the environment variable will depend on the deployment method you used. Please refer to the documentation of your deployment method for specific instructions.
         </Note>
+
+        Once your instance starts up, the license key will be validated and you’ll be able to use the paid features. 
+        However, when the license expires, Infisical will continue to run, but EE features will be disabled until the license is renewed or a new one is purchased.
     </Step>
 </Steps>
