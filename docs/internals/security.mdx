@@ -87,13 +87,23 @@ Since these encryption operations occur on the client-side, the Infisical API is
 
 ### High availability
 
-Infisical leverages the robust container orchestration capabilities of Kubernetes and the inherent high availability features of the storage backend (i.e. Bitnami MongoDB) to ensure resilience and fault tolerance.
+Infisical Cloud utilizes several strategies to ensure high availability, leveraging AWS services to maintain continuous operation and data integrity.
 
-- Kubernetes: By deploying multiple replicas of Infisical application on Kubernetes, operations continue even if a single instance fails. Kubernetes Services facilitate load balancing, effectively distributing traffic across your application’s instances and ensuring optimal performance.
-- Storage backend: Bitnami MongoDB supports replica sets, which provide data redundancy and automatic failover for the underlying database.
-- If using [Infisical Cloud](https://app.infisical.com), data is stored in a Mongo Atlas cluster with storage autoscaling and cluster tier autoscaling enabled; as you'd expect, the cluster sits on a dedicated node.
+#### Multi-AZ AWS RDS
+Infisical Cloud uses AWS Relational Database Service (RDS) with Multi-AZ deployments. 
+This configuration ensures that the database service is highly available and durable. 
+AWS RDS automatically provisions and maintains a synchronous standby replica of the database in a different Availability Zone (AZ). 
+This setup facilitates immediate failover to the standby in the event of an AZ failure, thereby ensuring that database operations can continue with minimal interruption. 
+The continuous backup and replication to the standby instance safeguard data against loss and ensure its availability even during system failures.
 
-Together, Kubernetes’ self-healing mechanisms and Bitnami MongoDB’s failover capabilities work to create a highly available and fault-tolerant application capable of recovering gracefully from unexpected failures.
+#### Multi-AZ ECS for Container Orchestration
+Infisical Cloud leverages Amazon Elastic Container Service (ECS) in a Multi-AZ configuration for container orchestration. 
+This arrangement enables the management and operation of containers across multiple availability zones, increasing the application's fault tolerance. 
+Should there be an AZ failure, load is seamlessly sent to an operational AZ, thus minimizing downtime and preserving service availability. 
+
+#### Standby Regions for Regional Failover
+To fight regional outages, secondary regions are always in standby mode and maintained with up-to-date configurations and data, ready to take over in case the primary region fails. 
+The standby regions enable a rapid transition and service continuity with minimal disruption in the event of a complete regional failure, ensuring that Infisical Cloud services remain accessible.
 
 ### Snapshots
 
