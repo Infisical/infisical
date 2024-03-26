@@ -194,6 +194,25 @@ export const FOLDERS = {
   }
 } as const;
 
+export const SECRETS = {
+  ATTACH_TAGS: {
+    secretName: "The name of the secret to attach tags to.",
+    secretPath: "The path of the secret to attach tags to.",
+    type: "The type of the secret to attach tags to. (shared/personal)",
+    environment: "The slug of the environment where the secret is located",
+    projectSlug: "The slug of the project where the secret is located",
+    tagSlugs: "An array of tag slugs to attach to the secret."
+  },
+  DETACH_TAGS: {
+    secretName: "The name of the secret to detach tags from.",
+    secretPath: "The path of the secret to detach tags from.",
+    type: "The type of the secret to attach tags to. (shared/personal)",
+    environment: "The slug of the environment where the secret is located",
+    projectSlug: "The slug of the project where the secret is located",
+    tagSlugs: "An array of tag slugs to detach from the secret."
+  }
+} as const;
+
 export const RAW_SECRETS = {
   LIST: {
     workspaceId: "The ID of the project to list secrets from.",
@@ -361,5 +380,18 @@ export const DYNAMIC_SECRET_LEASES = {
     leaseId: "The ID of the dynamic secret lease.",
     isForced:
       "A boolean flag to delete the the dynamic secret from infisical without trying to remove it from external provider. Used when the dynamic secret got modified externally."
+export const SECRET_TAGS = {
+  LIST: {
+    projectId: "The ID of the project to list tags from."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the tag in.",
+    name: "The name of the tag to create.",
+    slug: "The slug of the tag to create.",
+    color: "The color of the tag to create."
+  },
+  DELETE: {
+    tagId: "The ID of the tag to delete.",
+    projectId: "The ID of the project to delete the tag from."
   }
 } as const;

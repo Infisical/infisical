@@ -108,7 +108,7 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
               Update
             </Button>
 
-            <Button colorSchema="secondary" variant="plain">
+            <Button onClick={() => handlePopUpClose("updateEnv")} colorSchema="secondary" variant="plain">
               Cancel
             </Button>
           </div>

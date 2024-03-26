@@ -104,7 +104,7 @@ export const AddEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpToggle
               Create
             </Button>
 
-            <Button colorSchema="secondary" variant="plain">
+            <Button onClick={() => handlePopUpClose("createEnv")} colorSchema="secondary" variant="plain">
               Cancel
             </Button>
           </div>

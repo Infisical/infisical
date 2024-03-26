@@ -150,6 +150,27 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
+  const getSecretTags = async (secretId: string, tx?: Knex) => {
+    try {
+      const tags = await (tx || db)(TableName.JnSecretTag)
+        .join(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
+        .where({ [`${TableName.Secret}Id` as const]: secretId })
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"));
+
+      return tags.map((el) => ({
+        id: el.tagId,
+        color: el.tagColor,
+        slug: el.tagSlug,
+        name: el.tagName
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "get secret tags" });
+    }
+  };
+
   const findByBlindIndexes = async (
     folderId: string,
     blindIndexes: Array<{ blindIndex: string; type: SecretType }>,
@@ -184,6 +205,7 @@ export const secretDALFactory = (db: TDbClient) => {
     bulkUpdate,
     deleteMany,
     bulkUpdateNoVersionIncrement,
+    getSecretTags,
     findByFolderId,
     findByBlindIndexes
   };

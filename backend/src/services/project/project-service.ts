@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -284,10 +284,11 @@ export const projectServiceFactory = ({
 
         // Get the role permission for the identity
         const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
-          ProjectMembershipRole.Admin,
+          OrgMembershipRole.Member,
           organization.id
         );
 
+        // Identity has to be at least a member in order to create projects
         const hasPrivilege = isAtLeastAsPrivileged(permission, rolePermission);
         if (!hasPrivilege)
           throw new ForbiddenRequestError({
