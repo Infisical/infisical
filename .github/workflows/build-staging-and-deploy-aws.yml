@@ -100,7 +100,7 @@ jobs:
           cluster: infisical-prod-platform
           wait-for-service-stability: true
 
-  production-postgres-migration:
+  production-postgres-deployment:
     name: Deploy to production
     runs-on: ubuntu-latest
     needs: [gamma-deployment]
@@ -125,7 +125,7 @@ jobs:
         with:
           audience: sts.amazonaws.com
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::905418227878:role/deploy-new-ecs-img
+          role-to-assume: arn:aws:iam::381492033652:role/gha-make-prod-deployment
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
