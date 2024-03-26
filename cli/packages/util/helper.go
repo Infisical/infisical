@@ -9,8 +9,11 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"time"
 
+	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/models"
+	"github.com/go-resty/resty/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -76,6 +79,53 @@ func GetInfisicalServiceToken(cmd *cobra.Command) (serviceToken string, err erro
 	}
 
 	return infisicalToken, nil
+}
+
+func GetInfisicalUniversalAuthAccessToken(cmd *cobra.Command) (accessToken string, err error) {
+
+	var token string
+
+	universalAuthClientId, err := cmd.Flags().GetString("universal-auth-client-id")
+	if err != nil {
+		return token, err
+	}
+	universalAuthClientSecret, err := cmd.Flags().GetString("universal-auth-client-secret")
+	if err != nil {
+		return token, err
+	}
+
+	if universalAuthClientId == "" {
+		universalAuthClientId = os.Getenv(INFISICAL_UNIVERSAL_AUTH_CLIENT_ID)
+	}
+
+	if universalAuthClientSecret == "" {
+		universalAuthClientSecret = os.Getenv(INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET)
+	}
+
+	if universalAuthClientId != "" || universalAuthClientSecret != "" {
+		res, err := UniversalAuthLogin(universalAuthClientId, universalAuthClientSecret)
+
+		if err != nil {
+			return token, err
+		}
+		token = res.AccessToken
+	}
+
+	return token, nil
+}
+
+func UniversalAuthLogin(clientId string, clientSecret string) (api.UniversalAuthLoginResponse, error) {
+	httpClient := resty.New()
+	httpClient.SetRetryCount(10000).
+		SetRetryMaxWaitTime(20 * time.Second).
+		SetRetryWaitTime(5 * time.Second)
+
+	tokenResponse, err := api.CallUniversalAuthLogin(httpClient, api.UniversalAuthLoginRequest{ClientId: clientId, ClientSecret: clientSecret})
+	if err != nil {
+		return api.UniversalAuthLoginResponse{}, err
+	}
+
+	return tokenResponse, nil
 }
 
 // Checks if the passed in email already exists in the users slice
