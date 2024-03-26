@@ -95,9 +95,13 @@ export const recursivelyGetSecretPaths = ({
     return map;
   };
 
-  const generatePaths = (map: FolderMap, parentId: string = "null", basePath: string = ""): string[] => {
+  const generatePaths = (
+    map: FolderMap,
+    parentId: string = "null",
+    basePath: string = ""
+  ): { path: string; folderId: string }[] => {
     const children = map[parentId || "null"] || [];
-    let paths: string[] = [];
+    let paths: { path: string; folderId: string }[] = [];
 
     children.forEach((child) => {
       // Determine if this is the root folder of the environment. If no parentId is present and the name is root, it's the root folder
@@ -107,11 +111,19 @@ export const recursivelyGetSecretPaths = ({
       // eslint-disable-next-line no-nested-ternary
       const currPath = basePath === "" ? (isRootFolder ? "/" : `/${child.name}`) : `${basePath}/${child.name}`;
 
-      paths.push(currPath); // Add the current path
+      paths.push({
+        path: currPath,
+        folderId: child.id
+      }); // Add the current path
 
       // Recursively generate paths for children, passing down the formatted pathh
       const childPaths = generatePaths(map, child.id, currPath);
-      paths = paths.concat(childPaths);
+      paths = paths.concat(
+        childPaths.map((p) => ({
+          path: p.path,
+          folderId: p.folderId
+        }))
+      );
     });
 
     return paths;
@@ -135,8 +147,11 @@ export const recursivelyGetSecretPaths = ({
     // Build the folder hierarchy map
     const folderMap = buildHierarchy(folders);
 
-    // Generate the paths paths and normalize the root path toe /
-    const paths = generatePaths(folderMap).map((p) => (p === "/" ? p : p.substring(1)));
+    // Generate the paths paths and normalize the root path to /
+    const paths = generatePaths(folderMap).map((p) => ({
+      path: p.path === "/" ? p.path : p.path.substring(1),
+      folderId: p.folderId
+    }));
 
     const { permission } = await permissionService.getProjectPermission(
       auth.actor,
@@ -148,14 +163,14 @@ export const recursivelyGetSecretPaths = ({
 
     // Filter out paths that the user does not have permission to access, and paths that are not in the current path
     const allowedPaths = paths.filter(
-      (p) =>
+      (folder) =>
         permission.can(
           ProjectPermissionActions.Read,
           subject(ProjectPermissionSub.Secrets, {
             environment,
-            secretPath: p
+            secretPath: folder.path
           })
-        ) && p.startsWith(currentPath === "/" ? "" : currentPath)
+        ) && folder.path.startsWith(currentPath === "/" ? "" : currentPath)
     );
 
     return allowedPaths;
