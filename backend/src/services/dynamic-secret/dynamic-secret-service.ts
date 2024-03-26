@@ -320,7 +320,7 @@ export const dynamicSecretServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
 

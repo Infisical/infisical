@@ -71,7 +71,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
 
