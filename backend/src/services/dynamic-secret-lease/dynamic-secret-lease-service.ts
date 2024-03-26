@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import ms from "ms";
 
 import { SecretKeyEncoding } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -28,6 +29,7 @@ type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: TDynamicSecretLeaseQueueServiceFactory;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
@@ -42,7 +44,8 @@ export const dynamicSecretLeaseServiceFactory = ({
   folderDAL,
   permissionService,
   dynamicSecretQueueService,
-  projectDAL
+  projectDAL,
+  licenseService
 }: TDynamicSecretLeaseServiceFactoryDep) => {
   const create = async ({
     environmentSlug,
@@ -71,6 +74,13 @@ export const dynamicSecretLeaseServiceFactory = ({
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan?.dynamicSecret) {
+      throw new BadRequestError({
+        message: "Failed to create lease due to plan restriction. Upgrade plan to create dynamic secret."
+      });
+    }
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
@@ -137,6 +147,13 @@ export const dynamicSecretLeaseServiceFactory = ({
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan?.dynamicSecret) {
+      throw new BadRequestError({
+        message: "Failed to renew lease due to plan restriction. Upgrade plan to create dynamic secret."
+      });
+    }
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });

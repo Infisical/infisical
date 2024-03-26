@@ -360,8 +360,12 @@ export const ActionBar = ({
                     <Button
                       leftIcon={<FontAwesomeIcon icon={faFingerprint} className="pr-2" />}
                       onClick={() => {
-                        handlePopUpOpen("addDynamicSecret");
-                        handlePopUpClose("misc");
+                        if (subscription && subscription.dynamicSecret) {
+                          handlePopUpOpen("addDynamicSecret");
+                          handlePopUpClose("misc");
+                          return;
+                        }
+                        handlePopUpOpen("upgradePlan");
                       }}
                       isDisabled={!isAllowed}
                       variant="outline_bg"
@@ -471,8 +475,8 @@ export const ActionBar = ({
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text={
             subscription.slug === null
-              ? "You can perform point-in-time recovery under an Enterprise license"
-              : "You can perform point-in-time recovery if you switch to Infisical's Team plan"
+              ? "You can perform this action under an Enterprise license"
+              : "You can perform this action if you switch to Infisical's Team plan"
           }
         />
       )}
