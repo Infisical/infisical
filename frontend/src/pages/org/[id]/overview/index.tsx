@@ -601,9 +601,9 @@ const OrganizationPage = withPermission(
           >
             <FontAwesomeIcon icon={faWarning} className="p-6 text-4xl text-primary" />
             <div className="text-sm">
-              <span className="text-lg font-semibold">Scheduled maintenance on April 4th 2024 </span>{" "}
+              <span className="text-lg font-semibold">Scheduled maintenance on April 6th 2024 </span>{" "}
               <br />
-              Infisical will undergo scheduled maintenance for approximately 1 hours on Thursday, April 4th, 11am EST. During these hours, read
+              Infisical will undergo scheduled maintenance for approximately 1 hours on Saturday, April 6th, 11am EST. During these hours, read
               operations will continue to function normally but no resources will be editable. 
               No action is required on your end — your applications can continue to fetch secrets.
               <br />
