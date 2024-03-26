@@ -27,7 +27,7 @@ export type TFeatureSet = {
   tier: -1;
   workspaceLimit: null;
   workspacesUsed: 0;
-  dynamicSecret: false;
+  dynamicSecret: true;
   memberLimit: null;
   membersUsed: 0;
   environmentLimit: null;
