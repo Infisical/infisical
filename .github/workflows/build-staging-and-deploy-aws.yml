@@ -99,3 +99,51 @@ jobs:
           service: infisical-prod-platform
           cluster: infisical-prod-platform
           wait-for-service-stability: true
+
+  production-postgres-migration:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    needs: [gamma-deployment]
+    environment:
+      name: Production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v2
+        with:
+          node-version: "20"
+      - name: Change directory to backend and install dependencies
+        env:
+          DB_CONNECTION_URI: ${{ secrets.DB_CONNECTION_URI }}
+        run: |
+          cd backend
+          npm install
+          npm run migration:latest
+      - name: Configure AWS Credentials 
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::905418227878:role/deploy-new-ecs-img
+      - name: Save commit hashes for tag
+        id: commit
+        uses: pr-mpt/actions-commit-hash@v2
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition --task-definition infisical-prod-platform --query taskDefinition > task-definition.json
+      - name: Render Amazon ECS task definition
+        id: render-web-container
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: infisical-prod-platform
+          image: infisical/staging_infisical:${{ steps.commit.outputs.short }}
+          environment-variables: "LOG_LEVEL=info"
+      - name: Deploy to Amazon ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-web-container.outputs.task-definition }}
+          service: infisical-prod-platform
+          cluster: infisical-prod-platform
+          wait-for-service-stability: true
