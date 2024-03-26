@@ -8,7 +8,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   DeleteActionModal,
@@ -48,7 +48,7 @@ export const AdditionalPrivilegeSection = ({
     "modifyPrivilege",
     "deletePrivilege"
   ] as const);
-  const { createNotification } = useNotificationContext();
+  
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
   const deleteProjectUserAdditionalPrivilege = useDeleteProjectUserAdditionalPrivilege();

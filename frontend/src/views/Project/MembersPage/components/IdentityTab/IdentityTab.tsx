@@ -11,7 +11,7 @@ import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
     Button,
@@ -38,7 +38,7 @@ import { IdentityRoles } from "./components/IdentityRoles";
 
 export const IdentityTab = withProjectPermission(
     () => {
-        const { createNotification } = useNotificationContext();
+        
         const { currentWorkspace } = useWorkspace();
 
         const workspaceId = currentWorkspace?.id ?? "";

@@ -18,7 +18,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import guidGenerator from "@app/components/utilities/randomId";
 import { Button, FormControl, Input, Spinner } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
@@ -134,7 +134,7 @@ export const AdditionalPrivilegeForm = ({
   workspaceId,
   isIdentity
 }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const isEdit = Boolean(privilegeId);
 
   const { data: projectUserPrivilegeDetails, isLoading: isProjectUserPrivilegeLoading } =

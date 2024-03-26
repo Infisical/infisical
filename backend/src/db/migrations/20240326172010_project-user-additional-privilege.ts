@@ -7,9 +7,7 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.ProjectUserAdditionalPrivilege))) {
     await knex.schema.createTable(TableName.ProjectUserAdditionalPrivilege, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("name").notNullable();
       t.string("slug", 60).notNullable();
-      t.string("description");
       t.uuid("projectMembershipId").notNullable();
       t.foreign("projectMembershipId").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
       t.boolean("isTemporary").notNullable().defaultTo(false);
