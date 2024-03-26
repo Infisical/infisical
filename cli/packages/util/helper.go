@@ -182,11 +182,11 @@ func GetInfisicalUniversalAuthAccessToken(cmd *cobra.Command) (accessToken strin
 	}
 
 	if universalAuthClientId == "" {
-		universalAuthClientId = os.Getenv(INFISICAL_UNIVERSAL_AUTH_CLIENT_ID)
+		universalAuthClientId = os.Getenv(INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
 	}
 
 	if universalAuthClientSecret == "" {
-		universalAuthClientSecret = os.Getenv(INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET)
+		universalAuthClientSecret = os.Getenv(INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET_NAME)
 	}
 
 	if universalAuthClientId != "" || universalAuthClientSecret != "" {
