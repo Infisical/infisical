@@ -21,7 +21,9 @@ import {
   faNetworkWired,
   faPlug,
   faPlus,
-  faUserPlus
+  faUserPlus,
+  faWarning,
+  faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -54,6 +56,7 @@ import {
   fetchOrgUsers,
   useAddUserToWsNonE2EE,
   useCreateWorkspace,
+  useGetUserAction,
   useRegisterUserAction
 } from "@app/hooks/api";
 // import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
@@ -480,6 +483,12 @@ const OrganizationPage = withPermission(
     
     const addUsersToProject = useAddUserToWsNonE2EE();
 
+    const { data: updateClosed } = useGetUserAction("april_2024_db_update_closed");
+    const registerUserAction = useRegisterUserAction();
+    const closeUpdate = async () => {
+      await registerUserAction.mutateAsync("april_2024_db_update_closed");
+    };
+
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "addNewWs",
       "upgradePlan"
@@ -585,6 +594,29 @@ const OrganizationPage = withPermission(
           </div>
         )}
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
+        <div
+            className={`${
+              !updateClosed ? "block" : "hidden"
+            } mb-4 flex w-full flex-row items-center rounded-md border border-primary-600 bg-primary/10 p-2 text-base text-white`}
+          >
+            <FontAwesomeIcon icon={faWarning} className="p-6 text-4xl text-primary" />
+            <div className="text-sm">
+              <span className="text-lg font-semibold">Scheduled maintenance on April 6th 2024 </span>{" "}
+              <br />
+              Infisical will undergo scheduled maintenance for approximately 1 hours on Saturday, April 6th, 11am EST. During these hours, read
+              operations will continue to function normally but no resources will be editable. 
+              No action is required on your end — your applications can continue to fetch secrets.
+              <br />
+            </div>
+            <button
+              type="button"
+              onClick={() => closeUpdate()}
+              aria-label="close"
+              className="flex h-full items-start text-mineshaft-100 duration-200 hover:text-red-400"
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </div>
           <p className="mr-4 font-semibold text-white">Projects</p>
           <div className="mt-6 flex w-full flex-row">
             <Input
