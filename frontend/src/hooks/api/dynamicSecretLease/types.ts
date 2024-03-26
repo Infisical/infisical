@@ -14,35 +14,35 @@ export type TDynamicSecretLease = {
 };
 
 export type TCreateDynamicSecretLeaseDTO = {
-  slug: string;
+  dynamicSecretName: string;
   projectSlug: string;
   ttl?: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
 };
 
 export type TRenewDynamicSecretLeaseDTO = {
   leaseId: string;
-  slug: string;
+  dynamicSecretName: string;
   ttl?: string;
   projectSlug: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
 };
 
 export type TListDynamicSecretLeaseDTO = {
-  slug: string;
+  dynamicSecretName: string;
   projectSlug: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
   enabled?: boolean;
 };
 
 export type TRevokeDynamicSecretLeaseDTO = {
   leaseId: string;
-  slug: string;
+  dynamicSecretName: string;
   projectSlug: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
   isForced?: boolean;
 };

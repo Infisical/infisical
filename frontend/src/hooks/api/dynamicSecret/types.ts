@@ -5,7 +5,7 @@ export enum DynamicSecretStatus {
 // TODO(akhilmhdh): When we switch to monorepo all the server api ts will be in a shared repo
 export type TDynamicSecret = {
   id: string;
-  slug: string;
+  name: string;
   type: DynamicSecretProviders;
   createdAt: string;
   updatedAt: string;
@@ -45,17 +45,17 @@ export type TCreateDynamicSecretDTO = {
   defaultTTL: string;
   maxTTL?: string;
   path: string;
-  environment: string;
-  slug: string;
+  environmentSlug: string;
+  name: string;
 };
 
 export type TUpdateDynamicSecretDTO = {
-  slug: string;
+  name: string;
   projectSlug: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
   data: {
-    newSlug?: string;
+    newName?: string;
     defaultTTL?: string;
     maxTTL?: string | null;
     inputs?: unknown;
@@ -65,20 +65,20 @@ export type TUpdateDynamicSecretDTO = {
 export type TListDynamicSecretDTO = {
   projectSlug: string;
   path: string;
-  environment: string;
+  environmentSlug: string;
 };
 
 export type TDeleteDynamicSecretDTO = {
   projectSlug: string;
   path: string;
-  environment: string;
-  slug: string;
+  environmentSlug: string;
+  name: string;
   isForced?: boolean;
 };
 
 export type TDetailsDynamicSecretDTO = {
   projectSlug: string;
   path: string;
-  environment: string;
-  slug: string;
+  environmentSlug: string;
+  name: string;
 };

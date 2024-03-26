@@ -24,7 +24,7 @@ type TForm = z.infer<typeof formSchema>;
 type Props = {
   onClose: () => void;
   leaseId: string;
-  slug: string;
+  dynamicSecretName: string;
   projectSlug: string;
   environment: string;
   secretPath: string;
@@ -33,7 +33,7 @@ type Props = {
 export const RenewDynamicSecretLease = ({
   onClose,
   projectSlug,
-  slug,
+  dynamicSecretName,
   leaseId,
   secretPath,
   environment
@@ -56,11 +56,11 @@ export const RenewDynamicSecretLease = ({
     if (renewDynamicSecretLease.isLoading) return;
     try {
       await renewDynamicSecretLease.mutateAsync({
-        environment,
+        environmentSlug: environment,
         projectSlug,
         path: secretPath,
         ttl,
-        slug,
+        dynamicSecretName,
         leaseId
       });
       onClose();

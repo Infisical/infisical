@@ -8,14 +8,14 @@ import { EditDynamicSecretSqlProviderForm } from "./EditDynamicSecretSqlProvider
 
 type Props = {
   onClose: () => void;
-  slug: string;
+  dynamicSecretName: string;
   projectSlug: string;
   environment: string;
   secretPath: string;
 };
 
 export const EditDynamicSecretForm = ({
-  slug,
+  dynamicSecretName,
   environment,
   projectSlug,
   onClose,
@@ -24,8 +24,8 @@ export const EditDynamicSecretForm = ({
   const { data: dynamicSecretDetails, isLoading: isDynamicSecretLoading } =
     useGetDynamicSecretDetails({
       projectSlug,
-      environment,
-      slug,
+      environmentSlug: environment,
+      name: dynamicSecretName,
       path: secretPath
     });
 

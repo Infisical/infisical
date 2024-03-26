@@ -141,7 +141,7 @@ export const SecretMainPage = () => {
 
   const { data: dynamicSecrets, isLoading: isDynamicSecretLoading } = useGetDynamicSecrets({
     projectSlug,
-    environment,
+    environmentSlug: environment,
     path: secretPath
   });
 

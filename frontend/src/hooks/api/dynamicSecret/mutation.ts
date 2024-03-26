@@ -21,8 +21,8 @@ export const useCreateDynamicSecret = () => {
       );
       return data.dynamicSecret;
     },
-    onSuccess: (_, { path, environment, projectSlug }) => {
-      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environment }));
+    onSuccess: (_, { path, environmentSlug, projectSlug }) => {
+      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environmentSlug }));
     }
   });
 };
@@ -33,13 +33,13 @@ export const useUpdateDynamicSecret = () => {
   return useMutation<{}, {}, TUpdateDynamicSecretDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.patch<{ dynamicSecret: TDynamicSecret }>(
-        `/api/v1/dynamic-secrets/${dto.slug}`,
+        `/api/v1/dynamic-secrets/${dto.name}`,
         dto
       );
       return data.dynamicSecret;
     },
-    onSuccess: (_, { path, environment, projectSlug }) => {
-      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environment }));
+    onSuccess: (_, { path, environmentSlug, projectSlug }) => {
+      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environmentSlug }));
     }
   });
 };
@@ -50,13 +50,13 @@ export const useDeleteDynamicSecret = () => {
   return useMutation<{}, {}, TDeleteDynamicSecretDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.delete<{ dynamicSecret: TDynamicSecret }>(
-        `/api/v1/dynamic-secrets/${dto.slug}`,
+        `/api/v1/dynamic-secrets/${dto.name}`,
         { data: dto }
       );
       return data.dynamicSecret;
     },
-    onSuccess: (_, { path, environment, projectSlug }) => {
-      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environment }));
+    onSuccess: (_, { path, environmentSlug, projectSlug }) => {
+      queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environmentSlug }));
     }
   });
 };

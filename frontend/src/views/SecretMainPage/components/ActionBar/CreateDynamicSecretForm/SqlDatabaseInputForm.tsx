@@ -54,7 +54,9 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  slug: z.string().toLowerCase()
+  name: z
+    .string()
+    .refine((val) => val.toLowerCase() === val, "Must be lowercase")
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -92,18 +94,18 @@ export const SqlDatabaseInputForm = ({
   const { createNotification } = useNotificationContext();
   const createDynamicSecret = useCreateDynamicSecret();
 
-  const handleCreateDynamicSecret = async ({ slug, maxTTL, provider, defaultTTL }: TForm) => {
+  const handleCreateDynamicSecret = async ({ name, maxTTL, provider, defaultTTL }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isLoading) return;
     try {
       await createDynamicSecret.mutateAsync({
         provider: { type: DynamicSecretProviders.SqlDatabase, inputs: provider },
         maxTTL,
-        slug,
+        name,
         path: secretPath,
         defaultTTL,
         projectSlug,
-        environment
+        environmentSlug: environment
       });
       onCompleted();
     } catch (err) {
@@ -122,7 +124,7 @@ export const SqlDatabaseInputForm = ({
             <Controller
               control={control}
               defaultValue=""
-              name="slug"
+              name="name"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   label="Secret Name"
@@ -168,9 +170,11 @@ export const SqlDatabaseInputForm = ({
           </div>
         </div>
         <div>
-          <div className="mb-4 border-b border-mineshaft-500 pb-2 text-mineshaft-200 pl-1 mt-4 font-medium">Configuration</div>
+          <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            Configuration
+          </div>
           <div className="flex flex-col">
-            <div className="text-sm text-mineshaft-400 pl-1 pb-0.5">Service</div>
+            <div className="pl-1 pb-0.5 text-sm text-mineshaft-400">Service</div>
             <Controller
               control={control}
               name="provider.client"
@@ -279,11 +283,7 @@ export const SqlDatabaseInputForm = ({
                   </FormControl>
                 )}
               />
-              <Accordion
-                type="single"
-                collapsible
-                className="w-full bg-mineshaft-700 mb-2"
-              >
+              <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
                 <AccordionItem value="advance-statements">
                   <AccordionTrigger>Modify SQL Statements</AccordionTrigger>
                   <AccordionContent>

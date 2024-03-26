@@ -5,27 +5,27 @@ import { apiRequest } from "@app/config/request";
 import { TDynamicSecretLease, TListDynamicSecretLeaseDTO } from "./types";
 
 export const dynamicSecretLeaseKeys = {
-  list: ({ projectSlug, environment, path, slug }: TListDynamicSecretLeaseDTO) =>
-    [{ projectSlug, environment, path, slug }, "dynamic-secret-leases"] as const
+  list: ({ projectSlug, environmentSlug, path, dynamicSecretName }: TListDynamicSecretLeaseDTO) =>
+    [{ projectSlug, environmentSlug, path, dynamicSecretName }, "dynamic-secret-leases"] as const
 };
 
 export const useGetDynamicSecretLeases = ({
   projectSlug,
-  environment,
+  environmentSlug,
   path,
-  slug,
+  dynamicSecretName,
   enabled = true
 }: TListDynamicSecretLeaseDTO) => {
   return useQuery({
-    queryKey: dynamicSecretLeaseKeys.list({ path, environment, projectSlug, slug }),
-    enabled: Boolean(projectSlug && environment && path && slug && enabled),
+    queryKey: dynamicSecretLeaseKeys.list({ path, environmentSlug, projectSlug, dynamicSecretName }),
+    enabled: Boolean(projectSlug && environmentSlug && path && dynamicSecretName && enabled),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ leases: TDynamicSecretLease[] }>(
-        `/api/v1/dynamic-secrets/${slug}/leases`,
+        `/api/v1/dynamic-secrets/${dynamicSecretName}/leases`,
         {
           params: {
             projectSlug,
-            environment,
+            environmentSlug,
             path
           }
         }

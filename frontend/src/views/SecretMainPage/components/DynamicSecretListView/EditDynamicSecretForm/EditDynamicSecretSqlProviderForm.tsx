@@ -57,7 +57,10 @@ const formSchema = z.object({
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     })
     .nullable(),
-  newSlug: z.string().toLowerCase().optional()
+  newName: z
+    .string()
+    .refine((val) => val.toLowerCase() === val, "Must be lowercase")
+    .optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -85,7 +88,7 @@ export const EditDynamicSecretSqlProviderForm = ({
     values: {
       defaultTTL: dynamicSecret.defaultTTL,
       maxTTL: dynamicSecret.maxTTL,
-      newSlug: dynamicSecret.slug,
+      newName: dynamicSecret.name,
       inputs: {
         ...(dynamicSecret.inputs as TForm["inputs"])
       }
@@ -94,31 +97,31 @@ export const EditDynamicSecretSqlProviderForm = ({
   const { createNotification } = useNotificationContext();
   const updateDynamicSecret = useUpdateDynamicSecret();
 
-  const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newSlug }: TForm) => {
+  const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isLoading) return;
     try {
       await updateDynamicSecret.mutateAsync({
-        slug: dynamicSecret.slug,
+        name: dynamicSecret.name,
         path: secretPath,
         projectSlug,
-        environment,
+        environmentSlug: environment,
         data: {
           maxTTL: maxTTL || undefined,
           defaultTTL,
           inputs,
-          newSlug: newSlug === dynamicSecret.slug ? undefined : newSlug
+          newName: newName === dynamicSecret.name ? undefined : newName
         }
       });
       onClose();
       createNotification({
         type: "success",
-        text: "Successfully updated dynamic secret"
+        text: "Successfully update dynamic secret"
       });
     } catch (err) {
       createNotification({
         type: "error",
-        text: "Failed to create dynamic secret"
+        text: "Failed to update dynamic secret"
       });
     }
   };
@@ -130,7 +133,7 @@ export const EditDynamicSecretSqlProviderForm = ({
           <div className="flex-grow">
             <Controller
               control={control}
-              name="newSlug"
+              name="newName"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   label="Secret Name"

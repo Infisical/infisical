@@ -64,14 +64,14 @@ export const DynamicSecretListView = ({
 
   const handleDynamicSecretDelete = async () => {
     try {
-      const { slug, isForced } = popUp.deleteDynamicSecret.data as TDynamicSecret & {
+      const { name, isForced } = popUp.deleteDynamicSecret.data as TDynamicSecret & {
         isForced?: boolean;
       };
       await deleteDynamicSecret.mutateAsync({
-        environment,
+        environmentSlug: environment,
         projectSlug,
         path: secretPath,
-        slug,
+        name,
         isForced
       });
       handlePopUpClose("deleteDynamicSecret");
@@ -93,8 +93,8 @@ export const DynamicSecretListView = ({
       {dynamicSecrets
         .sort((a, b) =>
           sortDir === SortDir.ASC
-            ? a.slug.toLowerCase().localeCompare(b.slug.toLowerCase())
-            : b.slug.toLowerCase().localeCompare(a.slug.toLowerCase())
+            ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+            : b.name.toLowerCase().localeCompare(a.name.toLowerCase())
         )
         .map((secret) => {
           const isRevocking = secret.status === DynamicSecretStatus.Deleting;
@@ -124,11 +124,11 @@ export const DynamicSecretListView = ({
                   <FontAwesomeIcon icon={faFingerprint} />
                 </div>
                 <div
-                  className="flex flex-grow items-center px-4 py-3 uppercase"
+                  className="flex flex-grow items-center px-4 py-3"
                   role="button"
                   tabIndex={0}
                 >
-                  {secret.slug}{" "}
+                  {secret.name}
                   <Tag className="ml-4 py-0 px-2 text-xs normal-case">
                     {formatProviderName(secret.type)}
                   </Tag>
@@ -234,7 +234,7 @@ export const DynamicSecretListView = ({
                   onClose={() => handlePopUpClose("dynamicSecretLeases")}
                   projectSlug={projectSlug}
                   key={secret.id}
-                  slug={secret.slug}
+                  dynamicSecretName={secret.name}
                   secretPath={secretPath}
                   environment={environment}
                 />
@@ -253,7 +253,7 @@ export const DynamicSecretListView = ({
             }
             onClose={() => handlePopUpClose("createDynamicSecretLease")}
             projectSlug={projectSlug}
-            slug={(popUp.createDynamicSecretLease?.data as { slug: string })?.slug}
+            dynamicSecretName={(popUp.createDynamicSecretLease?.data as { name: string })?.name}
             secretPath={secretPath}
             environment={environment}
           />
@@ -267,7 +267,7 @@ export const DynamicSecretListView = ({
           <EditDynamicSecretForm
             onClose={() => handlePopUpClose("updateDynamicSecret")}
             projectSlug={projectSlug}
-            slug={(popUp.updateDynamicSecret?.data as TDynamicSecret)?.slug}
+            dynamicSecretName={(popUp.updateDynamicSecret?.data as TDynamicSecret)?.name}
             secretPath={secretPath}
             environment={environment}
           />
@@ -275,7 +275,7 @@ export const DynamicSecretListView = ({
       </Modal>
       <DeleteActionModal
         isOpen={popUp.deleteDynamicSecret.isOpen}
-        deleteKey={(popUp.deleteDynamicSecret?.data as TDynamicSecret)?.slug}
+        deleteKey={(popUp.deleteDynamicSecret?.data as TDynamicSecret)?.name}
         title={
           (popUp.deleteDynamicSecret?.data as { isForced?: boolean })?.isForced
             ? "Do you want to force delete this dynamic secret?"

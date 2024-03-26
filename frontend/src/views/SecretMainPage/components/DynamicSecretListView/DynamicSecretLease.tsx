@@ -34,7 +34,7 @@ import { DynamicSecretLeaseStatus } from "@app/hooks/api/dynamicSecretLease/type
 import { RenewDynamicSecretLease } from "./RenewDynamicSecretLease";
 
 type Props = {
-  slug: string;
+  dynamicSecretName: string;
   projectSlug: string;
   environment: string;
   secretPath: string;
@@ -44,7 +44,7 @@ type Props = {
 
 export const DynamicSecretLease = ({
   projectSlug,
-  slug,
+  dynamicSecretName,
   environment,
   secretPath,
   onClickNewLease,
@@ -56,9 +56,9 @@ export const DynamicSecretLease = ({
   ] as const);
   const { data: leases, isLoading: isLeaseLoading } = useGetDynamicSecretLeases({
     projectSlug,
-    environment,
+    environmentSlug: environment,
     path: secretPath,
-    slug
+    dynamicSecretName
   });
   const { createNotification } = useNotificationContext();
 
@@ -71,10 +71,10 @@ export const DynamicSecretLease = ({
         isForced?: boolean;
       };
       await deleteDynamicSecretLease.mutateAsync({
-        environment,
+        environmentSlug: environment,
         projectSlug,
         path: secretPath,
-        slug,
+        dynamicSecretName,
         leaseId,
         isForced
       });
@@ -226,7 +226,7 @@ export const DynamicSecretLease = ({
             onClose={() => handlePopUpClose("renewSecret")}
             projectSlug={projectSlug}
             leaseId={(popUp.renewSecret?.data as { leaseId: string })?.leaseId}
-            slug={slug}
+            dynamicSecretName={dynamicSecretName}
             secretPath={secretPath}
             environment={environment}
           />
