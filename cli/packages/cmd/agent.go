@@ -479,7 +479,7 @@ func (tm *AgentManager) GetToken() string {
 
 // Fetches a new access token using client credentials
 func (tm *AgentManager) FetchNewAccessToken() error {
-	clientID := os.Getenv("INFISICAL_UNIVERSAL_AUTH_CLIENT_ID")
+	clientID := os.Getenv(util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
 	if clientID == "" {
 		clientIDAsByte, err := ReadFile(tm.clientIdPath)
 		if err != nil {
