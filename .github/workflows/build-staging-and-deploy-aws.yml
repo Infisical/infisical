@@ -27,15 +27,6 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Set up Depot CLI
         uses: depot/setup-action@v1
-      - name: 📦 Build backend and export to Docker
-        uses: depot/build-push-action@v1
-        with:
-          project: 64mmf0n610
-          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
-          load: true
-          context: .
-          file: Dockerfile.standalone-infisical
-          tags: infisical/infisical:test
       - name: 🏗️ Build backend and push to docker hub
         uses: depot/build-push-action@v1
         with:
