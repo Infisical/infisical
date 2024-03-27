@@ -256,7 +256,10 @@ export const registerRoutes = async (
     groupDAL,
     groupProjectDAL,
     groupProjectMembershipRoleDAL,
+    userGroupMembershipDAL,
     projectDAL,
+    projectKeyDAL,
+    projectBotDAL,
     projectRoleDAL,
     permissionService
   });

@@ -105,6 +105,7 @@ export const OrgGroupModal = ({
                 });
             }
             handlePopUpToggle("group", false);
+            reset();
             
             createNotification({
                 text: `Successfully ${popUp?.group?.data ? "updated" : "created"} group`,

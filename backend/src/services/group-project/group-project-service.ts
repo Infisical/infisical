@@ -1,15 +1,20 @@
 import { ForbiddenError } from "@casl/ability";
 import ms from "ms";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole, SecretKeyEncoding } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
+import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
 import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
+import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { ProjectUserMembershipTemporaryMode } from "../project-membership/project-membership-types";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { TGroupProjectDALFactory } from "./group-project-dal";
@@ -27,8 +32,11 @@ type TGroupProjectServiceFactoryDep = {
     TGroupProjectMembershipRoleDALFactory,
     "create" | "transaction" | "insertMany" | "delete"
   >;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  userGroupMembershipDAL: TUserGroupMembershipDALFactory;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser">;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany" | "transaction">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
+  projectBotDAL: TProjectBotDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
 };
@@ -39,7 +47,10 @@ export const groupProjectServiceFactory = ({
   groupDAL,
   groupProjectDAL,
   groupProjectMembershipRoleDAL,
+  userGroupMembershipDAL,
   projectDAL,
+  projectKeyDAL,
+  projectBotDAL,
   projectRoleDAL,
   permissionService
 }: TGroupProjectServiceFactoryDep) => {
@@ -104,6 +115,66 @@ export const groupProjectServiceFactory = ({
       );
       return groupProjectMembership;
     });
+
+    // share project key with users in group that have not
+    // individually been added to the project and that are not part of
+    // other groups that are in the project
+    const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group.id, projectId);
+
+    if (groupMembers.length) {
+      const ghostUser = await projectDAL.findProjectGhostUser(projectId);
+
+      if (!ghostUser) {
+        throw new BadRequestError({
+          message: "Failed to find sudo user"
+        });
+      }
+
+      const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, projectId);
+
+      if (!ghostUserLatestKey) {
+        throw new BadRequestError({
+          message: "Failed to find sudo user latest key"
+        });
+      }
+
+      const bot = await projectBotDAL.findOne({ projectId });
+
+      if (!bot) {
+        throw new BadRequestError({
+          message: "Failed to find bot"
+        });
+      }
+
+      const botPrivateKey = infisicalSymmetricDecrypt({
+        keyEncoding: bot.keyEncoding as SecretKeyEncoding,
+        iv: bot.iv,
+        tag: bot.tag,
+        ciphertext: bot.encryptedPrivateKey
+      });
+
+      const plaintextProjectKey = decryptAsymmetric({
+        ciphertext: ghostUserLatestKey.encryptedKey,
+        nonce: ghostUserLatestKey.nonce,
+        publicKey: ghostUserLatestKey.sender.publicKey,
+        privateKey: botPrivateKey
+      });
+
+      const projectKeyData = groupMembers.map(({ user: { publicKey, id } }) => {
+        const { ciphertext: encryptedKey, nonce } = encryptAsymmetric(plaintextProjectKey, publicKey, botPrivateKey);
+
+        return {
+          encryptedKey,
+          nonce,
+          senderId: ghostUser.id,
+          receiverId: id,
+          projectId
+        };
+      });
+
+      await projectKeyDAL.insertMany(projectKeyData);
+    }
+
     return projectGroup;
   };
 
@@ -215,7 +286,19 @@ export const groupProjectServiceFactory = ({
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, groupRolePermission);
     if (!hasRequiredPriviledges) throw new ForbiddenRequestError({ message: "Failed to delete more privileged group" });
 
+    const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group.id, projectId);
+
+    if (groupMembers.length) {
+      await projectKeyDAL.delete({
+        projectId,
+        $in: {
+          receiverId: groupMembers.map(({ user: { id } }) => id)
+        }
+      });
+    }
+
     const [deletedGroup] = await groupProjectDAL.delete({ groupId: group.id, projectId });
+
     return deletedGroup;
   };
 

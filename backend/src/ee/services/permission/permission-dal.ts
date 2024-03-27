@@ -73,6 +73,8 @@ export const permissionDALFactory = (db: TDbClient) => {
         )
         .select("permissions");
 
+      console.log("getProjectPermission docs: ", docs);
+
       const permission = sqlNestRelationships({
         data: docs,
         key: "membershipId",

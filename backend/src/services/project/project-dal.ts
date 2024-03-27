@@ -30,8 +30,33 @@ export const projectDALFactory = (db: TDbClient) => {
           { column: `${TableName.Environment}.position`, order: "asc" }
         ]);
 
+      const groups: string[] = await db(TableName.UserGroupMembership)
+        .where({ userId })
+        .select(selectAllTableCols(TableName.UserGroupMembership))
+        .pluck("groupId");
+
+      const groupWorkspaces = await db(TableName.GroupProjectMembership)
+        .whereIn("groupId", groups)
+        .join(TableName.Project, `${TableName.GroupProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .whereNotIn(
+          `${TableName.Project}.id`,
+          workspaces.map(({ id }) => id)
+        )
+        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .select(
+          selectAllTableCols(TableName.Project),
+          db.ref("id").withSchema(TableName.Project).as("_id"),
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("name").withSchema(TableName.Environment).as("envName")
+        )
+        .orderBy([
+          { column: `${TableName.Project}.name`, order: "asc" },
+          { column: `${TableName.Environment}.position`, order: "asc" }
+        ]);
+
       const nestedWorkspaces = sqlNestRelationships({
-        data: workspaces,
+        data: workspaces.concat(groupWorkspaces),
         key: "id",
         parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
         childrenMapper: [
