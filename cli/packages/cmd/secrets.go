@@ -39,11 +39,16 @@ var secretsCmd = &cobra.Command{
 		}
 
 		infisicalToken, err := util.GetInfisicalServiceToken(cmd)
-
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		identityAccessToken, err := util.GetInfisicalUniversalAuthAccessToken(cmd)
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -73,7 +78,7 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports}, "")
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, WorkspaceId: projectId, InfisicalToken: infisicalToken, UniversalAuthAccessToken: identityAccessToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports}, "")
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -398,12 +403,20 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	}
 
 	infisicalToken, err := util.GetInfisicalServiceToken(cmd)
-
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+	identityAccessToken, err := util.GetInfisicalUniversalAuthAccessToken(cmd)
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
 	tagSlugs, err := cmd.Flags().GetString("tags")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	projectId, err := cmd.Flags().GetString("projectId")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
@@ -418,7 +431,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse path flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: true}, "")
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, WorkspaceId: projectId, InfisicalToken: infisicalToken, UniversalAuthAccessToken: identityAccessToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: true}, "")
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
@@ -466,7 +479,16 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 	}
 
 	infisicalToken, err := util.GetInfisicalServiceToken(cmd)
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
 
+	identityAccessToken, err := util.GetInfisicalUniversalAuthAccessToken(cmd)
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	projectId, err := cmd.Flags().GetString("projectId")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
@@ -476,7 +498,7 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: true}, "")
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, WorkspaceId: projectId, InfisicalToken: infisicalToken, UniversalAuthAccessToken: identityAccessToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: true}, "")
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
@@ -676,18 +698,25 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 
 func init() {
 	secretsGenerateExampleEnvCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsGenerateExampleEnvCmd.Flags().String("universal-auth-client-id", "", "Machine Identity universal auth client ID")
+	secretsGenerateExampleEnvCmd.Flags().String("universal-auth-client-secret", "", "Machine Identity universal auth client secret")
+	secretsGenerateExampleEnvCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	secretsGenerateExampleEnvCmd.Flags().String("path", "/", "Fetch secrets from within a folder path")
 	secretsCmd.AddCommand(secretsGenerateExampleEnvCmd)
 
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
-	secretsCmd.AddCommand(secretsGetCmd)
+	secretsGetCmd.Flags().String("universal-auth-client-id", "", "Machine Identity universal auth client ID")
+	secretsGetCmd.Flags().String("universal-auth-client-secret", "", "Machine Identity universal auth client secret")
+	secretsGetCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
 	secretsGetCmd.Flags().Bool("raw-value", false, "Returns only the value of secret, only works with one secret")
+	secretsCmd.AddCommand(secretsGetCmd)
 
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
 	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
 
+	// Only supports logged in users (JWT auth)
 	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
@@ -696,6 +725,8 @@ func init() {
 	secretsDeleteCmd.Flags().String("type", "personal", "the type of secret to delete: personal or shared  (default: personal)")
 	secretsDeleteCmd.Flags().String("path", "/", "get secrets within a folder path")
 	secretsCmd.AddCommand(secretsDeleteCmd)
+
+	// Only supports logged in users (JWT auth)
 	secretsDeleteCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
@@ -707,6 +738,9 @@ func init() {
 	// Add getCmd, createCmd and deleteCmd flags here
 	getCmd.Flags().StringP("path", "p", "/", "The path from where folders should be fetched from")
 	getCmd.Flags().String("token", "", "Fetch folders using the infisical token")
+	getCmd.Flags().String("universal-auth-client-id", "", "Machine Identity universal auth client ID")
+	getCmd.Flags().String("universal-auth-client-secret", "", "Machine Identity universal auth client secret")
+	getCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	folderCmd.AddCommand(getCmd)
 
 	// Add createCmd flags here
@@ -724,6 +758,9 @@ func init() {
 	// ** End of folders sub command
 
 	secretsCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsCmd.Flags().String("universal-auth-client-id", "", "Machine Identity universal auth client ID")
+	secretsCmd.Flags().String("universal-auth-client-secret", "", "Machine Identity universal auth client secret")
+	secretsCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
 	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	secretsCmd.Flags().Bool("include-imports", true, "Imported linked secrets ")
