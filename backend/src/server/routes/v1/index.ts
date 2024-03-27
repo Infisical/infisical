@@ -1,8 +1,6 @@
 import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
-import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
-import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
 import { registerIdentityRouter } from "./identity-router";
 import { registerIdentityUaRouter } from "./identity-ua";
@@ -52,14 +50,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     },
 
     { prefix: "/workspace" }
-  );
-
-  await server.register(
-    async (dynamicSecretRouter) => {
-      await dynamicSecretRouter.register(registerDynamicSecretRouter);
-      await dynamicSecretRouter.register(registerDynamicSecretLeaseRouter, { prefix: "/leases" });
-    },
-    { prefix: "/dynamic-secrets" }
   );
 
   await server.register(registerProjectBotRouter, { prefix: "/bot" });

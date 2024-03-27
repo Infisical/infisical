@@ -1,3 +1,5 @@
+import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
+import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
 import { registerOrgRoleRouter } from "./org-role-router";
@@ -34,6 +36,15 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerSecretRotationProviderRouter, {
     prefix: "/secret-rotation-providers"
   });
+
+  await server.register(
+    async (dynamicSecretRouter) => {
+      await dynamicSecretRouter.register(registerDynamicSecretRouter);
+      await dynamicSecretRouter.register(registerDynamicSecretLeaseRouter, { prefix: "/leases" });
+    },
+    { prefix: "/dynamic-secrets" }
+  );
+
   await server.register(registerSamlRouter, { prefix: "/sso" });
   await server.register(registerScimRouter, { prefix: "/scim" });
   await server.register(registerLdapRouter, { prefix: "/ldap" });

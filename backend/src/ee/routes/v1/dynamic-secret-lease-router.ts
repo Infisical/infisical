@@ -6,9 +6,8 @@ import { DYNAMIC_SECRET_LEASES } from "@app/lib/api-docs";
 import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-
-import { SanitizedDynamicSecretSchema } from "../sanitizedSchemas";
 
 export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvider) => {
   server.route({
