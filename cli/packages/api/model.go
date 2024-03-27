@@ -291,6 +291,7 @@ type GetEncryptedSecretsV3Request struct {
 	WorkspaceId   string `json:"workspaceId"`
 	SecretPath    string `json:"secretPath"`
 	IncludeImport bool   `json:"include_imports"`
+	DeepSearch    bool   `json:"deep"`
 }
 
 type GetFoldersV1Request struct {

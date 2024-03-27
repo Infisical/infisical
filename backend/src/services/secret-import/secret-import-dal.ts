@@ -70,9 +70,31 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByFolderIds = async (folderIds: string[], tx?: Knex) => {
+    try {
+      const docs = await (tx || db)(TableName.SecretImport)
+        .whereIn("folderId", folderIds)
+        .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .select(
+          db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
+          db.ref("slug").withSchema(TableName.Environment),
+          db.ref("name").withSchema(TableName.Environment),
+          db.ref("id").withSchema(TableName.Environment).as("envId")
+        )
+        .orderBy("position", "asc");
+      return docs.map(({ envId, slug, name, ...el }) => ({
+        ...el,
+        importEnv: { id: envId, slug, name }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find secret imports" });
+    }
+  };
+
   return {
     ...secretImportOrm,
     find,
+    findByFolderIds,
     findLastImportPosition,
     updateAllPosition
   };

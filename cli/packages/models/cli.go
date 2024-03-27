@@ -93,6 +93,7 @@ type GetAllSecretsParameters struct {
 	WorkspaceId              string
 	SecretsPath              string
 	IncludeImport            bool
+	DeepSearch               bool
 }
 
 type GetAllFoldersParameters struct {
