@@ -8,21 +8,10 @@ The Infisical MySQL secret rotation allows you to automatically rotate your MySQ
 
 ## Prerequisite
 
-1. Create a user with the required permission in your SQL instance. We'll refer to them as `user-a` and `user-b`.
-2. Create another MySQL user with just the permission to update the passwords of `user-a` and `user-b`. We'll refer to this user as the `admin` user.
+1. Create a user with the required permission in your SQL instance.
 
-To learn more about MySQL permission system, please visit this [documentation](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html).
 
-## How it works 
-
-1. Infisical connects to your database using the provided `admin` user account.
-2. A random value is generated and the password for `user-a` is updated with the new value.
-3. The new password is then tested by logging into the database
-4. If test is success, it's saved to the output secret mappings so that rest of the system gets the newly rotated value(s).
-5. The process is then repeated for `user-b` on the next rotation.
-6. The cycle repeats until secret rotation is deleted/stopped.
-
-## Rotation Configuration
+## Set up Dynamic Secrets with PostgreSQL
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
