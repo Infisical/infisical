@@ -124,7 +124,7 @@ export const CreateDynamicSecretLease = ({
       console.log(error);
       createNotification({
         type: "error",
-        text: "Failed to deleted dynamic secret"
+        text: "Failed to create dynamic secret"
       });
     }
   };

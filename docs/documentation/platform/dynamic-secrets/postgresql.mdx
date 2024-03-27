@@ -1,0 +1,100 @@
+---
+title: "PostgreSQL"
+description: "Learn how to dynamically generate PostgreSQL Database user passwords."
+---
+
+The Infisical MySQL secret rotation allows you to automatically rotate your MySQL database user's password at a predefined interval.
+
+
+## Prerequisite
+
+1. Create a user with the required permission in your SQL instance. We'll refer to them as `user-a` and `user-b`.
+2. Create another MySQL user with just the permission to update the passwords of `user-a` and `user-b`. We'll refer to this user as the `admin` user.
+
+To learn more about MySQL permission system, please visit this [documentation](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html).
+
+## How it works 
+
+1. Infisical connects to your database using the provided `admin` user account.
+2. A random value is generated and the password for `user-a` is updated with the new value.
+3. The new password is then tested by logging into the database
+4. If test is success, it's saved to the output secret mappings so that rest of the system gets the newly rotated value(s).
+5. The process is then repeated for `user-b` on the next rotation.
+6. The cycle repeats until secret rotation is deleted/stopped.
+
+## Rotation Configuration
+
+<Steps>
+  <Step title="Open Secret Overview Dashboard">
+	Head over to Secret Rotation configuration page of your project by clicking on `Secret Rotation` in the left side bar 
+  </Step>
+  <Step title="Click on the `Add Dynamic Secret` button">
+	![Add Dynamic Secret Button](../../images/platform/dynamic-secrets/add-dynamic-secret.png)
+  </Step>
+  <Step title="Select `SQL Database`">
+	![Dynamic Secret Modal](../../images/platform/dynamic-secrets/dynamic-secret-modal.png)
+  </Step>
+  <Step title="Provide the inputs for dynamic secret parameters">
+	<ParamField path="Secret Name" type="string" required>
+		Name by which you want the secret to be referenced
+	</ParamField>
+
+	<ParamField path="Default TTL" type="string" required>
+		Default time-to-live for a generated secret (it is possible to modify this value when a secret is generate)
+	</ParamField>
+
+	<ParamField path="Max TTL" type="string" required>
+		Maximum time-to-live for a generated secret
+	</ParamField>
+
+	<ParamField path="Service" type="string" required>
+		Choose the service you want to generate dynamic secrets for
+	</ParamField>
+
+	<ParamField path="Host" type="string" required>
+		Database host
+	</ParamField>
+
+	<ParamField path="Port" type="number" required>
+		Database port
+	</ParamField>
+
+	<ParamField path="User" type="string" required>
+		Username that will be used to create dynamic secrets
+	</ParamField>
+
+	<ParamField path="Password" type="string" required>
+		Password that will be used to create dynamic secrets
+	</ParamField>
+
+	<ParamField path="Database Name" type="string" required>
+		Name of the database for which you want to create dynamic secrets
+	</ParamField>
+ 
+	<ParamField path="CA(SSL)" type="string">
+		Optional database certificate to connect with database
+	</ParamField>
+
+	![Dynamic Secret Setup Modal](../../images/platform/dynamic-secrets/dynamic-secret-setup-modal.png)
+
+  </Step>
+  <Step title="(Optional) Modify SQL Statements">
+  	If you want to provide specific privileges for the future generated dynamic secrets, you are able to specify them as SQL statements. 
+
+	![Modify SQL Statements Modal](../../images/platform/dynamic-secrets/modify-sql-statements.png)
+  </Step>
+  <Step title="Click `Submit`">
+  	After submitting the form, you will see a dynamic secret creates in the dashboard. 
+
+	<Note>
+		If this step fails, you might have to add the CA certficate. 
+	</Note>
+
+	![Dynamic Secret](../../images/platform/dynamic-secrets/dynamic-secret.png)
+  </Step>
+  <Step title="Generate dynamic secrets">
+	Now that the dynamic secret is created, you can start generating unique secret values by specifying the Time-to-live within the predefined range. 
+
+	![Provision Lease](../../images/platform/dynamic-secrets/provision-lease.png)
+  </Step>
+</Steps>

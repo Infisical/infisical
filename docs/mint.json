@@ -144,6 +144,13 @@
           ]
         },
         {
+          "group": "Dynamic Secrets",
+          "pages": [
+            "documentation/platform/dynamic-secrets/overview",
+            "documentation/platform/dynamic-secrets/postgresql"
+          ]
+        },
+        {
           "group": "SSO",
           "pages": [
             "documentation/platform/sso/overview",
