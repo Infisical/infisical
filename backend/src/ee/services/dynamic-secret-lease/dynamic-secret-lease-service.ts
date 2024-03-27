@@ -8,11 +8,12 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
-import { TProjectDALFactory } from "../project/project-dal";
-import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "./dynamic-secret-lease-queue";
 import {
@@ -248,6 +249,7 @@ export const dynamicSecretLeaseServiceFactory = ({
 
     if ((revokeResponse as { error?: Error })?.error) {
       const { error } = revokeResponse as { error?: Error };
+      logger.error("Failed to revoke lease", { error: error?.message });
       const deletedDynamicSecretLease = await dynamicSecretLeaseDAL.updateById(dynamicSecretLease.id, {
         status: DynamicSecretLeaseStatus.FailedDeletion,
         statusDetails: error?.message?.slice(0, 255)

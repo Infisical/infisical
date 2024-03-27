@@ -3,14 +3,13 @@ import ms from "ms";
 import { z } from "zod";
 
 import { DynamicSecretLeasesSchema } from "@app/db/schemas";
+import { DynamicSecretProviderSchema } from "@app/ee/services/dynamic-secret/providers/models";
 import { DYNAMIC_SECRETS } from "@app/lib/api-docs";
 import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { DynamicSecretProviderSchema } from "@app/services/dynamic-secret/providers/models";
-
-import { SanitizedDynamicSecretSchema } from "../sanitizedSchemas";
 
 export const registerDynamicSecretRouter = async (server: FastifyZodProvider) => {
   server.route({

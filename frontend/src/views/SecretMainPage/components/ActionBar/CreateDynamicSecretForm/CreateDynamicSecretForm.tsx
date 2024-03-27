@@ -11,7 +11,7 @@ import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
 type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
-  projectSlug:string;
+  projectSlug: string;
   environment: string;
   secretPath: string;
 };
@@ -42,7 +42,7 @@ export const CreateDynamicSecretForm = ({
       <ModalContent
         title="Dynamic secret setup"
         subTitle="Configure dynamic secret parameters"
-        className="my-4 max-h-screen max-w-3xl overflow-scroll"
+        className="my-4 max-w-3xl"
       >
         <AnimatePresence exitBeforeEnter>
           {wizardStep === WizardSteps.SelectProvider && (
@@ -56,7 +56,7 @@ export const CreateDynamicSecretForm = ({
               <div className="mb-4 text-mineshaft-300">Select a service to connect to:</div>
               <div className="flex items-center space-x-4">
                 <div
-                  className="flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:bg-primary/10 hover:border-primary/70 hover:text-white"
+                  className="flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
                   role="button"
                   tabIndex={0}
                   onClick={() => {

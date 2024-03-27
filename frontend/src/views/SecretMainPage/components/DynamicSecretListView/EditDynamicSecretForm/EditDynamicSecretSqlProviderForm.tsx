@@ -116,7 +116,7 @@ export const EditDynamicSecretSqlProviderForm = ({
       onClose();
       createNotification({
         type: "success",
-        text: "Successfully update dynamic secret"
+        text: "Successfully updated dynamic secret"
       });
     } catch (err) {
       createNotification({

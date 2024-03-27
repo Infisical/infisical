@@ -118,13 +118,13 @@ export const CreateDynamicSecretLease = ({
       });
       createNotification({
         type: "success",
-        text: "Successfully created dynamic secret"
+        text: "Successfully leased dynamic secret"
       });
     } catch (error) {
       console.log(error);
       createNotification({
         type: "error",
-        text: "Failed to create dynamic secret"
+        text: "Failed to lease dynamic secret"
       });
     }
   };
