@@ -61,7 +61,7 @@ The Infisical MySQL secret rotation allows you to automatically rotate your MySQ
 	</ParamField>
  
 	<ParamField path="CA(SSL)" type="string">
-		Optional database certificate to connect with database
+		A CA may be required if your DB requires it for incoming connections. AWS RDS instances with default settings will requires a CA which can be downloaded [here](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions).
 	</ParamField>
 
 	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal.png)
