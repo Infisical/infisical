@@ -221,7 +221,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
-                    <Input {...field} type="number" />
+                    <Input {...field} type="number" onChange={(el) => field.onChange(parseInt(el.target.value, 10))} />
                   </FormControl>
                 )}
               />
