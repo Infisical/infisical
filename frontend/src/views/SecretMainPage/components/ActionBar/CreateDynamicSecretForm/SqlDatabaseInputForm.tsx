@@ -85,7 +85,7 @@ export const SqlDatabaseInputForm = ({
           "CREATE USER \"{{username}}\" WITH ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';\nGRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"{{username}}\";",
         renewStatement: "ALTER ROLE \"{{username}}\" VALID UNTIL '{{expiration}}';",
         revocationStatement:
-          'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{{username}}";\nDROP OWNED BY "{{username}}";\nDROP ROLE "{{username}}";'
+          'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{{username}}";\nDROP ROLE "{{username}}";'
       }
     }
   });
