@@ -15,7 +15,7 @@ The Infisical MySQL secret rotation allows you to automatically rotate your MySQ
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
-	Head over to Secret Rotation configuration page of your project by clicking on `Secret Rotation` in the left side bar 
+	Open the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret.
   </Step>
   <Step title="Click on the `Add Dynamic Secret` button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
@@ -85,5 +85,14 @@ The Infisical MySQL secret rotation allows you to automatically rotate your MySQ
 	Now that the dynamic secret is created, you can start generating unique secret values by specifying the Time-to-live within the predefined range. 
 
 	![Provision Lease](../../../images/platform/dynamic-secrets/provision-lease.png)
+
+	After you click the `Submit` button, a new secret lease will be generated and the Database User and Database Password will be shown. 
+
+	![Provision Lease](../../../images/platform/dynamic-secrets/lease-values.png)
+  </Step>
+  <Step title="Audit or Revoke Leases">
+	As soon as you have generated a few secret leases, you will be able to access them by clicking `Generate` on the dynamic secret row. In this modal, you are able to see the expiration time or delete a secret preemptively.
+
+	![Provision Lease](../../../images/platform/dynamic-secrets/lease-data.png)
   </Step>
 </Steps>
