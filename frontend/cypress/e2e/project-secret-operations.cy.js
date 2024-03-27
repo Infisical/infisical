@@ -23,7 +23,7 @@ describe('Project Overview', () => {
       return;  // Skip the rest of the beforeEach for the first test
     }
     cy.login(`test@localhost.local`, `testInfisical1`)
-    cy.visit(`/project/${projectId}/secrets/overview`)
+    cy.visit(`/project/${projectId}/overview`)
   })
 
   it('can create secrets', () => {
