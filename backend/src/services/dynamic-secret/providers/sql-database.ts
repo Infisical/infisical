@@ -23,7 +23,17 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     const dbHost = appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI);
 
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
-    if (providerInputs.host === "localhost" || providerInputs.host === "127.0.0.1" || dbHost === providerInputs.host)
+    if (
+      // localhost
+      providerInputs.host === "localhost" ||
+      providerInputs.host === "127.0.0.1" ||
+      // database infisical uses
+      dbHost === providerInputs.host ||
+      // internal ips
+      providerInputs.host === "host.docker.internal" ||
+      providerInputs.host.match(/^10\.\d+\.\d+\.\d+/) ||
+      providerInputs.host.match(/^192\.168\.\d+\.\d+/)
+    )
       throw new BadRequestError({ message: "Invalid db host" });
     return providerInputs;
   };

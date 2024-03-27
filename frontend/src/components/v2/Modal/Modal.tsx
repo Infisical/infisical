@@ -29,12 +29,15 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
         <Card
           isRounded
           className={twMerge(
-            "thin-scrollbar fixed top-1/2 left-1/2 z-30 max-h-screen max-w-xl -translate-y-2/4 -translate-x-2/4 animate-popIn border border-mineshaft-600 drop-shadow-2xl dark:[color-scheme:dark]",
+            "thin-scrollbar fixed top-1/2 left-1/2 z-30 max-w-xl -translate-y-2/4 -translate-x-2/4 animate-popIn border border-mineshaft-600 drop-shadow-2xl dark:[color-scheme:dark]",
             className
           )}
+          style={{ maxHeight: "90%" }}
         >
           {title && <CardTitle subTitle={subTitle}>{title}</CardTitle>}
-          <CardBody>{children}</CardBody>
+          <CardBody className="overflow-y-auto overflow-x-hidden" style={{ maxHeight: "90%" }}>
+            {children}
+          </CardBody>
           {footerContent && <CardFooter>{footerContent}</CardFooter>}
           <DialogPrimitive.Close aria-label="Close" asChild onClick={onClose}>
             <IconButton
