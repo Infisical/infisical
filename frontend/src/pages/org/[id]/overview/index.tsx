@@ -540,7 +540,7 @@ const OrganizationPage = withPermission(
 
         handlePopUpClose("addNewWs");
         createNotification({ text: "Workspace created", type: "success" });
-        router.push(`/project/${newProjectId}/secrets/overview`);
+        router.push(`/project/${newProjectId}/overview`);
       } catch (err) {
         console.error(err);
         createNotification({ text: "Failed to create workspace", type: "error" });
@@ -670,7 +670,7 @@ const OrganizationPage = withPermission(
                 // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
                 <div
                   onClick={() => {
-                    router.push(`/project/${workspace.id}/secrets/overview`);
+                    router.push(`/project/${workspace.id}/overview`);
                     localStorage.setItem("projectData.id", workspace.id);
                   }}
                   key={workspace.id}
@@ -767,7 +767,7 @@ const OrganizationPage = withPermission(
                     icon={faPlus}
                     time="1 min"
                     userAction="first_time_secrets_pushed"
-                    link={`/project/${orgWorkspaces[0]?.id}/secrets/overview`}
+                    link={`/project/${orgWorkspaces[0]?.id}/overview`}
                   />
                   <LearningItemSquare
                     text="Invite your teammates"

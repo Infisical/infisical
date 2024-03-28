@@ -86,7 +86,7 @@ export const SecretMainPage = () => {
       !currentWorkspace?.environments.find((env) => env.slug === environment) &&
       router.isReady
     ) {
-      router.push(`/project/${workspaceId}/secrets/overview`);
+      router.push(`/project/${workspaceId}/overview`);
       createNotification({
         text: "No envronment found with given slug",
         type: "error"
