@@ -1,5 +1,6 @@
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
+import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
 import { registerOrgRoleRouter } from "./org-role-router";
@@ -15,6 +16,7 @@ import { registerSecretScanningRouter } from "./secret-scanning-router";
 import { registerSecretVersionRouter } from "./secret-version-router";
 import { registerSnapshotRouter } from "./snapshot-router";
 import { registerTrustedIpRouter } from "./trusted-ip-router";
+import { registerUserAdditionalPrivilegeRouter } from "./user-additional-privilege-router";
 
 export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
@@ -51,4 +53,11 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerSecretScanningRouter, { prefix: "/secret-scanning" });
   await server.register(registerSecretRotationRouter, { prefix: "/secret-rotations" });
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
+  await server.register(
+    async (privilegeRouter) => {
+      await privilegeRouter.register(registerUserAdditionalPrivilegeRouter, { prefix: "/users" });
+      await privilegeRouter.register(registerIdentityProjectAdditionalPrivilegeRouter, { prefix: "/identity" });
+    },
+    { prefix: "/additional-privilege" }
+  );
 };

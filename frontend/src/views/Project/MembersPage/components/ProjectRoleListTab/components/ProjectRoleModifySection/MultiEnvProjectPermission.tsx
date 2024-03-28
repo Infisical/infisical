@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Control, Controller, UseFormSetValue, useWatch } from "react-hook-form";
+import { Control, Controller, UseFormGetValues, UseFormSetValue, useWatch } from "react-hook-form";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
@@ -28,6 +28,7 @@ type Props = {
   formName: "secrets";
   isNonEditable?: boolean;
   setValue: UseFormSetValue<TFormSchema>;
+  getValue: UseFormGetValues<TFormSchema>;
   control: Control<TFormSchema>;
   title: string;
   subtitle: string;
@@ -44,6 +45,7 @@ enum Permission {
 export const MultiEnvProjectPermission = ({
   isNonEditable,
   setValue,
+  getValue,
   control,
   formName,
   title,
@@ -69,9 +71,12 @@ export const MultiEnvProjectPermission = ({
 
   const handlePermissionChange = (val: Permission) => {
     switch (val) {
-      case Permission.NoAccess:
-        setValue(`permissions.${formName}`, undefined, { shouldDirty: true });
+      case Permission.NoAccess: {
+        const permissions = getValue("permissions");
+        if (permissions) delete permissions[formName];
+        setValue("permissions", permissions, { shouldDirty: true });
         break;
+      }
       case Permission.FullAccess:
         setValue(
           `permissions.${formName}`,
@@ -101,7 +106,7 @@ export const MultiEnvProjectPermission = ({
       className={twMerge(
         "rounded-md bg-mineshaft-800 px-10 py-6",
         (selectedPermissionCategory !== Permission.NoAccess || isCustom) &&
-          "border-l-2 border-primary-600"
+        "border-l-2 border-primary-600"
       )}
     >
       <div className="flex items-center space-x-4">
