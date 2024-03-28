@@ -31,8 +31,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
                 message: "Slug must be a valid slug"
               })
           ),
-          name: z.string().trim().min(1),
-          description: z.string().trim().optional(),
           permissions: z.any().array(),
           isPackedPermission: z.boolean().optional().default(true),
           isTemporary: z.literal(false).default(false)
@@ -48,8 +46,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
             .refine((v) => slugify(v) === v, {
               message: "Slug must be a valid slug"
             }),
-          name: z.string().trim(),
-          description: z.string().trim().optional(),
           permissions: z.any().array(),
           isTemporary: z.literal(true),
           isPackedPermission: z.boolean().optional().default(true),
@@ -70,6 +66,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         ...req.body,
         permissions: JSON.stringify(
           req.body.isPackedPermission ? req.body.permissions : packRules(req.body.permissions)
@@ -96,8 +93,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
             .refine((v) => slugify(v) === v, {
               message: "Slug must be a valid slug"
             }),
-          name: z.string().trim(),
-          description: z.string().trim().optional(),
           permissions: z.any().array(),
           isPackedPermission: z.boolean().optional().default(true),
           isTemporary: z.boolean(),
@@ -118,6 +113,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         ...req.body,
         permissions: req.body.permissions
           ? JSON.stringify(req.body.isPackedPermission ? req.body.permissions : packRules(req.body.permissions))
@@ -146,6 +142,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       const privilege = await server.services.identityProjectAdditionalPrivilege.deleteById({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         privilegeId: req.params.privilegeId
       });
@@ -170,6 +167,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     handler: async (req) => {
       const privilege = await server.services.identityProjectAdditionalPrivilege.getPrivilegeDetailsById({
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         privilegeId: req.params.privilegeId
@@ -197,6 +195,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       const privileges = await server.services.identityProjectAdditionalPrivilege.listIdentityProjectPrivileges({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.body.projectId,
         identityId: req.body.identityId

@@ -73,20 +73,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
                   lastName: true,
                   id: true
                 }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
-                additionalPrivileges: z.array(
-                  z.object({
-                    id: z.string(),
-                    name: z.string(),
-                    slug: z.string(),
-                    description: z.string().optional().nullable(),
-                    isTemporary: z.boolean(),
-                    temporaryMode: z.string().optional().nullable(),
-                    temporaryRange: z.string().nullable().optional(),
-                    temporaryAccessStartTime: z.date().nullable().optional(),
-                    temporaryAccessEndTime: z.date().nullable().optional(),
-                    createdAt: z.date()
-                  })
-                ),
                 roles: z.array(
                   z.object({
                     id: z.string(),

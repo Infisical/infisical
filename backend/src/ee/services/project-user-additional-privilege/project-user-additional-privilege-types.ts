@@ -8,17 +8,13 @@ export type TCreateUserPrivilegeDTO = (
   | {
       permissions: unknown;
       projectMembershipId: string;
-      name: string;
       slug: string;
-      description?: string;
       isTemporary: false;
     }
   | {
       permissions: unknown;
       projectMembershipId: string;
-      name: string;
       slug: string;
-      description?: string;
       isTemporary: true;
       temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative;
       temporaryRange: string;
@@ -30,9 +26,7 @@ export type TCreateUserPrivilegeDTO = (
 export type TUpdateUserPrivilegeDTO = { privilegeId: string } & Omit<TProjectPermission, "projectId"> &
   Partial<{
     permissions: unknown;
-    name: string;
     slug: string;
-    description?: string;
     isTemporary: boolean;
     temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative;
     temporaryRange: string;
@@ -42,3 +36,5 @@ export type TUpdateUserPrivilegeDTO = { privilegeId: string } & Omit<TProjectPer
 export type TDeleteUserPrivilegeDTO = Omit<TProjectPermission, "projectId"> & { privilegeId: string };
 
 export type TGetUserPrivilegeDetailsDTO = Omit<TProjectPermission, "projectId"> & { privilegeId: string };
+
+export type TListUserPrivilegesDTO = Omit<TProjectPermission, "projectId"> & { projectMembershipId: string };

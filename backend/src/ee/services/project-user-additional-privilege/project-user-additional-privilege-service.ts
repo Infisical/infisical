@@ -12,6 +12,7 @@ import {
   TCreateUserPrivilegeDTO,
   TDeleteUserPrivilegeDTO,
   TGetUserPrivilegeDetailsDTO,
+  TListUserPrivilegesDTO,
   TUpdateUserPrivilegeDTO
 } from "./project-user-additional-privilege-types";
 
@@ -31,13 +32,12 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
   permissionService
 }: TProjectUserAdditionalPrivilegeServiceFactoryDep) => {
   const create = async ({
-    name,
     slug,
     actor,
     actorId,
     permissions: customPermission,
     actorOrgId,
-    description,
+    actorAuthMethod,
     projectMembershipId,
     ...dto
   }: TCreateUserPrivilegeDTO) => {
@@ -48,6 +48,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actor,
       actorId,
       projectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
@@ -59,9 +60,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.create({
         projectMembershipId,
         slug,
-        permissions: customPermission,
-        name,
-        description
+        permissions: customPermission
       });
       return additionalPrivilege;
     }
@@ -71,8 +70,6 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       projectMembershipId,
       slug,
       permissions: customPermission,
-      name,
-      description,
       isTemporary: true,
       temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
       temporaryRange: dto.temporaryRange,
@@ -82,7 +79,14 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     return additionalPrivilege;
   };
 
-  const updateById = async ({ privilegeId, actorOrgId, actor, actorId, ...dto }: TUpdateUserPrivilegeDTO) => {
+  const updateById = async ({
+    privilegeId,
+    actorOrgId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    ...dto
+  }: TUpdateUserPrivilegeDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege) throw new BadRequestError({ message: "User additional privilege not found" });
 
@@ -93,6 +97,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actor,
       actorId,
       projectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
@@ -129,7 +134,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     return additionalPrivilege;
   };
 
-  const deleteById = async ({ actorId, actor, actorOrgId, privilegeId }: TDeleteUserPrivilegeDTO) => {
+  const deleteById = async ({ actorId, actor, actorOrgId, actorAuthMethod, privilegeId }: TDeleteUserPrivilegeDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege) throw new BadRequestError({ message: "User additional privilege not found" });
 
@@ -140,6 +145,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actor,
       actorId,
       projectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
@@ -148,7 +154,13 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     return deletedPrivilege;
   };
 
-  const getPrivilegeDetailsById = async ({ privilegeId, actorOrgId, actor, actorId }: TGetUserPrivilegeDetailsDTO) => {
+  const getPrivilegeDetailsById = async ({
+    privilegeId,
+    actorOrgId,
+    actor,
+    actorId,
+    actorAuthMethod
+  }: TGetUserPrivilegeDetailsDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege) throw new BadRequestError({ message: "User additional privilege not found" });
 
@@ -159,17 +171,42 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actor,
       actorId,
       projectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
     return userPrivilege;
+  };
+
+  const listPrivileges = async ({
+    projectMembershipId,
+    actorOrgId,
+    actor,
+    actorId,
+    actorAuthMethod
+  }: TListUserPrivilegesDTO) => {
+    const projectMembership = await projectMembershipDAL.findById(projectMembershipId);
+    if (!projectMembership) throw new BadRequestError({ message: "Project membership not found" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectMembership.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+
+    const userPrivileges = await projectUserAdditionalPrivilegeDAL.find({ projectMembershipId });
+    return userPrivileges;
   };
 
   return {
     create,
     updateById,
     deleteById,
-    getPrivilegeDetailsById
+    getPrivilegeDetailsById,
+    listPrivileges
   };
 };

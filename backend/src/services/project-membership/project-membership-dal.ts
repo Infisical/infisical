@@ -29,11 +29,6 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           `${TableName.ProjectUserMembershipRole}.customRoleId`,
           `${TableName.ProjectRoles}.id`
         )
-        .leftJoin(
-          TableName.ProjectUserAdditionalPrivilege,
-          `${TableName.ProjectMembership}.id`,
-          `${TableName.ProjectUserAdditionalPrivilege}.projectMembershipId`
-        )
         .select(
           db.ref("id").withSchema(TableName.ProjectMembership),
           db.ref("isGhost").withSchema(TableName.Users),
@@ -52,23 +47,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("isTemporary").withSchema(TableName.ProjectUserMembershipRole),
           db.ref("temporaryRange").withSchema(TableName.ProjectUserMembershipRole),
           db.ref("temporaryAccessStartTime").withSchema(TableName.ProjectUserMembershipRole),
-          db.ref("temporaryAccessEndTime").withSchema(TableName.ProjectUserMembershipRole),
-          db.ref("id").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApId"),
-          db.ref("name").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApName"),
-          db.ref("description").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApDescription"),
-          db.ref("slug").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApSlug"),
-          db.ref("temporaryMode").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApTemporaryMode"),
-          db.ref("isTemporary").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApIsTemporary"),
-          db.ref("createdAt").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApCreatedAt"),
-          db.ref("temporaryRange").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApTemporaryRange"),
-          db
-            .ref("temporaryAccessStartTime")
-            .withSchema(TableName.ProjectUserAdditionalPrivilege)
-            .as("userApTemporaryAccessStartTime"),
-          db
-            .ref("temporaryAccessEndTime")
-            .withSchema(TableName.ProjectUserAdditionalPrivilege)
-            .as("userApTemporaryAccessEndTime")
+          db.ref("temporaryAccessEndTime").withSchema(TableName.ProjectUserMembershipRole)
         )
         .where({ isGhost: false });
 
@@ -107,33 +86,6 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
               temporaryAccessEndTime,
               temporaryAccessStartTime,
               isTemporary
-            })
-          },
-          {
-            label: "additionalPrivileges" as const,
-            key: "userApId",
-            mapper: ({
-              userApId,
-              userApDescription,
-              userApName,
-              userApSlug,
-              userApIsTemporary,
-              userApTemporaryMode,
-              userApTemporaryRange,
-              userApTemporaryAccessEndTime,
-              userApTemporaryAccessStartTime,
-              userApCreatedAt
-            }) => ({
-              id: userApId,
-              name: userApName,
-              description: userApDescription,
-              slug: userApSlug,
-              temporaryRange: userApTemporaryRange,
-              temporaryMode: userApTemporaryMode,
-              temporaryAccessEndTime: userApTemporaryAccessEndTime,
-              temporaryAccessStartTime: userApTemporaryAccessStartTime,
-              isTemporary: userApIsTemporary,
-              createdAt: userApCreatedAt
             })
           }
         ]

@@ -34,7 +34,6 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
   permissionService
 }: TIdentityProjectAdditionalPrivilegeServiceFactoryDep) => {
   const create = async ({
-    name,
     slug,
     actor,
     actorId,
@@ -42,7 +41,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     identityId,
     permissions: customPermission,
     actorOrgId,
-    description,
+    actorAuthMethod,
     ...dto
   }: TCreateIdentityPrivilegeDTO) => {
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
@@ -53,6 +52,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actor,
       actorId,
       identityProjectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
@@ -60,6 +60,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       ActorType.IDENTITY,
       identityId,
       identityProjectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
@@ -76,9 +77,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       const additionalPrivilege = await identityProjectAdditionalPrivilegeDAL.create({
         projectMembershipId: identityProjectMembership.id,
         slug,
-        permissions: customPermission,
-        name,
-        description
+        permissions: customPermission
       });
       return additionalPrivilege;
     }
@@ -88,8 +87,6 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       projectMembershipId: identityProjectMembership.id,
       slug,
       permissions: customPermission,
-      name,
-      description,
       isTemporary: true,
       temporaryMode: IdentityProjectAdditionalPrivilegeTemporaryMode.Relative,
       temporaryRange: dto.temporaryRange,
@@ -99,7 +96,14 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     return additionalPrivilege;
   };
 
-  const updateById = async ({ privilegeId, actorOrgId, actor, actorId, ...dto }: TUpdateIdentityPrivilegeDTO) => {
+  const updateById = async ({
+    privilegeId,
+    actorOrgId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    ...dto
+  }: TUpdateIdentityPrivilegeDTO) => {
     const identityPrivilege = await identityProjectAdditionalPrivilegeDAL.findById(privilegeId);
     if (!identityPrivilege) throw new BadRequestError({ message: "Identity additional privilege not found" });
 
@@ -110,6 +114,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actor,
       actorId,
       identityProjectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
@@ -117,6 +122,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       ActorType.IDENTITY,
       identityProjectMembership.identityId,
       identityProjectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
@@ -155,7 +161,13 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     return additionalPrivilege;
   };
 
-  const deleteById = async ({ actorId, actor, actorOrgId, privilegeId }: TDeleteIdentityPrivilegeDTO) => {
+  const deleteById = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    privilegeId,
+    actorAuthMethod
+  }: TDeleteIdentityPrivilegeDTO) => {
     const identityPrivilege = await identityProjectAdditionalPrivilegeDAL.findById(privilegeId);
     if (!identityPrivilege) throw new BadRequestError({ message: "Identity additional privilege not found" });
 
@@ -166,6 +178,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actor,
       actorId,
       identityProjectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
@@ -173,6 +186,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       ActorType.IDENTITY,
       identityProjectMembership.identityId,
       identityProjectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
@@ -187,7 +201,8 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     privilegeId,
     actorOrgId,
     actor,
-    actorId
+    actorId,
+    actorAuthMethod
   }: TGetIdentityPrivilegeDetailsDTO) => {
     const identityPrivilege = await identityProjectAdditionalPrivilegeDAL.findById(privilegeId);
     if (!identityPrivilege) throw new BadRequestError({ message: "Identity additional privilege not found" });
@@ -199,6 +214,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actor,
       actorId,
       identityProjectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
@@ -206,6 +222,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       ActorType.IDENTITY,
       identityProjectMembership.identityId,
       identityProjectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
@@ -220,7 +237,8 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     identityId,
     actorOrgId,
     actor,
-    actorId
+    actorId,
+    actorAuthMethod
   }: TListIdentityPrivilegesDTO) => {
     const identityProjectMembership = await identityProjectDAL.findOne({ projectId, identityId });
     if (!identityProjectMembership) throw new BadRequestError({ message: `Failed to find identity` });
@@ -229,6 +247,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actor,
       actorId,
       identityProjectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
@@ -236,6 +255,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       ActorType.IDENTITY,
       identityProjectMembership.identityId,
       identityProjectMembership.projectId,
+      actorAuthMethod,
       actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);

@@ -9,18 +9,14 @@ export type TCreateIdentityPrivilegeDTO = (
       permissions: unknown;
       identityId: string;
       projectId: string;
-      name: string;
       slug: string;
-      description?: string;
       isTemporary: false;
     }
   | {
       permissions: unknown;
       identityId: string;
       projectId: string;
-      name: string;
       slug: string;
-      description?: string;
       isTemporary: true;
       temporaryMode: IdentityProjectAdditionalPrivilegeTemporaryMode.Relative;
       temporaryRange: string;
@@ -32,9 +28,7 @@ export type TCreateIdentityPrivilegeDTO = (
 export type TUpdateIdentityPrivilegeDTO = { privilegeId: string } & Omit<TProjectPermission, "projectId"> &
   Partial<{
     permissions: unknown;
-    name: string;
     slug: string;
-    description?: string;
     isTemporary: boolean;
     temporaryMode: IdentityProjectAdditionalPrivilegeTemporaryMode.Relative;
     temporaryRange: string;

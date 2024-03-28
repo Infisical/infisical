@@ -40,20 +40,6 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
                   lastName: true,
                   id: true
                 }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
-                additionalPrivileges: z.array(
-                  z.object({
-                    id: z.string(),
-                    name: z.string(),
-                    slug: z.string(),
-                    description: z.string().optional().nullable(),
-                    isTemporary: z.boolean(),
-                    temporaryMode: z.string().optional().nullable(),
-                    temporaryRange: z.string().nullable().optional(),
-                    temporaryAccessStartTime: z.date().nullable().optional(),
-                    temporaryAccessEndTime: z.date().nullable().optional(),
-                    createdAt: z.date()
-                  })
-                ),
                 roles: z.array(
                   z.object({
                     id: z.string(),
@@ -172,7 +158,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
             ])
           )
           .min(1)
-          .refine((data) => data.some(({ isTemporary }) => !isTemporary), "At least long lived role is required")
+          .refine((data) => data.some(({ isTemporary }) => !isTemporary), "At least one long lived role is required")
           .describe(PROJECTS.UPDATE_USER_MEMBERSHIP.roles)
       }),
       response: {

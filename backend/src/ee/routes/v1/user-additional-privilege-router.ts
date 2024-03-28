@@ -5,7 +5,6 @@ import { z } from "zod";
 import { ProjectUserAdditionalPrivilegeSchema } from "@app/db/schemas";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-types";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { zpStr } from "@app/lib/zod";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -17,36 +16,29 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       body: z.union([
         z.object({
           projectMembershipId: z.string(),
-          // to disallow empty string
-          slug: zpStr(
-            z
-              .string()
-              .max(60)
-              .trim()
-              .optional()
-              .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
-              .refine((v) => slugify(v) === v, {
-                message: "Slug must be a valid slug"
-              })
-          ),
-          name: z.string().trim(),
-          description: z.string().trim().optional(),
+          slug: z
+            .string()
+            .min(1)
+            .max(60)
+            .trim()
+            .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
+            .refine((v) => slugify(v) === v, {
+              message: "Slug must be a valid slug"
+            }),
           permissions: z.any().array(),
           isTemporary: z.literal(false).default(false)
         }),
         z.object({
           projectMembershipId: z.string(),
-          slug: zpStr(
-            z
-              .string()
-              .max(60)
-              .trim()
-              .optional()
-              .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
-              .refine((v) => slugify(v) === v, {
-                message: "Slug must be a valid slug"
-              })
-          ),
+          slug: z
+            .string()
+            .min(1)
+            .max(60)
+            .trim()
+            .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
+            .refine((v) => slugify(v) === v, {
+              message: "Slug must be a valid slug"
+            }),
           name: z.string().trim(),
           description: z.string().trim().optional(),
           permissions: z.any().array(),
@@ -68,6 +60,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         ...req.body,
         permissions: JSON.stringify(req.body.permissions)
       });
@@ -88,11 +81,10 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
             .string()
             .max(60)
             .trim()
+            .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
             .refine((v) => slugify(v) === v, {
               message: "Slug must be a valid slug"
             }),
-          name: z.string().trim(),
-          description: z.string().trim().optional(),
           permissions: z.any().array(),
           isTemporary: z.boolean(),
           temporaryMode: z.nativeEnum(ProjectUserAdditionalPrivilegeTemporaryMode),
@@ -112,6 +104,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         ...req.body,
         permissions: req.body.permissions ? JSON.stringify(req.body.permissions) : undefined,
         privilegeId: req.params.privilegeId
@@ -139,9 +132,36 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         privilegeId: req.params.privilegeId
       });
       return { privilege };
+    }
+  });
+
+  server.route({
+    url: "/",
+    method: "GET",
+    schema: {
+      querystring: z.object({
+        projectMembershipId: z.string()
+      }),
+      response: {
+        200: z.object({
+          privileges: ProjectUserAdditionalPrivilegeSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const privileges = await server.services.projectUserAdditionalPrivilege.listPrivileges({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectMembershipId: req.query.projectMembershipId
+      });
+      return { privileges };
     }
   });
 
@@ -164,6 +184,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         privilegeId: req.params.privilegeId
       });
       return { privilege };
