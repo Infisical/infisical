@@ -14,7 +14,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useCreateOrgRole, useUpdateOrgRole } from "@app/hooks/api";
@@ -107,7 +107,7 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
   const isNonEditable = ["owner", "admin", "member", "no-access"].includes(role?.slug || "");
   const isNewRole = !role?.slug;
 
-  const { createNotification } = useNotificationContext();
+  
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const {

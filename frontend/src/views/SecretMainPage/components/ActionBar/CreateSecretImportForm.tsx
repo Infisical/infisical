@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
@@ -55,7 +55,7 @@ export const CreateSecretImportForm = ({
   const { currentWorkspace } = useWorkspace();
   const environments = currentWorkspace?.environments || [];
 
-  const { createNotification } = useNotificationContext();
+  
 
   const { mutateAsync: createSecretImport } = useCreateSecretImport();
 

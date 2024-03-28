@@ -401,7 +401,6 @@ type DeleteSecretV3Request struct {
 }
 
 type UpdateSecretByNameV3Request struct {
-	SecretName            string `json:"secretName"`
 	WorkspaceID           string `json:"workspaceId"`
 	Environment           string `json:"environment"`
 	Type                  string `json:"type"`
@@ -499,6 +498,28 @@ type UniversalAuthRefreshResponse struct {
 	AccessTokenTTL    int    `json:"expiresIn"`
 	TokenType         string `json:"tokenType"`
 	AccessTokenMaxTTL int    `json:"accessTokenMaxTTL"`
+}
+
+type CreateDynamicSecretLeaseV1Request struct {
+	Environment string `json:"environment"`
+	ProjectSlug string `json:"projectSlug"`
+	SecretPath  string `json:"secretPath,omitempty"`
+	Slug        string `json:"slug"`
+	TTL         string `json:"ttl,omitempty"`
+}
+
+type CreateDynamicSecretLeaseV1Response struct {
+	Lease struct {
+		Id       string `json:"id"`
+		ExpireAt time.Time `json:"expireAt"`
+	} `json:"lease"`
+	DynamicSecret struct {
+		Id         string `json:"id"`
+		DefaultTTL string `json:"defaultTTL"`
+		MaxTTL     string `json:"maxTTL"`
+		Type       string `json:"type"`
+	} `json:"dynamicSecret"`
+	Data map[string]interface{} `json:"data"`
 }
 
 type GetRawSecretsV3Request struct {

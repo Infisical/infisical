@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { faMagnifyingGlass, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -49,7 +49,7 @@ type Props = {
 };
 
 export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const { user } = useUser();
@@ -208,7 +208,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     ))}
                                 </Select>
                               )}
-                              {(status === "invited" || status === "verified") && email &&
+                              {(status === "invited" || status === "verified") &&
+                                email &&
                                 serverDetails?.emailConfigured && (
                                   <Button
                                     isDisabled={!isAllowed}
@@ -240,7 +241,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     });
                                     return;
                                   }
-                                  
+
                                   handlePopUpOpen("removeMember", { orgMembershipId, username });
                                 }}
                                 size="lg"

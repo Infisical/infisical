@@ -34,19 +34,19 @@ const ListBox = ({
     <Listbox value={isSelected} onChange={onChange}>
       <div className="relative">
         <Listbox.Button
-          className={`text-gray-400 relative ${
+          className={`relative text-gray-400 ${
             isFull ? "w-full" : "w-52"
-          } cursor-default rounded-md bg-white/[0.07] hover:bg-white/[0.11] duration-200 py-2.5 pl-3 pr-10 text-left shadow-md focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-300 sm:text-sm`}
+          } focus-visible:ring-offset-orange-300 cursor-default rounded-md bg-white/[0.07] py-2.5 pl-3 pr-10 text-left shadow-md duration-200 hover:bg-white/[0.11] focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 sm:text-sm`}
         >
           <div className="flex flex-row">
             {text}
-            <span className="ml-1 cursor-pointer block truncate font-semibold text-gray-300">
+            <span className="ml-1 block cursor-pointer truncate font-semibold text-gray-300">
               {" "}
               {isSelected}
             </span>
           </div>
           {data && (
-            <div className="cursor-pointer pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex cursor-pointer items-center pr-2">
               <FontAwesomeIcon icon={faAngleDown} className="text-md mr-1.5" />
             </div>
           )}
@@ -58,16 +58,16 @@ const ListBox = ({
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <Listbox.Options className="border border-mineshaft-700 z-[70] p-2 absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-bunker text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm no-scrollbar no-scrollbar::-webkit-scrollbar">
+            <Listbox.Options className="no-scrollbar::-webkit-scrollbar absolute z-[70] mt-1 max-h-60 w-full overflow-auto rounded-md border border-mineshaft-700 bg-bunker p-2 text-base shadow-lg ring-1 ring-black ring-opacity-5 no-scrollbar focus:outline-none sm:text-sm">
               {data.map((person, personIdx) => (
                 <Listbox.Option
                   key={`${person}.${personIdx + 1}`}
                   className={({ active, selected }) =>
-                    `my-0.5 relative cursor-default select-none py-2 pl-10 pr-4 rounded-md ${
-                      selected ? "bg-white/10 text-gray-400 font-bold" : ""
+                    `relative my-0.5 cursor-default select-none rounded-md py-2 pl-10 pr-4 ${
+                      selected ? "bg-white/10 font-bold text-gray-400" : ""
                     } ${
                       active && !selected
-                        ? "bg-white/5 text-mineshaft-200 cursor-pointer"
+                        ? "cursor-pointer bg-white/5 text-mineshaft-200"
                         : "text-gray-400"
                     } `
                   }
@@ -83,7 +83,7 @@ const ListBox = ({
                         {person}
                       </span>
                       {selected ? (
-                        <span className="text-primary rounded-lg absolute inset-y-0 left-0 flex items-center pl-3">
+                        <span className="absolute inset-y-0 left-0 flex items-center rounded-lg pl-3 text-primary">
                           <FontAwesomeIcon icon={faCheck} className="text-md ml-1" />
                         </span>
                       ) : null}
@@ -92,9 +92,9 @@ const ListBox = ({
                 </Listbox.Option>
               ))}
               {buttonAction && (
-                <button type="button" onClick={buttonAction} className="cursor-pointer w-full">
-                  <div className="my-0.5 relative flex justify-start cursor-pointer select-none py-2 pl-10 pr-4 rounded-md text-gray-400 hover:bg-lime-300 duration-200 hover:text-black hover:font-semibold mt-2">
-                    <span className="rounded-lg absolute inset-y-0 left-0 flex items-center pl-3 pr-4">
+                <button type="button" onClick={buttonAction} className="w-full cursor-pointer">
+                  <div className="relative my-0.5 mt-2 flex cursor-pointer select-none justify-start rounded-md py-2 pl-10 pr-4 text-gray-400 duration-200 hover:bg-lime-300 hover:font-semibold hover:text-black">
+                    <span className="absolute inset-y-0 left-0 flex items-center rounded-lg pl-3 pr-4">
                       <FontAwesomeIcon icon={faPlus} className="text-lg" />
                     </span>
                     Add Project

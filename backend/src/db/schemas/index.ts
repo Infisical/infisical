@@ -3,6 +3,8 @@ export * from "./audit-logs";
 export * from "./auth-token-sessions";
 export * from "./auth-tokens";
 export * from "./backup-private-key";
+export * from "./dynamic-secret-leases";
+export * from "./dynamic-secrets";
 export * from "./git-app-install-sessions";
 export * from "./git-app-org";
 export * from "./group-project-membership-roles";

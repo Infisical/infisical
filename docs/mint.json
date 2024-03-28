@@ -144,6 +144,13 @@
           ]
         },
         {
+          "group": "Dynamic Secrets",
+          "pages": [
+            "documentation/platform/dynamic-secrets/overview",
+            "documentation/platform/dynamic-secrets/postgresql"
+          ]
+        },
+        {
           "group": "SSO",
           "pages": [
             "documentation/platform/sso/overview",
@@ -468,13 +475,23 @@
           ]
         },
         {
+          "group": "Secret tags",
+          "pages": [
+            "api-reference/endpoints/secret-tags/list",
+            "api-reference/endpoints/secret-tags/create",
+            "api-reference/endpoints/secret-tags/delete"
+          ]
+        },
+        {
           "group": "Secrets",
           "pages": [
             "api-reference/endpoints/secrets/list",
             "api-reference/endpoints/secrets/create",
             "api-reference/endpoints/secrets/read",
             "api-reference/endpoints/secrets/update",
-            "api-reference/endpoints/secrets/delete"
+            "api-reference/endpoints/secrets/delete",
+            "api-reference/endpoints/secrets/attach-tags",
+            "api-reference/endpoints/secrets/detach-tags"
           ]
         },
         {

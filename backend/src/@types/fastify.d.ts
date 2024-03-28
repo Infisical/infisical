@@ -4,6 +4,8 @@ import { TUsers } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
+import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
+import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -64,7 +66,7 @@ declare module "fastify" {
       authMethod: ActorAuthMethod;
       type: ActorType;
       id: string;
-      orgId?: string;
+      orgId: string;
     };
     // passport data
     passportUser: {
@@ -121,6 +123,8 @@ declare module "fastify" {
       trustedIp: TTrustedIpServiceFactory;
       secretBlindIndex: TSecretBlindIndexServiceFactory;
       telemetry: TTelemetryServiceFactory;
+      dynamicSecret: TDynamicSecretServiceFactory;
+      dynamicSecretLease: TDynamicSecretLeaseServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

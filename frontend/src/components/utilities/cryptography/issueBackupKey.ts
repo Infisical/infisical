@@ -3,9 +3,7 @@ import crypto from "crypto";
 
 import jsrp from "jsrp";
 
-import { issueBackupPrivateKey ,
-  srp1
-} from "@app/hooks/api/auth/queries";
+import { issueBackupPrivateKey, srp1 } from "@app/hooks/api/auth/queries";
 
 import generateBackupPDF from "../generateBackupPDF";
 import Aes256Gcm from "./aes-256-gcm";
@@ -97,7 +95,6 @@ const issueBackupKey = async ({
                     generatedKey
                   });
                   setBackupKeyIssued(true);
-              
                 } catch {
                   setBackupKeyError(true);
                 }

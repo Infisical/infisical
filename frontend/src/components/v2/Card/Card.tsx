@@ -1,4 +1,4 @@
-import { forwardRef, ReactNode } from "react";
+import { CSSProperties, forwardRef, ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
 
 export type CardTitleProps = {
@@ -10,7 +10,7 @@ export type CardTitleProps = {
 export const CardTitle = ({ children, className, subTitle }: CardTitleProps) => (
   <div
     className={twMerge(
-      "px-6 py-4 mb-5 font-sans text-lg font-normal border-b border-mineshaft-600 break-words",
+      "mb-5 break-words border-b border-mineshaft-600 px-6 py-4 font-sans text-lg font-normal",
       className
     )}
   >
@@ -31,10 +31,13 @@ export const CardFooter = ({ children, className }: CardFooterProps) => (
 export type CardBodyProps = {
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
 };
 
-export const CardBody = ({ children, className }: CardBodyProps) => (
-  <div className={twMerge("px-6 pb-6 pt-0", className)}>{children}</div>
+export const CardBody = ({ children, className, style }: CardBodyProps) => (
+  <div className={twMerge("px-6 pb-6 pt-0", className)} style={style}>
+    {children}
+  </div>
 );
 
 export type CardProps = {
@@ -44,10 +47,14 @@ export type CardProps = {
   isRounded?: boolean;
   isPlain?: boolean;
   isHoverable?: boolean;
+  style?: CSSProperties;
 };
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ children, isFullHeight, isRounded, isHoverable, isPlain, className }, ref): JSX.Element => {
+  (
+    { children, isFullHeight, isRounded, isHoverable, isPlain, className, style },
+    ref
+  ): JSX.Element => {
     return (
       <div
         ref={ref}
@@ -59,6 +66,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
           isHoverable && "hover:shadow-xl",
           className
         )}
+        style={style}
       >
         {children}
       </div>

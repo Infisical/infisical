@@ -194,6 +194,25 @@ export const FOLDERS = {
   }
 } as const;
 
+export const SECRETS = {
+  ATTACH_TAGS: {
+    secretName: "The name of the secret to attach tags to.",
+    secretPath: "The path of the secret to attach tags to.",
+    type: "The type of the secret to attach tags to. (shared/personal)",
+    environment: "The slug of the environment where the secret is located",
+    projectSlug: "The slug of the project where the secret is located",
+    tagSlugs: "An array of existing tag slugs to attach to the secret."
+  },
+  DETACH_TAGS: {
+    secretName: "The name of the secret to detach tags from.",
+    secretPath: "The path of the secret to detach tags from.",
+    type: "The type of the secret to attach tags to. (shared/personal)",
+    environment: "The slug of the environment where the secret is located",
+    projectSlug: "The slug of the project where the secret is located",
+    tagSlugs: "An array of existing tag slugs to detach from the secret."
+  }
+} as const;
+
 export const RAW_SECRETS = {
   LIST: {
     workspaceId: "The ID of the project to list secrets from.",
@@ -283,5 +302,98 @@ export const AUDIT_LOGS = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th audit log.",
     limit: "The number of audit logs to return.",
     actor: "The actor to filter the audit logs by."
+  }
+} as const;
+
+export const DYNAMIC_SECRETS = {
+  LIST: {
+    projectSlug: "The slug of the project to create dynamic secret in.",
+    environmentSlug: "The slug of the environment to list folders from.",
+    path: "The path to list folders from."
+  },
+  LIST_LEAES_BY_NAME: {
+    projectSlug: "The slug of the project to create dynamic secret in.",
+    environmentSlug: "The slug of the environment to list folders from.",
+    path: "The path to list folders from.",
+    name: "The name of the dynamic secret."
+  },
+  GET_BY_NAME: {
+    projectSlug: "The slug of the project to create dynamic secret in.",
+    environmentSlug: "The slug of the environment to list folders from.",
+    path: "The path to list folders from.",
+    name: "The name of the dynamic secret."
+  },
+  CREATE: {
+    projectSlug: "The slug of the project to create dynamic secret in.",
+    environmentSlug: "The slug of the environment to create the dynamic secret in.",
+    path: "The path to create the dynamic secret in.",
+    name: "The name of the dynamic secret.",
+    provider: "The type of dynamic secret.",
+    defaultTTL: "The default TTL that will be applied for all the leases.",
+    maxTTL: "The maximum limit a TTL can be leases or renewed."
+  },
+  UPDATE: {
+    projectSlug: "The slug of the project to update dynamic secret in.",
+    environmentSlug: "The slug of the environment to update the dynamic secret in.",
+    path: "The path to update the dynamic secret in.",
+    name: "The name of the dynamic secret.",
+    inputs: "The new partial values for the configurated provider of the dynamic secret",
+    defaultTTL: "The default TTL that will be applied for all the leases.",
+    maxTTL: "The maximum limit a TTL can be leases or renewed.",
+    newName: "The new name for the dynamic secret."
+  },
+  DELETE: {
+    projectSlug: "The slug of the project to delete dynamic secret in.",
+    environmentSlug: "The slug of the environment to delete the dynamic secret in.",
+    path: "The path to delete the dynamic secret in.",
+    name: "The name of the dynamic secret.",
+    isForced:
+      "A boolean flag to delete the the dynamic secret from infisical without trying to remove it from external provider. Used when the dynamic secret got modified externally."
+  }
+} as const;
+
+export const DYNAMIC_SECRET_LEASES = {
+  GET_BY_LEASEID: {
+    projectSlug: "The slug of the project to create dynamic secret in.",
+    environmentSlug: "The slug of the environment to list folders from.",
+    path: "The path to list folders from.",
+    leaseId: "The ID of the dynamic secret lease."
+  },
+  CREATE: {
+    projectSlug: "The slug of the project of the dynamic secret in.",
+    environmentSlug: "The slug of the environment of the dynamic secret in.",
+    path: "The path of the dynamic secret in.",
+    dynamicSecretName: "The name of the dynamic secret.",
+    ttl: "The lease lifetime ttl. If not provided the default TTL of dynamic secret will be used."
+  },
+  RENEW: {
+    projectSlug: "The slug of the project of the dynamic secret in.",
+    environmentSlug: "The slug of the environment of the dynamic secret in.",
+    path: "The path of the dynamic secret in.",
+    leaseId: "The ID of the dynamic secret lease.",
+    ttl: "The renew TTL that gets added with current expiry (ensure it's below max TTL) for a total less than creation time + max TTL."
+  },
+  DELETE: {
+    projectSlug: "The slug of the project of the dynamic secret in.",
+    environmentSlug: "The slug of the environment of the dynamic secret in.",
+    path: "The path of the dynamic secret in.",
+    leaseId: "The ID of the dynamic secret lease.",
+    isForced:
+      "A boolean flag to delete the the dynamic secret from infisical without trying to remove it from external provider. Used when the dynamic secret got modified externally."
+  }
+} as const;
+export const SECRET_TAGS = {
+  LIST: {
+    projectId: "The ID of the project to list tags from."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the tag in.",
+    name: "The name of the tag to create.",
+    slug: "The slug of the tag to create.",
+    color: "The color of the tag to create."
+  },
+  DELETE: {
+    tagId: "The ID of the tag to delete.",
+    projectId: "The ID of the project to delete the tag from."
   }
 } as const;

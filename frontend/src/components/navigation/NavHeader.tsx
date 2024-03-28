@@ -56,7 +56,7 @@ export default function NavHeader({
 
   return (
     <div className="flex flex-row items-center pt-6">
-      <div className="mr-2 flex h-5 w-5 items-center justify-center rounded-md bg-primary text-sm text-black min-w-[1.25rem]">
+      <div className="mr-2 flex h-5 w-5 min-w-[1.25rem] items-center justify-center rounded-md bg-primary text-sm text-black">
         {currentOrg?.name?.charAt(0)}
       </div>
       <Link passHref legacyBehavior href={`/org/${currentOrg?.id}/overview`}>

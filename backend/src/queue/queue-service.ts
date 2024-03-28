@@ -18,7 +18,8 @@ export enum QueueName {
   SecretWebhook = "secret-webhook",
   SecretFullRepoScan = "secret-full-repo-scan",
   SecretPushEventScan = "secret-push-event-scan",
-  UpgradeProjectToGhost = "upgrade-project-to-ghost"
+  UpgradeProjectToGhost = "upgrade-project-to-ghost",
+  DynamicSecretRevocation = "dynamic-secret-revocation"
 }
 
 export enum QueueJobs {
@@ -30,7 +31,9 @@ export enum QueueJobs {
   TelemetryInstanceStats = "telemetry-self-hosted-stats",
   IntegrationSync = "secret-integration-pull",
   SecretScan = "secret-scan",
-  UpgradeProjectToGhost = "upgrade-project-to-ghost-job"
+  UpgradeProjectToGhost = "upgrade-project-to-ghost-job",
+  DynamicSecretRevocation = "dynamic-secret-revocation",
+  DynamicSecretPruning = "dynamic-secret-pruning"
 }
 
 export type TQueueJobTypes = {
@@ -86,6 +89,19 @@ export type TQueueJobTypes = {
     name: QueueJobs.TelemetryInstanceStats;
     payload: undefined;
   };
+  [QueueName.DynamicSecretRevocation]:
+    | {
+        name: QueueJobs.DynamicSecretRevocation;
+        payload: {
+          leaseId: string;
+        };
+      }
+    | {
+        name: QueueJobs.DynamicSecretPruning;
+        payload: {
+          dynamicSecretCfgId: string;
+        };
+      };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;

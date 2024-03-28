@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import {
@@ -63,7 +63,7 @@ export const IdentityUniversalAuthForm = ({
   handlePopUpToggle,
   identityAuthMethodData
 }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();

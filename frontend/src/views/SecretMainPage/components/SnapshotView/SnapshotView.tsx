@@ -9,7 +9,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, ContentLoader, Input, Tag, Tooltip } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
@@ -52,7 +52,7 @@ export const SnapshotView = ({
   snapshotCount,
   onClickListSnapshot
 }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const [search, setSearch] = useState("");
   const { mutateAsync: performRollback, isLoading: isRollingBack } = usePerformSecretRollback();
 

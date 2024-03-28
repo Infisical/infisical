@@ -22,6 +22,7 @@ import { TSecretDALFactory } from "./secret-dal";
 import { decryptSecretRaw, fnSecretBlindIndexCheck, fnSecretBulkInsert, fnSecretBulkUpdate } from "./secret-fns";
 import { TSecretQueueFactory } from "./secret-queue";
 import {
+  TAttachSecretTagsDTO,
   TCreateBulkSecretDTO,
   TCreateSecretDTO,
   TCreateSecretRawDTO,
@@ -47,7 +48,7 @@ type TSecretServiceFactoryDep = {
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath">;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug">;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
@@ -307,6 +308,7 @@ export const secretServiceFactory = ({
     if ((inputSecret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
 
     const { secretName, ...el } = inputSecret;
+
     const updatedSecret = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
         folderId,
@@ -442,6 +444,7 @@ export const secretServiceFactory = ({
     const folderId = folder.id;
 
     const secrets = await secretDAL.findByFolderId(folderId, actorId);
+
     if (includeImports) {
       const secretImports = await secretImportDAL.find({ folderId });
       const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
@@ -994,7 +997,209 @@ export const secretServiceFactory = ({
     return secretVersions;
   };
 
+  const attachTags = async ({
+    secretName,
+    tagSlugs,
+    path: secretPath,
+    environment,
+    type,
+    projectSlug,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    actorId
+  }: TAttachSecretTagsDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
+
+    await projectDAL.checkProjectUpgradeStatus(project.id);
+
+    const secret = await getSecretByName({
+      actorId,
+      actor,
+      actorOrgId,
+      actorAuthMethod,
+      projectId: project.id,
+      environment,
+      path: secretPath,
+      secretName,
+      type
+    });
+
+    if (!secret) {
+      throw new BadRequestError({ message: "Secret not found" });
+    }
+    const folder = await folderDAL.findBySecretPath(project.id, environment, secretPath);
+
+    if (!folder) {
+      throw new BadRequestError({ message: "Folder not found" });
+    }
+
+    const tags = await secretTagDAL.find({
+      projectId: project.id,
+      $in: {
+        slug: tagSlugs
+      }
+    });
+
+    if (tags.length !== tagSlugs.length) {
+      throw new BadRequestError({ message: "One or more tags not found." });
+    }
+
+    const existingSecretTags = await secretDAL.getSecretTags(secret.id);
+
+    if (existingSecretTags.some((tag) => tagSlugs.includes(tag.slug))) {
+      throw new BadRequestError({ message: "One or more tags already exist on the secret" });
+    }
+
+    const combinedTags = new Set([...existingSecretTags.map((tag) => tag.id), ...tags.map((el) => el.id)]);
+
+    const updatedSecret = await secretDAL.transaction(async (tx) =>
+      fnSecretBulkUpdate({
+        folderId: folder.id,
+        projectId: project.id,
+        inputSecrets: [
+          {
+            filter: { id: secret.id },
+            data: {
+              tags: Array.from(combinedTags)
+            }
+          }
+        ],
+        secretDAL,
+        secretVersionDAL,
+        secretTagDAL,
+        secretVersionTagDAL,
+        tx
+      })
+    );
+
+    await snapshotService.performSnapshot(folder.id);
+    await secretQueueService.syncSecrets({ secretPath, projectId: project.id, environment });
+
+    return {
+      ...updatedSecret[0],
+      tags: [...existingSecretTags, ...tags].map((t) => ({ id: t.id, slug: t.slug, name: t.name, color: t.color }))
+    };
+  };
+
+  const detachTags = async ({
+    secretName,
+    tagSlugs,
+    path: secretPath,
+    environment,
+    type,
+    projectSlug,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    actorId
+  }: TAttachSecretTagsDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
+
+    await projectDAL.checkProjectUpgradeStatus(project.id);
+
+    const secret = await getSecretByName({
+      actorId,
+      actor,
+      actorOrgId,
+      actorAuthMethod,
+      projectId: project.id,
+      environment,
+      path: secretPath,
+      secretName,
+      type
+    });
+
+    if (!secret) {
+      throw new BadRequestError({ message: "Secret not found" });
+    }
+    const folder = await folderDAL.findBySecretPath(project.id, environment, secretPath);
+
+    if (!folder) {
+      throw new BadRequestError({ message: "Folder not found" });
+    }
+
+    const tags = await secretTagDAL.find({
+      projectId: project.id,
+      $in: {
+        slug: tagSlugs
+      }
+    });
+
+    if (tags.length !== tagSlugs.length) {
+      throw new BadRequestError({ message: "One or more tags not found." });
+    }
+
+    const existingSecretTags = await secretDAL.getSecretTags(secret.id);
+
+    // Make sure all the tags exist on the secret
+    const tagIdsToRemove = tags.map((tag) => tag.id);
+    const secretTagIds = existingSecretTags.map((tag) => tag.id);
+
+    if (!tagIdsToRemove.every((el) => secretTagIds.includes(el))) {
+      throw new BadRequestError({ message: "One or more tags not found on the secret" });
+    }
+
+    const newTags = existingSecretTags.filter((tag) => !tagIdsToRemove.includes(tag.id));
+
+    const updatedSecret = await secretDAL.transaction(async (tx) =>
+      fnSecretBulkUpdate({
+        folderId: folder.id,
+        projectId: project.id,
+        inputSecrets: [
+          {
+            filter: { id: secret.id },
+            data: {
+              tags: newTags.map((tag) => tag.id)
+            }
+          }
+        ],
+        secretDAL,
+        secretVersionDAL,
+        secretTagDAL,
+        secretVersionTagDAL,
+        tx
+      })
+    );
+
+    await snapshotService.performSnapshot(folder.id);
+    await secretQueueService.syncSecrets({ secretPath, projectId: project.id, environment });
+
+    return {
+      ...updatedSecret[0],
+      tags: newTags
+    };
+  };
+
   return {
+    attachTags,
+    detachTags,
     createSecret,
     deleteSecret,
     updateSecret,

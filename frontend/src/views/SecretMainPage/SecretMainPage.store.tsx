@@ -31,6 +31,7 @@ const createSelectedSecretStore: StateCreator<SelectedSecretState> = (set) => ({
 export enum PopUpNames {
   CreateSecretForm = "create-secret-form"
 }
+
 type PopUpState = {
   popUp: Record<string, { isOpen: boolean; data?: any }>;
   popUpActions: {

@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type UserCredentials struct {
 	Email        string `json:"email"`
 	PrivateKey   string `json:"privateKey"`
@@ -38,6 +40,23 @@ type SingleEnvironmentVariable struct {
 type PlaintextSecretResult struct {
 	Secrets []SingleEnvironmentVariable
 	Etag    string
+}
+
+type DynamicSecret struct {
+	Id         string `json:"id"`
+	DefaultTTL string `json:"defaultTTL"`
+	MaxTTL     string `json:"maxTTL"`
+	Type       string `json:"type"`
+}
+
+type DynamicSecretLease struct {
+	Lease struct {
+		Id       string    `json:"id"`
+		ExpireAt time.Time `json:"expireAt"`
+	} `json:"lease"`
+	DynamicSecret DynamicSecret `json:"dynamicSecret"`
+	// this is a varying dict based on provider
+	Data map[string]interface{} `json:"data"`
 }
 
 type SingleFolder struct {

@@ -308,64 +308,58 @@ export default function PasswordReset() {
               <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
             )}
             <div
-              className={`${passwordErrorNoNumOrSpecialChar ? "text-gray-400" : "text-gray-600"} text-sm`}
+              className={`${
+                passwordErrorNoNumOrSpecialChar ? "text-gray-400" : "text-gray-600"
+              } text-sm`}
             >
               at least 1 number or special character
             </div>
           </div>
           <div className="ml-1 flex flex-row items-center justify-start">
-              {passwordErrorRepeatedChar ? (
-                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-              )}
-              <div
-                className={`${
-                  passwordErrorRepeatedChar ? "text-gray-400" : "text-gray-600"
-                } text-sm`}
-              >
-                at most 3 repeated, consecutive characters
-              </div>
+            {passwordErrorRepeatedChar ? (
+              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+            ) : (
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+            )}
+            <div
+              className={`${passwordErrorRepeatedChar ? "text-gray-400" : "text-gray-600"} text-sm`}
+            >
+              at most 3 repeated, consecutive characters
+            </div>
           </div>
           <div className="ml-1 flex flex-row items-center justify-start">
-              {passwordErrorEscapeChar ? (
-                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-              )}
-              <div
-                className={`${
-                  passwordErrorEscapeChar ? "text-gray-400" : "text-gray-600"
-                } text-sm`}
-              >
-                No escape characters allowed.
-              </div>
+            {passwordErrorEscapeChar ? (
+              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+            ) : (
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+            )}
+            <div
+              className={`${passwordErrorEscapeChar ? "text-gray-400" : "text-gray-600"} text-sm`}
+            >
+              No escape characters allowed.
+            </div>
           </div>
           <div className="ml-1 flex flex-row items-center justify-start">
-              {passwordErrorLowEntropy ? (
-                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-              )}
-              <div
-                className={`${passwordErrorLowEntropy ? "text-gray-400" : "text-gray-600"} text-sm`}
-              >
-                Password contains personal info.
-              </div>
+            {passwordErrorLowEntropy ? (
+              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+            ) : (
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+            )}
+            <div
+              className={`${passwordErrorLowEntropy ? "text-gray-400" : "text-gray-600"} text-sm`}
+            >
+              Password contains personal info.
+            </div>
           </div>
           <div className="ml-1 flex flex-row items-center justify-start">
-              {passwordErrorBreached ? (
-                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-              )}
-              <div
-                className={`${
-                  passwordErrorBreached ? "text-gray-400" : "text-gray-600"
-                } text-sm`}
-              >
-                Password was found in a data breach.
-              </div>
+            {passwordErrorBreached ? (
+              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+            ) : (
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+            )}
+            <div className={`${passwordErrorBreached ? "text-gray-400" : "text-gray-600"} text-sm`}>
+              Password was found in a data breach.
+            </div>
           </div>
         </div>
       ) : (

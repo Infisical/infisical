@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { generateBackupPDFAsync } from "@app/components/utilities/generateBackupPDF";
 // TODO(akhilmhdh): rewrite this into module functions in lib
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
@@ -48,7 +48,7 @@ export const SignUpPage = () => {
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema)
   });
-  const { createNotification } = useNotificationContext();
+  
   const [step, setStep] = useState(SignupSteps.DetailsForm);
 
   const { config } = useServerConfig();

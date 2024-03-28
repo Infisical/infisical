@@ -13,7 +13,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -71,7 +71,7 @@ export const SecretDetailSidebar = ({
   environment,
   secretPath
 }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const {
     register,
     control,

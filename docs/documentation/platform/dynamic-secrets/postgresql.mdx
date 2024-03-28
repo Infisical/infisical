@@ -1,0 +1,98 @@
+---
+title: "PostgreSQL"
+description: "Learn how to dynamically generate PostgreSQL Database user passwords."
+---
+
+The Infisical MySQL secret rotation allows you to automatically rotate your MySQL database user's password at a predefined interval.
+
+
+## Prerequisite
+
+1. Create a user with the required permission in your SQL instance.
+
+
+## Set up Dynamic Secrets with PostgreSQL
+
+<Steps>
+  <Step title="Open Secret Overview Dashboard">
+	Open the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret.
+  </Step>
+  <Step title="Click on the `Add Dynamic Secret` button">
+	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
+  </Step>
+  <Step title="Select `SQL Database`">
+	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal.png)
+  </Step>
+  <Step title="Provide the inputs for dynamic secret parameters">
+	<ParamField path="Secret Name" type="string" required>
+		Name by which you want the secret to be referenced
+	</ParamField>
+
+	<ParamField path="Default TTL" type="string" required>
+		Default time-to-live for a generated secret (it is possible to modify this value when a secret is generate)
+	</ParamField>
+
+	<ParamField path="Max TTL" type="string" required>
+		Maximum time-to-live for a generated secret
+	</ParamField>
+
+	<ParamField path="Service" type="string" required>
+		Choose the service you want to generate dynamic secrets for
+	</ParamField>
+
+	<ParamField path="Host" type="string" required>
+		Database host
+	</ParamField>
+
+	<ParamField path="Port" type="number" required>
+		Database port
+	</ParamField>
+
+	<ParamField path="User" type="string" required>
+		Username that will be used to create dynamic secrets
+	</ParamField>
+
+	<ParamField path="Password" type="string" required>
+		Password that will be used to create dynamic secrets
+	</ParamField>
+
+	<ParamField path="Database Name" type="string" required>
+		Name of the database for which you want to create dynamic secrets
+	</ParamField>
+ 
+	<ParamField path="CA(SSL)" type="string">
+		A CA may be required if your DB requires it for incoming connections. AWS RDS instances with default settings will requires a CA which can be downloaded [here](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions).
+	</ParamField>
+
+	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal.png)
+
+  </Step>
+  <Step title="(Optional) Modify SQL Statements">
+  	If you want to provide specific privileges for the future generated dynamic secrets, you are able to specify them as SQL statements. 
+
+	![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statements.png)
+  </Step>
+  <Step title="Click `Submit`">
+  	After submitting the form, you will see a dynamic secret creates in the dashboard. 
+
+	<Note>
+		If this step fails, you might have to add the CA certficate. 
+	</Note>
+
+	![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret.png)
+  </Step>
+  <Step title="Generate dynamic secrets">
+	Now that the dynamic secret is created, you can start generating unique secret values by specifying the Time-to-live within the predefined range. 
+
+	![Provision Lease](../../../images/platform/dynamic-secrets/provision-lease.png)
+
+	After you click the `Submit` button, a new secret lease will be generated and the Database User and Database Password will be shown. 
+
+	![Provision Lease](../../../images/platform/dynamic-secrets/lease-values.png)
+  </Step>
+  <Step title="Audit or Revoke Leases">
+	As soon as you have generated a few secret leases, you will be able to access them by clicking `Generate` on the dynamic secret row. In this modal, you are able to see the expiration time or delete a secret preemptively.
+
+	![Provision Lease](../../../images/platform/dynamic-secrets/lease-data.png)
+  </Step>
+</Steps>

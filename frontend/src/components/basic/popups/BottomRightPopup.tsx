@@ -34,27 +34,27 @@ const BottonRightPopup = ({
 }: PopupProps): JSX.Element => {
   return (
     <div
-      className="z-[100] drop-shadow-xl border-gray-600/50 border flex flex-col items-start bg-bunker max-w-xl text-gray-200 pt-3 pb-4 rounded-md absolute bottom-0 right-0 mr-6 mb-6"
+      className="absolute bottom-0 right-0 z-[100] mr-6 mb-6 flex max-w-xl flex-col items-start rounded-md border border-gray-600/50 bg-bunker pt-3 pb-4 text-gray-200 drop-shadow-xl"
       role="alert"
     >
-      <div className="flex flex-row items-center justify-between w-full border-b border-gray-600/70 pb-3 px-6">
-        <div className="font-bold text-xl mr-2 mt-0.5 flex flex-row">
+      <div className="flex w-full flex-row items-center justify-between border-b border-gray-600/70 px-6 pb-3">
+        <div className="mr-2 mt-0.5 flex flex-row text-xl font-bold">
           <div>{titleText}</div>
           <div className="ml-2.5">{emoji}</div>
         </div>
         <button className="mt-1" onClick={() => setCheckDocsPopUpVisible(false)} type="button">
           <FontAwesomeIcon
             icon={faXmark}
-            className="text-gray-400 text-2xl hover:text-red duration-200 cursor-pointer"
+            className="cursor-pointer text-2xl text-gray-400 duration-200 hover:text-red"
           />
         </button>
       </div>
-      <div className="block sm:inline px-6 mt-4 mb-0.5 text-gray-300">{textLine1}</div>
-      <div className="block sm:inline mb-4 px-6">{textLine2}</div>
-      <div className="flex flex-row px-6 w-full">
+      <div className="mt-4 mb-0.5 block px-6 text-gray-300 sm:inline">{textLine1}</div>
+      <div className="mb-4 block px-6 sm:inline">{textLine2}</div>
+      <div className="flex w-full flex-row px-6">
         {/* eslint-disable-next-line react/jsx-no-target-blank */}
         <a
-          className="font-bold p-2 bg-white/10 rounded-md w-full hover:bg-primary duration-200 hover:text-black flex justify-center"
+          className="flex w-full justify-center rounded-md bg-white/10 p-2 font-bold duration-200 hover:bg-primary hover:text-black"
           href={buttonLink}
           target="_blank"
           rel="noopener"

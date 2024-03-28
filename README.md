@@ -10,7 +10,8 @@
   <a href="https://infisical.com/">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/documentation/getting-started/introduction">Docs</a> |
-  <a href="https://www.infisical.com">Website</a>
+  <a href="https://www.infisical.com">Website</a> |
+  <a href="https://infisical.com/careers">Hiring (Remote/SF)</a>
 </h4>
 
 <p align="center">

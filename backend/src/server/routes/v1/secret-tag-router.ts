@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SecretTagsSchema } from "@app/db/schemas";
+import { SECRET_TAGS } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -10,7 +11,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     schema: {
       params: z.object({
-        projectId: z.string().trim()
+        projectId: z.string().trim().describe(SECRET_TAGS.LIST.projectId)
       }),
       response: {
         200: z.object({
@@ -36,12 +37,12 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     schema: {
       params: z.object({
-        projectId: z.string().trim()
+        projectId: z.string().trim().describe(SECRET_TAGS.CREATE.projectId)
       }),
       body: z.object({
-        name: z.string().trim(),
-        slug: z.string().trim(),
-        color: z.string()
+        name: z.string().trim().describe(SECRET_TAGS.CREATE.name),
+        slug: z.string().trim().describe(SECRET_TAGS.CREATE.slug),
+        color: z.string().trim().describe(SECRET_TAGS.CREATE.color)
       }),
       response: {
         200: z.object({
@@ -68,8 +69,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     method: "DELETE",
     schema: {
       params: z.object({
-        projectId: z.string().trim(),
-        tagId: z.string().trim()
+        projectId: z.string().trim().describe(SECRET_TAGS.DELETE.projectId),
+        tagId: z.string().trim().describe(SECRET_TAGS.DELETE.tagId)
       }),
       response: {
         200: z.object({

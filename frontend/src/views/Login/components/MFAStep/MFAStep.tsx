@@ -6,7 +6,7 @@ import axios from "axios";
 import jwt_decode from "jwt-decode";
 
 import Error from "@app/components/basic/Error"; // which to notification
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa";
 import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
 import { Button } from "@app/components/v2";
@@ -59,7 +59,7 @@ interface VerifyMfaTokenError {
 }
 
 export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingResend, setIsLoadingResend] = useState(false);

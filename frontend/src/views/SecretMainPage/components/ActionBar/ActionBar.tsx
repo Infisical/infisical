@@ -9,6 +9,7 @@ import {
   faEyeSlash,
   faFileImport,
   faFilter,
+  faFingerprint,
   faFolderPlus,
   faMagnifyingGlass,
   faMinusSquare,
@@ -19,7 +20,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import FileSaver from "file-saver";
 import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -52,6 +53,7 @@ import {
   useSelectedSecrets
 } from "../../SecretMainPage.store";
 import { Filter, GroupBy } from "../../SecretMainPage.types";
+import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
 
@@ -60,7 +62,9 @@ type Props = {
   // swtich the secrets type as it gets decrypted after api call
   importedSecrets?: Array<Omit<TImportedSecrets, "secrets"> & { secrets: DecryptedSecret[] }>;
   environment: string;
+  // @depreciated will be moving all these details to zustand
   workspaceId: string;
+  projectSlug: string;
   secretPath?: string;
   filter: Filter;
   tags?: WsTag[];
@@ -79,6 +83,7 @@ export const ActionBar = ({
   importedSecrets = [],
   environment,
   workspaceId,
+  projectSlug,
   secretPath = "/",
   filter,
   tags = [],
@@ -93,13 +98,13 @@ export const ActionBar = ({
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addFolder",
+    "addDynamicSecret",
     "addSecretImport",
     "bulkDeleteSecrets",
     "misc",
     "upgradePlan"
   ] as const);
   const { subscription } = useSubscription();
-  const { createNotification } = useNotificationContext();
   const { openPopUp } = usePopUpAction();
 
   const { mutateAsync: createFolder } = useCreateFolder();
@@ -311,7 +316,6 @@ export const ActionBar = ({
               </Button>
             )}
           </ProjectPermissionCan>
-
           <DropdownMenu
             open={popUp.misc.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("misc", isOpen)}
@@ -333,14 +337,14 @@ export const ActionBar = ({
                 >
                   {(isAllowed) => (
                     <Button
-                      leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
+                      leftIcon={<FontAwesomeIcon icon={faFolderPlus} className="pr-2" />}
                       onClick={() => {
                         handlePopUpOpen("addFolder");
                         handlePopUpClose("misc");
                       }}
                       isDisabled={!isAllowed}
                       variant="outline_bg"
-                      className="h-10"
+                      className="h-10 text-left"
                       isFullWidth
                     >
                       Add Folder
@@ -353,13 +357,37 @@ export const ActionBar = ({
                 >
                   {(isAllowed) => (
                     <Button
-                      leftIcon={<FontAwesomeIcon icon={faFileImport} />}
+                      leftIcon={<FontAwesomeIcon icon={faFingerprint} className="pr-2" />}
+                      onClick={() => {
+                        if (subscription && subscription.dynamicSecret) {
+                          handlePopUpOpen("addDynamicSecret");
+                          handlePopUpClose("misc");
+                          return;
+                        }
+                        handlePopUpOpen("upgradePlan");
+                      }}
+                      isDisabled={!isAllowed}
+                      variant="outline_bg"
+                      className="h-10 text-left"
+                      isFullWidth
+                    >
+                      Add Dynamic Secret
+                    </Button>
+                  )}
+                </ProjectPermissionCan>
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Create}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                >
+                  {(isAllowed) => (
+                    <Button
+                      leftIcon={<FontAwesomeIcon icon={faFileImport} className="pr-2" />}
                       onClick={() => {
                         handlePopUpOpen("addSecretImport");
                         handlePopUpClose("misc");
                       }}
                       variant="outline_bg"
-                      className="h-10"
+                      className="h-10 text-left"
                       isFullWidth
                       isDisabled={!isAllowed}
                     >
@@ -418,6 +446,13 @@ export const ActionBar = ({
         onClose={() => handlePopUpClose("addSecretImport")}
         onTogglePopUp={(isOpen) => handlePopUpToggle("addSecretImport", isOpen)}
       />
+      <CreateDynamicSecretForm
+        isOpen={popUp.addDynamicSecret.isOpen}
+        onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
+        projectSlug={projectSlug}
+        environment={environment}
+        secretPath={secretPath}
+      />
       <Modal
         isOpen={popUp.addFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addFolder", isOpen)}
@@ -439,8 +474,8 @@ export const ActionBar = ({
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text={
             subscription.slug === null
-              ? "You can perform point-in-time recovery under an Enterprise license"
-              : "You can perform point-in-time recovery if you switch to Infisical's Team plan"
+              ? "You can perform this action under an Enterprise license"
+              : "You can perform this action if you switch to Infisical's Team plan"
           }
         />
       )}

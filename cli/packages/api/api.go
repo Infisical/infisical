@@ -406,14 +406,14 @@ func CallDeleteSecretsV3(httpClient *resty.Client, request DeleteSecretV3Request
 	return nil
 }
 
-func CallUpdateSecretsV3(httpClient *resty.Client, request UpdateSecretByNameV3Request) error {
+func CallUpdateSecretsV3(httpClient *resty.Client, request UpdateSecretByNameV3Request, secretName string) error {
 	var secretsResponse GetEncryptedSecretsV3Response
 	response, err := httpClient.
 		R().
 		SetResult(&secretsResponse).
 		SetHeader("User-Agent", USER_AGENT).
 		SetBody(request).
-		Patch(fmt.Sprintf("%v/v3/secrets/%s", config.INFISICAL_URL, request.SecretName))
+		Patch(fmt.Sprintf("%v/v3/secrets/%s", config.INFISICAL_URL, secretName))
 
 	if err != nil {
 		return fmt.Errorf("CallUpdateSecretsV3: Unable to complete api request [err=%s]", err)
@@ -534,4 +534,24 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 	getRawSecretsV3Response.ETag = response.Header().Get(("etag"))
 
 	return getRawSecretsV3Response, nil
+}
+
+func CallCreateDynamicSecretLeaseV1(httpClient *resty.Client, request CreateDynamicSecretLeaseV1Request) (CreateDynamicSecretLeaseV1Response, error) {
+	var createDynamicSecretLeaseResponse CreateDynamicSecretLeaseV1Response
+	response, err := httpClient.
+		R().
+		SetResult(&createDynamicSecretLeaseResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v1/dynamic-secrets/leases", config.INFISICAL_URL))
+
+	if err != nil {
+		return CreateDynamicSecretLeaseV1Response{}, fmt.Errorf("CreateDynamicSecretLeaseV1: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return CreateDynamicSecretLeaseV1Response{}, fmt.Errorf("CreateDynamicSecretLeaseV1: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return createDynamicSecretLeaseResponse, nil
 }

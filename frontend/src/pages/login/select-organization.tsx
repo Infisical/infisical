@@ -9,7 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import axios from "axios";
 import jwt_decode from "jwt-decode";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin";
 import { Button, Spinner } from "@app/components/v2";
 import { useUser } from "@app/context";
@@ -35,7 +35,7 @@ export default function LoginPage() {
   const selectOrg = useSelectOrganization();
   const { user, isLoading: userLoading } = useUser();
 
-  const { createNotification } = useNotificationContext();
+  
 
   const queryParams = new URLSearchParams(window.location.search);
 

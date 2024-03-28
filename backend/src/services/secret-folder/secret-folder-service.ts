@@ -232,6 +232,7 @@ export const secretFolderServiceFactory = ({
     if (!parentFolder) return [];
 
     const folders = await folderDAL.find({ envId: env.id, parentId: parentFolder.id });
+
     return folders;
   };
 

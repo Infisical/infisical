@@ -3,7 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { useRenameUser } from "@app/hooks/api/users/queries";
@@ -16,7 +16,7 @@ type FormData = yup.InferType<typeof formSchema>;
 
 export const UserNameSection = (): JSX.Element => {
   const { user } = useUser();
-  const { createNotification } = useNotificationContext();
+  
   const { handleSubmit, control, reset } = useForm<FormData>({ resolver: yupResolver(formSchema) });
   const { mutateAsync, isLoading } = useRenameUser();
 

@@ -10,7 +10,7 @@ import {
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CommitType } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
-import { RAW_SECRETS } from "@app/lib/api-docs";
+import { RAW_SECRETS, SECRETS } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -23,6 +23,124 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { secretRawSchema } from "../sanitizedSchemas";
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    url: "/tags/:secretName",
+    method: "POST",
+    schema: {
+      description: "Attach tags to a secret",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        secretName: z.string().trim().describe(SECRETS.ATTACH_TAGS.secretName)
+      }),
+      body: z.object({
+        projectSlug: z.string().trim().describe(SECRETS.ATTACH_TAGS.projectSlug),
+        environment: z.string().trim().describe(SECRETS.ATTACH_TAGS.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(SECRETS.ATTACH_TAGS.secretPath),
+        type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(SECRETS.ATTACH_TAGS.type),
+        tagSlugs: z.string().array().min(1).describe(SECRETS.ATTACH_TAGS.tagSlugs)
+      }),
+      response: {
+        200: z.object({
+          secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
+            z.object({
+              tags: SecretTagsSchema.pick({
+                id: true,
+                slug: true,
+                name: true,
+                color: true
+              }).array()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const secret = await server.services.secret.attachTags({
+        secretName: req.params.secretName,
+        tagSlugs: req.body.tagSlugs,
+        path: req.body.secretPath,
+        environment: req.body.environment,
+        type: req.body.type,
+        projectSlug: req.body.projectSlug,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { secret };
+    }
+  });
+
+  server.route({
+    url: "/tags/:secretName",
+    method: "DELETE",
+    schema: {
+      description: "Detach tags from a secret",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        secretName: z.string().trim().describe(SECRETS.DETACH_TAGS.secretName)
+      }),
+      body: z.object({
+        projectSlug: z.string().trim().describe(SECRETS.DETACH_TAGS.projectSlug),
+        environment: z.string().trim().describe(SECRETS.DETACH_TAGS.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(SECRETS.DETACH_TAGS.secretPath),
+        type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(SECRETS.DETACH_TAGS.type),
+        tagSlugs: z.string().array().min(1).describe(SECRETS.DETACH_TAGS.tagSlugs)
+      }),
+      response: {
+        200: z.object({
+          secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
+            z.object({
+              tags: SecretTagsSchema.pick({
+                id: true,
+                slug: true,
+                name: true,
+                color: true
+              }).array()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const secret = await server.services.secret.detachTags({
+        secretName: req.params.secretName,
+        tagSlugs: req.body.tagSlugs,
+        path: req.body.secretPath,
+        environment: req.body.environment,
+        type: req.body.type,
+        projectSlug: req.body.projectSlug,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { secret };
+    }
+  });
+
   server.route({
     url: "/raw",
     method: "GET",

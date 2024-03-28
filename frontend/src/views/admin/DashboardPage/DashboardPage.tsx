@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   ContentLoader,
@@ -62,7 +62,7 @@ export const AdminDashboardPage = () => {
   const { orgs } = useOrganization();
   const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
 
-  const { createNotification } = useNotificationContext();
+  
 
   const isNotAllowed = !user?.superAdmin;
 

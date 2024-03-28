@@ -41,6 +41,7 @@ jobs:
           load: true
           context: backend
           tags: infisical/infisical:test
+          platforms: linux/amd64,linux/arm64
       - name: ⏻ Spawn backend container and dependencies
         run: |
           docker compose -f .github/resources/docker-compose.be-test.yml up --wait --quiet-pull
@@ -92,6 +93,7 @@ jobs:
           project: 64mmf0n610
           context: frontend
           tags: infisical/frontend:test
+          platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
             NEXT_INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}

@@ -193,8 +193,12 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectBySlug = async (slug: string, orgId: string) => {
+  const findProjectBySlug = async (slug: string, orgId: string | undefined) => {
     try {
+      if (!orgId) {
+        throw new BadRequestError({ message: "Organization ID is required when querying with slugs" });
+      }
+
       const projects = await db(TableName.ProjectMembership)
         .where(`${TableName.Project}.slug`, slug)
         .where(`${TableName.Project}.orgId`, orgId)

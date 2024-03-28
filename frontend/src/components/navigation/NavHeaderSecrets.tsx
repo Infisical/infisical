@@ -6,7 +6,6 @@ import { useOrganization, useWorkspace } from "@app/context";
 
 import { Select, SelectItem, Tooltip } from "../v2";
 
-
 /**
  * This is the component at the top of almost every page.
  * It shows how to navigate to a certain page.
@@ -39,10 +38,12 @@ export default function NavHeaderSecrets({
 }): JSX.Element {
   const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
-  const router = useRouter()
+  const router = useRouter();
 
   return (
-    <div className={`${!isSnapshot && "absolute"} ml-6 flex flex-row items-center pt-6 cursor-default`}>
+    <div
+      className={`${!isSnapshot && "absolute"} ml-6 flex cursor-default flex-row items-center pt-6`}
+    >
       <div className="mr-3 flex h-6 w-6 items-center justify-center rounded-md bg-primary-900 text-mineshaft-100">
         {currentOrg?.name?.charAt(0)}
       </div>
@@ -60,31 +61,39 @@ export default function NavHeaderSecrets({
         </>
       )}
       <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
-      {pageName === "Secrets"
-      ? <a className="text-md font-medium text-primary/80 hover:text-primary" href={`${router.asPath.split("?")[0]}`}>{pageName}</a>
-      : <div className="text-md text-gray-400">{pageName}</div>}
-      {currentEnv &&
-      <>
-        <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-sm text-gray-400" />
-        <div className='pl-3 rounded-md hover:bg-bunker-100/10'>
-          <Tooltip content="Select environment">
-            <Select
-              value={userAvailableEnvs?.filter(uae => uae.name === currentEnv)[0]?.slug}
-              onValueChange={(value) => {
-                if (value && onEnvChange) onEnvChange(value);
-              }}
-              className="text-md pl-0 font-medium text-primary/80 hover:text-primary bg-transparent"
-              dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 drop-shadow-2xl"
-            >
-              {userAvailableEnvs?.map(({ name, slug }) => (
-                <SelectItem value={slug} key={slug}>
-                  {name}
-                </SelectItem>
-              ))}
-            </Select>
-          </Tooltip>
-        </div>
-      </>}
+      {pageName === "Secrets" ? (
+        <a
+          className="text-md font-medium text-primary/80 hover:text-primary"
+          href={`${router.asPath.split("?")[0]}`}
+        >
+          {pageName}
+        </a>
+      ) : (
+        <div className="text-md text-gray-400">{pageName}</div>
+      )}
+      {currentEnv && (
+        <>
+          <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-sm text-gray-400" />
+          <div className="rounded-md pl-3 hover:bg-bunker-100/10">
+            <Tooltip content="Select environment">
+              <Select
+                value={userAvailableEnvs?.filter((uae) => uae.name === currentEnv)[0]?.slug}
+                onValueChange={(value) => {
+                  if (value && onEnvChange) onEnvChange(value);
+                }}
+                className="text-md bg-transparent pl-0 font-medium text-primary/80 hover:text-primary"
+                dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 drop-shadow-2xl"
+              >
+                {userAvailableEnvs?.map(({ name, slug }) => (
+                  <SelectItem value={slug} key={slug}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </Select>
+            </Tooltip>
+          </div>
+        </>
+      )}
     </div>
   );
 }

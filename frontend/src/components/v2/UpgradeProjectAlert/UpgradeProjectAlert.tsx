@@ -5,21 +5,27 @@ import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { useProjectPermission } from "@app/context";
 import { useGetUpgradeProjectStatus, useUpgradeProject } from "@app/hooks/api";
 import { Workspace } from "@app/hooks/api/types";
+import { workspaceKeys } from "@app/hooks/api/workspace/queries";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
+import { queryClient } from "@app/reactQuery";
 
 import { Button } from "../Button";
 import { Tooltip } from "../Tooltip";
 
 export type UpgradeProjectAlertProps = {
   project: Workspace;
+  transparent?: boolean;
 };
 
-export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.Element | null => {
-  const { createNotification } = useNotificationContext();
+export const UpgradeProjectAlert = ({
+  project,
+  transparent
+}: UpgradeProjectAlertProps): JSX.Element | null => {
+  
   const router = useRouter();
   const { membership } = useProjectPermission();
   const upgradeProject = useUpgradeProject();
@@ -48,6 +54,7 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
       }
 
       if (currentStatus !== null && data?.status === null) {
+        queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
         router.reload();
       }
     }
@@ -87,10 +94,25 @@ export const UpgradeProjectAlert = ({ project }: UpgradeProjectAlertProps): JSX.
 
   if (project.version !== ProjectVersion.V1) return null;
 
+  if (transparent) {
+    return (
+      <Button
+        colorSchema="primary"
+        variant="solid"
+        size="md"
+        isLoading={isLoading}
+        isDisabled={isLoading || membership.role !== "admin"}
+        onClick={onUpgradeProject}
+      >
+        Upgrade
+      </Button>
+    );
+  }
+
   return (
     <div
       className={twMerge(
-        "mt-4 flex w-full flex-row items-center rounded-md border border-primary-600/70 bg-primary/[.07] p-4 text-base text-white",
+        "mt-4 flex w-full flex-row items-center rounded-md border border-primary-600/70  bg-primary/[.07] p-4 text-base text-white",
         membership.role !== "admin" && "opacity-80"
       )}
     >

@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Checkbox,
@@ -207,7 +207,7 @@ export const IdentityRoles = ({
   identityId
 }: TMemberRolesProp) => {
   const { currentWorkspace } = useWorkspace();
-  const { createNotification } = useNotificationContext();
+  
   const { popUp, handlePopUpToggle } = usePopUp(["editRole"] as const);
   const [searchRoles, setSearchRoles] = useState("");
 
@@ -318,7 +318,7 @@ export const IdentityRoles = ({
                               icon={faClock}
                               className={twMerge(
                                 new Date() > new Date(temporaryAccessEndTime as string) &&
-                                "text-red-600"
+                                  "text-red-600"
                               )}
                             />
                           </Tooltip>
@@ -391,14 +391,14 @@ export const IdentityRoles = ({
                               defaultValue={
                                 userProjectRoleDetails?.isTemporary
                                   ? {
-                                    isTemporary: true,
-                                    temporaryAccessStartTime:
-                                      userProjectRoleDetails.temporaryAccessStartTime as string,
-                                    temporaryRange:
-                                      userProjectRoleDetails.temporaryRange as string,
-                                    temporaryAccessEndTime:
-                                      userProjectRoleDetails.temporaryAccessEndTime
-                                  }
+                                      isTemporary: true,
+                                      temporaryAccessStartTime:
+                                        userProjectRoleDetails.temporaryAccessStartTime as string,
+                                      temporaryRange:
+                                        userProjectRoleDetails.temporaryRange as string,
+                                      temporaryAccessEndTime:
+                                        userProjectRoleDetails.temporaryAccessEndTime
+                                    }
                                   : false
                               }
                               render={({ field }) => (

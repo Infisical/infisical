@@ -8,7 +8,7 @@ export const AccordionItem = forwardRef<HTMLDivElement, AccordionPrimitive.Accor
   ({ children, className, ...props }, forwardedRef) => (
     <AccordionPrimitive.Item
       className={twMerge(
-        "mt-px overflow-hidden first:mt-0 data-[state=open]:border-l data-[state=open]:border-primary transition-all border-transparent",
+        "mt-px overflow-hidden border-transparent transition-all first:mt-0 data-[state=open]:border-l data-[state=open]:border-primary",
         className
       )}
       {...props}
@@ -27,7 +27,7 @@ export const AccordionTrigger = forwardRef<
   <AccordionPrimitive.Header className="flex">
     <AccordionPrimitive.Trigger
       className={twMerge(
-        "py-2 px-4 group data-[state=open]:text-primary h-11 hover:text-primary flex flex-1 outline-none items-center justify-between ",
+        "group flex h-11 flex-1 items-center justify-between py-2 px-4 outline-none hover:text-primary data-[state=open]:text-primary",
         className
       )}
       {...props}
@@ -36,7 +36,7 @@ export const AccordionTrigger = forwardRef<
       {children}
       <FontAwesomeIcon
         icon={faChevronDown}
-        className="ease-[cubic-bezier(0.87,_0,_0.13,_1)] transition-transform duration-300 group-data-[state=open]:rotate-180 text-sm"
+        className="text-sm transition-transform duration-300 ease-[cubic-bezier(0.87,_0,_0.13,_1)] group-data-[state=open]:rotate-180"
         aria-hidden
       />
     </AccordionPrimitive.Trigger>
@@ -51,13 +51,13 @@ export const AccordionContent = forwardRef<
 >(({ children, className, ...props }, forwardedRef) => (
   <AccordionPrimitive.Content
     className={twMerge(
-      "data-[state=open]:animate-slideDown data-[state=closed]:animate-slideUp overflow-hidden",
+      "overflow-hidden data-[state=open]:animate-slideDown data-[state=closed]:animate-slideUp",
       className
     )}
     {...props}
     ref={forwardedRef}
   >
-    <div className="text-sm py-2 px-4">{children}</div>
+    <div className="py-2 px-4 text-sm">{children}</div>
   </AccordionPrimitive.Content>
 ));
 

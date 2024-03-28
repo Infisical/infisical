@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 
@@ -15,7 +15,7 @@ type Props = {
 
 export const CopyButton = ({ value, children, hoverText, notificationText }: Props) => {
   const [isProjectIdCopied, setIsProjectIdCopied] = useToggle(false);
-  const { createNotification } = useNotificationContext();
+  
 
   const copyToClipboard = useCallback(() => {
     if (isProjectIdCopied) {

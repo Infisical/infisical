@@ -297,7 +297,6 @@ var secretsSetCmd = &cobra.Command{
 			updateSecretRequest := api.UpdateSecretByNameV3Request{
 				WorkspaceID:           workspaceFile.WorkspaceId,
 				Environment:           environmentName,
-				SecretName:            secret.PlainTextKey,
 				SecretValueCiphertext: secret.SecretValueCiphertext,
 				SecretValueIV:         secret.SecretValueIV,
 				SecretValueTag:        secret.SecretValueTag,
@@ -305,7 +304,7 @@ var secretsSetCmd = &cobra.Command{
 				SecretPath:            secretsPath,
 			}
 
-			err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest)
+			err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest, secret.PlainTextKey)
 			if err != nil {
 				util.HandleError(err, "Unable to process secret update request")
 				return
@@ -419,7 +418,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse path flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath}, "")
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: true}, "")
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
@@ -477,7 +476,7 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath}, "")
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: true}, "")
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}

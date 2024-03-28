@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Switch } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
@@ -32,7 +32,7 @@ const schema = yup.object({
 export type FormData = yup.InferType<typeof schema>;
 
 export const AuthMethodSection = () => {
-  const { createNotification } = useNotificationContext();
+  
   const { user } = useUser();
   const { mutateAsync } = useUpdateUserAuthMethods();
 

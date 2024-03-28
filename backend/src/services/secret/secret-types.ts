@@ -206,6 +206,15 @@ export type TFnSecretBulkUpdate = {
   tx?: Knex;
 };
 
+export type TAttachSecretTagsDTO = {
+  projectSlug: string;
+  secretName: string;
+  tagSlugs: string[];
+  environment: string;
+  path: string;
+  type: SecretType;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TFnSecretBulkDelete = {
   folderId: string;
   projectId: string;
