@@ -36,11 +36,11 @@ import {
 import { usePopUp } from "@app/hooks";
 import {
   TProjectUserPrivilege,
-  useCreateProjectUserAdditionalPrivilege,
-  useDeleteProjectUserAdditionalPrivilege,
-  useListProjectUserPrivileges,
-  useUpdateProjectUserAdditionalPrivilege
+  useCreateIdentityProjectAdditionalPrivilege,
+  useDeleteIdentityProjectAdditionalPrivilege,
+  useUpdateIdentityProjectAdditionalPrivilege
 } from "@app/hooks/api";
+import { useListIdentityProjectPrivileges } from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
 
 const secretPermissionSchema = z.object({
   secretPath: z.string().optional(),
@@ -62,19 +62,27 @@ const secretPermissionSchema = z.object({
   ])
 });
 type TSecretPermissionForm = z.infer<typeof secretPermissionSchema>;
-const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPrivilege }) => {
+const SpecificPrivilegeSecretForm = ({
+  privilege,
+  identityId
+}: {
+  privilege: TProjectUserPrivilege;
+  identityId: string;
+}) => {
   const { currentWorkspace } = useWorkspace();
+  const projectSlug = currentWorkspace?.slug || "";
+
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deletePrivilege"
   ] as const);
   const { permission } = useProjectPermission();
   const isMemberEditDisabled = permission.cannot(
     ProjectPermissionActions.Edit,
-    ProjectPermissionSub.Member
+    ProjectPermissionSub.Identity
   );
 
-  const updateUserPrivilege = useUpdateProjectUserAdditionalPrivilege();
-  const deleteUserPrivilege = useDeleteProjectUserAdditionalPrivilege();
+  const updateIdentityPrivilege = useUpdateIdentityProjectAdditionalPrivilege();
+  const deleteIdentityPrivilege = useDeleteIdentityProjectAdditionalPrivilege();
 
   const privilegeForm = useForm<TSecretPermissionForm>({
     resolver: zodResolver(secretPermissionSchema),
@@ -106,7 +114,7 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
     new Date() > new Date(temporaryAccessField.temporaryAccessEndTime || "");
 
   const handleUpdatePrivilege = async (data: TSecretPermissionForm) => {
-    if (updateUserPrivilege.isLoading) return;
+    if (updateIdentityPrivilege.isLoading) return;
     try {
       const actions = [
         { action: ProjectPermissionActions.Read, allowed: data.read },
@@ -118,17 +126,20 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
       if (data.secretPath) {
         conditions.secretPath = { $glob: data.secretPath };
       }
-      await updateUserPrivilege.mutateAsync({
-        privilegeId: privilege.id,
-        ...data.temporaryAccess,
-        permissions: actions
-          .filter(({ allowed }) => allowed)
-          .map(({ action }) => ({
-            action,
-            subject: [ProjectPermissionSub.Secrets],
-            conditions
-          })),
-        projectMembershipId: privilege.projectMembershipId
+      await updateIdentityPrivilege.mutateAsync({
+        data: {
+          ...data.temporaryAccess,
+          permissions: actions
+            .filter(({ allowed }) => allowed)
+            .map(({ action }) => ({
+              action,
+              subject: [ProjectPermissionSub.Secrets],
+              conditions
+            }))
+        },
+        slug: privilege.slug,
+        identityId,
+        projectSlug
       });
       createNotification({
         type: "success",
@@ -143,11 +154,12 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
   };
 
   const handleDeletePrivilege = async () => {
-    if (deleteUserPrivilege.isLoading) return;
+    if (deleteIdentityPrivilege.isLoading) return;
     try {
-      await deleteUserPrivilege.mutateAsync({
-        privilegeId: privilege.id,
-        projectMembershipId: privilege.projectMembershipId
+      await deleteIdentityPrivilege.mutateAsync({
+        identityId,
+        slug: privilege.slug,
+        projectSlug
       });
       createNotification({
         type: "success",
@@ -375,7 +387,7 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
                     type="submit"
                   >
                     {privilegeForm.formState.isSubmitting ? (
-                      <Spinner size="xs" className="m-0 text-slate-500 w-3 h-3" />
+                      <Spinner size="xs" className="m-0 h-3 w-3 text-slate-500" />
                     ) : (
                       <FontAwesomeIcon icon={faSave} />
                     )}
@@ -422,19 +434,23 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
 };
 
 type Props = {
-  membershipId: string;
+  identityId: string;
 };
 
-export const SpecificPrivilegeSection = ({ membershipId }: Props) => {
-  const { data: userPrivileges, isLoading } = useListProjectUserPrivileges(membershipId);
+export const SpecificPrivilegeSection = ({ identityId }: Props) => {
   const { currentWorkspace } = useWorkspace();
+  const projectSlug = currentWorkspace?.slug || "";
+  const { data: identityPrivileges, isLoading } = useListIdentityProjectPrivileges({
+    identityId,
+    projectSlug
+  });
 
-  const createUserPrivilege = useCreateProjectUserAdditionalPrivilege();
+  const createIdentityPrivilege = useCreateIdentityProjectAdditionalPrivilege();
 
   const handleCreatePrivilege = async () => {
-    if (createUserPrivilege.isLoading) return;
+    if (createIdentityPrivilege.isLoading) return;
     try {
-      await createUserPrivilege.mutateAsync({
+      await createIdentityPrivilege.mutateAsync({
         permissions: [
           {
             action: ProjectPermissionActions.Read,
@@ -444,7 +460,8 @@ export const SpecificPrivilegeSection = ({ membershipId }: Props) => {
             }
           }
         ],
-        projectMembershipId: membershipId
+        identityId,
+        projectSlug
       });
       createNotification({
         type: "success",
@@ -465,27 +482,28 @@ export const SpecificPrivilegeSection = ({ membershipId }: Props) => {
         {isLoading && <Spinner size="xs" />}
       </div>
       <p className="text-sm text-mineshaft-400">
-        Select individual privileges to associate with the user
+        Select individual privileges to associate with the identity.
       </p>
       <div>
-        {userPrivileges
+        {identityPrivileges
           ?.filter(({ permissions }) =>
             permissions?.[0]?.subject?.includes(ProjectPermissionSub.Secrets)
           )
           ?.map((privilege) => (
             <SpecificPrivilegeSecretForm
               privilege={privilege as TProjectUserPrivilege}
+              identityId={identityId}
               key={privilege?.id}
             />
           ))}
       </div>
-      <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Member}>
+      <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Identity}>
         {(isAllowed) => (
           <Button
             variant="outline_bg"
             className="mt-4"
             onClick={handleCreatePrivilege}
-            isLoading={createUserPrivilege.isLoading}
+            isLoading={createIdentityPrivilege.isLoading}
             isDisabled={!isAllowed}
           >
             Add additional privilege

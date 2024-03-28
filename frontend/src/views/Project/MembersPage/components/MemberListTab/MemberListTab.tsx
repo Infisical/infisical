@@ -210,7 +210,7 @@ export const MemberListTab = () => {
 
   return (
     <motion.div
-      key="panel-1"
+      key="user-role-1"
       className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
       transition={{ duration: 0.15 }}
       initial={{ opacity: 0, translateX: 30 }}

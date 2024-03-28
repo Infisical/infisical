@@ -7,25 +7,31 @@ export enum IdentityProjectAdditionalPrivilegeTemporaryMode {
 export type TIdentityProjectPrivilege = {
   projectMembershipId: string;
   slug: string;
-  name: string;
-  isTemporary: boolean;
   id: string;
   createdAt: Date;
   updatedAt: Date;
-  description?: string | null | undefined;
-  temporaryMode?: string | null | undefined;
-  temporaryRange?: string | null | undefined;
-  temporaryAccessStartTime?: string | null | undefined;
-  temporaryAccessEndTime?: Date | null | undefined;
   permissions?: TProjectPermission[];
-};
+} & (
+    | {
+      isTemporary: true;
+      temporaryMode: string;
+      temporaryRange: string;
+      temporaryAccessStartTime: string;
+      temporaryAccessEndTime?: string;
+    }
+    | {
+      isTemporary: false;
+      temporaryMode?: null;
+      temporaryRange?: null;
+      temporaryAccessStartTime?: null;
+      temporaryAccessEndTime?: null;
+    }
+  );
 
 export type TCreateIdentityProjectPrivilegeDTO = {
   identityId: string;
-  projectId: string;
-  slug: string;
-  name: string;
-  description?: string;
+  projectSlug: string;
+  slug?: string;
   isTemporary?: boolean;
   temporaryMode?: IdentityProjectAdditionalPrivilegeTemporaryMode;
   temporaryRange?: string;
@@ -34,15 +40,25 @@ export type TCreateIdentityProjectPrivilegeDTO = {
 };
 
 export type TUpdateIdentityProjectPrivlegeDTO = {
-  privilegeId: string;
-  projectId: string;
-} & Partial<Omit<TCreateIdentityProjectPrivilegeDTO, "projectMembershipId" | "projectId">>;
+  projectSlug: string;
+  identityId: string;
+  slug: string;
+  data: Partial<Omit<TCreateIdentityProjectPrivilegeDTO, "projectMembershipId" | "projectId">>;
+};
 
 export type TDeleteIdentityProjectPrivilegeDTO = {
-  privilegeId: string;
-  projectId: string;
+  projectSlug: string;
+  identityId: string;
+  slug: string;
+};
+
+export type TListIdentityUserPrivileges = {
+  projectSlug: string;
+  identityId: string;
 };
 
 export type TGetIdentityProejctPrivilegeDetails = {
-  privilegeId: string;
+  projectSlug: string;
+  identityId: string;
+  slug: string;
 };

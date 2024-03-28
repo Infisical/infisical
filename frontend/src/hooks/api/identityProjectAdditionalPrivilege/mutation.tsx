@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/queries";
+import { identitiyProjectPrivilegeKeys } from "./queries";
 import {
   TCreateIdentityProjectPrivilegeDTO,
   TDeleteIdentityProjectPrivilegeDTO,
@@ -14,20 +14,19 @@ import {
 export const useCreateIdentityProjectAdditionalPrivilege = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    { privilege: TIdentityProjectPrivilege },
-    {},
-    TCreateIdentityProjectPrivilegeDTO
-  >({
+  return useMutation<TIdentityProjectPrivilege, {}, TCreateIdentityProjectPrivilegeDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post("/api/v1/additional-privilege/identity", {
         ...dto,
+        isPackedPermission: true,
         permissions: packRules(dto.permissions)
       });
       return data.privilege;
     },
-    onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIdentityMemberships(projectId));
+    onSuccess: (_, { projectSlug, identityId }) => {
+      queryClient.invalidateQueries(
+        identitiyProjectPrivilegeKeys.list({ projectSlug, identityId })
+      );
     }
   });
 };
@@ -35,20 +34,24 @@ export const useCreateIdentityProjectAdditionalPrivilege = () => {
 export const useUpdateIdentityProjectAdditionalPrivilege = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    { privilege: TIdentityProjectPrivilege },
-    {},
-    TUpdateIdentityProjectPrivlegeDTO
-  >({
-    mutationFn: async (dto) => {
-      const { data } = await apiRequest.patch(
-        `/api/v1/additional-privilege/identity/${dto.privilegeId}`,
-        { ...dto, permissions: dto.permissions ? packRules(dto.permissions) : undefined }
-      );
-      return data.privilege;
+  return useMutation<TIdentityProjectPrivilege, {}, TUpdateIdentityProjectPrivlegeDTO>({
+    mutationFn: async ({ slug, projectSlug, identityId, data }) => {
+      const { data: res } = await apiRequest.patch("/api/v1/additional-privilege/identity", {
+        slug,
+        projectSlug,
+        identityId,
+        data: {
+          isPackedPermission: true,
+          ...data,
+          permissions: data.permissions ? packRules(data.permissions) : undefined
+        }
+      });
+      return res.privilege;
     },
-    onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIdentityMemberships(projectId));
+    onSuccess: (_, { projectSlug, identityId }) => {
+      queryClient.invalidateQueries(
+        identitiyProjectPrivilegeKeys.list({ projectSlug, identityId })
+      );
     }
   });
 };
@@ -56,19 +59,21 @@ export const useUpdateIdentityProjectAdditionalPrivilege = () => {
 export const useDeleteIdentityProjectAdditionalPrivilege = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    { privilege: TIdentityProjectPrivilege },
-    {},
-    TDeleteIdentityProjectPrivilegeDTO
-  >({
-    mutationFn: async (dto) => {
-      const { data } = await apiRequest.delete(
-        `/api/v1/additional-privilege/identity/${dto.privilegeId}`
-      );
+  return useMutation<TIdentityProjectPrivilege, {}, TDeleteIdentityProjectPrivilegeDTO>({
+    mutationFn: async ({ identityId, projectSlug, slug }) => {
+      const { data } = await apiRequest.delete("/api/v1/additional-privilege/identity", {
+        data: {
+          identityId,
+          projectSlug,
+          slug
+        }
+      });
       return data.privilege;
     },
-    onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIdentityMemberships(projectId));
+    onSuccess: (_, { projectSlug, identityId }) => {
+      queryClient.invalidateQueries(
+        identitiyProjectPrivilegeKeys.list({ projectSlug, identityId })
+      );
     }
   });
 };

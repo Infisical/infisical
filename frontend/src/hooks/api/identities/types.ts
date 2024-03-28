@@ -29,30 +29,30 @@ export type IdentityMembershipOrg = {
 export type IdentityMembership = {
   id: string;
   identity: Identity;
-  roles: {
-    id: string;
-    role: "owner" | "admin" | "member" | "no-access" | "custom";
-    customRoleId: string;
-    customRoleName: string;
-    customRoleSlug: string;
-    isTemporary: boolean;
-    temporaryMode: string | null;
-    temporaryRange: string | null;
-    temporaryAccessStartTime: string | null;
-    temporaryAccessEndTime: string | null;
-  }[];
-  additionalPrivileges: {
-    id: string;
-    name: string;
-    description: string | null | undefined;
-    slug: string;
-    temporaryRange: string | null | undefined;
-    temporaryMode: string | null | undefined;
-    temporaryAccessEndTime: string | null | undefined;
-    temporaryAccessStartTime: string | null | undefined;
-    isTemporary: boolean;
-    createdAt: string;
-  }[];
+  roles: Array<
+    {
+      id: string;
+      role: "owner" | "admin" | "member" | "no-access" | "custom";
+      customRoleId: string;
+      customRoleName: string;
+      customRoleSlug: string;
+    } & (
+      | {
+        isTemporary: false;
+        temporaryRange: null;
+        temporaryMode: null;
+        temporaryAccessEndTime: null;
+        temporaryAccessStartTime: null;
+      }
+      | {
+        isTemporary: true;
+        temporaryRange: string;
+        temporaryMode: string;
+        temporaryAccessEndTime: string;
+        temporaryAccessStartTime: string;
+      }
+    )
+  >;
   createdAt: string;
   updatedAt: string;
 };
