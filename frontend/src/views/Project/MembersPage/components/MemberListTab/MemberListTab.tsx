@@ -3,10 +3,11 @@ import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import {
+  faClock,
+  faEdit,
   faMagnifyingGlass,
   faPlus,
   faUsers,
-  faUserShield,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -22,6 +23,9 @@ import {
   DeleteActionModal,
   EmptyState,
   FormControl,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   IconButton,
   Input,
   Modal,
@@ -31,10 +35,12 @@ import {
   Table,
   TableContainer,
   TableSkeleton,
+  Tag,
   TBody,
   Td,
   Th,
   THead,
+  Tooltip,
   Tr,
   UpgradePlanModal
 } from "@app/components/v2";
@@ -54,10 +60,11 @@ import {
   useGetUserWsKey,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { TWorkspaceUser } from "@app/hooks/api/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
-import { AdditionalPrivilegeSection } from "../AdditionalPrivilegeSection";
-import { MemberRoles } from "./MemberRoles";
+import { MemberRoleForm } from "./MemberRoleForm";
 
 const addMemberFormSchema = z.object({
   orgMembershipId: z.string().trim()
@@ -65,8 +72,14 @@ const addMemberFormSchema = z.object({
 
 type TAddMemberForm = z.infer<typeof addMemberFormSchema>;
 
+const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
+const formatRoleName = (role: string, customRoleName?: string) => {
+  if (role === ProjectMembershipRole.Custom) return customRoleName;
+  if (role === ProjectMembershipRole.Member) return "Developer";
+  return role;
+};
+
 export const MemberListTab = () => {
-  
   const { t } = useTranslation();
 
   const { currentOrg } = useOrganization();
@@ -87,7 +100,7 @@ export const MemberListTab = () => {
     "addMember",
     "removeMember",
     "upgradePlan",
-    "additionalPrivilege"
+    "updateRole"
   ] as const);
 
   const {
@@ -195,32 +208,6 @@ export const MemberListTab = () => {
     );
   }, [orgUsers, members]);
 
-  if (popUp.additionalPrivilege.isOpen) {
-    const privilegeDetails = popUp?.additionalPrivilege?.data as {
-      name: string;
-      index: number;
-      projectMembershipId: string;
-    };
-
-    return (
-      <motion.div
-        key="panel-additional-permission"
-        className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-        transition={{ duration: 0.15 }}
-        initial={{ opacity: 0, translateX: 30 }}
-        animate={{ opacity: 1, translateX: 0 }}
-        exit={{ opacity: 0, translateX: 30 }}
-      >
-        <AdditionalPrivilegeSection
-          onGoBack={() => handlePopUpClose("additionalPrivilege")}
-          privileges={members?.[privilegeDetails.index]?.additionalPrivileges || []}
-          name={privilegeDetails.name}
-          actorId={privilegeDetails.projectMembershipId}
-        />
-      </motion.div>
-    );
-  }
-
   return (
     <motion.div
       key="panel-1"
@@ -266,90 +253,149 @@ export const MemberListTab = () => {
             <TBody>
               {isMembersLoading && <TableSkeleton columns={4} innerKey="project-members" />}
               {!isMembersLoading &&
-                filterdUsers?.map(
-                  (
-                    { user: u, inviteEmail, id: membershipId, roles, additionalPrivileges },
-                    index
-                  ) => {
-                    const name = u ? `${u.firstName} ${u.lastName}` : "-";
-                    const email = u?.email || inviteEmail;
-                    const hasAdditionalPrivilege = Boolean(additionalPrivileges.length);
+                filterdUsers?.map((projectMember, index) => {
+                  const { user: u, inviteEmail, id: membershipId, roles } = projectMember;
+                  const name = u ? `${u.firstName} ${u.lastName}` : "-";
+                  const email = u?.email || inviteEmail;
 
-                    return (
-                      <Tr key={`membership-${membershipId}`} className="w-full">
-                        <Td>{name}</Td>
-                        <Td>{email}</Td>
-                        <Td>
-                          <ProjectPermissionCan
-                            I={ProjectPermissionActions.Edit}
-                            a={ProjectPermissionSub.Member}
-                          >
-                            {(isAllowed) => (
-                              <MemberRoles
-                                roles={roles}
-                                disableEdit={u.id === user?.id || !isAllowed}
-                                onOpenUpgradeModal={(description) =>
-                                  handlePopUpOpen("upgradePlan", { description })
-                                }
-                                membershipId={membershipId}
-                              />
+                  return (
+                    <Tr key={`membership-${membershipId}`} className="w-full">
+                      <Td>{name}</Td>
+                      <Td>{email}</Td>
+                      <Td>
+                        <div className="flex items-center space-x-2">
+                          {roles
+                            .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
+                            .map(
+                              ({
+                                role,
+                                customRoleName,
+                                id,
+                                isTemporary,
+                                temporaryAccessEndTime
+                              }) => {
+                                const isExpired =
+                                  new Date() > new Date(temporaryAccessEndTime || ("" as string));
+                                return (
+                                  <Tag key={id}>
+                                    <div className="flex items-center space-x-2">
+                                      <div>{formatRoleName(role, customRoleName)}</div>
+                                      {isTemporary && (
+                                        <div>
+                                          <Tooltip
+                                            content={
+                                              isExpired ? "Timed role expired" : "Timed role access"
+                                            }
+                                          >
+                                            <FontAwesomeIcon
+                                              icon={faClock}
+                                              className={twMerge(isExpired && "text-red-600")}
+                                            />
+                                          </Tooltip>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </Tag>
+                                );
+                              }
                             )}
-                          </ProjectPermissionCan>
-                        </Td>
-                        <Td>
-                          {userId !== u?.id && (
-                            <div className="flex items-center space-x-2">
-                              <ProjectPermissionCan
-                                I={ProjectPermissionActions.Edit}
-                                a={ProjectPermissionSub.Member}
-                                allowedLabel="Additional Privilege"
-                              >
-                                {(isAllowed) => (
-                                  <IconButton
-                                    size="lg"
-                                    variant="plain"
-                                    ariaLabel="update"
-                                    className={twMerge(hasAdditionalPrivilege && "text-primary")}
-                                    isDisabled={userId === u?.id || !isAllowed}
-                                    onClick={() =>
-                                      handlePopUpOpen("additionalPrivilege", {
-                                        name: `${user.firstName} ${user.lastName || ""}`,
-                                        index,
-                                        projectMembershipId: membershipId
-                                      })
+                          {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
+                            <HoverCard>
+                              <HoverCardTrigger>
+                                <Tag>+{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}</Tag>
+                              </HoverCardTrigger>
+                              <HoverCardContent className="border border-gray-700 bg-mineshaft-800 p-4">
+                                {roles
+                                  .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
+                                  .map(
+                                    ({
+                                      role,
+                                      customRoleName,
+                                      id,
+                                      isTemporary,
+                                      temporaryAccessEndTime
+                                    }) => {
+                                      const isExpired =
+                                        new Date() >
+                                        new Date(temporaryAccessEndTime || ("" as string));
+                                      return (
+                                        <Tag key={id} className="capitalize">
+                                          <div className="flex items-center space-x-2">
+                                            <div>{formatRoleName(role, customRoleName)}</div>
+                                            {isTemporary && (
+                                              <div>
+                                                <Tooltip
+                                                  content={
+                                                    isExpired
+                                                      ? "Access expired"
+                                                      : "Temporary access"
+                                                  }
+                                                >
+                                                  <FontAwesomeIcon
+                                                    icon={faClock}
+                                                    className={twMerge(
+                                                      new Date() >
+                                                      new Date(
+                                                        temporaryAccessEndTime as string
+                                                      ) && "text-red-600"
+                                                    )}
+                                                  />
+                                                </Tooltip>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </Tag>
+                                      );
                                     }
-                                  >
-                                    <FontAwesomeIcon icon={faUserShield} />
-                                  </IconButton>
-                                )}
-                              </ProjectPermissionCan>
-                              <ProjectPermissionCan
-                                I={ProjectPermissionActions.Delete}
-                                a={ProjectPermissionSub.Member}
-                              >
-                                {(isAllowed) => (
-                                  <IconButton
-                                    size="lg"
-                                    colorSchema="danger"
-                                    variant="plain"
-                                    ariaLabel="update"
-                                    className="ml-4"
-                                    isDisabled={userId === u?.id || !isAllowed}
-                                    onClick={() =>
-                                      handlePopUpOpen("removeMember", { username: u.username })
-                                    }
-                                  >
-                                    <FontAwesomeIcon icon={faXmark} />
-                                  </IconButton>
-                                )}
-                              </ProjectPermissionCan>
-                            </div>
+                                  )}
+                              </HoverCardContent>
+                            </HoverCard>
                           )}
-                        </Td>
-                      </Tr>
-                    );
-                  }
-                )}
+                          {userId !== u?.id && (
+                            <Tooltip content="Edit permission">
+                              <IconButton
+                                size="sm"
+                                variant="plain"
+                                ariaLabel="update-role"
+                                onClick={() =>
+                                  handlePopUpOpen("updateRole", { ...projectMember, index })
+                                }
+                              >
+                                <FontAwesomeIcon icon={faEdit} />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </Td>
+                      <Td>
+                        {userId !== u?.id && (
+                          <div className="flex items-center space-x-2">
+                            <ProjectPermissionCan
+                              I={ProjectPermissionActions.Delete}
+                              a={ProjectPermissionSub.Member}
+                            >
+                              {(isAllowed) => (
+                                <IconButton
+                                  size="lg"
+                                  colorSchema="danger"
+                                  variant="plain"
+                                  ariaLabel="update"
+                                  className="ml-4"
+                                  isDisabled={userId === u?.id || !isAllowed}
+                                  onClick={() =>
+                                    handlePopUpOpen("removeMember", { username: u.username })
+                                  }
+                                >
+                                  <FontAwesomeIcon icon={faXmark} />
+                                </IconButton>
+                              )}
+                            </ProjectPermissionCan>
+                          </div>
+                        )}
+                      </Td>
+                    </Tr>
+                  );
+                })}
             </TBody>
           </Table>
           {!isMembersLoading && filterdUsers?.length === 0 && (
@@ -416,6 +462,27 @@ export const MemberListTab = () => {
               </Link>
             </div>
           )}
+        </ModalContent>
+      </Modal>
+      <Modal
+        isOpen={popUp.updateRole.isOpen}
+        onOpenChange={(state) => handlePopUpToggle("updateRole", state)}
+      >
+        <ModalContent
+          className="max-w-4xl"
+          title={`Manage Access for ${(popUp.updateRole.data as TWorkspaceUser)?.user?.email}`}
+          subTitle={`
+Configure role-based access control by Infisical users a mix of one built-in role, multiple custom roles, and multiple specific privileges. A user will gain access to alll actions within the roles assigned to them, not just the actions those roles share in common. You must choose at least one permanent role.
+`}
+        >
+          <MemberRoleForm
+            onOpenUpgradeModal={(description) => handlePopUpOpen("upgradePlan", { description })}
+            projectMember={
+              filterdUsers?.[
+              (popUp.updateRole?.data as TWorkspaceUser & { index: number })?.index
+              ] as TWorkspaceUser
+            }
+          />
         </ModalContent>
       </Modal>
       <DeleteActionModal

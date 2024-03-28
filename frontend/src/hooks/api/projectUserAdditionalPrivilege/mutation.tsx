@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/queries";
+import { projectUserPrivilegeKeys } from "./queries";
 import {
   TCreateProjectUserPrivilegeDTO,
   TDeleteProjectUserPrivilegeDTO,
@@ -22,8 +22,8 @@ export const useCreateProjectUserAdditionalPrivilege = () => {
       });
       return data.privilege;
     },
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(workspaceId));
+    onSuccess: (_, { projectMembershipId }) => {
+      queryClient.invalidateQueries(projectUserPrivilegeKeys.list(projectMembershipId));
     }
   });
 };
@@ -39,8 +39,8 @@ export const useUpdateProjectUserAdditionalPrivilege = () => {
       );
       return data.privilege;
     },
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(workspaceId));
+    onSuccess: (_, { projectMembershipId }) => {
+      queryClient.invalidateQueries(projectUserPrivilegeKeys.list(projectMembershipId));
     }
   });
 };
@@ -55,8 +55,8 @@ export const useDeleteProjectUserAdditionalPrivilege = () => {
       );
       return data.privilege;
     },
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(workspaceId));
+    onSuccess: (_, { projectMembershipId }) => {
+      queryClient.invalidateQueries(projectUserPrivilegeKeys.list(projectMembershipId));
     }
   });
 };

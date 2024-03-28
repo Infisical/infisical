@@ -7,7 +7,9 @@ import { TProjectPermission } from "../roles/types";
 import { TProjectUserPrivilege } from "./types";
 
 export const projectUserPrivilegeKeys = {
-  details: (privilegeId: string) => ["project-user-privilege", { privilegeId }] as const
+  details: (privilegeId: string) => ["project-user-privilege", { privilegeId }] as const,
+  list: (projectMembershipId: string) =>
+    ["project-user-privileges", { projectMembershipId }] as const
 };
 
 const fetchProjectUserPrivilegeDetails = async (privilegeId: string) => {
@@ -27,5 +29,23 @@ export const useGetProjectUserPrivilegeDetails = (privilegeId: string) => {
     enabled: Boolean(privilegeId),
     queryKey: projectUserPrivilegeKeys.details(privilegeId),
     queryFn: () => fetchProjectUserPrivilegeDetails(privilegeId)
+  });
+};
+
+export const useListProjectUserPrivileges = (projectMembershipId: string) => {
+  return useQuery({
+    enabled: Boolean(projectMembershipId),
+    queryKey: projectUserPrivilegeKeys.list(projectMembershipId),
+    queryFn: async () => {
+      const {
+        data: { privileges }
+      } = await apiRequest.get<{
+        privileges: Array<Omit<TProjectUserPrivilege, "permissions"> & { permissions: unknown }>;
+      }>("/api/v1/additional-privilege/users", { params: { projectMembershipId } });
+      return privileges.map((el) => ({
+        ...el,
+        permissions: unpackRules(el.permissions as PackRule<TProjectPermission>[])
+      }));
+    }
   });
 };

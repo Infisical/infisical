@@ -315,13 +315,6 @@ export const useGetWorkspaceUsers = (workspaceId: string) => {
       );
       return users;
     },
-    select: (data) =>
-      data.map((el) => ({
-        ...el,
-        additionalPrivileges: el.additionalPrivileges.sort((a, b) =>
-          a.createdAt.localeCompare(b.createdAt)
-        )
-      })),
     enabled: true
   });
 };

@@ -3,13 +3,11 @@ import {
     faArrowUpRightFromSquare,
     faPlus,
     faServer,
-    faUserShield,
     faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -32,13 +30,10 @@ import { withProjectPermission } from "@app/hoc";
 import { useDeleteIdentityFromWorkspace, useGetWorkspaceIdentityMemberships } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { AdditionalPrivilegeSection } from "../AdditionalPrivilegeSection";
 import { IdentityModal } from "./components/IdentityModal";
-import { IdentityRoles } from "./components/IdentityRoles";
 
 export const IdentityTab = withProjectPermission(
     () => {
-        
         const { currentWorkspace } = useWorkspace();
 
         const workspaceId = currentWorkspace?.id ?? "";
@@ -77,33 +72,6 @@ export const IdentityTab = withProjectPermission(
                 });
             }
         };
-
-        if (popUp.additionalPrivilege.isOpen) {
-            const privilegeDetails = popUp?.additionalPrivilege?.data as {
-                name: string;
-                index: number;
-                identityId: string;
-            };
-
-            return (
-                <motion.div
-                    key="panel-additional-permission"
-                    className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-                    transition={{ duration: 0.15 }}
-                    initial={{ opacity: 0, translateX: 30 }}
-                    animate={{ opacity: 1, translateX: 0 }}
-                    exit={{ opacity: 0, translateX: 30 }}
-                >
-                    <AdditionalPrivilegeSection
-                        isIdentity
-                        onGoBack={() => handlePopUpClose("additionalPrivilege")}
-                        privileges={data?.[privilegeDetails.index]?.additionalPrivileges || []}
-                        name={privilegeDetails.name}
-                        actorId={privilegeDetails.identityId}
-                    />
-                </motion.div>
-            );
-        }
 
         return (
             <motion.div
@@ -159,82 +127,39 @@ export const IdentityTab = withProjectPermission(
                                 {!isLoading &&
                                     data &&
                                     data.length > 0 &&
-                                    data.map(
-                                        ({ identity: { id, name }, roles, createdAt, additionalPrivileges }, index) => {
-                                            const hasAdditionalPrivilege = Boolean(additionalPrivileges.length);
-                                            return (
-                                                <Tr className="h-10" key={`st-v3-${id}`}>
-                                                    <Td>{name}</Td>
-                                                    <Td>
-                                                        <ProjectPermissionCan
-                                                            I={ProjectPermissionActions.Edit}
-                                                            a={ProjectPermissionSub.Identity}
-                                                        >
-                                                            {(isAllowed) => (
-                                                                <IdentityRoles
-                                                                    roles={roles}
-                                                                    disableEdit={!isAllowed}
-                                                                    identityId={id}
-                                                                />
-                                                            )}
-                                                        </ProjectPermissionCan>
-                                                    </Td>
-                                                    <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
-                                                    <Td className="flex justify-end">
-                                                        <div className="flex items-center space-x-2">
-                                                            <ProjectPermissionCan
-                                                                I={ProjectPermissionActions.Edit}
-                                                                a={ProjectPermissionSub.Member}
-                                                                allowedLabel="Additional Privilege"
+                                    data.map(({ identity: { id, name }, createdAt }) => {
+                                        return (
+                                            <Tr className="h-10" key={`st-v3-${id}`}>
+                                                <Td>{name}</Td>
+                                                <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
+                                                <Td className="flex justify-end">
+                                                    <ProjectPermissionCan
+                                                        I={ProjectPermissionActions.Delete}
+                                                        a={ProjectPermissionSub.Identity}
+                                                    >
+                                                        {(isAllowed) => (
+                                                            <IconButton
+                                                                onClick={() => {
+                                                                    handlePopUpOpen("deleteIdentity", {
+                                                                        identityId: id,
+                                                                        name
+                                                                    });
+                                                                }}
+                                                                size="lg"
+                                                                colorSchema="danger"
+                                                                variant="plain"
+                                                                ariaLabel="update"
+                                                                className="ml-4"
+                                                                isDisabled={!isAllowed}
                                                             >
-                                                                {(isAllowed) => (
-                                                                    <IconButton
-                                                                        size="lg"
-                                                                        variant="plain"
-                                                                        ariaLabel="update"
-                                                                        className={twMerge(hasAdditionalPrivilege && "text-primary")}
-                                                                        isDisabled={!isAllowed}
-                                                                        onClick={() =>
-                                                                            handlePopUpOpen("additionalPrivilege", {
-                                                                                name,
-                                                                                index,
-                                                                                identityId: id
-                                                                            })
-                                                                        }
-                                                                    >
-                                                                        <FontAwesomeIcon icon={faUserShield} />
-                                                                    </IconButton>
-                                                                )}
-                                                            </ProjectPermissionCan>
-                                                            <ProjectPermissionCan
-                                                                I={ProjectPermissionActions.Delete}
-                                                                a={ProjectPermissionSub.Identity}
-                                                            >
-                                                                {(isAllowed) => (
-                                                                    <IconButton
-                                                                        onClick={() => {
-                                                                            handlePopUpOpen("deleteIdentity", {
-                                                                                identityId: id,
-                                                                                name
-                                                                            });
-                                                                        }}
-                                                                        size="lg"
-                                                                        colorSchema="danger"
-                                                                        variant="plain"
-                                                                        ariaLabel="update"
-                                                                        className="ml-4"
-                                                                        isDisabled={!isAllowed}
-                                                                    >
-                                                                        <FontAwesomeIcon icon={faXmark} />
-                                                                    </IconButton>
-                                                                )}
-                                                            </ProjectPermissionCan>
-                                                        </div>
-                                                    </Td>
-                                                </Tr>
-                                            );
-                                        }
-                                    )}
+                                                                <FontAwesomeIcon icon={faXmark} />
+                                                            </IconButton>
+                                                        )}
+                                                    </ProjectPermissionCan>
+                                                </Td>
+                                            </Tr>
+                                        );
+                                    })}
                                 {!isLoading && data && data?.length === 0 && (
                                     <Tr>
                                         <Td colSpan={7}>

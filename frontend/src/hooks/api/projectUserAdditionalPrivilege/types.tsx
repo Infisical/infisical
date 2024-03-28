@@ -7,25 +7,30 @@ export enum ProjectUserAdditionalPrivilegeTemporaryMode {
 export type TProjectUserPrivilege = {
   projectMembershipId: string;
   slug: string;
-  name: string;
-  isTemporary: boolean;
   id: string;
   createdAt: Date;
   updatedAt: Date;
-  description?: string | null | undefined;
-  temporaryMode?: string | null | undefined;
-  temporaryRange?: string | null | undefined;
-  temporaryAccessStartTime?: string | null | undefined;
-  temporaryAccessEndTime?: Date | null | undefined;
   permissions?: TProjectPermission[];
-};
+} & (
+    | {
+      isTemporary: true;
+      temporaryMode: string;
+      temporaryRange: string;
+      temporaryAccessStartTime: string;
+      temporaryAccessEndTime?: string;
+    }
+    | {
+      isTemporary: false;
+      temporaryMode?: null;
+      temporaryRange?: null;
+      temporaryAccessStartTime?: null;
+      temporaryAccessEndTime?: null;
+    }
+  );
 
 export type TCreateProjectUserPrivilegeDTO = {
   projectMembershipId: string;
-  slug: string;
-  name: string;
-  workspaceId: string;
-  description?: string;
+  slug?: string;
   isTemporary?: boolean;
   temporaryMode?: ProjectUserAdditionalPrivilegeTemporaryMode;
   temporaryRange?: string;
@@ -35,14 +40,18 @@ export type TCreateProjectUserPrivilegeDTO = {
 
 export type TUpdateProjectUserPrivlegeDTO = {
   privilegeId: string;
-  workspaceId: string;
+  projectMembershipId: string;
 } & Partial<Omit<TCreateProjectUserPrivilegeDTO, "projectMembershipId">>;
 
 export type TDeleteProjectUserPrivilegeDTO = {
   privilegeId: string;
-  workspaceId: string;
+  projectMembershipId: string;
 };
 
-export type TGetProejctUserPrivilegeDetails = {
+export type TGetProjectUserPrivilegeDetails = {
   privilegeId: string;
+};
+
+export type TListProjectUserPrivileges = {
+  projectMembershipId: string;
 };

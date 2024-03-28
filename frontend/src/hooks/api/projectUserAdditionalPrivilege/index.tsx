@@ -3,5 +3,5 @@ export {
   useDeleteProjectUserAdditionalPrivilege,
   useUpdateProjectUserAdditionalPrivilege
 } from "./mutation";
-export { useGetProjectUserPrivilegeDetails } from "./queries";
+export { useGetProjectUserPrivilegeDetails, useListProjectUserPrivileges } from "./queries";
 export type { TProjectUserPrivilege } from "./types";
