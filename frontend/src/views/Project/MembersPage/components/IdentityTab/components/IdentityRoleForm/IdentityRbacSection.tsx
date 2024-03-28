@@ -331,7 +331,7 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
               )}
               isLoading={roleForm.formState.isSubmitting}
             >
-              Save Changes
+              Save Roles 
             </Button>
           </div>
         </form>

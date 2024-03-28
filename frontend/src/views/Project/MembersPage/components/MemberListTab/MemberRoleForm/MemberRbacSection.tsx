@@ -328,7 +328,7 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
               )}
               isLoading={roleForm.formState.isSubmitting}
             >
-              Save Changes
+              Save Roles 
             </Button>
           </div>
         </form>

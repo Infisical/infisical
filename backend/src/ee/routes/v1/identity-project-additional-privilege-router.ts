@@ -7,6 +7,7 @@ import { z } from "zod";
 import { IdentityProjectAdditionalPrivilegeSchema } from "@app/db/schemas";
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-types";
 import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
+import { IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -18,41 +19,59 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     schema: {
       body: z.union([
         z.object({
-          identityId: z.string().min(1),
-          projectSlug: z.string().min(1),
+          identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.identityId),
+          projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.projectSlug),
           slug: z
             .string()
             .min(1)
             .max(60)
             .trim()
-            .optional()
             .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
+            .refine((val) => val.toLowerCase() === val, "Must be lowercase")
             .refine((v) => slugify(v) === v, {
               message: "Slug must be a valid slug"
-            }),
-          permissions: z.any().array(),
-          isPackedPermission: z.boolean().optional().default(false),
-          isTemporary: z.literal(false).default(false)
+            })
+            .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
+          permissions: z.any().array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions),
+          isPackedPermission: z
+            .boolean()
+            .optional()
+            .default(false)
+            .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.isPackPermission),
+          isTemporary: z.literal(false).default(false).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.isTemporary)
         }),
         z.object({
-          identityId: z.string(),
-          projectSlug: z.string().min(1),
+          identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.identityId),
+          projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.projectSlug),
           slug: z
             .string()
             .min(1)
             .max(60)
             .trim()
-            .optional()
             .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
+            .refine((val) => val.toLowerCase() === val, "Must be lowercase")
             .refine((v) => slugify(v) === v, {
               message: "Slug must be a valid slug"
-            }),
-          permissions: z.any().array(),
-          isTemporary: z.literal(true),
-          isPackedPermission: z.boolean().optional().default(false),
-          temporaryMode: z.nativeEnum(IdentityProjectAdditionalPrivilegeTemporaryMode),
-          temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
-          temporaryAccessStartTime: z.string().datetime()
+            })
+            .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
+          permissions: z.any().array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions),
+          isPackedPermission: z
+            .boolean()
+            .optional()
+            .default(false)
+            .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.isPackPermission),
+          isTemporary: z.literal(true).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.isTemporary),
+          temporaryMode: z
+            .nativeEnum(IdentityProjectAdditionalPrivilegeTemporaryMode)
+            .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.temporaryMode),
+          temporaryRange: z
+            .string()
+            .refine((val) => ms(val) > 0, "Temporary range must be a positive number")
+            .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.temporaryRange),
+          temporaryAccessStartTime: z
+            .string()
+            .datetime()
+            .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.temporaryAccessStartTime)
         })
       ]),
       response: {
@@ -83,9 +102,9 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     schema: {
       body: z.object({
         // disallow empty string
-        slug: z.string().min(1),
-        identityId: z.string().min(1),
-        projectSlug: z.string().min(1),
+        slug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.slug),
+        identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.identityId),
+        projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.projectSlug),
         data: z
           .object({
             slug: z
@@ -93,15 +112,29 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
               .min(1)
               .max(60)
               .trim()
+              .refine((val) => val.toLowerCase() === val, "Must be lowercase")
               .refine((v) => slugify(v) === v, {
                 message: "Slug must be a valid slug"
-              }),
-            isPackedPermission: z.boolean().optional().default(false),
-            permissions: z.any().array(),
-            isTemporary: z.boolean(),
-            temporaryMode: z.nativeEnum(IdentityProjectAdditionalPrivilegeTemporaryMode),
-            temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
-            temporaryAccessStartTime: z.string().datetime()
+              })
+              .describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.newSlug),
+            isPackedPermission: z
+              .boolean()
+              .optional()
+              .default(false)
+              .describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.isPackPermission),
+            permissions: z.any().array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.permissions),
+            isTemporary: z.boolean().describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.isTemporary),
+            temporaryMode: z
+              .nativeEnum(IdentityProjectAdditionalPrivilegeTemporaryMode)
+              .describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.temporaryMode),
+            temporaryRange: z
+              .string()
+              .refine((val) => ms(val) > 0, "Temporary range must be a positive number")
+              .describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.temporaryRange),
+            temporaryAccessStartTime: z
+              .string()
+              .datetime()
+              .describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.temporaryAccessStartTime)
           })
           .partial()
       }),
@@ -136,9 +169,9 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     method: "DELETE",
     schema: {
       body: z.object({
-        slug: z.string().min(1),
-        identityId: z.string().min(1),
-        projectSlug: z.string().min(1)
+        slug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.DELETE.slug),
+        identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.DELETE.identityId),
+        projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.DELETE.projectSlug)
       }),
       response: {
         200: z.object({
@@ -164,11 +197,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     method: "GET",
     schema: {
       params: z.object({
-        slug: z.string()
+        slug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.GET_BY_SLUG.slug)
       }),
       querystring: z.object({
-        identityId: z.string().min(1),
-        projectSlug: z.string().min(1)
+        identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.GET_BY_SLUG.identityId),
+        projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.GET_BY_SLUG.projectSlug)
       }),
       response: {
         200: z.object({
@@ -195,12 +228,13 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     method: "GET",
     schema: {
       querystring: z.object({
-        identityId: z.string().min(1),
-        projectSlug: z.string().min(1),
+        identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.LIST.identityId),
+        projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.LIST.projectSlug),
         unpacked: z
           .enum(["false", "true"])
           .transform((el) => el === "true")
           .default("true")
+          .describe(IDENTITY_ADDITIONAL_PRIVILEGE.LIST.unpacked)
       }),
       response: {
         200: z.object({

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { ProjectUserAdditionalPrivilegeSchema } from "@app/db/schemas";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-types";
+import { PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -15,37 +16,47 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     schema: {
       body: z.union([
         z.object({
-          projectMembershipId: z.string(),
+          projectMembershipId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.projectMembershipId),
           slug: z
             .string()
             .min(1)
             .max(60)
             .trim()
             .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
+            .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
             .refine((v) => slugify(v) === v, {
               message: "Slug must be a valid slug"
-            }),
-          permissions: z.any().array(),
-          isTemporary: z.literal(false).default(false)
+            })
+            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
+          permissions: z.any().array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions),
+          isTemporary: z.literal(false).default(false).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.isTemporary)
         }),
         z.object({
-          projectMembershipId: z.string(),
+          projectMembershipId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.projectMembershipId),
           slug: z
             .string()
             .min(1)
             .max(60)
             .trim()
             .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
+            .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
             .refine((v) => slugify(v) === v, {
               message: "Slug must be a valid slug"
-            }),
-          name: z.string().trim(),
-          description: z.string().trim().optional(),
-          permissions: z.any().array(),
-          isTemporary: z.literal(true),
-          temporaryMode: z.nativeEnum(ProjectUserAdditionalPrivilegeTemporaryMode),
-          temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
-          temporaryAccessStartTime: z.string().datetime()
+            })
+            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
+          permissions: z.any().array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions),
+          isTemporary: z.literal(true).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.isTemporary),
+          temporaryMode: z
+            .nativeEnum(ProjectUserAdditionalPrivilegeTemporaryMode)
+            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryMode),
+          temporaryRange: z
+            .string()
+            .refine((val) => ms(val) > 0, "Temporary range must be a positive number")
+            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryRange),
+          temporaryAccessStartTime: z
+            .string()
+            .datetime()
+            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryAccessStartTime)
         })
       ]),
       response: {
@@ -73,7 +84,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     method: "PATCH",
     schema: {
       params: z.object({
-        privilegeId: z.string()
+        privilegeId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.privilegeId)
       }),
       body: z
         .object({
@@ -84,12 +95,21 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
             .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
             .refine((v) => slugify(v) === v, {
               message: "Slug must be a valid slug"
-            }),
-          permissions: z.any().array(),
-          isTemporary: z.boolean(),
-          temporaryMode: z.nativeEnum(ProjectUserAdditionalPrivilegeTemporaryMode),
-          temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
-          temporaryAccessStartTime: z.string().datetime()
+            })
+            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.slug),
+          permissions: z.any().array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.permissions),
+          isTemporary: z.boolean().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.isTemporary),
+          temporaryMode: z
+            .nativeEnum(ProjectUserAdditionalPrivilegeTemporaryMode)
+            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.temporaryMode),
+          temporaryRange: z
+            .string()
+            .refine((val) => ms(val) > 0, "Temporary range must be a positive number")
+            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.temporaryRange),
+          temporaryAccessStartTime: z
+            .string()
+            .datetime()
+            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.temporaryAccessStartTime)
         })
         .partial(),
       response: {
@@ -118,7 +138,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     method: "DELETE",
     schema: {
       params: z.object({
-        privilegeId: z.string()
+        privilegeId: z.string().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.DELETE.privilegeId)
       }),
       response: {
         200: z.object({
@@ -144,7 +164,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     method: "GET",
     schema: {
       querystring: z.object({
-        projectMembershipId: z.string()
+        projectMembershipId: z.string().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.LIST.projectMembershipId)
       }),
       response: {
         200: z.object({
@@ -170,7 +190,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     method: "GET",
     schema: {
       params: z.object({
-        privilegeId: z.string()
+        privilegeId: z.string().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.GET_BY_PRIVILEGEID.privilegeId)
       }),
       response: {
         200: z.object({

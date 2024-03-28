@@ -397,3 +397,81 @@ export const SECRET_TAGS = {
     projectId: "The ID of the project to delete the tag from."
   }
 } as const;
+
+export const IDENTITY_ADDITIONAL_PRIVILEGE = {
+  CREATE: {
+    projectSlug: "The slug of the project of the dynamic secret in.",
+    identityId: "The ID of the identity to delete.",
+    slug: "The slug of the privilege to create.",
+    permissions:
+      "The permission object for the privilege. Refer https://casl.js.org/v6/en/guide/define-rules#the-shape-of-raw-rule to understand the shape",
+    isPackPermission: "Whether the server should pack(compact) the permission object.",
+    isTemporary: "Whether the privilege is temporary.",
+    temporaryMode: "Type of temporary access given. Types: relative",
+    temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
+    temporaryAccessStartTime: "ISO time for which temporary access should begin."
+  },
+  UPDATE: {
+    projectSlug: "The slug of the project of the dynamic secret in.",
+    identityId: "The ID of the identity to delete.",
+    slug: "The slug of the privilege to create.",
+    newSlug: "The new slug of the privilege to create.",
+    permissions:
+      "The permission object for the privilege. Refer https://casl.js.org/v6/en/guide/define-rules#the-shape-of-raw-rule to understand the shape",
+    isPackPermission: "Whether the server should pack(compact) the permission object.",
+    isTemporary: "Whether the privilege is temporary.",
+    temporaryMode: "Type of temporary access given. Types: relative",
+    temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
+    temporaryAccessStartTime: "ISO time for which temporary access should begin."
+  },
+  DELETE: {
+    projectSlug: "The slug of the project of the dynamic secret in.",
+    identityId: "The ID of the identity to delete.",
+    slug: "The slug of the privilege to create."
+  },
+  GET_BY_SLUG: {
+    projectSlug: "The slug of the project of the dynamic secret in.",
+    identityId: "The ID of the identity to delete.",
+    slug: "The slug of the privilege to create."
+  },
+  LIST: {
+    projectSlug: "The slug of the project of the dynamic secret in.",
+    identityId: "The ID of the identity to delete.",
+    unpacked: "Whether the system should send the permissions as unpacked"
+  }
+};
+
+export const PROJECT_USER_ADDITIONAL_PRIVILEGE = {
+  CREATE: {
+    projectMembershipId: "Project membership id of user",
+    slug: "The slug of the privilege to create.",
+    permissions:
+      "The permission object for the privilege. Refer https://casl.js.org/v6/en/guide/define-rules#the-shape-of-raw-rule to understand the shape",
+    isPackPermission: "Whether the server should pack(compact) the permission object.",
+    isTemporary: "Whether the privilege is temporary.",
+    temporaryMode: "Type of temporary access given. Types: relative",
+    temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
+    temporaryAccessStartTime: "ISO time for which temporary access should begin."
+  },
+  UPDATE: {
+    privilegeId: "The id of privilege object",
+    slug: "The slug of the privilege to create.",
+    newSlug: "The new slug of the privilege to create.",
+    permissions:
+      "The permission object for the privilege. Refer https://casl.js.org/v6/en/guide/define-rules#the-shape-of-raw-rule to understand the shape",
+    isPackPermission: "Whether the server should pack(compact) the permission object.",
+    isTemporary: "Whether the privilege is temporary.",
+    temporaryMode: "Type of temporary access given. Types: relative",
+    temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
+    temporaryAccessStartTime: "ISO time for which temporary access should begin."
+  },
+  DELETE: {
+    privilegeId: "The id of privilege object"
+  },
+  GET_BY_PRIVILEGEID: {
+    privilegeId: "The id of privilege object"
+  },
+  LIST: {
+    projectMembershipId: "Project membership id of user"
+  }
+};
