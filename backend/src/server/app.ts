@@ -24,6 +24,7 @@ import { fastifyErrHandler } from "./plugins/error-handler";
 import { registerExternalNextjs } from "./plugins/external-nextjs";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
 import { fastifyIp } from "./plugins/ip";
+import { maintenanceMode } from "./plugins/maintenanceMode";
 import { fastifySwagger } from "./plugins/swagger";
 import { registerRoutes } from "./routes";
 
@@ -71,6 +72,8 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
       await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg());
     }
     await server.register(helmet, { contentSecurityPolicy: false });
+
+    await server.register(maintenanceMode);
 
     await server.register(registerRoutes, { smtp, queue, db, keyStore });
 
