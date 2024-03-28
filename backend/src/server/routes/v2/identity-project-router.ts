@@ -156,20 +156,6 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
               identityId: z.string(),
               createdAt: z.date(),
               updatedAt: z.date(),
-              additionalPrivileges: z.array(
-                z.object({
-                  id: z.string(),
-                  name: z.string(),
-                  slug: z.string(),
-                  description: z.string().optional().nullable(),
-                  isTemporary: z.boolean(),
-                  temporaryMode: z.string().optional().nullable(),
-                  temporaryRange: z.string().nullable().optional(),
-                  temporaryAccessStartTime: z.date().nullable().optional(),
-                  temporaryAccessEndTime: z.date().nullable().optional(),
-                  createdAt: z.date()
-                })
-              ),
               roles: z.array(
                 z.object({
                   id: z.string(),

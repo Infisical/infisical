@@ -4,19 +4,16 @@ export enum IdentityProjectAdditionalPrivilegeTemporaryMode {
   Relative = "relative"
 }
 
-export type TCreateIdentityPrivilegeDTO = (
+export type TCreateIdentityPrivilegeDTO = {
+  permissions: unknown;
+  identityId: string;
+  projectSlug: string;
+  slug: string;
+} & (
   | {
-      permissions: unknown;
-      identityId: string;
-      projectId: string;
-      slug: string;
       isTemporary: false;
     }
   | {
-      permissions: unknown;
-      identityId: string;
-      projectId: string;
-      slug: string;
       isTemporary: true;
       temporaryMode: IdentityProjectAdditionalPrivilegeTemporaryMode.Relative;
       temporaryRange: string;
@@ -25,21 +22,33 @@ export type TCreateIdentityPrivilegeDTO = (
 ) &
   Omit<TProjectPermission, "projectId">;
 
-export type TUpdateIdentityPrivilegeDTO = { privilegeId: string } & Omit<TProjectPermission, "projectId"> &
-  Partial<{
-    permissions: unknown;
-    slug: string;
-    isTemporary: boolean;
-    temporaryMode: IdentityProjectAdditionalPrivilegeTemporaryMode.Relative;
-    temporaryRange: string;
-    temporaryAccessStartTime: string;
-  }>;
+export type TUpdateIdentityPrivilegeDTO = { slug: string; identityId: string; projectSlug: string } & Omit<
+  TProjectPermission,
+  "projectId"
+> & {
+    data: Partial<{
+      permissions: unknown;
+      slug: string;
+      isTemporary: boolean;
+      temporaryMode: IdentityProjectAdditionalPrivilegeTemporaryMode.Relative;
+      temporaryRange: string;
+      temporaryAccessStartTime: string;
+    }>;
+  };
 
-export type TDeleteIdentityPrivilegeDTO = Omit<TProjectPermission, "projectId"> & { privilegeId: string };
+export type TDeleteIdentityPrivilegeDTO = Omit<TProjectPermission, "projectId"> & {
+  slug: string;
+  identityId: string;
+  projectSlug: string;
+};
 
-export type TGetIdentityPrivilegeDetailsDTO = Omit<TProjectPermission, "projectId"> & { privilegeId: string };
+export type TGetIdentityPrivilegeDetailsDTO = Omit<TProjectPermission, "projectId"> & {
+  slug: string;
+  identityId: string;
+  projectSlug: string;
+};
 
 export type TListIdentityPrivilegesDTO = Omit<TProjectPermission, "projectId"> & {
   identityId: string;
-  projectId: string;
+  projectSlug: string;
 };

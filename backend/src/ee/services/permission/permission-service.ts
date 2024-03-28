@@ -238,8 +238,16 @@ export const permissionServiceFactory = ({
       throw new UnauthorizedError({ name: "You are not a member of this organization" });
     }
 
+    const rolePermissions =
+      identityProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+    const additionalPrivileges =
+      identityProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
+        role: ProjectMembershipRole.Custom,
+        permissions
+      })) || [];
+
     return {
-      permission: buildProjectPermission(identityProjectPermission.roles),
+      permission: buildProjectPermission(rolePermissions.concat(additionalPrivileges)),
       membership: identityProjectPermission,
       hasRole: (role: string) =>
         identityProjectPermission.roles.findIndex(

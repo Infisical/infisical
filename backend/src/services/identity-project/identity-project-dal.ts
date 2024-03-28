@@ -47,29 +47,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           db.ref("isTemporary").withSchema(TableName.IdentityProjectMembershipRole),
           db.ref("temporaryRange").withSchema(TableName.IdentityProjectMembershipRole),
           db.ref("temporaryAccessStartTime").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("temporaryAccessEndTime").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("id").withSchema(TableName.IdentityProjectAdditionalPrivilege).as("identityApId"),
-          db.ref("name").withSchema(TableName.IdentityProjectAdditionalPrivilege).as("identityApName"),
-          db.ref("description").withSchema(TableName.IdentityProjectAdditionalPrivilege).as("identityApDescription"),
-          db.ref("slug").withSchema(TableName.IdentityProjectAdditionalPrivilege).as("identityApSlug"),
-          db
-            .ref("temporaryMode")
-            .withSchema(TableName.IdentityProjectAdditionalPrivilege)
-            .as("identityApTemporaryMode"),
-          db.ref("isTemporary").withSchema(TableName.IdentityProjectAdditionalPrivilege).as("identityApIsTemporary"),
-          db.ref("createdAt").withSchema(TableName.IdentityProjectAdditionalPrivilege).as("identityApCreatedAt"),
-          db
-            .ref("temporaryRange")
-            .withSchema(TableName.IdentityProjectAdditionalPrivilege)
-            .as("identityApTemporaryRange"),
-          db
-            .ref("temporaryAccessStartTime")
-            .withSchema(TableName.IdentityProjectAdditionalPrivilege)
-            .as("identityApTemporaryAccessStartTime"),
-          db
-            .ref("temporaryAccessEndTime")
-            .withSchema(TableName.IdentityProjectAdditionalPrivilege)
-            .as("identityApTemporaryAccessEndTime")
+          db.ref("temporaryAccessEndTime").withSchema(TableName.IdentityProjectMembershipRole)
         );
 
       const members = sqlNestRelationships({
@@ -112,33 +90,6 @@ export const identityProjectDALFactory = (db: TDbClient) => {
               temporaryAccessEndTime,
               temporaryAccessStartTime,
               isTemporary
-            })
-          },
-          {
-            label: "additionalPrivileges" as const,
-            key: "identityApId",
-            mapper: ({
-              identityApId,
-              identityApDescription,
-              identityApName,
-              identityApSlug,
-              identityApIsTemporary,
-              identityApTemporaryMode,
-              identityApTemporaryRange,
-              identityApCreatedAt,
-              identityApTemporaryAccessEndTime,
-              identityApTemporaryAccessStartTime
-            }) => ({
-              id: identityApId,
-              name: identityApName,
-              description: identityApDescription,
-              slug: identityApSlug,
-              temporaryRange: identityApTemporaryRange,
-              temporaryMode: identityApTemporaryMode,
-              temporaryAccessEndTime: identityApTemporaryAccessEndTime,
-              temporaryAccessStartTime: identityApTemporaryAccessStartTime,
-              isTemporary: identityApIsTemporary,
-              createdAt: identityApCreatedAt
             })
           }
         ]

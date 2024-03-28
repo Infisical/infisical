@@ -560,6 +560,7 @@ export const registerRoutes = async (
     projectRoleDAL
   });
   const identityProjectAdditionalPrivilegeService = identityProjectAdditionalPrivilegeServiceFactory({
+    projectDAL,
     identityProjectAdditionalPrivilegeDAL,
     permissionService,
     identityProjectDAL
