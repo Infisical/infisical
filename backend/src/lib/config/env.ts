@@ -114,7 +114,8 @@ const envSchema = z
       .enum(["true", "false"])
       .transform((val) => val === "true")
       .optional(),
-    INFISICAL_CLOUD: zodStrBool.default("false")
+    INFISICAL_CLOUD: zodStrBool.default("false"),
+    MAINTENANCE_MODE: zodStrBool.default("false")
   })
   .transform((data) => ({
     ...data,
