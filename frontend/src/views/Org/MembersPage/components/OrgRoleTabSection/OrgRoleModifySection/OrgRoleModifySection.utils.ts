@@ -28,6 +28,7 @@ export const formSchema = z.object({
         })
         .optional(),
       member: generalPermissionSchema,
+      groups: generalPermissionSchema,
       role: generalPermissionSchema,
       settings: generalPermissionSchema,
       "service-account": generalPermissionSchema,

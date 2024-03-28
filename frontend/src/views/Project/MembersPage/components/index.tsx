@@ -1,3 +1,4 @@
+export { GroupsTab } from "./GroupsTab";
 export { IdentityTab } from "./IdentityTab";
 export { MemberListTab } from "./MemberListTab";
 export { ProjectRoleListTab } from "./ProjectRoleListTab";

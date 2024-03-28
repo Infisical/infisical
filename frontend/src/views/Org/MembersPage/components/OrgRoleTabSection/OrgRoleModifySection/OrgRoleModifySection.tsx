@@ -7,6 +7,7 @@ import {
   faMoneyBill,
   faServer,
   faSignIn,
+  faUser,
   faUserCog,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
@@ -35,10 +36,16 @@ type Props = {
 
 const SIMPLE_PERMISSION_OPTIONS = [
   {
-    title: "Members management",
-    subtitle: "Invite, view and remove members from the organization",
-    icon: faUsers,
+    title: "User management",
+    subtitle: "Invite, view and remove users from the organization",
+    icon: faUser,
     formName: "member"
+  },
+  {
+    title: "Group management",
+    subtitle: "Invite, view and remove user groups from the organization",
+    icon: faUsers,
+    formName: "groups"
   },
   {
     title: "Machine identity management",

@@ -5,6 +5,7 @@ import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-se
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
+import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -23,6 +24,7 @@ import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
@@ -87,6 +89,8 @@ declare module "fastify" {
       orgRole: TOrgRoleServiceFactory;
       superAdmin: TSuperAdminServiceFactory;
       user: TUserServiceFactory;
+      group: TGroupServiceFactory;
+      groupProject: TGroupProjectServiceFactory;
       apiKey: TApiKeyServiceFactory;
       project: TProjectServiceFactory;
       projectMembership: TProjectMembershipServiceFactory;

@@ -15,6 +15,7 @@ type Props = {
   formName:
     | "role"
     | "member"
+    | "groups"
     | "integrations"
     | "webhooks"
     | "service-tokens"

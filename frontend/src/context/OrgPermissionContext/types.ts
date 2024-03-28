@@ -16,6 +16,7 @@ export enum OrgPermissionSubjects {
   Scim = "scim",
   Sso = "sso",
   Ldap = "ldap",
+  Groups = "groups",
   Billing = "billing",
   SecretScanning = "secret-scanning",
   Identity = "identity"
@@ -31,6 +32,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Scim]
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
+  | [OrgPermissionActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionActions, OrgPermissionSubjects.Identity];

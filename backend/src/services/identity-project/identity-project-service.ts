@@ -226,7 +226,7 @@ export const identityProjectServiceFactory = ({
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
 
-    const [deletedIdentity] = await identityProjectDAL.delete({ identityId });
+    const [deletedIdentity] = await identityProjectDAL.delete({ identityId }); // TODO: fix
     return deletedIdentity;
   };
 
