@@ -1,6 +1,6 @@
-import { registerGroupRouter } from "./group-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
+import { registerGroupRouter } from "./group-router";
 import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
 import { registerOrgRoleRouter } from "./org-role-router";

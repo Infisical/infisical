@@ -232,7 +232,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const groups = await server.services.org.getOrgGroups({
         actor: req.permission.type,
         actorId: req.permission.id,
-        orgId: req.permission.orgId as string,
+        orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
