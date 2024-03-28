@@ -8,6 +8,7 @@ var INFISICAL_LOGIN_URL string
 var INFISICAL_DISABLE_TELEMETRY bool
 
 func init() {
+	// define default and bind the INFISICAL_DISABLE_TELEMETRY envar to the config var
 	viper.SetDefault("INFISICAL_DISABLE_TELEMETRY", false)
 	viper.BindEnv("INFISICAL_DISABLE_TELEMETRY")
 	INFISICAL_DISABLE_TELEMETRY = viper.GetBool("INFISICAL_DISABLE_TELEMETRY")
