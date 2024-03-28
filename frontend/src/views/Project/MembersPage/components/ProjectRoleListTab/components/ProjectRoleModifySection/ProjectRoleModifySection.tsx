@@ -55,10 +55,16 @@ const SINGLE_PERMISSION_LIST = [
     formName: "role"
   },
   {
-    title: "Project Members",
-    subtitle: "Project members management control",
+    title: "User management",
+    subtitle: "Add, view and remove users from the project",
     icon: faUser,
     formName: "member"
+  },
+  {
+    title: "Group management",
+    subtitle: "Add, view and remove user groups from the project",
+    icon: faUsers,
+    formName: "groups"
   },
   {
     title: "Machine identity management",

@@ -247,8 +247,12 @@ export const registerRoutes = async (
   const groupService = groupServiceFactory({
     userDAL,
     groupDAL,
+    groupProjectDAL,
     orgDAL,
     userGroupMembershipDAL,
+    projectDAL,
+    projectBotDAL,
+    projectKeyDAL,
     permissionService,
     licenseService
   });
@@ -362,6 +366,7 @@ export const registerRoutes = async (
     projectBotDAL,
     orgDAL,
     userDAL,
+    userGroupMembershipDAL,
     smtpService,
     projectKeyDAL,
     projectRoleDAL,

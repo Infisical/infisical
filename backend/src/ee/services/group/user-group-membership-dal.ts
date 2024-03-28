@@ -8,42 +8,49 @@ export type TUserGroupMembershipDALFactory = ReturnType<typeof userGroupMembersh
 export const userGroupMembershipDALFactory = (db: TDbClient) => {
   const userGroupMembershipOrm = ormify(db, TableName.UserGroupMembership);
 
-  // special query
-  const findGroupMembersInProject = async (groupId: string, projectId: string) => {
-    try {
-      const members = await db(TableName.UserGroupMembership)
-        .where(`${TableName.UserGroupMembership}.groupId`, groupId)
-        .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
-        .join(TableName.ProjectMembership, function () {
-          this.on(`${TableName.Users}.id`, "=", `${TableName.ProjectMembership}.userId`).andOn(
-            `${TableName.ProjectMembership}.projectId`,
-            "=",
-            db.raw("?", [projectId])
-          );
-        })
-        .leftJoin<TUserEncryptionKeys>(
-          TableName.UserEncryptionKey,
-          `${TableName.UserEncryptionKey}.userId`,
-          `${TableName.Users}.id`
-        )
-        .select(
-          db.ref("id").withSchema(TableName.UserGroupMembership),
-          db.ref("groupId").withSchema(TableName.UserGroupMembership),
-          db.ref("email").withSchema(TableName.Users),
-          db.ref("username").withSchema(TableName.Users),
-          db.ref("firstName").withSchema(TableName.Users),
-          db.ref("lastName").withSchema(TableName.Users),
-          db.ref("id").withSchema(TableName.Users).as("userId"),
-          db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
-        )
-        .where({ isGhost: false }); // MAKE SURE USER IS NOT A GHOST USER
+  /**
+   * Returns a sub-set of projectIds fed into this function corresponding to projects where either:
+   * - The user is a direct member of the project.
+   * - The user is a member of a group that is a member of the project, excluding projects that they are part of
+   * through the group with id [groupId].
+   */
+  const filterProjectsByUserMembership = async (userId: string, groupId: string, projectIds: string[]) => {
+    const userProjectMemberships: string[] = await db(TableName.ProjectMembership)
+      .where(`${TableName.ProjectMembership}.userId`, userId)
+      .whereIn(`${TableName.ProjectMembership}.projectId`, projectIds)
+      .pluck(`${TableName.ProjectMembership}.projectId`);
 
-      return members.map(({ email, username, firstName, lastName, userId, publicKey, ...data }) => ({
-        ...data,
-        user: { email, username, firstName, lastName, id: userId, publicKey }
-      }));
+    const userGroupMemberships: string[] = await db(TableName.UserGroupMembership)
+      .where(`${TableName.UserGroupMembership}.userId`, userId)
+      .whereNot(`${TableName.UserGroupMembership}.groupId`, groupId)
+      .join(
+        TableName.GroupProjectMembership,
+        `${TableName.UserGroupMembership}.groupId`,
+        `${TableName.GroupProjectMembership}.groupId`
+      )
+      .whereIn(`${TableName.GroupProjectMembership}.projectId`, projectIds)
+      .pluck(`${TableName.GroupProjectMembership}.projectId`);
+
+    return new Set(userProjectMemberships.concat(userGroupMemberships));
+  };
+
+  // special query
+  const findUserGroupMembershipsInProject = async (usernames: string[], projectId: string) => {
+    try {
+      const usernameDocs: string[] = await db(TableName.UserGroupMembership)
+        .join(
+          TableName.GroupProjectMembership,
+          `${TableName.UserGroupMembership}.groupId`,
+          `${TableName.GroupProjectMembership}.groupId`
+        )
+        .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
+        .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
+        .whereIn(`${TableName.Users}.username`, usernames) // TODO: pluck usernames
+        .pluck(`${TableName.Users}.id`);
+
+      return usernameDocs;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find group members in project" });
+      throw new DatabaseError({ error, name: "Find user group members in project" });
     }
   };
 
@@ -51,7 +58,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
    * Return list of users that are part of the group with id [groupId]
    * that have not yet been added individually to project with id [projectId].
    *
-   * Filters out users that are part of other groups in the project.
+   * Note: Filters out users that are part of other groups in the project.
    * @param groupId
    * @param projectId
    * @returns
@@ -111,7 +118,8 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
 
   return {
     ...userGroupMembershipOrm,
-    findGroupMembersInProject,
+    filterProjectsByUserMembership,
+    findUserGroupMembershipsInProject,
     findGroupMembersNotInProject
   };
 };

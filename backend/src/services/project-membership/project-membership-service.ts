@@ -17,6 +17,7 @@ import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
+import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
 import { ActorType } from "../auth/auth-type";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -45,6 +46,7 @@ type TProjectMembershipServiceFactoryDep = {
   projectMembershipDAL: TProjectMembershipDALFactory;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany" | "find" | "delete">;
   userDAL: Pick<TUserDALFactory, "findById" | "findOne" | "findUserByProjectMembershipId" | "find">;
+  userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByUsername">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction">;
@@ -63,6 +65,7 @@ export const projectMembershipServiceFactory = ({
   projectBotDAL,
   orgDAL,
   userDAL,
+  userGroupMembershipDAL,
   projectDAL,
   projectKeyDAL,
   licenseService
@@ -120,6 +123,13 @@ export const projectMembershipServiceFactory = ({
     });
     if (existingMembers.length) throw new BadRequestError({ message: "Some users are already part of project" });
 
+    const userIdsToExcludeForProjectKeyAddition = new Set(
+      await userGroupMembershipDAL.findUserGroupMembershipsInProject(
+        orgMembers.map(({ username }) => username),
+        projectId
+      )
+    );
+
     await projectMembershipDAL.transaction(async (tx) => {
       const projectMemberships = await projectMembershipDAL.insertMany(
         orgMembers.map(({ userId }) => ({
@@ -135,13 +145,15 @@ export const projectMembershipServiceFactory = ({
       );
       const encKeyGroupByOrgMembId = groupBy(members, (i) => i.orgMembershipId);
       await projectKeyDAL.insertMany(
-        orgMembers.map(({ userId, id }) => ({
-          encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
-          nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
-          senderId: actorId,
-          receiverId: userId as string,
-          projectId
-        })),
+        orgMembers
+          .filter(({ userId }) => !userIdsToExcludeForProjectKeyAddition.has(userId as string))
+          .map(({ userId, id }) => ({
+            encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
+            nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
+            senderId: actorId,
+            receiverId: userId as string,
+            projectId
+          })),
         tx
       );
     });
@@ -247,6 +259,10 @@ export const projectMembershipServiceFactory = ({
 
     const members: TProjectMemberships[] = [];
 
+    const userIdsToExcludeForProjectKeyAddition = new Set(
+      await userGroupMembershipDAL.findUserGroupMembershipsInProject(usernamesAndEmails, projectId)
+    );
+
     await projectMembershipDAL.transaction(async (tx) => {
       const projectMemberships = await projectMembershipDAL.insertMany(
         orgMembers.map(({ user }) => ({
@@ -265,13 +281,15 @@ export const projectMembershipServiceFactory = ({
 
       const encKeyGroupByOrgMembId = groupBy(newWsMembers, (i) => i.orgMembershipId);
       await projectKeyDAL.insertMany(
-        orgMembers.map(({ user, id }) => ({
-          encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
-          nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
-          senderId: ghostUser.id,
-          receiverId: user.id,
-          projectId
-        })),
+        orgMembers
+          .filter(({ user }) => !userIdsToExcludeForProjectKeyAddition.has(user.id))
+          .map(({ user, id }) => ({
+            encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
+            nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
+            senderId: ghostUser.id,
+            receiverId: user.id,
+            projectId
+          })),
         tx
       );
     });
@@ -458,6 +476,10 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
+    const userIdsToExcludeFromProjectKeyRemoval = new Set(
+      await userGroupMembershipDAL.findUserGroupMembershipsInProject(usernamesAndEmails, projectId)
+    );
+
     const memberships = await projectMembershipDAL.transaction(async (tx) => {
       const deletedMemberships = await projectMembershipDAL.delete(
         {
@@ -469,11 +491,15 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
+      // delete project keys belonging to users that are not part of any other groups in the project
       await projectKeyDAL.delete(
         {
           projectId,
           $in: {
-            receiverId: projectMembers.map(({ user }) => user.id).filter(Boolean)
+            receiverId: projectMembers
+              .filter(({ user }) => !userIdsToExcludeFromProjectKeyRemoval.has(user.id))
+              .map(({ user }) => user.id)
+              .filter(Boolean)
           }
         },
         tx
