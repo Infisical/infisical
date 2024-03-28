@@ -2,7 +2,7 @@ import { useState } from "react";
 import { faMagnifyingGlass, faPencil, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   EmptyState,
@@ -52,7 +52,6 @@ type Props = {
 export const OrgGroupsTable = ({
     handlePopUpOpen
 }: Props) => {
-    const { createNotification } = useNotificationContext();
     const [searchGroupsFilter, setSearchGroupsFilter] = useState("");
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";

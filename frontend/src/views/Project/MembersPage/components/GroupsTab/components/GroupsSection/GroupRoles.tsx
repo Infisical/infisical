@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Checkbox,
@@ -207,7 +207,6 @@ export const GroupRoles = ({
   groupSlug
 }: TMemberRolesProp) => {
   const { currentWorkspace } = useWorkspace();
-  const { createNotification } = useNotificationContext();
   const { popUp, handlePopUpToggle } = usePopUp(["editRole"] as const);
   const [searchRoles, setSearchRoles] = useState("");
 

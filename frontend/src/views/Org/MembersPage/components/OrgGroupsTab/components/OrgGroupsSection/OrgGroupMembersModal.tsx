@@ -2,7 +2,7 @@ import { useMemo,useState } from "react";
 import { faMagnifyingGlass,faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
     Button,
@@ -39,7 +39,6 @@ export const OrgGroupMembersModal = ({
     handlePopUpToggle
 }: Props) => {
     const [searchMemberFilter, setSearchMemberFilter] = useState("");
-    const { createNotification } = useNotificationContext();
     
     const popUpData = popUp?.groupMembers?.data as {
         slug: string;

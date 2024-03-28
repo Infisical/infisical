@@ -1,7 +1,7 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
     Button,
@@ -21,7 +21,6 @@ import { OrgGroupModal } from "./OrgGroupModal";
 import { OrgGroupsTable } from "./OrgGroupsTable";
 
 export const OrgGroupsSection = () => {
-    const { createNotification } = useNotificationContext();
     const { subscription } = useSubscription();
     const { mutateAsync: deleteMutateAsync } = useDeleteGroup();
         
