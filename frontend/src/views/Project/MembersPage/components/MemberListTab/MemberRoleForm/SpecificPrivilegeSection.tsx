@@ -1,8 +1,8 @@
 import { Controller, useForm } from "react-hook-form";
-import { faCancel, faCaretDown, faClock, faClose, faSave } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRotateLeft, faCaretDown, faCheck, faClock, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { formatDistance } from "date-fns";
+import { format } from "date-fns";
 import ms from "ms";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
@@ -164,7 +164,7 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
   const getAccessLabel = () => {
     if (isExpired) return "Access expired";
     if (!temporaryAccessField?.isTemporary) return "Permanent";
-    return formatDistance(new Date(temporaryAccessField.temporaryAccessEndTime || ""), new Date());
+    return `Until ${format(new Date(temporaryAccessField.temporaryAccessEndTime || ""), "yyyy-MM-dd HH:mm:ss")}`;
   };
 
   return (
@@ -179,9 +179,8 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
                 <Select
                   {...field}
                   isDisabled={isMemberEditDisabled}
-                  className="bg-mineshaft-600"
+                  className="bg-mineshaft-600 hover:bg-mineshaft-500"
                   onValueChange={(e) => onChange(e)}
-                // className="w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100"
                 >
                   {currentWorkspace?.environments?.map(({ slug, id }) => (
                     <SelectItem value={slug} key={id}>
@@ -280,7 +279,7 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
                     leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
                     rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
                     className={twMerge(
-                      "border-none py-1.5 capitalize",
+                      "border-none py-2.5 capitalize text-xs hover:bg-mineshaft-500",
                       isTemporary && "text-primary",
                       isExpired && "text-red-600"
                     )}
@@ -367,42 +366,42 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
             </Popover>
             {privilegeForm.formState.isDirty ? (
               <>
-                <Tooltip content={isMemberEditDisabled ? "Access restricted" : "Save"}>
+                <Tooltip content="Cancel" className="mr-4">
+                  <IconButton
+                    variant="outline_bg"
+                    className="border border-mineshaft-500 bg-mineshaft-600 hover:bg-red/20 hover:border-red/70 py-2.5"
+                    ariaLabel="delete-privilege"
+                    isDisabled={privilegeForm.formState.isSubmitting}
+                    onClick={() => privilegeForm.reset()}
+                  >
+                    <FontAwesomeIcon icon={faArrowRotateLeft} className="py-0.5" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip content={isMemberEditDisabled ? "Access restricted" : "Save"} className="mr-4">
                   <IconButton
                     isDisabled={isMemberEditDisabled}
-                    className="border-none py-2.5"
+                    className="border-none py-3"
                     ariaLabel="save-privilege"
                     type="submit"
                   >
                     {privilegeForm.formState.isSubmitting ? (
                       <Spinner size="xs" className="m-0 text-slate-500 w-3 h-3" />
                     ) : (
-                      <FontAwesomeIcon icon={faSave} />
+                      <FontAwesomeIcon icon={faCheck} className="px-0.5"/>
                     )}
-                  </IconButton>
-                </Tooltip>
-                <Tooltip content="Cancel">
-                  <IconButton
-                    variant="outline_bg"
-                    className="border-none bg-mineshaft-600 py-2.5"
-                    ariaLabel="delete-privilege"
-                    isDisabled={privilegeForm.formState.isSubmitting}
-                    onClick={() => privilegeForm.reset()}
-                  >
-                    <FontAwesomeIcon icon={faCancel} />
                   </IconButton>
                 </Tooltip>
               </>
             ) : (
-              <Tooltip content={isMemberEditDisabled ? "Access restricted" : "Delete"}>
+              <Tooltip content={isMemberEditDisabled ? "Access restricted" : "Delete"} className="mr-4">
                 <IconButton
                   isDisabled={isMemberEditDisabled}
                   variant="outline_bg"
-                  className="border-none bg-mineshaft-600 py-2.5"
+                  className="border border-mineshaft-500 bg-mineshaft-600 hover:bg-red/20 hover:border-red/70 py-3"
                   ariaLabel="delete-privilege"
                   onClick={() => handlePopUpOpen("deletePrivilege")}
                 >
-                  <FontAwesomeIcon icon={faClose} />
+                  <FontAwesomeIcon icon={faTrash} />
                 </IconButton>
               </Tooltip>
             )}
@@ -459,13 +458,13 @@ export const SpecificPrivilegeSection = ({ membershipId }: Props) => {
   };
 
   return (
-    <div className="mt-6 border-t border-t-gray-700 pt-6">
+    <div className="mt-6 border-t border-t-mineshaft-600 pt-6">
       <div className="flex items-center space-x-2 text-lg font-medium">
         Additional Privileges
         {isLoading && <Spinner size="xs" />}
       </div>
-      <p className="text-sm text-mineshaft-400">
-        Select individual privileges to associate with the user
+      <p className="text-sm text-mineshaft-400 mt-0.5">
+        Select individual privileges to associate with the user.
       </p>
       <div>
         {userPrivileges
@@ -484,6 +483,7 @@ export const SpecificPrivilegeSection = ({ membershipId }: Props) => {
           <Button
             variant="outline_bg"
             className="mt-4"
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
             onClick={handleCreatePrivilege}
             isLoading={createUserPrivilege.isLoading}
             isDisabled={!isAllowed}

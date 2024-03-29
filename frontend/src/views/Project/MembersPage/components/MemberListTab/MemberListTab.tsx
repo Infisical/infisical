@@ -472,8 +472,8 @@ export const MemberListTab = () => {
           className="max-w-4xl"
           title={`Manage Access for ${(popUp.updateRole.data as TWorkspaceUser)?.user?.email}`}
           subTitle={`
-Configure role-based access control by Infisical users a mix of one built-in role, multiple custom roles, and multiple specific privileges. A user will gain access to alll actions within the roles assigned to them, not just the actions those roles share in common. You must choose at least one permanent role.
-`}
+          Configure role-based access control by assigning Infisical users a mix of roles and specific privileges. A user will gain access to all actions within the roles assigned to them, not just the actions those roles share in common. You must choose at least one permanent role.
+          `}
         >
           <MemberRoleForm
             onOpenUpgradeModal={(description) => handlePopUpOpen("upgradePlan", { description })}

@@ -308,12 +308,12 @@ export const IdentityTab = withProjectPermission(
                         onOpenChange={(state) => handlePopUpToggle("updateRole", state)}
                     >
                         <ModalContent
-                            className="max-w-4xl"
+                            className="max-w-3xl"
                             title={`Manage Access for ${(popUp.updateRole.data as IdentityMembership)?.identity?.name
                                 }`}
                             subTitle={`
-Configure role-based access control by Infisical users a mix of one built-in role, multiple custom roles, and multiple specific privileges. A user will gain access to alll actions within the roles assigned to them, not just the actions those roles share in common. You must choose at least one permanent role.
-`}
+                            Configure role-based access control by assigning machine identities a mix of roles and specific privileges. An identity will gain access to all actions within the roles assigned to it, not just the actions those roles share in common. You must choose at least one permanent role.
+                            `}
                         >
                             <IdentityRoleForm
                                 onOpenUpgradeModal={(description) =>

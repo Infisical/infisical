@@ -1,8 +1,8 @@
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faCaretDown, faClock, faClose } from "@fortawesome/free-solid-svg-icons";
+import { faCaretDown, faClock, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { formatDistance } from "date-fns";
+import { format } from "date-fns";
 import ms from "ms";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
@@ -21,8 +21,7 @@ import {
   Select,
   SelectItem,
   Spinner,
-  Tag,
-  Tooltip
+  Tag
 } from "@app/components/v2";
 import {
   ProjectPermissionActions,
@@ -171,7 +170,7 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
                         {...field}
                         isDisabled={isMemberEditDisabled}
                         onValueChange={(e) => onChange(e)}
-                        className="w-full bg-mineshaft-600"
+                        className="w-full bg-mineshaft-600 hover:bg-mineshaft-500 duration-200"
                       >
                         {projectRoles?.map(({ name, slug, id: projectRoleId }) => (
                           <SelectItem value={slug} key={projectRoleId}>
@@ -183,29 +182,24 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
                   />
                   <Popover>
                     <PopoverTrigger disabled={isMemberEditDisabled}>
-                      <Tooltip
-                        asChild
-                        content={isExpired ? "Timed access expired" : "Grant timed access"}
+                      <Button
+                        variant="outline_bg"
+                        leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
+                        rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
+                        isDisabled={isMemberEditDisabled}
+                        className={twMerge(
+                          "border-none bg-mineshaft-600 hover:bg-mineshaft-500 py-2.5 capitalize text-xs",
+                          isTemporary && "text-primary",
+                          isExpired && "text-red-600"
+                        )}
                       >
-                        <Button
-                          variant="outline_bg"
-                          leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
-                          rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
-                          isDisabled={isMemberEditDisabled}
-                          className={twMerge(
-                            "border-none bg-mineshaft-600 py-2 capitalize",
-                            isTemporary && "text-primary",
-                            isExpired && "text-red-600"
-                          )}
-                        >
-                          {!temporaryAccess?.isTemporary
-                            ? "Permanent"
-                            : formatDistance(
-                              new Date(temporaryAccess.temporaryAccessEndTime || ""),
-                              new Date()
-                            )}
-                        </Button>
-                      </Tooltip>
+                        {!temporaryAccess?.isTemporary
+                          ? "Permanent"
+                          : `Until ${format(
+                            new Date(temporaryAccess.temporaryAccessEndTime || ""),
+                            "yyyy-MM-dd HH:mm:ss"
+                          )}`}
+                      </Button>
                     </PopoverTrigger>
                     <PopoverContent
                       arrowClassName="fill-gray-600"
@@ -283,21 +277,19 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
                       </div>
                     </PopoverContent>
                   </Popover>
-                  <Tooltip content={isMemberEditDisabled ? "Access restricted" : "Remove"}>
-                    <IconButton
-                      variant="outline_bg"
-                      className="border-none bg-mineshaft-600 py-3"
-                      ariaLabel="delete-role"
-                      isDisabled={isMemberEditDisabled}
-                      onClick={() => {
-                        if (selectedRoleList.fields.length > 1) {
-                          selectedRoleList.remove(index);
-                        }
-                      }}
-                    >
-                      <FontAwesomeIcon icon={faClose} />
-                    </IconButton>
-                  </Tooltip>
+                  <IconButton
+                    variant="outline_bg"
+                    className="border border-mineshaft-500 bg-mineshaft-600 hover:bg-red/20 hover:border-red/70 py-3"
+                    ariaLabel="delete-role"
+                    isDisabled={isMemberEditDisabled}
+                    onClick={() => {
+                      if (selectedRoleList.fields.length > 1) {
+                        selectedRoleList.remove(index);
+                      }
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faTrash} />
+                  </IconButton>
                 </div>
               );
             })}
@@ -308,6 +300,7 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
                 <Button
                   variant="outline_bg"
                   isDisabled={!isAllowed}
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
                   onClick={() =>
                     selectedRoleList.append({
                       slug: ProjectMembershipRole.Member,
