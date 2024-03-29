@@ -400,7 +400,7 @@ export const SECRET_TAGS = {
 
 export const IDENTITY_ADDITIONAL_PRIVILEGE = {
   CREATE: {
-    projectSlug: "The slug of the project of the dynamic secret in.",
+    projectSlug: "The slug of the project of the identity in.",
     identityId: "The ID of the identity to delete.",
     slug: "The slug of the privilege to create.",
     permissions:
@@ -412,12 +412,16 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     temporaryAccessStartTime: "ISO time for which temporary access should begin."
   },
   UPDATE: {
-    projectSlug: "The slug of the project of the dynamic secret in.",
-    identityId: "The ID of the identity to delete.",
-    slug: "The slug of the privilege to create.",
-    newSlug: "The new slug of the privilege to create.",
-    permissions:
-      "The permission object for the privilege. Refer https://casl.js.org/v6/en/guide/define-rules#the-shape-of-raw-rule to understand the shape",
+    projectSlug: "The slug of the project of the identity in.",
+    identityId: "The ID of the identity to update.",
+    slug: "The slug of the privilege to update.",
+    newSlug: "The new slug of the privilege to update.",
+    permissions: `The permission object for the privilege.
+Example unpacked permission shape 
+1. [["read", "secrets", {environment: "dev", secretPath: {$glob: "/"}}]]
+2. [["read", "secrets", {environment: "dev"}], ["create", "secrets", {environment: "dev"}]]
+2. [["read", "secrets", {environment: "dev"}]]
+`,
     isPackPermission: "Whether the server should pack(compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
     temporaryMode: "Type of temporary access given. Types: relative",
@@ -425,18 +429,18 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     temporaryAccessStartTime: "ISO time for which temporary access should begin."
   },
   DELETE: {
-    projectSlug: "The slug of the project of the dynamic secret in.",
+    projectSlug: "The slug of the project of the identity in.",
     identityId: "The ID of the identity to delete.",
-    slug: "The slug of the privilege to create."
+    slug: "The slug of the privilege to delete."
   },
   GET_BY_SLUG: {
-    projectSlug: "The slug of the project of the dynamic secret in.",
-    identityId: "The ID of the identity to delete.",
-    slug: "The slug of the privilege to create."
+    projectSlug: "The slug of the project of the identity in.",
+    identityId: "The ID of the identity to list.",
+    slug: "The slug of the privilege."
   },
   LIST: {
-    projectSlug: "The slug of the project of the dynamic secret in.",
-    identityId: "The ID of the identity to delete.",
+    projectSlug: "The slug of the project of the identity in.",
+    identityId: "The ID of the identity to list.",
     unpacked: "Whether the system should send the permissions as unpacked"
   }
 };

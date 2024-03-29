@@ -144,7 +144,7 @@ const SpecificPrivilegeSecretForm = ({
               conditions
             }))
         },
-        slug: privilege.slug,
+        privilegeSlug: privilege.slug,
         identityId,
         projectSlug
       });
@@ -165,7 +165,7 @@ const SpecificPrivilegeSecretForm = ({
     try {
       await deleteIdentityPrivilege.mutateAsync({
         identityId,
-        slug: privilege.slug,
+        privilegeSlug: privilege.slug,
         projectSlug
       });
       createNotification({

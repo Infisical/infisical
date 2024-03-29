@@ -11,13 +11,13 @@ import {
 } from "./types";
 
 export const identitiyProjectPrivilegeKeys = {
-  details: ({ identityId, slug, projectSlug }: TGetIdentityProjectPrivilegeDetails) =>
+  details: ({ identityId, privilegeSlug, projectSlug }: TGetIdentityProjectPrivilegeDetails) =>
     [
       "identity-user-privilege",
       {
         identityId,
         projectSlug,
-        slug
+        privilegeSlug
       }
     ] as const,
   list: ({ projectSlug, identityId }: TListIdentityProjectPrivileges) =>
@@ -27,17 +27,17 @@ export const identitiyProjectPrivilegeKeys = {
 export const useGetIdentityProjectPrivilegeDetails = ({
   projectSlug,
   identityId,
-  slug
+  privilegeSlug
 }: TGetIdentityProjectPrivilegeDetails) => {
   return useQuery({
-    enabled: Boolean(projectSlug && identityId && slug),
-    queryKey: identitiyProjectPrivilegeKeys.details({ projectSlug, slug, identityId }),
+    enabled: Boolean(projectSlug && identityId && privilegeSlug),
+    queryKey: identitiyProjectPrivilegeKeys.details({ projectSlug, privilegeSlug, identityId }),
     queryFn: async () => {
       const {
         data: { privilege }
       } = await apiRequest.get<{
         privilege: Omit<TIdentityProjectPrivilege, "permissions"> & { permissions: unknown };
-      }>(`/api/v1/additional-privilege/identity/${slug}`, {
+      }>(`/api/v1/additional-privilege/identity/${privilegeSlug}`, {
         params: {
           identityId,
           projectSlug

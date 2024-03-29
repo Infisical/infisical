@@ -35,9 +35,9 @@ export const useUpdateIdentityProjectAdditionalPrivilege = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TIdentityProjectPrivilege, {}, TUpdateIdentityProjectPrivlegeDTO>({
-    mutationFn: async ({ slug, projectSlug, identityId, data }) => {
+    mutationFn: async ({ privilegeSlug, projectSlug, identityId, data }) => {
       const { data: res } = await apiRequest.patch("/api/v1/additional-privilege/identity", {
-        slug,
+        privilegeSlug,
         projectSlug,
         identityId,
         data: {
@@ -60,12 +60,12 @@ export const useDeleteIdentityProjectAdditionalPrivilege = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TIdentityProjectPrivilege, {}, TDeleteIdentityProjectPrivilegeDTO>({
-    mutationFn: async ({ identityId, projectSlug, slug }) => {
+    mutationFn: async ({ identityId, projectSlug, privilegeSlug }) => {
       const { data } = await apiRequest.delete("/api/v1/additional-privilege/identity", {
         data: {
           identityId,
           projectSlug,
-          slug
+          privilegeSlug
         }
       });
       return data.privilege;

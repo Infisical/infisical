@@ -102,7 +102,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     schema: {
       body: z.object({
         // disallow empty string
-        slug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.slug),
+        privilegeSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.slug),
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.identityId),
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.projectSlug),
         data: z
@@ -146,17 +146,19 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { isPackedPermission, ...data } = req.body.data;
+      const { isPackedPermission, ...updatedInfo } = req.body.data;
       const privilege = await server.services.identityProjectAdditionalPrivilege.updateBySlug({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        ...req.body,
+        slug: req.body.privilegeSlug,
+        identityId: req.body.identityId,
+        projectSlug: req.body.projectSlug,
         data: {
-          ...data,
-          permissions: data?.permissions
-            ? JSON.stringify(isPackedPermission ? data?.permissions : packRules(data.permissions))
+          ...updatedInfo,
+          permissions: updatedInfo?.permissions
+            ? JSON.stringify(isPackedPermission ? updatedInfo?.permissions : packRules(updatedInfo.permissions))
             : undefined
         }
       });
@@ -169,7 +171,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     method: "DELETE",
     schema: {
       body: z.object({
-        slug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.DELETE.slug),
+        privilegeSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.DELETE.slug),
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.DELETE.identityId),
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.DELETE.projectSlug)
       }),
@@ -186,18 +188,20 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        ...req.body
+        slug: req.body.privilegeSlug,
+        identityId: req.body.identityId,
+        projectSlug: req.body.projectSlug
       });
       return { privilege };
     }
   });
 
   server.route({
-    url: "/:slug",
+    url: "/:privilegeSlug",
     method: "GET",
     schema: {
       params: z.object({
-        slug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.GET_BY_SLUG.slug)
+        privilegeSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.GET_BY_SLUG.slug)
       }),
       querystring: z.object({
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.GET_BY_SLUG.identityId),
@@ -216,7 +220,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        slug: req.params.slug,
+        slug: req.params.privilegeSlug,
         ...req.query
       });
       return { privilege };

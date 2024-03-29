@@ -42,14 +42,14 @@ export type TCreateIdentityProjectPrivilegeDTO = {
 export type TUpdateIdentityProjectPrivlegeDTO = {
   projectSlug: string;
   identityId: string;
-  slug: string;
+  privilegeSlug: string;
   data: Partial<Omit<TCreateIdentityProjectPrivilegeDTO, "projectMembershipId" | "projectId">>;
 };
 
 export type TDeleteIdentityProjectPrivilegeDTO = {
   projectSlug: string;
   identityId: string;
-  slug: string;
+  privilegeSlug: string;
 };
 
 export type TListIdentityUserPrivileges = {
@@ -60,5 +60,5 @@ export type TListIdentityUserPrivileges = {
 export type TGetIdentityProejctPrivilegeDetails = {
   projectSlug: string;
   identityId: string;
-  slug: string;
+  privilegeSlug: string;
 };
