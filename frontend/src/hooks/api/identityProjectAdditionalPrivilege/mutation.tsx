@@ -1,4 +1,3 @@
-import { packRules } from "@casl/ability/extra";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
@@ -16,11 +15,10 @@ export const useCreateIdentityProjectAdditionalPrivilege = () => {
 
   return useMutation<TIdentityProjectPrivilege, {}, TCreateIdentityProjectPrivilegeDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post("/api/v1/additional-privilege/identity", {
-        ...dto,
-        isPackedPermission: true,
-        permissions: packRules(dto.permissions)
-      });
+      const { data } = await apiRequest.post(
+        "/api/v1/additional-privilege/identity/permanent",
+        dto
+      );
       return data.privilege;
     },
     onSuccess: (_, { projectSlug, identityId }) => {
@@ -40,11 +38,7 @@ export const useUpdateIdentityProjectAdditionalPrivilege = () => {
         privilegeSlug,
         projectSlug,
         identityId,
-        data: {
-          isPackedPermission: true,
-          ...data,
-          permissions: data.permissions ? packRules(data.permissions) : undefined
-        }
+        data
       });
       return res.privilege;
     },

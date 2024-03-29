@@ -16,7 +16,7 @@ export const useCreateProjectUserAdditionalPrivilege = () => {
 
   return useMutation<{ privilege: TProjectUserPrivilege }, {}, TCreateProjectUserPrivilegeDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post("/api/v1/additional-privilege/users", {
+      const { data } = await apiRequest.post("/api/v1/additional-privilege/users/permanent", {
         ...dto,
         permissions: packRules(dto.permissions)
       });

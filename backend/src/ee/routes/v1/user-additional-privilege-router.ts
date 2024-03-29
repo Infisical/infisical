@@ -11,54 +11,24 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/",
+    url: "/permanent",
     method: "POST",
     schema: {
-      body: z.union([
-        z.object({
-          projectMembershipId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.projectMembershipId),
-          slug: z
-            .string()
-            .min(1)
-            .max(60)
-            .trim()
-            .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
-            .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
-            .refine((v) => slugify(v) === v, {
-              message: "Slug must be a valid slug"
-            })
-            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
-          permissions: z.any().array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions),
-          isTemporary: z.literal(false).default(false).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.isTemporary)
-        }),
-        z.object({
-          projectMembershipId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.projectMembershipId),
-          slug: z
-            .string()
-            .min(1)
-            .max(60)
-            .trim()
-            .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
-            .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
-            .refine((v) => slugify(v) === v, {
-              message: "Slug must be a valid slug"
-            })
-            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
-          permissions: z.any().array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions),
-          isTemporary: z.literal(true).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.isTemporary),
-          temporaryMode: z
-            .nativeEnum(ProjectUserAdditionalPrivilegeTemporaryMode)
-            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryMode),
-          temporaryRange: z
-            .string()
-            .refine((val) => ms(val) > 0, "Temporary range must be a positive number")
-            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryRange),
-          temporaryAccessStartTime: z
-            .string()
-            .datetime()
-            .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryAccessStartTime)
-        })
-      ]),
+      body: z.object({
+        projectMembershipId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.projectMembershipId),
+        slug: z
+          .string()
+          .min(1)
+          .max(60)
+          .trim()
+          .default(slugify(alphaNumericNanoId(12)))
+          .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
+          .refine((v) => slugify(v) === v, {
+            message: "Slug must be a valid slug"
+          })
+          .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
+        permissions: z.any().array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions)
+      }),
       response: {
         200: z.object({
           privilege: ProjectUserAdditionalPrivilegeSchema
@@ -73,6 +43,58 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
+        isTemporary: false,
+        permissions: JSON.stringify(req.body.permissions)
+      });
+      return { privilege };
+    }
+  });
+
+  server.route({
+    url: "/temporary",
+    method: "POST",
+    schema: {
+      body: z.object({
+        projectMembershipId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.projectMembershipId),
+        slug: z
+          .string()
+          .min(1)
+          .max(60)
+          .trim()
+          .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
+          .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
+          .refine((v) => slugify(v) === v, {
+            message: "Slug must be a valid slug"
+          })
+          .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
+        permissions: z.any().array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions),
+        temporaryMode: z
+          .nativeEnum(ProjectUserAdditionalPrivilegeTemporaryMode)
+          .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryMode),
+        temporaryRange: z
+          .string()
+          .refine((val) => ms(val) > 0, "Temporary range must be a positive number")
+          .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryRange),
+        temporaryAccessStartTime: z
+          .string()
+          .datetime()
+          .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryAccessStartTime)
+      }),
+      response: {
+        200: z.object({
+          privilege: ProjectUserAdditionalPrivilegeSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const privilege = await server.services.projectUserAdditionalPrivilege.create({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        ...req.body,
+        isTemporary: true,
         permissions: JSON.stringify(req.body.permissions)
       });
       return { privilege };
