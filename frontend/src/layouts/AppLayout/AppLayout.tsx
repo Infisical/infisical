@@ -115,7 +115,7 @@ type TAddProjectFormData = yup.InferType<typeof formSchema>;
 
 export const AppLayout = ({ children }: LayoutProps) => {
   const router = useRouter();
-  
+
   const { mutateAsync } = useGetOrgTrialUrl();
 
   const { workspaces, currentWorkspace } = useWorkspace();
@@ -554,7 +554,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             }
                             icon="system-outline-189-domain-verification"
                           >
-                            Secret Approvals
+                            Approvals
                             {Boolean(secretApprovalReqCount?.open) && (
                               <span className="ml-2 rounded border border-primary-400 bg-primary-600 py-0.5 px-1 text-xs font-semibold text-black">
                                 {secretApprovalReqCount?.open}

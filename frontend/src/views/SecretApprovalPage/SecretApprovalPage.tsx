@@ -2,6 +2,7 @@ import Link from "next/link";
 import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import Divider from "@app/components/basic/Divider";
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 
@@ -9,8 +10,10 @@ import { SecretApprovalPolicyList } from "./components/SecretApprovalPolicyList"
 import { SecretApprovalRequest } from "./components/SecretApprovalRequest";
 
 enum TabSection {
-  ApprovalRequests = "approval-requests",
-  Rules = "approval-rules"
+  SecretApprovalRequests = "approval-requests",
+  SecretPolicies = "approval-rules",
+  ResourcePolicies = "resource-rules",
+  ResourceApprovalRequests = "resource-requests"
 }
 
 export const SecretApprovalPage = () => {
@@ -21,7 +24,7 @@ export const SecretApprovalPage = () => {
     <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 px-6 text-white">
       <div className="flex items-center justify-between py-6">
         <div className="flex w-full flex-col">
-          <h2 className="text-3xl font-semibold text-gray-200">Secret Approval Workflows</h2>
+          <h2 className="text-3xl font-semibold text-gray-200">Approval Workflows</h2>
           <p className="text-bunker-300">
             Create approval policies for any modifications to secrets in sensitive environments and
             folders.
@@ -39,15 +42,18 @@ export const SecretApprovalPage = () => {
           </Link>
         </div>
       </div>
-      <Tabs defaultValue={TabSection.ApprovalRequests}>
+      <Tabs defaultValue={TabSection.SecretApprovalRequests}>
         <TabList>
-          <Tab value={TabSection.ApprovalRequests}>Secret PRs</Tab>
-          <Tab value={TabSection.Rules}>Policies</Tab>
+          <Tab value={TabSection.SecretApprovalRequests}>Secret Approvals</Tab>
+          <Tab value={TabSection.SecretPolicies}>Secret Policies</Tab>
+          <Divider />
+          <Tab value={TabSection.ResourceApprovalRequests}>Resource Approvals</Tab>
+          <Tab value={TabSection.ResourcePolicies}>Resource Policies</Tab>
         </TabList>
-        <TabPanel value={TabSection.ApprovalRequests}>
+        <TabPanel value={TabSection.SecretApprovalRequests}>
           <SecretApprovalRequest />
         </TabPanel>
-        <TabPanel value={TabSection.Rules}>
+        <TabPanel value={TabSection.SecretPolicies}>
           <SecretApprovalPolicyList workspaceId={workspaceId} />
         </TabPanel>
       </Tabs>
