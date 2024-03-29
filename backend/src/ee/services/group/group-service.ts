@@ -18,11 +18,11 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-p
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TGroupDALFactory } from "./group-dal";
 import {
+  TAddUserToGroupDTO,
   TCreateGroupDTO,
-  TCreateGroupUserMembershipDTO,
   TDeleteGroupDTO,
-  TDeleteGroupUserMembershipDTO,
-  TGetGroupUserMembershipsDTO,
+  TListGroupUsersDTO,
+  TRemoveUserFromGroupDTO,
   TUpdateGroupDTO
 } from "./group-types";
 import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
@@ -185,13 +185,7 @@ export const groupServiceFactory = ({
     return group;
   };
 
-  const listGroupUsers = async ({
-    groupSlug,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetGroupUserMembershipsDTO) => {
+  const listGroupUsers = async ({ groupSlug, actor, actorId, actorAuthMethod, actorOrgId }: TListGroupUsersDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
@@ -224,7 +218,7 @@ export const groupServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId
-  }: TCreateGroupUserMembershipDTO) => {
+  }: TAddUserToGroupDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
@@ -368,7 +362,7 @@ export const groupServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId
-  }: TDeleteGroupUserMembershipDTO) => {
+  }: TRemoveUserFromGroupDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(

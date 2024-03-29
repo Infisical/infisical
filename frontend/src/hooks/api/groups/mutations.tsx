@@ -85,7 +85,7 @@ export const useDeleteGroup = () => {
     });
 };
 
-export const useCreateGroupUserMembership = () => {
+export const useAddUserToGroup = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ 
@@ -107,7 +107,7 @@ export const useCreateGroupUserMembership = () => {
     });
 };
 
-export const useDeleteGroupUserMembership = () => {
+export const useRemoveUserFromGroup = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ 

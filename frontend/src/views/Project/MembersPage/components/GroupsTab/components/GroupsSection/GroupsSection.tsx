@@ -5,9 +5,10 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
     Button,
-    DeleteActionModal
+    DeleteActionModal,
+    UpgradePlanModal
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub,useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useSubscription,useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 
@@ -15,6 +16,7 @@ import { GroupModal } from "./GroupModal";
 import { GroupTable } from "./GroupsTable";
 
 export const GroupsSection = () => {
+    const { subscription } = useSubscription();
     const { currentWorkspace } = useWorkspace();
 
     const { mutateAsync: deleteMutateAsync } = useDeleteGroupFromWorkspace();
@@ -24,6 +26,16 @@ export const GroupsSection = () => {
         "deleteGroup",
         "upgradePlan"
     ] as const);
+
+    const handleAddGroupModal = () => {
+        if (!subscription?.groups) {
+            handlePopUpOpen("upgradePlan", {
+                description: "You can manage users more efficiently with groups if you upgrade your Infisical plan."
+            });
+        } else {
+            handlePopUpOpen("group");
+        }
+    }
 
     const onRemoveGroupSubmit = async (groupSlug: string) => {
         try {
@@ -60,7 +72,7 @@ export const GroupsSection = () => {
                             colorSchema="primary"
                             type="submit"
                             leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                            onClick={() => handlePopUpOpen("group")}
+                            onClick={() => handleAddGroupModal()}
                             isDisabled={!isAllowed}
                         >
                             Add Group
@@ -82,6 +94,11 @@ export const GroupsSection = () => {
                         (popUp?.deleteGroup?.data as { slug: string })?.slug
                     )
                 }
+            />
+            <UpgradePlanModal
+                isOpen={popUp.upgradePlan.isOpen}
+                onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+                text={(popUp.upgradePlan?.data as { description: string })?.description}
             />
         </div>
     );

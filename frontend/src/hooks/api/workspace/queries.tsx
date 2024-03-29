@@ -526,7 +526,7 @@ export const useDeleteGroupFromWorkspace = () => {
   });
 };
 
-export const useGetWorkspaceGroupMemberships = (projectSlug: string) => {
+export const useListWorkspaceGroups = (projectSlug: string) => {
   return useQuery({
     queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectSlug),
     queryFn: async () => {

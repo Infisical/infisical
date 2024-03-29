@@ -19,16 +19,16 @@ export type TDeleteGroupDTO = {
   groupSlug: string;
 } & TGenericPermission;
 
-export type TGetGroupUserMembershipsDTO = {
+export type TListGroupUsersDTO = {
   groupSlug: string;
 } & TGenericPermission;
 
-export type TCreateGroupUserMembershipDTO = {
+export type TAddUserToGroupDTO = {
   groupSlug: string;
   username: string;
 } & TGenericPermission;
 
-export type TDeleteGroupUserMembershipDTO = {
+export type TRemoveUserFromGroupDTO = {
   groupSlug: string;
   username: string;
 } & TGenericPermission;

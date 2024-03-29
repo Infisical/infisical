@@ -15,7 +15,7 @@ type TUser = {
   isPartOfGroup: boolean;
 }
 
-export const useGetGroupUserMemberships = (groupSlug: string) => {
+export const useListGroupUsers = (groupSlug: string) => {
   return useQuery({
     queryKey: groupKeys.getGroupUserMembership(groupSlug),
     queryFn: async () => {

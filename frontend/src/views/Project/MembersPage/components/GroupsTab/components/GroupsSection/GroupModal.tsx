@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Link from "next/link";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -17,20 +17,16 @@ import {
     useAddGroupToWorkspace,
     useGetOrganizationGroups,
     useGetProjectRoles,
-    useGetWorkspaceGroupMemberships,
+    useListWorkspaceGroups,
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-// TODO: change this to zod
+const schema = z.object({
+    slug: z.string(),
+    role: z.string()
+});
 
-const schema = yup
-  .object({
-    slug: yup.string().required("Group slug is required"),
-    role: yup.string()
-  })
-  .required();
-
-export type FormData = yup.InferType<typeof schema>;
+export type FormData = z.infer<typeof schema>;
 
 type Props = {
   popUp: UsePopUpState<["group"]>;
@@ -48,7 +44,7 @@ export const GroupModal = ({
     const workspaceId = currentWorkspace?.id || "";
     
     const { data: groups } = useGetOrganizationGroups(orgId);
-    const { data: groupMemberships } = useGetWorkspaceGroupMemberships(currentWorkspace?.slug || "");
+    const { data: groupMemberships } = useListWorkspaceGroups(currentWorkspace?.slug || "");
     
     const { data: roles } = useGetProjectRoles(workspaceId);
     
@@ -70,7 +66,7 @@ export const GroupModal = ({
         reset,
         formState: { isSubmitting }
       } = useForm<FormData>({
-        resolver: yupResolver(schema)
+        resolver: zodResolver(schema)
       });
 
     const onFormSubmit = async ({ slug, role }: FormData) => {

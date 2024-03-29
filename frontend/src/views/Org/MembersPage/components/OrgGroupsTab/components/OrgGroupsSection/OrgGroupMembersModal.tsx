@@ -24,9 +24,9 @@ import {
     OrgPermissionSubjects
 } from "@app/context";
 import { 
-    useCreateGroupUserMembership,
-    useDeleteGroupUserMembership,
-    useGetGroupUserMemberships} from "@app/hooks/api";
+    useAddUserToGroup,
+    useListGroupUsers,
+    useRemoveUserFromGroup} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -44,9 +44,9 @@ export const OrgGroupMembersModal = ({
         slug: string;
     };
     
-    const { data: users, isLoading } = useGetGroupUserMemberships(popUpData?.slug ?? "");
-    const { mutateAsync: assignMutateAsync } = useCreateGroupUserMembership();
-    const { mutateAsync: unassignMutateAsync } = useDeleteGroupUserMembership();
+    const { data: users, isLoading } = useListGroupUsers(popUpData?.slug ?? "");
+    const { mutateAsync: assignMutateAsync } = useAddUserToGroup();
+    const { mutateAsync: unassignMutateAsync } = useRemoveUserFromGroup();
     
     const handleAssignment = async (username: string, assign: boolean) => {
         try {

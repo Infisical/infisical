@@ -16,7 +16,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useGetWorkspaceGroupMemberships } from "@app/hooks/api";
+import { useListWorkspaceGroups } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { GroupRoles } from "./GroupRoles";
@@ -33,7 +33,7 @@ type Props = {
 
 export const GroupTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const { data, isLoading } = useGetWorkspaceGroupMemberships(currentWorkspace?.slug || "");
+  const { data, isLoading } = useListWorkspaceGroups(currentWorkspace?.slug || "");
   return (
     <TableContainer>
         <Table>
