@@ -1,8 +1,15 @@
 import { Controller, useForm } from "react-hook-form";
-import { faArrowRotateLeft, faCaretDown, faCheck, faClock, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowRotateLeft,
+  faCaretDown,
+  faCheck,
+  faClock,
+  faPlus,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
+import { format, formatDistance } from "date-fns";
 import ms from "ms";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
@@ -173,10 +180,15 @@ const SpecificPrivilegeSecretForm = ({
     }
   };
 
-  const getAccessLabel = () => {
+  const getAccessLabel = (exactTime = false) => {
     if (isExpired) return "Access expired";
     if (!temporaryAccessField?.isTemporary) return "Permanent";
-    return `Until ${format(new Date(temporaryAccessField.temporaryAccessEndTime || ""), "yyyy-MM-dd HH:mm:ss")}`;
+    if (exactTime)
+      return `Until ${format(
+        new Date(temporaryAccessField.temporaryAccessEndTime || ""),
+        "yyyy-MM-dd HH:mm:ss"
+      )}`;
+    return formatDistance(new Date(temporaryAccessField.temporaryAccessEndTime || ""), new Date());
   };
 
   return (
@@ -281,24 +293,23 @@ const SpecificPrivilegeSecretForm = ({
           <div className="mt-7 flex items-center space-x-2">
             <Popover>
               <PopoverTrigger disabled={isMemberEditDisabled}>
-                <Tooltip
-                  asChild
-                  content={isExpired ? "Timed access expired" : "Grant timed access"}
-                >
-                  <Button
-                    variant="outline_bg"
-                    isDisabled={isMemberEditDisabled}
-                    leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
-                    rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
-                    className={twMerge(
-                      "border-none py-2.5 capitalize text-xs hover:bg-mineshaft-500",
-                      isTemporary && "text-primary",
-                      isExpired && "text-red-600"
-                    )}
-                  >
-                    {getAccessLabel()}
-                  </Button>
-                </Tooltip>
+                <div>
+                  <Tooltip content={getAccessLabel(true)}>
+                    <Button
+                      variant="outline_bg"
+                      leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
+                      rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
+                      isDisabled={isMemberEditDisabled}
+                      className={twMerge(
+                        "border-none bg-mineshaft-600 py-2.5 text-xs capitalize hover:bg-mineshaft-500",
+                        isTemporary && "text-primary",
+                        isExpired && "text-red-600"
+                      )}
+                    >
+                      {getAccessLabel()}
+                    </Button>
+                  </Tooltip>
+                </div>
               </PopoverTrigger>
               <PopoverContent
                 arrowClassName="fill-gray-600"
@@ -381,7 +392,7 @@ const SpecificPrivilegeSecretForm = ({
                 <Tooltip content="Cancel" className="mr-4">
                   <IconButton
                     variant="outline_bg"
-                    className="border border-mineshaft-500 bg-mineshaft-600 hover:bg-red/20 hover:border-red/70 py-2.5"
+                    className="border border-mineshaft-500 bg-mineshaft-600 py-2.5 hover:border-red/70 hover:bg-red/20"
                     ariaLabel="delete-privilege"
                     isDisabled={privilegeForm.formState.isSubmitting}
                     onClick={() => privilegeForm.reset()}
@@ -389,7 +400,10 @@ const SpecificPrivilegeSecretForm = ({
                     <FontAwesomeIcon icon={faArrowRotateLeft} className="py-0.5" />
                   </IconButton>
                 </Tooltip>
-                <Tooltip content={isMemberEditDisabled ? "Access restricted" : "Save"} className="mr-4">
+                <Tooltip
+                  content={isMemberEditDisabled ? "Access restricted" : "Save"}
+                  className="mr-4"
+                >
                   <IconButton
                     isDisabled={isMemberEditDisabled}
                     className="border-none py-3"
@@ -397,19 +411,22 @@ const SpecificPrivilegeSecretForm = ({
                     type="submit"
                   >
                     {privilegeForm.formState.isSubmitting ? (
-                      <Spinner size="xs" className="m-0 text-slate-500 w-3 h-3" />
+                      <Spinner size="xs" className="m-0 h-3 w-3 text-slate-500" />
                     ) : (
-                      <FontAwesomeIcon icon={faCheck} className="px-0.5"/>
+                      <FontAwesomeIcon icon={faCheck} className="px-0.5" />
                     )}
                   </IconButton>
                 </Tooltip>
               </>
             ) : (
-              <Tooltip content={isMemberEditDisabled ? "Access restricted" : "Delete"} className="mr-4">
+              <Tooltip
+                content={isMemberEditDisabled ? "Access restricted" : "Delete"}
+                className="mr-4"
+              >
                 <IconButton
                   isDisabled={isMemberEditDisabled}
                   variant="outline_bg"
-                  className="border border-mineshaft-500 bg-mineshaft-600 hover:bg-red/20 hover:border-red/70 py-3"
+                  className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
                   ariaLabel="delete-privilege"
                   onClick={() => handlePopUpOpen("deletePrivilege")}
                 >
@@ -480,7 +497,7 @@ export const SpecificPrivilegeSection = ({ identityId }: Props) => {
         Additional Privileges
         {isLoading && <Spinner size="xs" />}
       </div>
-      <p className="text-sm text-mineshaft-400 mt-0.5">
+      <p className="mt-0.5 text-sm text-mineshaft-400">
         Select individual privileges to associate with the identity.
       </p>
       <div>

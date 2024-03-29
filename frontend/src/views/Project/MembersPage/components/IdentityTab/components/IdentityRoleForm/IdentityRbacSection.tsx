@@ -1,8 +1,9 @@
+/* eslint-disable no-nested-ternary */
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faCaretDown, faClock, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
+import { format, formatDistance } from "date-fns";
 import ms from "ms";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
@@ -21,7 +22,8 @@ import {
   Select,
   SelectItem,
   Spinner,
-  Tag
+  Tag,
+  Tooltip
 } from "@app/components/v2";
 import {
   ProjectPermissionActions,
@@ -182,24 +184,41 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
                   />
                   <Popover>
                     <PopoverTrigger disabled={isMemberEditDisabled}>
-                      <Button
-                        variant="outline_bg"
-                        leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
-                        rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
-                        isDisabled={isMemberEditDisabled}
-                        className={twMerge(
-                          "border-none bg-mineshaft-600 hover:bg-mineshaft-500 py-2.5 capitalize text-xs",
-                          isTemporary && "text-primary",
-                          isExpired && "text-red-600"
-                        )}
-                      >
-                        {!temporaryAccess?.isTemporary
-                          ? "Permanent"
-                          : `Expires at ${format(
-                            new Date(temporaryAccess.temporaryAccessEndTime || ""),
-                            "yyyy-MM-dd HH:mm:ss"
-                          )}`}
-                      </Button>
+                      <div>
+                        <Tooltip
+                          content={
+                            temporaryAccess?.isTemporary
+                              ? isExpired
+                                ? "Timed Access Expired"
+                                : `Until ${format(
+                                  new Date(temporaryAccess.temporaryAccessEndTime || ""),
+                                  "yyyy-MM-dd HH:mm:ss"
+                                )}`
+                              : "Non expiry access"
+                          }
+                        >
+                          <Button
+                            variant="outline_bg"
+                            leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
+                            rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
+                            isDisabled={isMemberEditDisabled}
+                            className={twMerge(
+                              "border-none bg-mineshaft-600 py-2.5 text-xs capitalize hover:bg-mineshaft-500",
+                              isTemporary && "text-primary",
+                              isExpired && "text-red-600"
+                            )}
+                          >
+                            {temporaryAccess?.isTemporary
+                              ? isExpired
+                                ? "Access Expired"
+                                : formatDistance(
+                                  new Date(temporaryAccess.temporaryAccessEndTime || ""),
+                                  new Date()
+                                )
+                              : "Permanent"}
+                          </Button>
+                        </Tooltip>
+                      </div>
                     </PopoverTrigger>
                     <PopoverContent
                       arrowClassName="fill-gray-600"
@@ -279,7 +298,7 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
                   </Popover>
                   <IconButton
                     variant="outline_bg"
-                    className="border border-mineshaft-500 bg-mineshaft-600 hover:bg-red/20 hover:border-red/70 py-3"
+                    className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
                     ariaLabel="delete-role"
                     isDisabled={isMemberEditDisabled}
                     onClick={() => {
@@ -324,7 +343,7 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
               )}
               isLoading={roleForm.formState.isSubmitting}
             >
-              Save Roles 
+              Save Roles
             </Button>
           </div>
         </form>

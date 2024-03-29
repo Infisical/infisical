@@ -49,6 +49,7 @@ const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 const formatRoleName = (role: string, customRoleName?: string) => {
     if (role === ProjectMembershipRole.Custom) return customRoleName;
     if (role === ProjectMembershipRole.Member) return "Developer";
+    if (role === ProjectMembershipRole.NoAccess) return "No access";
     return role;
 };
 export const IdentityTab = withProjectPermission(
@@ -173,7 +174,9 @@ export const IdentityTab = withProjectPermission(
                                                                     return (
                                                                         <Tag key={roleId}>
                                                                             <div className="flex items-center space-x-2">
-                                                                                <div>{formatRoleName(role, customRoleName)}</div>
+                                                                                <div className="capitalize">
+                                                                                    {formatRoleName(role, customRoleName)}
+                                                                                </div>
                                                                                 {isTemporary && (
                                                                                     <div>
                                                                                         <Tooltip
