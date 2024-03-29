@@ -61,7 +61,13 @@ export default function CloudflareWorkersIntegrationPage() {
           isError={accessKeyErrorText !== "" ?? false}
           className="mx-6"
         >
-          <Input placeholder="" value={accessKey} onChange={(e) => setAccessKey(e.target.value)} />
+          <Input 
+            placeholder="" 
+            value={accessKey} 
+            type="password"
+            autoComplete="new-password"
+            onChange={(e) => setAccessKey(e.target.value)} 
+          />
         </FormControl>
         <FormControl
           label="Cloudflare Workers Account ID"

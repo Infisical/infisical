@@ -59,6 +59,8 @@ export default function TerraformCloudCreateIntegrationPage() {
           <Input
             placeholder="API Token"
             value={apiKey}
+            type="password"
+            autoComplete="new-password"
             onChange={(e) => setApiKey(e.target.value)}
           />
         </FormControl>
