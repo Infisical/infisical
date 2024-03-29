@@ -15,6 +15,15 @@ export type TProjectPermission = {
   actorOrgId: string;
 };
 
+// same as TProjectPermission but with projectSlug requirement instead of projectId
+export type TProjectSlugPermission = {
+  actor: ActorType;
+  actorId: string;
+  projectSlug: string;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId: string;
+};
+
 export type RequiredKeys<T> = {
   [K in keyof T]-?: undefined extends T[K] ? never : K;
 }[keyof T];

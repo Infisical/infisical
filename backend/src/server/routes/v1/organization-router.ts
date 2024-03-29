@@ -8,6 +8,7 @@ import {
   OrgRolesSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { ORGANIZATIONS } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -209,7 +210,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     url: "/:organizationId/groups",
     schema: {
       params: z.object({
-        organizationId: z.string().trim()
+        organizationId: z.string().trim().describe(ORGANIZATIONS.LIST_GROUPS.organizationId)
       }),
       response: {
         200: z.object({
@@ -232,7 +233,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const groups = await server.services.org.getOrgGroups({
         actor: req.permission.type,
         actorId: req.permission.id,
-        orgId: req.permission.orgId,
+        orgId: req.params.organizationId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });

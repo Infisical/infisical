@@ -252,7 +252,7 @@ export const GroupRoles = ({
 
     try {
       await updateGroupWorkspaceRole.mutateAsync({
-        workspaceId,
+        projectSlug: currentWorkspace?.slug || "",
         groupSlug,
         roles: selectedRoles
       });

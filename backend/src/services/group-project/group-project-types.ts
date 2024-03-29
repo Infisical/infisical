@@ -1,11 +1,11 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TProjectSlugPermission } from "@app/lib/types";
 
 import { ProjectUserMembershipTemporaryMode } from "../project-membership/project-membership-types";
 
 export type TCreateProjectGroupDTO = {
   groupSlug: string;
   role: string;
-} & TProjectPermission;
+} & TProjectSlugPermission;
 
 export type TUpdateProjectGroupDTO = {
   roles: (
@@ -22,10 +22,10 @@ export type TUpdateProjectGroupDTO = {
       }
   )[];
   groupSlug: string;
-} & TProjectPermission;
+} & TProjectSlugPermission;
 
 export type TDeleteProjectGroupDTO = {
   groupSlug: string;
-} & TProjectPermission;
+} & TProjectSlugPermission;
 
-export type TListProjectGroupDTO = TProjectPermission;
+export type TListProjectGroupDTO = TProjectSlugPermission;

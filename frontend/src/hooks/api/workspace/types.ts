@@ -114,7 +114,7 @@ export type TUpdateWorkspaceIdentityRoleDTO = {
 
 export type TUpdateWorkspaceGroupRoleDTO = {
   groupSlug: string;
-  workspaceId: string;
+  projectSlug: string;
   roles: (
     | {
         role: string;

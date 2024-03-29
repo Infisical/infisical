@@ -145,41 +145,6 @@ export const permissionDALFactory = (db: TDbClient) => {
         ]
       });
 
-      // const permission = sqlNestRelationships({
-      //   data: docs, // TODO: concat?
-      //   key: "membershipId",
-      //   parentMapper: ({
-      //     orgId,
-      //     orgAuthEnforced,
-      //     membershipId,
-      //     membershipCreatedAt,
-      //     membershipUpdatedAt,
-      //     oldRoleField,
-      //     // role
-      //   }) => ({
-      //     orgId,
-      //     orgAuthEnforced,
-      //     userId,
-      //     role: oldRoleField,
-      //     // role,
-      //     id: membershipId,
-      //     projectId,
-      //     createdAt: membershipCreatedAt,
-      //     updatedAt: membershipUpdatedAt
-      //   }),
-      //   childrenMapper: [
-      //     {
-      //       key: "id",
-      //       label: "roles" as const,
-      //       mapper: (data) =>
-      //         ProjectUserMembershipRolesSchema.extend({
-      //           permissions: z.unknown(),
-      //           customRoleSlug: z.string().optional().nullable()
-      //         }).parse(data)
-      //     }
-      //   ]
-      // });
-
       // when introducting cron mode change it here
       const activeRoles = permission?.[0]?.roles.filter(
         ({ isTemporary, temporaryAccessEndTime }) =>

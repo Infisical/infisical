@@ -40,7 +40,7 @@ export const workspaceKeys = {
   getWorkspaceIdentityMemberships: (workspaceId: string) =>
     [{ workspaceId }, "workspace-identity-memberships"] as const,
   getWorkspaceGroupMemberships: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-group-memberships"] as const
+    [{ workspaceId }, "workspace-groups"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -460,25 +460,25 @@ export const useAddGroupToWorkspace = () => {
   return useMutation({
     mutationFn: async ({
       groupSlug,
-      workspaceId,
+      projectSlug,
       role
     }: {
       groupSlug: string;
-      workspaceId: string;
+      projectSlug: string;
       role?: string;
     }) => {
       const {
         data: { groupMembership }
       } = await apiRequest.post(
-        `/api/v2/workspace/${workspaceId}/group-memberships/${groupSlug}`,
+        `/api/v2/workspace/${projectSlug}/groups/${groupSlug}`,
         {
           role
         }
       );
       return groupMembership;
     },
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(workspaceId));
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(projectSlug));
     }
   });
 };
@@ -486,20 +486,19 @@ export const useAddGroupToWorkspace = () => {
 export const useUpdateGroupWorkspaceRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ groupSlug, workspaceId, roles }: TUpdateWorkspaceGroupRoleDTO) => {
+    mutationFn: async ({ groupSlug, projectSlug, roles }: TUpdateWorkspaceGroupRoleDTO) => {
       const {
         data: { groupMembership }
       } = await apiRequest.patch(
-        `/api/v2/workspace/${workspaceId}/group-memberships/${groupSlug}`,
-        {
+        `/api/v2/workspace/${projectSlug}/groups/${groupSlug}`, {
           roles
         }
       );
 
       return groupMembership;
     },
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(workspaceId));
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(projectSlug));
     }
   });
 };
@@ -509,32 +508,32 @@ export const useDeleteGroupFromWorkspace = () => {
   return useMutation({
     mutationFn: async ({
       groupSlug,
-      workspaceId
+      projectSlug
     }: {
       groupSlug: string;
-      workspaceId: string;
+      projectSlug: string;
     }) => {
       const {
         data: { groupMembership }
       } = await apiRequest.delete(
-        `/api/v2/workspace/${workspaceId}/group-memberships/${groupSlug}`
+        `/api/v2/workspace/${projectSlug}/groups/${groupSlug}`
       );
       return groupMembership;
     },
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(workspaceId));
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(projectSlug));
     }
   });
 };
 
-export const useGetWorkspaceGroupMemberships = (workspaceId: string) => {
+export const useGetWorkspaceGroupMemberships = (projectSlug: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceGroupMemberships(workspaceId),
+    queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectSlug),
     queryFn: async () => {
       const {
         data: { groupMemberships } 
       } = await apiRequest.get<{ groupMemberships: TGroupMembership[] }>(
-        `/api/v2/workspace/${workspaceId}/group-memberships`
+        `/api/v2/workspace/${projectSlug}/groups`
       );
       return groupMemberships;
     },

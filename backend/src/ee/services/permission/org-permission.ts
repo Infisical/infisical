@@ -112,6 +112,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);

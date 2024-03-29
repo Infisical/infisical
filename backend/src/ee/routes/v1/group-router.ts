@@ -2,6 +2,7 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { GroupsSchema, OrgMembershipRole, UsersSchema } from "@app/db/schemas";
+import { GROUPS } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -12,8 +13,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
-        // TODO: update on frontend to not send organizationId
-        name: z.string().trim().min(1),
+        name: z.string().trim().min(1).describe(GROUPS.CREATE.name),
         slug: z
           .string()
           .min(5)
@@ -21,8 +21,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
           .refine((v) => slugify(v) === v, {
             message: "Slug must be a valid slug"
           })
-          .optional(),
-        role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess)
+          .optional()
+          .describe(GROUPS.CREATE.slug),
+        role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(GROUPS.CREATE.role)
       }),
       response: {
         200: GroupsSchema
@@ -47,19 +48,20 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
-        currentSlug: z.string().trim()
+        currentSlug: z.string().trim().describe(GROUPS.UPDATE.currentSlug)
       }),
       body: z
         .object({
-          name: z.string().trim().min(1),
+          name: z.string().trim().min(1).describe(GROUPS.UPDATE.name),
           slug: z
             .string()
             .min(5)
             .max(36)
             .refine((v) => slugify(v) === v, {
               message: "Slug must be a valid slug"
-            }),
-          role: z.string().trim().min(1)
+            })
+            .describe(GROUPS.UPDATE.slug),
+          role: z.string().trim().min(1).describe(GROUPS.UPDATE.role)
         })
         .partial(),
       response: {
@@ -81,12 +83,12 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:groupSlug",
+    url: "/:slug",
     method: "DELETE",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
-        groupSlug: z.string().trim()
+        slug: z.string().trim().describe(GROUPS.DELETE.slug)
       }),
       response: {
         200: GroupsSchema
@@ -94,7 +96,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const group = await server.services.group.deleteGroup({
-        groupSlug: req.params.groupSlug,
+        groupSlug: req.params.slug,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -111,7 +113,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
-        slug: z.string().trim()
+        slug: z.string().trim().describe(GROUPS.LIST_USERS.slug)
       }),
       response: {
         200: UsersSchema.pick({
@@ -147,8 +149,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
-        slug: z.string().trim(),
-        username: z.string().trim()
+        slug: z.string().trim().describe(GROUPS.ADD_USER.slug),
+        username: z.string().trim().describe(GROUPS.ADD_USER.username)
       }),
       response: {
         200: UsersSchema.pick({
@@ -180,8 +182,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
-        slug: z.string().trim(),
-        username: z.string().trim()
+        slug: z.string().trim().describe(GROUPS.DELETE_USER.slug),
+        username: z.string().trim().describe(GROUPS.DELETE_USER.username)
       }),
       response: {
         200: UsersSchema.pick({

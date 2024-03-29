@@ -48,7 +48,7 @@ export const GroupModal = ({
     const workspaceId = currentWorkspace?.id || "";
     
     const { data: groups } = useGetOrganizationGroups(orgId);
-    const { data: groupMemberships } = useGetWorkspaceGroupMemberships(workspaceId);
+    const { data: groupMemberships } = useGetWorkspaceGroupMemberships(currentWorkspace?.slug || "");
     
     const { data: roles } = useGetProjectRoles(workspaceId);
     
@@ -76,7 +76,7 @@ export const GroupModal = ({
     const onFormSubmit = async ({ slug, role }: FormData) => {
         try {
             await addGroupToWorkspaceMutateAsync({
-                workspaceId,
+                projectSlug: currentWorkspace?.slug || "",
                 groupSlug: slug,
                 role: role || undefined
             });

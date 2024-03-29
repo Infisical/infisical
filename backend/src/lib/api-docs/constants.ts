@@ -1,3 +1,31 @@
+export const GROUPS = {
+  CREATE: {
+    name: "The name of the group to create.",
+    slug: "The slug of the group to create.",
+    role: "The role of the group to create."
+  },
+  UPDATE: {
+    currentSlug: "The current slug of the group to update.",
+    name: "The new name of the group to update to.",
+    slug: "The new slug of the group to update to.",
+    role: "The new role of the group to update to."
+  },
+  DELETE: {
+    slug: "The slug of the group to delete"
+  },
+  LIST_USERS: {
+    slug: "The slug of the group to list users for"
+  },
+  ADD_USER: {
+    slug: "The slug of the group to add the user to.",
+    username: "The username of the user to add to the group."
+  },
+  DELETE_USER: {
+    slug: "The slug of the group to remove the user from.",
+    username: "The username of the user to remove from the group."
+  }
+} as const;
+
 export const IDENTITIES = {
   CREATE: {
     name: "The name of the identity to create.",
@@ -79,6 +107,9 @@ export const ORGANIZATIONS = {
   },
   GET_PROJECTS: {
     organizationId: "The ID of the organization to get projects from."
+  },
+  LIST_GROUPS: {
+    organizationId: "The ID of the organization to list groups for."
   }
 } as const;
 
@@ -141,6 +172,23 @@ export const PROJECTS = {
   },
   ROLLBACK_TO_SNAPSHOT: {
     secretSnapshotId: "The ID of the snapshot to rollback to."
+  },
+  ADD_GROUP_TO_PROJECT: {
+    projectSlug: "The slug of the project to add the group to.",
+    groupSlug: "The slug of the group to add to the project.",
+    role: "The role for the group to assume in the project."
+  },
+  UPDATE_GROUP_IN_PROJECT: {
+    projectSlug: "The slug of the project to update the group in.",
+    groupSlug: "The slug of the group to update in the project.",
+    roles: "A list of roles to update the group to."
+  },
+  REMOVE_GROUP_FROM_PROJECT: {
+    projectSlug: "The slug of the project to delete the group from.",
+    groupSlug: "The slug of the group to delete from the project."
+  },
+  LIST_GROUPS_IN_PROJECT: {
+    projectSlug: "The slug of the project to list groups for."
   }
 } as const;
 

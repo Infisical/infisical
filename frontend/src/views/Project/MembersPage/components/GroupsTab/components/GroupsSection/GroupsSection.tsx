@@ -17,8 +17,6 @@ import { GroupTable } from "./GroupsTable";
 export const GroupsSection = () => {
     const { currentWorkspace } = useWorkspace();
 
-    const workspaceId = currentWorkspace?.id ?? "";
-    
     const { mutateAsync: deleteMutateAsync } = useDeleteGroupFromWorkspace();
     
     const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -31,7 +29,7 @@ export const GroupsSection = () => {
         try {
             await deleteMutateAsync({
                 groupSlug,
-                workspaceId
+                projectSlug: currentWorkspace?.slug || ""
             });
   
             createNotification({

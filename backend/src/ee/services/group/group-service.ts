@@ -30,7 +30,7 @@ import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findOne" | "findUserEncKeyByUsername">;
   groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "update" | "delete" | "findAllGroupMembers">;
-  groupProjectDAL: TGroupProjectDALFactory;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,

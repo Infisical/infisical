@@ -15,15 +15,26 @@ import { ProjectUserMembershipTemporaryMode } from "@app/services/project-member
 export const registerGroupProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/:projectId/group-memberships/:groupSlug",
+    url: "/:projectSlug/groups/:groupSlug",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Add group to project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        projectId: z.string().trim(),
-        groupSlug: z.string().trim()
+        projectSlug: z.string().trim().describe(PROJECTS.ADD_GROUP_TO_PROJECT.projectSlug),
+        groupSlug: z.string().trim().describe(PROJECTS.ADD_GROUP_TO_PROJECT.groupSlug)
       }),
       body: z.object({
-        role: z.string().trim().min(1).default(ProjectMembershipRole.NoAccess)
+        role: z
+          .string()
+          .trim()
+          .min(1)
+          .default(ProjectMembershipRole.NoAccess)
+          .describe(PROJECTS.ADD_GROUP_TO_PROJECT.role)
       }),
       response: {
         200: z.object({
@@ -32,13 +43,13 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      const groupMembership = await server.services.groupProject.createProjectGroup({
+      const groupMembership = await server.services.groupProject.addGroupToProject({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         groupSlug: req.params.groupSlug,
-        projectId: req.params.projectId,
+        projectSlug: req.params.projectSlug,
         role: req.body.role
       });
       return { groupMembership };
@@ -47,18 +58,18 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
 
   server.route({
     method: "PATCH",
-    url: "/:projectId/group-memberships/:groupSlug",
+    url: "/:projectSlug/groups/:groupSlug",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Update project group memberships",
+      description: "Update group in project",
       security: [
         {
           bearerAuth: []
         }
       ],
       params: z.object({
-        projectId: z.string().trim(),
-        groupSlug: z.string().trim()
+        projectSlug: z.string().trim().describe(PROJECTS.UPDATE_GROUP_IN_PROJECT.projectSlug),
+        groupSlug: z.string().trim().describe(PROJECTS.UPDATE_GROUP_IN_PROJECT.groupSlug)
       }),
       body: z.object({
         roles: z
@@ -78,6 +89,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
             ])
           )
           .min(1)
+          .describe(PROJECTS.UPDATE_GROUP_IN_PROJECT.roles)
       }),
       response: {
         200: z.object({
@@ -86,13 +98,13 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      const roles = await server.services.groupProject.updateProjectGroup({
+      const roles = await server.services.groupProject.updateGroupInProject({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         groupSlug: req.params.groupSlug,
-        projectId: req.params.projectId,
+        projectSlug: req.params.projectSlug,
         roles: req.body.roles
       });
       return { roles };
@@ -101,18 +113,18 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
 
   server.route({
     method: "DELETE",
-    url: "/:projectId/group-memberships/:groupSlug",
+    url: "/:projectSlug/groups/:groupSlug",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Delete project group memberships",
+      description: "Remove group from project",
       security: [
         {
           bearerAuth: []
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECTS.DELETE_IDENTITY_MEMBERSHIP.projectId),
-        groupSlug: z.string().trim().describe(PROJECTS.DELETE_IDENTITY_MEMBERSHIP.identityId)
+        projectSlug: z.string().trim().describe(PROJECTS.REMOVE_GROUP_FROM_PROJECT.projectSlug),
+        groupSlug: z.string().trim().describe(PROJECTS.REMOVE_GROUP_FROM_PROJECT.groupSlug)
       }),
       response: {
         200: z.object({
@@ -121,13 +133,13 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      const groupMembership = await server.services.groupProject.deleteProjectGroup({
+      const groupMembership = await server.services.groupProject.removeGroupFromProject({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         groupSlug: req.params.groupSlug,
-        projectId: req.params.projectId
+        projectSlug: req.params.projectSlug
       });
       return { groupMembership };
     }
@@ -135,17 +147,17 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
 
   server.route({
     method: "GET",
-    url: "/:projectId/group-memberships",
+    url: "/:projectSlug/groups",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Return project group memberships",
+      description: "Return list of groups in project",
       security: [
         {
           bearerAuth: []
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECTS.LIST_IDENTITY_MEMBERSHIPS.projectId)
+        projectSlug: z.string().trim().describe(PROJECTS.LIST_GROUPS_IN_PROJECT.projectSlug)
       }),
       response: {
         200: z.object({
@@ -176,12 +188,12 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      const groupMemberships = await server.services.groupProject.listProjectGroup({
+      const groupMemberships = await server.services.groupProject.listGroupsInProject({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId
+        projectSlug: req.params.projectSlug
       });
       return { groupMemberships };
     }

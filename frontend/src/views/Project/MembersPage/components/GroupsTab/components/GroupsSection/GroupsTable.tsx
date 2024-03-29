@@ -33,7 +33,7 @@ type Props = {
 
 export const GroupTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const { data, isLoading } = useGetWorkspaceGroupMemberships(currentWorkspace?.id || "");
+  const { data, isLoading } = useGetWorkspaceGroupMemberships(currentWorkspace?.slug || "");
   return (
     <TableContainer>
         <Table>
