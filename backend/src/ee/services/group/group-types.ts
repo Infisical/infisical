@@ -1,10 +1,10 @@
-import { TOrgPermission } from "@app/lib/types";
+import { TGenericPermission } from "@app/lib/types";
 
 export type TCreateGroupDTO = {
   name: string;
   slug?: string;
   role: string;
-} & TOrgPermission;
+} & TGenericPermission;
 
 export type TUpdateGroupDTO = {
   currentSlug: string;
@@ -13,22 +13,22 @@ export type TUpdateGroupDTO = {
   slug: string;
   role: string;
 }> &
-  TOrgPermission;
+  TGenericPermission;
 
 export type TDeleteGroupDTO = {
   groupSlug: string;
-} & TOrgPermission;
+} & TGenericPermission;
 
 export type TGetGroupUserMembershipsDTO = {
   groupSlug: string;
-} & TOrgPermission;
+} & TGenericPermission;
 
 export type TCreateGroupUserMembershipDTO = {
   groupSlug: string;
   username: string;
-} & TOrgPermission;
+} & TGenericPermission;
 
 export type TDeleteGroupUserMembershipDTO = {
   groupSlug: string;
   username: string;
-} & TOrgPermission;
+} & TGenericPermission;
