@@ -1,6 +1,7 @@
 import { TOrgPermission } from "@app/lib/types";
 
 export type TCreateLdapCfgDTO = {
+  orgId: string;
   isActive: boolean;
   url: string;
   bindDN: string;
@@ -9,7 +10,9 @@ export type TCreateLdapCfgDTO = {
   caCert: string;
 } & TOrgPermission;
 
-export type TUpdateLdapCfgDTO = Partial<{
+export type TUpdateLdapCfgDTO = {
+  orgId: string;
+} & Partial<{
   isActive: boolean;
   url: string;
   bindDN: string;
@@ -18,6 +21,10 @@ export type TUpdateLdapCfgDTO = Partial<{
   caCert: string;
 }> &
   TOrgPermission;
+
+export type TGetLdapCfgDTO = {
+  orgId: string;
+} & TOrgPermission;
 
 export type TLdapLoginDTO = {
   externalId: string;

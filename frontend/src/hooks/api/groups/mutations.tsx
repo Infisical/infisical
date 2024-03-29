@@ -12,7 +12,6 @@ export const useCreateGroup = () => {
         mutationFn: async ({ 
             name,
             slug,
-            organizationId,
             role
         }: { 
             name: string;
@@ -25,7 +24,6 @@ export const useCreateGroup = () => {
                 } = await apiRequest.post<TGroup>("/api/v1/groups", {
                     name,
                     slug,
-                    organizationId,
                     role
                 });
         

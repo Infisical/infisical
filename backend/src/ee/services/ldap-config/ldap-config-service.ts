@@ -12,7 +12,6 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
-import { TOrgPermission } from "@app/lib/types";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -24,7 +23,7 @@ import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TLdapConfigDALFactory } from "./ldap-config-dal";
-import { TCreateLdapCfgDTO, TLdapLoginDTO, TUpdateLdapCfgDTO } from "./ldap-config-types";
+import { TCreateLdapCfgDTO, TGetLdapCfgDTO, TLdapLoginDTO, TUpdateLdapCfgDTO } from "./ldap-config-types";
 
 type TLdapConfigServiceFactoryDep = {
   ldapConfigDAL: TLdapConfigDALFactory;
@@ -282,7 +281,7 @@ export const ldapConfigServiceFactory = ({
     orgId,
     actorAuthMethod,
     actorOrgId
-  }: TOrgPermission) => {
+  }: TGetLdapCfgDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
     return getLdapCfg({

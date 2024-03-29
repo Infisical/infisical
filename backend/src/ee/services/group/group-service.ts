@@ -57,20 +57,19 @@ export const groupServiceFactory = ({
   permissionService,
   licenseService
 }: TGroupServiceFactoryDep) => {
-  const createGroup = async ({
-    name,
-    slug,
-    role,
-    actor,
-    actorId,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
-  }: TCreateGroupDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+  const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Groups);
 
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.groups)
       throw new BadRequestError({
         message: "Failed to create group due to plan restriction. Upgrade plan to create group."
@@ -78,7 +77,7 @@ export const groupServiceFactory = ({
 
     const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
       role,
-      orgId
+      actorOrgId
     );
     const isCustomRole = Boolean(customRole);
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
@@ -87,7 +86,7 @@ export const groupServiceFactory = ({
     const group = await groupDAL.create({
       name,
       slug: slug || slugify(`${name}-${alphaNumericNanoId(4)}`),
-      orgId,
+      orgId: actorOrgId,
       role: isCustomRole ? OrgMembershipRole.Custom : role,
       roleId: customRole?.id
     });
@@ -102,20 +101,27 @@ export const groupServiceFactory = ({
     role,
     actor,
     actorId,
-    orgId,
     actorAuthMethod,
     actorOrgId
   }: TUpdateGroupDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Groups);
 
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.groups)
       throw new BadRequestError({
         message: "Failed to update group due to plan restrictio Upgrade plan to update group."
       });
 
-    const group = await groupDAL.findOne({ orgId, slug: currentSlug });
+    const group = await groupDAL.findOne({ orgId: actorOrgId, slug: currentSlug });
     if (!group) throw new BadRequestError({ message: `Failed to find group with slug ${currentSlug}` });
 
     let customRole: TOrgRoles | undefined;
@@ -134,7 +140,7 @@ export const groupServiceFactory = ({
 
     const [updatedGroup] = await groupDAL.update(
       {
-        orgId,
+        orgId: actorOrgId,
         slug: currentSlug
       },
       {
@@ -152,11 +158,19 @@ export const groupServiceFactory = ({
     return updatedGroup;
   };
 
-  const deleteGroup = async ({ groupSlug, actor, actorId, orgId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+  const deleteGroup = async ({ groupSlug, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Groups);
 
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await licenseService.getPlan(actorOrgId);
 
     if (!plan.groups)
       throw new BadRequestError({
@@ -164,7 +178,7 @@ export const groupServiceFactory = ({
       });
 
     const [group] = await groupDAL.delete({
-      orgId,
+      orgId: actorOrgId,
       slug: groupSlug
     });
 
@@ -175,15 +189,22 @@ export const groupServiceFactory = ({
     groupSlug,
     actor,
     actorId,
-    orgId,
     actorAuthMethod,
     actorOrgId
   }: TGetGroupUserMembershipsDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
 
     const group = await groupDAL.findOne({
-      orgId,
+      orgId: actorOrgId,
       slug: groupSlug
     });
 
@@ -201,16 +222,23 @@ export const groupServiceFactory = ({
     username,
     actor,
     actorId,
-    orgId,
     actorAuthMethod,
     actorOrgId
   }: TCreateGroupUserMembershipDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Groups);
 
     // check if group with slug exists
     const group = await groupDAL.findOne({
-      orgId,
+      orgId: actorOrgId,
       slug: groupSlug
     });
 
@@ -219,7 +247,7 @@ export const groupServiceFactory = ({
         message: `Failed to find group with slug ${groupSlug}`
       });
 
-    const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, orgId);
+    const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, groupRolePermission);
@@ -250,7 +278,7 @@ export const groupServiceFactory = ({
     // check if user is even part of the organization
     const existingUserOrgMembership = await orgDAL.findMembership({
       userId: user.userId,
-      orgId
+      orgId: actorOrgId
     });
 
     if (!existingUserOrgMembership)
@@ -338,16 +366,23 @@ export const groupServiceFactory = ({
     username,
     actor,
     actorId,
-    orgId,
     actorAuthMethod,
     actorOrgId
   }: TDeleteGroupUserMembershipDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Groups);
 
     // check if group with slug exists
     const group = await groupDAL.findOne({
-      orgId,
+      orgId: actorOrgId,
       slug: groupSlug
     });
 
@@ -356,7 +391,7 @@ export const groupServiceFactory = ({
         message: `Failed to find group with slug ${groupSlug}`
       });
 
-    const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, orgId);
+    const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, groupRolePermission);

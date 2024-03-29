@@ -12,7 +12,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
-        organizationId: z.string().trim(),
+        // TODO: update on frontend to not send organizationId
         name: z.string().trim().min(1),
         slug: z
           .string()
@@ -32,7 +32,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       const group = await server.services.group.createGroup({
         actor: req.permission.type,
         actorId: req.permission.id,
-        orgId: req.body.organizationId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
@@ -72,7 +71,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         currentSlug: req.params.currentSlug,
         actor: req.permission.type,
         actorId: req.permission.id,
-        orgId: req.permission.orgId, // note
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
@@ -99,7 +97,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         groupSlug: req.params.groupSlug,
         actor: req.permission.type,
         actorId: req.permission.id,
-        orgId: req.permission.orgId, // note
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
@@ -137,7 +134,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         groupSlug: req.params.slug,
         actor: req.permission.type,
         actorId: req.permission.id,
-        orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
@@ -170,7 +166,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         username: req.params.username,
         actor: req.permission.type,
         actorId: req.permission.id,
-        orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
@@ -204,7 +199,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         username: req.params.username,
         actor: req.permission.type,
         actorId: req.permission.id,
-        orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });

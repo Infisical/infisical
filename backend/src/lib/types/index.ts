@@ -3,7 +3,6 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 export type TOrgPermission = {
   actor: ActorType;
   actorId: string;
-  orgId: string;
   actorAuthMethod: ActorAuthMethod;
   actorOrgId: string | undefined;
 };
