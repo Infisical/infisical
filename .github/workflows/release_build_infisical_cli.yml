@@ -23,6 +23,8 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
       - run: git fetch --force --tags
       - run: echo "Ref name ${{github.ref_name}}"
       - uses: actions/setup-go@v3

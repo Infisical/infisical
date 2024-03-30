@@ -8,9 +8,9 @@ const encKeyKeys = {
   getUserWorkspaceKey: (workspaceID: string) => ["workspace-key-pair", { workspaceID }] as const
 };
 
-export const fetchUserWsKey = async (workspaceID: string) => {
+export const fetchUserWsKey = async (projectId: string) => {
   const { data } = await apiRequest.get<UserWsKeyPair>(
-    `/api/v2/workspace/${workspaceID}/encrypted-key`
+    `/api/v2/workspace/${projectId}/encrypted-key`
   );
 
   return data;

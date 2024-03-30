@@ -14,6 +14,8 @@ import {
   Login1Res,
   Login2DTO,
   Login2Res,
+  LoginLDAPDTO,
+  LoginLDAPRes,
   ResetPasswordDTO,
   SendMfaTokenDTO,
   SRP1DTO,
@@ -36,6 +38,11 @@ export const login2 = async (loginDetails: Login2DTO) => {
   const { data } = await apiRequest.post<Login2Res>("/api/v3/auth/login2", loginDetails);
   return data;
 };
+
+export const loginLDAPRedirect = async (loginLDAPDetails: LoginLDAPDTO) => {
+  const { data } = await apiRequest.post<LoginLDAPRes>("/api/v1/ldap/login", loginLDAPDetails); // return if account is complete or not + provider auth token
+  return data;
+}
 
 export const useLogin1 = () => {
   return useMutation({

@@ -21,5 +21,5 @@ export const AuthTokensSchema = z.object({
 });
 
 export type TAuthTokens = z.infer<typeof AuthTokensSchema>;
-export type TAuthTokensInsert = Omit<TAuthTokens, TImmutableDBKeys>;
-export type TAuthTokensUpdate = Partial<Omit<TAuthTokens, TImmutableDBKeys>>;
+export type TAuthTokensInsert = Omit<z.input<typeof AuthTokensSchema>, TImmutableDBKeys>;
+export type TAuthTokensUpdate = Partial<Omit<z.input<typeof AuthTokensSchema>, TImmutableDBKeys>>;

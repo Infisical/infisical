@@ -245,6 +245,7 @@ export default function UserInfoStep({
             placeholder="Infisical"
             onChange={(e) => setOrganizationName(e.target.value)}
             value={organizationName}
+            maxLength={64}
             isRequired
             className="h-12"
           />

@@ -25,7 +25,7 @@ export const OrgProvider = ({ children }: Props): JSX.Element => {
   const value = useMemo<TOrgContext>(
     () => ({
       orgs: userOrgs,
-      currentOrg: (userOrgs || []).find(({ id }) => id === currentWsOrgID) || (userOrgs || [])[0],
+      currentOrg: (userOrgs || []).find(({ id }) => id === currentWsOrgID),
       isLoading
     }),
     [currentWsOrgID, userOrgs, isLoading]

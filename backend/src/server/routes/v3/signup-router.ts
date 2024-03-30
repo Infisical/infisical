@@ -2,7 +2,9 @@ import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSignupRouter = async (server: FastifyZodProvider) => {
@@ -23,8 +25,26 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      await server.services.signup.beginEmailSignupProcess(req.body.email);
-      return { message: `Sent an email verification code to ${req.body.email}` };
+      const { email } = req.body;
+
+      const serverCfg = await getServerCfg();
+      if (!serverCfg.allowSignUp) {
+        throw new BadRequestError({
+          message: "Sign up is disabled"
+        });
+      }
+
+      if (serverCfg?.allowedSignUpDomain) {
+        const domain = email.split("@")[1];
+        const allowedDomains = serverCfg.allowedSignUpDomain.split(",").map((e) => e.trim());
+        if (!allowedDomains.includes(domain)) {
+          throw new BadRequestError({
+            message: `Email with a domain (@${domain}) is not supported`
+          });
+        }
+      }
+      await server.services.signup.beginEmailSignupProcess(email);
+      return { message: `Sent an email verification code to ${email}` };
     }
   });
 
@@ -48,6 +68,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
+      const serverCfg = await getServerCfg();
+      if (!serverCfg.allowSignUp) {
+        throw new BadRequestError({
+          message: "Sign up is disabled"
+        });
+      }
+
       const { token, user } = await server.services.signup.verifyEmailSignup(req.body.email, req.body.code);
       return { message: "Successfuly verified email", token, user };
     }
@@ -61,7 +88,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        email: z.string().email().trim(),
+        email: z.string().trim(),
         firstName: z.string().trim(),
         lastName: z.string().trim().optional(),
         protectedKey: z.string().trim(),
@@ -90,6 +117,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
+      const serverCfg = await getServerCfg();
+      if (!serverCfg.allowSignUp) {
+        throw new BadRequestError({
+          message: "Sign up is disabled"
+        });
+      }
+
       const { user, accessToken, refreshToken } = await server.services.signup.completeEmailAccountSignup({
         ...req.body,
         ip: req.realIp,
@@ -97,13 +131,16 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         authorization: req.headers.authorization as string
       });
 
-      void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+      if (user.email) {
+        void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+      }
 
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserSignedUp,
-        distinctId: user.email,
+        distinctId: user.username ?? "",
         properties: {
-          email: user.email,
+          username: user.username,
+          email: user.email ?? "",
           attributionSource: req.body.attributionSource
         }
       });
@@ -156,7 +193,22 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       const { user, accessToken, refreshToken } = await server.services.signup.completeAccountInvite({
         ...req.body,
         ip: req.realIp,
-        userAgent
+        userAgent,
+        authorization: req.headers.authorization as string
+      });
+
+      if (user.email) {
+        void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+      }
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.UserSignedUp,
+        distinctId: user.username ?? "",
+        properties: {
+          username: user.username,
+          email: user.email ?? "",
+          attributionSource: "Team Invite"
+        }
       });
 
       void res.setCookie("jid", refreshToken, {

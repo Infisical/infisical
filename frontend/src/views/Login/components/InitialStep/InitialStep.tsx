@@ -180,7 +180,20 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
           className="mx-0 h-10 w-full"
         >
-          Continue with SSO
+          Continue with SAML
+        </Button>
+      </div>
+      <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+        <Button
+          colorSchema="primary"
+          variant="outline_bg"
+          onClick={() => {
+            setStep(3);
+          }}
+          leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+          className="mx-0 h-10 w-full"
+        >
+          Continue with LDAP
         </Button>
       </div>
       <div className="my-4 flex w-1/4 min-w-[20rem] flex-row items-center py-2 lg:w-1/6">

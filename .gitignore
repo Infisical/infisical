@@ -6,7 +6,7 @@ node_modules
 .env.gamma
 .env.prod
 .env.infisical
-
+.env.migration
 *~
 *.swp
 *.swo
@@ -63,3 +63,5 @@ yarn-error.log*
 .vscode/*
 
 frontend-build
+
+*.tgz

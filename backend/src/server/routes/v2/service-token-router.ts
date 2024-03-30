@@ -21,6 +21,12 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     onRequest: verifyAuth([AuthMode.SERVICE_TOKEN]),
     schema: {
+      description: "Return Infisical Token data",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       response: {
         200: ServiceTokensSchema.merge(
           z.object({
@@ -92,6 +98,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
       const { serviceToken, token } = await server.services.serviceToken.createServiceToken({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId
       });
@@ -129,6 +136,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
       const serviceTokenData = await server.services.serviceToken.deleteServiceToken({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         id: req.params.serviceTokenId
       });
 

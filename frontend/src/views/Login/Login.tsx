@@ -7,10 +7,9 @@ import { getAuthToken, isLoggedIn } from "@app/reactQuery";
 
 import { 
     InitialStep,
+    LDAPStep,
     MFAStep,
-    SAMLSSOStep
-} from "./components";
-// import { navigateUserToOrg } from "../../Login.utils";
+    SAMLSSOStep} from "./components";
 import { navigateUserToOrg } from "./Login.utils";
 
 export const Login = () => {
@@ -73,7 +72,10 @@ export const Login = () => {
                 return (
                     <SAMLSSOStep setStep={setStep} />
                 );
-            
+            case 3:
+                return (
+                    <LDAPStep setStep={setStep} />
+                );
             default:
                 return <div />;
         }

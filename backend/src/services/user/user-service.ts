@@ -11,6 +11,10 @@ export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 
 export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
   const toggleUserMfa = async (userId: string, isMfaEnabled: boolean) => {
+    const user = await userDAL.findById(userId);
+
+    if (!user || !user.email) throw new BadRequestError({ name: "Failed to toggle MFA" });
+
     const updatedUser = await userDAL.updateById(userId, {
       isMfaEnabled,
       mfaMethods: isMfaEnabled ? ["email"] : []
@@ -30,14 +34,11 @@ export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
     const user = await userDAL.findById(userId);
     if (!user) throw new BadRequestError({ name: "Update auth methods" });
 
-    const hasSamlEnabled = user?.authMethods?.some((method) =>
-      [AuthMethod.OKTA_SAML, AuthMethod.AZURE_SAML, AuthMethod.JUMPCLOUD_SAML].includes(method as AuthMethod)
-    );
-    if (hasSamlEnabled)
-      throw new BadRequestError({
-        name: "Update auth method",
-        message: "Failed to update auth methods due to SAML SSO "
-      });
+    if (user.authMethods?.includes(AuthMethod.LDAP))
+      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
+
+    if (authMethods.includes(AuthMethod.LDAP))
+      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
 
     const updatedUser = await userDAL.updateById(userId, { authMethods });
     return updatedUser;

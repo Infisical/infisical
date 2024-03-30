@@ -3,8 +3,10 @@ import { z } from "zod";
 import { IntegrationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { removeTrailingSlash, shake } from "@app/lib/fn";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes, TIntegrationCreatedEvent } from "@app/services/telemetry/telemetry-types";
 
 export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -30,6 +32,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
           .object({
             secretPrefix: z.string().optional(),
             secretSuffix: z.string().optional(),
+            initialSyncBehavior: z.string().optional(),
             secretGCPLabel: z
               .object({
                 labelName: z.string(),
@@ -50,30 +53,43 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       const { integration, integrationAuth } = await server.services.integration.createIntegration({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      const createIntegrationEventProperty = shake({
+        integrationId: integration.id.toString(),
+        integration: integration.integration,
+        environment: req.body.sourceEnvironment,
+        secretPath: req.body.secretPath,
+        url: integration.url,
+        app: integration.app,
+        appId: integration.appId,
+        targetEnvironment: integration.targetEnvironment,
+        targetEnvironmentId: integration.targetEnvironmentId,
+        targetService: integration.targetService,
+        targetServiceId: integration.targetServiceId,
+        path: integration.path,
+        region: integration.region
+      }) as TIntegrationCreatedEvent["properties"];
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: integrationAuth.projectId,
         event: {
           type: EventType.CREATE_INTEGRATION,
           // eslint-disable-next-line
-          metadata: shake({
-            integrationId: integration.id.toString(),
-            integration: integration.integration,
-            environment: req.body.sourceEnvironment,
-            secretPath: req.body.secretPath,
-            url: integration.url,
-            app: integration.app,
-            appId: integration.appId,
-            targetEnvironment: integration.targetEnvironment,
-            targetEnvironmentId: integration.targetEnvironmentId,
-            targetService: integration.targetService,
-            targetServiceId: integration.targetServiceId,
-            path: integration.path,
-            region: integration.region
-            // eslint-disable-next-line
-          }) as any
+          metadata: createIntegrationEventProperty
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.IntegrationCreated,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          ...createIntegrationEventProperty,
+          projectId: integrationAuth.projectId,
+          ...req.auditLogInfo
         }
       });
       return { integration };
@@ -107,6 +123,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       const integration = await server.services.integration.updateIntegration({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         id: req.params.integrationId,
         ...req.body
       });
@@ -132,6 +149,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       const integration = await server.services.integration.deleteIntegration({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         id: req.params.integrationId
       });
 

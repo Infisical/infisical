@@ -5,12 +5,15 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -71,10 +74,54 @@ type Template struct {
 	SourcePath            string `yaml:"source-path"`
 	Base64TemplateContent string `yaml:"base64-template-content"`
 	DestinationPath       string `yaml:"destination-path"`
+
+	Config struct { // Configurations for the template
+		PollingInterval string `yaml:"polling-interval"` // How often to poll for changes in the secret
+		Execute         struct {
+			Command string `yaml:"command"` // Command to execute once the template has been rendered
+			Timeout int64  `yaml:"timeout"` // Timeout for the command
+		} `yaml:"execute"` // Command to execute once the template has been rendered
+	} `yaml:"config"`
 }
 
 func ReadFile(filePath string) ([]byte, error) {
 	return ioutil.ReadFile(filePath)
+}
+
+func ExecuteCommandWithTimeout(command string, timeout int64) error {
+
+	shell := [2]string{"sh", "-c"}
+	if runtime.GOOS == "windows" {
+		shell = [2]string{"cmd", "/C"}
+	} else {
+		currentShell := os.Getenv("SHELL")
+		if currentShell != "" {
+			shell[0] = currentShell
+		}
+	}
+
+	ctx := context.Background()
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+		defer cancel()
+	}
+
+	cmd := exec.CommandContext(ctx, shell[0], shell[1], command)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok { // type assertion
+			if exitError.ProcessState.ExitCode() == -1 {
+				return fmt.Errorf("command timed out")
+			}
+		}
+		return err
+	} else {
+		return nil
+	}
 }
 
 func FileExists(filepath string) bool {
@@ -170,20 +217,26 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 	return config, nil
 }
 
-func secretTemplateFunction(accessToken string) func(string, string, string) ([]models.SingleEnvironmentVariable, error) {
+func secretTemplateFunction(accessToken string, existingEtag string, currentEtag *string) func(string, string, string) ([]models.SingleEnvironmentVariable, error) {
 	return func(projectID, envSlug, secretPath string) ([]models.SingleEnvironmentVariable, error) {
-		secrets, err := util.GetPlainTextSecretsViaMachineIdentity(accessToken, projectID, envSlug, secretPath, false)
+		res, err := util.GetPlainTextSecretsViaMachineIdentity(accessToken, projectID, envSlug, secretPath, false)
 		if err != nil {
 			return nil, err
 		}
 
-		return secrets, nil
+		if existingEtag != res.Etag {
+			*currentEtag = res.Etag
+		}
+
+		expandedSecrets := util.ExpandSecrets(res.Secrets, models.ExpandSecretsAuthentication{UniversalAuthAccessToken: accessToken}, "")
+
+		return expandedSecrets, nil
 	}
 }
 
-func ProcessTemplate(templatePath string, data interface{}, accessToken string) (*bytes.Buffer, error) {
+func ProcessTemplate(templatePath string, data interface{}, accessToken string, existingEtag string, currentEtag *string) (*bytes.Buffer, error) {
 	// custom template function to fetch secrets from Infisical
-	secretFunction := secretTemplateFunction(accessToken)
+	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag)
 	funcs := template.FuncMap{
 		"secret": secretFunction,
 	}
@@ -203,7 +256,7 @@ func ProcessTemplate(templatePath string, data interface{}, accessToken string) 
 	return &buf, nil
 }
 
-func ProcessBase64Template(encodedTemplate string, data interface{}, accessToken string) (*bytes.Buffer, error) {
+func ProcessBase64Template(encodedTemplate string, data interface{}, accessToken string, existingEtag string, currentEtag *string) (*bytes.Buffer, error) {
 	// custom template function to fetch secrets from Infisical
 	decoded, err := base64.StdEncoding.DecodeString(encodedTemplate)
 	if err != nil {
@@ -212,7 +265,7 @@ func ProcessBase64Template(encodedTemplate string, data interface{}, accessToken
 
 	templateString := string(decoded)
 
-	secretFunction := secretTemplateFunction(accessToken)
+	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag) // TODO: Fix this
 	funcs := template.FuncMap{
 		"secret": secretFunction,
 	}
@@ -250,7 +303,16 @@ type TokenManager struct {
 }
 
 func NewTokenManager(fileDeposits []Sink, templates []Template, clientIdPath string, clientSecretPath string, newAccessTokenNotificationChan chan bool, removeClientSecretOnRead bool, exitAfterAuth bool) *TokenManager {
-	return &TokenManager{filePaths: fileDeposits, templates: templates, clientIdPath: clientIdPath, clientSecretPath: clientSecretPath, newAccessTokenNotificationChan: newAccessTokenNotificationChan, removeClientSecretOnRead: removeClientSecretOnRead, exitAfterAuth: exitAfterAuth}
+	return &TokenManager{
+		filePaths:                      fileDeposits,
+		templates:                      templates,
+		clientIdPath:                   clientIdPath,
+		clientSecretPath:               clientSecretPath,
+		newAccessTokenNotificationChan: newAccessTokenNotificationChan,
+		removeClientSecretOnRead:       removeClientSecretOnRead,
+		exitAfterAuth:                  exitAfterAuth,
+	}
+
 }
 
 func (tm *TokenManager) SetToken(token string, accessTokenTTL time.Duration, accessTokenMaxTTL time.Duration) {
@@ -428,38 +490,80 @@ func (tm *TokenManager) WriteTokenToFiles() {
 	}
 }
 
-func (tm *TokenManager) FetchSecrets() {
-	log.Info().Msgf("template engine started...")
+func (tm *TokenManager) WriteTemplateToFile(bytes *bytes.Buffer, template *Template) {
+	if err := WriteBytesToFile(bytes, template.DestinationPath); err != nil {
+		log.Error().Msgf("template engine: unable to write secrets to path because %s. Will try again on next cycle", err)
+		return
+	}
+	log.Info().Msgf("template engine: secret template at path %s has been rendered and saved to path %s", template.SourcePath, template.DestinationPath)
+}
+
+func (tm *TokenManager) MonitorSecretChanges(secretTemplate Template, sigChan chan os.Signal) {
+
+	pollingInterval := time.Duration(5 * time.Minute)
+
+	if secretTemplate.Config.PollingInterval != "" {
+		interval, err := util.ConvertPollingIntervalToTime(secretTemplate.Config.PollingInterval)
+
+		if err != nil {
+			log.Error().Msgf("unable to convert polling interval to time because %v", err)
+			sigChan <- syscall.SIGINT
+			return
+
+		} else {
+			pollingInterval = interval
+		}
+	}
+
+	var existingEtag string
+	var currentEtag string
+	var firstRun = true
+
+	execTimeout := secretTemplate.Config.Execute.Timeout
+	execCommand := secretTemplate.Config.Execute.Command
+
 	for {
 		token := tm.GetToken()
+
 		if token != "" {
-			for _, secretTemplate := range tm.templates {
-				var processedTemplate *bytes.Buffer
-				var err error
-				if secretTemplate.SourcePath != "" {
-					processedTemplate, err = ProcessTemplate(secretTemplate.SourcePath, nil, token)
-				} else {
-					processedTemplate, err = ProcessBase64Template(secretTemplate.Base64TemplateContent, nil, token)
-				}
 
-				if err != nil {
-					log.Error().Msgf("template engine: unable to render secrets because %s. Will try again on next cycle", err)
+			var processedTemplate *bytes.Buffer
+			var err error
 
-					continue
-				}
-
-				if err := WriteBytesToFile(processedTemplate, secretTemplate.DestinationPath); err != nil {
-					log.Error().Msgf("template engine: unable to write secrets to path because %s. Will try again on next cycle", err)
-
-					continue
-				}
-
-				log.Info().Msgf("template engine: secret template at path %s has been rendered and saved to path %s", secretTemplate.SourcePath, secretTemplate.DestinationPath)
+			if secretTemplate.SourcePath != "" {
+				processedTemplate, err = ProcessTemplate(secretTemplate.SourcePath, nil, token, existingEtag, &currentEtag)
+			} else {
+				processedTemplate, err = ProcessBase64Template(secretTemplate.Base64TemplateContent, nil, token, existingEtag, &currentEtag)
 			}
 
-			// fetch new secrets every 5 minutes (TODO: add PubSub in the future )
-			time.Sleep(5 * time.Minute)
+			if err != nil {
+				log.Error().Msgf("unable to process template because %v", err)
+			} else {
+				if (existingEtag != currentEtag) || firstRun {
+
+					tm.WriteTemplateToFile(processedTemplate, &secretTemplate)
+					existingEtag = currentEtag
+
+					if !firstRun && execCommand != "" {
+						log.Info().Msgf("executing command: %s", execCommand)
+						err := ExecuteCommandWithTimeout(execCommand, execTimeout)
+
+						if err != nil {
+							log.Error().Msgf("unable to execute command because %v", err)
+						}
+
+					}
+					if firstRun {
+						firstRun = false
+					}
+				}
+			}
+			time.Sleep(pollingInterval)
+		} else {
+			// It fails to get the access token. So we will re-try in 3 seconds. We do this because if we don't, the user will have to wait for the next polling interval to get the first secret render.
+			time.Sleep(3 * time.Second)
 		}
+
 	}
 }
 
@@ -520,7 +624,7 @@ var agentCmd = &cobra.Command{
 		}
 
 		if !FileExists(configPath) && agentConfigInBase64 == "" {
-			log.Error().Msgf("No agent config file provided. Please provide a agent config file", configPath)
+			log.Error().Msgf("No agent config file provided at %v. Please provide a agent config file", configPath)
 			return
 		}
 
@@ -544,7 +648,11 @@ var agentCmd = &cobra.Command{
 		tm := NewTokenManager(filePaths, agentConfig.Templates, configUniversalAuthType.ClientIDPath, configUniversalAuthType.ClientSecretPath, tokenRefreshNotifier, configUniversalAuthType.RemoveClientSecretOnRead, agentConfig.Infisical.ExitAfterAuth)
 
 		go tm.ManageTokenLifecycle()
-		go tm.FetchSecrets()
+
+		for i, template := range agentConfig.Templates {
+			log.Info().Msgf("template engine started for template %v...", i+1)
+			go tm.MonitorSecretChanges(template, sigChan)
+		}
 
 		for {
 			select {

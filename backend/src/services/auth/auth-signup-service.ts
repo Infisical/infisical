@@ -44,13 +44,13 @@ export const authSignupServiceFactory = ({
       throw new Error("Provided a disposable email");
     }
 
-    let user = await userDAL.findUserByEmail(email);
+    let user = await userDAL.findUserByUsername(email);
     if (user && user.isAccepted) {
       // TODO(akhilmhdh-pg): copy as old one. this needs to be changed due to security issues
       throw new Error("Failed to send verification code for complete account");
     }
     if (!user) {
-      user = await userDAL.create({ authMethods: [AuthMethod.EMAIL], email });
+      user = await userDAL.create({ authMethods: [AuthMethod.EMAIL], username: email, email, isGhost: false });
     }
     if (!user) throw new Error("Failed to create user");
 
@@ -70,7 +70,7 @@ export const authSignupServiceFactory = ({
   };
 
   const verifyEmailSignup = async (email: string, code: string) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findUserByUsername(email);
     if (!user || (user && user.isAccepted)) {
       // TODO(akhilmhdh): copy as old one. this needs to be changed due to security issues
       throw new Error("Failed to send verification code for complete account");
@@ -115,13 +115,15 @@ export const authSignupServiceFactory = ({
     userAgent,
     authorization
   }: TCompleteAccountSignupDTO) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findOne({ username: email });
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
 
+    let organizationId;
     if (providerAuthToken) {
-      validateProviderAuthToken(providerAuthToken, user.email);
+      const { orgId } = validateProviderAuthToken(providerAuthToken, user.username);
+      organizationId = orgId;
     } else {
       validateSignUpAuthorization(authorization, user.id);
     }
@@ -147,12 +149,12 @@ export const authSignupServiceFactory = ({
       return { info: us, key: userEncKey };
     });
 
-    const hasSamlEnabled = user?.authMethods?.some((authMethod) =>
-      [AuthMethod.OKTA_SAML, AuthMethod.AZURE_SAML, AuthMethod.JUMPCLOUD_SAML].includes(authMethod as AuthMethod)
-    );
-
-    if (!hasSamlEnabled) {
-      await orgService.createOrganization(user.id, user.email, organizationName);
+    if (!organizationId) {
+      await orgService.createOrganization({
+        userId: user.id,
+        userEmail: user.email ?? user.username,
+        orgName: organizationName
+      });
     }
 
     const updatedMembersips = await orgDAL.updateMembership(
@@ -175,7 +177,8 @@ export const authSignupServiceFactory = ({
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
-        accessVersion: tokenSession.accessVersion
+        accessVersion: tokenSession.accessVersion,
+        organizationId
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_AUTH_LIFETIME }
@@ -186,7 +189,8 @@ export const authSignupServiceFactory = ({
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
-        refreshVersion: tokenSession.refreshVersion
+        refreshVersion: tokenSession.refreshVersion,
+        organizationId
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_REFRESH_LIFETIME }
@@ -212,12 +216,15 @@ export const authSignupServiceFactory = ({
     protectedKeyTag,
     encryptedPrivateKey,
     encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag
+    encryptedPrivateKeyTag,
+    authorization
   }: TCompleteAccountInviteDTO) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findUserByUsername(email);
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
+
+    validateSignUpAuthorization(authorization, user.id);
 
     const [orgMembership] = await orgDAL.findMembership({
       inviteEmail: email,

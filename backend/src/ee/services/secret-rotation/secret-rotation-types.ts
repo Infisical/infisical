@@ -18,7 +18,3 @@ export type TDeleteDTO = {
 export type TRestartDTO = {
   rotationId: string;
 } & Omit<TProjectPermission, "projectId">;
-
-export type TGetByIdDTO = {
-  rotationId: string;
-} & Omit<TProjectPermission, "projectId">;

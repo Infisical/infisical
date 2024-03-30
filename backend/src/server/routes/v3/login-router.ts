@@ -12,7 +12,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        email: z.string().email().trim(),
+        email: z.string().trim(),
         providerAuthToken: z.string().trim().optional(),
         clientPublicKey: z.string().trim()
       }),
@@ -42,7 +42,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        email: z.string().email().trim(),
+        email: z.string().trim(),
         providerAuthToken: z.string().trim().optional(),
         clientProof: z.string().trim()
       }),

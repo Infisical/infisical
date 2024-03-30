@@ -1,6 +1,7 @@
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { OrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -13,7 +14,17 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         organizationId: z.string().trim()
       }),
       body: z.object({
-        slug: z.string().trim(),
+        slug: z
+          .string()
+          .min(1)
+          .trim()
+          .refine(
+            (val) => Object.keys(OrgMembershipRole).includes(val),
+            "Please choose a different slug, the slug you have entered is reserved"
+          )
+          .refine((v) => slugify(v) === v, {
+            message: "Slug must be a valid"
+          }),
         name: z.string().trim(),
         description: z.string().trim().optional(),
         permissions: z.any().array()
@@ -26,7 +37,12 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const role = await server.services.orgRole.createRole(req.permission.id, req.params.organizationId, req.body);
+      const role = await server.services.orgRole.createRole(
+        req.permission.id,
+        req.params.organizationId,
+        req.body,
+        req.permission.orgId
+      );
       return { role };
     }
   });
@@ -40,7 +56,17 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         roleId: z.string().trim()
       }),
       body: z.object({
-        slug: z.string().trim().optional(),
+        slug: z
+          .string()
+          .trim()
+          .optional()
+          .refine(
+            (val) => typeof val === "undefined" || Object.keys(OrgMembershipRole).includes(val),
+            "Please choose a different slug, the slug you have entered is reserved."
+          )
+          .refine((val) => typeof val === "undefined" || slugify(val) === val, {
+            message: "Slug must be a valid"
+          }),
         name: z.string().trim().optional(),
         description: z.string().trim().optional(),
         permissions: z.any().array()
@@ -57,7 +83,8 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.organizationId,
         req.params.roleId,
-        req.body
+        req.body,
+        req.permission.orgId
       );
       return { role };
     }
@@ -82,7 +109,8 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       const role = await server.services.orgRole.deleteRole(
         req.permission.id,
         req.params.organizationId,
-        req.params.roleId
+        req.params.roleId,
+        req.permission.orgId
       );
       return { role };
     }
@@ -107,7 +135,11 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const roles = await server.services.orgRole.listRoles(req.permission.id, req.params.organizationId);
+      const roles = await server.services.orgRole.listRoles(
+        req.permission.id,
+        req.params.organizationId,
+        req.permission.orgId
+      );
       return { data: { roles } };
     }
   });
@@ -130,7 +162,8 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { permissions, membership } = await server.services.orgRole.getUserPermission(
         req.permission.id,
-        req.params.organizationId
+        req.params.organizationId,
+        req.permission.orgId
       );
       return { permissions, membership };
     }

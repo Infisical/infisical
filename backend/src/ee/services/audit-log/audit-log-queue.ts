@@ -24,7 +24,7 @@ export const auditLogQueueServiceFactory = ({
   const pushToLog = async (data: TCreateAuditLogDTO) => {
     await queueService.queue(QueueName.AuditLog, QueueJobs.AuditLog, data, {
       removeOnFail: {
-        count: 5
+        count: 3
       },
       removeOnComplete: true
     });
@@ -46,6 +46,7 @@ export const auditLogQueueServiceFactory = ({
     const ttl = plan.auditLogsRetentionDays * MS_IN_DAY;
     // skip inserting if audit log retention is 0 meaning its not supported
     if (ttl === 0) return;
+
     await auditLogDAL.create({
       actor: actor.type,
       actorMetadata: actor.metadata,

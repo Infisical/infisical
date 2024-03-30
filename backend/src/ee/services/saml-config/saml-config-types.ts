@@ -4,7 +4,8 @@ import { ActorType } from "@app/services/auth/auth-type";
 export enum SamlProviders {
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
-  JUMPCLOUD_SAML = "jumpcloud-saml"
+  JUMPCLOUD_SAML = "jumpcloud-saml",
+  GOOGLE_SAML = "google-saml"
 }
 
 export type TCreateSamlCfgDTO = {
@@ -25,19 +26,23 @@ export type TUpdateSamlCfgDTO = Partial<{
   TOrgPermission;
 
 export type TGetSamlCfgDTO =
-  | { type: "org"; orgId: string; actor: ActorType; actorId: string }
+  | { type: "org"; orgId: string; actor: ActorType; actorId: string; actorOrgId?: string }
+  | {
+      type: "orgSlug";
+      orgSlug: string;
+    }
   | {
       type: "ssoId";
       id: string;
     };
 
 export type TSamlLoginDTO = {
-  email: string;
+  username: string;
+  email?: string;
   firstName: string;
   lastName?: string;
   authProvider: string;
   orgId: string;
-  isSignupAllowed: boolean;
   // saml thingy
   relayState?: string;
 };

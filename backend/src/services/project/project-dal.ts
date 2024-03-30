@@ -1,6 +1,8 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
-import { ProjectsSchema, TableName } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { ProjectsSchema, ProjectUpgradeStatus, ProjectVersion, TableName, TProjectsUpdate } from "@app/db/schemas";
+import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
@@ -21,7 +23,11 @@ export const projectDALFactory = (db: TDbClient) => {
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName")
         )
-        .orderBy("createdAt", "asc", "last");
+        .orderBy([
+          { column: `${TableName.Project}.name`, order: "asc" },
+          { column: `${TableName.Environment}.position`, order: "asc" }
+        ]);
+
       const nestedWorkspaces = sqlNestRelationships({
         data: workspaces,
         key: "id",
@@ -45,6 +51,32 @@ export const projectDALFactory = (db: TDbClient) => {
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all projects" });
+    }
+  };
+
+  const findProjectGhostUser = async (projectId: string) => {
+    try {
+      const ghostUser = await db(TableName.ProjectMembership)
+        .where({ projectId })
+        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .select(selectAllTableCols(TableName.Users))
+        .where({ isGhost: true })
+        .first();
+      return ghostUser;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project top-level user" });
+    }
+  };
+
+  const setProjectUpgradeStatus = async (projectId: string, status: ProjectUpgradeStatus | null, tx?: Knex) => {
+    try {
+      const data: TProjectsUpdate = {
+        upgradeStatus: status
+      } as const;
+
+      await (tx || db)(TableName.Project).where({ id: projectId }).update(data);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Set project upgrade status" });
     }
   };
 
@@ -102,7 +134,11 @@ export const projectDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName")
-        );
+        )
+        .orderBy([
+          { column: `${TableName.Project}.name`, order: "asc" },
+          { column: `${TableName.Environment}.position`, order: "asc" }
+        ]);
       return sqlNestRelationships({
         data: workspaces,
         key: "id",
@@ -124,10 +160,25 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const checkProjectUpgradeStatus = async (projectId: string) => {
+    const project = await projectOrm.findById(projectId);
+    const upgradeInProgress =
+      project.upgradeStatus === ProjectUpgradeStatus.InProgress && project.version === ProjectVersion.V1;
+
+    if (upgradeInProgress) {
+      throw new BadRequestError({
+        message: "Project is currently being upgraded, and secrets cannot be written. Please try again"
+      });
+    }
+  };
+
   return {
     ...projectOrm,
     findAllProjects,
+    setProjectUpgradeStatus,
     findAllProjectsByIdentity,
-    findProjectById
+    findProjectGhostUser,
+    findProjectById,
+    checkProjectUpgradeStatus
   };
 };

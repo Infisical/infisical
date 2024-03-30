@@ -11,6 +11,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     url: "/",
     method: "POST",
     schema: {
+      description: "Create folders",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -31,6 +38,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       const folder = await server.services.folder.createFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
         path
@@ -56,6 +64,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     url: "/:folderId",
     method: "PATCH",
     schema: {
+      description: "Update folder",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
         // old way this was name
         folderId: z.string()
@@ -80,6 +95,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       const { folder, old } = await server.services.folder.updateFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
         id: req.params.folderId,
@@ -104,11 +120,18 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
-    url: "/:folderId",
+    url: "/:folderIdOrName",
     method: "DELETE",
     schema: {
+      description: "Delete a folder",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       params: z.object({
-        folderId: z.string()
+        folderIdOrName: z.string()
       }),
       body: z.object({
         workspaceId: z.string().trim(),
@@ -129,9 +152,10 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       const folder = await server.services.folder.deleteFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId,
-        id: req.params.folderId,
+        idOrName: req.params.folderIdOrName,
         path
       });
       await server.services.auditLog.createAuditLog({
@@ -155,6 +179,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     url: "/",
     method: "GET",
     schema: {
+      description: "Get folders",
+      security: [
+        {
+          bearerAuth: [],
+          apiKeyAuth: []
+        }
+      ],
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -174,6 +205,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       const folders = await server.services.folder.getFolders({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         ...req.query,
         projectId: req.query.workspaceId,
         path

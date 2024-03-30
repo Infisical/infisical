@@ -170,7 +170,11 @@ export const AddAPIKeyModal = ({
                         >
                             Add
                         </Button>
-                        <Button colorSchema="secondary" variant="plain">
+                        <Button 
+                            colorSchema="secondary" 
+                            variant="plain" 
+                            onClick={() => handlePopUpToggle("addAPIKey", false)}
+                        >
                             Cancel
                         </Button>
                     </div>

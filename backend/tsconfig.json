@@ -22,11 +22,9 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@app/*": ["./src/*"],
-      "@lib/*": ["./src/lib/*"],
-      "@server/*": ["./src/server/*"]
+      "@app/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*", "scripts/**/*", "e2e-test/**/*","./.eslintrc.js"],
+  "include": ["src/**/*", "scripts/**/*", "e2e-test/**/*", "./.eslintrc.js", "./tsup.config.js"],
   "exclude": ["node_modules"]
 }

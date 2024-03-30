@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import path from "path";
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
 import { TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -30,8 +30,16 @@ export const secretFolderServiceFactory = ({
   projectEnvDAL,
   folderVersionDAL
 }: TSecretFolderServiceFactoryDep) => {
-  const createFolder = async ({ projectId, actor, actorId, name, environment, path: secretPath }: TCreateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const createFolder = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    name,
+    environment,
+    path: secretPath
+  }: TCreateFolderDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -105,12 +113,13 @@ export const secretFolderServiceFactory = ({
     projectId,
     actor,
     actorId,
+    actorOrgId,
     name,
     environment,
     path: secretPath,
     id
   }: TUpdateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -148,8 +157,16 @@ export const secretFolderServiceFactory = ({
     return { folder: newFolder, old: folder };
   };
 
-  const deleteFolder = async ({ projectId, actor, actorId, environment, path: secretPath, id }: TDeleteFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const deleteFolder = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    environment,
+    path: secretPath,
+    idOrName
+  }: TDeleteFolderDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -162,7 +179,10 @@ export const secretFolderServiceFactory = ({
       const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, tx);
       if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
 
-      const [doc] = await folderDAL.delete({ envId: env.id, id, parentId: parentFolder.id }, tx);
+      const [doc] = await folderDAL.delete(
+        { envId: env.id, [uuidValidate(idOrName) ? "id" : "name"]: idOrName, parentId: parentFolder.id },
+        tx
+      );
       if (!doc) throw new BadRequestError({ message: "Folder not found", name: "Delete folder" });
       return doc;
     });
@@ -171,10 +191,17 @@ export const secretFolderServiceFactory = ({
     return folder;
   };
 
-  const getFolders = async ({ projectId, actor, actorId, environment, path: secretPath }: TGetFolderDTO) => {
+  const getFolders = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    environment,
+    path: secretPath
+  }: TGetFolderDTO) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission(actor, actorId, projectId);
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new BadRequestError({ message: "Environment not found", name: "get folders" });

@@ -1,5 +1,6 @@
 {
   "name": "Infisical",
+  "openapi": "https://app.infisical.com/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -133,7 +134,8 @@
             "documentation/platform/secret-rotation/overview",
             "documentation/platform/secret-rotation/sendgrid",
             "documentation/platform/secret-rotation/postgres",
-            "documentation/platform/secret-rotation/mysql"
+            "documentation/platform/secret-rotation/mysql",
+            "documentation/platform/secret-rotation/aws-iam"
           ]
         },
         {
@@ -145,7 +147,25 @@
             "documentation/platform/sso/gitlab",
             "documentation/platform/sso/okta",
             "documentation/platform/sso/azure",
-            "documentation/platform/sso/jumpcloud"
+            "documentation/platform/sso/jumpcloud",
+            "documentation/platform/sso/google-saml"
+          ]
+        },
+        {
+          "group": "LDAP",
+          "pages": [
+            "documentation/platform/ldap/overview",
+            "documentation/platform/ldap/jumpcloud",
+            "documentation/platform/ldap/general"
+          ]
+        },
+        {
+          "group": "SCIM",
+          "pages": [
+            "documentation/platform/scim/overview",
+            "documentation/platform/scim/okta",
+            "documentation/platform/scim/azure",
+            "documentation/platform/scim/jumpcloud"
           ]
         }
       ]
@@ -153,27 +173,24 @@
     {
       "group": "Self-host Infisical",
       "pages": [
+        "self-hosting/overview",
+        "self-hosting/configuration/requirements",
         {
-          "group": "Deployment options",
+          "group": "Installation methods",
           "pages": [
-            "self-hosting/overview",
             "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/docker-compose",
-            "self-hosting/deployment-options/kubernetes-helm",
-            "self-hosting/deployment-options/aws-ec2",
-            "self-hosting/deployment-options/aws-lightsail",
-            "self-hosting/deployment-options/gcp-cloud-run",
-            "self-hosting/deployment-options/azure-app-services",
-            "self-hosting/deployment-options/azure-container-instances",
-            "self-hosting/deployment-options/digital-ocean-marketplace",
-            "self-hosting/deployment-options/fly.io",
-            "self-hosting/deployment-options/railway"
+            "self-hosting/deployment-options/kubernetes-helm"
           ]
         },
         "self-hosting/configuration/envars",
-        "self-hosting/configuration/email",
-        "self-hosting/configuration/redis",
-        "self-hosting/configuration/sso",
+        {
+          "group": "Guides",
+          "pages": [
+            "self-hosting/configuration/schema-migrations",
+            "self-hosting/guides/mongo-to-postgres"
+          ]
+        },
         "self-hosting/faq"
       ]
     },
@@ -213,16 +230,27 @@
     {
       "group": "Agent",
       "pages": [
-        "infisical-agent/overview"
+        "infisical-agent/overview",
+        {
+          "group": "Use cases",
+          "pages": [
+            "infisical-agent/guides/docker-swarm-with-agent",
+            "integrations/platforms/ecs-with-agent"
+          ]
+        }
       ]
-    },
-    {
-      "group": "Integrations",
-      "pages": ["integrations/overview"]
     },
     {
       "group": "Infrastructure Integrations",
       "pages": [
+        {
+          "group": "Container orchestrators",
+          "pages": [
+            "integrations/platforms/kubernetes",
+            "infisical-agent/guides/docker-swarm-with-agent",
+            "integrations/platforms/ecs-with-agent"
+          ]
+        },
         {
           "group": "Docker",
           "pages": [
@@ -232,13 +260,12 @@
             "integrations/platforms/docker-compose"
           ]
         },
-        "integrations/platforms/kubernetes",
         "integrations/frameworks/terraform",
         "integrations/platforms/ansible"
       ]
     },
     {
-      "group": "3rd-party Integrations",
+      "group": "Native Integrations",
       "pages": [
         {
           "group": "AWS",
@@ -251,39 +278,49 @@
           "group": "Digital Ocean",
           "pages": ["integrations/cloud/digital-ocean-app-platform"]
         },
-        "integrations/cloud/heroku",
         "integrations/cloud/vercel",
-        "integrations/cloud/netlify",
-        "integrations/cloud/render",
-        "integrations/cloud/railway",
-        "integrations/cloud/flyio",
-        "integrations/cloud/laravel-forge",
-        "integrations/cloud/supabase",
-        "integrations/cloud/northflank",
-        "integrations/cloud/hasura-cloud",
-        "integrations/cloud/terraform-cloud",
-        "integrations/cloud/cloudflare-pages",
-        "integrations/cloud/cloudflare-workers",
-        "integrations/cloud/qovery",
-        "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
         "integrations/cloud/gcp-secret-manager",
-        "integrations/cloud/cloud-66",
-        "integrations/cloud/windmill"
+        {
+          "group": "View more",
+          "pages": [
+            "integrations/cloud/heroku",
+            "integrations/cloud/netlify",
+            "integrations/cloud/render",
+            "integrations/cloud/railway",
+            "integrations/cloud/flyio",
+            "integrations/cloud/laravel-forge",
+            "integrations/cloud/supabase",
+            "integrations/cloud/northflank",
+            "integrations/cloud/hasura-cloud",
+            "integrations/cloud/terraform-cloud",
+            "integrations/cloud/cloudflare-pages",
+            "integrations/cloud/cloudflare-workers",
+            "integrations/cloud/qovery",
+            "integrations/cloud/hashicorp-vault",
+            "integrations/cloud/cloud-66",
+            "integrations/cloud/windmill"
+          ]
+        }
       ]
     },
     {
       "group": "CI/CD Integrations",
       "pages": [
         "integrations/cloud/teamcity",
-        "integrations/cloud/checkly",
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
-        "integrations/cicd/circleci",
-        "integrations/cicd/travisci",
-        "integrations/cicd/bitbucket",
-        "integrations/cicd/codefresh",
-        "integrations/cicd/jenkins"
+        {
+          "group": "View more",
+          "pages": [
+            "integrations/cicd/circleci",
+            "integrations/cicd/travisci",
+            "integrations/cicd/bitbucket",
+            "integrations/cicd/codefresh",
+            "integrations/cicd/jenkins",
+            "integrations/cloud/checkly"
+          ]
+        }
       ]
     },
     {
@@ -293,20 +330,25 @@
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
         "integrations/frameworks/express",
-        "integrations/frameworks/nextjs",
-        "integrations/frameworks/nestjs",
-        "integrations/frameworks/sveltekit",
-        "integrations/frameworks/nuxt",
-        "integrations/frameworks/gatsby",
-        "integrations/frameworks/remix",
-        "integrations/frameworks/vite",
-        "integrations/frameworks/fiber",
-        "integrations/frameworks/django",
-        "integrations/frameworks/flask",
-        "integrations/frameworks/laravel",
-        "integrations/frameworks/rails",
-        "integrations/frameworks/dotnet",
-        "integrations/platforms/pm2"
+        {
+          "group": "View more",
+          "pages": [
+            "integrations/frameworks/nextjs",
+            "integrations/frameworks/nestjs",
+            "integrations/frameworks/sveltekit",
+            "integrations/frameworks/nuxt",
+            "integrations/frameworks/gatsby",
+            "integrations/frameworks/remix",
+            "integrations/frameworks/vite",
+            "integrations/frameworks/fiber",
+            "integrations/frameworks/django",
+            "integrations/frameworks/flask",
+            "integrations/frameworks/laravel",
+            "integrations/frameworks/rails",
+            "integrations/frameworks/dotnet",
+            "integrations/platforms/pm2"
+          ]
+        }
       ]
     },
     {
@@ -376,9 +418,14 @@
         {
           "group": "Projects",
           "pages": [
+            "api-reference/endpoints/workspaces/create-workspace",
+            "api-reference/endpoints/workspaces/delete-workspace",
+            "api-reference/endpoints/workspaces/get-workspace",
+            "api-reference/endpoints/workspaces/update-workspace",
+            "api-reference/endpoints/workspaces/invite-member-to-workspace",
+            "api-reference/endpoints/workspaces/remove-member-from-workspace",
             "api-reference/endpoints/workspaces/memberships",
             "api-reference/endpoints/workspaces/update-membership",
-            "api-reference/endpoints/workspaces/delete-membership",
             "api-reference/endpoints/workspaces/list-identity-memberships",
             "api-reference/endpoints/workspaces/update-identity-membership",
             "api-reference/endpoints/workspaces/delete-identity-membership",
@@ -463,7 +510,9 @@
         {
           "group": "Contributing to platform",
           "pages": [
-            "contributing/platform/developing"
+            "contributing/platform/developing",
+            "contributing/platform/backend/how-to-create-a-feature",
+            "contributing/platform/backend/folder-structure"
           ]
         },
         {

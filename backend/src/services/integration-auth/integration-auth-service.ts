@@ -20,9 +20,11 @@ import {
   TDeleteIntegrationAuthsDTO,
   TGetIntegrationAuthDTO,
   TGetIntegrationAuthTeamCityBuildConfigDTO,
+  THerokuPipelineCoupling,
   TIntegrationAuthAppsDTO,
   TIntegrationAuthBitbucketWorkspaceDTO,
   TIntegrationAuthChecklyGroupsDTO,
+  TIntegrationAuthHerokuPipelinesDTO,
   TIntegrationAuthNorthflankSecretGroupDTO,
   TIntegrationAuthQoveryEnvironmentsDTO,
   TIntegrationAuthQoveryOrgsDTO,
@@ -59,27 +61,40 @@ export const integrationAuthServiceFactory = ({
   projectBotDAL,
   projectBotService
 }: TIntegrationAuthServiceFactoryDep) => {
-  const listIntegrationAuthByProjectId = async ({ actorId, actor, projectId }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const listIntegrationAuthByProjectId = async ({ actorId, actor, actorOrgId, projectId }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const authorizations = await integrationAuthDAL.find({ projectId });
     return authorizations;
   };
 
-  const getIntegrationAuth = async ({ actor, id, actorId }: TGetIntegrationAuthDTO) => {
+  const getIntegrationAuth = async ({ actor, id, actorId, actorOrgId }: TGetIntegrationAuthDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     return integrationAuth;
   };
 
-  const oauthExchange = async ({ projectId, actorId, actor, integration, url, code }: TOauthExchangeDTO) => {
+  const oauthExchange = async ({
+    projectId,
+    actorId,
+    actor,
+    actorOrgId,
+    integration,
+    url,
+    code
+  }: TOauthExchangeDTO) => {
     if (!Object.values(Integrations).includes(integration as Integrations))
       throw new BadRequestError({ message: "Invalid integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
     const bot = await projectBotDAL.findOne({ isActive: true, projectId });
@@ -134,6 +149,7 @@ export const integrationAuthServiceFactory = ({
     integration,
     url,
     actor,
+    actorOrgId,
     accessId,
     namespace,
     accessToken
@@ -141,7 +157,7 @@ export const integrationAuthServiceFactory = ({
     if (!Object.values(Integrations).includes(integration as Integrations))
       throw new BadRequestError({ message: "Invalid integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
     const bot = await projectBotDAL.findOne({ isActive: true, projectId });
@@ -254,11 +270,23 @@ export const integrationAuthServiceFactory = ({
     return { accessId, accessToken };
   };
 
-  const getIntegrationApps = async ({ actor, actorId, teamId, id, workspaceSlug }: TIntegrationAuthAppsDTO) => {
+  const getIntegrationApps = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    teamId,
+    id,
+    workspaceSlug
+  }: TIntegrationAuthAppsDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
@@ -274,11 +302,16 @@ export const integrationAuthServiceFactory = ({
     return apps;
   };
 
-  const getIntegrationAuthTeams = async ({ actor, actorId, id }: TIntegrationAuthTeamsDTO) => {
+  const getIntegrationAuthTeams = async ({ actor, actorId, actorOrgId, id }: TIntegrationAuthTeamsDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
@@ -291,11 +324,16 @@ export const integrationAuthServiceFactory = ({
     return teams;
   };
 
-  const getVercelBranches = async ({ appId, id, actor, actorId }: TIntegrationAuthVercelBranchesDTO) => {
+  const getVercelBranches = async ({ appId, id, actor, actorId, actorOrgId }: TIntegrationAuthVercelBranchesDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
@@ -319,11 +357,16 @@ export const integrationAuthServiceFactory = ({
     return [];
   };
 
-  const getChecklyGroups = async ({ actorId, actor, id, accountId }: TIntegrationAuthChecklyGroupsDTO) => {
+  const getChecklyGroups = async ({ actorId, actor, actorOrgId, id, accountId }: TIntegrationAuthChecklyGroupsDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
@@ -340,11 +383,16 @@ export const integrationAuthServiceFactory = ({
     return [];
   };
 
-  const getQoveryOrgs = async ({ actorId, actor, id }: TIntegrationAuthQoveryOrgsDTO) => {
+  const getQoveryOrgs = async ({ actorId, actor, actorOrgId, id }: TIntegrationAuthQoveryOrgsDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
@@ -361,11 +409,16 @@ export const integrationAuthServiceFactory = ({
     return data.results.map(({ name, id: orgId }) => ({ name, orgId }));
   };
 
-  const getQoveryProjects = async ({ actorId, actor, id, orgId }: TIntegrationAuthQoveryProjectDTO) => {
+  const getQoveryProjects = async ({ actorId, actor, actorOrgId, id, orgId }: TIntegrationAuthQoveryProjectDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
@@ -384,11 +437,22 @@ export const integrationAuthServiceFactory = ({
     return [];
   };
 
-  const getQoveryEnvs = async ({ projectId, id, actor, actorId }: TIntegrationAuthQoveryEnvironmentsDTO) => {
+  const getQoveryEnvs = async ({
+    projectId,
+    id,
+    actor,
+    actorId,
+    actorOrgId
+  }: TIntegrationAuthQoveryEnvironmentsDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
@@ -412,11 +476,16 @@ export const integrationAuthServiceFactory = ({
     return [];
   };
 
-  const getQoveryApps = async ({ id, actor, actorId, environmentId }: TIntegrationAuthQoveryScopesDTO) => {
+  const getQoveryApps = async ({ id, actor, actorId, actorOrgId, environmentId }: TIntegrationAuthQoveryScopesDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
@@ -439,11 +508,22 @@ export const integrationAuthServiceFactory = ({
     return [];
   };
 
-  const getQoveryContainers = async ({ id, actor, actorId, environmentId }: TIntegrationAuthQoveryScopesDTO) => {
+  const getQoveryContainers = async ({
+    id,
+    actor,
+    actorId,
+    actorOrgId,
+    environmentId
+  }: TIntegrationAuthQoveryScopesDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
@@ -466,11 +546,16 @@ export const integrationAuthServiceFactory = ({
     return [];
   };
 
-  const getQoveryJobs = async ({ id, actor, actorId, environmentId }: TIntegrationAuthQoveryScopesDTO) => {
+  const getQoveryJobs = async ({ id, actor, actorId, actorOrgId, environmentId }: TIntegrationAuthQoveryScopesDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
@@ -493,11 +578,48 @@ export const integrationAuthServiceFactory = ({
     return [];
   };
 
-  const getRailwayEnvironments = async ({ id, actor, actorId, appId }: TIntegrationAuthRailwayEnvDTO) => {
+  const getHerokuPipelines = async ({ id, actor, actorId, actorOrgId }: TIntegrationAuthHerokuPipelinesDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+
+    const { data } = await request.get<THerokuPipelineCoupling[]>(
+      `${IntegrationUrls.HEROKU_API_URL}/pipeline-couplings`,
+      {
+        headers: {
+          Accept: "application/vnd.heroku+json; version=3",
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
+
+    return data.map(({ app: { id: appId }, stage, pipeline: { id: pipelineId, name } }) => ({
+      app: { appId },
+      stage,
+      pipeline: { pipelineId, name }
+    }));
+  };
+
+  const getRailwayEnvironments = async ({ id, actor, actorId, actorOrgId, appId }: TIntegrationAuthRailwayEnvDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
@@ -547,41 +669,35 @@ export const integrationAuthServiceFactory = ({
     }
     return [];
   };
-  const getRailwayServices = async ({ id, actor, actorId, appId }: TIntegrationAuthRailwayServicesDTO) => {
+
+  const getRailwayServices = async ({ id, actor, actorId, actorOrgId, appId }: TIntegrationAuthRailwayServicesDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
-    if (appId) {
+
+    if (appId && appId !== "") {
       const query = `
-     query project($id: String!) {
-        project(id: $id) {
-          createdAt
-          deletedAt
-          id
-          description
-          expiredAt
-          isPublic
-          isTempProject
-          isUpdatable
-          name
-          prDeploys
-          teamId
-          updatedAt
-          upstreamUrl
-		  services {
-			edges {
-				node {
-					id
-					name
-				}
-			}
-		  }
+        query project($id: String!) {
+          project(id: $id) {
+            services {
+                edges {
+                    node {
+                        id
+                        name
+                    }
+                }
+            }
+          }
         }
-      }
       `;
 
       const variables = {
@@ -617,14 +733,20 @@ export const integrationAuthServiceFactory = ({
       );
       return edges.map(({ node: { name, id: serviceId } }) => ({ name, serviceId }));
     }
+
     return [];
   };
 
-  const getBitbucketWorkspaces = async ({ actorId, actor, id }: TIntegrationAuthBitbucketWorkspaceDTO) => {
+  const getBitbucketWorkspaces = async ({ actorId, actor, actorOrgId, id }: TIntegrationAuthBitbucketWorkspaceDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
@@ -658,11 +780,22 @@ export const integrationAuthServiceFactory = ({
     return workspaces;
   };
 
-  const getNorthFlankSecretGroups = async ({ id, actor, actorId, appId }: TIntegrationAuthNorthflankSecretGroupDTO) => {
+  const getNorthFlankSecretGroups = async ({
+    id,
+    actor,
+    actorId,
+    actorOrgId,
+    appId
+  }: TIntegrationAuthNorthflankSecretGroupDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
@@ -713,11 +846,22 @@ export const integrationAuthServiceFactory = ({
     return secretGroups;
   };
 
-  const getTeamcityBuildConfigs = async ({ appId, id, actorId, actor }: TGetIntegrationAuthTeamCityBuildConfigDTO) => {
+  const getTeamcityBuildConfigs = async ({
+    appId,
+    id,
+    actorId,
+    actorOrgId,
+    actor
+  }: TGetIntegrationAuthTeamCityBuildConfigDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
@@ -742,19 +886,30 @@ export const integrationAuthServiceFactory = ({
     return [];
   };
 
-  const deleteIntegrationAuths = async ({ projectId, integration, actor, actorId }: TDeleteIntegrationAuthsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const deleteIntegrationAuths = async ({
+    projectId,
+    integration,
+    actor,
+    actorId,
+    actorOrgId
+  }: TDeleteIntegrationAuthsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
 
     const integrations = await integrationAuthDAL.delete({ integration, projectId });
     return integrations;
   };
 
-  const deleteIntegrationAuthById = async ({ id, actorId, actor }: TDeleteIntegrationAuthByIdDTO) => {
+  const deleteIntegrationAuthById = async ({ id, actorId, actor, actorOrgId }: TDeleteIntegrationAuthByIdDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, integrationAuth.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
 
     const delIntegrationAuth = await integrationAuthDAL.transaction(async (tx) => {
@@ -783,6 +938,7 @@ export const integrationAuthServiceFactory = ({
     getQoveryApps,
     getQoveryEnvs,
     getQoveryJobs,
+    getHerokuPipelines,
     getQoveryOrgs,
     getQoveryProjects,
     getQoveryContainers,

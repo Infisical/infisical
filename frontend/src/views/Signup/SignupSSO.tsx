@@ -16,7 +16,7 @@ export const SignupSSO = ({
     const [password, setPassword] = useState("");
 
     const {
-        email,
+        username,
         organizationName,
         firstName,
         lastName,
@@ -27,7 +27,7 @@ export const SignupSSO = ({
             case 0:
                 return (
                     <UserInfoSSOStep 
-                        email={email}
+                        username={username}
                         name={`${firstName} ${lastName}`}
                         providerOrganizationName={organizationName}
                         password={password}
@@ -39,7 +39,7 @@ export const SignupSSO = ({
             case 1:
                 return (
                     <BackupPDFStep 
-                        email={email}
+                        email={username}
                         password={password}
                         name={`${firstName} ${lastName}`}
                     />

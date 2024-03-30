@@ -4,6 +4,7 @@ import { TUsers, UserDeviceSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -38,17 +39,19 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     if (!isDeviceSeen) {
       const newDeviceList = devices.concat([{ ip, userAgent }]);
       await userDAL.updateById(user.id, { devices: JSON.stringify(newDeviceList) });
-      await smtpService.sendMail({
-        template: SmtpTemplates.NewDeviceJoin,
-        subjectLine: "Successful login from new device",
-        recipients: [user.email],
-        substitutions: {
-          email: user.email,
-          timestamp: new Date().toString(),
-          ip,
-          userAgent
-        }
-      });
+      if (user.email) {
+        await smtpService.sendMail({
+          template: SmtpTemplates.NewDeviceJoin,
+          subjectLine: "Successful login from new device",
+          recipients: [user.email],
+          substitutions: {
+            email: user.email,
+            timestamp: new Date().toString(),
+            ip,
+            userAgent
+          }
+        });
+      }
     }
   };
 
@@ -56,7 +59,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
    * Private
    * Send mfa code via email
    * */
-  const sendUserMfaCode = async (userId: string, email: string) => {
+  const sendUserMfaCode = async ({ userId, email }: { userId: string; email: string }) => {
     const code = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_MFA,
       userId
@@ -76,7 +79,17 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
    * Check user device and send mail if new device
    * generate the auth and refresh token. fn shared by mfa verification and login verification with mfa disabled
    */
-  const generateUserTokens = async (user: TUsers, ip: string, userAgent: string) => {
+  const generateUserTokens = async ({
+    user,
+    ip,
+    userAgent,
+    organizationId
+  }: {
+    user: TUsers;
+    ip: string;
+    userAgent: string;
+    organizationId?: string;
+  }) => {
     const cfg = getConfig();
     await updateUserDeviceSession(user, ip, userAgent);
     const tokenSession = await tokenService.getUserTokenSession({
@@ -90,7 +103,8 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: user.id,
         tokenVersionId: tokenSession.id,
-        accessVersion: tokenSession.accessVersion
+        accessVersion: tokenSession.accessVersion,
+        organizationId
       },
       cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_AUTH_LIFETIME }
@@ -101,7 +115,8 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: user.id,
         tokenVersionId: tokenSession.id,
-        refreshVersion: tokenSession.refreshVersion
+        refreshVersion: tokenSession.refreshVersion,
+        organizationId
       },
       cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_REFRESH_LIFETIME }
@@ -118,7 +133,9 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     providerAuthToken,
     clientPublicKey
   }: TLoginGenServerPublicKeyDTO) => {
-    const userEnc = await userDAL.findUserEncKeyByEmail(email);
+    const userEnc = await userDAL.findUserEncKeyByUsername({
+      username: email
+    });
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
       throw new Error("Failed to find  user");
     }
@@ -145,12 +162,20 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     ip,
     userAgent
   }: TLoginClientProofDTO) => {
-    const userEnc = await userDAL.findUserEncKeyByEmail(email);
+    const userEnc = await userDAL.findUserEncKeyByUsername({
+      username: email
+    });
     if (!userEnc) throw new Error("Failed to find user");
     const cfg = getConfig();
 
+    let organizationId;
     if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
-      validateProviderAuthToken(providerAuthToken as string, email);
+      const { orgId } = validateProviderAuthToken(providerAuthToken as string, email);
+      organizationId = orgId;
+    } else if (providerAuthToken) {
+      // SAML SSO
+      const { orgId } = validateProviderAuthToken(providerAuthToken, email);
+      organizationId = orgId;
     }
 
     if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey) throw new Error("Failed to authenticate. Try again?");
@@ -168,16 +193,37 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       clientPublicKey: null
     });
     // send multi factor auth token if they it enabled
-    if (userEnc.isMfaEnabled) {
-      const mfaToken = jwt.sign({ authTokenType: AuthTokenType.MFA_TOKEN, userId: userEnc.userId }, cfg.AUTH_SECRET, {
-        expiresIn: cfg.JWT_MFA_LIFETIME
+    if (userEnc.isMfaEnabled && userEnc.email) {
+      const mfaToken = jwt.sign(
+        {
+          authTokenType: AuthTokenType.MFA_TOKEN,
+          userId: userEnc.userId,
+          organizationId
+        },
+        cfg.AUTH_SECRET,
+        {
+          expiresIn: cfg.JWT_MFA_LIFETIME
+        }
+      );
+
+      await sendUserMfaCode({
+        userId: userEnc.userId,
+        email: userEnc.email
       });
-      await sendUserMfaCode(userEnc.userId, userEnc.email);
 
       return { isMfaEnabled: true, token: mfaToken } as const;
     }
 
-    const token = await generateUserTokens({ ...userEnc, id: userEnc.userId }, ip, userAgent);
+    const token = await generateUserTokens({
+      user: {
+        ...userEnc,
+        id: userEnc.userId
+      },
+      ip,
+      userAgent,
+      organizationId
+    });
+
     return { token, isMfaEnabled: false, user: userEnc } as const;
   };
 
@@ -187,15 +233,18 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
    */
   const resendMfaToken = async (userId: string) => {
     const user = await userDAL.findById(userId);
-    if (!user) return;
-    await sendUserMfaCode(user.id, user.email);
+    if (!user || !user.email) return;
+    await sendUserMfaCode({
+      userId: user.id,
+      email: user.email
+    });
   };
 
   /*
    * Multi factor authentication verification of code
    * Third step of login in which user completes with mfa
    * */
-  const verifyMfaToken = async ({ userId, mfaToken, ip, userAgent }: TVerifyMfaTokenDTO) => {
+  const verifyMfaToken = async ({ userId, mfaToken, ip, userAgent, orgId }: TVerifyMfaTokenDTO) => {
     await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_MFA,
       userId,
@@ -204,27 +253,49 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
     const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
 
-    const token = await generateUserTokens({ ...userEnc, id: userEnc.userId }, ip, userAgent);
+    const token = await generateUserTokens({
+      user: {
+        ...userEnc,
+        id: userEnc.userId
+      },
+      ip,
+      userAgent,
+      organizationId: orgId
+    });
+
     return { token, user: userEnc };
   };
   /*
    * OAuth2 login for google,github, and other oauth2 provider
    * */
-  const oauth2Login = async ({
-    email,
-    firstName,
-    lastName,
-    authMethod,
-    callbackPort,
-    isSignupAllowed
-  }: TOauthLoginDTO) => {
-    let user = await userDAL.findUserByEmail(email);
+  const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort }: TOauthLoginDTO) => {
+    let user = await userDAL.findUserByUsername(email);
+    const serverCfg = await getServerCfg();
+
     const appCfg = getConfig();
-    const isOauthSignUpDisabled = !isSignupAllowed && !user;
-    if (isOauthSignUpDisabled) throw new BadRequestError({ message: "User signup disabled", name: "Oauth 2 login" });
 
     if (!user) {
-      user = await userDAL.create({ email, firstName, lastName, authMethods: [authMethod] });
+      // Create a new user based on oAuth
+      if (!serverCfg?.allowSignUp) throw new BadRequestError({ message: "Sign up disabled", name: "Oauth 2 login" });
+
+      if (serverCfg?.allowedSignUpDomain) {
+        const domain = email.split("@")[1];
+        const allowedDomains = serverCfg.allowedSignUpDomain.split(",").map((e) => e.trim());
+        if (!allowedDomains.includes(domain))
+          throw new BadRequestError({
+            message: `Email with a domain (@${domain}) is not supported`,
+            name: "Oauth 2 login"
+          });
+      }
+
+      user = await userDAL.create({
+        username: email,
+        email,
+        firstName,
+        lastName,
+        authMethods: [authMethod],
+        isGhost: false
+      });
     }
     const isLinkingRequired = !user?.authMethods?.includes(authMethod);
     const isUserCompleted = user.isAccepted;
@@ -232,7 +303,7 @@ export const authLoginServiceFactory = ({ userDAL, tokenService, smtpService }: 
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
-        email: user.email,
+        username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,
         authMethod,

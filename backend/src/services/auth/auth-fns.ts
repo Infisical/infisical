@@ -5,13 +5,20 @@ import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { AuthModeProviderJwtTokenPayload, AuthModeProviderSignUpTokenPayload, AuthTokenType } from "./auth-type";
 
-export const validateProviderAuthToken = (providerToken: string, email: string) => {
+export const validateProviderAuthToken = (providerToken: string, username?: string) => {
   if (!providerToken) throw new UnauthorizedError();
   const appCfg = getConfig();
   const decodedToken = jwt.verify(providerToken, appCfg.AUTH_SECRET) as AuthModeProviderJwtTokenPayload;
 
   if (decodedToken.authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw new UnauthorizedError();
-  if (decodedToken.email !== email) throw new Error("Invalid auth credentials");
+
+  if (decodedToken.username !== username) throw new Error("Invalid auth credentials");
+
+  if (decodedToken.organizationId) {
+    return { orgId: decodedToken.organizationId };
+  }
+
+  return {};
 };
 
 export const validateSignUpAuthorization = (token: string, userId: string, validate = true) => {

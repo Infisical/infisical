@@ -48,6 +48,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await projectRouter.register(registerProjectMembershipRouter);
       await projectRouter.register(registerSecretTagRouter);
     },
+
     { prefix: "/workspace" }
   );
 

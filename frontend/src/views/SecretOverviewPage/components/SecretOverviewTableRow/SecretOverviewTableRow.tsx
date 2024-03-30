@@ -15,6 +15,7 @@ import { useToggle } from "@app/hooks";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 
 import { SecretEditRow } from "./SecretEditRow";
+import SecretRenameRow from "./SecretRenameRow";
 
 type Props = {
   secretKey: string;
@@ -105,6 +106,13 @@ export const SecretOverviewTableRow = ({
                 width: `calc(${expandableColWidth}px - 1rem)`
               }}
             >
+              <SecretRenameRow
+                secretKey={secretKey}
+                environments={environments}
+                secretPath={secretPath}
+                getSecretByKey={getSecretByKey}
+              />
+
               <TableContainer>
                 <table className="secret-table">
                   <thead>
@@ -140,8 +148,13 @@ export const SecretOverviewTableRow = ({
                           key={`secret-expanded-${slug}-${secretKey}`}
                           className="hover:bg-mineshaft-700"
                         >
-                          <td className="flex" style={{ padding: "0.25rem 1rem" }}>
-                            <div className="flex h-8 items-center">{name}</div>
+                          <td
+                            className="flex h-full items-center"
+                            style={{ padding: "0.25rem 1rem" }}
+                          >
+                            <div title={name} className="flex h-8 w-[8rem] items-center ">
+                              <span className="truncate">{name}</span>
+                            </div>
                           </td>
                           <td className="col-span-2 h-8 w-full">
                             <SecretEditRow

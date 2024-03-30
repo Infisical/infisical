@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  UserAliases = "user_aliases",
   UserEncryptionKey = "user_encryption_keys",
   AuthTokens = "auth_tokens",
   AuthTokenSession = "auth_token_sessions",
@@ -19,6 +20,7 @@ export enum TableName {
   Environment = "project_environments",
   ProjectMembership = "project_memberships",
   ProjectRoles = "project_roles",
+  ProjectUserMembershipRole = "project_user_membership_roles",
   ProjectKeys = "project_keys",
   Secret = "secrets",
   SecretBlindIndex = "secret_blind_indexes",
@@ -40,6 +42,8 @@ export enum TableName {
   IdentityUaClientSecret = "identity_ua_client_secrets",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
+  IdentityProjectMembershipRole = "identity_project_membership_role",
+  ScimToken = "scim_tokens",
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
   SecretApprovalRequest = "secret_approval_requests",
@@ -49,6 +53,7 @@ export enum TableName {
   SecretRotation = "secret_rotations",
   SecretRotationOutput = "secret_rotation_outputs",
   SamlConfig = "saml_configs",
+  LdapConfig = "ldap_configs",
   AuditLog = "audit_logs",
   GitAppInstallSession = "git_app_install_sessions",
   GitAppOrg = "git_app_org",
@@ -109,6 +114,17 @@ export enum SecretKeyEncoding {
 export enum SecretType {
   Shared = "shared",
   Personal = "personal"
+}
+
+export enum ProjectVersion {
+  V1 = 1,
+  V2 = 2
+}
+
+export enum ProjectUpgradeStatus {
+  InProgress = "IN_PROGRESS",
+  // Completed -> Will be null if completed. So a completed status is not needed
+  Failed = "FAILED"
 }
 
 export enum IdentityAuthMethod {

@@ -33,5 +33,5 @@ export const IntegrationAuthsSchema = z.object({
 });
 
 export type TIntegrationAuths = z.infer<typeof IntegrationAuthsSchema>;
-export type TIntegrationAuthsInsert = Omit<TIntegrationAuths, TImmutableDBKeys>;
-export type TIntegrationAuthsUpdate = Partial<Omit<TIntegrationAuths, TImmutableDBKeys>>;
+export type TIntegrationAuthsInsert = Omit<z.input<typeof IntegrationAuthsSchema>, TImmutableDBKeys>;
+export type TIntegrationAuthsUpdate = Partial<Omit<z.input<typeof IntegrationAuthsSchema>, TImmutableDBKeys>>;

@@ -1,6 +1,7 @@
 export type TServerConfig = {
   initialized: boolean;
   allowSignUp: boolean;
+  allowedSignUpDomain?: string | null;
   isMigrationModeOn?: boolean;
 };
 

@@ -3,9 +3,11 @@ import "fastify";
 import { TUsers } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
+import { TScimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { TSecretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
@@ -51,6 +53,7 @@ declare module "fastify" {
     // used for mfa session authentication
     mfa: {
       userId: string;
+      orgId?: string;
       user: TUsers;
     };
     // identity injection. depending on which kinda of token the information is filled in auth
@@ -58,6 +61,7 @@ declare module "fastify" {
     permission: {
       type: ActorType;
       id: string;
+      orgId?: string;
     };
     // passport data
     passportUser: {
@@ -66,6 +70,7 @@ declare module "fastify" {
     };
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
+    ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>>;
   }
 
   interface FastifyInstance {
@@ -103,6 +108,8 @@ declare module "fastify" {
       secretRotation: TSecretRotationServiceFactory;
       snapshot: TSecretSnapshotServiceFactory;
       saml: TSamlConfigServiceFactory;
+      scim: TScimServiceFactory;
+      ldap: TLdapConfigServiceFactory;
       auditLog: TAuditLogServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;

@@ -1,131 +1,109 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { ProjectVersion } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
-import {
-  decryptAsymmetric,
-  decryptSymmetric,
-  decryptSymmetric128BitHexKeyUTF8,
-  encryptSymmetric,
-  encryptSymmetric128BitHexKeyUTF8,
-  generateAsymmetricKeyPair
-} from "@app/lib/crypto";
+import { generateAsymmetricKeyPair } from "@app/lib/crypto";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
-import { TProjectPermission } from "@app/lib/types";
 
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotDALFactory } from "./project-bot-dal";
-import { TSetActiveStateDTO } from "./project-bot-types";
+import { getBotKeyFnFactory, getBotPrivateKey } from "./project-bot-fns";
+import { TFindBotByProjectIdDTO, TSetActiveStateDTO } from "./project-bot-types";
 
 type TProjectBotServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   projectBotDAL: TProjectBotDALFactory;
 };
 
 export type TProjectBotServiceFactory = ReturnType<typeof projectBotServiceFactory>;
 
-export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: TProjectBotServiceFactoryDep) => {
+export const projectBotServiceFactory = ({
+  projectBotDAL,
+  projectDAL,
+  permissionService
+}: TProjectBotServiceFactoryDep) => {
+  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL);
+
   const getBotKey = async (projectId: string) => {
-    const appCfg = getConfig();
-    const encryptionKey = appCfg.ENCRYPTION_KEY;
-    const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
-
-    const bot = await projectBotDAL.findOne({ projectId });
-    if (!bot) throw new BadRequestError({ message: "failed to find bot key" });
-    if (!bot.isActive) throw new BadRequestError({ message: "Bot is not active" });
-    if (!bot.encryptedProjectKeyNonce || !bot.encryptedProjectKey)
-      throw new BadRequestError({ message: "Encryption key missing" });
-
-    if (rootEncryptionKey && (bot.keyEncoding as SecretKeyEncoding) === SecretKeyEncoding.BASE64) {
-      const privateKeyBot = decryptSymmetric({
-        iv: bot.iv,
-        tag: bot.tag,
-        ciphertext: bot.encryptedPrivateKey,
-        key: rootEncryptionKey
-      });
-      return decryptAsymmetric({
-        ciphertext: bot.encryptedProjectKey,
-        privateKey: privateKeyBot,
-        nonce: bot.encryptedProjectKeyNonce,
-        publicKey: bot.sender.publicKey
-      });
-    }
-    if (encryptionKey && (bot.keyEncoding as SecretKeyEncoding) === SecretKeyEncoding.UTF8) {
-      const privateKeyBot = decryptSymmetric128BitHexKeyUTF8({
-        iv: bot.iv,
-        tag: bot.tag,
-        ciphertext: bot.encryptedPrivateKey,
-        key: encryptionKey
-      });
-      return decryptAsymmetric({
-        ciphertext: bot.encryptedProjectKey,
-        privateKey: privateKeyBot,
-        nonce: bot.encryptedProjectKeyNonce,
-        publicKey: bot.sender.publicKey
-      });
-    }
-
-    throw new BadRequestError({
-      message: "Failed to obtain bot copy of workspace key needed for operation"
-    });
+    return getBotKeyFn(projectId);
   };
 
-  const findBotByProjectId = async ({ actorId, actor, projectId }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const findBotByProjectId = async ({
+    actorId,
+    actor,
+    projectId,
+    actorOrgId,
+    privateKey,
+    botKey,
+    publicKey
+  }: TFindBotByProjectIdDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const appCfg = getConfig();
 
     const bot = await projectBotDAL.transaction(async (tx) => {
       const doc = await projectBotDAL.findOne({ projectId }, tx);
       if (doc) return doc;
 
-      const { publicKey, privateKey } = generateAsymmetricKeyPair();
-      if (appCfg.ROOT_ENCRYPTION_KEY) {
-        const { iv, tag, ciphertext } = encryptSymmetric(privateKey, appCfg.ROOT_ENCRYPTION_KEY);
-        return projectBotDAL.create(
-          {
-            name: "Infisical Bot",
-            projectId,
-            tag,
-            iv,
-            encryptedPrivateKey: ciphertext,
-            isActive: false,
-            publicKey,
-            algorithm: SecretEncryptionAlgo.AES_256_GCM,
-            keyEncoding: SecretKeyEncoding.BASE64
-          },
-          tx
-        );
+      const keys = privateKey && publicKey ? { privateKey, publicKey } : generateAsymmetricKeyPair();
+
+      const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(keys.privateKey);
+
+      const project = await projectDAL.findById(projectId, tx);
+
+      if (project.version === ProjectVersion.V2) {
+        throw new BadRequestError({ message: "Failed to create bot, project is upgraded." });
       }
-      if (appCfg.ENCRYPTION_KEY) {
-        const { iv, tag, ciphertext } = encryptSymmetric128BitHexKeyUTF8(privateKey, appCfg.ENCRYPTION_KEY);
-        return projectBotDAL.create(
-          {
-            name: "Infisical Bot",
-            projectId,
-            tag,
-            iv,
-            encryptedPrivateKey: ciphertext,
-            isActive: false,
-            publicKey,
-            algorithm: SecretEncryptionAlgo.AES_256_GCM,
-            keyEncoding: SecretKeyEncoding.UTF8
-          },
-          tx
-        );
-      }
-      throw new BadRequestError({ message: "Failed to create bot due to missing encryption key" });
+
+      return projectBotDAL.create(
+        {
+          name: "Infisical Bot",
+          projectId,
+          tag,
+          iv,
+          encryptedPrivateKey: ciphertext,
+          isActive: false,
+          publicKey: keys.publicKey,
+          algorithm,
+          keyEncoding: encoding,
+          ...(botKey && {
+            encryptedProjectKey: botKey.encryptedKey,
+            encryptedProjectKeyNonce: botKey.nonce
+          })
+        },
+        tx
+      );
     });
     return bot;
   };
 
-  const setBotActiveState = async ({ actor, botId, botKey, actorId, isActive }: TSetActiveStateDTO) => {
+  const findProjectByBotId = async (botId: string) => {
+    try {
+      const bot = await projectBotDAL.findProjectByBotId(botId);
+      return bot;
+    } catch (e) {
+      throw new BadRequestError({ message: "Failed to find bot by ID" });
+    }
+  };
+
+  const setBotActiveState = async ({ actor, botId, botKey, actorId, actorOrgId, isActive }: TSetActiveStateDTO) => {
     const bot = await projectBotDAL.findById(botId);
     if (!bot) throw new BadRequestError({ message: "Bot not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, bot.projectId);
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, bot.projectId, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
+
+    const project = await projectBotDAL.findProjectByBotId(botId);
+
+    if (!project) {
+      throw new BadRequestError({ message: "Failed to find project by bot ID" });
+    }
+
+    if (project.version === ProjectVersion.V2) {
+      throw new BadRequestError({ message: "Failed to set bot active for upgraded project. Bot is already active" });
+    }
 
     if (isActive) {
       if (!botKey?.nonce || !botKey?.encryptedKey) {
@@ -153,6 +131,8 @@ export const projectBotServiceFactory = ({ projectBotDAL, permissionService }: T
   return {
     findBotByProjectId,
     setBotActiveState,
+    getBotPrivateKey,
+    findProjectByBotId,
     getBotKey
   };
 };

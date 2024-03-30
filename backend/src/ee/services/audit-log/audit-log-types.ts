@@ -15,7 +15,7 @@ export type TListProjectAuditLogDTO = {
 
 export type TCreateAuditLogDTO = {
   event: Event;
-  actor: UserActor | IdentityActor | ServiceActor;
+  actor: UserActor | IdentityActor | ServiceActor | ScimClientActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -92,7 +92,8 @@ export enum EventType {
 
 interface UserActorMetadata {
   userId: string;
-  email: string;
+  email?: string | null;
+  username: string;
 }
 
 interface ServiceActorMetadata {
@@ -104,6 +105,8 @@ interface IdentityActorMetadata {
   identityId: string;
   name: string;
 }
+
+interface ScimClientActorMetadata {}
 
 export interface UserActor {
   type: ActorType.USER;
@@ -120,7 +123,12 @@ export interface IdentityActor {
   metadata: IdentityActorMetadata;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor;
+export interface ScimClientActor {
+  type: ActorType.SCIM_CLIENT;
+  metadata: ScimClientActorMetadata;
+}
+
+export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;

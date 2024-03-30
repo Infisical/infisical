@@ -59,7 +59,8 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		infisicalToken, err := cmd.Flags().GetString("token")
+		infisicalToken, err := util.GetInfisicalServiceToken(cmd)
+
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -87,16 +88,14 @@ var exportCmd = &cobra.Command{
 
 		var output string
 		if shouldExpandSecrets {
-			substitutions := util.ExpandSecrets(secrets, infisicalToken, "")
-			output, err = formatEnvs(substitutions, format)
-			if err != nil {
-				util.HandleError(err)
-			}
-		} else {
-			output, err = formatEnvs(secrets, format)
-			if err != nil {
-				util.HandleError(err)
-			}
+			secrets = util.ExpandSecrets(secrets, models.ExpandSecretsAuthentication{
+				InfisicalToken: infisicalToken,
+			}, "")
+		}
+		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
+		output, err = formatEnvs(secrets, format)
+		if err != nil {
+			util.HandleError(err)
 		}
 
 		fmt.Print(output)

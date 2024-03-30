@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SuperAdminSchema, UsersSchema } from "@app/db/schemas";
+import { OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
@@ -16,12 +16,12 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          config: SuperAdminSchema
+          config: SuperAdminSchema.omit({ createdAt: true, updatedAt: true })
         })
       }
     },
-    handler: () => {
-      const config = getServerCfg();
+    handler: async () => {
+      const config = await getServerCfg();
       return { config };
     }
   });
@@ -31,7 +31,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     schema: {
       body: z.object({
-        allowSignUp: z.boolean().optional()
+        allowSignUp: z.boolean().optional(),
+        allowedSignUpDomain: z.string().optional().nullable()
       }),
       response: {
         200: z.object({
@@ -72,26 +73,29 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           message: z.string(),
           user: UsersSchema,
-          token: z.string()
+          organization: OrganizationsSchema,
+          token: z.string(),
+          new: z.string()
         })
       }
     },
     handler: async (req, res) => {
       const appCfg = getConfig();
-      const serverCfg = getServerCfg();
+      const serverCfg = await getServerCfg();
       if (serverCfg.initialized)
         throw new UnauthorizedError({ name: "Admin sign up", message: "Admin has been created" });
-      const { user, token } = await server.services.superAdmin.adminSignUp({
+      const { user, token, organization } = await server.services.superAdmin.adminSignUp({
         ...req.body,
         ip: req.realIp,
         userAgent: req.headers["user-agent"] || ""
       });
 
-      server.services.telemetry.sendPostHogEvents({
+      await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.AdminInit,
-        distinctId: user.user.email,
+        distinctId: user.user.username ?? "",
         properties: {
-          email: user.user.email,
+          username: user.user.username,
+          email: user.user.email ?? "",
           lastName: user.user.lastName || "",
           firstName: user.user.firstName || ""
         }
@@ -107,7 +111,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       return {
         message: "Successfully set up admin account",
         user: user.user,
-        token: token.access
+        token: token.access,
+        organization,
+        new: "123"
       };
     }
   });

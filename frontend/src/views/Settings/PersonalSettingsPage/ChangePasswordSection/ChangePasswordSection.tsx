@@ -48,8 +48,6 @@ export const ChangePasswordSection = () => {
 
   const onFormSubmit = async ({ oldPassword, newPassword }: FormData) => {
     try {
-      if (!user?.email) return;
-
       const errorCheck = await checkPassword({
         password: newPassword,
         setErrors
@@ -59,7 +57,7 @@ export const ChangePasswordSection = () => {
 
       setIsLoading(true);
       await attemptChangePassword({
-        email: user.email,
+        email: user.username,
         currentPassword: oldPassword,
         newPassword
       });

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/Infisical/infisical-merge/packages/models"
+	"github.com/spf13/cobra"
 )
 
 type DecodedSymmetricEncryptionDetails = struct {
@@ -63,6 +64,20 @@ func IsSecretTypeValid(s string) bool {
 	return false
 }
 
+func GetInfisicalServiceToken(cmd *cobra.Command) (serviceToken string, err error) {
+	infisicalToken, err := cmd.Flags().GetString("token")
+
+	if infisicalToken == "" {
+		infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	return infisicalToken, nil
+}
+
 // Checks if the passed in email already exists in the users slice
 func ConfigContainsEmail(users []models.LoggedInUser, email string) bool {
 	for _, value := range users {
@@ -80,6 +95,11 @@ func RequireLogin() {
 	if configFile.LoggedInUserEmail == "" {
 		PrintErrorMessageAndExit("You must be logged in to run this command. To login, run [infisical login]")
 	}
+}
+
+func IsLoggedIn() bool {
+	configFile, _ := GetConfigFile()
+	return configFile.LoggedInUserEmail != ""
 }
 
 func RequireServiceToken() {

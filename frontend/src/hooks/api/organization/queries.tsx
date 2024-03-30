@@ -12,8 +12,8 @@ import {
   PlanBillingInfo,
   PmtMethod,
   ProductsTable,
-  RenameOrgDTO,
-  TaxID
+  TaxID,
+  UpdateOrgDTO
 } from "./types";
 
 export const organizationKeys = {
@@ -65,12 +65,22 @@ export const useCreateOrg = () => {
   });
 };
 
-export const useRenameOrg = () => {
+export const useUpdateOrg = () => {
   const queryClient = useQueryClient();
-
-  return useMutation<{}, {}, RenameOrgDTO>({
-    mutationFn: ({ newOrgName, orgId }) => {
-      return apiRequest.patch(`/api/v1/organization/${orgId}/name`, { name: newOrgName });
+  return useMutation<{}, {}, UpdateOrgDTO>({
+    mutationFn: ({ 
+      name, 
+      authEnforced,
+      scimEnabled,
+      slug,
+      orgId 
+    }) => {
+      return apiRequest.patch(`/api/v1/organization/${orgId}`, { 
+        name, 
+        authEnforced,
+        scimEnabled,
+        slug
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries(organizationKeys.getUserOrganizations);

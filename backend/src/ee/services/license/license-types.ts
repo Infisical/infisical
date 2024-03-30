@@ -25,6 +25,8 @@ export type TFeatureSet = {
   auditLogs: false;
   auditLogsRetentionDays: 0;
   samlSSO: false;
+  scim: false;
+  ldap: false;
   status: null;
   trial_end: null;
   has_used_trial: true;

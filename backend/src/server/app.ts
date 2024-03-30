@@ -14,10 +14,10 @@ import fasitfy from "fastify";
 import { Knex } from "knex";
 import { Logger } from "pino";
 
+import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
-
-import { getConfig } from "@lib/config/env";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { fastifyErrHandler } from "./plugins/error-handler";
@@ -32,14 +32,16 @@ type TMain = {
   smtp: TSmtpService;
   logger?: Logger;
   queue: TQueueServiceFactory;
+  keyStore: TKeyStoreFactory;
 };
 
 // Run the server!
-export const main = async ({ db, smtp, logger, queue }: TMain) => {
+export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
   const appCfg = getConfig();
   const server = fasitfy({
-    logger,
+    logger: appCfg.NODE_ENV === "test" ? false : logger,
     trustProxy: true,
+    connectionTimeout: 30 * 1000,
     ignoreTrailingSlash: true
   }).withTypeProvider<ZodTypeProvider>();
 
@@ -70,12 +72,12 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
     }
     await server.register(helmet, { contentSecurityPolicy: false });
 
-    await server.register(registerRoutes, { smtp, queue, db });
+    await server.register(registerRoutes, { smtp, queue, db, keyStore });
 
     if (appCfg.isProductionMode) {
       await server.register(registerExternalNextjs, {
         standaloneMode: appCfg.STANDALONE_MODE,
-        dir: path.join(__dirname, "../"),
+        dir: path.join(__dirname, "../../"),
         port: appCfg.PORT
       });
     }

@@ -62,7 +62,7 @@ export const IntegrationsSection = ({
               <Link href={`/project/${workspaceId}/settings`} passHref>
                 <a className="underline underline-offset-2">project settings </a>
               </Link>
-              to re-enable it .
+              to re-enable it.
             </AlertDescription>
           </Alert>
         </div>
@@ -80,7 +80,7 @@ export const IntegrationsSection = ({
         <div className="flex flex-col space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
             <div
-              className="max-w-8xl flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 pb-2"
+              className="max-w-8xl flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3 pb-0"
               key={`integration-${integration?.id.toString()}`}
             >
               <div className="flex">

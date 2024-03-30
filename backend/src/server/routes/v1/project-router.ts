@@ -2,13 +2,11 @@ import { z } from "zod";
 
 import {
   IntegrationsSchema,
-  ProjectKeysSchema,
   ProjectMembershipsSchema,
   ProjectsSchema,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -46,6 +44,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const publicKeys = await server.services.projectKey.getProjectPublicKeys({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId
       });
       return { publicKeys };
@@ -61,16 +60,32 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          users: ProjectMembershipsSchema.merge(
-            z.object({
-              user: UsersSchema.pick({
-                email: true,
-                firstName: true,
-                lastName: true,
-                id: true
-              }).merge(UserEncryptionKeysSchema.pick({ publicKey: true }))
-            })
-          )
+          users: ProjectMembershipsSchema.omit({ role: true })
+            .merge(
+              z.object({
+                user: UsersSchema.pick({
+                  username: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                  id: true
+                }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+                roles: z.array(
+                  z.object({
+                    id: z.string(),
+                    role: z.string(),
+                    customRoleId: z.string().optional().nullable(),
+                    customRoleName: z.string().optional().nullable(),
+                    customRoleSlug: z.string().optional().nullable(),
+                    isTemporary: z.boolean(),
+                    temporaryMode: z.string().optional().nullable(),
+                    temporaryRange: z.string().nullable().optional(),
+                    temporaryAccessStartTime: z.date().nullable().optional(),
+                    temporaryAccessEndTime: z.date().nullable().optional()
+                  })
+                )
+              })
+            )
             .omit({ createdAt: true, updatedAt: true })
             .array()
         })
@@ -81,7 +96,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const users = await server.services.projectMembership.getProjectMemberships({
         actorId: req.permission.id,
         actor: req.permission.type,
-        projectId: req.params.workspaceId
+        projectId: req.params.workspaceId,
+        actorOrgId: req.permission.orgId
       });
       return { users };
     }
@@ -117,11 +133,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspace = await server.services.project.getAProject({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId
       });
       return { workspace };
@@ -148,6 +165,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         orgId: req.body.organizationId,
+        actorOrgId: req.permission.orgId,
         workspaceName: req.body.workspaceName
       });
       return { workspace };
@@ -167,11 +185,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspace = await server.services.project.deleteProject({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId
       });
       return { workspace };
@@ -200,11 +219,47 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const workspace = await server.services.project.updateName({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         name: req.body.name
       });
       return {
         message: "Successfully changed workspace name",
+        workspace
+      };
+    }
+  });
+
+  server.route({
+    url: "/:workspaceId",
+    method: "PATCH",
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        name: z.string().trim().max(64, { message: "Name must be 64 or fewer characters" }).optional(),
+        autoCapitalization: z.boolean().optional()
+      }),
+      response: {
+        200: z.object({
+          workspace: ProjectsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const workspace = await server.services.project.updateProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        update: {
+          name: req.body.name,
+          autoCapitalization: req.body.autoCapitalization
+        }
+      });
+      return {
         workspace
       };
     }
@@ -232,6 +287,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const workspace = await server.services.project.toggleAutoCapitalization({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         autoCapitalization: req.body.autoCapitalization
       });
@@ -239,47 +295,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         message: "Successfully changed workspace settings",
         workspace
       };
-    }
-  });
-
-  server.route({
-    url: "/:workspaceId/invite-signup",
-    method: "POST",
-    schema: {
-      params: z.object({
-        workspaceId: z.string().trim()
-      }),
-      body: z.object({
-        email: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          invitee: UsersSchema,
-          latestKey: ProjectKeysSchema.optional()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const { invitee, latestKey } = await server.services.projectMembership.inviteUserToProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        projectId: req.params.workspaceId,
-        email: req.body.email
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
-        event: {
-          type: EventType.ADD_WORKSPACE_MEMBER,
-          metadata: {
-            userId: invitee.id,
-            email: invitee.email
-          }
-        }
-      });
-      return { invitee, latestKey };
     }
   });
 
@@ -309,6 +324,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const integrations = await server.services.integration.listIntegrationByProject({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId
       });
       return { integrations };
@@ -333,6 +349,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const authorizations = await server.services.integrationAuth.listIntegrationAuthByProjectId({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId
       });
       return { authorizations };
@@ -357,6 +374,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       const serviceTokenData = await server.services.serviceToken.getProjectServiceTokens({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId
       });
       return { serviceTokenData };

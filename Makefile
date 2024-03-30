@@ -5,16 +5,13 @@ push:
 	docker-compose -f docker-compose.yml push
 
 up-dev:
-	docker-compose -f docker-compose.dev.yml up --build
+	docker compose -f docker-compose.dev.yml up --build
 
-up-pg-dev:
-	docker compose -f docker-compose.pg.yml up --build
-
-i-dev:
-	infisical run -- docker-compose -f docker-compose.dev.yml up --build
+up-dev-ldap:
+	docker compose -f docker-compose.dev.yml --profile ldap up --build
 
 up-prod:
-	docker-compose -f docker-compose.yml up --build
+	docker-compose -f docker-compose.prod.yml up --build
 
 down:
-	docker-compose down
+	docker compose -f docker-compose.dev.yml down

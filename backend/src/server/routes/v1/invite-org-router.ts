@@ -1,8 +1,10 @@
 import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -26,7 +28,17 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       const completeInviteLink = await server.services.org.inviteUserToOrganization({
         orgId: req.body.organizationId,
         userId: req.permission.id,
-        inviteeEmail: req.body.inviteeEmail
+        inviteeEmail: req.body.inviteeEmail,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.UserOrgInvitation,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          inviteeEmail: req.body.inviteeEmail,
+          ...req.auditLogInfo
+        }
       });
 
       return {

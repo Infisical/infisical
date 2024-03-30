@@ -1,4 +1,6 @@
 import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
@@ -13,37 +15,61 @@ type TSuperAdminServiceFactoryDep = {
   userDAL: TUserDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
-let serverCfg: Readonly<TSuperAdmin>;
-export const getServerCfg = () => {
-  if (!serverCfg) throw new BadRequestError({ name: "Get server cfg", message: "Server cfg not initialized" });
-  return serverCfg;
-};
+// eslint-disable-next-line
+export let getServerCfg: () => Promise<TSuperAdmin>;
+
+const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
+const ADMIN_CONFIG_KEY_EXP = 60; // 60s
+const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
 
 export const superAdminServiceFactory = ({
   serverCfgDAL,
   userDAL,
   authService,
-  orgService
+  orgService,
+  keyStore
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
-    serverCfg = await serverCfgDAL.findOne({});
-    if (!serverCfg) {
-      const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true });
-      serverCfg = newCfg;
-      return newCfg;
-    }
-    return serverCfg;
+    // TODO(akhilmhdh): bad  pattern time less change this later to me itself
+    getServerCfg = async () => {
+      const config = await keyStore.getItem(ADMIN_CONFIG_KEY);
+      // missing in keystore means fetch from db
+      if (!config) {
+        const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+        if (serverCfg) {
+          await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
+        }
+        return serverCfg;
+      }
+
+      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin;
+      return {
+        ...keyStoreServerCfg,
+        // this is to allow admin router to work
+        createdAt: new Date(keyStoreServerCfg.createdAt),
+        updatedAt: new Date(keyStoreServerCfg.updatedAt)
+      };
+    };
+
+    // reset on initialized
+    await keyStore.deleteItem(ADMIN_CONFIG_KEY);
+    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+    if (serverCfg) return;
+
+    // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+    const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true, id: ADMIN_CONFIG_DB_UUID });
+    return newCfg;
   };
 
   const updateServerCfg = async (data: TSuperAdminUpdate) => {
-    const cfg = await serverCfgDAL.updateById(serverCfg.id, data);
-    serverCfg = cfg;
-    Object.freeze(serverCfg);
-    return cfg;
+    const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, data);
+    await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
+    return updatedServerCfg;
   };
 
   const adminSignUp = async ({
@@ -62,6 +88,7 @@ export const superAdminServiceFactory = ({
     ip,
     userAgent
   }: TAdminSignUpDTO) => {
+    const appCfg = getConfig();
     const existingUser = await userDAL.findOne({ email });
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
 
@@ -70,8 +97,10 @@ export const superAdminServiceFactory = ({
         {
           firstName,
           lastName,
+          username: email,
           email,
           superAdmin: true,
+          isGhost: false,
           isAccepted: true,
           authMethods: [AuthMethod.EMAIL]
         },
@@ -95,12 +124,24 @@ export const superAdminServiceFactory = ({
       );
       return { user: newUser, enc: userEnc };
     });
-    await orgService.createOrganization(userInfo.user.id, userInfo.user.email, "Admin Org");
+
+    const initialOrganizationName = appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
+
+    const organization = await orgService.createOrganization({
+      userId: userInfo.user.id,
+      userEmail: userInfo.user.email,
+      orgName: initialOrganizationName
+    });
 
     await updateServerCfg({ initialized: true });
-    const token = await authService.generateUserTokens(userInfo.user, ip, userAgent);
+    const token = await authService.generateUserTokens({
+      user: userInfo.user,
+      ip,
+      userAgent,
+      organizationId: undefined
+    });
     // TODO(akhilmhdh-pg): telemetry service
-    return { token, user: userInfo };
+    return { token, user: userInfo, organization };
   };
 
   return {

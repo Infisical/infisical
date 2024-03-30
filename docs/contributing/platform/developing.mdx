@@ -11,42 +11,7 @@ import Contributing from "/snippets/contributing.mdx";
 
 ## Set up environment variables
 
-Start by creating a `.env` file at the root of the Infisical directory then copy the contents of the file below to it.
-
-<Warning>
-The pre-populated environment variable values above are meant to be used in development only. They should never be used in production.
-</Warning>
-
-<Accordion title=".env file content">
-  ```sh 
-  # Keys (required key for platform encryption/decryption ops)
-  ENCRYPTION_KEY=6c1fe4e407b8911c104518103505b218
-
-  # JWT (required secrets to sign JWT tokens)
-  AUTH_SECRET=5lrMXKKWCVocS/uerPsl7V+TX/aaUaI7iDkgl3tSmLE=
-
-  # Postgres (required)
-  DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
-  POSTGRES_PASSWORD=infisical
-  POSTGRES_USER=infisical
-  POSTGRES_DB=infisical
-
-  # Redis (required)
-  REDIS_URL=redis://redis:6379
-
-  # Website URL (required)
-  SITE_URL=http://localhost:8080
-
-  # Mail/SMTP
-  SMTP_HOST='smtp-server'
-  SMTP_PORT='1025'
-  SMTP_NAME='local'
-  SMTP_USERNAME='team@infisical.com'
-  SMTP_PASSWORD=
-  ```
-</Accordion>
-
-View all available [environment variables](https://infisical.com/docs/self-hosting/configuration/envars) and guidance for each.
+Start by creating a `.env` file at the root of the Infisical directory then copy its contents linked [here](https://github.com/Infisical/infisical/blob/main/.env.example). View all available [environment variables](https://infisical.com/docs/self-hosting/configuration/envars) and guidance for each.
 
 ## Starting Infisical for development
 
@@ -64,7 +29,7 @@ You need to have at least the below tools installed on your machine
 
 ```sh
 docker-compose -f docker-compose.dev.yml up --build --force-recreate
-````
+```
 
 ### Access local server
 
