@@ -150,6 +150,7 @@
             "documentation/platform/dynamic-secrets/postgresql"
           ]
         },
+        "documentation/platform/groups",
         {
           "group": "SSO",
           "pages": [
