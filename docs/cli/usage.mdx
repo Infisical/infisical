@@ -3,6 +3,8 @@ title: "Quick usage"
 description: "Manage secrets with Infisical CLI"
 ---
 
+import DisableTelemetry from "/snippets/disable-telemetry.mdx";
+
 The CLI is designed for a variety of applications, ranging from local secret management to CI/CD and production scenarios. 
 The distinguishing factor, however, is the authentication method used.
 
@@ -10,7 +12,7 @@ The distinguishing factor, however, is the authentication method used.
   <Tab title="Local development only">
     To use the Infisical CLI in your local development environment, simply run the command below and follow the interactive guide. 
 
-    ```bash 
+    ```sh 
     infisical login 
     ```
 
@@ -20,7 +22,7 @@ The distinguishing factor, however, is the authentication method used.
 
     ## Initialize Infisical for your project
 
-    ```bash
+    ```sh
     # navigate to your project
     cd /path/to/project
 
@@ -60,7 +62,7 @@ The distinguishing factor, however, is the authentication method used.
 ## Inject environment variables
 <Tabs>
   <Tab title="Feed secrets to your application">
-    ```bash
+    ```sh
     infisical run --env=dev --path=/apps/firefly -- [your application start command]
 
     # example with node (nodemon)
@@ -75,7 +77,7 @@ The distinguishing factor, however, is the authentication method used.
   </Tab>
   <Tab title="Feed secrets via custom aliases (advanced)">
     Custom aliases can utilize secrets from Infisical. Suppose there is a custom alias `yd` in `custom.sh` that runs `yarn dev` and needs the secrets provided by Infisical.
-    ```bash
+    ```sh
     #!/bin/sh
 
     yd() {
@@ -85,7 +87,7 @@ The distinguishing factor, however, is the authentication method used.
 
     To make the secrets available from Infisical to `yd`, you can run the following command:
 
-    ```bash
+    ```sh
     infisical run --env=prod --path=/apps/reddit --command="source custom.sh && yd"
     ```
   </Tab>
@@ -106,7 +108,7 @@ You can point the CLI to the self hosted Infisical instance by exporting the env
 
 <Tabs>
   <Tab title="Linux/MacOs">
-		```bash
+		```sh
 		# Set backend host 
 		export INFISICAL_API_URL="https://your-self-hosted-infisical.com/api"
 
@@ -115,7 +117,7 @@ You can point the CLI to the self hosted Infisical instance by exporting the env
 		```
   </Tab>
   <Tab title="Windows Powershell">
-		```bash
+		```sh
 		# Set backend host 
 		setx INFISICAL_API_URL "https://your-self-hosted-infisical.com/api"
 
@@ -130,7 +132,7 @@ You can point the CLI to the self hosted Infisical instance by exporting the env
 #### Method 3: Set manually on every command
 Another option to point the CLI to your self hosted Infisical instance is to set it via a flag on every command you run.
 
-```bash 
+```sh 
 # Example
 infisical <any-command> --domain="https://your-self-hosted-infisical.com/api"
 ```
@@ -140,50 +142,7 @@ infisical <any-command> --domain="https://your-self-hosted-infisical.com/api"
 
 Infisical collects non-sensitive aggregated CLI usage data to improve its products. Infisical collects this information by default, but you can disable this data collection at any time.
 
-<Accordion title="Disable telemetry">
-
-#### Command-line parameter
-
-```bash
-infisical --no-telemetry <your-command>
-```
-
-#### Globally
-
-<Tabs>
-   <Tab title="Unix/Linux">
-      <Tip>
-        `$HOME/.profile` is pretty common but, you could place it under `$HOME/.profile.d/infisical.sh` or any profile file run at login 
-      </Tip>
-
-      ```bash
-      cat <<EOF >> $HOME/.profile && source $HOME/.profile
-
-      # Disabling Infisical CLI telemetry
-      export INFISICAL_DISABLE_TELEMETRY=true
-      EOF
-      ```
-
-   </Tab>
-   <Tab title="Windows">
-      <Warning>
-        You might need to open the console as **administrator** !
-      </Warning>
-
-      ```bash
-      # Default terminal or Windows Powershell
-      setx INFISICAL_DISABLE_TELEMETRY "true"
-      ```
-
-      ```powershell
-      # Windows Powershell
-      [System.Environment]::SetEnvironmentVariable('INFISICAL_DISABLE_TELEMETRY','true', 'User')
-      ```
-
-   </Tab>
-</Tabs>
-
-</Accordion>
+<DisableTelemetry />
 
 More about telemetry usage and data [here](./telemetry)
 
@@ -201,7 +160,7 @@ For security and privacy concerns, we recommend you to configure your terminal t
         `$HOME/.profile` is pretty common but, you could place it under `$HOME/.profile.d/infisical.sh` or any profile file run at login 
       </Tip>
 
-      ```bash
+      ```sh
       cat <<EOF >> $HOME/.profile && source $HOME/.profile
       # Ignoring specific Infisical CLI commands
       DEFAULT_HISTIGNORE=$HISTIGNORE
