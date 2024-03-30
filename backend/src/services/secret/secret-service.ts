@@ -472,6 +472,8 @@ export const secretServiceFactory = ({
       });
 
       if (!deepPaths) return { secrets: [], imports: [] };
+
+      paths = deepPaths.map(({ folderId, path: p }) => ({ folderId, path: p }));
     } else {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Read,
