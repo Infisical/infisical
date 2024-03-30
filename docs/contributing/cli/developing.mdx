@@ -1,0 +1,76 @@
+---
+title: "Local development"
+description: "This guide will help you set up and run the Infisical CLI in local development."
+---
+
+import SetupFork from "/snippets/setup-fork.mdx";
+import SetupMintlify from "/snippets/setup-mintlify.mdx";
+import Contributing from "/snippets/contributing.mdx";
+
+<SetupFork />
+
+## Golang installation
+
+Our CLI is written in Go. You'll need to install it and know the basics if you want to interact with it. If you're not yet familiar with Go, here's a [guide](https://go.dev/doc/tutorial/getting-started)
+
+1. Install `go` (https://go.dev/doc/install)
+
+<Note>
+	Note that the below installation methods may not always provide the latest
+	version. But it's easier to get started with `go` that way
+</Note>
+
+### brew
+
+```sh
+# install `go` using brew
+brew install go
+go version
+```
+
+### deb
+
+```sh
+# install `go` using apt
+sudo apt update
+sudo apt upgrade
+sudo apt install -y golang
+go version
+```
+
+### snap
+
+```sh
+# install `go` using snap
+sudo snap install go --classic
+go version
+```
+
+### choco (powershell)
+
+```sh
+# install `go` using choco
+choco install golang
+go version
+```
+
+## Local setup
+
+1. Go to the `cli/` subfolder
+2. Build the binary to see if everything works as expected
+   1. `go build`
+3. If you don't see any error message, then you're ready to `go` :)
+4. To test the local CLI : `go run . <sub-command> <options>`
+   1. If your IDE supports it, you can also take advantage over the debugging and building functionalities
+      1. [VSCode](https://code.visualstudio.com/docs/languages/go)
+      2. [JetBrains Suite](https://www.jetbrains.com/go/)
+
+<Warning>
+	To work with a self-hosted infisical instance, you'll have to follow this
+	guide first and then configure the environment variable `INFISICAL_API_URL` to
+	your localhost (e.g. `INFISICAL_API_URL=http://localhost/api`)
+</Warning>
+
+<SetupMintlify />
+
+<Contributing />

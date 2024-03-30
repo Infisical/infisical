@@ -467,11 +467,17 @@
           ]
         },
         {
-            "group": "Contributing to SDK",
-            "pages": [
-              "contributing/sdk/developing"
-            ]
-          }
+          "group": "Contributing to SDK",
+          "pages": [
+            "contributing/sdk/developing"
+          ]
+        },
+        {
+          "group": "Contributing to CLI",
+          "pages": [
+            "contributing/cli/developing"
+          ]
+        }
       ]
     }
   ],

@@ -54,9 +54,13 @@ go version
 3. Build the binary to see if everything works as expected
    1. `go build`
 4. If you don't see any error message, then you're ready to `go` :)
+5. To test the local CLI : `go run . <sub-command> <options>`
+   1. If your IDE supports it, you can also take advantage over the debugging and building functionalities
+      1. [VSCode](https://code.visualstudio.com/docs/languages/go) 
+      2. [JetBrains Suite](https://www.jetbrains.com/go/)
 
 ## Contributing
 
-Once you've fixed a bug, implemented a new feature or addressed an [issue](https://github.com/Infisical/infisical/issues?q=is%3Aopen+cli), please open a [pull request](https://infisical.com/docs/contributing/getting-started/pull-requests) and let us know about it on [Slack](https://infisical.com/slack) in the **contributing** channel! Thank you
+Once you've fixed a bug or implemented a new feature, please open a [pull request](https://infisical.com/docs/contributing/getting-started/pull-requests) and let us know about it on [Slack](https://infisical.com/slack) in the **contributing** channel! Thank you
 
 - [Contribution guide](https://infisical.com/docs/contributing/overview)
