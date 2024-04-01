@@ -28,7 +28,8 @@ export const organizationKeys = {
   getOrgTaxIds: (orgId: string) => [{ orgId }, "organization-tax-ids"] as const,
   getOrgInvoices: (orgId: string) => [{ orgId }, "organization-invoices"] as const,
   getOrgLicenses: (orgId: string) => [{ orgId }, "organization-licenses"] as const,
-  getOrgIdentityMemberships: (orgId: string) => [{ orgId }, "organization-identity-memberships"] as const,
+  getOrgIdentityMemberships: (orgId: string) =>
+    [{ orgId }, "organization-identity-memberships"] as const,
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const
 };
 
@@ -409,11 +410,14 @@ export const useDeleteOrgById = () => {
 export const useGetOrganizationGroups = (organizationId: string) => {
   return useQuery({
     queryKey: organizationKeys.getOrgGroups(organizationId),
+    enabled: Boolean(organizationId),
     queryFn: async () => {
       const {
         data: { groups }
-      } = await apiRequest.get<{ groups: TGroupOrgMembership[] }>(`/api/v1/organization/${organizationId}/groups`);
-      
+      } = await apiRequest.get<{ groups: TGroupOrgMembership[] }>(
+        `/api/v1/organization/${organizationId}/groups`
+      );
+
       return groups;
     }
   });
