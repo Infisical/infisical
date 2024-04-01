@@ -74,62 +74,61 @@ type TGetPathsDTO = {
 interface FolderMap {
   [parentId: string]: TSecretFolders[];
 }
+const buildHierarchy = (folders: TSecretFolders[]): FolderMap => {
+  const map: FolderMap = {};
+  map.null = []; // Initialize mapping for root directory
+
+  folders.forEach((folder) => {
+    const parentId = folder.parentId || "null";
+    if (!map[parentId]) {
+      map[parentId] = [];
+    }
+    map[parentId].push(folder);
+  });
+
+  return map;
+};
+
+const generatePaths = (
+  map: FolderMap,
+  parentId: string = "null",
+  basePath: string = ""
+): { path: string; folderId: string }[] => {
+  const children = map[parentId || "null"] || [];
+  let paths: { path: string; folderId: string }[] = [];
+
+  children.forEach((child) => {
+    // Determine if this is the root folder of the environment. If no parentId is present and the name is root, it's the root folder
+    const isRootFolder = child.name === "root" && !child.parentId;
+
+    // Form the current path based on the base path and the current child
+    // eslint-disable-next-line no-nested-ternary
+    const currPath = basePath === "" ? (isRootFolder ? "/" : `/${child.name}`) : `${basePath}/${child.name}`;
+
+    paths.push({
+      path: currPath,
+      folderId: child.id
+    }); // Add the current path
+
+    // Recursively generate paths for children, passing down the formatted pathh
+    const childPaths = generatePaths(map, child.id, currPath);
+    paths = paths.concat(
+      childPaths.map((p) => ({
+        path: p.path,
+        folderId: p.folderId
+      }))
+    );
+  });
+
+  return paths;
+};
 
 export const recursivelyGetSecretPaths = ({
   folderDAL,
   projectEnvDAL,
   permissionService
 }: TRecursivelyFetchSecretsFromFoldersArg) => {
-  const buildHierarchy = (folders: TSecretFolders[]): FolderMap => {
-    const map: FolderMap = {};
-    map.null = []; // Initialize mapping for root directory
-
-    folders.forEach((folder) => {
-      const parentId = folder.parentId || "null";
-      if (!map[parentId]) {
-        map[parentId] = [];
-      }
-      map[parentId].push(folder);
-    });
-
-    return map;
-  };
-
-  const generatePaths = (
-    map: FolderMap,
-    parentId: string = "null",
-    basePath: string = ""
-  ): { path: string; folderId: string }[] => {
-    const children = map[parentId || "null"] || [];
-    let paths: { path: string; folderId: string }[] = [];
-
-    children.forEach((child) => {
-      // Determine if this is the root folder of the environment. If no parentId is present and the name is root, it's the root folder
-      const isRootFolder = child.name === "root" && !child.parentId;
-
-      // Form the current path based on the base path and the current child
-      // eslint-disable-next-line no-nested-ternary
-      const currPath = basePath === "" ? (isRootFolder ? "/" : `/${child.name}`) : `${basePath}/${child.name}`;
-
-      paths.push({
-        path: currPath,
-        folderId: child.id
-      }); // Add the current path
-
-      // Recursively generate paths for children, passing down the formatted pathh
-      const childPaths = generatePaths(map, child.id, currPath);
-      paths = paths.concat(
-        childPaths.map((p) => ({
-          path: p.path,
-          folderId: p.folderId
-        }))
-      );
-    });
-
-    return paths;
-  };
-
-  return async ({ projectId, environment, currentPath, auth }: TGetPathsDTO) => {
+  const getPaths = async ({ projectId, environment, currentPath, auth }: TGetPathsDTO) => {
     const env = await projectEnvDAL.findOne({
       projectId,
       slug: environment
@@ -175,6 +174,8 @@ export const recursivelyGetSecretPaths = ({
 
     return allowedPaths;
   };
+
+  return getPaths;
 };
 
 type TInterpolateSecretArg = {
