@@ -43,7 +43,7 @@ export type TUpdateIdentityProjectPrivlegeDTO = {
   projectSlug: string;
   identityId: string;
   privilegeSlug: string;
-  data: Partial<Omit<TCreateIdentityProjectPrivilegeDTO, "projectMembershipId" | "projectId">>;
+  privilegeDetails: Partial<Omit<TCreateIdentityProjectPrivilegeDTO, "projectMembershipId" | "projectId">>;
 };
 
 export type TDeleteIdentityProjectPrivilegeDTO = {

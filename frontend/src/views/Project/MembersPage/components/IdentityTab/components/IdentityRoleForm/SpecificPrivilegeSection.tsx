@@ -134,7 +134,7 @@ const SpecificPrivilegeSecretForm = ({
         conditions.secretPath = { $glob: data.secretPath };
       }
       await updateIdentityPrivilege.mutateAsync({
-        data: {
+        privilegeDetails: {
           ...data.temporaryAccess,
           permissions: actions
             .filter(({ allowed }) => allowed)

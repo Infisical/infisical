@@ -115,7 +115,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilegeSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.slug),
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.identityId),
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.projectSlug),
-        data: z
+        privilegeDetails: z
           .object({
             slug: z
               .string()
@@ -151,7 +151,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const updatedInfo = req.body.data;
+      const updatedInfo = req.body.privilegeDetails;
       const privilege = await server.services.identityProjectAdditionalPrivilege.updateBySlug({
         actorId: req.permission.id,
         actor: req.permission.type,

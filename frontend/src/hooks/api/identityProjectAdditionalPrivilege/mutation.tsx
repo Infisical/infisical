@@ -33,12 +33,12 @@ export const useUpdateIdentityProjectAdditionalPrivilege = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TIdentityProjectPrivilege, {}, TUpdateIdentityProjectPrivlegeDTO>({
-    mutationFn: async ({ privilegeSlug, projectSlug, identityId, data }) => {
+    mutationFn: async ({ privilegeSlug, projectSlug, identityId, privilegeDetails }) => {
       const { data: res } = await apiRequest.patch("/api/v1/additional-privilege/identity", {
         privilegeSlug,
         projectSlug,
         identityId,
-        data
+        privilegeDetails
       });
       return res.privilege;
     },
