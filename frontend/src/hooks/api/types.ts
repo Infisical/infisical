@@ -1,5 +1,6 @@
 import { ZodIssue } from "zod";
 
+export type { TAccessApprovalPolicy } from "./accessApproval/types";
 export type { TAuditLogStream } from "./auditLogStreams/types";
 export type { GetAuthTokenAPI } from "./auth/types";
 export type { IncidentContact } from "./incidentContacts/types";
@@ -49,13 +50,13 @@ export enum ApiErrorTypes {
 
 export type TApiErrors =
   | {
-    error: ApiErrorTypes.ValidationError;
-    message: ZodIssue[];
-    statusCode: 403;
-  }
+      error: ApiErrorTypes.ValidationError;
+      message: ZodIssue[];
+      statusCode: 403;
+    }
   | { error: ApiErrorTypes.ForbiddenError; message: string; statusCode: 401 }
   | {
-    statusCode: 400;
-    message: string;
-    error: ApiErrorTypes.BadRequestError;
-  };
+      statusCode: 400;
+      message: string;
+      error: ApiErrorTypes.BadRequestError;
+    };

@@ -6,6 +6,7 @@ import Divider from "@app/components/basic/Divider";
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 
+import { AccessApprovalPolicyList } from "./components/AccessApprovalPolicyList";
 import { SecretApprovalPolicyList } from "./components/SecretApprovalPolicyList";
 import { SecretApprovalRequest } from "./components/SecretApprovalRequest";
 
@@ -47,14 +48,18 @@ export const SecretApprovalPage = () => {
           <Tab value={TabSection.SecretApprovalRequests}>Secret Approvals</Tab>
           <Tab value={TabSection.SecretPolicies}>Secret Policies</Tab>
           <Divider />
-          <Tab value={TabSection.ResourceApprovalRequests}>Resource Approvals</Tab>
-          <Tab value={TabSection.ResourcePolicies}>Resource Policies</Tab>
+          <Tab value={TabSection.ResourceApprovalRequests}>Access Approvals</Tab>
+          <Tab value={TabSection.ResourcePolicies}>Access Policies</Tab>
         </TabList>
         <TabPanel value={TabSection.SecretApprovalRequests}>
           <SecretApprovalRequest />
         </TabPanel>
         <TabPanel value={TabSection.SecretPolicies}>
           <SecretApprovalPolicyList workspaceId={workspaceId} />
+        </TabPanel>
+
+        <TabPanel value={TabSection.ResourcePolicies}>
+          <AccessApprovalPolicyList workspaceId={workspaceId} />
         </TabPanel>
       </Tabs>
     </div>

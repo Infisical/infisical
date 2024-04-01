@@ -2,6 +2,9 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { registerV1EERoutes } from "@app/ee/routes/v1";
+import { accessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
+import { accessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
+import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
@@ -207,6 +210,10 @@ export const registerRoutes = async (
   const scimDAL = scimDALFactory(db);
   const ldapConfigDAL = ldapConfigDALFactory(db);
   const ldapGroupMapDAL = ldapGroupMapDALFactory(db);
+
+  const accessApprovalPolicyDAL = accessApprovalPolicyDALFactory(db);
+  const accessApprovalPolicyApproverDAL = accessApprovalPolicyApproverDALFactory(db);
+
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
   const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
   const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
@@ -265,6 +272,15 @@ export const registerRoutes = async (
     secretApprovalPolicyDAL
   });
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
+
+  const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
+    accessApprovalPolicyDAL,
+    accessApprovalPolicyApproverDAL,
+    permissionService,
+    projectEnvDAL,
+    projectMembershipDAL
+  });
+
   const samlService = samlConfigServiceFactory({
     permissionService,
     orgBotDAL,
@@ -596,6 +612,7 @@ export const registerRoutes = async (
     secretVersionTagDAL,
     secretQueueService
   });
+
   const secretRotationQueue = secretRotationQueueFactory({
     telemetryService,
     secretRotationDAL,
@@ -732,6 +749,7 @@ export const registerRoutes = async (
     identityProject: identityProjectService,
     identityUa: identityUaService,
     secretApprovalPolicy: sapService,
+    accessApprovalPolicy: accessApprovalPolicyService,
     secretApprovalRequest: sarService,
     secretRotation: secretRotationService,
     dynamicSecret: dynamicSecretService,
