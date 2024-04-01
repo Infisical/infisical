@@ -171,11 +171,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           secrets: secretRawSchema
-            .merge(
-              z.object({
-                secretPath: z.string().optional()
-              })
-            )
+            .extend({
+              secretPath: z.string().optional()
+            })
             .array(),
           imports: z
             .object({
@@ -620,20 +618,18 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           secrets: SecretsSchema.omit({ secretBlindIndex: true })
-            .merge(
-              z.object({
-                _id: z.string(),
-                workspace: z.string(),
-                environment: z.string(),
-                secretPath: z.string().optional(),
-                tags: SecretTagsSchema.pick({
-                  id: true,
-                  slug: true,
-                  name: true,
-                  color: true
-                }).array()
-              })
-            )
+            .extend({
+              _id: z.string(),
+              workspace: z.string(),
+              environment: z.string(),
+              secretPath: z.string().optional(),
+              tags: SecretTagsSchema.pick({
+                id: true,
+                slug: true,
+                name: true,
+                color: true
+              }).array()
+            })
             .array(),
           imports: z
             .object({
