@@ -50,12 +50,18 @@ export enum TableName {
   IdentityProjectMembershipRole = "identity_project_membership_role",
   IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
   ScimToken = "scim_tokens",
+
+  // New tables so far
+  AccessApprovalPolicy = "access_approval_policies",
+  AccessApprovalPolicyApprover = "access_approval_policies_approvers",
+
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
   SecretApprovalRequest = "secret_approval_requests",
   SecretApprovalRequestReviewer = "secret_approval_requests_reviewers",
   SecretApprovalRequestSecret = "secret_approval_requests_secrets",
   SecretApprovalRequestSecretTag = "secret_approval_request_secret_tags",
+
   SecretRotation = "secret_rotations",
   SecretRotationOutput = "secret_rotation_outputs",
   SamlConfig = "saml_configs",
