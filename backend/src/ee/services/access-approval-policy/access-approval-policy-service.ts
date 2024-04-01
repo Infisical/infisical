@@ -155,7 +155,6 @@ export const accessApprovalPolicyServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
     const updatedPolicy = await accessApprovalPolicyDAL.transaction(async (tx) => {
@@ -179,7 +178,6 @@ export const accessApprovalPolicyServiceFactory = ({
         );
 
         await verifyApprovers({
-          projectId: accessApprovalPolicy.projectId,
           orgId: actorOrgId,
           envSlug: accessApprovalPolicy.environment.slug,
           secretPath: doc.secretPath!,
@@ -189,8 +187,6 @@ export const accessApprovalPolicyServiceFactory = ({
         });
 
         if (secretApprovers.length !== approvers.length)
-          throw new BadRequestError({ message: "Approver not found in project" });
-        if (doc.approvals > secretApprovers.length)
           throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
         await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
         await accessApprovalPolicyApproverDAL.insertMany(

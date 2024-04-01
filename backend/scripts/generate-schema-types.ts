@@ -5,7 +5,7 @@ import knex from "knex";
 import { writeFileSync } from "fs";
 
 dotenv.config({
-  path: path.join(__dirname, "../../.env.migration")
+  path: path.join(__dirname, "../../.env")
 });
 
 const db = knex({
