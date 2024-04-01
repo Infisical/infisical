@@ -277,8 +277,8 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 		SetQueryParam("environment", request.Environment).
 		SetQueryParam("workspaceId", request.WorkspaceId)
 
-	if request.DeepSearch {
-		httpRequest.SetQueryParam("deep", "true")
+	if request.Recursive {
+		httpRequest.SetQueryParam("recursive", "true")
 	}
 
 	if request.IncludeImport {

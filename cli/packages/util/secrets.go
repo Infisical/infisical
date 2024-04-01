@@ -17,7 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string, includeImports bool, deepSearch bool) ([]models.SingleEnvironmentVariable, api.GetServiceTokenDetailsResponse, error) {
+func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string, includeImports bool, recursive bool) ([]models.SingleEnvironmentVariable, api.GetServiceTokenDetailsResponse, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
 		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
@@ -49,7 +49,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 		Environment:   environment,
 		SecretPath:    secretPath,
 		IncludeImport: includeImports,
-		DeepSearch:    deepSearch,
+		Recursive:     recursive,
 	})
 
 	if err != nil {
@@ -81,7 +81,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 	return plainTextSecrets, serviceTokenDetails, nil
 }
 
-func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, tagSlugs string, secretsPath string, includeImports bool, deepSearch bool) ([]models.SingleEnvironmentVariable, error) {
+func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, tagSlugs string, secretsPath string, includeImports bool, recursive bool) ([]models.SingleEnvironmentVariable, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(JTWToken).
 		SetHeader("Accept", "application/json")
@@ -126,7 +126,7 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 		WorkspaceId:   workspaceId,
 		Environment:   environmentName,
 		IncludeImport: includeImports,
-		DeepSearch:    deepSearch,
+		Recursive:     recursive,
 		// TagSlugs:    tagSlugs,
 	}
 
@@ -154,7 +154,7 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 	return plainTextSecrets, nil
 }
 
-func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId string, environmentName string, secretsPath string, includeImports bool, deepSearch bool) (models.PlaintextSecretResult, error) {
+func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId string, environmentName string, secretsPath string, includeImports bool, recursive bool) (models.PlaintextSecretResult, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
@@ -163,7 +163,7 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 		WorkspaceId:   workspaceId,
 		Environment:   environmentName,
 		IncludeImport: includeImports,
-		DeepSearch:    deepSearch,
+		Recursive:     recursive,
 		// TagSlugs:    tagSlugs,
 	}
 
@@ -332,7 +332,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		}
 
 		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, infisicalDotJson.WorkspaceId,
-			params.Environment, params.TagSlugs, params.SecretsPath, params.IncludeImport, params.DeepSearch)
+			params.Environment, params.TagSlugs, params.SecretsPath, params.IncludeImport, params.Recursive)
 		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
 
 		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
@@ -353,10 +353,10 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 	} else {
 		if params.InfisicalToken != "" {
 			log.Debug().Msg("Trying to fetch secrets using service token")
-			secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport, params.DeepSearch)
+			secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
 		} else if params.UniversalAuthAccessToken != "" {
 			log.Debug().Msg("Trying to fetch secrets using universal auth")
-			res, err := GetPlainTextSecretsViaMachineIdentity(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport, params.DeepSearch)
+			res, err := GetPlainTextSecretsViaMachineIdentity(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
 
 			errorToReturn = err
 			secretsToReturn = res.Secrets
