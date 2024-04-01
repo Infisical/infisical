@@ -32,15 +32,7 @@ export const MembersPage = withProjectPermission(
               <Tab value={TabSections.Roles}>Project Roles</Tab>
             </TabList>
             <TabPanel value={TabSections.Member}>
-              <motion.div
-                key="panel-1"
-                transition={{ duration: 0.15 }}
-                initial={{ opacity: 0, translateX: 30 }}
-                animate={{ opacity: 1, translateX: 0 }}
-                exit={{ opacity: 0, translateX: 30 }}
-              >
-                <MemberListTab />
-              </motion.div>
+              <MemberListTab />
             </TabPanel>
             <TabPanel value={TabSections.Identities}>
               <IdentityTab />

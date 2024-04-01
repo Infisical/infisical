@@ -20,6 +20,7 @@ const tagVariants = cva(
         green: "bg-primary-800 text-white"
       },
       size: {
+        xs: "text-xs px-1 py-0.5",
         sm: "px-2 py-0.5"
       }
     }

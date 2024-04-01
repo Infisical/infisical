@@ -655,7 +655,7 @@ export const secretServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
@@ -741,7 +741,7 @@ export const secretServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 

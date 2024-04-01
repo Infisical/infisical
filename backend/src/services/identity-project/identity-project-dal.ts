@@ -25,6 +25,11 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           `${TableName.IdentityProjectMembershipRole}.customRoleId`,
           `${TableName.ProjectRoles}.id`
         )
+        .leftJoin(
+          TableName.IdentityProjectAdditionalPrivilege,
+          `${TableName.IdentityProjectMembership}.id`,
+          `${TableName.IdentityProjectAdditionalPrivilege}.projectMembershipId`
+        )
         .select(
           db.ref("id").withSchema(TableName.IdentityProjectMembership),
           db.ref("createdAt").withSchema(TableName.IdentityProjectMembership),

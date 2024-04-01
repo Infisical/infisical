@@ -38,6 +38,9 @@ import {
   TIdentityOrgMemberships,
   TIdentityOrgMembershipsInsert,
   TIdentityOrgMembershipsUpdate,
+  TIdentityProjectAdditionalPrivilege,
+  TIdentityProjectAdditionalPrivilegeInsert,
+  TIdentityProjectAdditionalPrivilegeUpdate,
   TIdentityProjectMembershipRole,
   TIdentityProjectMembershipRoleInsert,
   TIdentityProjectMembershipRoleUpdate,
@@ -92,6 +95,9 @@ import {
   TProjects,
   TProjectsInsert,
   TProjectsUpdate,
+  TProjectUserAdditionalPrivilege,
+  TProjectUserAdditionalPrivilegeInsert,
+  TProjectUserAdditionalPrivilegeUpdate,
   TProjectUserMembershipRoles,
   TProjectUserMembershipRolesInsert,
   TProjectUserMembershipRolesUpdate,
@@ -239,6 +245,11 @@ declare module "knex/types/tables" {
       TProjectUserMembershipRolesUpdate
     >;
     [TableName.ProjectRoles]: Knex.CompositeTableType<TProjectRoles, TProjectRolesInsert, TProjectRolesUpdate>;
+    [TableName.ProjectUserAdditionalPrivilege]: Knex.CompositeTableType<
+      TProjectUserAdditionalPrivilege,
+      TProjectUserAdditionalPrivilegeInsert,
+      TProjectUserAdditionalPrivilegeUpdate
+    >;
     [TableName.ProjectKeys]: Knex.CompositeTableType<TProjectKeys, TProjectKeysInsert, TProjectKeysUpdate>;
     [TableName.Secret]: Knex.CompositeTableType<TSecrets, TSecretsInsert, TSecretsUpdate>;
     [TableName.SecretBlindIndex]: Knex.CompositeTableType<
@@ -293,6 +304,11 @@ declare module "knex/types/tables" {
       TIdentityProjectMembershipRole,
       TIdentityProjectMembershipRoleInsert,
       TIdentityProjectMembershipRoleUpdate
+    >;
+    [TableName.IdentityProjectAdditionalPrivilege]: Knex.CompositeTableType<
+      TIdentityProjectAdditionalPrivilege,
+      TIdentityProjectAdditionalPrivilegeInsert,
+      TIdentityProjectAdditionalPrivilegeUpdate
     >;
     [TableName.ScimToken]: Knex.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
     [TableName.SecretApprovalPolicy]: Knex.CompositeTableType<
