@@ -1,53 +1,26 @@
 ---
-title:  Identities
-description: "Programmatically interact with Infisical"
+title: "User and Machine Identities"
+sidebarTitle: "Overview"
+description: "Learn more about identities to interact with resources in Infisical."
 ---
 
-<Note>
-  Currently, identities can only be used to make authenticated requests to the Infisical API, SDKs, Terraform, K8s Operator, and Agent. They do not work with clients such as CLI, Ansible look up plugin, etc.
+To interact with secrets and resource with Infisical, it is important to undrestand the concept of identities. 
+Identities can be of two types: 
+- **People** (e.g., developers, platform engineers, administrators)
+- **Machines** (e.g., machine entities for managing secrets in CI/CD pipelines, production applications, and more)
 
-  We will be releasing compatibility with it across clients in the coming quarter.
-</Note>
+Both people and machines are able to utilize corresponding clients (e.g., Dashboard UI, CLI, SDKs, API, Kubernetes Operator) together with allowed authentication methods (e.g., email & password, SAML SSO, LDAP, OIDC, Universal Auth).
 
-## Concept
-
-A (machine) identity is an entity that you can create in an Infisical organization to represent a workload or application that requires access to the Infisical API. This is conceptually similar to an IAM user in AWS or service account in Google Cloud Platform (GCP).
-
-Each identity must authenticate with the API using a supported authentication method like [Universal Auth](/documentation/platform/identities/universal-auth) to get back a short-lived access token to be used in subsequent requests.
-
-Key Features:
-
-- Role Assignment: Identities must be assigned [roles](/documentation/platform/role-based-access-controls). These roles determine the scope of access to resources, either at the organization level or project level.
-- Auth/Token Configuration: Identities must be configured with auth methods and access token properties to securely interact with the Infisical API.
-
-## Workflow
-
-A typical workflow for using identities consists of four steps:
-
-1. Creating the identity with a name and [role](/documentation/platform/role-based-access-controls) in Organization Access Control > Machine Identities.
-This step also involves configuring an authentication method for it such as [Universal Auth](/documentation/platform/identities/universal-auth).
-2. Adding the identity to the project(s) you want it to have access to.
-3. Authenticating the identity with the Infisical API based on the configured authentication method on it and receiving a short-lived access token back.
-4. Authenticating subsequent requests with the Infisical API using the short-lived access token.
-
-Check out the following authentication method-specific guides for step-by-step instruction on how to use identities to access Infisical:
-
-- [Universal Auth](/documentation/platform/identities/universal-auth)
-
-**FAQ**
-
-<AccordionGroup>
-<Accordion title="What is the difference between an identity and service token?">
-  A service token is a project-level authentication method that is being phased out in favor of identities.
-  
-  Amongst many differences, identities provide broader access over the Infisical API, utilizes the same role-based
-  permission system used by users, and comes with ample more configurable authentication and security features.
-</Accordion>
-<Accordion title="Why can I not create, read, update, or delete an identity?">
-  There are a few reasons for why this might happen:
-  
-  - You have insufficient organization permissions to create, read, update, delete identities.
-  - The identity you are trying to read, update, or delete is more privileged than yourself.
-  - The role you are trying to create an identity for or update an identity to is more privileged than yours.
-</Accordion>
-</AccordionGroup>
+<CardGroup cols={2}>
+  <Card href="./user-identities" title="People (User Identities)" icon="people" color="#000000">
+    Learn more about the concept on user identities in Infisical. 
+  </Card>
+  <Card
+    title="Machine Identities"
+    href="./machine-identities"
+    icon="computer"
+    color="#000000"
+  >
+    Understand the concept of machine identities in Infisical. 
+  </Card>
+</CardGroup>
