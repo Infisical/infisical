@@ -9,8 +9,9 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
       t.integer("approvals").defaultTo(1).notNullable();
-      t.uuid("envId").notNullable();
       t.string("secretPath");
+
+      t.uuid("envId").notNullable();
       t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
