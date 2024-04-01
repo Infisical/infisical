@@ -1,3 +1,5 @@
+export * from "./access-approval-policies";
+export * from "./access-approval-policies-approvers";
 export * from "./api-keys";
 export * from "./audit-log-streams";
 export * from "./audit-logs";

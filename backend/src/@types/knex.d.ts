@@ -2,6 +2,12 @@ import { Knex } from "knex";
 
 import {
   TableName,
+  TAccessApprovalPolicies,
+  TAccessApprovalPoliciesApprovers,
+  TAccessApprovalPoliciesApproversInsert,
+  TAccessApprovalPoliciesApproversUpdate,
+  TAccessApprovalPoliciesInsert,
+  TAccessApprovalPoliciesUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -344,6 +350,19 @@ declare module "knex/types/tables" {
       TIdentityProjectAdditionalPrivilegeInsert,
       TIdentityProjectAdditionalPrivilegeUpdate
     >;
+
+    [TableName.AccessApprovalPolicy]: Knex.CompositeTableType<
+      TAccessApprovalPolicies,
+      TAccessApprovalPoliciesInsert,
+      TAccessApprovalPoliciesUpdate
+    >;
+
+    [TableName.AccessApprovalPolicyApprover]: Knex.CompositeTableType<
+      TAccessApprovalPoliciesApprovers,
+      TAccessApprovalPoliciesApproversInsert,
+      TAccessApprovalPoliciesApproversUpdate
+    >;
+
     [TableName.ScimToken]: Knex.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
     [TableName.SecretApprovalPolicy]: Knex.CompositeTableType<
       TSecretApprovalPolicies,
