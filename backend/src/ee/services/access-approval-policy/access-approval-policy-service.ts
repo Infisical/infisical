@@ -155,7 +155,6 @@ export const accessApprovalPolicyServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
     const updatedPolicy = await accessApprovalPolicyDAL.transaction(async (tx) => {
@@ -179,7 +178,6 @@ export const accessApprovalPolicyServiceFactory = ({
         );
 
         await verifyApprovers({
-          projectId: accessApprovalPolicy.projectId,
           orgId: actorOrgId,
           envSlug: accessApprovalPolicy.environment.slug,
           secretPath: doc.secretPath!,
