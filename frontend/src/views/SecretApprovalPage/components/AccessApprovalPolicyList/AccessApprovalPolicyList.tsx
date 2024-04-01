@@ -83,7 +83,7 @@ export const AccessApprovalPolicyList = ({ workspaceId }: IProps) => {
 
   return (
     <div>
-      <div className="mb-6 flex justify-between items-end">
+      <div className="mb-6 flex items-end justify-between">
         <div className="flex flex-col">
           <span className="text-xl font-semibold text-mineshaft-100">Access Request Policies</span>
           <div className="mt-2 text-sm text-bunker-300">

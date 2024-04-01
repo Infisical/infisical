@@ -177,7 +177,6 @@ export const AccessPolicyForm = ({
           />
 
           <Controller
-            control={control}
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Secret Path" isError={Boolean(error)} errorText={error?.message}>
@@ -187,8 +186,6 @@ export const AccessPolicyForm = ({
           />
 
           <Controller
-            control={control}
-            name="approvers"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl
                 label="Approvers Required"
