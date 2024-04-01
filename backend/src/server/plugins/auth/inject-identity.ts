@@ -109,14 +109,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
       return;
     }
 
-    console.log("authMode", authMode);
-    console.log("authMode", authMode);
-    console.log("authMode", authMode);
-    console.log("authMode", authMode);
-
     if (!authMode) return;
-
-    console.log("authMode", authMode);
 
     switch (authMode) {
       case AuthMode.JWT: {
