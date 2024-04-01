@@ -157,11 +157,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.LIST.secretPath),
-        deep: z
+        recursive: z
           .enum(["true", "false"])
           .default("false")
           .transform((value) => value === "true")
-          .describe(RAW_SECRETS.LIST.deep),
+          .describe(RAW_SECRETS.LIST.recursive),
         include_imports: z
           .enum(["true", "false"])
           .default("false")
@@ -228,7 +228,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         projectId: workspaceId,
         path: secretPath,
         includeImports: req.query.include_imports,
-        deep: req.query.deep
+        recursive: req.query.recursive
       });
 
       await server.services.auditLog.createAuditLog({
@@ -606,7 +606,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        deep: z
+        recursive: z
           .enum(["true", "false"])
           .default("false")
           .transform((value) => value === "true"),
@@ -662,7 +662,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         projectId: req.query.workspaceId,
         path: req.query.secretPath,
         includeImports: req.query.include_imports,
-        deep: req.query.deep
+        recursive: req.query.recursive
       });
 
       await server.services.auditLog.createAuditLog({

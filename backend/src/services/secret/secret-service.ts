@@ -440,7 +440,7 @@ export const secretServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     includeImports,
-    deep
+    recursive
   }: TGetSecretsDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -452,7 +452,7 @@ export const secretServiceFactory = ({
 
     let paths: { folderId: string; path: string }[] = [];
 
-    if (deep) {
+    if (recursive) {
       const getPaths = recursivelyGetSecretPaths({
         permissionService,
         folderDAL,
@@ -852,7 +852,7 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     environment,
     includeImports,
-    deep
+    recursive
   }: TGetSecretsRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -866,7 +866,7 @@ export const secretServiceFactory = ({
       actorAuthMethod,
       path,
       includeImports,
-      deep
+      recursive
     });
 
     return {
