@@ -62,3 +62,28 @@ export const buildScimUser = ({
 
   return scimUser;
 };
+
+export const buildScimGroup = ({
+  groupId,
+  name,
+  members
+}: {
+  groupId: string;
+  name: string;
+  members: {
+    value: string;
+    display: string;
+  }[];
+}) => {
+  const scimGroup = {
+    schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+    id: groupId,
+    displayName: name,
+    members,
+    meta: {
+      resourceType: "Group"
+    }
+  };
+
+  return scimGroup;
+};

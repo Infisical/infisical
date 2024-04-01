@@ -1,10 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
+import slugify from "@sindresorhus/slugify";
 import jwt from "jsonwebtoken";
 
 import { OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TOrgPermission } from "@app/lib/types";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -17,11 +20,13 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { buildScimUser, buildScimUserList } from "./scim-fns";
+import { buildScimGroup, buildScimUser, buildScimUserList } from "./scim-fns";
 import {
+  TCreateScimGroupDTO,
   TCreateScimTokenDTO,
   TCreateScimUserDTO,
   TDeleteScimTokenDTO,
+  TGetScimGroupDTO,
   TGetScimUserDTO,
   TListScimUsers,
   TListScimUsersDTO,
@@ -39,6 +44,7 @@ type TScimServiceFactoryDep = {
   >;
   projectDAL: Pick<TProjectDALFactory, "find">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete">;
+  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "findAllGroupMembers">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: TSmtpService;
@@ -53,6 +59,7 @@ export const scimServiceFactory = ({
   orgDAL,
   projectDAL,
   projectMembershipDAL,
+  groupDAL,
   permissionService,
   smtpService
 }: TScimServiceFactoryDep) => {
@@ -423,6 +430,59 @@ export const scimServiceFactory = ({
     });
   };
 
+  const createScimGroup = async ({ displayName, orgId }: TCreateScimGroupDTO) => {
+    // TODO 1: impl basic
+    // TODO 2: impl linking case
+    console.log("createScimGroup args: ", {
+      displayName,
+      orgId
+    });
+
+    const group = await groupDAL.create({
+      name: displayName,
+      slug: slugify(`${displayName}-${alphaNumericNanoId(4)}`),
+      orgId,
+      role: OrgMembershipRole.NoAccess
+    });
+
+    console.log("createScimGroup the group: ", group);
+
+    return buildScimGroup({
+      groupId: group.id,
+      name: group.name,
+      members: []
+    });
+  };
+
+  const getScimGroup = async ({ groupId, orgId }: TGetScimGroupDTO) => {
+    console.log("getScimGroup args: ", {
+      groupId,
+      orgId
+    });
+
+    const group = await groupDAL.findOne({
+      id: groupId,
+      orgId
+    });
+
+    console.log("getScimGroup group: ", group);
+    const users = await groupDAL.findAllGroupMembers(group.orgId, group.id);
+    console.log("getScimGroup users: ", users);
+
+    // TODO: get members
+
+    return buildScimGroup({
+      groupId: group.id,
+      name: group.name,
+      members: users
+        .filter((user) => user.isPartOfGroup)
+        .map((user) => ({
+          value: user.id,
+          display: `${user.firstName} ${user.lastName}`
+        }))
+    });
+  };
+
   const fnValidateScimToken = async (token: TScimTokenJwtPayload) => {
     const scimToken = await scimDAL.findById(token.scimTokenId);
     if (!scimToken) throw new UnauthorizedError();
@@ -455,6 +515,8 @@ export const scimServiceFactory = ({
     createScimUser,
     updateScimUser,
     replaceScimUser,
+    createScimGroup,
+    getScimGroup,
     fnValidateScimToken
   };
 };
