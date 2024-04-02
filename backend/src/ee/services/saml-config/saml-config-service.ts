@@ -319,6 +319,11 @@ export const samlConfigServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new BadRequestError({ message: "Org not found" });
 
+    // TODO(dangtony98): remove this after aliases update
+    if (authProvider === AuthMethod.KEYCLOAK_SAML && appCfg.LICENSE_SERVER_KEY) {
+      throw new BadRequestError({ message: "Keycloak SAML is not yet available on Infisical Cloud" });
+    }
+
     if (user) {
       await userDAL.transaction(async (tx) => {
         const [orgMembership] = await orgDAL.findMembership(
