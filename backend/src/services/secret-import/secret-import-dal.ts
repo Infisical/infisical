@@ -49,7 +49,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
-  const find = async (filter: Partial<TSecretImports>, tx?: Knex) => {
+  const find = async (filter: Partial<TSecretImports & { projectId: string }>, tx?: Knex) => {
     try {
       const docs = await (tx || db)(TableName.SecretImport)
         .where(filter)

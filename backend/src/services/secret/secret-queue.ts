@@ -3,7 +3,7 @@ import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { BadRequestError } from "@app/lib/errors";
-import { isSamePath } from "@app/lib/fn";
+import { groupBy, isSamePath, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -32,7 +32,6 @@ import { interpolateSecrets } from "./secret-fns";
 import { TCreateSecretReminderDTO, THandleReminderDTO, TRemoveSecretReminderDTO } from "./secret-types";
 
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
-
 type TSecretQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   integrationDAL: Pick<TIntegrationDALFactory, "findByProjectIdV2" | "updateById">;
@@ -59,6 +58,8 @@ export type TGetSecrets = {
   projectId: string;
   environment: string;
 };
+
+const MAX_SYNC_SECRET_DEPTH = 5;
 
 export const secretQueueFactory = ({
   queueService,
@@ -117,7 +118,10 @@ export const secretQueueFactory = ({
     });
   };
 
-  const syncSecrets = async (dto: TGetSecrets) => {
+  const syncSecrets = async (dto: TGetSecrets & { depth?: number }) => {
+    logger.info(
+      `Syncing secrets Project: ${dto.projectId} - Environment: ${dto.environment} - Path: ${dto.secretPath}`
+    );
     await queueService.queue(QueueName.SecretWebhook, QueueJobs.SecWebhook, dto, {
       jobId: `secret-webhook-${dto.environment}-${dto.projectId}-${dto.secretPath}`,
       removeOnFail: { count: 5 },
@@ -310,11 +314,42 @@ export const secretQueueFactory = ({
   };
 
   queueService.start(QueueName.IntegrationSync, async (job) => {
-    const { environment, projectId, secretPath } = job.data;
+    const { environment, projectId, secretPath, depth = 1 } = job.data;
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) {
-      logger.error("Secret path not found");
+      logger.error(new Error("Secret path not found"));
       return;
+    }
+
+    // start syncing all linked imports also
+    if (depth < MAX_SYNC_SECRET_DEPTH) {
+      // find all imports made with the given environment and secret path
+      const linkSourceDto = {
+        projectId,
+        importEnv: folder.environment.id,
+        importPath: secretPath
+      };
+      const imports = await secretImportDAL.find(linkSourceDto);
+      if (imports.length) {
+        // keep calling sync secret for all the imports made
+        const importedFolderIds = unique(imports, (i) => i.folderId).map(({ folderId }) => folderId);
+        const importedFolders = await folderDAL.findSecretPathByFolderIds(projectId, importedFolderIds);
+        const foldersGroupedById = groupBy(importedFolders, (i) => i.id);
+        await Promise.all(
+          imports
+            .filter(({ folderId }) => Boolean(foldersGroupedById[folderId][0].path))
+            .map(({ folderId }) => {
+              const syncDto = {
+                depth: depth + 1,
+                projectId,
+                secretPath: foldersGroupedById[folderId][0].path,
+                environment: foldersGroupedById[folderId][0].environmentSlug
+              };
+              logger.info({ sourceLink: linkSourceDto, destination: syncDto }, `Syncing secret due to link change`);
+              return syncSecrets(syncDto);
+            })
+        );
+      }
     }
 
     const integrations = await integrationDAL.findByProjectIdV2(projectId, environment);
@@ -323,7 +358,7 @@ export const secretQueueFactory = ({
     );
 
     if (!integrations.length) return;
-    logger.info("Secret integration sync started", job.data, job.id);
+    logger.info({ source: job.data }, "Secret integration sync started - %s", job.id);
     for (const integration of toBeSyncedIntegrations) {
       const integrationAuth = {
         ...integration.integrationAuth,
@@ -362,7 +397,7 @@ export const secretQueueFactory = ({
       });
     }
 
-    logger.info("Secret integration sync ended", job.id);
+    logger.info("Secret integration sync ended: %s", job.id);
   });
 
   queueService.start(QueueName.SecretReminder, async ({ data }) => {
@@ -403,7 +438,7 @@ export const secretQueueFactory = ({
   });
 
   queueService.listen(QueueName.IntegrationSync, "failed", (job, err) => {
-    logger.error("Failed to sync integration", job?.data, err);
+    logger.error(err, "Failed to sync integration %s", job?.id);
   });
 
   queueService.start(QueueName.SecretWebhook, async (job) => {
@@ -411,7 +446,8 @@ export const secretQueueFactory = ({
   });
 
   return {
-    syncSecrets,
+    // depth is internal only field thus no need to make it available outside
+    syncSecrets: (dto: TGetSecrets) => syncSecrets(dto),
     syncIntegrations,
     addSecretReminder,
     removeSecretReminder,
