@@ -46,7 +46,7 @@ const deleteSecretImport = async (id: string) => {
 
 describe("Secret Import Router", async () => {
   test.each([
-    { importEnv: "dev", importPath: "/" }, // one in root
+    { importEnv: "prod", importPath: "/" }, // one in root
     { importEnv: "staging", importPath: "/" } // then create a deep one creating intermediate ones
   ])("Create secret import $importEnv with path $importPath", async ({ importPath, importEnv }) => {
     // check for default environments
@@ -66,7 +66,7 @@ describe("Secret Import Router", async () => {
   });
 
   test("Get secret imports", async () => {
-    const createdImport1 = await createSecretImport("/", "dev");
+    const createdImport1 = await createSecretImport("/", "prod");
     const createdImport2 = await createSecretImport("/", "staging");
     const res = await testServer.inject({
       method: "GET",
@@ -103,10 +103,10 @@ describe("Secret Import Router", async () => {
   });
 
   test("Update secret import position", async () => {
-    const devImportDetails = { path: "/", envSlug: "dev" };
+    const prodImportDetails = { path: "/", envSlug: "prod" };
     const stagingImportDetails = { path: "/", envSlug: "staging" };
 
-    const createdImport1 = await createSecretImport(devImportDetails.path, devImportDetails.envSlug);
+    const createdImport1 = await createSecretImport(prodImportDetails.path, prodImportDetails.envSlug);
     const createdImport2 = await createSecretImport(stagingImportDetails.path, stagingImportDetails.envSlug);
 
     const updateImportRes = await testServer.inject({
@@ -136,7 +136,7 @@ describe("Secret Import Router", async () => {
         position: 2,
         importEnv: expect.objectContaining({
           name: expect.any(String),
-          slug: expect.stringMatching(devImportDetails.envSlug),
+          slug: expect.stringMatching(prodImportDetails.envSlug),
           id: expect.any(String)
         })
       })
@@ -166,7 +166,7 @@ describe("Secret Import Router", async () => {
   });
 
   test("Delete secret import position", async () => {
-    const createdImport1 = await createSecretImport("/", "dev");
+    const createdImport1 = await createSecretImport("/", "prod");
     const createdImport2 = await createSecretImport("/", "staging");
     const deletedImport = await deleteSecretImport(createdImport1.id);
     // check for default environments
