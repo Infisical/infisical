@@ -490,6 +490,7 @@ export const registerRoutes = async (
     snapshotService,
     secretQueueService,
     secretImportDAL,
+    projectEnvDAL,
     projectBotService
   });
   const sarService = secretApprovalRequestServiceFactory({

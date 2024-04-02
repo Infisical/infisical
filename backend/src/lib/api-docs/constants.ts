@@ -215,6 +215,7 @@ export const SECRETS = {
 
 export const RAW_SECRETS = {
   LIST: {
+    recursive: "Whether or not to fetch all secrets from the specified base path, and all of its subdirectories.",
     workspaceId: "The ID of the project to list secrets from.",
     workspaceSlug: "The slug of the project to list secrets from. This parameter is only usable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
