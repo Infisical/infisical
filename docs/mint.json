@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "http://localhost:8080/api/docs/json",
+  "openapi": "https://app.infisical.com/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -497,6 +497,17 @@
             "api-reference/endpoints/secret-imports/create",
             "api-reference/endpoints/secret-imports/update",
             "api-reference/endpoints/secret-imports/delete"
+          ]
+        },
+        {
+          "group": "Identity Specific Privilege",
+          "pages": [
+            "api-reference/endpoints/identity-specific-privilege/create-permanent",
+            "api-reference/endpoints/identity-specific-privilege/create-temporary",
+            "api-reference/endpoints/identity-specific-privilege/update",
+            "api-reference/endpoints/identity-specific-privilege/delete",
+            "api-reference/endpoints/identity-specific-privilege/find-by-slug",
+            "api-reference/endpoints/identity-specific-privilege/list"
           ]
         },
         {

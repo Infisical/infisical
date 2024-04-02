@@ -17,6 +17,12 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     url: "/permanent",
     method: "POST",
     schema: {
+      description: "Create a permanent or a non expiry specific privilege for identity.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.identityId),
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.projectSlug),
@@ -58,6 +64,12 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     url: "/temporary",
     method: "POST",
     schema: {
+      description: "Create a temporary or a expiring specific privilege for identity.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.identityId),
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.projectSlug),
@@ -110,6 +122,12 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     url: "/",
     method: "PATCH",
     schema: {
+      description: "Update a specific privilege of an identity.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
         // disallow empty string
         privilegeSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.slug),
@@ -173,6 +191,12 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     url: "/",
     method: "DELETE",
     schema: {
+      description: "Delete a specific privilege of an identity.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
         privilegeSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.DELETE.slug),
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.DELETE.identityId),
@@ -203,6 +227,12 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     url: "/:privilegeSlug",
     method: "GET",
     schema: {
+      description: "Retrieve details of a specific privilege by privilege slug.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         privilegeSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.GET_BY_SLUG.slug)
       }),
@@ -234,6 +264,12 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     url: "/",
     method: "GET",
     schema: {
+      description: "List of a specific privilege of an identity in a project.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       querystring: z.object({
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.LIST.identityId),
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.LIST.projectSlug),
