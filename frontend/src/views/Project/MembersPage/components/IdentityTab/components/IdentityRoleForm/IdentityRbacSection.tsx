@@ -338,9 +338,10 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
               type="submit"
               className={twMerge(
                 "transition-all",
-                "opacity-0",
-                roleForm.formState.isDirty && "opacity-100"
+                "opacity-0 cursor-default",
+                roleForm.formState.isDirty && "cursor-pointer opacity-100"
               )}
+              isDisabled={!roleForm.formState.isDirty}
               isLoading={roleForm.formState.isSubmitting}
             >
               Save Roles
