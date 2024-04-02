@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { INTEGRATION_AUTH } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -10,8 +11,14 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   server.route({
     url: "/integration-options",
     method: "GET",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "List of integrations available.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       response: {
         200: z.object({
           integrationOptions: z
@@ -38,10 +45,16 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   server.route({
     url: "/:integrationAuthId",
     method: "GET",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Get details of an integration authorization by auth object id.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        integrationAuthId: z.string().trim()
+        integrationAuthId: z.string().trim().describe(INTEGRATION_AUTH.GET.integrationAuthId)
       }),
       response: {
         200: z.object({
@@ -64,11 +77,17 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   server.route({
     url: "/",
     method: "DELETE",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Remove all integration's auth object from the project.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       querystring: z.object({
-        integration: z.string().trim(),
-        projectId: z.string().trim()
+        integration: z.string().trim().describe(INTEGRATION_AUTH.DELETE.integration),
+        projectId: z.string().trim().describe(INTEGRATION_AUTH.DELETE.projectId)
       }),
       response: {
         200: z.object({
@@ -104,10 +123,16 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   server.route({
     url: "/:integrationAuthId",
     method: "DELETE",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Remove an integration auth object by object id.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        integrationAuthId: z.string().trim()
+        integrationAuthId: z.string().trim().describe(INTEGRATION_AUTH.DELETE_BY_ID.integrationAuthId)
       }),
       response: {
         200: z.object({
@@ -183,16 +208,22 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   server.route({
     url: "/access-token",
     method: "POST",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Create the integration authentication object.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
-        workspaceId: z.string().trim(),
-        integration: z.string().trim(),
-        accessId: z.string().trim().optional(),
-        accessToken: z.string().trim().optional(),
-        url: z.string().url().trim().optional(),
-        namespace: z.string().trim().optional(),
-        refreshToken: z.string().trim().optional()
+        workspaceId: z.string().trim().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.workspaceId),
+        integration: z.string().trim().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.integration),
+        accessId: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.accessId),
+        accessToken: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.accessToken),
+        url: z.string().url().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.url),
+        namespace: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.namespace),
+        refreshToken: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.refreshToken)
       }),
       response: {
         200: z.object({

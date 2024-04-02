@@ -7,7 +7,7 @@ import {
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { PROJECTS } from "@app/lib/api-docs";
+import { INTEGRATION_AUTH, PROJECTS } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectFilterType } from "@app/services/project/project-types";
@@ -332,8 +332,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     url: "/:workspaceId/authorizations",
     method: "GET",
     schema: {
+      description: "List integration auth objects for a workspace.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim().describe(INTEGRATION_AUTH.LIST_AUTHORIZATION.workspaceId)
       }),
       response: {
         200: z.object({
@@ -341,7 +347,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const authorizations = await server.services.integrationAuth.listIntegrationAuthByProjectId({
         actorId: req.permission.id,

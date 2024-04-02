@@ -479,3 +479,74 @@ export const PROJECT_USER_ADDITIONAL_PRIVILEGE = {
     projectMembershipId: "Project membership id of user"
   }
 };
+
+export const INTEGRATION_AUTH = {
+  GET: {
+    integrationAuthId: "The id of integration authentication object."
+  },
+  DELETE: {
+    integration: "The slug of integration to be deleted from authorized.",
+    projectId: "The ID of the project to delete integration authorized."
+  },
+  DELETE_BY_ID: {
+    integrationAuthId: "The id of integration authentication object to delete."
+  },
+  CREATE_ACCESS_TOKEN: {
+    workspaceId: "The ID of the project to create integration auth.",
+    integration: "The slug of integration for the auth object.",
+    accessId: "The unique authorized access id of the external integration provider.",
+    accessToken: "The unique authorized access token of the external integration provider.",
+    url: "",
+    namespace: "",
+    refreshToken: "The refresh token for integration authorization."
+  },
+  LIST_AUTHORIZATION: {
+    workspaceId: "The ID of the project to list integration auth."
+  }
+};
+
+export const INTEGRATION = {
+  CREATE: {
+    integrationAuthId: "The ID of the integration auth object to link with integration.",
+    app: "The name of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
+    isActive: "Whether the integration should be active or disabled.",
+    appId:
+      "The ID of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
+    secretPath: "The path of the secrets to sync secrets from.",
+    sourceEnvironment: "The environment to sync secret from.",
+    targetEnvironment:
+      "The target environment of the integration provider. Used in cloudflare pages, TeamCity, Gitlab integrations.",
+    targetEnvironmentId:
+      "The target environment id of the integration provider. Used in cloudflare pages, teamcity, gitlab integrations.",
+    targetService:
+      "The service based grouping identifier of the external provider. Used in Terraform cloud, Checkly, Railway and NorthFlank",
+    targetServiceId:
+      "The service based grouping identifier ID of the external provider. Used in Terraform cloud, Checkly, Railway and NorthFlank",
+    owner: "External integration providers service entity owner. Used in Github.",
+    path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault",
+    region: "AWS region to sync secrets to.",
+    scope: "Scope of the provider. Used by Github, Qovery",
+    metadata: {
+      secretPrefix: "The prefix for the saved secret. Used by GCP",
+      secretSuffix: "The suffix for the saved secret. Used by GCP",
+      initialSyncBehavoir: "Type of syncing behavoir with the integration",
+      shouldAutoRedeploy: "Used by Render to trigger auto deploy",
+      secretGCPLabel: "The label for the GCP secrets"
+    }
+  },
+  UPDATE: {
+    integrationId: "The ID of the integration object.",
+    app: "The name of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
+    appId:
+      "The ID of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
+    isActive: "Whether the integration should be active or disabled.",
+    secretPath: "The path of the secrets to sync secrets from.",
+    owner: "External integration providers service entity owner. Used in Github.",
+    targetEnvironment:
+      "The target environment of the integration provider. Used in cloudflare pages, TeamCity, Gitlab integrations.",
+    environment: "The environment to sync secrets from."
+  },
+  DELETE: {
+    integrationId: "The ID of the integration object."
+  }
+};
