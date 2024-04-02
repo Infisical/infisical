@@ -1,0 +1,39 @@
+---
+title: "Create"
+openapi: "POST /api/v1/integration"
+---
+
+## Integration Parameters
+
+We have a generic endpoints for creating integration. These are the parameters required for each integration.
+
+<Tabs>
+  <Tab title="AWS Secrets manager">
+    <ParamField body="integrationAuthId" type="string" required>
+				The ID of the integration auth object for authentication with AWS.
+				Refer [Create Integration Auth](./create-auth) for more info
+		</ParamField>
+    <ParamField body="isActive" type="boolean">
+				Whether the integration should be active or inactive
+		</ParamField>
+    <ParamField body="app" type="string" required>
+				The secret name used when saving secret in AWS SSM.
+		</ParamField>
+    <ParamField body="region" type="string" required>
+				The AWS region of the SSM.
+		</ParamField>
+    <ParamField body="sourceEnvironment" type="string" required>
+				The infisical environment for the secrets to be synced.
+		</ParamField>
+    <ParamField body="secretPath" type="string" required>
+				The infisical secret path for the secrets to be synced.
+		</ParamField>
+  </Tab>
+  <Tab title="GCP Secrets manager">
+    Coming Soon
+  </Tab>
+  <Tab title="Heroku">
+				Coming Soon
+  </Tab>
+</Tabs>
+
