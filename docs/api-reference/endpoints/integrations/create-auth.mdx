@@ -3,9 +3,11 @@ title: "Create Auth"
 openapi: "POST /api/v1/integration-auth/access-token"
 ---
 
-## Integration Auth Parameters
+## Integration Authentication Parameters
 
-We have a generic endpoints for creating integration auth objects. These are the parameters required for each integration.
+The integration authentication endpoint is generic and can be used for all native integrations. 
+For specific integration parameters for a given service, please review the respective documentation below.
+
 <Tabs>
   <Tab title="AWS Secrets manager">
     <ParamField body="integration" type="string" initialValue="aws-secret-manager" required>

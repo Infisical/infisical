@@ -485,14 +485,14 @@ export const INTEGRATION_AUTH = {
     integrationAuthId: "The id of integration authentication object."
   },
   DELETE: {
-    integration: "The slug of integration to be deleted from authorized.",
-    projectId: "The ID of the project to delete integration authorized."
+    integration: "The slug of the integration to be unauthorized.",
+    projectId: "The ID of the project to delete the integration auth from."
   },
   DELETE_BY_ID: {
     integrationAuthId: "The id of integration authentication object to delete."
   },
   CREATE_ACCESS_TOKEN: {
-    workspaceId: "The ID of the project to create integration auth.",
+    workspaceId: "The ID of the project to create the integration auth for.",
     integration: "The slug of integration for the auth object.",
     accessId: "The unique authorized access id of the external integration provider.",
     accessToken: "The unique authorized access token of the external integration provider.",
@@ -501,7 +501,7 @@ export const INTEGRATION_AUTH = {
     refreshToken: "The refresh token for integration authorization."
   },
   LIST_AUTHORIZATION: {
-    workspaceId: "The ID of the project to list integration auth."
+    workspaceId: "The ID of the project to list integration auths for."
   }
 };
 

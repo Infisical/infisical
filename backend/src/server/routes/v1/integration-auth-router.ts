@@ -210,7 +210,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     method: "POST",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Create the integration authentication object.",
+      description: "Create the integration authentication object required for syncing secrets.",
       security: [
         {
           bearerAuth: []
