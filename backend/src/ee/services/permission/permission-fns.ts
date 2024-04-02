@@ -5,9 +5,13 @@ import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
   if (!actorAuthMethod) return false;
 
-  return [AuthMethod.AZURE_SAML, AuthMethod.OKTA_SAML, AuthMethod.JUMPCLOUD_SAML, AuthMethod.GOOGLE_SAML].includes(
-    actorAuthMethod
-  );
+  return [
+    AuthMethod.AZURE_SAML,
+    AuthMethod.OKTA_SAML,
+    AuthMethod.JUMPCLOUD_SAML,
+    AuthMethod.GOOGLE_SAML,
+    AuthMethod.KEYCLOAK_SAML
+  ].includes(actorAuthMethod);
 }
 
 function validateOrgSAML(actorAuthMethod: ActorAuthMethod, isSamlEnforced: TOrganizations["authEnforced"]) {
