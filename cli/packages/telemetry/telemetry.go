@@ -40,12 +40,12 @@ func NewTelemetry(telemetryIsEnabled bool) *Telemetry {
 }
 
 func (t *Telemetry) CaptureEvent(eventName string, properties posthog.Properties) {
-	userIdentity, err := t.GetDistinctId()
-	if err != nil {
-		return
-	}
-
 	if t.isEnabled {
+		userIdentity, err := t.GetDistinctId()
+		if err != nil {
+			return
+		}
+
 		t.posthogClient.Enqueue(posthog.Capture{
 			DistinctId: userIdentity,
 			Event:      eventName,

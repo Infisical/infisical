@@ -1,0 +1,37 @@
+---
+title: "Telemetry"
+description: "How Infisical collects and aggregate CLI usage data."
+---
+
+import DisableTelemetry from "/snippets/disable-telemetry.mdx";
+
+Telemetry data enables Infisical's team to be aware of any critical errors, debug problems more quickly and know which features are being used the most to give you the best possible user experience.
+
+Infisical collects non-sensitive aggregated CLI usage data to improve its products. Infisical collects this information by default, but you can disable this data collection at any time.
+
+## Data collected
+
+✅ Infisical **collects** the following data:
+
+- Infisical CLI version
+- The methods run in Infisical CLI.
+  - Infisical only tracks method names, and does not track any arguments supplied to methods.
+- Errors.
+
+❌ Infisical **does not collect**:
+
+- IP addresses or credentials.
+- Any data related to your secrets.
+
+For more information, see Infisical's [Privacy Policy](https://infisical.com/privacy).
+
+## Toggle Telemetry
+
+<DisableTelemetry />
+
+<Note>
+Want to disable telemetry in CI environments?
+
+Set the `INFISICAL_DISABLE_TELEMETRY=true` environment variable in your runner(s).
+
+</Note>

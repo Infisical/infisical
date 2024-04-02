@@ -5,11 +5,13 @@ package cmd
 
 import (
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/telemetry"
@@ -36,9 +38,15 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initLog)
+	cobra.OnInitialize(initLog, initTelemetry, debug)
+
+	viper.AutomaticEnv()
+
 	rootCmd.PersistentFlags().StringP("log-level", "l", "info", "log level (trace, debug, info, warn, error, fatal)")
-	rootCmd.PersistentFlags().Bool("telemetry", true, "Infisical collects non-sensitive telemetry data to enhance features and improve user experience. Participation is voluntary")
+
+	rootCmd.PersistentFlags().BoolVar(&config.INFISICAL_DISABLE_TELEMETRY, "no-telemetry", config.INFISICAL_DISABLE_TELEMETRY, "Infisical collects non-sensitive telemetry data to enhance features and improve user experience. Participation is voluntary.")
+	viper.BindPFlag("INFISICAL_DISABLE_TELEMETRY", rootCmd.PersistentFlags().Lookup("no-telemetry"))
+
 	rootCmd.PersistentFlags().StringVar(&config.INFISICAL_URL, "domain", util.INFISICAL_DEFAULT_API_URL, "Point the CLI to your own backend [can also set via environment variable name: INFISICAL_API_URL]")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		if !util.IsRunningInDocker() {
@@ -53,9 +61,33 @@ func init() {
 			config.INFISICAL_URL = envInfisicalBackendUrl
 		}
 	}
+}
 
-	isTelemetryOn, _ := rootCmd.PersistentFlags().GetBool("telemetry")
-	Telemetry = telemetry.NewTelemetry(isTelemetryOn)
+func initTelemetry() {
+	telemetryDisabled, _ := rootCmd.PersistentFlags().GetBool("no-telemetry")
+	Telemetry = telemetry.NewTelemetry(!telemetryDisabled)
+}
+
+func debug() {
+	// sort the keys alphabetically (consistent output)
+	cfg := config.GetConfig()
+	var keys []string
+	for key := range cfg {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	// print the version and the current configuration variables
+	log.Debug().
+		Str("version", util.CLI_VERSION).
+		Msg("")
+
+	for _, key := range keys {
+		log.Debug().
+			Str("key", key).
+			Interface("value", cfg[key]).
+			Msg("")
+	}
 }
 
 func initLog() {

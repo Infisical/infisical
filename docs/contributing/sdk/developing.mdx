@@ -3,38 +3,33 @@ title: "Local development"
 description: "This guide will help you contribute to the Infisical SDK."
 ---
 
-## Fork and clone the repo
+import SetupFork from "/snippets/setup-fork.mdx";
+import SetupMintlify from "/snippets/setup-mintlify.mdx";
+import Contributing from "/snippets/contributing.mdx";
 
-[Fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) the [repository](https://github.com/Infisical/sdk) to your own GitHub account and then [clone](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) it to your local device.
-
-Once, you've done that, create a new branch:
-
-```console
-git checkout -b MY_BRANCH_NAME
-```
+<SetupFork />
 
 ## Set up environment variables
 
-Start by creating a .env file at the root of the Infisical directory then copy the contents of the file below into the .env file.
+Start by creating a `.env` file at the root of the Infisical directory then copy the contents of the file below to it.
 
 <Accordion title=".env file content">
-  ```env 
-    # This is required for running tests locally.
-    # Rename this file to ".env" and fill in the values below.
+  ```sh 
+  # This is required for running tests locally.
+  # Rename this file to ".env" and fill in the values below.
 
-    # Please make sure that the machine identity has access to the project you are testing in.
-    # https://infisical.com/docs/documentation/platform/identities/universal-auth
-    INFISICAL_UNIVERSAL_CLIENT_ID=MACHINE_IDENTITY_CLIENT_ID
-    INFISICAL_UNIVERSAL_CLIENT_SECRET=MACHINE_IDENTITY_CLIENT_SECRET
+  # Please make sure that the machine identity has access to the project you are testing in.
+  # https://infisical.com/docs/documentation/platform/identities/universal-auth
+  INFISICAL_UNIVERSAL_CLIENT_ID=MACHINE_IDENTITY_CLIENT_ID
+  INFISICAL_UNIVERSAL_CLIENT_SECRET=MACHINE_IDENTITY_CLIENT_SECRET
 
-    # The ID of the Infisical project where we will create the test secrets.
-    # NOTE: The project must have a dev environment. (This is created by default when you create a project.)
-    INFISICAL_PROJECT_ID=INFISICAL_TEST_PROJECT_ID
+  # The ID of the Infisical project where we will create the test secrets.
+  # NOTE: The project must have a dev environment. (This is created by default when you create a project.)
+  INFISICAL_PROJECT_ID=INFISICAL_TEST_PROJECT_ID
 
-    # The Infisical site URL. If you are testing with a local Infisical instance, then this should be set to "http://localhost:8080".
-    INFISICAL_SITE_URL=https://app.infisical.com
-
-````
+  # The Infisical site URL. If you are testing with a local Infisical instance, then this should be set to "http://localhost:8080".
+  INFISICAL_SITE_URL=https://app.infisical.com
+  ```
 </Accordion>
 
 <Warning>
@@ -79,14 +74,12 @@ If the command handler fails to validate the input, an error will be returned to
   <img height="640" width="520" src="/images/sdk-flow.png" />
 </Frame>
 
-
-
 ### Rust knowledge
 
 Contributing to the SDK requires intermediate to advanced knowledge of Rust concepts such as lifetimes, traits, generics, and async/await _(futures)_, and more.
 
 ### Rust setup
-The base SDK is written in rust. Therefore you must have rustc and cargo installed. You can install rustc and cargo by following the instructions [here](https://www.rust-lang.org/tools/install).
+The base SDK is written in rust. Therefore you must have `rustc` and `cargo` installed. You can install `rustc` and `cargo` by following the instructions [here](https://www.rust-lang.org/tools/install).
 
 You shouldn't have to use the rust cross compilation toolchain, as all compilation is done through a collection of Github Actions. However. If you need to test cross compilation, please do so with Github Actions.
 
@@ -95,9 +88,6 @@ If you add new functionality or modify existing functionality, please write test
 
 ### Language-specific crates
 The language-specific crates should ideally never have to be modified, as they are simply a wrapper for the `infisical-json` crate, which executes "commands" from the base SDK. If you need to create a new target-language specific crate, please try to create native bindings for the target language. Some languages don't have direct support for native bindings (Java as an example). In those cases we can use the C bindings (`crates/infisical-c`) in the target language.
-
-
-
 
 ## Generate types
 Having almost seemless type safety from the base SDK to the target language is critical, as writing types for each language has a lot of drawbacks such as duplicated code, and lots of overhead trying to keep the types up-to-date and in sync across a large collection of languages. Therefore we decided to use [QuickType](https://quicktype.io/) and [Serde](https://serde.rs/) to help us generate types for each language. In our Rust base SDK (`crates/infisical`), we define all the inputs/outputs.
@@ -129,7 +119,7 @@ pub struct CreateSecretOptions {
 pub struct CreateSecretResponse {
   pub secret: Secret, // "Secret" is defined elsewhere.
 }
-````
+```
 
 ### Adding input types to the schema generator
 
@@ -163,12 +153,15 @@ fn main() -> Result<()> {
 
 Once you've added the output to the schema generator, you can generate the types for the target language by running the following command from the root directory:
 
-```console
-$ npm install
-$ npm run schemas
+```sh
+npm install
+npm run schemas
 ```
 
-<Warning>If you change any of the structs defined in the base SDK, you will need to run this script to re-generate the types.</Warning>
+<Warning>
+	If you change any of the structs defined in the base SDK, you will need to run
+	this script to re-generate the types.
+</Warning>
 
 This command will run the `schemas.ts` file found in the `support/scripts` folder. If you are adding a new language, it's important that you add the language to the code.
 
@@ -176,52 +169,60 @@ This is an example of how how we generate types for Node.js:
 
 ```ts
 const ts = await quicktype({
-    inputData,
-    lang: "typescript",
-    rendererOptions: {}
+	inputData,
+	lang: "typescript",
+	rendererOptions: {},
 });
 await ensureDir("./languages/node/src/infisical_client");
 writeToFile("./languages/node/src/infisical_client/schemas.ts", ts.lines);
 ```
 
 ## Building bindings
+
 We've tried to streamline the building process as much as possible. So you shouldn't have to worry much about building bindings, as it should just be a few commands.
 
 ### Node.js
+
 Building bindings for Node.js is very straight foward. The command below will generate NAPI bindings for Node.js, and move the bindings to the correct folder. We use [NAPI-RS](https://napi.rs/) to generate the bindings.
 
-```console
-$ cd languages/node
-$ npm run build
+```sh
+cd languages/node
+npm run build
 ```
 
 ### Python
+
 To generate and use python bindings you will need to run the following commands.
 The Python SDK is located inside the crates folder. This is a limitation of the maturin tool, forcing us to structure the project in this way.
 
-```console
-$ pip install -U pip maturin
-$ cd crates/infisical-py
-$ python3 -m venv .venv
-$ source .venv/bin/activate
-$ maturin develop
+```sh
+pip install -U pip maturin
+cd crates/infisical-py
+python3 -m venv .venv
+source .venv/bin/activate
+maturin develop
 ```
 
 <Warning>
-    After running the commands above, it's very important that you rename the generated .so file to `infisical_py.so`. After renaming it you also need to move it into the root of the `crates/infisical-py` folder.
+	After running the commands above, it's very important that you rename the
+	generated .so file to `infisical_py.so`. After renaming it you also need to
+	move it into the root of the `crates/infisical-py` folder.
 </Warning>
 
 ### Java
+
 Java uses the C bindings to interact with the base SDK. To build and use the C bindings in Java, please follow the instructions below.
 
-```console
-$ cd crates/infisical-c
-$ cargo build --release
-$ cd ../../languages/java
+```sh
+cd crates/infisical-c
+cargo build --release
+cd ../../languages/java
 ```
+
 <Warning>
-    After generating the C bindings, the generated .so or .dll has been created in the `/target` directory at the root of the project.
-    You have to manually move the generated file into the `languages/java/src/main/resources` directory.
+	After generating the C bindings, the generated .so or .dll has been created in
+	the `/target` directory at the root of the project. You have to manually move
+	the generated file into the `languages/java/src/main/resources` directory.
 </Warning>
 
 ## Error handling
@@ -309,7 +310,6 @@ We define new commands in the `crates/infisical-json/src/command.rs` file. The `
 
 In the codesnippet below we define a new command called `CreateSecret`. The `CreateSecret` command takes a `CreateSecretOptions` struct as input. We don't have to define the output, because QuickType's converter helps us with figuring out the return type for each command.
 
-````rust
 ```rust
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -323,7 +323,7 @@ pub enum Command {
     UpdateSecret(UpdateSecretOptions),
     DeleteSecret(DeleteSecretOptions),
 }
-````
+```
 
 #### 4. Add the command to the command handler
 
@@ -351,9 +351,9 @@ First you'll need to generate the new type schemas, we added a new command, inpu
 
 Secondly you need to build the new node bindings so we can use the new functionality in the Node.js SDK. You can do this by running the following command from the `languages/node` directory:
 
-```console
-$ npm install
-$ npm run build
+```sh
+npm install
+npm run build
 ```
 
 The build command will execute a build script in the `infisical-napi` crate, and move the generated bindings to the appropriate folder.
@@ -369,35 +369,38 @@ import type { CreateSecretOptions, CreateSecretResponse } from "./schemas";
 import { Convert, ClientSettings } from "./schemas";
 
 export class InfisicalClient {
-    #client: rust.Client;
+	#client: rust.Client;
 
-    constructor(settings: ClientSettings) {
-        const settingsJson = settings == null ? null : Convert.clientSettingsToJson(settings);
-        this.#client = new rust.InfisicalClient(settingsJson);
-    }
+	constructor(settings: ClientSettings) {
+		const settingsJson =
+			settings == null ? null : Convert.clientSettingsToJson(settings);
+		this.#client = new rust.InfisicalClient(settingsJson);
+	}
 
-    // ... getSecret
-    // ... listSecrets
-    // ... updateSecret
-    // ... deleteSecret
+	// ... getSecret
+	// ... listSecrets
+	// ... updateSecret
+	// ... deleteSecret
 
-    async createSecret(options: CreateSecretOptions): Promise<CreateSecretResponse["secret"]> {
-        // The runCommand will return a JSON string, which we can parse into a CreateSecretResponse.
-        const command = await this.#client.runCommand(
-            Convert.commandToJson({
-                createSecret: options
-            })
-        );
-        const response = Convert.toResponseForCreateSecretResponse(command); // <-- This is the QuickType converter in action!
+	async createSecret(
+		options: CreateSecretOptions
+	): Promise<CreateSecretResponse["secret"]> {
+		// The runCommand will return a JSON string, which we can parse into a CreateSecretResponse.
+		const command = await this.#client.runCommand(
+			Convert.commandToJson({
+				createSecret: options,
+			})
+		);
+		const response = Convert.toResponseForCreateSecretResponse(command); // <-- This is the QuickType converter in action!
 
-        // If the response is not successful or the data is null, we throw an error.
-        if (!response.success || response.data == null) {
-            throw new Error(response.errorMessage ?? "Something went wrong");
-        }
+		// If the response is not successful or the data is null, we throw an error.
+		if (!response.success || response.data == null) {
+			throw new Error(response.errorMessage ?? "Something went wrong");
+		}
 
-        // To make it easier to work with the response, we return the secret directly.
-        return response.data.secret;
-    }
+		// To make it easier to work with the response, we return the secret directly.
+		return response.data.secret;
+	}
 }
 ```
 
@@ -406,3 +409,5 @@ And that's it! We've now added a new command to the base SDK, and implemented it
 ## Conclusion
 
 The SDK has a lot of moving parts, and it can be a little overwhelming at first. But once you get the hang of it, it's actually quite simple. If you have any questions, feel free to reach out to us on [Slack](https://infisical.com/slack), or [open an issue](https://github.com/Infisical/sdk/issues) on GitHub.
+
+<Contributing />

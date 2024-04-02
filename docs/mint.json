@@ -213,6 +213,7 @@
       "pages": [
         "cli/overview",
         "cli/usage",
+        "cli/telemetry",
         {
           "group": "Core commands",
           "pages": [
@@ -540,11 +541,17 @@
           ]
         },
         {
-            "group": "Contributing to SDK",
-            "pages": [
-              "contributing/sdk/developing"
-            ]
-          }
+          "group": "Contributing to SDK",
+          "pages": [
+            "contributing/sdk/developing"
+          ]
+        },
+        {
+          "group": "Contributing to CLI",
+          "pages": [
+            "contributing/cli/developing"
+          ]
+        }
       ]
     }
   ],

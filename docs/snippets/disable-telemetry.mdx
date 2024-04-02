@@ -1,0 +1,44 @@
+<Accordion title="Disable telemetry">
+
+#### Command-line parameter
+
+```bash
+infisical --no-telemetry <your-command>
+```
+
+#### Globally
+
+<Tabs>
+   <Tab title="Unix/Linux">
+      <Tip>
+        `$HOME/.profile` is pretty common but, you could place it under `$HOME/.profile.d/infisical.sh` or any profile file run at login 
+      </Tip>
+
+      ```bash
+      cat <<EOF >> $HOME/.profile && source $HOME/.profile
+
+      # Disabling Infisical CLI telemetry
+      export INFISICAL_DISABLE_TELEMETRY=true
+      EOF
+      ```
+
+   </Tab>
+   <Tab title="Windows">
+      <Warning>
+        You might need to open the console as **administrator** !
+      </Warning>
+
+      ```bash
+      # Default terminal or Windows Powershell
+      setx INFISICAL_DISABLE_TELEMETRY "true"
+      ```
+
+      ```powershell
+      # Windows Powershell
+      [System.Environment]::SetEnvironmentVariable('INFISICAL_DISABLE_TELEMETRY','true', 'User')
+      ```
+
+   </Tab>
+</Tabs>
+
+</Accordion>
