@@ -12,8 +12,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     schema: {
       body: z
         .object({
-          workspaceId: z.string(),
+          projectSlug: z.string().trim(),
           name: z.string().optional(),
+          secretPath: z.string().trim().default("/"),
           environment: z.string(),
           approvers: z.string().array().min(1),
           approvals: z.number().min(1).default(1)
@@ -35,8 +36,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.body.workspaceId,
         ...req.body,
+        projectSlug: req.body.projectSlug,
         name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`
       });
       return { approval };
@@ -48,11 +49,11 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     method: "GET",
     schema: {
       querystring: z.object({
-        workspaceId: z.string().trim()
+        projectSlug: z.string().trim()
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema.merge(z.object({ approvers: z.string().array() })).array()
+          approvals: sapPubSchema.extend({ approvers: z.string().array(), secretPath: z.string().optional() }).array()
         })
       }
     },
@@ -63,9 +64,38 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.query.workspaceId
+        projectSlug: req.query.projectSlug
       });
       return { approvals };
+    }
+  });
+
+  server.route({
+    url: "/policy-count",
+    method: "GET",
+    schema: {
+      querystring: z.object({
+        projectSlug: z.string(),
+        envSlug: z.string()
+      }),
+      response: {
+        200: z.object({
+          policyCount: z.number()
+        })
+      }
+    },
+
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { policyCount } = await server.services.accessApprovalPolicy.getAccessPolicyCountByEnvSlug({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        projectSlug: req.query.projectSlug,
+        actorOrgId: req.permission.orgId,
+        envSlug: req.query.envSlug
+      });
+      return { policyCount };
     }
   });
 
@@ -79,6 +109,11 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       body: z
         .object({
           name: z.string().optional(),
+          secretPath: z
+            .string()
+            .trim()
+            .optional()
+            .transform((val) => (val === "" ? "/" : val)),
           approvers: z.string().array().min(1),
           approvals: z.number().min(1).default(1)
         })
