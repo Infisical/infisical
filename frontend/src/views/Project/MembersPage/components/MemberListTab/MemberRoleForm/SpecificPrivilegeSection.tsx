@@ -1,9 +1,11 @@
+import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   faArrowRotateLeft,
   faCaretDown,
   faCheck,
   faClock,
+  faLockOpen,
   faPlus,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
@@ -44,11 +46,13 @@ import {
 import { usePopUp } from "@app/hooks";
 import {
   TProjectUserPrivilege,
+  useCreateAccessRequest,
   useCreateProjectUserAdditionalPrivilege,
   useDeleteProjectUserAdditionalPrivilege,
   useListProjectUserPrivileges,
   useUpdateProjectUserAdditionalPrivilege
 } from "@app/hooks/api";
+import { TAccessApprovalPolicy } from "@app/hooks/api/types";
 
 const secretPermissionSchema = z.object({
   secretPath: z.string().optional(),
@@ -70,51 +74,107 @@ const secretPermissionSchema = z.object({
   ])
 });
 type TSecretPermissionForm = z.infer<typeof secretPermissionSchema>;
-const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPrivilege }) => {
+export const SpecificPrivilegeSecretForm = ({
+  privilege,
+  policies,
+  onClose
+}: {
+  privilege?: TProjectUserPrivilege;
+  policies?: TAccessApprovalPolicy[];
+  onClose?: () => void;
+}) => {
   const { currentWorkspace } = useWorkspace();
+  const { membership: projectMembership } = useProjectPermission();
+
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-    "deletePrivilege"
+    "deletePrivilege",
+    "requestAccess"
   ] as const);
   const { permission } = useProjectPermission();
-  const isMemberEditDisabled = permission.cannot(
-    ProjectPermissionActions.Edit,
-    ProjectPermissionSub.Member
-  );
+  const isMemberEditDisabled =
+    permission.cannot(ProjectPermissionActions.Edit, ProjectPermissionSub.Member) && !!privilege;
 
   const updateUserPrivilege = useUpdateProjectUserAdditionalPrivilege();
   const deleteUserPrivilege = useDeleteProjectUserAdditionalPrivilege();
+  const requestAccess = useCreateAccessRequest();
 
   const privilegeForm = useForm<TSecretPermissionForm>({
     resolver: zodResolver(secretPermissionSchema),
     values: {
-      environmentSlug: privilege.permissions?.[0]?.conditions?.environment,
-      // secret path will be inside $glob operator
-      secretPath: privilege.permissions?.[0]?.conditions?.secretPath?.$glob || "",
-      read: privilege.permissions?.some(({ action }) =>
-        action.includes(ProjectPermissionActions.Read)
-      ),
-      edit: privilege.permissions?.some(({ action }) =>
-        action.includes(ProjectPermissionActions.Edit)
-      ),
-      create: privilege.permissions?.some(({ action }) =>
-        action.includes(ProjectPermissionActions.Create)
-      ),
-      delete: privilege.permissions?.some(({ action }) =>
-        action.includes(ProjectPermissionActions.Delete)
-      ),
-      // zod will pick it
-      temporaryAccess: privilege
+      ...(privilege
+        ? {
+            environmentSlug: privilege.permissions?.[0]?.conditions?.environment,
+            // secret path will be inside $glob operator
+            secretPath: privilege.permissions?.[0]?.conditions?.secretPath?.$glob || "",
+            read: privilege.permissions?.some(({ action }) =>
+              action.includes(ProjectPermissionActions.Read)
+            ),
+            edit: privilege.permissions?.some(({ action }) =>
+              action.includes(ProjectPermissionActions.Edit)
+            ),
+            create: privilege.permissions?.some(({ action }) =>
+              action.includes(ProjectPermissionActions.Create)
+            ),
+            delete: privilege.permissions?.some(({ action }) =>
+              action.includes(ProjectPermissionActions.Delete)
+            ),
+            // zod will pick it
+            temporaryAccess: privilege
+          }
+        : {
+            environmentSlug: currentWorkspace?.environments?.[0].slug!,
+            read: false,
+            edit: false,
+            create: false,
+            delete: false,
+            temporaryAccess: {
+              isTemporary: false
+            }
+          })
     }
   });
 
   const temporaryAccessField = privilegeForm.watch("temporaryAccess");
   const selectedEnvironmentSlug = privilegeForm.watch("environmentSlug");
+  const selectedEnvironment = privilegeForm.watch("environmentSlug");
+  const secretPath = privilegeForm.watch("secretPath");
+
+  const readAccess = privilegeForm.watch("read");
+  const createAccess = privilegeForm.watch("create");
+  const editAccess = privilegeForm.watch("edit");
+  const deleteAccess = privilegeForm.watch("delete");
+
+  const accessSelected = readAccess || createAccess || editAccess || deleteAccess;
+
+  const selectablePaths = useMemo(() => {
+    if (!policies) return [];
+    const environmentPolicies = policies.filter(
+      (policy) => policy.environment.slug === selectedEnvironment
+    );
+
+    privilegeForm.setValue("secretPath", "", {
+      shouldValidate: true
+    });
+
+    return [...environmentPolicies.map((policy) => policy.secretPath)];
+  }, [policies, selectedEnvironment]);
+
   const isTemporary = temporaryAccessField?.isTemporary;
   const isExpired =
     temporaryAccessField.isTemporary &&
     new Date() > new Date(temporaryAccessField.temporaryAccessEndTime || "");
 
   const handleUpdatePrivilege = async (data: TSecretPermissionForm) => {
+    if (!privilege) {
+      createNotification({
+        type: "error",
+        text: "No privilege to update found.",
+        title: "Error"
+      });
+
+      return;
+    }
+
     if (updateUserPrivilege.isLoading) return;
     try {
       const actions = [
@@ -152,6 +212,15 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
   };
 
   const handleDeletePrivilege = async () => {
+    if (!privilege) {
+      createNotification({
+        type: "error",
+        text: "No privilege to delete found.",
+        title: "Error"
+      });
+      return;
+    }
+
     if (deleteUserPrivilege.isLoading) return;
     try {
       await deleteUserPrivilege.mutateAsync({
@@ -170,35 +239,122 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
     }
   };
 
+
   const getAccessLabel = (exactTime = false) => {
     if (isExpired) return "Access expired";
     if (!temporaryAccessField?.isTemporary) return "Permanent";
+
     if (exactTime)
       return `Until ${format(
         new Date(temporaryAccessField.temporaryAccessEndTime || ""),
         "yyyy-MM-dd HH:mm:ss"
       )}`;
     return formatDistance(new Date(temporaryAccessField.temporaryAccessEndTime || ""), new Date());
+      };
+
+  };
+
+  // This is used for requesting access additional privileges, not directly creating a privilege!
+  const handleRequestAccess = async (data: TSecretPermissionForm) => {
+    if (!policies) return;
+    if (!currentWorkspace) {
+      createNotification({
+        type: "error",
+        text: "No workspace found.",
+        title: "Error"
+      });
+      return;
+    }
+
+    if (!data.secretPath) {
+      createNotification({
+        type: "error",
+        text: "Please select a secret path",
+        title: "Error"
+      });
+      return;
+    }
+
+    const actions = [
+      { action: ProjectPermissionActions.Read, allowed: data.read },
+      { action: ProjectPermissionActions.Create, allowed: data.create },
+      { action: ProjectPermissionActions.Delete, allowed: data.delete },
+      { action: ProjectPermissionActions.Edit, allowed: data.edit }
+    ];
+    const conditions: Record<string, any> = { environment: data.environmentSlug };
+    if (data.secretPath) {
+      conditions.secretPath = { $glob: data.secretPath };
+    }
+    await requestAccess.mutateAsync({
+      ...data,
+      ...(data.temporaryAccess.isTemporary && {
+        temporaryAccessStartTime: data.temporaryAccess.temporaryAccessStartTime,
+        temporaryAccessEndTime: data.temporaryAccess.temporaryAccessEndTime,
+        temporaryRange: data.temporaryAccess.temporaryRange,
+        temporaryMode: "relative"
+      }),
+      envSlug: data.environmentSlug,
+      secretPath: data.secretPath,
+      projectSlug: currentWorkspace.slug,
+      projectMembershipId: projectMembership.id,
+      isTemporary: data.temporaryAccess.isTemporary,
+      permissions: actions
+        .filter(({ allowed }) => allowed)
+        .map(({ action }) => ({
+          action,
+          subject: [ProjectPermissionSub.Secrets],
+          conditions
+        }))
+    });
+
+    createNotification({
+      type: "success",
+      text: "Successfully requested access"
+    });
+    privilegeForm.reset();
+    if (onClose) onClose();
+  };
+
+  const handleSubmit = async (data: TSecretPermissionForm) => {
+    if (privilege) {
+      handleUpdatePrivilege(data);
+    } else {
+      handleRequestAccess(data);
+    }
+  };
+
+  const getAccessLabel = (exactTime = false) => {
+    if (isExpired) return "Access expired";
+    if (!temporaryAccessField?.isTemporary) return "Permanent";
+
+    if (exactTime)
+      return `Until ${format(
+        new Date(temporaryAccessField.temporaryAccessEndTime || ""),
+        "yyyy-MM-dd HH:mm:ss"
+      )}`;
+    return formatDistance(new Date(temporaryAccessField.temporaryAccessEndTime || ""), new Date());
+      };
+
   };
 
   return (
-    <div className="mt-4">
-      <form onSubmit={privilegeForm.handleSubmit(handleUpdatePrivilege)}>
-        <div className="flex items-start space-x-4">
+    <div className="mt-4 w-full">
+      <form onSubmit={privilegeForm.handleSubmit(handleSubmit)}>
+        <div className={twMerge("flex items-start gap-4", !privilege && "flex-wrap")}>
           <Controller
             control={privilegeForm.control}
             name="environmentSlug"
             render={({ field: { onChange, ...field } }) => (
-              <FormControl label="Env">
+              <FormControl label="Environment">
                 <Select
                   {...field}
                   isDisabled={isMemberEditDisabled}
                   className="bg-mineshaft-600 hover:bg-mineshaft-500"
                   onValueChange={(e) => onChange(e)}
                 >
-                  {currentWorkspace?.environments?.map(({ slug, id }) => (
+                  {currentWorkspace?.environments?.map(({ slug, id, name }) => (
                     <SelectItem value={slug} key={id}>
-                      {slug}
+                      {name}
                     </SelectItem>
                   ))}
                 </Select>
@@ -208,8 +364,28 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
           <Controller
             control={privilegeForm.control}
             name="secretPath"
-            render={({ field }) => (
-              <FormControl label="Secret Path">
+            render={({ field }) => {
+              console.log(policies);
+              if (policies) {
+                return (
+                  <FormControl label="Secret Path">
+                    <Select
+                      {...field}
+                      isDisabled={isMemberEditDisabled || !selectablePaths.length}
+                      className="w-48"
+                      onValueChange={(e) => field.onChange(e)}
+                    >
+                      {selectablePaths.map((path) => (
+                        <SelectItem value={path} key={path}>
+                          {path}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                );
+              }
+              return (
+                <FormControl label="Secret Path">
                 <SecretPathInput
                   {...field}
                   isDisabled={isMemberEditDisabled}
@@ -217,7 +393,8 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
                   environment={selectedEnvironmentSlug}
                 />
               </FormControl>
-            )}
+              );
+            }}
           />
           <div className="flex flex-grow justify-between">
             <Controller
@@ -285,7 +462,7 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
               )}
             />
           </div>
-          <div className="mt-7 flex items-center space-x-2">
+          <div className="mt-6 flex items-center space-x-2">
             <Popover>
               <PopoverTrigger disabled={isMemberEditDisabled}>
                 <div>
@@ -301,7 +478,7 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
                         isExpired && "text-red-600"
                       )}
                     >
-                      {getAccessLabel()}
+                      {getAccessLabel(false)}
                     </Button>
                   </Tooltip>
                 </div>
@@ -382,7 +559,8 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
                 </div>
               </PopoverContent>
             </Popover>
-            {privilegeForm.formState.isDirty ? (
+            {/* eslint-disable-next-line no-nested-ternary */}
+            {privilegeForm.formState.isDirty && privilege ? (
               <>
                 <Tooltip content="Cancel" className="mr-4">
                   <IconButton
@@ -413,7 +591,8 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
                   </IconButton>
                 </Tooltip>
               </>
-            ) : (
+            ) : // eslint-disable-next-line no-nested-ternary
+            privilege ? (
               <Tooltip
                 content={isMemberEditDisabled ? "Access restricted" : "Delete"}
                 className="mr-4"
@@ -428,9 +607,28 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
                   <FontAwesomeIcon icon={faTrash} />
                 </IconButton>
               </Tooltip>
+            ) : (
+              <div />
             )}
           </div>
         </div>
+        {!!policies && (
+          <Button
+            type="submit"
+            isLoading={privilegeForm.formState.isSubmitting || requestAccess.isLoading}
+            isDisabled={
+              isMemberEditDisabled ||
+              !policies.length ||
+              !privilegeForm.formState.isValid ||
+              !secretPath ||
+              !accessSelected
+            }
+            className="mt-4"
+            leftIcon={<FontAwesomeIcon icon={faLockOpen} />}
+          >
+            Request access
+          </Button>
+        )}
       </form>
       <DeleteActionModal
         isOpen={popUp.deletePrivilege.isOpen}
