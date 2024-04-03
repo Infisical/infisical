@@ -12,6 +12,7 @@ export const AccessApprovalPoliciesSchema = z.object({
   name: z.string(),
   approvals: z.number().default(1),
   envId: z.string().uuid(),
+  secretPath: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
