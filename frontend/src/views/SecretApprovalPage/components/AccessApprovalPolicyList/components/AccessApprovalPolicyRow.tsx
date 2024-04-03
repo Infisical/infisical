@@ -22,7 +22,7 @@ import { TWorkspaceUser } from "@app/hooks/api/users/types";
 type Props = {
   policy: TAccessApprovalPolicy;
   members?: TWorkspaceUser[];
-  workspaceId: string;
+  projectSlug: string;
   onEdit: () => void;
   onDelete: () => void;
 };
@@ -30,7 +30,7 @@ type Props = {
 export const AccessApprovalPolicyRow = ({
   policy,
   members = [],
-  workspaceId,
+  projectSlug,
   onEdit,
   onDelete
 }: Props) => {
@@ -42,13 +42,14 @@ export const AccessApprovalPolicyRow = ({
     <Tr>
       <Td>{policy.name}</Td>
       <Td>{policy.environment.slug}</Td>
+      <Td>{policy.secretPath || "*"}</Td>
       <Td>
         <DropdownMenu
           onOpenChange={(isOpen) => {
             if (!isOpen) {
               updateAccessApprovalPolicy(
                 {
-                  workspaceId,
+                  projectSlug,
                   id: policy.id,
                   approvers: selectedApprovers
                 },
