@@ -54,6 +54,8 @@ export enum TableName {
   // New tables so far
   AccessApprovalPolicy = "access_approval_policies",
   AccessApprovalPolicyApprover = "access_approval_policies_approvers",
+  AccessApprovalRequest = "access_approval_requests",
+  AccessApprovalRequestReviewer = "access_approval_requests_reviewers",
 
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
