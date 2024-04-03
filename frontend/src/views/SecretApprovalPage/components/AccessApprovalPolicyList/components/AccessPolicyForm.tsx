@@ -32,7 +32,7 @@ type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
   members?: TWorkspaceUser[];
-  workspaceId: string;
+  projectSlug: string;
   editValues?: TAccessApprovalPolicy;
 };
 
@@ -40,7 +40,7 @@ const formSchema = z
   .object({
     environment: z.string(),
     name: z.string().optional(),
-    secretPath: z.string().optional().nullable(),
+    secretPath: z.string().optional(),
     approvals: z.number().min(1),
     approvers: z.string().array().min(1)
   })
@@ -55,7 +55,7 @@ export const AccessPolicyForm = ({
   isOpen,
   onToggle,
   members = [],
-  workspaceId,
+  projectSlug,
   editValues
 }: Props) => {
   const {
@@ -80,10 +80,12 @@ export const AccessPolicyForm = ({
   const { mutateAsync: updateAccessApprovalPolicy } = useUpdateAccessApprovalPolicy();
 
   const handleCreatePolicy = async (data: TFormSchema) => {
+    if (!projectSlug) return;
+
     try {
       await createAccessApprovalPolicy({
         ...data,
-        workspaceId
+        projectSlug
       });
       createNotification({
         type: "success",
@@ -100,12 +102,14 @@ export const AccessPolicyForm = ({
   };
 
   const handleUpdatePolicy = async (data: TFormSchema) => {
+    if (!projectSlug) return;
     if (!editValues?.id) return;
+
     try {
       await updateAccessApprovalPolicy({
         id: editValues?.id,
         ...data,
-        workspaceId
+        projectSlug
       });
       createNotification({
         type: "success",
@@ -154,6 +158,7 @@ export const AccessPolicyForm = ({
                 errorText={error?.message}
               >
                 <Select
+                  isDisabled={isEditMode}
                   value={value}
                   onValueChange={(val) => onChange(val)}
                   className="w-full border border-mineshaft-500"
@@ -170,6 +175,17 @@ export const AccessPolicyForm = ({
               </FormControl>
             )}
           />
+
+          <Controller
+            control={control}
+            name="secretPath"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Secret Path" isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} value={field.value || ""} />
+              </FormControl>
+            )}
+          />
+
           <Controller
             control={control}
             name="approvers"
