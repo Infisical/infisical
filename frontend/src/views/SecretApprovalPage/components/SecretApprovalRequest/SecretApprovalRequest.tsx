@@ -183,7 +183,7 @@ export const SecretApprovalRequest = () => {
               </DropdownMenu>
             </div>
           </div>
-          <div className="flex flex-col rounded-b-md border-x border-t border-b border-mineshaft-600 border-mineshaft-600 bg-mineshaft-800">
+          <div className="flex flex-col rounded-b-md border-x border-t border-b border-mineshaft-600 bg-mineshaft-800">
             {isRequestListEmpty && (
               <div className="py-12">
                 <EmptyState title="No more requests pending." />

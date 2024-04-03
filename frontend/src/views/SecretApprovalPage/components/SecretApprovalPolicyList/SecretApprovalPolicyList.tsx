@@ -46,7 +46,6 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
   ] as const);
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
-  
 
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const { data: policies, isLoading: isPoliciesLoading } = useGetSecretApprovalPolicies({
@@ -120,7 +119,6 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
               <Th>Secret Path</Th>
               <Th>Eligible Approvers</Th>
               <Th>Approval Required</Th>
-              <Th />
             </Tr>
           </THead>
           <TBody>
