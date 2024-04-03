@@ -693,6 +693,7 @@ func init() {
 	secretsCmd.AddCommand(secretsGetCmd)
 	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
 	secretsGetCmd.Flags().Bool("raw-value", false, "Returns only the value of secret, only works with one secret")
+	secretsGetCmd.Flags().Bool("recursive", false, "Fetch secrets from all sub-folders")
 
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
