@@ -1,6 +1,13 @@
 export {
   useCreateAccessApprovalPolicy,
+  useCreateAccessRequest,
   useDeleteAccessApprovalPolicy,
+  useReviewAccessRequest,
   useUpdateAccessApprovalPolicy
 } from "./mutation";
-export { useGetAccessApprovalPolicies } from "./queries";
+export {
+  useGetAccessApprovalPolicies,
+  useGetAccessApprovalRequests,
+  useGetAccessPolicyApprovalCount,
+  useGetAccessRequestsCount
+} from "./queries";
