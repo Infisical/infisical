@@ -54,6 +54,7 @@ export const accessApprovalPolicyServiceFactory = ({
 
     if (approvals > approvers.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
+    if (!secretPath) throw new BadRequestError({ message: "Secret path is required" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -154,6 +155,7 @@ export const accessApprovalPolicyServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
+
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
     const updatedPolicy = await accessApprovalPolicyDAL.transaction(async (tx) => {
