@@ -2,6 +2,7 @@ import "fastify";
 
 import { TUsers } from "@app/db/schemas";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
+import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
@@ -115,6 +116,7 @@ declare module "fastify" {
       identityProject: TIdentityProjectServiceFactory;
       identityUa: TIdentityUaServiceFactory;
       accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
+      accessApprovalRequest: TAccessApprovalRequestServiceFactory;
       secretApprovalPolicy: TSecretApprovalPolicyServiceFactory;
       secretApprovalRequest: TSecretApprovalRequestServiceFactory;
       secretRotation: TSecretRotationServiceFactory;
