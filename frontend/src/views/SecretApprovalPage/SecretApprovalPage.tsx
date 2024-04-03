@@ -7,6 +7,7 @@ import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 
 import { AccessApprovalPolicyList } from "./components/AccessApprovalPolicyList";
+import { AccessApprovalRequest } from "./components/AccessApprovalRequest";
 import { SecretApprovalPolicyList } from "./components/SecretApprovalPolicyList";
 import { SecretApprovalRequest } from "./components/SecretApprovalRequest";
 
@@ -19,7 +20,8 @@ enum TabSection {
 
 export const SecretApprovalPage = () => {
   const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
+  const projectId = currentWorkspace?.id || "";
+  const projectSlug = currentWorkspace?.slug || "";
 
   return (
     <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 px-6 text-white">
@@ -55,11 +57,15 @@ export const SecretApprovalPage = () => {
           <SecretApprovalRequest />
         </TabPanel>
         <TabPanel value={TabSection.SecretPolicies}>
-          <SecretApprovalPolicyList workspaceId={workspaceId} />
+          <SecretApprovalPolicyList workspaceId={projectId} />
+        </TabPanel>
+
+        <TabPanel value={TabSection.ResourceApprovalRequests}>
+          <AccessApprovalRequest projectId={projectId} projectSlug={projectSlug} />
         </TabPanel>
 
         <TabPanel value={TabSection.ResourcePolicies}>
-          <AccessApprovalPolicyList workspaceId={workspaceId} />
+          <AccessApprovalPolicyList workspaceId={projectId} />
         </TabPanel>
       </Tabs>
     </div>
