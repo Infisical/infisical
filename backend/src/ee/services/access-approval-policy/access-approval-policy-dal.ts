@@ -10,7 +10,7 @@ export type TAccessApprovalPolicyDALFactory = ReturnType<typeof accessApprovalPo
 export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
   const accessApprovalPolicyOrm = ormify(db, TableName.AccessApprovalPolicy);
 
-  const sapFindQuery = async (tx: Knex, filter: TFindFilter<TAccessApprovalPolicies>) => {
+  const accessApprovalPolicyFindQuery = async (tx: Knex, filter: TFindFilter<TAccessApprovalPolicies>) => {
     const result = await tx(TableName.AccessApprovalPolicy)
       // eslint-disable-next-line
       .where(buildFindFilter(filter))
@@ -32,7 +32,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const doc = await sapFindQuery(tx || db, {
+      const doc = await accessApprovalPolicyFindQuery(tx || db, {
         [`${TableName.AccessApprovalPolicy}.id` as "id"]: id
       });
       const formatedDoc = mergeOneToManyRelation(
@@ -54,7 +54,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
 
   const find = async (filter: TFindFilter<TAccessApprovalPolicies & { projectId: string }>, tx?: Knex) => {
     try {
-      const docs = await sapFindQuery(tx || db, filter);
+      const docs = await accessApprovalPolicyFindQuery(tx || db, filter);
       const formatedDoc = mergeOneToManyRelation(
         docs,
         "id",
@@ -66,7 +66,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
         ({ approverId }) => approverId,
         "approvers"
       );
-      return formatedDoc;
+      return formatedDoc.map((policy) => ({ ...policy, secretPath: policy.secretPath || undefined }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find" });
     }
