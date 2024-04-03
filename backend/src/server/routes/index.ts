@@ -5,6 +5,9 @@ import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { accessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { accessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
+import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
+import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
+import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
@@ -210,7 +213,9 @@ export const registerRoutes = async (
   const ldapGroupMapDAL = ldapGroupMapDALFactory(db);
 
   const accessApprovalPolicyDAL = accessApprovalPolicyDALFactory(db);
+  const accessApprovalRequestDAL = accessApprovalRequestDALFactory(db);
   const accessApprovalPolicyApproverDAL = accessApprovalPolicyApproverDALFactory(db);
+  const accessApprovalRequestReviewerDAL = accessApprovalRequestReviewerDALFactory(db);
 
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
   const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
@@ -268,14 +273,6 @@ export const registerRoutes = async (
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     permissionService,
     secretApprovalPolicyDAL
-  });
-
-  const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
-    accessApprovalPolicyDAL,
-    accessApprovalPolicyApproverDAL,
-    permissionService,
-    projectEnvDAL,
-    projectMembershipDAL
   });
 
   const samlService = samlConfigServiceFactory({
@@ -597,6 +594,27 @@ export const registerRoutes = async (
     secretQueueService
   });
 
+  const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
+    accessApprovalPolicyDAL,
+    accessApprovalPolicyApproverDAL,
+    permissionService,
+    projectEnvDAL,
+    projectMembershipDAL,
+    projectDAL
+  });
+
+  const accessApprovalRequestService = accessApprovalRequestServiceFactory({
+    projectDAL,
+    permissionService,
+    accessApprovalRequestReviewerDAL,
+    additionalPrivilegeDAL: projectUserAdditionalPrivilegeDAL,
+    projectMembershipDAL,
+    additionalPrivilegeService: projectUserAdditionalPrivilegeService,
+    accessApprovalPolicyDAL,
+    accessApprovalRequestDAL,
+    projectEnvDAL
+  });
+
   const secretRotationQueue = secretRotationQueueFactory({
     telemetryService,
     secretRotationDAL,
@@ -734,6 +752,7 @@ export const registerRoutes = async (
     identityUa: identityUaService,
     secretApprovalPolicy: sapService,
     accessApprovalPolicy: accessApprovalPolicyService,
+    accessApprovalRequest: accessApprovalRequestService,
     secretApprovalRequest: sarService,
     secretRotation: secretRotationService,
     dynamicSecret: dynamicSecretService,
