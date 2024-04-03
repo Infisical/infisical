@@ -3,8 +3,6 @@ import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Button } from "../v2";
-
 type Props = {
   containerClassName?: string;
   className?: string;
@@ -34,9 +32,6 @@ export const PermissionDeniedBanner = ({ containerClassName, className, children
             )}
           </div>
         </div>
-        <Button className="mt-3 ml-[7.5rem]" size="xs">
-          Request access
-        </Button>
       </div>
     </div>
   );
