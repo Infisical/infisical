@@ -21,7 +21,8 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useProjectPermission,
-  useSubscription
+  useSubscription,
+  useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteAccessApprovalPolicy, useGetWorkspaceUsers } from "@app/hooks/api";
@@ -43,12 +44,15 @@ export const AccessApprovalPolicyList = ({ workspaceId }: IProps) => {
   ] as const);
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
+  const { currentWorkspace } = useWorkspace();
 
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const { data: policies, isLoading: isPoliciesLoading } = useGetAccessApprovalPolicies({
-    workspaceId,
+    projectSlug: currentWorkspace?.slug as string,
     options: {
-      enabled: permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval)
+      enabled:
+        permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
+        !!currentWorkspace?.slug
     }
   });
 
@@ -56,9 +60,11 @@ export const AccessApprovalPolicyList = ({ workspaceId }: IProps) => {
 
   const handleDeletePolicy = async () => {
     const { id } = popUp.deletePolicy.data as TAccessApprovalPolicy;
+    if (!currentWorkspace?.slug) return;
+
     try {
       await deleteSecretApprovalPolicy({
-        workspaceId,
+        projectSlug: currentWorkspace?.slug,
         id
       });
       createNotification({
@@ -114,6 +120,7 @@ export const AccessApprovalPolicyList = ({ workspaceId }: IProps) => {
               <Th>Name</Th>
               <Th>Environment</Th>
               <Th>Secret Path</Th>
+              <Th>Eligible Approvers</Th>
               <Th>Approval Required</Th>
               <Th />
             </Tr>
@@ -129,21 +136,22 @@ export const AccessApprovalPolicyList = ({ workspaceId }: IProps) => {
                 </Td>
               </Tr>
             )}
-            {policies?.map((policy) => (
-              <AccessApprovalPolicyRow
-                workspaceId={workspaceId}
-                policy={policy}
-                key={policy.id}
-                members={members}
-                onEdit={() => handlePopUpOpen("secretPolicyForm", policy)}
-                onDelete={() => handlePopUpOpen("deletePolicy", policy)}
-              />
-            ))}
+            {!!currentWorkspace &&
+              policies?.map((policy) => (
+                <AccessApprovalPolicyRow
+                  projectSlug={currentWorkspace.slug}
+                  policy={policy}
+                  key={policy.id}
+                  members={members}
+                  onEdit={() => handlePopUpOpen("secretPolicyForm", policy)}
+                  onDelete={() => handlePopUpOpen("deletePolicy", policy)}
+                />
+              ))}
           </TBody>
         </Table>
       </TableContainer>
       <AccessPolicyForm
-        workspaceId={workspaceId}
+        projectSlug={currentWorkspace?.slug!}
         isOpen={popUp.secretPolicyForm.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("secretPolicyForm", isOpen)}
         members={members}
