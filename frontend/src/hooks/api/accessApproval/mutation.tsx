@@ -89,7 +89,6 @@ export const useCreateAccessRequest = () => {
     },
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries([
-        accessApprovalKeys.getAccessApprovalRequests(projectSlug),
         accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
       ]);
     }
