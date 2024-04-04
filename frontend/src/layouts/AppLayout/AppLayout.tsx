@@ -5,7 +5,7 @@
 /* eslint-disable no-var */
 /* eslint-disable func-names */
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Image from "next/image";
@@ -64,6 +64,7 @@ import {
   fetchOrgUsers,
   useAddUserToWsNonE2EE,
   useCreateWorkspace,
+  useGetAccessRequestsCount,
   useGetOrgTrialUrl,
   useGetSecretApprovalRequestCount,
   useGetUserAction,
@@ -124,9 +125,15 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { user } = useUser();
   const { subscription } = useSubscription();
   const workspaceId = currentWorkspace?.id || "";
+  const projectSlug = currentWorkspace?.slug || "";
   const { data: updateClosed } = useGetUserAction("december_update_closed");
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
+  const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
+
+  const pendingRequestsCount = useMemo(() => {
+    return (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
+  }, [secretApprovalReqCount, accessApprovalRequestCount]);
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
@@ -555,9 +562,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             icon="system-outline-189-domain-verification"
                           >
                             Approvals
-                            {Boolean(secretApprovalReqCount?.open) && (
+                            {Boolean(
+                              secretApprovalReqCount?.open ||
+                                accessApprovalRequestCount?.pendingCount
+                            ) && (
                               <span className="ml-2 rounded border border-primary-400 bg-primary-600 py-0.5 px-1 text-xs font-semibold text-black">
-                                {secretApprovalReqCount?.open}
+                                {pendingRequestsCount}
                               </span>
                             )}
                           </MenuItem>
