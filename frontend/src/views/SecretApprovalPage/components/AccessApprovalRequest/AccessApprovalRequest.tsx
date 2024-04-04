@@ -26,7 +26,6 @@ import {
 import { Badge } from "@app/components/v2/Badge";
 import {
   ProjectPermissionActions,
-  ProjectPermissionSub,
   useProjectPermission,
   useSubscription,
   useWorkspace
