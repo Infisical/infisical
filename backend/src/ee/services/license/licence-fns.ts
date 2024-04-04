@@ -33,7 +33,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   status: null,
   trial_end: null,
   has_used_trial: true,
-  secretApproval: true,
+  secretApproval: false,
   secretRotation: true
 });
 
