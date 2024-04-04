@@ -31,11 +31,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           .min(1)
           .max(60)
           .trim()
-          .default(slugify(alphaNumericNanoId(12)))
           .refine((val) => val.toLowerCase() === val, "Must be lowercase")
           .refine((v) => slugify(v) === v, {
             message: "Slug must be a valid slug"
           })
+          .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
         permissions: z.any().array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions)
       }),
@@ -53,6 +53,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
+        slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
         isTemporary: false,
         permissions: JSON.stringify(packRules(req.body.permissions))
       });
@@ -78,11 +79,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           .min(1)
           .max(60)
           .trim()
-          .default(slugify(alphaNumericNanoId(12)))
           .refine((val) => val.toLowerCase() === val, "Must be lowercase")
           .refine((v) => slugify(v) === v, {
             message: "Slug must be a valid slug"
           })
+          .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
         permissions: z.any().array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions),
         temporaryMode: z
@@ -111,6 +112,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
+        slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
         isTemporary: true,
         permissions: JSON.stringify(packRules(req.body.permissions))
       });
