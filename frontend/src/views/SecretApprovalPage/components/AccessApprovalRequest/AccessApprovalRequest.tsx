@@ -5,7 +5,8 @@ import {
   faCheck,
   faCheckCircle,
   faChevronDown,
-  faLockOpen
+  faLock,
+  faPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistance } from "date-fns";
@@ -25,6 +26,7 @@ import {
   EmptyState,
   Modal,
   ModalContent,
+  Tooltip,
   UpgradePlanModal
 } from "@app/components/v2";
 import {
@@ -51,7 +53,7 @@ const DisplayBadge = ({ text, className }: { text: string; className?: string })
   return (
     <div
       className={twMerge(
-        "ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100",
+        "ml-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-xs text-yellow opacity-80 hover:opacity-100",
         className
       )}
     >
@@ -155,28 +157,28 @@ const ReviewRequestModal = ({
       <ModalContent
         className="max-w-4xl"
         title="Review Request"
-        subTitle="Review the request and approve or deny access"
+        subTitle="Review the request and approve or deny access."
       >
         <div className="text-sm">
           <span>
             <span className="font-bold">
               {request.user?.firstName} {request.user?.lastName} ({request.user?.email})
             </span>{" "}
-            is requesting access to the following resource
+            is requesting access to the following resource:
           </span>
 
-          <div className="mt-4">
-            <div className="mb-2 lowercase">
+          <div className="mt-4 mb-2 bg-blue-500/20 px-3 py-2 border-l border-blue-500 text-mineshaft-200">
+            <div className="mb-1 lowercase">
               <span className="font-bold capitalize">Requested path: </span>
               <DisplayBadge text={accessDetails.env + accessDetails.secretPath || ""} />
             </div>
 
-            <div className="mb-2">
+            <div className="mb-1">
               <span className="font-bold">Permissions: </span>
               <DisplayBadge text={requestedAccess} />
             </div>
 
-            <div className="mb-2">
+            <div>
               <span className="font-bold">Access Type: </span>
               <span>{getAccessLabel()}</span>
             </div>
@@ -188,7 +190,7 @@ const ReviewRequestModal = ({
               isDisabled={!!isLoading}
               onClick={() => handleReview("approved")}
               className="mt-4"
-              size="xs"
+              size="sm"
             >
               Approve Request
             </Button>
@@ -196,9 +198,8 @@ const ReviewRequestModal = ({
               isLoading={isLoading === "rejected"}
               isDisabled={!!isLoading}
               onClick={() => handleReview("rejected")}
-              className="mt-4"
-              size="xs"
-              colorSchema="danger"
+              className="mt-4 bg-transparent border-transparent hover:bg-red/20 hover:border-red text-mineshaft-200 hover:text-mineshaft-200"
+              size="sm"
             >
               Reject Request
             </Button>
@@ -237,11 +238,11 @@ const generateRequestText = (request: TAccessApprovalRequest) => {
   return (
     <span className="text-sm">
       Requested {isTemporary ? "temporary" : "permanent"} access to{" "}
-      <code className="mx-1 rounded-sm bg-primary-500 px-1.5 py-0.5 font-mono text-xs text-black">
+      <code className="mx-1 rounded-sm bg-primary-500/20 px-1.5 py-0.5 font-mono text-xs text-primary">
         {request.policy.secretPath}
       </code>
       in
-      <code className="mx-1 rounded-sm bg-primary-500 px-1.5 py-0.5 font-mono text-xs text-black">
+      <code className="mx-1 rounded-sm bg-primary-500/20 px-1.5 py-0.5 font-mono text-xs text-primary">
         {request.environmentName}
       </code>
     </span>
@@ -362,9 +363,9 @@ export const AccessApprovalRequest = ({
 
   return (
     <div>
-      <div className="mb-6 flex justify-between">
+      <div className="mb-6 flex justify-between items-end">
         <div className="flex flex-col">
-          <span className="text-xl font-semibold text-mineshaft-100">Access Approval Requests</span>
+          <span className="text-xl font-semibold text-mineshaft-100">Access Requests</span>
           <div className="mt-2 text-sm text-bunker-300">
             Request access to secrets in sensitive environments and folders.
           </div>
@@ -375,19 +376,21 @@ export const AccessApprovalRequest = ({
             a={ProjectPermissionSub.SecretApproval}
           >
             {(isAllowed) => (
-              <Button
-                onClick={() => {
-                  if (subscription && !subscription?.secretApproval) {
-                    handlePopUpOpen("upgradePlan");
-                    return;
-                  }
-                  handlePopUpOpen("requestAccess");
-                }}
-                leftIcon={<FontAwesomeIcon icon={faLockOpen} />}
-                isDisabled={!isAllowed || policiesLoading || !policies?.length}
-              >
-                Request access
-              </Button>
+              <Tooltip content="To submit Access Requests, your project needs to create Access Request policies first." isDisabled={!(!isAllowed || policiesLoading || !policies?.length)}>
+                <Button
+                  onClick={() => {
+                    if (subscription && !subscription?.secretApproval) {
+                      handlePopUpOpen("upgradePlan");
+                      return;
+                    }
+                    handlePopUpOpen("requestAccess");
+                  }}
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  isDisabled={!isAllowed || policiesLoading || !policies?.length}
+                >
+                  Request access
+                </Button>
+              </Tooltip>
             )}
           </ProjectPermissionCan>
         </div>
@@ -414,7 +417,7 @@ export const AccessApprovalRequest = ({
                 statusFilter === "close" ? "text-gray-500 duration-100 hover:text-gray-400" : ""
               }
             >
-              <FontAwesomeIcon icon={faLockOpen} className="mr-2" />
+              <FontAwesomeIcon icon={faLock} className="mr-2" />
               {!!requestCount && requestCount?.pendingCount} Pending
             </div>
             <div
@@ -493,7 +496,7 @@ export const AccessApprovalRequest = ({
               </div>
             )}
             {!!filteredRequests?.length &&
-              filteredRequests?.map((request) => {
+              requests?.map((request) => {
                 const details = generateRequestDetails(request);
 
                 return (
@@ -524,7 +527,7 @@ export const AccessApprovalRequest = ({
                   >
                     <div>
                       <div className="mb-1">
-                        <FontAwesomeIcon icon={faLockOpen} className="mr-2" />
+                        <FontAwesomeIcon icon={faLock} className="mr-2" />
                         {generateRequestText(request)}
                       </div>
                       <span className="text-xs text-gray-500">
@@ -532,12 +535,6 @@ export const AccessApprovalRequest = ({
                         {membersGroupById?.[request.requestedBy]?.user?.firstName}{" "}
                         {membersGroupById?.[request.requestedBy]?.user?.lastName} (
                         {membersGroupById?.[request.requestedBy]?.user?.email}){" "}
-                        <span className="font-bold">
-                          {details.isApprover &&
-                            !details.isReviewedByUser &&
-                            !details.isAccepted &&
-                            "- Review required"}
-                        </span>
                       </span>
 
                       {details.isApprover && (
