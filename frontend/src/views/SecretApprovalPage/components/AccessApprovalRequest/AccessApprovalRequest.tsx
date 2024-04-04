@@ -167,7 +167,7 @@ const ReviewRequestModal = ({
             is requesting access to the following resource:
           </span>
 
-          <div className="mt-4 mb-2 bg-blue-500/20 px-3 py-2 border-l border-blue-500 text-mineshaft-200">
+          <div className="mt-4 mb-2 border-l border-blue-500 bg-blue-500/20 px-3 py-2 text-mineshaft-200">
             <div className="mb-1 lowercase">
               <span className="font-bold capitalize">Requested path: </span>
               <DisplayBadge text={accessDetails.env + accessDetails.secretPath || ""} />
@@ -198,7 +198,7 @@ const ReviewRequestModal = ({
               isLoading={isLoading === "rejected"}
               isDisabled={!!isLoading}
               onClick={() => handleReview("rejected")}
-              className="mt-4 bg-transparent border-transparent hover:bg-red/20 hover:border-red text-mineshaft-200 hover:text-mineshaft-200"
+              className="mt-4 border-transparent bg-transparent text-mineshaft-200 hover:border-red hover:bg-red/20 hover:text-mineshaft-200"
               size="sm"
             >
               Reject Request
@@ -363,7 +363,7 @@ export const AccessApprovalRequest = ({
 
   return (
     <div>
-      <div className="mb-6 flex justify-between items-end">
+      <div className="mb-6 flex items-end justify-between">
         <div className="flex flex-col">
           <span className="text-xl font-semibold text-mineshaft-100">Access Requests</span>
           <div className="mt-2 text-sm text-bunker-300">
@@ -376,7 +376,10 @@ export const AccessApprovalRequest = ({
             a={ProjectPermissionSub.SecretApproval}
           >
             {(isAllowed) => (
-              <Tooltip content="To submit Access Requests, your project needs to create Access Request policies first." isDisabled={!(!isAllowed || policiesLoading || !policies?.length)}>
+              <Tooltip
+                content="To submit Access Requests, your project needs to create Access Request policies first."
+                isDisabled={!(!isAllowed || policiesLoading || !policies?.length)}
+              >
                 <Button
                   onClick={() => {
                     if (subscription && !subscription?.secretApproval) {
@@ -496,7 +499,7 @@ export const AccessApprovalRequest = ({
               </div>
             )}
             {!!filteredRequests?.length &&
-              requests?.map((request) => {
+              filteredRequests?.map((request) => {
                 const details = generateRequestDetails(request);
 
                 return (
