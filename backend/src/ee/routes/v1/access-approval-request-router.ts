@@ -16,9 +16,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         temporaryRange: z.string().optional()
       }),
       querystring: z.object({
-        projectSlug: z.string().trim(),
-        secretPath: z.string().trim(),
-        envSlug: z.string().trim()
+        projectSlug: z.string().trim()
       }),
       response: {
         200: z.object({
@@ -33,9 +31,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         permissions: req.body.permissions,
-        envSlug: req.query.envSlug,
         actorOrgId: req.permission.orgId,
-        secretPath: req.query.secretPath,
         projectSlug: req.query.projectSlug,
         temporaryRange: req.body.temporaryRange,
         isTemporary: req.body.isTemporary
