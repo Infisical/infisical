@@ -342,12 +342,14 @@ export const AccessApprovalRequest = ({
       displayData = { label: "Access Granted", colorClass: "bg-green/20 text-green" };
     else if (isRejectedByAnyone)
       displayData = { label: "Rejected", colorClass: "bg-red/20 text-red" };
-    else if (userReviewStatus === ApprovalStatus.APPROVED)
+    else if (userReviewStatus === ApprovalStatus.APPROVED) {
       displayData = {
-        label: `Pending ${request.policy.approvals - request.reviewers.length} reviews`,
+        label: `Pending ${request.policy.approvals - request.reviewers.length} review${
+          request.policy.approvals - request.reviewers.length > 1 ? "s" : ""
+        }`,
         colorClass: "bg-yellow/20 text-yellow"
       };
-    else if (!isReviewedByUser)
+    } else if (!isReviewedByUser)
       displayData = {
         label: "Review Required",
         colorClass: "bg-yellow/20 text-yellow"
@@ -499,14 +501,21 @@ export const AccessApprovalRequest = ({
 
                 return (
                   <div
-                    aria-disabled={details.isReviewedByUser || details.isRejectedByAnyone}
+                    aria-disabled={
+                      details.isReviewedByUser || details.isRejectedByAnyone || details.isAccepted
+                    }
                     key={request.id}
                     className="flex w-full cursor-pointer px-8 py-4 hover:bg-mineshaft-700 aria-disabled:opacity-80"
                     role="button"
                     tabIndex={0}
                     onClick={() => {
-                      if (!details.isApprover) return;
-                      if (details.isReviewedByUser || details.isRejectedByAnyone) return;
+                      if (
+                        !details.isApprover ||
+                        details.isReviewedByUser ||
+                        details.isRejectedByAnyone ||
+                        details.isAccepted
+                      )
+                        return;
 
                       setSelectedRequest({
                         ...request,
@@ -515,8 +524,13 @@ export const AccessApprovalRequest = ({
                       handlePopUpOpen("reviewRequest");
                     }}
                     onKeyDown={(evt) => {
-                      if (!details.isApprover) return;
-                      if (details.isReviewedByUser || details.isRejectedByAnyone) return;
+                      if (
+                        !details.isApprover ||
+                        details.isAccepted ||
+                        details.isReviewedByUser ||
+                        details.isRejectedByAnyone
+                      )
+                        return;
                       if (evt.key === "Enter") {
                         setSelectedRequest({
                           ...request,
@@ -543,7 +557,7 @@ export const AccessApprovalRequest = ({
                               </>
                             )}
                           </div>
-                          <div className="">
+                          <div>
                             {details.isApprover && (
                               <DisplayBadge
                                 text={details.displayData.label}
