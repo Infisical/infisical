@@ -83,11 +83,11 @@ export const AccessApprovalPolicyList = ({ workspaceId }: IProps) => {
 
   return (
     <div>
-      <div className="mb-6 flex justify-between">
+      <div className="mb-6 flex justify-between items-end">
         <div className="flex flex-col">
-          <span className="text-xl font-semibold text-mineshaft-100">Access Approval Policies</span>
+          <span className="text-xl font-semibold text-mineshaft-100">Access Request Policies</span>
           <div className="mt-2 text-sm text-bunker-300">
-            Implement policies to prevent unauthorized secret changes.
+            Implement secret request policies for specific secrets and environments.
           </div>
         </div>
         <div>
