@@ -1,9 +1,7 @@
-import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema } from "@app/db/schemas";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -13,16 +11,6 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     method: "POST",
     schema: {
       body: z.object({
-        slug: z
-          .string()
-          .min(1)
-          .max(60)
-          .trim()
-          .default(`requested-privilege-${slugify(alphaNumericNanoId(12))}`)
-          .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
-          .refine((v) => slugify(v) === v, {
-            message: "Slug must be a valid slug"
-          }),
         permissions: z.any().array(),
         isTemporary: z.boolean(),
         temporaryRange: z.string().optional()
