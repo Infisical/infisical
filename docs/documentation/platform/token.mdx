@@ -1,6 +1,6 @@
 ---
-title: "Service token"
-description: "Infisical service tokens allows you to programmatically interact with Infisical"
+title: "Service Token"
+description: "Infisical service tokens allow users to programmatically interact with Infisical."
 ---
 
 Service tokens are authentication credentials that services can use to access designated endpoints in the Infisical API to manage project resources like secrets.
@@ -42,6 +42,10 @@ Also, note that Infisical supports [glob patterns](https://www.malikbrowne.com/b
 
 In the above screenshot, you can see that we are creating a token token with `read` access to all subfolders at any depth
 of the `/common` path within the development environment of the project; the token expires in 6 months and can be used from any IP address.
+
+<Note>
+For a deeper understanding of service tokens, it is recommended to read [this guide](http://localhost:3000/internals/service-tokens). 
+</Note>
 
 **FAQ**
 

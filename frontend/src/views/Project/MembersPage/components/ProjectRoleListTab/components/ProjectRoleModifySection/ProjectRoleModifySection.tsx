@@ -134,6 +134,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
     register,
     formState: { isSubmitting, isDirty, errors },
     setValue,
+    getValues,
     control
   } = useForm<TFormSchema>({
     defaultValues: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : {},
@@ -232,6 +233,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
           </div>
           <div>
             <MultiEnvProjectPermission
+              getValue={getValues}
               isNonEditable={isNonEditable}
               control={control}
               setValue={setValue}

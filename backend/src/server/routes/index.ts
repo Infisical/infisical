@@ -14,12 +14,16 @@ import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secre
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { identityProjectAdditionalPrivilegeDALFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-dal";
+import { identityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
+import { projectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
@@ -155,6 +159,7 @@ export const registerRoutes = async (
 
   const projectDAL = projectDALFactory(db);
   const projectMembershipDAL = projectMembershipDALFactory(db);
+  const projectUserAdditionalPrivilegeDAL = projectUserAdditionalPrivilegeDALFactory(db);
   const projectUserMembershipRoleDAL = projectUserMembershipRoleDALFactory(db);
   const projectRoleDAL = projectRoleDALFactory(db);
   const projectEnvDAL = projectEnvDALFactory(db);
@@ -180,6 +185,7 @@ export const registerRoutes = async (
   const identityOrgMembershipDAL = identityOrgDALFactory(db);
   const identityProjectDAL = identityProjectDALFactory(db);
   const identityProjectMembershipRoleDAL = identityProjectMembershipRoleDALFactory(db);
+  const identityProjectAdditionalPrivilegeDAL = identityProjectAdditionalPrivilegeDALFactory(db);
 
   const identityUaDAL = identityUaDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
@@ -381,6 +387,11 @@ export const registerRoutes = async (
     projectRoleDAL,
     licenseService
   });
+  const projectUserAdditionalPrivilegeService = projectUserAdditionalPrivilegeServiceFactory({
+    permissionService,
+    projectMembershipDAL,
+    projectUserAdditionalPrivilegeDAL
+  });
   const projectKeyService = projectKeyServiceFactory({
     permissionService,
     projectKeyDAL,
@@ -515,6 +526,7 @@ export const registerRoutes = async (
     snapshotService,
     secretQueueService,
     secretImportDAL,
+    projectEnvDAL,
     projectBotService
   });
   const sarService = secretApprovalRequestServiceFactory({
@@ -583,6 +595,12 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     identityProjectMembershipRoleDAL,
     projectRoleDAL
+  });
+  const identityProjectAdditionalPrivilegeService = identityProjectAdditionalPrivilegeServiceFactory({
+    projectDAL,
+    identityProjectAdditionalPrivilegeDAL,
+    permissionService,
+    identityProjectDAL
   });
   const identityUaService = identityUaServiceFactory({
     identityOrgMembershipDAL,
@@ -676,7 +694,9 @@ export const registerRoutes = async (
     trustedIp: trustedIpService,
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
-    telemetry: telemetryService
+    telemetry: telemetryService,
+    projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService,
+    identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

@@ -229,7 +229,6 @@ export const secretQueueFactory = ({
 
   const getIntegrationSecrets = async (dto: TGetSecrets & { folderId: string }, key: string) => {
     const secrets = await secretDAL.findByFolderId(dto.folderId);
-    if (!secrets.length) return {};
 
     // get imported secrets
     const secretImport = await secretImportDAL.find({ folderId: dto.folderId });
@@ -238,6 +237,9 @@ export const secretQueueFactory = ({
       secretDAL,
       folderDAL
     });
+
+    if (!secrets.length && !importedSecrets.length) return {};
+
     const content: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }> = {};
 
     importedSecrets.forEach(({ secrets: secs }) => {

@@ -158,7 +158,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
             ])
           )
           .min(1)
-          .refine((data) => data.some(({ isTemporary }) => !isTemporary), "At least long lived role is required")
+          .refine((data) => data.some(({ isTemporary }) => !isTemporary), "At least one long lived role is required")
           .describe(PROJECTS.UPDATE_USER_MEMBERSHIP.roles)
       }),
       response: {

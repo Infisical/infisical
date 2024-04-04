@@ -180,10 +180,12 @@ export const permissionServiceFactory = ({
     authMethod: ActorAuthMethod,
     userOrgId?: string
   ): Promise<TProjectPermissionRT<ActorType.USER>> => {
-    const membership = await permissionDAL.getProjectPermission(userId, projectId);
-    if (!membership) throw new UnauthorizedError({ name: "User not in project" });
+    const userProjectPermission = await permissionDAL.getProjectPermission(userId, projectId);
+    if (!userProjectPermission) throw new UnauthorizedError({ name: "User not in project" });
 
-    if (membership.roles.some(({ role, permissions }) => role === ProjectMembershipRole.Custom && !permissions)) {
+    if (
+      userProjectPermission.roles.some(({ role, permissions }) => role === ProjectMembershipRole.Custom && !permissions)
+    ) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
 
@@ -192,17 +194,27 @@ export const permissionServiceFactory = ({
 
     // Extra: This means that when users are using API keys to make requests, they can't use slug-based routes.
     // Slug-based routes depend on the organization ID being present on the request, since project slugs aren't globally unique, and we need a way to filter by organization.
-    if (userOrgId !== "API_KEY" && membership.orgId !== userOrgId) {
+    if (userOrgId !== "API_KEY" && userProjectPermission.orgId !== userOrgId) {
       throw new UnauthorizedError({ name: "You are not logged into this organization" });
     }
 
-    validateOrgSAML(authMethod, membership.orgAuthEnforced);
+    validateOrgSAML(authMethod, userProjectPermission.orgAuthEnforced);
+
+    // join two permissions and pass to build the final permission set
+    const rolePermissions = userProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+    const additionalPrivileges =
+      userProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
+        role: ProjectMembershipRole.Custom,
+        permissions
+      })) || [];
 
     return {
-      permission: buildProjectPermission(membership.roles),
-      membership,
+      permission: buildProjectPermission(rolePermissions.concat(additionalPrivileges)),
+      membership: userProjectPermission,
       hasRole: (role: string) =>
-        membership.roles.findIndex(({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug) !== -1
+        userProjectPermission.roles.findIndex(
+          ({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug
+        ) !== -1
     };
   };
 
@@ -226,8 +238,16 @@ export const permissionServiceFactory = ({
       throw new UnauthorizedError({ name: "You are not a member of this organization" });
     }
 
+    const rolePermissions =
+      identityProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+    const additionalPrivileges =
+      identityProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
+        role: ProjectMembershipRole.Custom,
+        permissions
+      })) || [];
+
     return {
-      permission: buildProjectPermission(identityProjectPermission.roles),
+      permission: buildProjectPermission(rolePermissions.concat(additionalPrivileges)),
       membership: identityProjectPermission,
       hasRole: (role: string) =>
         identityProjectPermission.roles.findIndex(

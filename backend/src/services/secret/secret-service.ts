@@ -1,3 +1,5 @@
+/* eslint-disable no-unreachable-loop */
+/* eslint-disable no-await-in-loop */
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, SecretsSchema, SecretType } from "@app/db/schemas";
@@ -13,13 +15,20 @@ import { logger } from "@app/lib/logger";
 import { ActorType } from "../auth/auth-type";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretDALFactory } from "./secret-dal";
-import { decryptSecretRaw, fnSecretBlindIndexCheck, fnSecretBulkInsert, fnSecretBulkUpdate } from "./secret-fns";
+import {
+  decryptSecretRaw,
+  fnSecretBlindIndexCheck,
+  fnSecretBulkInsert,
+  fnSecretBulkUpdate,
+  recursivelyGetSecretPaths
+} from "./secret-fns";
 import { TSecretQueueFactory } from "./secret-queue";
 import {
   TAttachSecretTagsDTO,
@@ -47,20 +56,25 @@ type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  folderDAL: Pick<
+    TSecretFolderDALFactory,
+    "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find"
+  >;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
 export const secretServiceFactory = ({
   secretDAL,
+  projectEnvDAL,
   secretTagDAL,
   secretVersionDAL,
   folderDAL,
@@ -425,7 +439,8 @@ export const secretServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
-    includeImports
+    includeImports,
+    recursive
   }: TGetSecretsDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -434,19 +449,52 @@ export const secretServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+
+    let paths: { folderId: string; path: string }[] = [];
+
+    if (recursive) {
+      const getPaths = recursivelyGetSecretPaths({
+        permissionService,
+        folderDAL,
+        projectEnvDAL
+      });
+
+      const deepPaths = await getPaths({
+        projectId,
+        environment,
+        currentPath: path,
+        auth: {
+          actor,
+          actorId,
+          actorAuthMethod,
+          actorOrgId
+        }
+      });
+
+      if (!deepPaths) return { secrets: [], imports: [] };
+
+      paths = deepPaths.map(({ folderId, path: p }) => ({ folderId, path: p }));
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+      );
+
+      const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+      if (!folder) return { secrets: [], imports: [] };
+
+      paths = [{ folderId: folder.id, path }];
+    }
+
+    const groupedPaths = groupBy(paths, (p) => p.folderId);
+
+    const secrets = await secretDAL.findByFolderIds(
+      paths.map((p) => p.folderId),
+      actorId
     );
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-    if (!folder) return { secrets: [], imports: [] };
-    const folderId = folder.id;
-
-    const secrets = await secretDAL.findByFolderId(folderId, actorId);
-
     if (includeImports) {
-      const secretImports = await secretImportDAL.find({ folderId });
+      const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
       const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
         // if its service token allow full access over imported one
         actor === ActorType.SERVICE
@@ -464,12 +512,26 @@ export const secretServiceFactory = ({
         secretDAL,
         folderDAL
       });
+
       return {
-        secrets: secrets.map((el) => ({ ...el, workspace: projectId, environment })),
+        secrets: secrets.map((secret) => ({
+          ...secret,
+          workspace: projectId,
+          environment,
+          secretPath: groupedPaths[secret.folderId][0].path
+        })),
         imports: importedSecrets
       };
     }
-    return { secrets: secrets.map((el) => ({ ...el, workspace: projectId, environment })) };
+
+    return {
+      secrets: secrets.map((secret) => ({
+        ...secret,
+        workspace: projectId,
+        environment,
+        secretPath: groupedPaths[secret.folderId][0].path
+      }))
+    };
   };
 
   const getSecretByName = async ({
@@ -655,7 +717,7 @@ export const secretServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
@@ -741,7 +803,7 @@ export const secretServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
@@ -789,7 +851,8 @@ export const secretServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     environment,
-    includeImports
+    includeImports,
+    recursive
   }: TGetSecretsRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -802,7 +865,8 @@ export const secretServiceFactory = ({
       actorOrgId,
       actorAuthMethod,
       path,
-      includeImports
+      includeImports,
+      recursive
     });
 
     return {
@@ -810,7 +874,10 @@ export const secretServiceFactory = ({
       imports: (imports || [])?.map(({ secrets: importedSecrets, ...el }) => ({
         ...el,
         secrets: importedSecrets.map((sec) =>
-          decryptSecretRaw({ ...sec, environment: el.environment, workspace: projectId }, botKey)
+          decryptSecretRaw(
+            { ...sec, environment: el.environment, workspace: projectId, secretPath: el.secretPath },
+            botKey
+          )
         )
       }))
     };

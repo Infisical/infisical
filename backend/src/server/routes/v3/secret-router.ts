@@ -157,6 +157,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.LIST.secretPath),
+        recursive: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+          .describe(RAW_SECRETS.LIST.recursive),
         include_imports: z
           .enum(["true", "false"])
           .default("false")
@@ -165,7 +170,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          secrets: secretRawSchema.array(),
+          secrets: secretRawSchema
+            .extend({
+              secretPath: z.string().optional()
+            })
+            .array(),
           imports: z
             .object({
               secretPath: z.string(),
@@ -218,7 +227,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         projectId: workspaceId,
         path: secretPath,
-        includeImports: req.query.include_imports
+        includeImports: req.query.include_imports,
+        recursive: req.query.recursive
       });
 
       await server.services.auditLog.createAuditLog({
@@ -596,6 +606,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        recursive: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true"),
         include_imports: z
           .enum(["true", "false"])
           .default("false")
@@ -604,19 +618,18 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           secrets: SecretsSchema.omit({ secretBlindIndex: true })
-            .merge(
-              z.object({
-                _id: z.string(),
-                workspace: z.string(),
-                environment: z.string(),
-                tags: SecretTagsSchema.pick({
-                  id: true,
-                  slug: true,
-                  name: true,
-                  color: true
-                }).array()
-              })
-            )
+            .extend({
+              _id: z.string(),
+              workspace: z.string(),
+              environment: z.string(),
+              secretPath: z.string().optional(),
+              tags: SecretTagsSchema.pick({
+                id: true,
+                slug: true,
+                name: true,
+                color: true
+              }).array()
+            })
             .array(),
           imports: z
             .object({
@@ -648,7 +661,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment: req.query.environment,
         projectId: req.query.workspaceId,
         path: req.query.secretPath,
-        includeImports: req.query.include_imports
+        includeImports: req.query.include_imports,
+        recursive: req.query.recursive
       });
 
       await server.services.auditLog.createAuditLog({

@@ -1,0 +1,59 @@
+---
+title:  Machine Identities
+description: "Learn how to use Machine Identities to programmatically interact with Infisical."
+---
+
+## Concept
+
+An Infisical machine identity is an entity that represents a workload or application that require access to various resources in Infisical. This is conceptually similar to an IAM user in AWS or service account in Google Cloud Platform (GCP).
+
+Each identity must authenticate with the API using a supported authentication method like [Universal Auth](/documentation/platform/identities/universal-auth) to get back a short-lived access token to be used in subsequent requests.
+
+![organization identities](/images/platform/organization/organization-machine-identities.png)
+
+Key Features:
+
+- Role Assignment: Identities must be assigned [roles](/documentation/platform/role-based-access-controls). These roles determine the scope of access to resources, either at the organization level or project level.
+- Auth/Token Configuration: Identities must be configured with corresponding authentication methods and access token properties to securely interact with the Infisical API.
+
+## Workflow
+
+A typical workflow for using identities consists of four steps:
+
+1. Creating the identity with a name and [role](/documentation/platform/role-based-access-controls) in Organization Access Control > Machine Identities.
+This step also involves configuring an authentication method for it such as [Universal Auth](/documentation/platform/identities/universal-auth).
+2. Adding the identity to the project(s) you want it to have access to.
+3. Authenticating the identity with the Infisical API based on the configured authentication method on it and receiving a short-lived access token back.
+4. Authenticating subsequent requests with the Infisical API using the short-lived access token.
+
+
+<Note>
+  Currently, identities can only be used to make authenticated requests to the Infisical API, SDKs, Terraform, Kubernetes Operator, and Infisical Agent. They do not work with clients such as CLI, Ansible look up plugin, etc.
+
+  Machine Identity support for the rest of the clients is planned to be released in the current quarter.
+</Note>
+
+
+## Authentication Methods
+
+To interact with various resources in Infisical, Machine Identities are able to authenticate using:
+
+- [Universal Auth](/documentation/platform/identities/universal-auth): the most versatile authentication method that can be configured on an identity from any platform/environment to access Infisical.
+
+## FAQ
+
+<AccordionGroup>
+<Accordion title="What is the difference between an identity and service token?">
+  A service token is a project-level authentication method that is being phased out in favor of identities.
+  
+  Amongst many differences, identities provide broader access over the Infisical API, utilizes the same
+  permission system as user identities, and come with a significantly larger number of configurable authentication and security features.
+</Accordion>
+<Accordion title="Why can I not create, read, update, or delete an identity?">
+  There are a few reasons for why this might happen:
+  
+  - You have insufficient organization permissions to create, read, update, delete identities.
+  - The identity you are trying to read, update, or delete is more privileged than yourself.
+  - The role you are trying to create an identity for or update an identity to is more privileged than yours.
+</Accordion>
+</AccordionGroup>

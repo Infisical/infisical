@@ -83,7 +83,13 @@ export default function RenderCreateIntegrationPage() {
           isError={apiKeyErrorText !== "" ?? false}
           className="px-6"
         >
-          <Input placeholder="rnd_xxx" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+          <Input 
+            placeholder="rnd_xxx" 
+            value={apiKey} 
+            type="password"
+            autoComplete="new-password"
+            onChange={(e) => setApiKey(e.target.value)} 
+          />
         </FormControl>
         <Button
           onClick={handleButtonClick}

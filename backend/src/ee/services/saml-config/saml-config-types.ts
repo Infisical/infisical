@@ -5,7 +5,8 @@ export enum SamlProviders {
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
   JUMPCLOUD_SAML = "jumpcloud-saml",
-  GOOGLE_SAML = "google-saml"
+  GOOGLE_SAML = "google-saml",
+  KEYCLOAK_SAML = "keycloak-saml"
 }
 
 export type TCreateSamlCfgDTO = {

@@ -1,0 +1,44 @@
+---
+title: "Role-based Access Controls"
+description: "Learn how to use RBAC to manage user permissions."
+---
+
+Infisical's Role-based Access Controls (RBAC) enable the usage of predefined and custom roles that imply a set of permissions for user and machine identities. Such roles male it possible to restrict access to resources and the range of actions that can be performed.
+
+In general, access controls can be split up across [projects](/documentation/platform/project) and [organizations](/documentation/platform/organization).
+
+## Organization-level access controls
+
+By default, every user and machine identity in a organization is either an **admin** or a **member**. 
+
+**Admins** are able to perform every action with the organization, including adding and removing organization members, managing access controls, setting up security settings, and creating new projects. 
+
+**Members**, on the other hand, are restricted from removing organization members, modifying billing information, updating access controls, and performing a number of other actions. 
+
+Overall, organization-level access controls are significantly of administrative nature. Access to projects, secrets and other sensitive data is specified on the project level. 
+
+![Org member role](/images/platform/rbac/org-member-role.png)
+
+## Project-level access controls
+
+By default, every user in a project is either a **viewer**, **developer**, or an **admin**. Each of these roles comes with a varying access to different features and resources inside projects. 
+
+As such: 
+- **Admin**: This role enables identities to have access to all environments, folders, secrets, and actions within the project. 
+- **Developers**: This role restricts identities from performing project control actions, updating Approval Workflow policies, managing roles/members, and more. 
+- **Viewer**: The most limiting bulit-in role on the project level – it forbids user and machine identities to perform any action and rather shows them in the read-only mode. 
+
+![Project member role](/images/platform/access-controls/rbac.png)
+
+## Creating custom roles
+
+By creating custom roles, you are able to adjust permissions to the needs of your organization. This can be useful for: 
+- Creating superadmin roles, roles specific to SRE engineers, etc. 
+- Restricting access of users to specific secrets, folders, and environments. 
+- Embedding these specific roles into [Approval Workflow policies](/documentation/platform/pr-workflows).
+
+<Note>
+It is worth noting that users are able to assume multiple built-in and custom roles. A user will gain access to all actions within the roles assigned to them, not just the actions those roles share in common. 
+</Note>
+
+![project member custom role](/images/platform/rbac/project-member-custom-role.png)

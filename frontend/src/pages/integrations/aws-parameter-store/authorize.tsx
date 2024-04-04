@@ -109,6 +109,8 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
           <Input
             placeholder=""
             value={accessSecretKey}
+            type="password"
+            autoComplete="new-password"
             onChange={(e) => setAccessSecretKey(e.target.value)}
           />
         </FormControl>

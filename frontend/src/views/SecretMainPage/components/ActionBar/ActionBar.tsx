@@ -416,7 +416,7 @@ export const ActionBar = ({
             {Object.keys(selectedSecrets).length} Selected
           </div>
           <ProjectPermissionCan
-            I={ProjectPermissionActions.Edit}
+            I={ProjectPermissionActions.Delete}
             a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
             renderTooltip
             allowedLabel="Delete"

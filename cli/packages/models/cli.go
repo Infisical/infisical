@@ -93,6 +93,7 @@ type GetAllSecretsParameters struct {
 	WorkspaceId              string
 	SecretsPath              string
 	IncludeImport            bool
+	Recursive                bool
 }
 
 type GetAllFoldersParameters struct {
