@@ -20,7 +20,13 @@ export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
 
 export const authRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 600,
+  max: 60,
+  keyGenerator: (req) => req.realIp
+};
+
+export const inviteUserRateLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  max: 10,
   keyGenerator: (req) => req.realIp
 };
 
