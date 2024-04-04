@@ -388,14 +388,13 @@ export const SpecificPrivilegeSecretForm = ({
     if (isExpired) return "Access expired";
     if (!temporaryAccessField?.isTemporary) return "Permanent";
 
-    if (exactTime)
+    if (exactTime) {
       return `Until ${format(
         new Date(temporaryAccessField.temporaryAccessEndTime || ""),
         "yyyy-MM-dd HH:mm:ss"
       )}`;
+    }
     return formatDistance(new Date(temporaryAccessField.temporaryAccessEndTime || ""), new Date());
-      };
-
   };
 
   return (
