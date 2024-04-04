@@ -12,7 +12,7 @@ export const getDefaultOnPremFeatures = () => {
     secretVersioning: true,
     pitRecovery: false,
     ipAllowlisting: true,
-    rbac: false,
+    rbac: true,
     customRateLimits: false,
     customAlerts: false,
     auditLogs: false,

@@ -102,9 +102,7 @@ export const groupProjectServiceFactory = ({
       const groupProjectMembership = await groupProjectDAL.create(
         {
           groupId: group.id,
-          projectId: project.id,
-          role: isCustomRole ? ProjectMembershipRole.Custom : role,
-          roleId: customRole?.id
+          projectId: project.id
         },
         tx
       );
@@ -212,14 +210,6 @@ export const groupProjectServiceFactory = ({
     const projectGroup = await groupProjectDAL.findOne({ groupId: group.id, projectId: project.id });
     if (!projectGroup) throw new BadRequestError({ message: `Failed to find group with slug ${groupSlug}` });
 
-    const { permission: groupRolePermission } = await permissionService.getProjectPermissionByRole(
-      projectGroup.role,
-      project.id
-    );
-
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, groupRolePermission);
-    if (!hasRequiredPriviledges) throw new ForbiddenRequestError({ message: "Failed to delete more privileged group" });
-
     // validate custom roles input
     const customInputRoles = roles.filter(
       ({ role }) => !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
@@ -295,12 +285,6 @@ export const groupProjectServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Groups);
-    const { permission: groupRolePermission } = await permissionService.getProjectPermissionByRole(
-      groupProjectMembership.role,
-      project.id
-    );
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, groupRolePermission);
-    if (!hasRequiredPriviledges) throw new ForbiddenRequestError({ message: "Failed to delete more privileged group" });
 
     const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group.id, project.id);
 

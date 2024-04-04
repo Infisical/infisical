@@ -37,9 +37,6 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.GroupProjectMembership))) {
     await knex.schema.createTable(TableName.GroupProjectMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("role").notNullable();
-      t.uuid("roleId");
-      t.foreign("roleId").references("id").inTable(TableName.ProjectRoles);
       t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.uuid("groupId").notNullable();

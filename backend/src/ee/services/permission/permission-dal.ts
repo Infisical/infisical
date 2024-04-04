@@ -73,7 +73,6 @@ export const permissionDALFactory = (db: TDbClient) => {
         .select(
           db.ref("id").withSchema(TableName.GroupProjectMembership).as("membershipId"),
           // TODO(roll-forward-migration): remove this field when we drop this in next migration after a week
-          db.ref("role").withSchema(TableName.GroupProjectMembership).as("oldRoleField"),
           db.ref("createdAt").withSchema(TableName.GroupProjectMembership).as("membershipCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.GroupProjectMembership).as("membershipUpdatedAt"),
           db.ref("projectId").withSchema(TableName.GroupProjectMembership),
@@ -102,7 +101,6 @@ export const permissionDALFactory = (db: TDbClient) => {
         .select(
           db.ref("id").withSchema(TableName.ProjectMembership).as("membershipId"),
           // TODO(roll-forward-migration): remove this field when we drop this in next migration after a week
-          db.ref("role").withSchema(TableName.ProjectMembership).as("oldRoleField"),
           db.ref("createdAt").withSchema(TableName.ProjectMembership).as("membershipCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.ProjectMembership).as("membershipUpdatedAt"),
           db.ref("projectId").withSchema(TableName.ProjectMembership),
@@ -115,18 +113,11 @@ export const permissionDALFactory = (db: TDbClient) => {
       const permission = sqlNestRelationships({
         data: docs.concat(groupDocs),
         key: "projectId",
-        parentMapper: ({
-          orgId,
-          orgAuthEnforced,
-          membershipId,
-          membershipCreatedAt,
-          membershipUpdatedAt,
-          oldRoleField
-        }) => ({
+        parentMapper: ({ orgId, orgAuthEnforced, membershipId, membershipCreatedAt, membershipUpdatedAt, role }) => ({
           orgId,
           orgAuthEnforced,
           userId,
-          role: oldRoleField,
+          role,
           id: membershipId,
           projectId,
           createdAt: membershipCreatedAt,
