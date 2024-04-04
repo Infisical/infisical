@@ -496,7 +496,7 @@ export const AccessApprovalRequest = ({
               </div>
             )}
             {!!filteredRequests?.length &&
-              requests?.map((request) => {
+              filteredRequests?.map((request) => {
                 const details = generateRequestDetails(request);
 
                 return (
