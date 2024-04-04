@@ -47,8 +47,8 @@ export const SecretApprovalPage = () => {
       </div>
       <Tabs defaultValue={TabSection.SecretApprovalRequests}>
         <TabList>
-          <Tab value={TabSection.SecretApprovalRequests}>Change Requests</Tab>
-          <Tab value={TabSection.SecretPolicies}>Change Request Policies</Tab>
+          <Tab value={TabSection.SecretApprovalRequests}>Secret Requests</Tab>
+          <Tab value={TabSection.SecretPolicies}>Secret Policies</Tab>
           <Divider />
           <Tab value={TabSection.ResourceApprovalRequests}>Access Requests</Tab>
           <Tab value={TabSection.ResourcePolicies}>Access Request Policies</Tab>
