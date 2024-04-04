@@ -21,11 +21,11 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
           .min(1)
           .max(60)
           .trim()
-          .default(slugify(alphaNumericNanoId(12)))
           .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
           .refine((v) => slugify(v) === v, {
             message: "Slug must be a valid slug"
           })
+          .optional()
           .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
         permissions: z.any().array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions)
       }),
@@ -43,6 +43,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
+        slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
         isTemporary: false,
         permissions: JSON.stringify(req.body.permissions)
       });
@@ -61,11 +62,11 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
           .min(1)
           .max(60)
           .trim()
-          .default(`privilege-${slugify(alphaNumericNanoId(12))}`)
           .refine((v) => v.toLowerCase() === v, "Slug must be lowercase")
           .refine((v) => slugify(v) === v, {
             message: "Slug must be a valid slug"
           })
+          .optional()
           .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
         permissions: z.any().array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions),
         temporaryMode: z
@@ -94,6 +95,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
+        slug: req.body.slug ? slugify(req.body.slug) : `privilege-${slugify(alphaNumericNanoId(12))}`,
         isTemporary: true,
         permissions: JSON.stringify(req.body.permissions)
       });
