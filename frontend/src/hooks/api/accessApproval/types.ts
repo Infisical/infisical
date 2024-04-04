@@ -92,10 +92,8 @@ export type TProjectUserPrivilege = {
 );
 
 export type TCreateAccessRequestDTO = {
-  envSlug: string;
   projectSlug: string;
-  secretPath: string;
-} & Omit<TProjectUserPrivilege, "id" | "createdAt" | "updatedAt" | "slug">;
+} & Omit<TProjectUserPrivilege, "id" | "createdAt" | "updatedAt" | "slug" | "projectMembershipId">;
 
 export type TGetAccessApprovalRequestsDTO = {
   projectSlug: string;
