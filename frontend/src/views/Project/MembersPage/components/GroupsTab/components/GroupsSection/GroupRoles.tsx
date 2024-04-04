@@ -26,8 +26,8 @@ import {
 import { useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
+import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { TWorkspaceUser } from "@app/hooks/api/types";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/workspace/types";
 import { groupBy } from "@app/lib/fn/array";
 
@@ -196,7 +196,7 @@ type TForm = z.infer<typeof formSchema>;
 export type TMemberRolesProp = {
   disableEdit?: boolean;
   groupSlug: string;
-  roles: TWorkspaceUser["roles"];
+  roles: TGroupMembership["roles"];
 };
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
