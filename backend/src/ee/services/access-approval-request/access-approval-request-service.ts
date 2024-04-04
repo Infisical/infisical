@@ -1,8 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
+import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -64,9 +66,15 @@ export const accessApprovalRequestServiceFactory = ({
     if (!project) throw new UnauthorizedError({ message: "Project not found" });
 
     // Anyone can create an access approval request.
-    const p = await permissionService.getProjectPermission(actor, actorId, project.id, actorAuthMethod, actorOrgId);
+    const { membership } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
 
-    if (!p.membership) throw new UnauthorizedError({ message: "You are not a member of this project" });
+    if (!membership) throw new UnauthorizedError({ message: "You are not a member of this project" });
 
     await projectDAL.checkProjectUpgradeStatus(project.id);
 
@@ -81,9 +89,27 @@ export const accessApprovalRequestServiceFactory = ({
     });
     if (!policy) throw new UnauthorizedError({ message: "No policy matching criteria was found." });
 
+    const duplicateRequest = await accessApprovalRequestDAL.findOne({
+      policyId: policy.id,
+      requestedBy: membership.id,
+      permissions: JSON.stringify(permissions),
+      temporaryRange: temporaryRange || null,
+      isTemporary
+    });
+
+    if (duplicateRequest.privilegeId) {
+      const privilege = await additionalPrivilegeDAL.findById(duplicateRequest.privilegeId);
+
+      const isExpired = new Date() > new Date(privilege.temporaryAccessEndTime || ("" as string));
+
+      if (!isExpired) {
+        throw new BadRequestError({ message: "You have already requested access with the same permissions" });
+      }
+    }
+
     const approvalRequest = await accessApprovalRequestDAL.create({
       policyId: policy.id,
-      requestedBy: p.membership.id,
+      requestedBy: membership.id,
       temporaryRange: temporaryRange || null,
       permissions: JSON.stringify(permissions),
       isTemporary
@@ -209,7 +235,7 @@ export const accessApprovalRequestServiceFactory = ({
             // Permanent access
             const privilege = await additionalPrivilegeDAL.create({
               projectMembershipId: accessApprovalRequest.requestedBy,
-              slug: "",
+              slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
               permissions: JSON.stringify(accessApprovalRequest.permissions)
             });
             privilegeId = privilege.id;
@@ -220,7 +246,7 @@ export const accessApprovalRequestServiceFactory = ({
 
             const privilege = await additionalPrivilegeDAL.create({
               projectMembershipId: accessApprovalRequest.requestedBy,
-              slug: "",
+              slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
               permissions: JSON.stringify(accessApprovalRequest.permissions),
               isTemporary: true,
               temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
