@@ -84,7 +84,6 @@ export const SpecificPrivilegeSecretForm = ({
   onClose?: () => void;
 }) => {
   const { currentWorkspace } = useWorkspace();
-  const { membership: projectMembership } = useProjectPermission();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deletePrivilege",
@@ -271,17 +270,10 @@ export const SpecificPrivilegeSecretForm = ({
       conditions.secretPath = { $glob: data.secretPath };
     }
     await requestAccess.mutateAsync({
-      ...data,
       ...(data.temporaryAccess.isTemporary && {
-        temporaryAccessStartTime: data.temporaryAccess.temporaryAccessStartTime,
-        temporaryAccessEndTime: data.temporaryAccess.temporaryAccessEndTime,
-        temporaryRange: data.temporaryAccess.temporaryRange,
-        temporaryMode: "relative"
+        temporaryRange: data.temporaryAccess.temporaryRange
       }),
-      envSlug: data.environmentSlug,
-      secretPath: data.secretPath,
       projectSlug: currentWorkspace.slug,
-      projectMembershipId: projectMembership.id,
       isTemporary: data.temporaryAccess.isTemporary,
       permissions: actions
         .filter(({ allowed }) => allowed)
@@ -312,7 +304,7 @@ export const SpecificPrivilegeSecretForm = ({
     if (isExpired) return "Access expired";
     if (!temporaryAccessField?.isTemporary) return "Permanent";
 
-    if (exactTime) {
+    if (exactTime && !policies) {
       return `Until ${format(
         new Date(temporaryAccessField.temporaryAccessEndTime || ""),
         "yyyy-MM-dd HH:mm:ss"
