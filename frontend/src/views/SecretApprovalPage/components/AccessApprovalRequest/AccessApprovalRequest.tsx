@@ -276,9 +276,6 @@ export const AccessApprovalRequest = ({
   const [requestedByFilter, setRequestedByFilter] = useState<string | undefined>(undefined);
   const [envFilter, setEnvFilter] = useState<string | undefined>(undefined);
 
-  console.log("requestedByFilter", requestedByFilter);
-  console.log("envFilter", envFilter);
-
   const { data: requestCount } = useGetAccessRequestsCount({
     projectSlug
   });
