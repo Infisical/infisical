@@ -15,7 +15,6 @@ import ms from "ms";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DropdownMenu,
@@ -31,7 +30,6 @@ import {
 } from "@app/components/v2";
 import {
   ProjectPermissionActions,
-  ProjectPermissionSub,
   useProjectPermission,
   useSubscription,
   useWorkspace
@@ -53,7 +51,7 @@ const DisplayBadge = ({ text, className }: { text: string; className?: string })
   return (
     <div
       className={twMerge(
-        "ml-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-xs text-yellow opacity-80 hover:opacity-100",
+        "inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-xs text-yellow opacity-80 hover:opacity-100",
         className
       )}
     >
@@ -232,20 +230,29 @@ const SelectAccessModal = ({
   );
 };
 
-const generateRequestText = (request: TAccessApprovalRequest) => {
+const generateRequestText = (request: TAccessApprovalRequest, membershipId: string) => {
   const { isTemporary } = request;
 
   return (
-    <span className="text-sm">
-      Requested {isTemporary ? "temporary" : "permanent"} access to{" "}
-      <code className="mx-1 rounded-sm bg-primary-500/20 px-1.5 py-0.5 font-mono text-xs text-primary">
-        {request.policy.secretPath}
-      </code>
-      in
-      <code className="mx-1 rounded-sm bg-primary-500/20 px-1.5 py-0.5 font-mono text-xs text-primary">
-        {request.environmentName}
-      </code>
-    </span>
+    <div className="flex w-full items-center justify-between text-sm">
+      <div>
+        Requested {isTemporary ? "temporary" : "permanent"} access to{" "}
+        <code className="mx-1 rounded-sm bg-primary-500/20 px-1.5 py-0.5 font-mono text-xs text-primary">
+          {request.policy.secretPath}
+        </code>
+        in
+        <code className="mx-1 rounded-sm bg-primary-500/20 px-1.5 py-0.5 font-mono text-xs text-primary">
+          {request.environmentName}
+        </code>
+      </div>
+      <div>
+        {request.requestedBy === membershipId && (
+          <span className="text-xs text-gray-500">
+            <DisplayBadge text="Requested By You" className="ml-1 bg-yellow/20 text-yellow" />
+          </span>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -265,7 +272,7 @@ export const AccessApprovalRequest = ({
     "reviewRequest",
     "upgradePlan"
   ] as const);
-  const { permission, membership } = useProjectPermission();
+  const { membership } = useProjectPermission();
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
 
@@ -284,12 +291,7 @@ export const AccessApprovalRequest = ({
   });
 
   const { data: policies, isLoading: policiesLoading } = useGetAccessApprovalPolicies({
-    projectSlug,
-    options: {
-      enabled:
-        permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-        !!projectSlug
-    }
+    projectSlug
   });
 
   const { data: requests } = useGetAccessApprovalRequests({
@@ -371,31 +373,24 @@ export const AccessApprovalRequest = ({
           </div>
         </div>
         <div>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.SecretApproval}
+          <Tooltip
+            content="To submit Access Requests, your project needs to create Access Request policies first."
+            isDisabled={policiesLoading || !!policies?.length}
           >
-            {(isAllowed) => (
-              <Tooltip
-                content="To submit Access Requests, your project needs to create Access Request policies first."
-                isDisabled={!(!isAllowed || policiesLoading || !policies?.length)}
-              >
-                <Button
-                  onClick={() => {
-                    if (subscription && !subscription?.secretApproval) {
-                      handlePopUpOpen("upgradePlan");
-                      return;
-                    }
-                    handlePopUpOpen("requestAccess");
-                  }}
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  isDisabled={!isAllowed || policiesLoading || !policies?.length}
-                >
-                  Request access
-                </Button>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
+            <Button
+              onClick={() => {
+                if (subscription && !subscription?.secretApproval) {
+                  handlePopUpOpen("upgradePlan");
+                  return;
+                }
+                handlePopUpOpen("requestAccess");
+              }}
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              isDisabled={policiesLoading || !policies?.length}
+            >
+              Request access
+            </Button>
+          </Tooltip>
         </div>
       </div>
 
@@ -506,10 +501,11 @@ export const AccessApprovalRequest = ({
                   <div
                     aria-disabled={details.isReviewedByUser || details.isRejectedByAnyone}
                     key={request.id}
-                    className="flex cursor-pointer flex-col px-8 py-4 hover:bg-mineshaft-700 aria-disabled:opacity-80"
+                    className="flex w-full cursor-pointer px-8 py-4 hover:bg-mineshaft-700 aria-disabled:opacity-80"
                     role="button"
                     tabIndex={0}
                     onClick={() => {
+                      if (!details.isApprover) return;
                       if (details.isReviewedByUser || details.isRejectedByAnyone) return;
 
                       setSelectedRequest({
@@ -519,6 +515,8 @@ export const AccessApprovalRequest = ({
                       handlePopUpOpen("reviewRequest");
                     }}
                     onKeyDown={(evt) => {
+                      if (!details.isApprover) return;
+                      if (details.isReviewedByUser || details.isRejectedByAnyone) return;
                       if (evt.key === "Enter") {
                         setSelectedRequest({
                           ...request,
@@ -528,24 +526,33 @@ export const AccessApprovalRequest = ({
                       }
                     }}
                   >
-                    <div>
-                      <div className="mb-1">
-                        <FontAwesomeIcon icon={faLock} className="mr-2" />
-                        {generateRequestText(request)}
+                    <div className="w-full">
+                      <div className="flex w-full flex-col justify-between">
+                        <div className="mb-1 flex w-full items-center">
+                          <FontAwesomeIcon icon={faLock} className="mr-2" />
+                          {generateRequestText(request, membership.id)}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs text-gray-500">
+                            {membersGroupById?.[request.requestedBy]?.user && (
+                              <>
+                                Requested {formatDistance(new Date(request.createdAt), new Date())}{" "}
+                                ago by {membersGroupById?.[request.requestedBy]?.user?.firstName}{" "}
+                                {membersGroupById?.[request.requestedBy]?.user?.lastName} (
+                                {membersGroupById?.[request.requestedBy]?.user?.email}){" "}
+                              </>
+                            )}
+                          </div>
+                          <div className="">
+                            {details.isApprover && (
+                              <DisplayBadge
+                                text={details.displayData.label}
+                                className={details.displayData.colorClass}
+                              />
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-xs text-gray-500">
-                        Requested {formatDistance(new Date(request.createdAt), new Date())} ago by{" "}
-                        {membersGroupById?.[request.requestedBy]?.user?.firstName}{" "}
-                        {membersGroupById?.[request.requestedBy]?.user?.lastName} (
-                        {membersGroupById?.[request.requestedBy]?.user?.email}){" "}
-                      </span>
-
-                      {details.isApprover && (
-                        <DisplayBadge
-                          text={details.displayData.label}
-                          className={details.displayData.colorClass}
-                        />
-                      )}
                     </div>
                   </div>
                 );
