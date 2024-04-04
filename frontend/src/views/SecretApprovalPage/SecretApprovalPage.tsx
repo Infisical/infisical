@@ -47,11 +47,11 @@ export const SecretApprovalPage = () => {
       </div>
       <Tabs defaultValue={TabSection.SecretApprovalRequests}>
         <TabList>
-          <Tab value={TabSection.SecretApprovalRequests}>Secret Approvals</Tab>
-          <Tab value={TabSection.SecretPolicies}>Secret Policies</Tab>
+          <Tab value={TabSection.SecretApprovalRequests}>Change Requests</Tab>
+          <Tab value={TabSection.SecretPolicies}>Change Request Policies</Tab>
           <Divider />
-          <Tab value={TabSection.ResourceApprovalRequests}>Access Approvals</Tab>
-          <Tab value={TabSection.ResourcePolicies}>Access Policies</Tab>
+          <Tab value={TabSection.ResourceApprovalRequests}>Access Requests</Tab>
+          <Tab value={TabSection.ResourcePolicies}>Access Request Policies</Tab>
         </TabList>
         <TabPanel value={TabSection.SecretApprovalRequests}>
           <SecretApprovalRequest />
