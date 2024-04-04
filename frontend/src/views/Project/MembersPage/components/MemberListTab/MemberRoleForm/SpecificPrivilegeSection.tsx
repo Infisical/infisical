@@ -349,7 +349,6 @@ export const SpecificPrivilegeSecretForm = ({
             control={privilegeForm.control}
             name="secretPath"
             render={({ field }) => {
-              console.log(policies);
               if (policies) {
                 return (
                   <FormControl label="Secret Path">
