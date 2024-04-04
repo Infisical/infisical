@@ -69,18 +69,16 @@ export const useDeleteAccessApprovalPolicy = () => {
 export const useCreateAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation<{}, {}, TCreateAccessRequestDTO>({
-    mutationFn: async ({ envSlug, projectSlug, secretPath, ...privilege }) => {
+    mutationFn: async ({ projectSlug, ...request }) => {
       const { data } = await apiRequest.post<TAccessApproval>(
         "/api/v1/access-approval-requests",
         {
-          ...privilege,
-          permissions: privilege.permissions ? packRules(privilege.permissions) : undefined
+          ...request,
+          permissions: request.permissions ? packRules(request.permissions) : undefined
         },
         {
           params: {
-            envSlug,
-            projectSlug,
-            secretPath
+            projectSlug
           }
         }
       );
@@ -88,9 +86,7 @@ export const useCreateAccessRequest = () => {
       return data;
     },
     onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries([
-        accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
-      ]);
+      queryClient.invalidateQueries(accessApprovalKeys.getAccessApprovalRequestCount(projectSlug));
     }
   });
 };
