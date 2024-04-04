@@ -239,21 +239,6 @@ export const SpecificPrivilegeSecretForm = ({
     }
   };
 
-
-  const getAccessLabel = (exactTime = false) => {
-    if (isExpired) return "Access expired";
-    if (!temporaryAccessField?.isTemporary) return "Permanent";
-
-    if (exactTime)
-      return `Until ${format(
-        new Date(temporaryAccessField.temporaryAccessEndTime || ""),
-        "yyyy-MM-dd HH:mm:ss"
-      )}`;
-    return formatDistance(new Date(temporaryAccessField.temporaryAccessEndTime || ""), new Date());
-      };
-
-  };
-
   // This is used for requesting access additional privileges, not directly creating a privilege!
   const handleRequestAccess = async (data: TSecretPermissionForm) => {
     if (!policies) return;
@@ -327,14 +312,13 @@ export const SpecificPrivilegeSecretForm = ({
     if (isExpired) return "Access expired";
     if (!temporaryAccessField?.isTemporary) return "Permanent";
 
-    if (exactTime)
+    if (exactTime) {
       return `Until ${format(
         new Date(temporaryAccessField.temporaryAccessEndTime || ""),
         "yyyy-MM-dd HH:mm:ss"
       )}`;
+    }
     return formatDistance(new Date(temporaryAccessField.temporaryAccessEndTime || ""), new Date());
-      };
-
   };
 
   return (
