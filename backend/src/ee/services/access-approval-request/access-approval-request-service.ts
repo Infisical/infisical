@@ -274,8 +274,8 @@ export const accessApprovalRequestServiceFactory = ({
 
         const approvedReviews = allReviews.filter((r) => r.status === ApprovalStatus.APPROVED);
 
-        // If all approvers have approved the request, update the privilege to approved
-        if (approvedReviews.length === policy.approvers.length) {
+        // approvals is the required number of approvals. If the number of approved reviews is equal to the number of required approvals, then the request is approved.
+        if (approvedReviews.length === policy.approvals) {
           if (accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
             throw new BadRequestError({ message: "Temporary range is required for temporary access" });
           }
@@ -284,27 +284,33 @@ export const accessApprovalRequestServiceFactory = ({
 
           if (!accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
             // Permanent access
-            const privilege = await additionalPrivilegeDAL.create({
-              projectMembershipId: accessApprovalRequest.requestedBy,
-              slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
-              permissions: JSON.stringify(accessApprovalRequest.permissions)
-            });
+            const privilege = await additionalPrivilegeDAL.create(
+              {
+                projectMembershipId: accessApprovalRequest.requestedBy,
+                slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+                permissions: JSON.stringify(accessApprovalRequest.permissions)
+              },
+              tx
+            );
             privilegeId = privilege.id;
           } else {
             // Temporary access
             const relativeTempAllocatedTimeInMs = ms(accessApprovalRequest.temporaryRange!);
             const startTime = new Date();
 
-            const privilege = await additionalPrivilegeDAL.create({
-              projectMembershipId: accessApprovalRequest.requestedBy,
-              slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
-              permissions: JSON.stringify(accessApprovalRequest.permissions),
-              isTemporary: true,
-              temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
-              temporaryRange: accessApprovalRequest.temporaryRange!,
-              temporaryAccessStartTime: startTime,
-              temporaryAccessEndTime: new Date(new Date(startTime).getTime() + relativeTempAllocatedTimeInMs)
-            });
+            const privilege = await additionalPrivilegeDAL.create(
+              {
+                projectMembershipId: accessApprovalRequest.requestedBy,
+                slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+                permissions: JSON.stringify(accessApprovalRequest.permissions),
+                isTemporary: true,
+                temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
+                temporaryRange: accessApprovalRequest.temporaryRange!,
+                temporaryAccessStartTime: startTime,
+                temporaryAccessEndTime: new Date(new Date(startTime).getTime() + relativeTempAllocatedTimeInMs)
+              },
+              tx
+            );
             privilegeId = privilege.id;
           }
 
