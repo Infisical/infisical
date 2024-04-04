@@ -248,7 +248,14 @@ export const accessApprovalPolicyServiceFactory = ({
 
     if (!project) throw new BadRequestError({ message: "Project not found" });
 
-    await permissionService.getProjectPermission(actor, actorId, project.id, actorAuthMethod, actorOrgId);
+    const { membership } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+    if (!membership) throw new BadRequestError({ message: "User not found in project" });
 
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
     if (!environment) throw new BadRequestError({ message: "Environment not found" });

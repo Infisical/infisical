@@ -272,14 +272,14 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new UnauthorizedError({ message: "Project not found" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { membership } = await permissionService.getProjectPermission(
       actor,
       actorId,
       project.id,
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+    if (!membership) throw new BadRequestError({ message: "User not found in project" });
 
     const count = await accessApprovalRequestDAL.getCount({ projectId: project.id });
 
