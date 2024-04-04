@@ -37,12 +37,14 @@ import {
 import { usePopUp } from "@app/hooks";
 import { useGetWorkspaceUsers, useReviewAccessRequest } from "@app/hooks/api";
 import {
+  accessApprovalKeys,
   useGetAccessApprovalPolicies,
   useGetAccessApprovalRequests,
   useGetAccessRequestsCount
 } from "@app/hooks/api/accessApproval/queries";
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
 import { ApprovalStatus, TAccessApprovalPolicy, TWorkspaceUser } from "@app/hooks/api/types";
+import { queryClient } from "@app/reactQuery";
 import { SpecificPrivilegeSecretForm } from "@app/views/Project/MembersPage/components/MemberListTab/MemberRoleForm/SpecificPrivilegeSection";
 
 const DisplayBadge = ({ text, className }: { text: string; className?: string }) => {
@@ -296,8 +298,18 @@ export const AccessApprovalRequest = ({
   });
 
   const filteredRequests = useMemo(() => {
-    if (statusFilter === "open") return requests?.filter((request) => !request.isApproved);
-    if (statusFilter === "close") return requests?.filter((request) => request.isApproved);
+    if (statusFilter === "open")
+      return requests?.filter(
+        (request) =>
+          !request.isApproved &&
+          !request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED)
+      );
+    if (statusFilter === "close")
+      return requests?.filter(
+        (request) =>
+          request.isApproved ||
+          request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED)
+      );
 
     return requests;
   }, [requests, statusFilter, requestedByFilter, envFilter]);
@@ -481,7 +493,7 @@ export const AccessApprovalRequest = ({
               </div>
             )}
             {!!filteredRequests?.length &&
-              requests?.map((request) => {
+              filteredRequests?.map((request) => {
                 const details = generateRequestDetails(request);
 
                 return (
@@ -546,7 +558,16 @@ export const AccessApprovalRequest = ({
         <SelectAccessModal
           policies={policies}
           isOpen={popUp.requestAccess.isOpen}
-          onOpenChange={() => handlePopUpClose("requestAccess")}
+          onOpenChange={() => {
+            queryClient.invalidateQueries(
+              accessApprovalKeys.getAccessApprovalRequests(
+                projectSlug,
+                envFilter,
+                requestedByFilter
+              )
+            );
+            handlePopUpClose("requestAccess");
+          }}
         />
       )}
 
