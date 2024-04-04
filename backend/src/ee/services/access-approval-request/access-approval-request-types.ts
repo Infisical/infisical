@@ -6,6 +6,10 @@ export enum ApprovalStatus {
   REJECTED = "rejected"
 }
 
+export type TVerifyPermission = {
+  permissions: unknown;
+};
+
 export type TGetAccessRequestCountDTO = {
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
@@ -17,8 +21,6 @@ export type TReviewAccessRequestDTO = {
 
 export type TCreateAccessApprovalRequestDTO = {
   projectSlug: string;
-  secretPath: string;
-  envSlug: string;
   permissions: unknown;
   isTemporary: boolean;
   temporaryRange?: string;
