@@ -131,7 +131,7 @@ export const AccessPolicyForm = ({
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onToggle}>
-      <ModalContent title={isEditMode ? "Edit access policy" : "Create access policy"}>
+      <ModalContent title={isEditMode ? "Edit Access Policy" : "Create Access Policy"}>
         <form onSubmit={handleSubmit(handleFormSubmit)}>
           <Controller
             control={control}
