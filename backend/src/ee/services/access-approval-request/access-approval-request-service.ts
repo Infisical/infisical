@@ -97,7 +97,7 @@ export const accessApprovalRequestServiceFactory = ({
       isTemporary
     });
 
-    if (duplicateRequest.privilegeId) {
+    if (duplicateRequest?.privilegeId) {
       const privilege = await additionalPrivilegeDAL.findById(duplicateRequest.privilegeId);
 
       const isExpired = new Date() > new Date(privilege.temporaryAccessEndTime || ("" as string));
