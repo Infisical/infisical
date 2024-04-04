@@ -348,10 +348,7 @@ export const SpecificPrivilegeSecretForm = ({
     await requestAccess.mutateAsync({
       ...data,
       ...(data.temporaryAccess.isTemporary && {
-        temporaryAccessStartTime: data.temporaryAccess.temporaryAccessStartTime,
-        temporaryAccessEndTime: data.temporaryAccess.temporaryAccessEndTime,
-        temporaryRange: data.temporaryAccess.temporaryRange,
-        temporaryMode: "relative"
+        temporaryRange: data.temporaryAccess.temporaryRange
       }),
       projectSlug: currentWorkspace.slug,
       isTemporary: data.temporaryAccess.isTemporary,
