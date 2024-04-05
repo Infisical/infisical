@@ -10,14 +10,18 @@ import {
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
 export const registerProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:workspaceId/memberships",
     method: "GET",
+    url: "/:workspaceId/memberships",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       description: "Return project user memberships",
       security: [
@@ -75,8 +79,11 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
   });
 
   server.route({
-    url: "/:workspaceId/memberships",
     method: "POST",
+    url: "/:workspaceId/memberships",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()
@@ -126,8 +133,11 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
   });
 
   server.route({
-    url: "/:workspaceId/memberships/:membershipId",
     method: "PATCH",
+    url: "/:workspaceId/memberships/:membershipId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Update project user membership",
       security: [
@@ -197,8 +207,11 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
   });
 
   server.route({
-    url: "/:workspaceId/memberships/:membershipId",
     method: "DELETE",
+    url: "/:workspaceId/memberships/:membershipId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Delete project user membership",
       security: [

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { WebhooksSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -27,6 +28,9 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
@@ -75,6 +79,9 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "PATCH",
     url: "/:webhookId",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -122,6 +129,9 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/:webhookId",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -159,6 +169,9 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:webhookId/test",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -186,6 +199,9 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       querystring: z.object({

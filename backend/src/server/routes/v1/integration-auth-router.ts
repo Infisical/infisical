@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { INTEGRATION_AUTH } from "@app/lib/api-docs";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -9,8 +10,11 @@ import { integrationAuthPubSchema } from "../sanitizedSchemas";
 
 export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/integration-options",
     method: "GET",
+    url: "/integration-options",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "List of integrations available.",
@@ -43,8 +47,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId",
     method: "GET",
+    url: "/:integrationAuthId",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Get details of an integration authorization by auth object id.",
@@ -75,8 +82,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/",
     method: "DELETE",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Remove all integration's auth object from the project.",
@@ -121,8 +131,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId",
     method: "DELETE",
+    url: "/:integrationAuthId",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Remove an integration auth object by object id.",
@@ -165,8 +178,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/oauth-token",
     method: "POST",
+    url: "/oauth-token",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
@@ -206,8 +222,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/access-token",
     method: "POST",
+    url: "/access-token",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Create the integration authentication object required for syncing secrets.",
@@ -256,8 +275,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/apps",
     method: "GET",
+    url: "/:integrationAuthId/apps",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -293,8 +315,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/teams",
     method: "GET",
+    url: "/:integrationAuthId/teams",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -324,8 +349,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/vercel/branches",
     method: "GET",
+    url: "/:integrationAuthId/vercel/branches",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -354,8 +382,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/checkly/groups",
     method: "GET",
+    url: "/:integrationAuthId/checkly/groups",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -384,8 +415,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/github/orgs",
     method: "GET",
+    url: "/:integrationAuthId/github/orgs",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -412,8 +446,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/github/envs",
     method: "GET",
+    url: "/:integrationAuthId/github/envs",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -446,8 +483,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/qovery/orgs",
     method: "GET",
+    url: "/:integrationAuthId/qovery/orgs",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -472,8 +512,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/qovery/projects",
     method: "GET",
+    url: "/:integrationAuthId/qovery/projects",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -502,8 +545,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/qovery/environments",
     method: "GET",
+    url: "/:integrationAuthId/qovery/environments",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -532,8 +578,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/qovery/apps",
     method: "GET",
+    url: "/:integrationAuthId/qovery/apps",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -562,8 +611,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/qovery/containers",
     method: "GET",
+    url: "/:integrationAuthId/qovery/containers",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -592,8 +644,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/qovery/jobs",
     method: "GET",
+    url: "/:integrationAuthId/qovery/jobs",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -622,8 +677,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/heroku/pipelines",
     method: "GET",
+    url: "/:integrationAuthId/heroku/pipelines",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -654,8 +712,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/railway/environments",
     method: "GET",
+    url: "/:integrationAuthId/railway/environments",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -684,8 +745,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/railway/services",
     method: "GET",
+    url: "/:integrationAuthId/railway/services",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -714,8 +778,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/bitbucket/workspaces",
     method: "GET",
+    url: "/:integrationAuthId/bitbucket/workspaces",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -750,8 +817,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/northflank/secret-groups",
     method: "GET",
+    url: "/:integrationAuthId/northflank/secret-groups",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -785,8 +855,11 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    url: "/:integrationAuthId/teamcity/build-configs",
     method: "GET",
+    url: "/:integrationAuthId/teamcity/build-configs",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({

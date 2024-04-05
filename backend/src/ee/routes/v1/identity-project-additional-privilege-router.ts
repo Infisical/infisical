@@ -9,13 +9,17 @@ import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/service
 import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/permanent",
     method: "POST",
+    url: "/permanent",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Create a permanent or a non expiry specific privilege for identity.",
       security: [
@@ -62,8 +66,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
   });
 
   server.route({
-    url: "/temporary",
     method: "POST",
+    url: "/temporary",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Create a temporary or a expiring specific privilege for identity.",
       security: [
@@ -121,8 +128,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
   });
 
   server.route({
-    url: "/",
     method: "PATCH",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Update a specific privilege of an identity.",
       security: [
@@ -190,8 +200,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
   });
 
   server.route({
-    url: "/",
     method: "DELETE",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Delete a specific privilege of an identity.",
       security: [
@@ -226,8 +239,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
   });
 
   server.route({
-    url: "/:privilegeSlug",
     method: "GET",
+    url: "/:privilegeSlug",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       description: "Retrieve details of a specific privilege by privilege slug.",
       security: [
@@ -263,8 +279,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
   });
 
   server.route({
-    url: "/",
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       description: "List of a specific privilege of an identity in a project.",
       security: [

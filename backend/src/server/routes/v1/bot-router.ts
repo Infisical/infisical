@@ -1,13 +1,17 @@
 import { z } from "zod";
 
 import { ProjectBotsSchema } from "@app/db/schemas";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:projectId",
     method: "GET",
+    url: "/:projectId",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim()
@@ -38,8 +42,11 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:botId/active",
     method: "PATCH",
+    url: "/:botId/active",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         isActive: z.boolean(),

@@ -4,6 +4,7 @@ import { SecretFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { FOLDERS } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -11,6 +12,9 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
   server.route({
     url: "/",
     method: "POST",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       description: "Create folders",
       security: [
@@ -65,6 +69,9 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
   server.route({
     url: "/:folderId",
     method: "PATCH",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       description: "Update folder",
       security: [
@@ -124,8 +131,11 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
 
   // TODO(daniel): Expose this route in api reference and write docs for it.
   server.route({
-    url: "/:folderIdOrName",
     method: "DELETE",
+    url: "/:folderIdOrName",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       description: "Delete a folder",
       security: [
@@ -181,8 +191,11 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
-    url: "/",
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       description: "Get folders",
       security: [

@@ -1,12 +1,16 @@
 import { z } from "zod";
 
+import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretRotationProviderRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:workspaceId",
     method: "GET",
+    url: "/:workspaceId",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()

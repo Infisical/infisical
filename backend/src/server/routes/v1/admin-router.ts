@@ -3,6 +3,7 @@ import { z } from "zod";
 import { OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -11,8 +12,11 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerAdminRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/config",
     method: "GET",
+    url: "/config",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       response: {
         200: z.object({
@@ -30,8 +34,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/config",
     method: "PATCH",
+    url: "/config",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         allowSignUp: z.boolean().optional(),
@@ -55,8 +62,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/signup",
     method: "POST",
+    url: "/signup",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         email: z.string().email().trim(),

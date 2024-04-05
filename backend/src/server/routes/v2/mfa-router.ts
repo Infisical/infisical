@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { writeLimit } from "@app/server/config/rateLimiter";
 import { AuthModeMfaJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 
 export const registerMfaRouter = async (server: FastifyZodProvider) => {
@@ -30,8 +31,11 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/mfa/send",
     method: "POST",
+    url: "/mfa/send",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       response: {
         200: z.object({
@@ -48,6 +52,9 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/mfa/verify",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         mfaToken: z.string().trim()
