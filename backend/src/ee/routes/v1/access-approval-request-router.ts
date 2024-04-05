@@ -2,6 +2,10 @@ import { z } from "zod";
 
 import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema } from "@app/db/schemas";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
+
+export const registerAccessApprovalRequestRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
     method: "POST",
