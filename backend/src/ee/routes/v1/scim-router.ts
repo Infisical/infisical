@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ScimTokensSchema } from "@app/db/schemas";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -20,6 +21,9 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/scim-tokens",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
@@ -51,6 +55,9 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/scim-tokens",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       querystring: z.object({
@@ -78,6 +85,9 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/scim-tokens/:scimTokenId",
     method: "DELETE",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({

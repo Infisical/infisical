@@ -13,6 +13,7 @@ import { CommitType } from "@app/ee/services/secret-approval-request/secret-appr
 import { RAW_SECRETS, SECRETS } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -24,8 +25,11 @@ import { secretRawSchema } from "../sanitizedSchemas";
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/tags/:secretName",
     method: "POST",
+    url: "/tags/:secretName",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Attach tags to a secret",
       security: [
@@ -83,8 +87,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/tags/:secretName",
     method: "DELETE",
+    url: "/tags/:secretName",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Detach tags from a secret",
       security: [
@@ -142,8 +149,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/raw",
     method: "GET",
+    url: "/raw",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       description: "List secrets",
       security: [
@@ -261,8 +271,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/raw/:secretName",
     method: "GET",
+    url: "/raw/:secretName",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       description: "Get a secret by name",
       security: [
@@ -353,8 +366,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/raw/:secretName",
     method: "POST",
+    url: "/raw/:secretName",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       description: "Create secret",
       security: [
@@ -439,8 +455,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/raw/:secretName",
     method: "PATCH",
+    url: "/raw/:secretName",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       description: "Update secret",
       security: [
@@ -522,8 +541,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/raw/:secretName",
     method: "DELETE",
+    url: "/raw/:secretName",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       description: "Delete secret",
       security: [
@@ -599,8 +621,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/",
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim(),
@@ -711,8 +736,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:secretName",
     method: "GET",
+    url: "/:secretName",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       params: z.object({
         secretName: z.string().trim()
@@ -789,6 +817,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/:secretName",
     method: "POST",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       body: z.object({
         workspaceId: z.string().trim(),
@@ -955,8 +986,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:secretName",
     method: "PATCH",
+    url: "/:secretName",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       params: z.object({
         secretName: z.string()
@@ -1139,8 +1173,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:secretName",
     method: "DELETE",
+    url: "/:secretName",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       params: z.object({
         secretName: z.string()
@@ -1260,8 +1297,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/batch",
     method: "POST",
+    url: "/batch",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       body: z.object({
         workspaceId: z.string().trim(),
@@ -1383,8 +1423,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/batch",
     method: "PATCH",
+    url: "/batch",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       body: z.object({
         workspaceId: z.string().trim(),
@@ -1506,8 +1549,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/batch",
     method: "DELETE",
+    url: "/batch",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       body: z.object({
         workspaceId: z.string().trim(),

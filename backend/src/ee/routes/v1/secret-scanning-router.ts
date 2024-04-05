@@ -2,13 +2,17 @@ import { z } from "zod";
 
 import { GitAppOrgSchema, SecretScanningGitRisksSchema } from "@app/db/schemas";
 import { SecretScanningRiskStatus } from "@app/ee/services/secret-scanning/secret-scanning-types";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretScanningRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/create-installation-session/organization",
     method: "POST",
+    url: "/create-installation-session/organization",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({ organizationId: z.string().trim() }),
       response: {
@@ -31,8 +35,11 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
   });
 
   server.route({
-    url: "/link-installation",
     method: "POST",
+    url: "/link-installation",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         installationId: z.string(),
@@ -56,8 +63,11 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
   });
 
   server.route({
-    url: "/installation-status/organization/:organizationId",
     method: "GET",
+    url: "/installation-status/organization/:organizationId",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       response: {
@@ -80,6 +90,9 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
   server.route({
     url: "/organization/:organizationId/risks",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       response: {
@@ -100,8 +113,11 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
   });
 
   server.route({
-    url: "/organization/:organizationId/risks/:riskId/status",
     method: "POST",
+    url: "/organization/:organizationId/risks/:riskId/status",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim(), riskId: z.string().trim() }),
       body: z.object({ status: z.nativeEnum(SecretScanningRiskStatus) }),

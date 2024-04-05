@@ -3,13 +3,17 @@ import { z } from "zod";
 import { ProjectEnvironmentsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ENVIRONMENTS } from "@app/lib/api-docs";
+import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:workspaceId/environments",
     method: "POST",
+    url: "/:workspaceId/environments",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Create environment",
       security: [
@@ -64,8 +68,11 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/environments/:id",
     method: "PATCH",
+    url: "/:workspaceId/environments/:id",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Update environment",
       security: [
@@ -128,8 +135,11 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/environments/:id",
     method: "DELETE",
+    url: "/:workspaceId/environments/:id",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Delete environment",
       security: [

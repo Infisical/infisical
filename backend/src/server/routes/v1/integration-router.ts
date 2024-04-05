@@ -4,6 +4,7 @@ import { IntegrationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { INTEGRATION } from "@app/lib/api-docs";
 import { removeTrailingSlash, shake } from "@app/lib/fn";
+import { writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -11,8 +12,11 @@ import { PostHogEventTypes, TIntegrationCreatedEvent } from "@app/services/telem
 
 export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/",
     method: "POST",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Create an integration to sync secrets.",
       security: [
@@ -112,8 +116,11 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:integrationId",
     method: "PATCH",
+    url: "/:integrationId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Update an integration by integration id",
       security: [
@@ -159,8 +166,11 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:integrationId",
     method: "DELETE",
+    url: "/:integrationId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Remove an integration using the integration object ID",
       security: [

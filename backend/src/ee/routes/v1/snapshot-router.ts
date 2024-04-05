@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { SecretSnapshotsSchema, SecretTagsSchema, SecretVersionsSchema } from "@app/db/schemas";
 import { PROJECTS } from "@app/lib/api-docs";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -9,6 +10,9 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:secretSnapshotId",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         secretSnapshotId: z.string().trim()
@@ -58,6 +62,9 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:secretSnapshotId/rollback",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Roll back project secrets to those captured in a secret snapshot version.",
       security: [

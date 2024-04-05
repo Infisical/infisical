@@ -2,13 +2,17 @@ import { z } from "zod";
 
 import { AuthTokenSessionsSchema, OrganizationsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { ApiKeysSchema } from "@app/db/schemas/api-keys";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/me/mfa",
     method: "PATCH",
+    url: "/me/mfa",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         isMfaEnabled: z.boolean()
@@ -27,8 +31,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/me/name",
     method: "PATCH",
+    url: "/me/name",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         firstName: z.string().trim(),
@@ -48,8 +55,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/me/auth-methods",
     method: "PUT",
+    url: "/me/auth-methods",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         authMethods: z.nativeEnum(AuthMethod).array().min(1)
@@ -70,6 +80,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/me/organizations",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       description: "Return organizations that current user is part of",
       security: [
@@ -93,6 +106,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/me/api-keys",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       response: {
         200: ApiKeysSchema.omit({ secretHash: true }).array()
@@ -108,6 +124,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/me/api-keys",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         name: z.string().trim(),
@@ -130,6 +149,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/me/api-keys/:apiKeyDataId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         apiKeyDataId: z.string().trim()
@@ -150,6 +172,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/me/sessions",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       response: {
         200: AuthTokenSessionsSchema.array()
@@ -165,6 +190,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/me/sessions",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       response: {
         200: z.object({
@@ -184,6 +212,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/me",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       description: "Retrieve the current user on the request",
       security: [
@@ -207,6 +238,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/me",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       response: {
         200: z.object({

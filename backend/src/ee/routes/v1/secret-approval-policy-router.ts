@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -9,6 +10,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z
         .object({
@@ -47,6 +51,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/:sapId",
     method: "PATCH",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         sapId: z.string()
@@ -85,6 +92,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/:sapId",
     method: "DELETE",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         sapId: z.string()
@@ -111,6 +121,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim()
@@ -137,6 +150,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/board",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim(),

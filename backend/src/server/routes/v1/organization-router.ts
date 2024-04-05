@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { IncidentContactsSchema, OrganizationsSchema, OrgMembershipsSchema, UsersSchema } from "@app/db/schemas";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -8,6 +9,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       response: {
         200: z.object({
@@ -25,6 +29,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:organizationId",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim()
@@ -50,6 +57,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:organizationId/users",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim()
@@ -87,6 +97,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "PATCH",
     url: "/:organizationId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
@@ -128,6 +141,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:organizationId/incidentContactOrg",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       response: {
@@ -151,6 +167,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:organizationId/incidentContactOrg",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({ email: z.string().email().trim() }),
@@ -176,6 +195,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/:organizationId/incidentContactOrg/:incidentContactId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim(), incidentContactId: z.string().trim() }),
       response: {

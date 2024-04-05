@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { UserActionsSchema } from "@app/db/schemas";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -8,6 +9,9 @@ export const registerUserActionRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         action: z.string().trim()
@@ -29,6 +33,9 @@ export const registerUserActionRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         action: z.string().trim()

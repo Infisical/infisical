@@ -4,13 +4,17 @@ import { SecretImportsSchema, SecretsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SECRET_IMPORTS } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretImportRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/",
     method: "POST",
+    url: "/",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       description: "Create secret imports",
       security: [
@@ -71,8 +75,11 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
-    url: "/:secretImportId",
     method: "PATCH",
+    url: "/:secretImportId",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       description: "Update secret imports",
       security: [
@@ -143,8 +150,11 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
-    url: "/:secretImportId",
     method: "DELETE",
+    url: "/:secretImportId",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       description: "Delete secret imports",
       security: [
@@ -204,8 +214,11 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
-    url: "/",
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       description: "Get secret imports",
       security: [
@@ -262,6 +275,9 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
   server.route({
     url: "/secrets",
     method: "GET",
+    config: {
+      rateLimit: secretsLimit
+    },
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim(),

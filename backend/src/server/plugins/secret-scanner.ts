@@ -4,6 +4,7 @@ import SmeeClient from "smee-client";
 
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { writeLimit } from "@app/server/config/rateLimiter";
 
 export const registerSecretScannerGhApp = async (server: FastifyZodProvider) => {
   const probotApp = (app: Probot) => {
@@ -49,6 +50,9 @@ export const registerSecretScannerGhApp = async (server: FastifyZodProvider) => 
     server.route({
       method: "POST",
       url: "/",
+      config: {
+        rateLimit: writeLimit
+      },
       handler: async (req, res) => {
         const eventName = req.headers["x-github-event"];
         const signatureSHA256 = req.headers["x-hub-signature-256"] as string;

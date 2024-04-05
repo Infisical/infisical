@@ -56,6 +56,9 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/verify",
     method: "POST",
+    config: {
+      rateLimit: inviteUserRateLimit
+    },
     schema: {
       body: z.object({
         email: z.string().trim().email(),
