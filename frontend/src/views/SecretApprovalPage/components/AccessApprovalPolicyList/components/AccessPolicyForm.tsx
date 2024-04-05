@@ -186,6 +186,8 @@ export const AccessPolicyForm = ({
           />
 
           <Controller
+            name="approvers"
+            control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl
                 label="Approvers Required"
