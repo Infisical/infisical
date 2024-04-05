@@ -67,18 +67,39 @@ func IsSecretTypeValid(s string) bool {
 	return false
 }
 
-func GetInfisicalServiceToken(cmd *cobra.Command) (serviceToken string, err error) {
+func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err error) {
 	infisicalToken, err := cmd.Flags().GetString("token")
 
-	if infisicalToken == "" {
-		infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
-	}
-
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return infisicalToken, nil
+	if infisicalToken == "" {
+		// If no flag is passed, we first check for the universal auth access token env variable.
+		infisicalToken = os.Getenv(INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN_NAME)
+		// If it's still empty after the first env check, we check for the service token env variable.
+		if infisicalToken == "" {
+			infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
+		}
+	}
+
+	// If it's empty, we return nothing at all.
+	if infisicalToken == "" {
+		return nil, nil
+	}
+
+	if strings.HasPrefix(infisicalToken, "st.") {
+		return &models.TokenDetails{
+			Type:  "service-token",
+			Token: infisicalToken,
+		}, nil
+	}
+
+	return &models.TokenDetails{
+		Type:  "universal-auth-token",
+		Token: infisicalToken,
+	}, nil
+
 }
 
 func GetInfisicalUniversalAuthAccessToken(cmd *cobra.Command) (accessToken string, err error) {
@@ -126,6 +147,25 @@ func UniversalAuthLogin(clientId string, clientSecret string) (api.UniversalAuth
 	}
 
 	return tokenResponse, nil
+}
+
+func RenewUniversalAuthAccessToken(accessToken string) (string, error) {
+
+	httpClient := resty.New()
+	httpClient.SetRetryCount(10000).
+		SetRetryMaxWaitTime(20 * time.Second).
+		SetRetryWaitTime(5 * time.Second)
+
+	request := api.UniversalAuthRefreshRequest{
+		AccessToken: accessToken,
+	}
+
+	tokenResponse, err := api.CallUniversalAuthRefreshAccessToken(httpClient, request)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenResponse.AccessToken, nil
 }
 
 // Checks if the passed in email already exists in the users slice

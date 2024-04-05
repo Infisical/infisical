@@ -59,6 +59,11 @@ type DynamicSecretLease struct {
 	Data map[string]interface{} `json:"data"`
 }
 
+type TokenDetails struct {
+	Type  string
+	Token string
+}
+
 type SingleFolder struct {
 	ID   string `json:"_id"`
 	Name string `json:"name"`
