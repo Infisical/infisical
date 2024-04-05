@@ -64,10 +64,6 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		if err != nil {
-			util.HandleError(err, "Authentication with universal auth failed")
-		}
-
 		tagSlugs, err := cmd.Flags().GetString("tags")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -134,8 +130,6 @@ func init() {
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
-	exportCmd.Flags().String("universal-auth-client-id", "", "Machine Identity universal auth client ID")
-	exportCmd.Flags().String("universal-auth-client-secret", "", "Machine Identity universal auth client secret")
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
 	exportCmd.Flags().String("path", "/", "get secrets within a folder path")
