@@ -411,7 +411,12 @@ export const registerRoutes = async (
     folderDAL
   });
 
-  const projectRoleService = projectRoleServiceFactory({ permissionService, projectRoleDAL });
+  const projectRoleService = projectRoleServiceFactory({
+    permissionService,
+    projectRoleDAL,
+    projectUserMembershipRoleDAL,
+    identityProjectMembershipRoleDAL
+  });
 
   const snapshotService = secretSnapshotServiceFactory({
     permissionService,

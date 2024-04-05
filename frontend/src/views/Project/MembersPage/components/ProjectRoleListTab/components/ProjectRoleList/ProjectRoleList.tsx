@@ -29,7 +29,7 @@ type Props = {
 
 export const ProjectRoleList = ({ onSelectRole }: Props) => {
   const [searchRoles, setSearchRoles] = useState("");
-  
+
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
@@ -50,7 +50,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
       handlePopUpClose("deleteRole");
     } catch (err) {
       console.log(err);
-      createNotification({ type: "error", text: "Failed to create role" });
+      createNotification({ type: "error", text: "Failed to delete role" });
     }
   };
 
