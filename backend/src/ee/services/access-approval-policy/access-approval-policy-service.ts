@@ -179,6 +179,7 @@ export const accessApprovalPolicyServiceFactory = ({
         );
 
         await verifyApprovers({
+          projectId: accessApprovalPolicy.projectId,
           orgId: actorOrgId,
           envSlug: accessApprovalPolicy.environment.slug,
           secretPath: doc.secretPath!,
