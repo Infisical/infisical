@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -256,7 +256,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           </Link>
         </div>
       ) : (
-        <div />
+        <div className="mt-4" />
       )}
       <div className="mt-2 flex flex-row text-sm text-bunker-400">
         <Link href="/verify-email">
