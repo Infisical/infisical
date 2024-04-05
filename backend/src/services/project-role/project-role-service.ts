@@ -14,16 +14,25 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
+import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TProjectRoleDALFactory } from "./project-role-dal";
 
 type TProjectRoleServiceFactoryDep = {
   projectRoleDAL: TProjectRoleDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getUserProjectPermission">;
+  identityProjectMembershipRoleDAL: TIdentityProjectMembershipRoleDALFactory;
+  projectUserMembershipRoleDAL: TProjectUserMembershipRoleDALFactory;
 };
 
 export type TProjectRoleServiceFactory = ReturnType<typeof projectRoleServiceFactory>;
 
-export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }: TProjectRoleServiceFactoryDep) => {
+export const projectRoleServiceFactory = ({
+  projectRoleDAL,
+  permissionService,
+  identityProjectMembershipRoleDAL,
+  projectUserMembershipRoleDAL
+}: TProjectRoleServiceFactoryDep) => {
   const createRole = async (
     actor: ActorType,
     actorId: string,
@@ -96,8 +105,25 @@ export const projectRoleServiceFactory = ({ projectRoleDAL, permissionService }:
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Role);
+
+    const identityRole = await identityProjectMembershipRoleDAL.findOne({ customRoleId: roleId });
+    const projectUserRole = await projectUserMembershipRoleDAL.findOne({ customRoleId: roleId });
+
+    if (identityRole) {
+      throw new BadRequestError({
+        message: "The role is assigned to one or more identities. Make sure to unassign them before deleting the role.",
+        name: "Delete role"
+      });
+    }
+    if (projectUserRole) {
+      throw new BadRequestError({
+        message: "The role is assigned to one or more users. Make sure to unassign them before deleting the role.",
+        name: "Delete role"
+      });
+    }
+
     const [deletedRole] = await projectRoleDAL.delete({ id: roleId, projectId });
-    if (!deletedRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
+    if (!deletedRole) throw new BadRequestError({ message: "Role not found", name: "Delete role" });
 
     return deletedRole;
   };
