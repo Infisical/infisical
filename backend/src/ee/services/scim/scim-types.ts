@@ -69,6 +69,17 @@ export type TGetScimGroupDTO = {
   orgId: string;
 };
 
+export type TUpdateScimGroupNameDTO = {
+  groupId: string;
+  orgId: string;
+  displayName: string;
+};
+
+export type TDeleteScimGroupDTO = {
+  groupId: string;
+  orgId: string;
+};
+
 export type TScimTokenJwtPayload = {
   scimTokenId: string;
   authTokenType: string;

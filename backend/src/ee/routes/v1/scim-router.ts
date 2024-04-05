@@ -260,7 +260,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // TODO
   server.route({
     url: "/Groups",
     method: "POST",
@@ -284,21 +283,14 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log("create group");
-      console.log("create group req.body: ", req.body);
-
       const group = await req.server.services.scim.createScimGroup({
         displayName: req.body.displayName,
         orgId: req.permission.orgId
       });
 
-      console.log("create group resulting group: ", group);
-
       return group;
     }
   });
-
-  // TODO: GET /api/v1/scim/Groups/8432b0aa-93e0-4b55-af3c-cd3fcc176f81
 
   server.route({
     url: "/Groups/:groupId",
@@ -307,33 +299,93 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         groupId: z.string().trim()
       }),
-      // body: z.object({
-      //   schemas: z.array(z.string()),
-      //   Operations: z.array(
-      //     z.object({
-      //       op: z.string().trim(),
-      //       path: z.string().trim().optional(),
-      //       value: z.union([
-      //         z.object({
-      //           active: z.boolean()
-      //         }),
-      //         z.string().trim()
-      //       ])
-      //     })
-      //   )
-      // }),
+      response: {
+        200: z.object({
+          schemas: z.array(z.string()),
+          id: z.string().trim(),
+          displayName: z.string().trim(),
+          members: z.array(
+            z.object({
+              value: z.string(),
+              display: z.string()
+            })
+          ),
+          meta: z.object({
+            resourceType: z.string().trim()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
+    handler: async (req) => {
+      const group = await req.server.services.scim.getScimGroup({
+        groupId: req.params.groupId,
+        orgId: req.permission.orgId
+      });
+      return group;
+    }
+  });
+
+  server.route({
+    url: "/Groups/:groupId",
+    method: "PUT",
+    schema: {
+      params: z.object({
+        groupId: z.string().trim()
+      }),
+      body: z.object({
+        schemas: z.array(z.string()),
+        id: z.string().trim(),
+        displayName: z.string().trim(),
+        members: z.array(z.any()).length(0)
+      }),
+      response: {
+        200: z.object({
+          schemas: z.array(z.string()),
+          id: z.string().trim(),
+          displayName: z.string().trim(),
+          members: z.array(
+            z.object({
+              value: z.string(),
+              display: z.string()
+            })
+          ),
+          meta: z.object({
+            resourceType: z.string().trim()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
+    handler: async (req) => {
+      const group = await req.server.services.scim.updateScimGroupName({
+        groupId: req.params.groupId,
+        orgId: req.permission.orgId,
+        displayName: req.body.displayName
+      });
+
+      return group;
+    }
+  });
+
+  server.route({
+    url: "/Groups/:groupId",
+    method: "DELETE",
+    schema: {
+      params: z.object({
+        groupId: z.string().trim()
+      }),
       response: {
         200: z.object({})
       }
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log("get scim group endpoint start");
-      const group = await req.server.services.scim.getScimGroup({
+      const group = await req.server.services.scim.deleteScimGroup({
         groupId: req.params.groupId,
         orgId: req.permission.orgId
       });
-      console.log("get scim group endpoint end: ", group);
+
       return group;
     }
   });

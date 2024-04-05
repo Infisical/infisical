@@ -25,6 +25,7 @@ import {
   TCreateScimGroupDTO,
   TCreateScimTokenDTO,
   TCreateScimUserDTO,
+  TDeleteScimGroupDTO,
   TDeleteScimTokenDTO,
   TGetScimGroupDTO,
   TGetScimUserDTO,
@@ -32,6 +33,7 @@ import {
   TListScimUsersDTO,
   TReplaceScimUserDTO,
   TScimTokenJwtPayload,
+  TUpdateScimGroupNameDTO,
   TUpdateScimUserDTO
 } from "./scim-types";
 
@@ -44,7 +46,7 @@ type TScimServiceFactoryDep = {
   >;
   projectDAL: Pick<TProjectDALFactory, "find">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete">;
-  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "findAllGroupMembers">;
+  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "findAllGroupMembers" | "update" | "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: TSmtpService;
@@ -431,21 +433,12 @@ export const scimServiceFactory = ({
   };
 
   const createScimGroup = async ({ displayName, orgId }: TCreateScimGroupDTO) => {
-    // TODO 1: impl basic
-    // TODO 2: impl linking case
-    console.log("createScimGroup args: ", {
-      displayName,
-      orgId
-    });
-
     const group = await groupDAL.create({
       name: displayName,
       slug: slugify(`${displayName}-${alphaNumericNanoId(4)}`),
       orgId,
       role: OrgMembershipRole.NoAccess
     });
-
-    console.log("createScimGroup the group: ", group);
 
     return buildScimGroup({
       groupId: group.id,
@@ -455,21 +448,19 @@ export const scimServiceFactory = ({
   };
 
   const getScimGroup = async ({ groupId, orgId }: TGetScimGroupDTO) => {
-    console.log("getScimGroup args: ", {
-      groupId,
-      orgId
-    });
-
     const group = await groupDAL.findOne({
       id: groupId,
       orgId
     });
 
-    console.log("getScimGroup group: ", group);
-    const users = await groupDAL.findAllGroupMembers(group.orgId, group.id);
-    console.log("getScimGroup users: ", users);
+    if (!group) {
+      throw new ScimRequestError({
+        detail: "Group Not Found",
+        status: 404
+      });
+    }
 
-    // TODO: get members
+    const users = await groupDAL.findAllGroupMembers(group.orgId, group.id);
 
     return buildScimGroup({
       groupId: group.id,
@@ -481,6 +472,47 @@ export const scimServiceFactory = ({
           display: `${user.firstName} ${user.lastName}`
         }))
     });
+  };
+
+  const updateScimGroupName = async ({ groupId, orgId, displayName }: TUpdateScimGroupNameDTO) => {
+    const [group] = await groupDAL.update(
+      {
+        id: groupId,
+        orgId
+      },
+      {
+        name: displayName
+      }
+    );
+
+    if (!group) {
+      throw new ScimRequestError({
+        detail: "Group Not Found",
+        status: 404
+      });
+    }
+
+    return buildScimGroup({
+      groupId: group.id,
+      name: group.name,
+      members: []
+    });
+  };
+
+  const deleteScimGroup = async ({ groupId, orgId }: TDeleteScimGroupDTO) => {
+    const [group] = await groupDAL.delete({
+      id: groupId,
+      orgId
+    });
+
+    if (!group) {
+      throw new ScimRequestError({
+        detail: "Group Not Found",
+        status: 404
+      });
+    }
+
+    return {}; // intentionally return empty object upon success
   };
 
   const fnValidateScimToken = async (token: TScimTokenJwtPayload) => {
@@ -517,6 +549,8 @@ export const scimServiceFactory = ({
     replaceScimUser,
     createScimGroup,
     getScimGroup,
+    deleteScimGroup,
+    updateScimGroupName,
     fnValidateScimToken
   };
 };
