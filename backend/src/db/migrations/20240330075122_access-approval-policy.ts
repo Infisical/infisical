@@ -35,6 +35,7 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.AccessApprovalPolicyApprover);
   await knex.schema.dropTableIfExists(TableName.AccessApprovalPolicy);
+
   await dropOnUpdateTrigger(knex, TableName.AccessApprovalPolicyApprover);
   await dropOnUpdateTrigger(knex, TableName.AccessApprovalPolicy);
 }
