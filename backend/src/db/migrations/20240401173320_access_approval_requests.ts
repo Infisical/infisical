@@ -43,9 +43,16 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
+  const reviewerTableExists = await knex.schema.hasTable(TableName.AccessApprovalRequestReviewer);
+  const requestTableExists = await knex.schema.hasTable(TableName.AccessApprovalRequest);
+
   await knex.schema.dropTableIfExists(TableName.AccessApprovalRequestReviewer);
   await knex.schema.dropTableIfExists(TableName.AccessApprovalRequest);
 
-  await dropOnUpdateTrigger(knex, TableName.AccessApprovalRequestReviewer);
-  await dropOnUpdateTrigger(knex, TableName.AccessApprovalRequest);
+  if (reviewerTableExists) {
+    await dropOnUpdateTrigger(knex, TableName.AccessApprovalRequestReviewer);
+  }
+  if (requestTableExists) {
+    await dropOnUpdateTrigger(knex, TableName.AccessApprovalRequest);
+  }
 }
