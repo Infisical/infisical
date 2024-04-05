@@ -103,11 +103,15 @@ export const ${dalName} = (db: TDbClient) => {
     `import { z } from "zod";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { readLimit } from "@app/server/config/rateLimiter";
 
 export const register${pascalCase}Router = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/",
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({}),
       response: {

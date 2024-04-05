@@ -3,13 +3,17 @@
 // TODO(akhilmhdh): Fix this when licence service gets it type
 import { z } from "zod";
 
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:organizationId/plans/table",
     method: "GET",
+    url: "/:organizationId/plans/table",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({ billingCycle: z.enum(["monthly", "yearly"]) }),
       params: z.object({ organizationId: z.string().trim() }),
@@ -32,8 +36,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/plan",
     method: "GET",
+    url: "/:organizationId/plan",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       response: {
@@ -54,8 +61,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/plans",
     method: "GET",
+    url: "/:organizationId/plans",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       querystring: z.object({ workspaceId: z.string().trim().optional() }),
@@ -77,8 +87,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/session/trial",
     method: "POST",
+    url: "/:organizationId/session/trial",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({ success_url: z.string().trim() }),
@@ -103,6 +116,9 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/:organizationId/customer-portal-session",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       response: {
@@ -123,8 +139,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/plan/billing",
     method: "GET",
+    url: "/:organizationId/plan/billing",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       response: {
@@ -145,8 +164,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/plan/table",
     method: "GET",
+    url: "/:organizationId/plan/table",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       response: {
@@ -167,8 +189,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/billing-details",
     method: "GET",
+    url: "/:organizationId/billing-details",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       response: {
@@ -189,8 +214,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/billing-details",
     method: "PATCH",
+    url: "/:organizationId/billing-details",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
@@ -217,8 +245,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/billing-details/payment-methods",
     method: "GET",
+    url: "/:organizationId/billing-details/payment-methods",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       response: {
@@ -239,8 +270,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/billing-details/payment-methods",
     method: "POST",
+    url: "/:organizationId/billing-details/payment-methods",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
@@ -267,8 +301,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/billing-details/payment-methods/:pmtMethodId",
     method: "DELETE",
+    url: "/:organizationId/billing-details/payment-methods/:pmtMethodId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim(),
@@ -293,8 +330,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/billing-details/tax-ids",
     method: "GET",
+    url: "/:organizationId/billing-details/tax-ids",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim()
@@ -317,8 +357,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/billing-details/tax-ids",
     method: "POST",
+    url: "/:organizationId/billing-details/tax-ids",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim()
@@ -347,8 +390,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/billing-details/tax-ids/:taxId",
     method: "DELETE",
+    url: "/:organizationId/billing-details/tax-ids/:taxId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim(),
@@ -373,8 +419,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/invoices",
     method: "GET",
+    url: "/:organizationId/invoices",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim()
@@ -397,8 +446,11 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:organizationId/licenses",
     method: "GET",
+    url: "/:organizationId/licenses",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim()

@@ -5,14 +5,18 @@ import { DynamicSecretLeasesSchema } from "@app/db/schemas";
 import { DYNAMIC_SECRET_LEASES } from "@app/lib/api-docs";
 import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/",
     method: "POST",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         dynamicSecretName: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.dynamicSecretName).toLowerCase(),
@@ -55,8 +59,11 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
   });
 
   server.route({
-    url: "/:leaseId",
     method: "DELETE",
+    url: "/:leaseId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         leaseId: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.DELETE.leaseId)
@@ -94,8 +101,11 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
   });
 
   server.route({
-    url: "/:leaseId/renew",
     method: "POST",
+    url: "/:leaseId/renew",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         leaseId: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.RENEW.leaseId)
@@ -146,6 +156,9 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
   server.route({
     url: "/:leaseId",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         leaseId: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.GET_BY_LEASEID.leaseId)

@@ -6,6 +6,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
 import { createSecretBlindIndex } from "@app/lib/crypto";
@@ -65,6 +66,7 @@ type TProjectServiceFactoryDep = {
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findOne">;
+  keyStore: Pick<TKeyStoreFactory, "deleteItem">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -86,7 +88,8 @@ export const projectServiceFactory = ({
   projectEnvDAL,
   licenseService,
   projectUserMembershipRoleDAL,
-  identityProjectMembershipRoleDAL
+  identityProjectMembershipRoleDAL,
+  keyStore
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -323,6 +326,7 @@ export const projectServiceFactory = ({
       };
     });
 
+    await keyStore.deleteItem(`infisical-cloud-plan-${actorOrgId}`);
     return results;
   };
 
@@ -350,6 +354,7 @@ export const projectServiceFactory = ({
       return delProject;
     });
 
+    await keyStore.deleteItem(`infisical-cloud-plan-${actorOrgId}`);
     return deletedProject;
   };
 

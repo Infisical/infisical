@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { BackupPrivateKeySchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { passwordRateLimit } from "@app/server/config/rateLimiter";
+import { authRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { validateSignUpAuthorization } from "@app/services/auth/auth-fns";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -12,7 +12,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/srp1",
     config: {
-      rateLimit: passwordRateLimit
+      rateLimit: authRateLimit
     },
     schema: {
       body: z.object({
@@ -39,7 +39,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/change-password",
     config: {
-      rateLimit: passwordRateLimit
+      rateLimit: authRateLimit
     },
     schema: {
       body: z.object({
@@ -78,7 +78,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/email/password-reset",
     config: {
-      rateLimit: passwordRateLimit
+      rateLimit: authRateLimit
     },
     schema: {
       body: z.object({
@@ -103,7 +103,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/email/password-reset-verify",
     config: {
-      rateLimit: passwordRateLimit
+      rateLimit: authRateLimit
     },
     schema: {
       body: z.object({
@@ -133,7 +133,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/backup-private-key",
     config: {
-      rateLimit: passwordRateLimit
+      rateLimit: authRateLimit
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
@@ -168,7 +168,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/backup-private-key",
     config: {
-      rateLimit: passwordRateLimit
+      rateLimit: authRateLimit
     },
     schema: {
       response: {
@@ -190,6 +190,9 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/password-reset",
+    config: {
+      rateLimit: authRateLimit
+    },
     schema: {
       body: z.object({
         protectedKey: z.string().trim(),

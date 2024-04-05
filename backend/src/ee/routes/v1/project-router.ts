@@ -4,6 +4,7 @@ import { AuditLogsSchema, SecretSnapshotsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOGS, PROJECTS } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -11,6 +12,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:workspaceId/secret-snapshots",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       description: "Return project secret snapshots ids",
       security: [
@@ -51,6 +55,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:workspaceId/secret-snapshots/count",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()
@@ -83,6 +90,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:workspaceId/audit-logs",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       description: "Return audit logs",
       security: [
@@ -145,6 +155,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:workspaceId/audit-logs/filters/actors",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()

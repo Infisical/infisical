@@ -3,6 +3,7 @@ import { z } from "zod";
 import { IdentitiesSchema, OrgMembershipRole } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { IDENTITIES } from "@app/lib/api-docs";
+import { creationLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -12,6 +13,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/",
+    config: {
+      rateLimit: creationLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Create identity",
@@ -71,6 +75,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "PATCH",
     url: "/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Update identity",
@@ -121,6 +128,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Delete identity",

@@ -18,6 +18,28 @@ export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
   };
 };
 
+// GET endpoints
+export const readLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  max: 600,
+  keyGenerator: (req) => req.realIp
+};
+
+// POST, PATCH, PUT, DELETE endpoints
+export const writeLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  max: 50,
+  keyGenerator: (req) => req.realIp
+};
+
+// special endpoints
+export const secretsLimit: RateLimitOptions = {
+  // secrets, folders, secret imports
+  timeWindow: 60 * 1000,
+  max: 600,
+  keyGenerator: (req) => req.realIp
+};
+
 export const authRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   max: 60,
@@ -26,12 +48,13 @@ export const authRateLimit: RateLimitOptions = {
 
 export const inviteUserRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 10,
+  max: 30,
   keyGenerator: (req) => req.realIp
 };
 
-export const passwordRateLimit: RateLimitOptions = {
+export const creationLimit: RateLimitOptions = {
+  // identity, project, org
   timeWindow: 60 * 1000,
-  max: 600,
+  max: 30,
   keyGenerator: (req) => req.realIp
 };
