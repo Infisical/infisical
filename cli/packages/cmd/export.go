@@ -59,15 +59,9 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		infisicalToken, err := util.GetInfisicalServiceToken(cmd)
+		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
-		}
-
-		identityAccessToken, err := util.GetInfisicalUniversalAuthAccessToken(cmd)
-
-		if err != nil {
-			util.HandleError(err, "Authentication with universal auth failed")
 		}
 
 		tagSlugs, err := cmd.Flags().GetString("tags")
@@ -80,7 +74,20 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, UniversalAuthAccessToken: identityAccessToken, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, WorkspaceId: projectId, SecretsPath: secretsPath}, "")
+		request := models.GetAllSecretsParameters{
+			Environment: environmentName,
+			TagSlugs:    tagSlugs,
+			WorkspaceId: projectId,
+			SecretsPath: secretsPath,
+		}
+
+		if token != nil && token.Type == "service-token" {
+			request.InfisicalToken = token.Token
+		} else if token != nil && token.Type == "universal-auth-token" {
+			request.UniversalAuthAccessToken = token.Token
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables(request, "")
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
 		}
@@ -93,9 +100,16 @@ var exportCmd = &cobra.Command{
 
 		var output string
 		if shouldExpandSecrets {
-			secrets = util.ExpandSecrets(secrets, models.ExpandSecretsAuthentication{
-				InfisicalToken: infisicalToken,
-			}, "")
+
+			authParams := models.ExpandSecretsAuthentication{}
+
+			if token != nil && token.Type == "service-token" {
+				authParams.InfisicalToken = token.Token
+			} else if token != nil && token.Type == "universal-auth-token" {
+				authParams.UniversalAuthAccessToken = token.Token
+			}
+
+			secrets = util.ExpandSecrets(secrets, authParams, "")
 		}
 		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
 		output, err = formatEnvs(secrets, format)
@@ -116,8 +130,6 @@ func init() {
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
-	exportCmd.Flags().String("universal-auth-client-id", "", "Machine Identity universal auth client ID")
-	exportCmd.Flags().String("universal-auth-client-secret", "", "Machine Identity universal auth client secret")
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
 	exportCmd.Flags().String("path", "/", "get secrets within a folder path")
