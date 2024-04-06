@@ -59,6 +59,25 @@ export type TReplaceScimUserDTO = {
   orgId: string;
 };
 
+export type TDeleteScimUserDTO = {
+  userId: string;
+  orgId: string;
+};
+
+export type TListScimGroupsDTO = {
+  offset: number;
+  limit: number;
+  orgId: string;
+};
+
+export type TListScimGroups = {
+  schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"];
+  totalResults: number;
+  Resources: TScimGroup[];
+  itemsPerPage: number;
+  startIndex: number;
+};
+
 export type TCreateScimGroupDTO = {
   displayName: string;
   orgId: string;
@@ -69,10 +88,37 @@ export type TGetScimGroupDTO = {
   orgId: string;
 };
 
-export type TUpdateScimGroupNameDTO = {
+export type TUpdateScimGroupNamePutDTO = {
   groupId: string;
   orgId: string;
   displayName: string;
+};
+
+export type TUpdateScimGroupNamePatchDTO = {
+  groupId: string;
+  orgId: string;
+  operations: (TRemoveOp | TReplaceOp | TAddOp)[];
+};
+
+type TReplaceOp = {
+  op: "replace";
+  value: {
+    id: string;
+    displayName: string;
+  };
+};
+
+type TRemoveOp = {
+  op: "remove";
+  path: string;
+};
+
+type TAddOp = {
+  op: "add";
+  value: {
+    value: string;
+    display?: string;
+  };
 };
 
 export type TDeleteScimGroupDTO = {
@@ -102,6 +148,20 @@ export type TScimUser = {
   }[];
   active: boolean;
   groups: string[];
+  meta: {
+    resourceType: string;
+    location: null;
+  };
+};
+
+export type TScimGroup = {
+  schemas: string[];
+  id: string;
+  displayName: string;
+  members: {
+    value: string;
+    display: string;
+  }[];
   meta: {
     resourceType: string;
     location: null;

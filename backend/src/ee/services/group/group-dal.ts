@@ -1,14 +1,34 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TGroups } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
 export type TGroupDALFactory = ReturnType<typeof groupDALFactory>;
 
 export const groupDALFactory = (db: TDbClient) => {
   const groupOrm = ormify(db, TableName.Groups);
+
+  const findGroups = async (filter: TFindFilter<TGroups>, { offset, limit, sort, tx }: TFindOpt<TGroups> = {}) => {
+    try {
+      const query = (tx || db)(TableName.Groups)
+        // eslint-disable-next-line
+        .where(buildFindFilter(filter))
+        .select(selectAllTableCols(TableName.Groups));
+
+      if (limit) void query.limit(limit);
+      if (offset) void query.limit(offset);
+      if (sort) {
+        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
+      }
+
+      const res = await query;
+      return res;
+    } catch (err) {
+      throw new DatabaseError({ error: err, name: "Find groups" });
+    }
+  };
 
   const findByOrgId = async (orgId: string, tx?: Knex) => {
     try {
@@ -78,6 +98,7 @@ export const groupDALFactory = (db: TDbClient) => {
   };
 
   return {
+    findGroups,
     findByOrgId,
     findAllGroupMembers,
     ...groupOrm
