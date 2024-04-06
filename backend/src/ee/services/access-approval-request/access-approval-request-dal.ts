@@ -81,7 +81,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             .as("privilegeTemporaryAccessEndTime"),
 
           db.ref("permissions").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegePermissions")
-        );
+        )
+        .orderBy(`${TableName.AccessApprovalRequest}.createdAt`, "desc");
 
       const formattedDocs = sqlNestRelationships({
         data: docs,
