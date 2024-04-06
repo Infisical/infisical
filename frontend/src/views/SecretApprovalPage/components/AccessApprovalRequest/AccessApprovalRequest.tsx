@@ -30,6 +30,7 @@ import {
 } from "@app/components/v2";
 import {
   ProjectPermissionActions,
+  ProjectPermissionSub,
   useProjectPermission,
   useSubscription,
   useWorkspace
@@ -272,7 +273,7 @@ export const AccessApprovalRequest = ({
     "reviewRequest",
     "upgradePlan"
   ] as const);
-  const { membership } = useProjectPermission();
+  const { membership, permission } = useProjectPermission();
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
 
@@ -460,33 +461,37 @@ export const AccessApprovalRequest = ({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <Button
-                    variant="plain"
-                    colorSchema="secondary"
-                    className={requestedByFilter ? "text-white" : "text-bunker-300"}
-                    rightIcon={<FontAwesomeIcon icon={faChevronDown} size="sm" className="ml-2" />}
-                  >
-                    Requested By
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Select an author</DropdownMenuLabel>
-                  {members?.map(({ user, id }) => (
-                    <DropdownMenuItem
-                      onClick={() =>
-                        setRequestedByFilter((state) => (state === id ? undefined : id))
+              {!!permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Member) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger>
+                    <Button
+                      variant="plain"
+                      colorSchema="secondary"
+                      className={requestedByFilter ? "text-white" : "text-bunker-300"}
+                      rightIcon={
+                        <FontAwesomeIcon icon={faChevronDown} size="sm" className="ml-2" />
                       }
-                      key={`request-filter-member-${id}`}
-                      icon={requestedByFilter === id && <FontAwesomeIcon icon={faCheckCircle} />}
-                      iconPos="right"
                     >
-                      {user.email}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      Requested By
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Select an author</DropdownMenuLabel>
+                    {members?.map(({ user, id }) => (
+                      <DropdownMenuItem
+                        onClick={() =>
+                          setRequestedByFilter((state) => (state === id ? undefined : id))
+                        }
+                        key={`request-filter-member-${id}`}
+                        icon={requestedByFilter === id && <FontAwesomeIcon icon={faCheckCircle} />}
+                        iconPos="right"
+                      >
+                        {user.email}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
           <div className="flex flex-col rounded-b-md border-x border-t border-b border-mineshaft-600 bg-mineshaft-800">
