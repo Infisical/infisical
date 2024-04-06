@@ -594,8 +594,7 @@ const OrganizationPage = withPermission(
           </div>
         )}
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
-        {
-        window.location.origin.includes("https://app.infisical.com") || window.location.origin.includes("http://localhost:8080") && 
+        {window.location.origin.includes("https://app.infisical.com") || window.location.origin.includes("http://localhost:8080") && (
         <div
             className={`${
               !updateClosed ? "block" : "hidden"
@@ -618,8 +617,7 @@ const OrganizationPage = withPermission(
             >
               <FontAwesomeIcon icon={faXmark} />
             </button>
-          </div>
-        }
+          </div>)}
           
           <p className="mr-4 font-semibold text-white">Projects</p>
           <div className="mt-6 flex w-full flex-row">
