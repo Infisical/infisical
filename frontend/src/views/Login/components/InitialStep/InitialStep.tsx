@@ -42,7 +42,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
       );
       window.close();
     }
-  })
+  }, [])
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
