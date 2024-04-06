@@ -483,10 +483,10 @@ const OrganizationPage = withPermission(
     
     const addUsersToProject = useAddUserToWsNonE2EE();
 
-    const { data: updateClosed } = useGetUserAction("april_2024_db_update_closed");
+    const { data: updateClosed } = useGetUserAction("april_13_2024_db_update_closed");
     const registerUserAction = useRegisterUserAction();
     const closeUpdate = async () => {
-      await registerUserAction.mutateAsync("april_2024_db_update_closed");
+      await registerUserAction.mutateAsync("april_13_2024_db_update_closed");
     };
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
