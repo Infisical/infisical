@@ -128,7 +128,15 @@ export const accessApprovalRequestServiceFactory = ({
           throw new BadRequestError({ message: "You already have an active privilege with the same criteria" });
         }
       } else {
-        throw new BadRequestError({ message: "You already have a pending access request with the same criteria" });
+        const reviewers = await accessApprovalRequestReviewerDAL.find({
+          requestId: duplicateRequest.id
+        });
+
+        const isRejected = reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED);
+
+        if (!isRejected) {
+          throw new BadRequestError({ message: "You already have a pending access request with the same criteria" });
+        }
       }
     }
 
