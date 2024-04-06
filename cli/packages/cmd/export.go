@@ -44,6 +44,11 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		includeImports, err := cmd.Flags().GetBool("include-imports")
+		if err != nil {
+			util.HandleError(err)
+		}
+
 		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err)
@@ -75,10 +80,11 @@ var exportCmd = &cobra.Command{
 		}
 
 		request := models.GetAllSecretsParameters{
-			Environment: environmentName,
-			TagSlugs:    tagSlugs,
-			WorkspaceId: projectId,
-			SecretsPath: secretsPath,
+			Environment:   environmentName,
+			TagSlugs:      tagSlugs,
+			WorkspaceId:   projectId,
+			SecretsPath:   secretsPath,
+			IncludeImport: includeImports,
 		}
 
 		if token != nil && token.Type == "service-token" {
@@ -129,6 +135,7 @@ func init() {
 	exportCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
+	exportCmd.Flags().Bool("include-imports", true, "Imported linked secrets")
 	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")

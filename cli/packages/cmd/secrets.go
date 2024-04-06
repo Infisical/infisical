@@ -427,6 +427,12 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
+
+	shouldExpand, err := cmd.Flags().GetBool("expand")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
 	tagSlugs, err := cmd.Flags().GetString("tags")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
@@ -486,6 +492,18 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 				Value: "*not found*",
 			})
 		}
+	}
+
+	if shouldExpand {
+
+		authParams := models.ExpandSecretsAuthentication{}
+		if token != nil && token.Type == "service-token" {
+			authParams.InfisicalToken = token.Token
+		} else if token != nil && token.Type == "universal-auth-token" {
+			authParams.UniversalAuthAccessToken = token.Token
+		}
+
+		requestedSecrets = util.ExpandSecrets(requestedSecrets, authParams, "")
 	}
 
 	if showOnlyValue && len(requestedSecrets) > 1 {
@@ -750,6 +768,7 @@ func init() {
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsGetCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
+	secretsGetCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	secretsGetCmd.Flags().Bool("raw-value", false, "Returns only the value of secret, only works with one secret")
 	secretsGetCmd.Flags().Bool("recursive", false, "Fetch secrets from all sub-folders")
 	secretsCmd.AddCommand(secretsGetCmd)
