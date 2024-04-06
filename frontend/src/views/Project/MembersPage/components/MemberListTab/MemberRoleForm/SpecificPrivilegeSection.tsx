@@ -344,20 +344,27 @@ export const SpecificPrivilegeSecretForm = ({
             render={({ field }) => {
               if (policies) {
                 return (
-                  <FormControl label="Secret Path">
-                    <Select
-                      {...field}
-                      isDisabled={isMemberEditDisabled || !selectablePaths.length}
-                      className="w-48"
-                      onValueChange={(e) => field.onChange(e)}
-                    >
-                      {selectablePaths.map((path) => (
-                        <SelectItem value={path} key={path}>
-                          {path}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <Tooltip
+                    isDisabled={!!selectablePaths.length}
+                    content="The selected environment doesn't have any policies."
+                  >
+                    <div>
+                      <FormControl label="Secret Path">
+                        <Select
+                          {...field}
+                          isDisabled={isMemberEditDisabled || !selectablePaths.length}
+                          className="w-48"
+                          onValueChange={(e) => field.onChange(e)}
+                        >
+                          {selectablePaths.map((path) => (
+                            <SelectItem value={path} key={path}>
+                              {path}
+                            </SelectItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </div>
+                  </Tooltip>
                 );
               }
               return (
@@ -515,8 +522,9 @@ export const SpecificPrivilegeSecretForm = ({
                         );
                       }}
                     >
-                      {temporaryAccessField.isTemporary ? "Restart" : "Grant"}
+                      {temporaryAccessField.isTemporary && !policies ? "Restart" : "Grant"}
                     </Button>
+
                     {temporaryAccessField.isTemporary && (
                       <Button
                         size="xs"
@@ -528,7 +536,7 @@ export const SpecificPrivilegeSecretForm = ({
                           });
                         }}
                       >
-                        Revoke Access
+                        Cancel
                       </Button>
                     )}
                   </div>
