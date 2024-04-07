@@ -153,7 +153,7 @@ export const authLoginServiceFactory = ({
       username: email
     });
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
-      throw new Error("Failed to find  user");
+      throw new Error("Failed to find user");
     }
     if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
       validateProviderAuthToken(providerAuthToken as string, email);
