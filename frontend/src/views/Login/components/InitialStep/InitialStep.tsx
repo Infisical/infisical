@@ -33,7 +33,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
   const queryParams = new URLSearchParams(window.location.search);
 
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_SAML_ORG_SLUG) {
+    if (process.env.NEXT_PUBLIC_SAML_ORG_SLUG && process.env.NEXT_PUBLIC_SAML_ORG_SLUG !== "saml-org-slug-default") {
       const callbackPort = queryParams.get("callback_port");
       window.open(
         `/api/v1/sso/redirect/saml2/organizations/${process.env.NEXT_PUBLIC_SAML_ORG_SLUG}${

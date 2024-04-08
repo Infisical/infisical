@@ -1,7 +1,7 @@
 ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
-ARG SAML_ORG_SLUG=smal-org-slug
+ARG SAML_ORG_SLUG=saml-org-slug-default
 
 FROM  node:20-alpine AS base
 
