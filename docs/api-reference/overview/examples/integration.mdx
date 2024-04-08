@@ -1,26 +1,25 @@
 ---
-title: "Setting Up Integration to Sync Secrets with API"
+title: "Configure native integrations programmatically"
+description: "How to use Infisical API to sync secrets to external secret managers"
 ---
 
-Utilizing Infisical's API, you can establish integrations to connect with external third-party providers for syncing secrets.
+The Infisical API allows you to create programmatic integrations that connect with third-party secret managers to synchronize secrets from Infisical.
 
-While we will focus on AWS Secret Store Manager (AWS SSM) here, information for other providers can be found in their respective API reference documentation.
+This guide will primarily demonstrate the process using AWS Secret Store Manager (AWS SSM), but the steps are generally applicable to other secret management integrations.
 
 <Info>
-Refer to the [AWS SSM integration setup](../../../integrations/cloud/aws-secret-manager) to understand AWS SSM sync setup in UI and prerequisites.
+    For details on setting up AWS SSM synchronization and understanding its prerequisites, refer to the [AWS SSM integration setup documentation](../../../integrations/cloud/aws-secret-manager).
 </Info>
 
 <Steps>
-  <Step title="Connect with AWS SSM">
-   Authentication with AWS SSM is necessary for Infisical to establish a connection. 
-	 This process is facilitated through the [Integration Auth API](../../endpoints/integrations/create-auth).
+  <Step title="Authenticate with AWS SSM">
+     Authentication is required for all integrations. Use the [Integration Auth API](../../endpoints/integrations/create-auth) with the following parameters to authenticate.
 
-    The following are the required fields:
     <ParamField body="integration" type="string" initialValue="aws-secret-manager" required>
-        This value must be **aws-secret-manager**.
+        Set this parameter to **aws-secret-manager**.
     </ParamField>
     <ParamField body="workspaceId" type="string" required>
-        Infisical project ID for the integration.
+        The Infisical project ID for the integration.
     </ParamField>
     <ParamField body="accessId" type="string" required>
         The AWS IAM User Access ID.
@@ -28,8 +27,6 @@ Refer to the [AWS SSM integration setup](../../../integrations/cloud/aws-secret-
     <ParamField body="accessToken" type="string" required>
         The AWS IAM User Access Secret Key.
     </ParamField>
-
-    Then you can send a request in the following format:
 
     ```bash Request
     curl --request POST \
@@ -45,35 +42,30 @@ Refer to the [AWS SSM integration setup](../../../integrations/cloud/aws-secret-
     ```
 
   </Step>
-  <Step title="Configure the Sync Setup">
-	With the authentication between AWS SSM and Infisical established, you can now proceed to configure the sync behavior. 
-	This involves defining the source (environment and secret path in Infisical) and the destination in SSM.
+  <Step title="Configure the Synchronization Setup">
+	Once authentication between AWS SSM and Infisical is established, you can configure the synchronization behavior. 
+	This involves specifying the source (environment and secret path in Infisical) and the destination in SSM to which the secrets will be synchronized.
 
-    This configuration is carried out through the [Integration API](../../endpoints/integrations/create).
-    For this, we use the [Integration API](../../endpoints/integrations/create).
+    Use the [integration API](../../endpoints/integrations/create) with the following parameters to configure the sync source and destination.
 
-    The following parameters are required:
     <ParamField body="integrationAuthId" type="string" required>
-        The ID of the integration auth object for authentication with AWS.
-        This will be the ID field of the previous integration auth API response.
+        The ID of the integration authentication object used with AWS, obtained from the previous API response.
     </ParamField>
     <ParamField body="isActive" type="boolean">
-        Whether the integration should be active or inactive.
+        Indicates whether the integration should be active or inactive.
     </ParamField>
     <ParamField body="app" type="string" required>
-        The secret name used when saving secrets in AWS SSM. This is used for naming and can be arbitrary.
+        The secret name for saving in AWS SSM, which can be arbitrarily chosen.
     </ParamField>
     <ParamField body="region" type="string" required>
-        The AWS region of the SSM. Example: `us-east-1`.
+        The AWS region where the SSM is located, e.g., `us-east-1`.
     </ParamField>
     <ParamField body="sourceEnvironment" type="string" required>
-        The Infisical environment slug from which secrets will be synced. Example: `dev`.
+        The Infisical environment slug from which secrets will be synchronized, e.g., `dev`.
     </ParamField>
     <ParamField body="secretPath" type="string" required>
-        The Infisical folder path from which secrets will be synced. Example: `/some/path`. The root of the environment is `/`.
+        The Infisical folder path from which secrets will be synchronized, e.g., `/some/path`. The root path is `/`.
     </ParamField>
-
-    Then you can send a request in the following format:
 
     ```bash Request
     curl --request POST \
@@ -83,7 +75,7 @@ Refer to the [AWS SSM integration setup](../../../integrations/cloud/aws-secret-
         --data '{
         "integrationAuthId": "<integrationauthid>",
         "sourceEnvironment": "<sourceenvironment>",
-        "secretPath": "<secret-path default is '/' >",
+        "secretPath": "<secret-path, default is '/' >",
         "app": "<app>",
         "region": "<aws-ssm-region>"
     }'
@@ -92,5 +84,7 @@ Refer to the [AWS SSM integration setup](../../../integrations/cloud/aws-secret-
   </Step>
 </Steps>
 
-You have successfully configured Infisical Integration to sync secrets from Infisical to AWS SSM.
-[Refer the integration api reference for more information.](../../endpoints/integrations)
+<Check>
+Congratulations! You have successfully set up an integration to synchronize secrets from Infisical with AWS SSM.
+For more information, [view the integration API reference](../../endpoints/integrations).
+</Check>
