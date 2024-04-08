@@ -388,8 +388,6 @@
           "group": "Examples",
           "pages": [
             "api-reference/overview/examples/note",
-            "api-reference/overview/examples/e2ee-disabled",
-            "api-reference/overview/examples/e2ee-enabled",
             "api-reference/overview/examples/integration"
           ]
         }
