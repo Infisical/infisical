@@ -102,39 +102,6 @@ func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err erro
 
 }
 
-func GetInfisicalUniversalAuthAccessToken(cmd *cobra.Command) (accessToken string, err error) {
-
-	var token string
-
-	universalAuthClientId, err := cmd.Flags().GetString("universal-auth-client-id")
-	if err != nil {
-		return token, err
-	}
-	universalAuthClientSecret, err := cmd.Flags().GetString("universal-auth-client-secret")
-	if err != nil {
-		return token, err
-	}
-
-	if universalAuthClientId == "" {
-		universalAuthClientId = os.Getenv(INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
-	}
-
-	if universalAuthClientSecret == "" {
-		universalAuthClientSecret = os.Getenv(INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET_NAME)
-	}
-
-	if universalAuthClientId != "" || universalAuthClientSecret != "" {
-		res, err := UniversalAuthLogin(universalAuthClientId, universalAuthClientSecret)
-
-		if err != nil {
-			return token, err
-		}
-		token = res.AccessToken
-	}
-
-	return token, nil
-}
-
 func UniversalAuthLogin(clientId string, clientSecret string) (api.UniversalAuthLoginResponse, error) {
 	httpClient := resty.New()
 	httpClient.SetRetryCount(10000).
