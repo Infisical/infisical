@@ -30,7 +30,7 @@ import { useGetAccessApprovalPolicies } from "@app/hooks/api/accessApproval/quer
 import { TAccessApprovalPolicy } from "@app/hooks/api/types";
 
 import { AccessApprovalPolicyRow } from "./components/AccessApprovalPolicyRow";
-import { AccessPolicyForm } from "./components/AccessPolicyForm";
+import { AccessPolicyForm } from "./components/AccessPolicyModal";
 
 interface IProps {
   workspaceId: string;
@@ -127,11 +127,11 @@ export const AccessApprovalPolicyList = ({ workspaceId }: IProps) => {
           </THead>
           <TBody>
             {isPoliciesLoading && (
-              <TableSkeleton columns={4} innerKey="secret-policies" className="bg-mineshaft-700" />
+              <TableSkeleton columns={6} innerKey="secret-policies" className="bg-mineshaft-700" />
             )}
             {!isPoliciesLoading && !policies?.length && (
               <Tr>
-                <Td colSpan={5}>
+                <Td colSpan={6}>
                   <EmptyState title="No policies found" icon={faFileShield} />
                 </Td>
               </Tr>
