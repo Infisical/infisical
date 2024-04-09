@@ -2,8 +2,8 @@ import Link from "next/link";
 import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import Divider from "@app/components/basic/Divider";
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Divider } from "@app/components/v2/Divider";
 import { useWorkspace } from "@app/context";
 
 import { AccessApprovalPolicyList } from "./components/AccessApprovalPolicyList";
