@@ -625,7 +625,6 @@ export const registerRoutes = async (
     accessApprovalRequestReviewerDAL,
     additionalPrivilegeDAL: projectUserAdditionalPrivilegeDAL,
     projectMembershipDAL,
-    additionalPrivilegeService: projectUserAdditionalPrivilegeService,
     accessApprovalPolicyDAL,
     accessApprovalRequestDAL,
     projectEnvDAL,
