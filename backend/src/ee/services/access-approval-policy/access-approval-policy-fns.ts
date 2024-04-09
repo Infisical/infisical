@@ -7,7 +7,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/pr
 import { TVerifyApprovers } from "./access-approval-policy-types";
 
 export const verifyApprovers = async ({
-  approverProjectMemberships,
+  userIds,
   projectId,
   orgId,
   envSlug,
@@ -15,12 +15,11 @@ export const verifyApprovers = async ({
   secretPath,
   permissionService
 }: TVerifyApprovers) => {
-  for (const approver of approverProjectMemberships) {
+  for await (const userId of userIds) {
     try {
-      // eslint-disable-next-line no-await-in-loop
       const { permission: approverPermission } = await permissionService.getProjectPermission(
         ActorType.USER,
-        approver.userId,
+        userId,
         projectId,
         actorAuthMethod,
         orgId

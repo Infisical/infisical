@@ -1,11 +1,10 @@
-import { TProjectMemberships } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod } from "@app/services/auth/auth-type";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
 
 export type TVerifyApprovers = {
-  approverProjectMemberships: TProjectMemberships[];
+  userIds: string[];
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   envSlug: string;
   actorAuthMethod: ActorAuthMethod;
@@ -16,7 +15,7 @@ export type TVerifyApprovers = {
 
 export type TCreateAccessApprovalPolicy = {
   approvals: number;
-  secretPath?: string | null;
+  secretPath: string;
   environment: string;
   approvers: string[];
   projectSlug: string;
@@ -26,7 +25,7 @@ export type TCreateAccessApprovalPolicy = {
 export type TUpdateAccessApprovalPolicy = {
   policyId: string;
   approvals?: number;
-  approvers: string[];
+  approvers?: string[];
   secretPath?: string;
   name?: string;
 } & Omit<TProjectPermission, "projectId">;
@@ -42,9 +41,4 @@ export type TGetAccessPolicyCountByEnvironmentDTO = {
 
 export type TListAccessApprovalPoliciesDTO = {
   projectSlug: string;
-} & Omit<TProjectPermission, "projectId">;
-
-export type TGetBoardAccessApprovalPolicy = {
-  projectId: string;
-  environment: string;
 } & Omit<TProjectPermission, "projectId">;
