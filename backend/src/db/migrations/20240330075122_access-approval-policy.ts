@@ -31,16 +31,9 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const approverTableExists = await knex.schema.hasTable(TableName.AccessApprovalPolicyApprover);
-  const policyTableExists = await knex.schema.hasTable(TableName.AccessApprovalPolicy);
-
   await knex.schema.dropTableIfExists(TableName.AccessApprovalPolicyApprover);
   await knex.schema.dropTableIfExists(TableName.AccessApprovalPolicy);
 
-  if (approverTableExists) {
-    await dropOnUpdateTrigger(knex, TableName.AccessApprovalPolicyApprover);
-  }
-  if (policyTableExists) {
-    await dropOnUpdateTrigger(knex, TableName.AccessApprovalPolicy);
-  }
+  await dropOnUpdateTrigger(knex, TableName.AccessApprovalPolicyApprover);
+  await dropOnUpdateTrigger(knex, TableName.AccessApprovalPolicy);
 }
