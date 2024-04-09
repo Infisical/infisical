@@ -16,7 +16,6 @@ import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/acces
 import { verifyApprovers } from "../access-approval-policy/access-approval-policy-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
-import { TProjectUserAdditionalPrivilegeServiceFactory } from "../project-user-additional-privilege/project-user-additional-privilege-service";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "../project-user-additional-privilege/project-user-additional-privilege-types";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
@@ -30,18 +29,29 @@ import {
 } from "./access-approval-request-types";
 
 type TSecretApprovalRequestServiceFactoryDep = {
-  additionalPrivilegeService: TProjectUserAdditionalPrivilegeServiceFactory;
-  additionalPrivilegeDAL: TProjectUserAdditionalPrivilegeDALFactory;
-  permissionService: TPermissionServiceFactory;
-  accessApprovalPolicyApproverDAL: TAccessApprovalPolicyApproverDALFactory;
+  additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "create" | "findById">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug">;
-  accessApprovalRequestDAL: TAccessApprovalRequestDALFactory;
-  accessApprovalPolicyDAL: TAccessApprovalPolicyDALFactory;
-  accessApprovalRequestReviewerDAL: TAccessApprovalRequestReviewerDALFactory;
-  projectMembershipDAL: TProjectMembershipDALFactory;
-  smtpService: TSmtpService;
-  userDAL: TUserDALFactory;
+  accessApprovalRequestDAL: Pick<
+    TAccessApprovalRequestDALFactory,
+    | "create"
+    | "findRequestsWithPrivilegeByPolicyIds"
+    | "findById"
+    | "transaction"
+    | "updateById"
+    | "findOne"
+    | "getCount"
+  >;
+  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findOne" | "find">;
+  accessApprovalRequestReviewerDAL: Pick<
+    TAccessApprovalRequestReviewerDALFactory,
+    "create" | "find" | "findOne" | "transaction"
+  >;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById">;
+  smtpService: Pick<TSmtpService, "sendMail">;
+  userDAL: Pick<TUserDALFactory, "findUserByProjectMembershipId" | "findUsersByProjectMembershipIds">;
 };
 
 export type TAccessApprovalRequestServiceFactory = ReturnType<typeof accessApprovalRequestServiceFactory>;
@@ -106,10 +116,6 @@ export const accessApprovalRequestServiceFactory = ({
     const approverUsers = await userDAL.findUsersByProjectMembershipIds(
       approvers.map((approver) => approver.approverId)
     );
-
-    if (approverUsers.length !== approvers.length) {
-      throw new BadRequestError({ message: "Some approvers were not found" });
-    }
 
     const duplicateRequest = await accessApprovalRequestDAL.findOne({
       policyId: policy.id,
@@ -252,7 +258,7 @@ export const accessApprovalRequestServiceFactory = ({
       secretPath: accessApprovalRequest.policy.secretPath!,
       actorAuthMethod,
       permissionService,
-      approverProjectMemberships: [reviewerProjectMembership]
+      userIds: [reviewerProjectMembership.userId]
     });
 
     const existingReviews = await accessApprovalRequestReviewerDAL.find({ requestId: accessApprovalRequest.id });
