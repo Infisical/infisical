@@ -1,6 +1,6 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-no-useless-fragment */
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   faCheck,
   faCheckCircle,
@@ -11,10 +11,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistance } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
-import ms from "ms";
-import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   DropdownMenu,
@@ -23,11 +20,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
   EmptyState,
-  Modal,
-  ModalContent,
   Tooltip,
   UpgradePlanModal
 } from "@app/components/v2";
+import { Badge } from "@app/components/v2/Badge";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -36,7 +32,7 @@ import {
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useGetWorkspaceUsers, useReviewAccessRequest } from "@app/hooks/api";
+import { useGetWorkspaceUsers } from "@app/hooks/api";
 import {
   accessApprovalKeys,
   useGetAccessApprovalPolicies,
@@ -44,192 +40,11 @@ import {
   useGetAccessRequestsCount
 } from "@app/hooks/api/accessApproval/queries";
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
-import { ApprovalStatus, TAccessApprovalPolicy, TWorkspaceUser } from "@app/hooks/api/types";
+import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 import { queryClient } from "@app/reactQuery";
-import { SpecificPrivilegeSecretForm } from "@app/views/Project/MembersPage/components/MemberListTab/MemberRoleForm/SpecificPrivilegeSection";
 
-const DisplayBadge = ({ text, className }: { text: string; className?: string }) => {
-  return (
-    <div
-      className={twMerge(
-        "inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-xs text-yellow opacity-80 hover:opacity-100",
-        className
-      )}
-    >
-      {text}
-    </div>
-  );
-};
-
-const ReviewRequestModal = ({
-  isOpen,
-  onOpenChange,
-  request,
-  projectSlug,
-  selectedRequester,
-  selectedEnvSlug
-}: {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  request: TAccessApprovalRequest & { user: TWorkspaceUser["user"] | null };
-  projectSlug: string;
-  selectedRequester: string | undefined;
-  selectedEnvSlug: string | undefined;
-}) => {
-  const [isLoading, setIsLoading] = useState<"approved" | "rejected" | null>(null);
-
-  const accessDetails = {
-    env: request.environmentName,
-    // secret path will be inside $glob operator
-    secretPath: request.policy.secretPath,
-    read: request.permissions?.some(({ action }) => action.includes(ProjectPermissionActions.Read)),
-    edit: request.permissions?.some(({ action }) => action.includes(ProjectPermissionActions.Edit)),
-    create: request.permissions?.some(({ action }) =>
-      action.includes(ProjectPermissionActions.Create)
-    ),
-    delete: request.permissions?.some(({ action }) =>
-      action.includes(ProjectPermissionActions.Delete)
-    ),
-
-    temporaryAccess: {
-      isTemporary: request.isTemporary,
-      temporaryRange: request.temporaryRange
-    }
-  };
-
-  const requestedAccess = useMemo(() => {
-    const access: string[] = [];
-    if (accessDetails.read) access.push("Read");
-    if (accessDetails.edit) access.push("Edit");
-    if (accessDetails.create) access.push("Create");
-    if (accessDetails.delete) access.push("Delete");
-
-    return access.join(", ");
-  }, [accessDetails]);
-
-  const getAccessLabel = () => {
-    if (!accessDetails.temporaryAccess.isTemporary || !accessDetails.temporaryAccess.temporaryRange)
-      return "Permanent";
-
-    // convert the range to human readable format
-    ms(ms(accessDetails.temporaryAccess.temporaryRange), { long: true });
-
-    return (
-      <DisplayBadge
-        text={`Valid for ${ms(ms(accessDetails.temporaryAccess.temporaryRange), {
-          long: true
-        })} after approval`}
-      />
-    );
-  };
-
-  const reviewAccessRequest = useReviewAccessRequest();
-
-  const handleReview = useCallback(async (status: "approved" | "rejected") => {
-    setIsLoading(status);
-    try {
-      await reviewAccessRequest.mutateAsync({
-        requestId: request.id,
-        status,
-        projectSlug,
-        envSlug: selectedEnvSlug,
-        requestedBy: selectedRequester
-      });
-    } catch (error) {
-      console.error(error);
-      setIsLoading(null);
-      return;
-    }
-
-    createNotification({
-      title: `Request ${status}`,
-      text: `The request has been ${status}`,
-      type: status === "approved" ? "success" : "info"
-    });
-
-    setIsLoading(null);
-    onOpenChange(false);
-  }, []);
-
-  return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        className="max-w-4xl"
-        title="Review Request"
-        subTitle="Review the request and approve or deny access."
-      >
-        <div className="text-sm">
-          <span>
-            <span className="font-bold">
-              {request.user?.firstName} {request.user?.lastName} ({request.user?.email})
-            </span>{" "}
-            is requesting access to the following resource:
-          </span>
-
-          <div className="mt-4 mb-2 border-l border-blue-500 bg-blue-500/20 px-3 py-2 text-mineshaft-200">
-            <div className="mb-1 lowercase">
-              <span className="font-bold capitalize">Requested path: </span>
-              <DisplayBadge text={accessDetails.env + accessDetails.secretPath || ""} />
-            </div>
-
-            <div className="mb-1">
-              <span className="font-bold">Permissions: </span>
-              <DisplayBadge text={requestedAccess} />
-            </div>
-
-            <div>
-              <span className="font-bold">Access Type: </span>
-              <span>{getAccessLabel()}</span>
-            </div>
-          </div>
-
-          <div className="space-x-2">
-            <Button
-              isLoading={isLoading === "approved"}
-              isDisabled={!!isLoading}
-              onClick={() => handleReview("approved")}
-              className="mt-4"
-              size="sm"
-            >
-              Approve Request
-            </Button>
-            <Button
-              isLoading={isLoading === "rejected"}
-              isDisabled={!!isLoading}
-              onClick={() => handleReview("rejected")}
-              className="mt-4 border-transparent bg-transparent text-mineshaft-200 hover:border-red hover:bg-red/20 hover:text-mineshaft-200"
-              size="sm"
-            >
-              Reject Request
-            </Button>
-          </div>
-        </div>
-      </ModalContent>
-    </Modal>
-  );
-};
-
-const SelectAccessModal = ({
-  isOpen,
-  onOpenChange,
-  policies
-}: {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  policies: TAccessApprovalPolicy[];
-}) => {
-  return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        className="max-w-4xl"
-        title="Request Access"
-        subTitle="Your role has limited permissions, please contact your administrator to gain access"
-      >
-        <SpecificPrivilegeSecretForm onClose={() => onOpenChange(false)} policies={policies} />
-      </ModalContent>
-    </Modal>
-  );
-};
+import { RequestAccessModal } from "./components/RequestAccessModal";
+import { ReviewAccessRequestModal } from "./components/ReviewAccessModal";
 
 const generateRequestText = (request: TAccessApprovalRequest, membershipId: string) => {
   const { isTemporary } = request;
@@ -249,7 +64,7 @@ const generateRequestText = (request: TAccessApprovalRequest, membershipId: stri
       <div>
         {request.requestedBy === membershipId && (
           <span className="text-xs text-gray-500">
-            <DisplayBadge text="Requested By You" className="ml-1 bg-yellow/20 text-yellow" />
+            <Badge className="ml-1">Requested By You</Badge>
           </span>
         )}
       </div>
@@ -331,29 +146,30 @@ export const AccessApprovalRequest = ({
       ({ member }) => member === membership.id
     )?.status;
 
-    let displayData: { label: string; colorClass: string } = { label: "", colorClass: "" };
+    let displayData: { label: string; type: "primary" | "danger" | "success" } = {
+      label: "",
+      type: "primary"
+    };
 
     const isExpired =
       request.privilege &&
       request.isApproved &&
       new Date() > new Date(request.privilege.temporaryAccessEndTime || ("" as string));
 
-    if (isExpired) displayData = { label: "Access Expired", colorClass: "bg-red/20 text-red" };
-    else if (isAccepted)
-      displayData = { label: "Access Granted", colorClass: "bg-green/20 text-green" };
-    else if (isRejectedByAnyone)
-      displayData = { label: "Rejected", colorClass: "bg-red/20 text-red" };
+    if (isExpired) displayData = { label: "Access Expired", type: "danger" };
+    else if (isAccepted) displayData = { label: "Access Granted", type: "success" };
+    else if (isRejectedByAnyone) displayData = { label: "Rejected", type: "danger" };
     else if (userReviewStatus === ApprovalStatus.APPROVED) {
       displayData = {
         label: `Pending ${request.policy.approvals - request.reviewers.length} review${
           request.policy.approvals - request.reviewers.length > 1 ? "s" : ""
         }`,
-        colorClass: "bg-yellow/20 text-yellow"
+        type: "primary"
       };
     } else if (!isReviewedByUser)
       displayData = {
         label: "Review Required",
-        colorClass: "bg-yellow/20 text-yellow"
+        type: "primary"
       };
 
     return {
@@ -486,7 +302,7 @@ export const AccessApprovalRequest = ({
                         icon={requestedByFilter === id && <FontAwesomeIcon icon={faCheckCircle} />}
                         iconPos="right"
                       >
-                        {user.email}
+                        {user.username}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -564,10 +380,9 @@ export const AccessApprovalRequest = ({
                           </div>
                           <div>
                             {details.isApprover && (
-                              <DisplayBadge
-                                text={details.displayData.label}
-                                className={details.displayData.colorClass}
-                              />
+                              <Badge variant={details.displayData.type}>
+                                {details.displayData.label}
+                              </Badge>
                             )}
                           </div>
                         </div>
@@ -581,7 +396,7 @@ export const AccessApprovalRequest = ({
       </AnimatePresence>
 
       {!!policies && (
-        <SelectAccessModal
+        <RequestAccessModal
           policies={policies}
           isOpen={popUp.requestAccess.isOpen}
           onOpenChange={() => {
@@ -598,7 +413,7 @@ export const AccessApprovalRequest = ({
       )}
 
       {!!selectedRequest && (
-        <ReviewRequestModal
+        <ReviewAccessRequestModal
           selectedEnvSlug={envFilter}
           selectedRequester={requestedByFilter}
           projectSlug={projectSlug}
