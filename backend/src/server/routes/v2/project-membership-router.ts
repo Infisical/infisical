@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
+import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -10,6 +11,9 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
   server.route({
     method: "POST",
     url: "/:projectId/memberships",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().describe(PROJECTS.INVITE_MEMBER.projectId)
@@ -56,6 +60,9 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
   server.route({
     method: "DELETE",
     url: "/:projectId/memberships",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().describe(PROJECTS.REMOVE_MEMBER.projectId)

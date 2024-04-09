@@ -49,6 +49,7 @@ import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
+import { readLimit } from "@app/server/config/rateLimiter";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
@@ -398,7 +399,8 @@ export const registerRoutes = async (
     folderDAL,
     licenseService,
     projectUserMembershipRoleDAL,
-    identityProjectMembershipRoleDAL
+    identityProjectMembershipRoleDAL,
+    keyStore
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -409,7 +411,12 @@ export const registerRoutes = async (
     folderDAL
   });
 
-  const projectRoleService = projectRoleServiceFactory({ permissionService, projectRoleDAL });
+  const projectRoleService = projectRoleServiceFactory({
+    permissionService,
+    projectRoleDAL,
+    projectUserMembershipRoleDAL,
+    identityProjectMembershipRoleDAL
+  });
 
   const snapshotService = secretSnapshotServiceFactory({
     permissionService,
@@ -490,6 +497,7 @@ export const registerRoutes = async (
     snapshotService,
     secretQueueService,
     secretImportDAL,
+    projectEnvDAL,
     projectBotService
   });
   const sarService = secretApprovalRequestServiceFactory({
@@ -669,8 +677,11 @@ export const registerRoutes = async (
   await server.register(injectAuditLogInfo);
 
   server.route({
-    url: "/api/status",
     method: "GET",
+    url: "/api/status",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       response: {
         200: z.object({

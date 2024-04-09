@@ -3,6 +3,7 @@ import { z } from "zod";
 import { IdentityUaClientSecretsSchema, IdentityUniversalAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { UNIVERSAL_AUTH } from "@app/lib/api-docs";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -22,8 +23,11 @@ export const sanitizedClientSecretSchema = IdentityUaClientSecretsSchema.pick({
 
 export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/universal-auth/login",
     method: "POST",
+    url: "/universal-auth/login",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Login with Universal Auth",
       body: z.object({
@@ -66,8 +70,11 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/universal-auth/identities/:identityId",
     method: "POST",
+    url: "/universal-auth/identities/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Attach Universal Auth configuration onto identity",
@@ -156,8 +163,11 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/universal-auth/identities/:identityId",
     method: "PATCH",
+    url: "/universal-auth/identities/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Update Universal Auth configuration on identity",
@@ -239,8 +249,11 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/universal-auth/identities/:identityId",
     method: "GET",
+    url: "/universal-auth/identities/:identityId",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Retrieve Universal Auth configuration on identity",
@@ -283,8 +296,11 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/universal-auth/identities/:identityId/client-secrets",
     method: "POST",
+    url: "/universal-auth/identities/:identityId/client-secrets",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Create Universal Auth Client Secret for identity",
@@ -335,8 +351,11 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/universal-auth/identities/:identityId/client-secrets",
     method: "GET",
+    url: "/universal-auth/identities/:identityId/client-secrets",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "List Universal Auth Client Secrets for identity",
@@ -378,8 +397,11 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/universal-auth/identities/:identityId/client-secrets/:clientSecretId/revoke",
     method: "POST",
+    url: "/universal-auth/identities/:identityId/client-secrets/:clientSecretId/revoke",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       description: "Revoke Universal Auth Client Secrets for identity",

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ProjectMembershipsSchema, ProjectRolesSchema } from "@app/db/schemas";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -8,6 +9,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:projectId/roles",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim()
@@ -41,6 +45,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "PATCH",
     url: "/:projectId/roles/:roleId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim(),
@@ -76,6 +83,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/:projectId/roles/:roleId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim(),
@@ -104,6 +114,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:projectId/roles",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim()
@@ -134,6 +147,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:projectId/permissions",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim()

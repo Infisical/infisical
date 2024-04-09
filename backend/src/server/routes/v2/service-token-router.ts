@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ServiceTokensSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -17,8 +18,11 @@ export const sanitizedServiceTokenSchema = ServiceTokensSchema.omit({
 
 export const registerServiceTokenRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/",
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.SERVICE_TOKEN]),
     schema: {
       description: "Return Infisical Token data",
@@ -69,8 +73,11 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
-    url: "/",
     method: "POST",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
@@ -122,8 +129,11 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
-    url: "/:serviceTokenId",
     method: "DELETE",
+    url: "/:serviceTokenId",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({

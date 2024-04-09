@@ -31,7 +31,7 @@ export const OrgRoleTable = ({ onSelectRole }: Props) => {
   const [searchRoles, setSearchRoles] = useState("");
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
-  
+
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
 
   const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(orgId);
@@ -49,7 +49,7 @@ export const OrgRoleTable = ({ onSelectRole }: Props) => {
       handlePopUpClose("deleteRole");
     } catch (err) {
       console.log(err);
-      createNotification({ type: "error", text: "Failed to create role" });
+      createNotification({ type: "error", text: "Failed to delete role" });
     }
   };
 

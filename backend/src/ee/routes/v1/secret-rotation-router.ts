@@ -2,13 +2,17 @@ import { z } from "zod";
 
 import { SecretRotationOutputsSchema, SecretRotationsSchema, SecretsSchema } from "@app/db/schemas";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretRotationRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/",
     method: "POST",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         workspaceId: z.string().trim(),
@@ -52,6 +56,9 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
   server.route({
     url: "/restart",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         id: z.string().trim()
@@ -86,6 +93,9 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
   server.route({
     url: "/",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim()
@@ -136,8 +146,11 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
   });
 
   server.route({
-    url: "/:id",
     method: "DELETE",
+    url: "/:id",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         id: z.string().trim()

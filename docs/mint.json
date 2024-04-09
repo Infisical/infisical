@@ -32,7 +32,10 @@
     "thumbsRating": true
   },
   "api": {
-    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
+    "baseUrl": [
+      "https://app.infisical.com",
+      "http://localhost:8080"
+    ]
   },
   "topbarLinks": [
     {
@@ -161,6 +164,7 @@
             "documentation/platform/sso/okta",
             "documentation/platform/sso/azure",
             "documentation/platform/sso/jumpcloud",
+            "documentation/platform/sso/keycloak-saml",
             "documentation/platform/sso/google-saml"
           ]
         },
@@ -279,7 +283,7 @@
         "integrations/cloud/azure-key-vault",
         "integrations/cloud/gcp-secret-manager",
         {
-          "group": "Cloudflare", 
+          "group": "Cloudflare",
           "pages": [
             "integrations/cloud/cloudflare-pages",
             "integrations/cloud/cloudflare-workers"
@@ -356,14 +360,16 @@
     },
     {
       "group": "Build Tool Integrations",
-      "pages": ["integrations/build-tools/gradle"]
+      "pages": [
+        "integrations/build-tools/gradle"
+      ]
     },
     {
       "group": "",
       "pages": [
         "sdks/overview"
       ]
-    }, 
+    },
     {
       "group": "SDK's",
       "pages": [
@@ -382,8 +388,7 @@
           "group": "Examples",
           "pages": [
             "api-reference/overview/examples/note",
-            "api-reference/overview/examples/e2ee-disabled",
-            "api-reference/overview/examples/e2ee-enabled"
+            "api-reference/overview/examples/integration"
           ]
         }
       ]
@@ -466,7 +471,7 @@
           ]
         },
         {
-          "group": "Secret tags",
+          "group": "Secret Tags",
           "pages": [
             "api-reference/endpoints/secret-tags/list",
             "api-reference/endpoints/secret-tags/create",
@@ -486,7 +491,7 @@
           ]
         },
         {
-          "group": "Secret imports",
+          "group": "Secret Imports",
           "pages": [
             "api-reference/endpoints/secret-imports/list",
             "api-reference/endpoints/secret-imports/create",
@@ -495,12 +500,40 @@
           ]
         },
         {
+          "group": "Identity Specific Privilege",
+          "pages": [
+            "api-reference/endpoints/identity-specific-privilege/create-permanent",
+            "api-reference/endpoints/identity-specific-privilege/create-temporary",
+            "api-reference/endpoints/identity-specific-privilege/update",
+            "api-reference/endpoints/identity-specific-privilege/delete",
+            "api-reference/endpoints/identity-specific-privilege/find-by-slug",
+            "api-reference/endpoints/identity-specific-privilege/list"
+          ]
+        },
+        {
+          "group": "Integrations",
+          "pages": [
+            "api-reference/endpoints/integrations/create-auth",
+            "api-reference/endpoints/integrations/list-auth",
+            "api-reference/endpoints/integrations/find-auth",
+            "api-reference/endpoints/integrations/delete-auth",
+            "api-reference/endpoints/integrations/delete-auth-by-id",
+            "api-reference/endpoints/integrations/create",
+            "api-reference/endpoints/integrations/update",
+            "api-reference/endpoints/integrations/delete"
+          ]
+        },
+        {
           "group": "Service Tokens",
-          "pages": ["api-reference/endpoints/service-tokens/get"]
+          "pages": [
+            "api-reference/endpoints/service-tokens/get"
+          ]
         },
         {
           "group": "Audit Logs",
-          "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+          "pages": [
+            "api-reference/endpoints/audit-logs/export-audit-log"
+          ]
         }
       ]
     },
@@ -516,21 +549,22 @@
     },
     {
       "group": "",
-      "pages": ["changelog/overview"]
+      "pages": [
+        "changelog/overview"
+      ]
     },
     {
       "group": "Contributing",
       "pages": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "contributing/getting-started/overview",
-              "contributing/getting-started/code-of-conduct",
-              "contributing/getting-started/pull-requests",
-              "contributing/getting-started/faq"
-    
-            ]
-          },
+        {
+          "group": "Getting Started",
+          "pages": [
+            "contributing/getting-started/overview",
+            "contributing/getting-started/code-of-conduct",
+            "contributing/getting-started/pull-requests",
+            "contributing/getting-started/faq"
+          ]
+        },
         {
           "group": "Contributing to platform",
           "pages": [
@@ -540,11 +574,11 @@
           ]
         },
         {
-            "group": "Contributing to SDK",
-            "pages": [
-              "contributing/sdk/developing"
-            ]
-          }
+          "group": "Contributing to SDK",
+          "pages": [
+            "contributing/sdk/developing"
+          ]
+        }
       ]
     }
   ],

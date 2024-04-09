@@ -291,6 +291,7 @@ type GetEncryptedSecretsV3Request struct {
 	WorkspaceId   string `json:"workspaceId"`
 	SecretPath    string `json:"secretPath"`
 	IncludeImport bool   `json:"include_imports"`
+	Recursive     bool   `json:"recursive"`
 }
 
 type GetFoldersV1Request struct {
@@ -510,7 +511,7 @@ type CreateDynamicSecretLeaseV1Request struct {
 
 type CreateDynamicSecretLeaseV1Response struct {
 	Lease struct {
-		Id       string `json:"id"`
+		Id       string    `json:"id"`
 		ExpireAt time.Time `json:"expireAt"`
 	} `json:"lease"`
 	DynamicSecret struct {

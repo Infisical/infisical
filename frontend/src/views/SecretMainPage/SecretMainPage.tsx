@@ -313,6 +313,7 @@ export const SecretMainPage = () => {
                   workspaceId={workspaceId}
                   secretPath={secretPath}
                   sortDir={sortDir}
+                  searchTerm={filter.searchFilter}
                 />
                 {canReadSecret && (
                   <DynamicSecretListView

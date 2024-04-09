@@ -2,6 +2,7 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { OrgMembershipRole, OrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -9,6 +10,9 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:organizationId/roles",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim()
@@ -51,6 +55,9 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "PATCH",
     url: "/:organizationId/roles/:roleId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim(),
@@ -95,6 +102,9 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/:organizationId/roles/:roleId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim(),
@@ -122,6 +132,9 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:organizationId/roles",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim()
@@ -151,6 +164,9 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:organizationId/permissions",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         organizationId: z.string().trim()

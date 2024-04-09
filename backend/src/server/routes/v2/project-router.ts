@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
-import { authRateLimit } from "@app/server/config/rateLimiter";
+import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -29,8 +29,11 @@ const slugSchema = z
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   /* Get project key */
   server.route({
-    url: "/:workspaceId/encrypted-key",
     method: "GET",
+    url: "/:workspaceId/encrypted-key",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       description: "Return encrypted project key",
       security: [
@@ -78,8 +81,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   /* Start upgrade of a project */
   server.route({
-    url: "/:projectId/upgrade",
     method: "POST",
+    url: "/:projectId/upgrade",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim()
@@ -108,6 +114,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/:projectId/upgrade/status",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim()
@@ -137,7 +146,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/",
     config: {
-      rateLimit: authRateLimit
+      rateLimit: creationLimit
     },
     schema: {
       body: z.object({
@@ -187,6 +196,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/:slug",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         slug: slugSchema.describe("The slug of the project to delete.")
@@ -218,6 +230,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:slug",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         slug: slugSchema.describe("The slug of the project to get.")
@@ -248,6 +263,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "PATCH",
     url: "/:slug",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         slug: slugSchema.describe("The slug of the project to update.")

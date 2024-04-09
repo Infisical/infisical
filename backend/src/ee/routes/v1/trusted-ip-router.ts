@@ -2,13 +2,17 @@ import { z } from "zod";
 
 import { TrustedIpsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:workspaceId/trusted-ips",
     method: "GET",
+    url: "/:workspaceId/trusted-ips",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()
@@ -33,8 +37,11 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/trusted-ips",
     method: "POST",
+    url: "/:workspaceId/trusted-ips",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()
@@ -78,8 +85,11 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/trusted-ips/:trustedIpId",
     method: "PATCH",
+    url: "/:workspaceId/trusted-ips/:trustedIpId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim(),
@@ -124,8 +134,11 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/trusted-ips/:trustedIpId",
     method: "DELETE",
+    url: "/:workspaceId/trusted-ips/:trustedIpId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim(),

@@ -7,7 +7,8 @@ import {
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { PROJECTS } from "@app/lib/api-docs";
+import { INTEGRATION_AUTH, PROJECTS } from "@app/lib/api-docs";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectFilterType } from "@app/services/project/project-types";
@@ -24,8 +25,11 @@ const projectWithEnv = ProjectsSchema.merge(
 
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:workspaceId/keys",
     method: "GET",
+    url: "/:workspaceId/keys",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()
@@ -55,8 +59,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/users",
     method: "GET",
+    url: "/:workspaceId/users",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()
@@ -108,8 +115,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/",
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       response: {
         200: z.object({
@@ -125,8 +135,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId",
     method: "GET",
+    url: "/:workspaceId",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim().describe(PROJECTS.GET.workspaceId)
@@ -154,8 +167,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId",
     method: "DELETE",
+    url: "/:workspaceId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim().describe(PROJECTS.DELETE.workspaceId)
@@ -185,6 +201,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/:workspaceId/name",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()
@@ -217,8 +236,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId",
     method: "PATCH",
+    url: "/:workspaceId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim().describe(PROJECTS.UPDATE.workspaceId)
@@ -261,8 +283,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/auto-capitalization",
     method: "POST",
+    url: "/:workspaceId/auto-capitalization",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()
@@ -295,8 +320,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/integrations",
     method: "GET",
+    url: "/:workspaceId/integrations",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()
@@ -329,11 +357,20 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/authorizations",
     method: "GET",
+    url: "/:workspaceId/authorizations",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
+      description: "List integration auth objects for a workspace.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim().describe(INTEGRATION_AUTH.LIST_AUTHORIZATION.workspaceId)
       }),
       response: {
         200: z.object({
@@ -341,7 +378,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const authorizations = await server.services.integrationAuth.listIntegrationAuthByProjectId({
         actorId: req.permission.id,
@@ -355,8 +392,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/service-token-data",
     method: "GET",
+    url: "/:workspaceId/service-token-data",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()

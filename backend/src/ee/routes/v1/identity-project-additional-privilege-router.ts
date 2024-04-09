@@ -9,14 +9,24 @@ import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/service
 import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/permanent",
     method: "POST",
+    url: "/permanent",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
+      description: "Create a permanent or a non expiry specific privilege for identity.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.identityId),
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.projectSlug),
@@ -25,11 +35,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           .min(1)
           .max(60)
           .trim()
-          .default(slugify(alphaNumericNanoId(12)))
           .refine((val) => val.toLowerCase() === val, "Must be lowercase")
           .refine((v) => slugify(v) === v, {
             message: "Slug must be a valid slug"
           })
+          .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
         permissions: z.any().array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions)
       }),
@@ -47,6 +57,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
+        slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
         isTemporary: false,
         permissions: JSON.stringify(packRules(req.body.permissions))
       });
@@ -55,9 +66,18 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
   });
 
   server.route({
-    url: "/temporary",
     method: "POST",
+    url: "/temporary",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
+      description: "Create a temporary or a expiring specific privilege for identity.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.identityId),
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.projectSlug),
@@ -66,11 +86,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           .min(1)
           .max(60)
           .trim()
-          .default(slugify(alphaNumericNanoId(12)))
           .refine((val) => val.toLowerCase() === val, "Must be lowercase")
           .refine((v) => slugify(v) === v, {
             message: "Slug must be a valid slug"
           })
+          .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
         permissions: z.any().array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions),
         temporaryMode: z
@@ -99,6 +119,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
+        slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
         isTemporary: true,
         permissions: JSON.stringify(packRules(req.body.permissions))
       });
@@ -107,9 +128,18 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
   });
 
   server.route({
-    url: "/",
     method: "PATCH",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
+      description: "Update a specific privilege of an identity.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
         // disallow empty string
         privilegeSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.slug),
@@ -170,9 +200,18 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
   });
 
   server.route({
-    url: "/",
     method: "DELETE",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
+      description: "Delete a specific privilege of an identity.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
         privilegeSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.DELETE.slug),
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.DELETE.identityId),
@@ -200,9 +239,18 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
   });
 
   server.route({
-    url: "/:privilegeSlug",
     method: "GET",
+    url: "/:privilegeSlug",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
+      description: "Retrieve details of a specific privilege by privilege slug.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         privilegeSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.GET_BY_SLUG.slug)
       }),
@@ -231,9 +279,18 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
   });
 
   server.route({
-    url: "/",
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
+      description: "List of a specific privilege of an identity in a project.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       querystring: z.object({
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.LIST.identityId),
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.LIST.projectSlug),

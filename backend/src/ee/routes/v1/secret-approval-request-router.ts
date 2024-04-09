@@ -10,13 +10,17 @@ import {
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretApprovalRequestRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/",
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim(),
@@ -62,8 +66,11 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   });
 
   server.route({
-    url: "/count",
     method: "GET",
+    url: "/count",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim()
@@ -93,6 +100,9 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   server.route({
     url: "/:id/merge",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         id: z.string()
@@ -117,8 +127,11 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   });
 
   server.route({
-    url: "/:id/review",
     method: "POST",
+    url: "/:id/review",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         id: z.string()
@@ -147,8 +160,11 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   });
 
   server.route({
-    url: "/:id/status",
     method: "POST",
+    url: "/:id/status",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         id: z.string()
@@ -203,8 +219,11 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     .array()
     .optional();
   server.route({
-    url: "/:id",
     method: "GET",
+    url: "/:id",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         id: z.string()

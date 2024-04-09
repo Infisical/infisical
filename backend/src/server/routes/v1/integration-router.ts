@@ -2,7 +2,9 @@ import { z } from "zod";
 
 import { IntegrationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { INTEGRATION } from "@app/lib/api-docs";
 import { removeTrailingSlash, shake } from "@app/lib/fn";
+import { writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -10,36 +12,51 @@ import { PostHogEventTypes, TIntegrationCreatedEvent } from "@app/services/telem
 
 export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/",
     method: "POST",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
+      description: "Create an integration to sync secrets.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
-        integrationAuthId: z.string().trim(),
-        app: z.string().trim().optional(),
-        isActive: z.boolean(),
-        appId: z.string().trim().optional(),
-        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        sourceEnvironment: z.string().trim(),
-        targetEnvironment: z.string().trim().optional(),
-        targetEnvironmentId: z.string().trim().optional(),
-        targetService: z.string().trim().optional(),
-        targetServiceId: z.string().trim().optional(),
-        owner: z.string().trim().optional(),
-        path: z.string().trim().optional(),
-        region: z.string().trim().optional(),
-        scope: z.string().trim().optional(),
+        integrationAuthId: z.string().trim().describe(INTEGRATION.CREATE.integrationAuthId),
+        app: z.string().trim().optional().describe(INTEGRATION.CREATE.app),
+        isActive: z.boolean().describe(INTEGRATION.CREATE.isActive).default(true),
+        appId: z.string().trim().optional().describe(INTEGRATION.CREATE.appId),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(INTEGRATION.CREATE.secretPath),
+        sourceEnvironment: z.string().trim().describe(INTEGRATION.CREATE.sourceEnvironment),
+        targetEnvironment: z.string().trim().optional().describe(INTEGRATION.CREATE.targetEnvironment),
+        targetEnvironmentId: z.string().trim().optional().describe(INTEGRATION.CREATE.targetEnvironmentId),
+        targetService: z.string().trim().optional().describe(INTEGRATION.CREATE.targetService),
+        targetServiceId: z.string().trim().optional().describe(INTEGRATION.CREATE.targetServiceId),
+        owner: z.string().trim().optional().describe(INTEGRATION.CREATE.owner),
+        path: z.string().trim().optional().describe(INTEGRATION.CREATE.path),
+        region: z.string().trim().optional().describe(INTEGRATION.CREATE.region),
+        scope: z.string().trim().optional().describe(INTEGRATION.CREATE.scope),
         metadata: z
           .object({
-            secretPrefix: z.string().optional(),
-            secretSuffix: z.string().optional(),
-            initialSyncBehavior: z.string().optional(),
-            shouldAutoRedeploy: z.boolean().optional(),
+            secretPrefix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretPrefix),
+            secretSuffix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretSuffix),
+            initialSyncBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.initialSyncBehavoir),
+            shouldAutoRedeploy: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldAutoRedeploy),
             secretGCPLabel: z
               .object({
                 labelName: z.string(),
                 labelValue: z.string()
               })
               .optional()
+              .describe(INTEGRATION.CREATE.metadata.secretGCPLabel)
           })
           .optional()
       }),
@@ -49,7 +66,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { integration, integrationAuth } = await server.services.integration.createIntegration({
         actorId: req.permission.id,
@@ -99,20 +116,34 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:integrationId",
     method: "PATCH",
+    url: "/:integrationId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
+      description: "Update an integration by integration id",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        integrationId: z.string().trim()
+        integrationId: z.string().trim().describe(INTEGRATION.UPDATE.integrationId)
       }),
       body: z.object({
-        app: z.string().trim(),
-        appId: z.string().trim(),
-        isActive: z.boolean(),
-        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        targetEnvironment: z.string().trim(),
-        owner: z.string().trim(),
-        environment: z.string().trim()
+        app: z.string().trim().describe(INTEGRATION.UPDATE.app),
+        appId: z.string().trim().describe(INTEGRATION.UPDATE.appId),
+        isActive: z.boolean().describe(INTEGRATION.UPDATE.isActive),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(INTEGRATION.UPDATE.secretPath),
+        targetEnvironment: z.string().trim().describe(INTEGRATION.UPDATE.targetEnvironment),
+        owner: z.string().trim().describe(INTEGRATION.UPDATE.owner),
+        environment: z.string().trim().describe(INTEGRATION.UPDATE.environment)
       }),
       response: {
         200: z.object({
@@ -120,7 +151,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const integration = await server.services.integration.updateIntegration({
         actorId: req.permission.id,
@@ -135,11 +166,20 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:integrationId",
     method: "DELETE",
+    url: "/:integrationId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
+      description: "Remove an integration using the integration object ID",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        integrationId: z.string().trim()
+        integrationId: z.string().trim().describe(INTEGRATION.DELETE.integrationId)
       }),
       response: {
         200: z.object({
@@ -147,7 +187,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const integration = await server.services.integration.deleteIntegration({
         actorId: req.permission.id,

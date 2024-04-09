@@ -63,6 +63,30 @@
   border-color: #ebebeb;
 }
 
+#content-area .mt-8 .rounded-xl{
+  border-radius: 0;
+}
+
+#content-area .mt-8 .rounded-lg{
+  border-radius: 0;
+}
+
+#content-area .mt-6 .rounded-xl{
+  border-radius: 0;
+}
+
+#content-area .mt-6 .rounded-lg{
+  border-radius: 0;
+}
+
+#content-area .mt-6 .rounded-md{
+  border-radius: 0;
+}
+
+#content-area .mt-8 .rounded-md{
+  border-radius: 0;
+}
+
 #content-area div.my-4{
   border-radius: 0;
   border-width: 1px;
@@ -75,6 +99,10 @@
 }
 
 #content-area button {
+  border-radius: 0;
+}
+
+#content-area a {
   border-radius: 0;
 }
 

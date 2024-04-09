@@ -63,6 +63,11 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		recursive, err := cmd.Flags().GetBool("recursive")
+		if err != nil {
+			util.HandleError(err)
+		}
+
 		tagSlugs, err := cmd.Flags().GetString("tags")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -73,7 +78,7 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports}, "")
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports, Recursive: recursive}, "")
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -413,12 +418,17 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse path flag")
 	}
 
+	recursive, err := cmd.Flags().GetBool("recursive")
+	if err != nil {
+		util.HandleError(err, "Unable to parse recursive flag")
+	}
+
 	showOnlyValue, err := cmd.Flags().GetBool("raw-value")
 	if err != nil {
 		util.HandleError(err, "Unable to parse path flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: true}, "")
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: true, Recursive: recursive}, "")
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
@@ -683,6 +693,7 @@ func init() {
 	secretsCmd.AddCommand(secretsGetCmd)
 	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
 	secretsGetCmd.Flags().Bool("raw-value", false, "Returns only the value of secret, only works with one secret")
+	secretsGetCmd.Flags().Bool("recursive", false, "Fetch secrets from all sub-folders")
 
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
@@ -727,6 +738,7 @@ func init() {
 	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
 	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	secretsCmd.Flags().Bool("include-imports", true, "Imported linked secrets ")
+	secretsCmd.Flags().Bool("recursive", false, "Fetch secrets from all sub-folders")
 	secretsCmd.PersistentFlags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	secretsCmd.Flags().String("path", "/", "get secrets within a folder path")
 	rootCmd.AddCommand(secretsCmd)

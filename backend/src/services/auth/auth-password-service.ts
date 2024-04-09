@@ -192,7 +192,7 @@ export const authPaswordServiceFactory = ({
   }: TCreateBackupPrivateKeyDTO) => {
     const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
-      throw new Error("Failed to find  user");
+      throw new Error("Failed to find user");
     }
 
     if (!userEnc.clientPublicKey || !userEnc.serverPrivateKey) throw new Error("failed to create backup key");
@@ -239,7 +239,7 @@ export const authPaswordServiceFactory = ({
   const getBackupPrivateKeyOfUser = async (userId: string) => {
     const user = await userDAL.findUserEncKeyByUserId(userId);
     if (!user || (user && !user.isAccepted)) {
-      throw new Error("Failed to find  user");
+      throw new Error("Failed to find user");
     }
     const backupKey = await authDAL.getBackupPrivateKeyByUserId(userId);
     if (!backupKey) throw new Error("Failed to find user backup key");

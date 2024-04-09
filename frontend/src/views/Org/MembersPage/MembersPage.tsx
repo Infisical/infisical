@@ -23,9 +23,6 @@ export const MembersPage = withPermission(
               <Tab value={TabSections.Identities}>
                 <div className="flex items-center">
                   <p>Machine Identities</p>
-                  <div className="ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                    New
-                  </div>
                 </div>
               </Tab>
               <Tab value={TabSections.Roles}>Organization Roles</Tab>

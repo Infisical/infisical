@@ -215,6 +215,7 @@ export const SECRETS = {
 
 export const RAW_SECRETS = {
   LIST: {
+    recursive: "Whether or not to fetch all secrets from the specified base path, and all of its subdirectories.",
     workspaceId: "The ID of the project to list secrets from.",
     workspaceSlug: "The slug of the project to list secrets from. This parameter is only usable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
@@ -403,8 +404,11 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     projectSlug: "The slug of the project of the identity in.",
     identityId: "The ID of the identity to delete.",
     slug: "The slug of the privilege to create.",
-    permissions:
-      "The permission object for the privilege. Refer https://casl.js.org/v6/en/guide/define-rules#the-shape-of-raw-rule to understand the shape",
+    permissions: `The permission object for the privilege.
+1. [["read", "secrets", {environment: "dev", secretPath: {$glob: "/"}}]]
+2. [["read", "secrets", {environment: "dev"}], ["create", "secrets", {environment: "dev"}]]
+2. [["read", "secrets", {environment: "dev"}]]
+`,
     isPackPermission: "Whether the server should pack(compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
     temporaryMode: "Type of temporary access given. Types: relative",
@@ -417,7 +421,6 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     slug: "The slug of the privilege to update.",
     newSlug: "The new slug of the privilege to update.",
     permissions: `The permission object for the privilege.
-Example unpacked permission shape 
 1. [["read", "secrets", {environment: "dev", secretPath: {$glob: "/"}}]]
 2. [["read", "secrets", {environment: "dev"}], ["create", "secrets", {environment: "dev"}]]
 2. [["read", "secrets", {environment: "dev"}]]
@@ -477,5 +480,76 @@ export const PROJECT_USER_ADDITIONAL_PRIVILEGE = {
   },
   LIST: {
     projectMembershipId: "Project membership id of user"
+  }
+};
+
+export const INTEGRATION_AUTH = {
+  GET: {
+    integrationAuthId: "The id of integration authentication object."
+  },
+  DELETE: {
+    integration: "The slug of the integration to be unauthorized.",
+    projectId: "The ID of the project to delete the integration auth from."
+  },
+  DELETE_BY_ID: {
+    integrationAuthId: "The id of integration authentication object to delete."
+  },
+  CREATE_ACCESS_TOKEN: {
+    workspaceId: "The ID of the project to create the integration auth for.",
+    integration: "The slug of integration for the auth object.",
+    accessId: "The unique authorized access id of the external integration provider.",
+    accessToken: "The unique authorized access token of the external integration provider.",
+    url: "",
+    namespace: "",
+    refreshToken: "The refresh token for integration authorization."
+  },
+  LIST_AUTHORIZATION: {
+    workspaceId: "The ID of the project to list integration auths for."
+  }
+};
+
+export const INTEGRATION = {
+  CREATE: {
+    integrationAuthId: "The ID of the integration auth object to link with integration.",
+    app: "The name of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
+    isActive: "Whether the integration should be active or disabled.",
+    appId:
+      "The ID of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
+    secretPath: "The path of the secrets to sync secrets from.",
+    sourceEnvironment: "The environment to sync secret from.",
+    targetEnvironment:
+      "The target environment of the integration provider. Used in cloudflare pages, TeamCity, Gitlab integrations.",
+    targetEnvironmentId:
+      "The target environment id of the integration provider. Used in cloudflare pages, teamcity, gitlab integrations.",
+    targetService:
+      "The service based grouping identifier of the external provider. Used in Terraform cloud, Checkly, Railway and NorthFlank",
+    targetServiceId:
+      "The service based grouping identifier ID of the external provider. Used in Terraform cloud, Checkly, Railway and NorthFlank",
+    owner: "External integration providers service entity owner. Used in Github.",
+    path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault",
+    region: "AWS region to sync secrets to.",
+    scope: "Scope of the provider. Used by Github, Qovery",
+    metadata: {
+      secretPrefix: "The prefix for the saved secret. Used by GCP",
+      secretSuffix: "The suffix for the saved secret. Used by GCP",
+      initialSyncBehavoir: "Type of syncing behavoir with the integration",
+      shouldAutoRedeploy: "Used by Render to trigger auto deploy",
+      secretGCPLabel: "The label for the GCP secrets"
+    }
+  },
+  UPDATE: {
+    integrationId: "The ID of the integration object.",
+    app: "The name of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
+    appId:
+      "The ID of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
+    isActive: "Whether the integration should be active or disabled.",
+    secretPath: "The path of the secrets to sync secrets from.",
+    owner: "External integration providers service entity owner. Used in Github.",
+    targetEnvironment:
+      "The target environment of the integration provider. Used in cloudflare pages, TeamCity, Gitlab integrations.",
+    environment: "The environment to sync secrets from."
+  },
+  DELETE: {
+    integrationId: "The ID of the integration object."
   }
 };

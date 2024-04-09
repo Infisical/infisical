@@ -2,13 +2,17 @@ import { z } from "zod";
 
 import { SecretTagsSchema } from "@app/db/schemas";
 import { SECRET_TAGS } from "@app/lib/api-docs";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:projectId/tags",
     method: "GET",
+    url: "/:projectId/tags",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.LIST.projectId)
@@ -33,8 +37,11 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:projectId/tags",
     method: "POST",
+    url: "/:projectId/tags",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.CREATE.projectId)
@@ -65,8 +72,11 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:projectId/tags/:tagId",
     method: "DELETE",
+    url: "/:projectId/tags/:tagId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.DELETE.projectId),
