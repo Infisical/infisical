@@ -43,8 +43,8 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     prefix: "/secret-rotation-providers"
   });
 
-  await server.register(registerAccessApprovalPolicyRouter, { prefix: "/access-approvals" });
-  await server.register(registerAccessApprovalRequestRouter, { prefix: "/access-approval-requests" });
+  await server.register(registerAccessApprovalPolicyRouter, { prefix: "/access-approvals/policies" });
+  await server.register(registerAccessApprovalRequestRouter, { prefix: "/access-approvals/requests" });
 
   await server.register(
     async (dynamicSecretRouter) => {

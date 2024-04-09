@@ -19,7 +19,7 @@ export const accessApprovalKeys = {
     [{ workspaceId, environment }, "access-approval-policy"] as const,
 
   getAccessApprovalRequests: (projectSlug: string, envSlug?: string, requestedBy?: string) =>
-    [{ projectSlug, envSlug, requestedBy }, "access-approval-requests"] as const,
+    [{ projectSlug, envSlug, requestedBy }, "access-approvals-requests"] as const,
   getAccessApprovalRequestCount: (projectSlug: string) =>
     [{ projectSlug }, "access-approval-request-count"] as const
 };
@@ -28,13 +28,13 @@ export const fetchPolicyApprovalCount = async ({
   projectSlug,
   envSlug
 }: TGetAccessPolicyApprovalCountDTO) => {
-  const { data } = await apiRequest.get<{ policyCount: number }>(
-    "/api/v1/access-approvals/policy-count",
+  const { data } = await apiRequest.get<{ count: number }>(
+    "/api/v1/access-approvals/policies/count",
     {
       params: { projectSlug, envSlug }
     }
   );
-  return data.policyCount;
+  return data.count;
 };
 
 export const useGetAccessPolicyApprovalCount = ({
@@ -57,7 +57,7 @@ export const useGetAccessPolicyApprovalCount = ({
 
 const fetchApprovalPolicies = async ({ projectSlug }: TGetAccessApprovalRequestsDTO) => {
   const { data } = await apiRequest.get<{ approvals: TAccessApprovalPolicy[] }>(
-    "/api/v1/access-approvals",
+    "/api/v1/access-approvals/policies",
     { params: { projectSlug } }
   );
   return data.approvals;
@@ -69,7 +69,7 @@ const fetchApprovalRequests = async ({
   authorProjectMembershipId
 }: TGetAccessApprovalRequestsDTO) => {
   const { data } = await apiRequest.get<{ requests: TAccessApprovalRequest[] }>(
-    "/api/v1/access-approval-requests",
+    "/api/v1/access-approvals/requests",
     { params: { projectSlug, envSlug, authorProjectMembershipId } }
   );
 
@@ -90,7 +90,7 @@ const fetchApprovalRequests = async ({
 
 const fetchAccessRequestsCount = async (projectSlug: string) => {
   const { data } = await apiRequest.get<TAccessRequestCount>(
-    "/api/v1/access-approval-requests/count",
+    "/api/v1/access-approvals/requests/count",
     { params: { projectSlug } }
   );
   return data;

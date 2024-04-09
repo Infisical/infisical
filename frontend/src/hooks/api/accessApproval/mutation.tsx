@@ -17,7 +17,7 @@ export const useCreateAccessApprovalPolicy = () => {
 
   return useMutation<{}, {}, TCreateAccessPolicyDTO>({
     mutationFn: async ({ environment, projectSlug, approvals, approvers, name, secretPath }) => {
-      const { data } = await apiRequest.post("/api/v1/access-approvals", {
+      const { data } = await apiRequest.post("/api/v1/access-approvals/policies", {
         environment,
         projectSlug,
         approvals,
@@ -38,7 +38,7 @@ export const useUpdateAccessApprovalPolicy = () => {
 
   return useMutation<{}, {}, TUpdateAccessPolicyDTO>({
     mutationFn: async ({ id, approvers, approvals, name, secretPath }) => {
-      const { data } = await apiRequest.patch(`/api/v1/access-approvals/${id}`, {
+      const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
         approvals,
         approvers,
         secretPath,
@@ -57,7 +57,7 @@ export const useDeleteAccessApprovalPolicy = () => {
 
   return useMutation<{}, {}, TDeleteSecretPolicyDTO>({
     mutationFn: async ({ id }) => {
-      const { data } = await apiRequest.delete(`/api/v1/access-approvals/${id}`);
+      const { data } = await apiRequest.delete(`/api/v1/access-approvals/policies/${id}`);
       return data;
     },
     onSuccess: (_, { projectSlug }) => {
@@ -71,7 +71,7 @@ export const useCreateAccessRequest = () => {
   return useMutation<{}, {}, TCreateAccessRequestDTO>({
     mutationFn: async ({ projectSlug, ...request }) => {
       const { data } = await apiRequest.post<TAccessApproval>(
-        "/api/v1/access-approval-requests",
+        "/api/v1/access-approvals/requests",
         {
           ...request,
           permissions: request.permissions ? packRules(request.permissions) : undefined
@@ -106,7 +106,7 @@ export const useReviewAccessRequest = () => {
   >({
     mutationFn: async ({ requestId, status }) => {
       const { data } = await apiRequest.post(
-        `/api/v1/access-approval-requests/${requestId}/review`,
+        `/api/v1/access-approvals/requests/${requestId}/review`,
         {
           status
         }
