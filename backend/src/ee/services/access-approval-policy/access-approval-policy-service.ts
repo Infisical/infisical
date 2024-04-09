@@ -54,7 +54,6 @@ export const accessApprovalPolicyServiceFactory = ({
 
     if (approvals > approvers.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
-    if (!secretPath) throw new BadRequestError({ message: "Secret path is required" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -75,6 +74,10 @@ export const accessApprovalPolicyServiceFactory = ({
       $in: { id: approvers }
     });
 
+    if (secretApprovers.length !== approvers.length) {
+      throw new BadRequestError({ message: "Approver not found in project" });
+    }
+
     await verifyApprovers({
       projectId: project.id,
       orgId: actorOrgId,
@@ -82,12 +85,8 @@ export const accessApprovalPolicyServiceFactory = ({
       secretPath,
       actorAuthMethod,
       permissionService,
-      approverProjectMemberships: secretApprovers
+      userIds: secretApprovers.map((approver) => approver.userId)
     });
-
-    if (secretApprovers.length !== approvers.length) {
-      throw new BadRequestError({ message: "Approver not found in project" });
-    }
 
     const accessApproval = await accessApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await accessApprovalPolicyDAL.create(
@@ -111,7 +110,7 @@ export const accessApprovalPolicyServiceFactory = ({
     return { ...accessApproval, environment: env, projectId: project.id };
   };
 
-  const getAccessApprovalPolicyByProjectId = async ({
+  const getAccessApprovalPolicyByProjectSlug = async ({
     actorId,
     actor,
     actorOrgId,
@@ -185,7 +184,7 @@ export const accessApprovalPolicyServiceFactory = ({
           secretPath: doc.secretPath!,
           actorAuthMethod,
           permissionService,
-          approverProjectMemberships: secretApprovers
+          userIds: secretApprovers.map((approver) => approver.userId)
         });
 
         if (secretApprovers.length !== approvers.length)
@@ -261,7 +260,7 @@ export const accessApprovalPolicyServiceFactory = ({
     const policies = await accessApprovalPolicyDAL.find({ envId: environment.id, projectId: project.id });
     if (!policies) throw new BadRequestError({ message: "No policies found" });
 
-    return { policyCount: policies.length };
+    return { count: policies.length };
   };
 
   return {
@@ -269,6 +268,6 @@ export const accessApprovalPolicyServiceFactory = ({
     createAccessApprovalPolicy,
     deleteAccessApprovalPolicy,
     updateAccessApprovalPolicy,
-    getAccessApprovalPolicyByProjectId
+    getAccessApprovalPolicyByProjectSlug
   };
 };
