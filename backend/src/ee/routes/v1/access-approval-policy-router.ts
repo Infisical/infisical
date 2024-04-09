@@ -59,7 +59,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const approvals = await server.services.accessApprovalPolicy.getAccessApprovalPolicyByProjectId({
+      const approvals = await server.services.accessApprovalPolicy.getAccessApprovalPolicyByProjectSlug({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -71,7 +71,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   });
 
   server.route({
-    url: "/policy-count",
+    url: "/count",
     method: "GET",
     schema: {
       querystring: z.object({
@@ -80,14 +80,14 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          policyCount: z.number()
+          count: z.number()
         })
       }
     },
 
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { policyCount } = await server.services.accessApprovalPolicy.getAccessPolicyCountByEnvSlug({
+      const { count } = await server.services.accessApprovalPolicy.getAccessPolicyCountByEnvSlug({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -95,7 +95,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         envSlug: req.query.envSlug
       });
-      return { policyCount };
+      return { count };
     }
   });
 
