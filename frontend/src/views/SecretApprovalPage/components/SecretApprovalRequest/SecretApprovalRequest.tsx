@@ -188,7 +188,7 @@ export const SecretApprovalRequest = () => {
                         icon={committerFilter === id && <FontAwesomeIcon icon={faCheckCircle} />}
                         iconPos="right"
                       >
-                        {user.email}
+                        {user.username}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
