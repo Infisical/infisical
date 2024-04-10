@@ -387,7 +387,6 @@
         {
           "group": "Examples",
           "pages": [
-            "api-reference/overview/examples/note",
             "api-reference/overview/examples/integration"
           ]
         }
