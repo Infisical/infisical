@@ -95,7 +95,11 @@ stringData:
   {{ range $key, $value := .Values.backendEnvironmentVariables }}
     {{- $default := get $requiredVars $key -}}
     {{- $current := get $secretData $key | b64dec -}}
-    {{- $v := $value | default ($current | default $default) -}}
-    {{ $key }}: {{ $v | quote }}
+    {{- if eq $value false }}
+      {{ $key }}: "false"
+    {{- else }}
+      {{- $v := $value | default ($current | default $default) -}}
+      {{ $key }}: {{ $v | quote }}
+    {{- end }} 
   {{ end -}}
 {{- end }}
