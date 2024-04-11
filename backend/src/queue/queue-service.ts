@@ -61,11 +61,11 @@ export type TQueueJobTypes = {
   };
   [QueueName.SecretWebhook]: {
     name: QueueJobs.SecWebhook;
-    payload: { projectId: string; environment: string; secretPath: string };
+    payload: { projectId: string; environment: string; secretPath: string; depth?: number };
   };
   [QueueName.IntegrationSync]: {
     name: QueueJobs.IntegrationSync;
-    payload: { projectId: string; environment: string; secretPath: string };
+    payload: { projectId: string; environment: string; secretPath: string; depth?: number };
   };
   [QueueName.SecretFullRepoScan]: {
     name: QueueJobs.SecretScan;

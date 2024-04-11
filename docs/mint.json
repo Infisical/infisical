@@ -388,9 +388,7 @@
         {
           "group": "Examples",
           "pages": [
-            "api-reference/overview/examples/note",
-            "api-reference/overview/examples/e2ee-disabled",
-            "api-reference/overview/examples/e2ee-enabled"
+            "api-reference/overview/examples/integration"
           ]
         }
       ]
@@ -473,7 +471,7 @@
           ]
         },
         {
-          "group": "Secret tags",
+          "group": "Secret Tags",
           "pages": [
             "api-reference/endpoints/secret-tags/list",
             "api-reference/endpoints/secret-tags/create",
@@ -493,7 +491,7 @@
           ]
         },
         {
-          "group": "Secret imports",
+          "group": "Secret Imports",
           "pages": [
             "api-reference/endpoints/secret-imports/list",
             "api-reference/endpoints/secret-imports/create",

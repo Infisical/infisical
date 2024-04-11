@@ -447,7 +447,12 @@ export const registerRoutes = async (
     folderDAL
   });
 
-  const projectRoleService = projectRoleServiceFactory({ permissionService, projectRoleDAL });
+  const projectRoleService = projectRoleServiceFactory({
+    permissionService,
+    projectRoleDAL,
+    projectUserMembershipRoleDAL,
+    identityProjectMembershipRoleDAL
+  });
 
   const snapshotService = secretSnapshotServiceFactory({
     permissionService,
@@ -476,14 +481,6 @@ export const registerRoutes = async (
     projectEnvDAL,
     snapshotService
   });
-  const secretImportService = secretImportServiceFactory({
-    projectEnvDAL,
-    folderDAL,
-    permissionService,
-    secretImportDAL,
-    projectDAL,
-    secretDAL
-  });
   const integrationAuthService = integrationAuthServiceFactory({
     integrationAuthDAL,
     integrationDAL,
@@ -510,6 +507,15 @@ export const registerRoutes = async (
     secretBlindIndexDAL,
     secretTagDAL,
     secretVersionTagDAL
+  });
+  const secretImportService = secretImportServiceFactory({
+    projectEnvDAL,
+    folderDAL,
+    permissionService,
+    secretImportDAL,
+    projectDAL,
+    secretDAL,
+    secretQueueService
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
     permissionService,
