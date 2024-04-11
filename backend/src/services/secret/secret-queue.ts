@@ -233,7 +233,8 @@ export const secretQueueFactory = ({
   type Content = Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }>;
 
   /**
-   * Return the secrets in a given [folderId] including the secrets from nested imported folders
+   * Return the secrets in a given [folderId] including secrets from
+   * nested imported folders recursively.
    */
   const getIntegrationSecrets = async (dto: {
     projectId: string;
@@ -245,6 +246,7 @@ export const secretQueueFactory = ({
     let content: Content = {};
     if (dto.depth > MAX_SYNC_SECRET_DEPTH) return content;
 
+    // process secrets in current folder
     const secrets = await secretDAL.findByFolderId(dto.folderId);
     secrets.forEach((secret) => {
       const secretKey = decryptSymmetric128BitHexKeyUTF8({
@@ -285,7 +287,10 @@ export const secretQueueFactory = ({
 
     await expandSecrets(content);
 
+    // check if current folder has any imports from other folders
     const secretImport = await secretImportDAL.find({ folderId: dto.folderId });
+
+    // if no imports then return secrets in the current folder
     if (!secretImport) return content;
 
     const importedFolders = await folderDAL.findByManySecretPath(
@@ -297,6 +302,8 @@ export const secretQueueFactory = ({
 
     for await (const folder of importedFolders) {
       if (folder) {
+        // get secrets contained in each imported folder by recursively calling
+        // this function against the imported folder
         const importedSecrets = await getIntegrationSecrets({
           environment: dto.environment,
           projectId: dto.projectId,
@@ -304,6 +311,8 @@ export const secretQueueFactory = ({
           key: dto.key,
           depth: dto.depth + 1
         });
+
+        // add the imported secrets to the current folder secrets
         content = { ...content, ...importedSecrets };
       }
     }
