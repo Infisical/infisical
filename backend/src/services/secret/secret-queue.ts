@@ -119,7 +119,7 @@ export const secretQueueFactory = ({
 
   const syncSecrets = async (dto: TGetSecrets & { depth?: number }) => {
     logger.info(
-      `Syncing secrets Project: ${dto.projectId} - Environment: ${dto.environment} - Path: ${dto.secretPath}`
+      `syncSecrets: syncing project secrets where [projectId=${dto.projectId}]  [environment=${dto.environment}] [path=${dto.secretPath}]`
     );
     await queueService.queue(QueueName.SecretWebhook, QueueJobs.SecWebhook, dto, {
       jobId: `secret-webhook-${dto.environment}-${dto.projectId}-${dto.secretPath}`,
@@ -244,7 +244,12 @@ export const secretQueueFactory = ({
     depth: number;
   }) => {
     let content: Content = {};
-    if (dto.depth > MAX_SYNC_SECRET_DEPTH) return content;
+    if (dto.depth > MAX_SYNC_SECRET_DEPTH) {
+      logger.info(
+        `getIntegrationSecrets: secret depth exceeded for [projectId=${dto.projectId}] [folderId=${dto.folderId}] [depth=${dto.depth}]`
+      );
+      return content;
+    }
 
     // process secrets in current folder
     const secrets = await secretDAL.findByFolderId(dto.folderId);
@@ -354,11 +359,17 @@ export const secretQueueFactory = ({
                 secretPath: foldersGroupedById[folderId][0].path,
                 environment: foldersGroupedById[folderId][0].environmentSlug
               };
-              logger.info({ sourceLink: linkSourceDto, destination: syncDto }, `Syncing secret due to link change`);
+              logger.info(
+                `getIntegrationSecrets: Syncing secret due to link change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${job.data.depth}]`
+              );
               return syncSecrets(syncDto);
             })
         );
       }
+    } else {
+      logger.info(
+        `getIntegrationSecrets: Secret depth exceeded for [projectId=${projectId}] [folderId=${folder.id}] [depth=${depth}]`
+      );
     }
 
     const integrations = await integrationDAL.findByProjectIdV2(projectId, environment); // note: returns array of integrations + integration auths in this environment
@@ -368,7 +379,9 @@ export const secretQueueFactory = ({
     );
 
     if (!integrations.length) return;
-    logger.info({ source: job.data }, "Secret integration sync started - %s", job.id);
+    logger.info(
+      `getIntegrationSecrets: secret integration sync started [jobId=${job.id}] [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${job.data.depth}]`
+    );
     for (const integration of toBeSyncedIntegrations) {
       const integrationAuth = {
         ...integration.integrationAuth,
