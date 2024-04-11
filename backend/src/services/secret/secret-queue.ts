@@ -360,16 +360,14 @@ export const secretQueueFactory = ({
                 environment: foldersGroupedById[folderId][0].environmentSlug
               };
               logger.info(
-                `getIntegrationSecrets: Syncing secret due to link change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${job.data.depth}]`
+                `getIntegrationSecrets: Syncing secret due to link change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
               );
               return syncSecrets(syncDto);
             })
         );
       }
     } else {
-      logger.info(
-        `getIntegrationSecrets: Secret depth exceeded for [projectId=${projectId}] [folderId=${folder.id}] [depth=${depth}]`
-      );
+      logger.info(`getIntegrationSecrets: Secret depth exceeded for [projectId=${projectId}] [folderId=${folder.id}]`);
     }
 
     const integrations = await integrationDAL.findByProjectIdV2(projectId, environment); // note: returns array of integrations + integration auths in this environment
