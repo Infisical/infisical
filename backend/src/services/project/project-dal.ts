@@ -218,7 +218,6 @@ export const projectDALFactory = (db: TDbClient) => {
   const findProjectByFilter = async (filter: Filter) => {
     try {
       if (filter.type === ProjectFilterType.ID) {
-        console.log("filter.projectId", filter.projectId);
         return await findProjectById(filter.projectId);
       }
       if (filter.type === ProjectFilterType.SLUG) {
