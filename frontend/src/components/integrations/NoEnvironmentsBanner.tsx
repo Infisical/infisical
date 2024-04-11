@@ -1,6 +1,4 @@
 import { useRouter } from "next/router";
-import { faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button } from "../v2";
 
@@ -13,7 +11,6 @@ export const NoEnvironmentsBanner = ({ projectId }: IProps) => {
 
   return (
     <div className="mt-4 flex w-full flex-row items-center rounded-md border border-primary-600/70  bg-primary/[.07] p-4 text-base text-white">
-      <FontAwesomeIcon icon={faWarning} className="pr-6 text-6xl text-white/80" />
       <div className="flex w-full flex-col text-sm">
         <span className="mb-2 text-lg font-semibold">
           No environments in your project was found
