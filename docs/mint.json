@@ -519,7 +519,8 @@
             "api-reference/endpoints/integrations/delete-auth-by-id",
             "api-reference/endpoints/integrations/create",
             "api-reference/endpoints/integrations/update",
-            "api-reference/endpoints/integrations/delete"
+            "api-reference/endpoints/integrations/delete",
+            "api-reference/endpoints/integrations/list-project-integrations"
           ]
         },
         {

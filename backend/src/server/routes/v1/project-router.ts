@@ -7,7 +7,7 @@ import {
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { INTEGRATION_AUTH, PROJECTS } from "@app/lib/api-docs";
+import { INTEGRATION, INTEGRATION_AUTH, PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -326,8 +326,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      description: "List integrations for a project.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim().describe(INTEGRATION.LIST_INTEGRATION.workspaceId)
       }),
       response: {
         200: z.object({

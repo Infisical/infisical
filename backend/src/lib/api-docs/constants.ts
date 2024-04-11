@@ -551,5 +551,8 @@ export const INTEGRATION = {
   },
   DELETE: {
     integrationId: "The ID of the integration object."
+  },
+  LIST_INTEGRATION: {
+    workspaceId: "The ID of the project to list integrations for."
   }
 };
