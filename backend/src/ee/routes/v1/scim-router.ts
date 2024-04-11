@@ -482,8 +482,8 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log("PATCH /Groups/:groupId req.body: ", req.body);
-      console.log("PATCH /Groups/:groupId req.body: ", req.body.Operations[0]);
+      // console.log("PATCH /Groups/:groupId req.body: ", req.body);
+      // console.log("PATCH /Groups/:groupId req.body: ", req.body.Operations[0]);
       const group = await req.server.services.scim.updateScimGroupNamePatch({
         groupId: req.params.groupId,
         orgId: req.permission.orgId,

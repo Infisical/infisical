@@ -175,7 +175,7 @@ export const permissionDALFactory = (db: TDbClient) => {
         ]
       });
 
-      const groupRoles = groupDocs.length
+      const groupPermission = groupDocs.length
         ? sqlNestRelationships({
             data: groupDocs,
             key: "projectId",
@@ -207,16 +207,23 @@ export const permissionDALFactory = (db: TDbClient) => {
                   }).parse(data)
               }
             ]
-          })?.[0]?.roles
+          })
         : [];
 
-      if (!permission?.[0]) return undefined;
+      if (!permission?.[0] && !groupPermission[0]) return undefined;
 
       // when introducting cron mode change it here
-      const activeRoles = permission?.[0]?.roles?.filter(
-        ({ isTemporary, temporaryAccessEndTime }) =>
-          !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-      );
+      const activeRoles =
+        permission?.[0]?.roles?.filter(
+          ({ isTemporary, temporaryAccessEndTime }) =>
+            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
+        ) ?? [];
+
+      const activeGroupRoles =
+        groupPermission?.[0]?.roles?.filter(
+          ({ isTemporary, temporaryAccessEndTime }) =>
+            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
+        ) ?? [];
 
       const activeAdditionalPrivileges = permission?.[0]?.additionalPrivileges?.filter(
         ({ isTemporary, temporaryAccessEndTime }) =>
@@ -224,8 +231,8 @@ export const permissionDALFactory = (db: TDbClient) => {
       );
 
       return {
-        ...permission[0],
-        roles: [...activeRoles, ...groupRoles],
+        ...(permission[0] || groupPermission[0]),
+        roles: [...activeRoles, ...activeGroupRoles],
         additionalPrivileges: activeAdditionalPrivileges
       };
     } catch (error) {
