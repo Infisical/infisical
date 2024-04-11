@@ -23,7 +23,6 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
-import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TWebhookDALFactory } from "../webhook/webhook-dal";
 import { fnTriggerWebhook } from "../webhook/webhook-fns";
@@ -231,62 +230,35 @@ export const secretQueueFactory = ({
     }
   };
 
-  const getIntegrationSecrets = async (dto: TGetSecrets & { folderId: string }, key: string) => {
+  type Content = Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }>;
+
+  /**
+   * Return the secrets in a given [folderId] including the secrets from nested imported folders
+   */
+  const getIntegrationSecrets = async (dto: {
+    projectId: string;
+    environment: string;
+    folderId: string;
+    key: string;
+    depth: number;
+  }) => {
+    let content: Content = {};
+    if (dto.depth > MAX_SYNC_SECRET_DEPTH) return content;
+
     const secrets = await secretDAL.findByFolderId(dto.folderId);
-
-    // get imported secrets
-    const secretImport = await secretImportDAL.find({ folderId: dto.folderId });
-    const importedSecrets = await fnSecretsFromImports({
-      allowedImports: secretImport,
-      secretDAL,
-      folderDAL
-    });
-
-    if (!secrets.length && !importedSecrets.length) return {};
-
-    const content: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }> = {};
-
-    importedSecrets.forEach(({ secrets: secs }) => {
-      secs.forEach((secret) => {
-        const secretKey = decryptSymmetric128BitHexKeyUTF8({
-          ciphertext: secret.secretKeyCiphertext,
-          iv: secret.secretKeyIV,
-          tag: secret.secretKeyTag,
-          key
-        });
-        const secretValue = decryptSymmetric128BitHexKeyUTF8({
-          ciphertext: secret.secretValueCiphertext,
-          iv: secret.secretValueIV,
-          tag: secret.secretValueTag,
-          key
-        });
-        content[secretKey] = { value: secretValue };
-        content[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
-
-        if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
-          const commentValue = decryptSymmetric128BitHexKeyUTF8({
-            ciphertext: secret.secretCommentCiphertext,
-            iv: secret.secretCommentIV,
-            tag: secret.secretCommentTag,
-            key
-          });
-          content[secretKey].comment = commentValue;
-        }
-      });
-    });
     secrets.forEach((secret) => {
       const secretKey = decryptSymmetric128BitHexKeyUTF8({
         ciphertext: secret.secretKeyCiphertext,
         iv: secret.secretKeyIV,
         tag: secret.secretKeyTag,
-        key
+        key: dto.key
       });
 
       const secretValue = decryptSymmetric128BitHexKeyUTF8({
         ciphertext: secret.secretValueCiphertext,
         iv: secret.secretValueIV,
         tag: secret.secretValueTag,
-        key
+        key: dto.key
       });
 
       content[secretKey] = { value: secretValue };
@@ -296,25 +268,52 @@ export const secretQueueFactory = ({
           ciphertext: secret.secretCommentCiphertext,
           iv: secret.secretCommentIV,
           tag: secret.secretCommentTag,
-          key
+          key: dto.key
         });
         content[secretKey].comment = commentValue;
       }
 
       content[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
     });
+
     const expandSecrets = interpolateSecrets({
       projectId: dto.projectId,
-      secretEncKey: key,
+      secretEncKey: dto.key,
       folderDAL,
       secretDAL
     });
+
     await expandSecrets(content);
+
+    const secretImport = await secretImportDAL.find({ folderId: dto.folderId });
+    if (!secretImport) return content;
+
+    const importedFolders = await folderDAL.findByManySecretPath(
+      secretImport.map(({ importEnv, importPath }) => ({
+        envId: importEnv.id,
+        secretPath: importPath
+      }))
+    );
+
+    for await (const folder of importedFolders) {
+      if (folder) {
+        const importedSecrets = await getIntegrationSecrets({
+          environment: dto.environment,
+          projectId: dto.projectId,
+          folderId: folder.id,
+          key: dto.key,
+          depth: dto.depth + 1
+        });
+        content = { ...content, ...importedSecrets };
+      }
+    }
+
     return content;
   };
 
   queueService.start(QueueName.IntegrationSync, async (job) => {
     const { environment, projectId, secretPath, depth = 1 } = job.data;
+
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) {
       logger.error(new Error("Secret path not found"));
@@ -330,11 +329,12 @@ export const secretQueueFactory = ({
         importPath: secretPath
       };
       const imports = await secretImportDAL.find(linkSourceDto);
+
       if (imports.length) {
         // keep calling sync secret for all the imports made
         const importedFolderIds = unique(imports, (i) => i.folderId).map(({ folderId }) => folderId);
         const importedFolders = await folderDAL.findSecretPathByFolderIds(projectId, importedFolderIds);
-        const foldersGroupedById = groupBy(importedFolders, (i) => i.id);
+        const foldersGroupedById = groupBy(importedFolders, (i) => i.child || i.id);
         await Promise.all(
           imports
             .filter(({ folderId }) => Boolean(foldersGroupedById[folderId][0].path))
@@ -352,8 +352,9 @@ export const secretQueueFactory = ({
       }
     }
 
-    const integrations = await integrationDAL.findByProjectIdV2(projectId, environment);
+    const integrations = await integrationDAL.findByProjectIdV2(projectId, environment); // note: returns array of integrations + integration auths in this environment
     const toBeSyncedIntegrations = integrations.filter(
+      // note: sync only the integrations sourced from secretPath
       ({ secretPath: integrationSecPath, isActive }) => isActive && isSamePath(secretPath, integrationSecPath)
     );
 
@@ -369,7 +370,13 @@ export const secretQueueFactory = ({
 
       const botKey = await projectBotService.getBotKey(projectId);
       const { accessToken, accessId } = await integrationAuthService.getIntegrationAccessToken(integrationAuth, botKey);
-      const secrets = await getIntegrationSecrets({ environment, projectId, secretPath, folderId: folder.id }, botKey);
+      const secrets = await getIntegrationSecrets({
+        environment,
+        projectId,
+        folderId: folder.id,
+        key: botKey,
+        depth: 1
+      });
       const suffixedSecrets: typeof secrets = {};
       const metadata = integration.metadata as Record<string, string>;
       if (metadata) {

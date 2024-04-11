@@ -259,10 +259,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   const findSecretPathByFolderIds = async (projectId: string, folderIds: string[], tx?: Knex) => {
     try {
       const folders = await sqlFindSecretPathByFolderId(tx || db, projectId, folderIds);
+
       const rootFolders = groupBy(
         folders.filter(({ parentId }) => parentId === null),
         (i) => i.child || i.id // root condition then child and parent will null
       );
+
       return folderIds.map((folderId) => rootFolders[folderId]?.[0]);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by secret path" });

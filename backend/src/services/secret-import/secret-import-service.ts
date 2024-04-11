@@ -7,6 +7,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
+import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { fnSecretsFromImports } from "./secret-import-fns";
@@ -25,6 +26,7 @@ type TSecretImportServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   projectEnvDAL: TProjectEnvDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
@@ -37,7 +39,8 @@ export const secretImportServiceFactory = ({
   permissionService,
   folderDAL,
   projectDAL,
-  secretDAL
+  secretDAL,
+  secretQueueService
 }: TSecretImportServiceFactoryDep) => {
   const createImport = async ({
     environment,
@@ -101,6 +104,12 @@ export const secretImportServiceFactory = ({
         },
         tx
       );
+    });
+
+    await secretQueueService.syncSecrets({
+      secretPath: secImport.importPath,
+      projectId,
+      environment: importEnv.slug
     });
 
     return { ...secImport, importEnv };
@@ -208,6 +217,13 @@ export const secretImportServiceFactory = ({
       if (!importEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
       return { ...doc, importEnv };
     });
+
+    await secretQueueService.syncSecrets({
+      secretPath: path,
+      projectId,
+      environment
+    });
+
     return secImport;
   };
 
