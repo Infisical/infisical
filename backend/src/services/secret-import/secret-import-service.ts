@@ -7,6 +7,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
+import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { fnSecretsFromImports } from "./secret-import-fns";
@@ -25,6 +26,7 @@ type TSecretImportServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   projectEnvDAL: TProjectEnvDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
@@ -37,7 +39,8 @@ export const secretImportServiceFactory = ({
   permissionService,
   folderDAL,
   projectDAL,
-  secretDAL
+  secretDAL,
+  secretQueueService
 }: TSecretImportServiceFactoryDep) => {
   const createImport = async ({
     environment,
@@ -77,9 +80,18 @@ export const secretImportServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Create import" });
 
-    // TODO(akhilmhdh-pg): updated permission check add here
     const [importEnv] = await projectEnvDAL.findBySlugs(projectId, [data.environment]);
     if (!importEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
+
+    const sourceFolder = await folderDAL.findBySecretPath(projectId, data.environment, data.path);
+    if (sourceFolder) {
+      const existingImport = await secretImportDAL.findOne({
+        folderId: sourceFolder.id,
+        importEnv: folder.environment.id,
+        importPath: path
+      });
+      if (existingImport) throw new BadRequestError({ message: "Cyclic import not allowed" });
+    }
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
       const lastPos = await secretImportDAL.findLastImportPosition(folder.id, tx);
@@ -92,6 +104,12 @@ export const secretImportServiceFactory = ({
         },
         tx
       );
+    });
+
+    await secretQueueService.syncSecrets({
+      secretPath: secImport.importPath,
+      projectId,
+      environment: importEnv.slug
     });
 
     return { ...secImport, importEnv };
@@ -130,6 +148,20 @@ export const secretImportServiceFactory = ({
       ? (await projectEnvDAL.findBySlugs(projectId, [data.environment]))?.[0]
       : await projectEnvDAL.findById(secImpDoc.importEnv);
     if (!importedEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
+
+    const sourceFolder = await folderDAL.findBySecretPath(
+      projectId,
+      importedEnv.slug,
+      data.path || secImpDoc.importPath
+    );
+    if (sourceFolder) {
+      const existingImport = await secretImportDAL.findOne({
+        folderId: sourceFolder.id,
+        importEnv: folder.environment.id,
+        importPath: path
+      });
+      if (existingImport) throw new BadRequestError({ message: "Cyclic import not allowed" });
+    }
 
     const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
       const secImp = await secretImportDAL.findOne({ folderId: folder.id, id });
@@ -185,6 +217,13 @@ export const secretImportServiceFactory = ({
       if (!importEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
       return { ...doc, importEnv };
     });
+
+    await secretQueueService.syncSecrets({
+      secretPath: path,
+      projectId,
+      environment
+    });
+
     return secImport;
   };
 
