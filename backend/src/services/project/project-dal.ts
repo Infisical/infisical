@@ -126,13 +126,11 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findProjectById = async (id: string) => {
     try {
-      const workspaces = await db(TableName.ProjectMembership)
+      const workspaces = await db(TableName.Project)
         .where(`${TableName.Project}.id`, id)
-        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
-        .join(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
-          db.ref("id").withSchema(TableName.Project).as("_id"),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName")
@@ -141,10 +139,11 @@ export const projectDALFactory = (db: TDbClient) => {
           { column: `${TableName.Project}.name`, order: "asc" },
           { column: `${TableName.Environment}.position`, order: "asc" }
         ]);
+
       const project = sqlNestRelationships({
         data: workspaces,
         key: "id",
-        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
+        parentMapper: ({ ...el }) => ({ _id: el.id, ...ProjectsSchema.parse(el) }),
         childrenMapper: [
           {
             key: "envId",
@@ -174,14 +173,12 @@ export const projectDALFactory = (db: TDbClient) => {
         throw new BadRequestError({ message: "Organization ID is required when querying with slugs" });
       }
 
-      const projects = await db(TableName.ProjectMembership)
+      const projects = await db(TableName.Project)
         .where(`${TableName.Project}.slug`, slug)
         .where(`${TableName.Project}.orgId`, orgId)
-        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
-        .join(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
-          db.ref("id").withSchema(TableName.Project).as("_id"),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName")
@@ -194,7 +191,7 @@ export const projectDALFactory = (db: TDbClient) => {
       const project = sqlNestRelationships({
         data: projects,
         key: "id",
-        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
+        parentMapper: ({ ...el }) => ({ _id: el.id, ...ProjectsSchema.parse(el) }),
         childrenMapper: [
           {
             key: "envId",
@@ -221,6 +218,7 @@ export const projectDALFactory = (db: TDbClient) => {
   const findProjectByFilter = async (filter: Filter) => {
     try {
       if (filter.type === ProjectFilterType.ID) {
+        console.log("filter.projectId", filter.projectId);
         return await findProjectById(filter.projectId);
       }
       if (filter.type === ProjectFilterType.SLUG) {
