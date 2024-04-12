@@ -141,6 +141,12 @@ export const PROJECTS = {
   },
   ROLLBACK_TO_SNAPSHOT: {
     secretSnapshotId: "The ID of the snapshot to rollback to."
+  },
+  LIST_INTEGRATION: {
+    workspaceId: "The ID of the project to list integrations for."
+  },
+  LIST_INTEGRATION_AUTHORIZATION: {
+    workspaceId: "The ID of the project to list integration auths for."
   }
 } as const;
 
@@ -502,11 +508,8 @@ export const INTEGRATION_AUTH = {
     url: "",
     namespace: "",
     refreshToken: "The refresh token for integration authorization."
-  },
-  LIST_AUTHORIZATION: {
-    workspaceId: "The ID of the project to list integration auths for."
   }
-};
+} as const;
 
 export const INTEGRATION = {
   CREATE: {
