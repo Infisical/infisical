@@ -5,6 +5,7 @@ export * from "./auth";
 export * from "./bots";
 export * from "./dynamicSecret";
 export * from "./dynamicSecretLease";
+export * from "./groups";
 export * from "./identities";
 export * from "./identityProjectAdditionalPrivilege";
 export * from "./incidentContacts";

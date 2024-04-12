@@ -12,6 +12,7 @@ export enum ProjectPermissionActions {
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
+  Groups = "groups",
   Settings = "settings",
   Integrations = "integrations",
   Webhooks = "webhooks",
@@ -41,6 +42,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
   | [ProjectPermissionActions, ProjectPermissionSub.Member]
+  | [ProjectPermissionActions, ProjectPermissionSub.Groups]
   | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
   | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
   | [ProjectPermissionActions, ProjectPermissionSub.AuditLogs]
@@ -81,6 +83,11 @@ const buildAdminPermissionRules = () => {
   can(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Groups);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Groups);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Groups);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
@@ -157,6 +164,8 @@ const buildMemberPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
 
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
+
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
@@ -209,6 +218,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);

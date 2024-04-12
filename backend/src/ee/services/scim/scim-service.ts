@@ -1,10 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
+import slugify from "@sindresorhus/slugify";
 import jwt from "jsonwebtoken";
 
-import { OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, TableName, TGroups } from "@app/db/schemas";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TOrgPermission } from "@app/lib/types";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -17,16 +20,23 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { buildScimUser, buildScimUserList } from "./scim-fns";
+import { buildScimGroup, buildScimGroupList, buildScimUser, buildScimUserList } from "./scim-fns";
 import {
+  TCreateScimGroupDTO,
   TCreateScimTokenDTO,
   TCreateScimUserDTO,
+  TDeleteScimGroupDTO,
   TDeleteScimTokenDTO,
+  TDeleteScimUserDTO,
+  TGetScimGroupDTO,
   TGetScimUserDTO,
+  TListScimGroupsDTO,
   TListScimUsers,
   TListScimUsersDTO,
   TReplaceScimUserDTO,
   TScimTokenJwtPayload,
+  TUpdateScimGroupNamePatchDTO,
+  TUpdateScimGroupNamePutDTO,
   TUpdateScimUserDTO
 } from "./scim-types";
 
@@ -39,6 +49,7 @@ type TScimServiceFactoryDep = {
   >;
   projectDAL: Pick<TProjectDALFactory, "find">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete">;
+  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "findAllGroupMembers" | "update" | "delete" | "findGroups">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: TSmtpService;
@@ -53,6 +64,7 @@ export const scimServiceFactory = ({
   orgDAL,
   projectDAL,
   projectMembershipDAL,
+  groupDAL,
   permissionService,
   smtpService
 }: TScimServiceFactoryDep) => {
@@ -423,6 +435,221 @@ export const scimServiceFactory = ({
     });
   };
 
+  const deleteScimUser = async ({ userId, orgId }: TDeleteScimUserDTO) => {
+    const [membership] = await orgDAL
+      .findMembership({
+        userId,
+        [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+      })
+      .catch(() => {
+        throw new ScimRequestError({
+          detail: "User not found",
+          status: 404
+        });
+      });
+
+    if (!membership)
+      throw new ScimRequestError({
+        detail: "User not found",
+        status: 404
+      });
+
+    if (!membership.scimEnabled) {
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+    }
+
+    await deleteOrgMembership({
+      orgMembershipId: membership.id,
+      orgId: membership.orgId,
+      orgDAL,
+      projectDAL,
+      projectMembershipDAL
+    });
+
+    return {}; // intentionally return empty object upon success
+  };
+
+  const listScimGroups = async ({ orgId, offset, limit }: TListScimGroupsDTO) => {
+    const org = await orgDAL.findById(orgId);
+
+    if (!org.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
+    const groups = await groupDAL.findGroups({
+      orgId
+    });
+
+    const scimGroups = groups.map((group) =>
+      buildScimGroup({
+        groupId: group.id,
+        name: group.name,
+        members: []
+      })
+    );
+
+    return buildScimGroupList({
+      scimGroups,
+      offset,
+      limit
+    });
+  };
+
+  const createScimGroup = async ({ displayName, orgId }: TCreateScimGroupDTO) => {
+    const org = await orgDAL.findById(orgId);
+
+    if (!org.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
+    const group = await groupDAL.create({
+      name: displayName,
+      slug: slugify(`${displayName}-${alphaNumericNanoId(4)}`),
+      orgId,
+      role: OrgMembershipRole.NoAccess
+    });
+
+    return buildScimGroup({
+      groupId: group.id,
+      name: group.name,
+      members: []
+    });
+  };
+
+  const getScimGroup = async ({ groupId, orgId }: TGetScimGroupDTO) => {
+    const group = await groupDAL.findOne({
+      id: groupId,
+      orgId
+    });
+
+    if (!group) {
+      throw new ScimRequestError({
+        detail: "Group Not Found",
+        status: 404
+      });
+    }
+
+    const users = await groupDAL.findAllGroupMembers({
+      orgId: group.orgId,
+      groupId: group.id
+    });
+
+    return buildScimGroup({
+      groupId: group.id,
+      name: group.name,
+      members: users
+        .filter((user) => user.isPartOfGroup)
+        .map((user) => ({
+          value: user.id,
+          display: `${user.firstName} ${user.lastName}`
+        }))
+    });
+  };
+
+  const updateScimGroupNamePut = async ({ groupId, orgId, displayName }: TUpdateScimGroupNamePutDTO) => {
+    const [group] = await groupDAL.update(
+      {
+        id: groupId,
+        orgId
+      },
+      {
+        name: displayName
+      }
+    );
+
+    if (!group) {
+      throw new ScimRequestError({
+        detail: "Group Not Found",
+        status: 404
+      });
+    }
+
+    return buildScimGroup({
+      groupId: group.id,
+      name: group.name,
+      members: []
+    });
+  };
+
+  // TODO: add support for add/remove op
+  const updateScimGroupNamePatch = async ({ groupId, orgId, operations }: TUpdateScimGroupNamePatchDTO) => {
+    const org = await orgDAL.findById(orgId);
+
+    if (!org.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
+    let group: TGroups | undefined;
+    for await (const operation of operations) {
+      switch (operation.op) {
+        case "replace": {
+          await groupDAL.update(
+            {
+              id: groupId,
+              orgId
+            },
+            {
+              name: operation.value.displayName
+            }
+          );
+          break;
+        }
+        case "add": {
+          // TODO
+          break;
+        }
+        case "remove": {
+          // TODO
+          break;
+        }
+        default: {
+          throw new ScimRequestError({
+            detail: "Invalid Operation",
+            status: 400
+          });
+        }
+      }
+    }
+
+    if (!group) {
+      throw new ScimRequestError({
+        detail: "Group Not Found",
+        status: 404
+      });
+    }
+
+    return buildScimGroup({
+      groupId: group.id,
+      name: group.name,
+      members: []
+    });
+  };
+
+  const deleteScimGroup = async ({ groupId, orgId }: TDeleteScimGroupDTO) => {
+    const [group] = await groupDAL.delete({
+      id: groupId,
+      orgId
+    });
+
+    if (!group) {
+      throw new ScimRequestError({
+        detail: "Group Not Found",
+        status: 404
+      });
+    }
+
+    return {}; // intentionally return empty object upon success
+  };
+
   const fnValidateScimToken = async (token: TScimTokenJwtPayload) => {
     const scimToken = await scimDAL.findById(token.scimTokenId);
     if (!scimToken) throw new UnauthorizedError();
@@ -455,6 +682,13 @@ export const scimServiceFactory = ({
     createScimUser,
     updateScimUser,
     replaceScimUser,
+    deleteScimUser,
+    listScimGroups,
+    createScimGroup,
+    getScimGroup,
+    deleteScimGroup,
+    updateScimGroupNamePut,
+    updateScimGroupNamePatch,
     fnValidateScimToken
   };
 };

@@ -11,6 +11,9 @@ import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/pro
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
+import { groupDALFactory } from "@app/ee/services/group/group-dal";
+import { groupServiceFactory } from "@app/ee/services/group/group-service";
+import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { identityProjectAdditionalPrivilegeDALFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-dal";
 import { identityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
@@ -58,6 +61,9 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
+import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
+import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
@@ -207,6 +213,10 @@ export const registerRoutes = async (
 
   const gitAppInstallSessionDAL = gitAppInstallSessionDALFactory(db);
   const gitAppOrgDAL = gitAppDALFactory(db);
+  const groupDAL = groupDALFactory(db);
+  const groupProjectDAL = groupProjectDALFactory(db);
+  const groupProjectMembershipRoleDAL = groupProjectMembershipRoleDALFactory(db);
+  const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
@@ -249,6 +259,29 @@ export const registerRoutes = async (
     samlConfigDAL,
     licenseService
   });
+  const groupService = groupServiceFactory({
+    userDAL,
+    groupDAL,
+    groupProjectDAL,
+    orgDAL,
+    userGroupMembershipDAL,
+    projectDAL,
+    projectBotDAL,
+    projectKeyDAL,
+    permissionService,
+    licenseService
+  });
+  const groupProjectService = groupProjectServiceFactory({
+    groupDAL,
+    groupProjectDAL,
+    groupProjectMembershipRoleDAL,
+    userGroupMembershipDAL,
+    projectDAL,
+    projectKeyDAL,
+    projectBotDAL,
+    projectRoleDAL,
+    permissionService
+  });
   const scimService = scimServiceFactory({
     licenseService,
     scimDAL,
@@ -256,6 +289,7 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     projectMembershipDAL,
+    groupDAL,
     permissionService,
     smtpService
   });
@@ -302,6 +336,7 @@ export const registerRoutes = async (
     projectKeyDAL,
     smtpService,
     userDAL,
+    groupDAL,
     orgBotDAL
   });
   const signupService = authSignupServiceFactory({
@@ -347,6 +382,7 @@ export const registerRoutes = async (
     projectBotDAL,
     orgDAL,
     userDAL,
+    userGroupMembershipDAL,
     smtpService,
     projectKeyDAL,
     projectRoleDAL,
@@ -626,6 +662,8 @@ export const registerRoutes = async (
     password: passwordService,
     signup: signupService,
     user: userService,
+    group: groupService,
+    groupProject: groupProjectService,
     permission: permissionService,
     org: orgService,
     orgRole: orgRoleService,

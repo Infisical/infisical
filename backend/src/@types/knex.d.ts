@@ -29,6 +29,15 @@ import {
   TGitAppOrg,
   TGitAppOrgInsert,
   TGitAppOrgUpdate,
+  TGroupProjectMembershipRoles,
+  TGroupProjectMembershipRolesInsert,
+  TGroupProjectMembershipRolesUpdate,
+  TGroupProjectMemberships,
+  TGroupProjectMembershipsInsert,
+  TGroupProjectMembershipsUpdate,
+  TGroups,
+  TGroupsInsert,
+  TGroupsUpdate,
   TIdentities,
   TIdentitiesInsert,
   TIdentitiesUpdate,
@@ -188,6 +197,9 @@ import {
   TUserEncryptionKeys,
   TUserEncryptionKeysInsert,
   TUserEncryptionKeysUpdate,
+  TUserGroupMembership,
+  TUserGroupMembershipInsert,
+  TUserGroupMembershipUpdate,
   TUsers,
   TUsersInsert,
   TUsersUpdate,
@@ -199,6 +211,22 @@ import {
 declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
+    [TableName.Groups]: Knex.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.UserGroupMembership]: Knex.CompositeTableType<
+      TUserGroupMembership,
+      TUserGroupMembershipInsert,
+      TUserGroupMembershipUpdate
+    >;
+    [TableName.GroupProjectMembership]: Knex.CompositeTableType<
+      TGroupProjectMemberships,
+      TGroupProjectMembershipsInsert,
+      TGroupProjectMembershipsUpdate
+    >;
+    [TableName.GroupProjectMembershipRole]: Knex.CompositeTableType<
+      TGroupProjectMembershipRoles,
+      TGroupProjectMembershipRolesInsert,
+      TGroupProjectMembershipRolesUpdate
+    >;
     [TableName.UserAliases]: Knex.CompositeTableType<TUserAliases, TUserAliasesInsert, TUserAliasesUpdate>;
     [TableName.UserEncryptionKey]: Knex.CompositeTableType<
       TUserEncryptionKeys,

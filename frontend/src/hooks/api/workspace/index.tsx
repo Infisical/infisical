@@ -1,4 +1,9 @@
 export {
+  useAddGroupToWorkspace,
+  useDeleteGroupFromWorkspace,
+  useUpdateGroupWorkspaceRole
+} from "./mutations";
+export {
   useAddIdentityToWorkspace,
   useCreateWorkspace,
   useCreateWsEnvironment,
@@ -16,6 +21,7 @@ export {
   useGetWorkspaceIntegrations,
   useGetWorkspaceSecrets,
   useGetWorkspaceUsers,
+  useListWorkspaceGroups,
   useNameWorkspaceSecrets,
   useRenameWorkspace,
   useToggleAutoCapitalization,

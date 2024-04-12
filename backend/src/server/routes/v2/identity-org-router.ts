@@ -50,6 +50,7 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         orgId: req.params.orgId
       });
+
       return { identityMemberships };
     }
   });

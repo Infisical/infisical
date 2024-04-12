@@ -144,7 +144,8 @@
             "documentation/platform/dynamic-secrets/overview",
             "documentation/platform/dynamic-secrets/postgresql"
           ]
-        }
+        },
+        "documentation/platform/groups"
       ]
     },
     {

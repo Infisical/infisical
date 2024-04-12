@@ -1,4 +1,4 @@
-import { TListScimUsers, TScimUser } from "./scim-types";
+import { TListScimGroups, TListScimUsers, TScimGroup, TScimUser } from "./scim-types";
 
 export const buildScimUserList = ({
   scimUsers,
@@ -61,4 +61,48 @@ export const buildScimUser = ({
   };
 
   return scimUser;
+};
+
+export const buildScimGroupList = ({
+  scimGroups,
+  offset,
+  limit
+}: {
+  scimGroups: TScimGroup[];
+  offset: number;
+  limit: number;
+}): TListScimGroups => {
+  return {
+    Resources: scimGroups,
+    itemsPerPage: limit,
+    schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+    startIndex: offset,
+    totalResults: scimGroups.length
+  };
+};
+
+export const buildScimGroup = ({
+  groupId,
+  name,
+  members
+}: {
+  groupId: string;
+  name: string;
+  members: {
+    value: string;
+    display: string;
+  }[];
+}): TScimGroup => {
+  const scimGroup = {
+    schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+    id: groupId,
+    displayName: name,
+    members,
+    meta: {
+      resourceType: "Group",
+      location: null
+    }
+  };
+
+  return scimGroup;
 };

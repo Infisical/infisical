@@ -171,6 +171,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.authMethod,
         req.permission.orgId
       );
+
       return { data: { permissions, membership } };
     }
   });

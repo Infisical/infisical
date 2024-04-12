@@ -264,7 +264,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
           </TBody>
         </Table>
         {!isLoading && filterdUser?.length === 0 && (
-          <EmptyState title="No project members found" icon={faUsers} />
+          <EmptyState title="No organization members found" icon={faUsers} />
         )}
       </TableContainer>
     </div>

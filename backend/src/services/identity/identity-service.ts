@@ -157,8 +157,8 @@ export const identityServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
 
-    const identityMemberhips = await identityOrgMembershipDAL.findByOrgId(orgId);
-    return identityMemberhips;
+    const identityMemberships = await identityOrgMembershipDAL.findByOrgId(orgId);
+    return identityMemberships;
   };
 
   return {

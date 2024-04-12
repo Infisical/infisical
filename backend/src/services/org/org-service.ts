@@ -6,6 +6,7 @@ import { Knex } from "knex";
 
 import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
 import { TProjects } from "@app/db/schemas/projects";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -34,6 +35,7 @@ import {
   TDeleteOrgMembershipDTO,
   TFindAllWorkspacesDTO,
   TFindOrgMembersByEmailDTO,
+  TGetOrgGroupsDTO,
   TInviteUserToOrgDTO,
   TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
@@ -45,6 +47,7 @@ type TOrgServiceFactoryDep = {
   orgBotDAL: TOrgBotDALFactory;
   orgRoleDAL: TOrgRoleDALFactory;
   userDAL: TUserDALFactory;
+  groupDAL: TGroupDALFactory;
   projectDAL: TProjectDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserId" | "delete">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete">;
@@ -64,6 +67,7 @@ export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
 export const orgServiceFactory = ({
   orgDAL,
   userDAL,
+  groupDAL,
   orgRoleDAL,
   incidentContactDAL,
   permissionService,
@@ -111,6 +115,13 @@ export const orgServiceFactory = ({
 
     const members = await orgDAL.findAllOrgMembers(orgId);
     return members;
+  };
+
+  const getOrgGroups = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TGetOrgGroupsDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
+    const groups = await groupDAL.findByOrgId(orgId);
+    return groups;
   };
 
   const findOrgMembersByUsername = async ({
@@ -674,6 +685,7 @@ export const orgServiceFactory = ({
     // incident contacts
     findIncidentContacts,
     createIncidentContact,
-    deleteIncidentContact
+    deleteIncidentContact,
+    getOrgGroups
   };
 };
