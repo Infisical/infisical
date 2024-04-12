@@ -68,6 +68,7 @@ export const groupProjectServiceFactory = ({
     });
 
     if (!project) throw new BadRequestError({ message: `Failed to find project with slug ${projectSlug}` });
+    if (project.version < 2) throw new BadRequestError({ message: `Failed to add group to E2EE project` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
