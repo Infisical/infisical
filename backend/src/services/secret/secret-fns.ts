@@ -112,8 +112,8 @@ const generatePaths = (
       folderId: child.id
     });
 
-    // We make sure that the max depth doesn't exceed 20.
-    // We do this to make as a "circuit break", basically to ensure that we can't encounter any potential memory leaks.
+    // We make sure that the recursion depth doesn't exceed 20.
+    // We do this to create "circuit break", basically to ensure that we can't encounter any potential memory leaks.
     if (currentDepth >= 20) {
       return;
     }
