@@ -362,7 +362,7 @@ export const projectMembershipServiceFactory = ({
     if (customRoles.length !== customInputRoles.length) throw new BadRequestError({ message: "Custom role not found" });
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
-    const santiziedProjectMembershipRoles = roles.map((inputRole) => {
+    const sanitizedProjectMembershipRoles = roles.map((inputRole) => {
       const isCustomRole = Boolean(customRolesGroupBySlug?.[inputRole.role]?.[0]);
       if (!inputRole.isTemporary) {
         return {
@@ -388,7 +388,7 @@ export const projectMembershipServiceFactory = ({
 
     const updatedRoles = await projectMembershipDAL.transaction(async (tx) => {
       await projectUserMembershipRoleDAL.delete({ projectMembershipId: membershipId }, tx);
-      return projectUserMembershipRoleDAL.insertMany(santiziedProjectMembershipRoles, tx);
+      return projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });
 
     return updatedRoles;

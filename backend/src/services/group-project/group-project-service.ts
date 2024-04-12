@@ -92,8 +92,8 @@ export const groupProjectServiceFactory = ({
       role,
       project.id
     );
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
+    const hasPrivilege = isAtLeastAsPrivileged(permission, rolePermission);
+    if (!hasPrivilege)
       throw new ForbiddenRequestError({
         message: "Failed to add group to project with more privileged role"
       });
@@ -226,7 +226,7 @@ export const groupProjectServiceFactory = ({
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
-    const santiziedProjectMembershipRoles = roles.map((inputRole) => {
+    const sanitizedProjectMembershipRoles = roles.map((inputRole) => {
       const isCustomRole = Boolean(customRolesGroupBySlug?.[inputRole.role]?.[0]);
       if (!inputRole.isTemporary) {
         return {
@@ -252,7 +252,7 @@ export const groupProjectServiceFactory = ({
 
     const updatedRoles = await groupProjectMembershipRoleDAL.transaction(async (tx) => {
       await groupProjectMembershipRoleDAL.delete({ projectMembershipId: projectGroup.id }, tx);
-      return groupProjectMembershipRoleDAL.insertMany(santiziedProjectMembershipRoles, tx);
+      return groupProjectMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });
 
     return updatedRoles;
@@ -325,8 +325,8 @@ export const groupProjectServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
 
-    const groupMemberhips = await groupProjectDAL.findByProjectId(project.id);
-    return groupMemberhips;
+    const groupMemberships = await groupProjectDAL.findByProjectId(project.id);
+    return groupMemberships;
   };
 
   return {

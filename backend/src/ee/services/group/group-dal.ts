@@ -118,9 +118,8 @@ export const groupDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId")
-          // db.raw(`CASE WHEN "${TableName.UserGroupMembership}"."groupId" IS NOT NULL THEN TRUE ELSE FALSE END as isPartOfGroup`)
         )
-        .where({ isGhost: false }) // MAKE SURE USER IS NOT A GHOST USER
+        .where({ isGhost: false })
         .offset(offset);
 
       if (limit) {

@@ -13,7 +13,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
-        name: z.string().trim().min(1).describe(GROUPS.CREATE.name),
+        name: z.string().trim().min(1).max(50).describe(GROUPS.CREATE.name),
         slug: z
           .string()
           .min(5)

@@ -5,7 +5,13 @@ import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 
-import { GroupsTab, IdentityTab, MemberListTab, ProjectRoleListTab, ServiceTokenTab } from "./components";
+import {
+  GroupsTab,
+  IdentityTab,
+  MemberListTab,
+  ProjectRoleListTab,
+  ServiceTokenTab
+} from "./components";
 
 enum TabSections {
   Member = "members",
@@ -18,8 +24,6 @@ enum TabSections {
 export const MembersPage = withProjectPermission(
   () => {
     const { currentWorkspace } = useWorkspace();
-    console.log("currentWorkspace: ", currentWorkspace);
-
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
         <div className="mx-auto mb-6 w-full max-w-7xl py-6 px-6">
@@ -44,7 +48,7 @@ export const MembersPage = withProjectPermission(
             {currentWorkspace?.version && currentWorkspace.version > 1 && (
               <TabPanel value={TabSections.Groups}>
                 <motion.div
-                  key="panel-1"
+                  key="panel-groups"
                   transition={{ duration: 0.15 }}
                   initial={{ opacity: 0, translateX: 30 }}
                   animate={{ opacity: 1, translateX: 0 }}
