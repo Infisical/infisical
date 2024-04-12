@@ -536,7 +536,10 @@ export const scimServiceFactory = ({
       });
     }
 
-    const users = await groupDAL.findAllGroupMembers(group.orgId, group.id);
+    const users = await groupDAL.findAllGroupMembers({
+      orgId: group.orgId,
+      groupId: group.id
+    });
 
     return buildScimGroup({
       groupId: group.id,

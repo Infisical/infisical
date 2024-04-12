@@ -3,7 +3,19 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 export const groupKeys = {
-  getGroupUserMembership: (slug: string) => [{ slug }, "group-user-memberships"] as const
+  allGroupUserMemberships: () => ["group-user-memberships"] as const,
+  forGroupUserMemberships: (slug: string) => [...groupKeys.allGroupUserMemberships(), slug] as const,
+  specificGroupUserMemberships: ({
+    slug,
+    offset,
+    limit,
+    username
+  }: {
+    slug: string;
+    offset: number;
+    limit: number;
+    username: string;
+  }) => [...groupKeys.forGroupUserMemberships(slug), { offset, limit, username }] as const
 };
 
 type TUser = {
@@ -15,14 +27,39 @@ type TUser = {
   isPartOfGroup: boolean;
 };
 
-export const useListGroupUsers = (groupSlug: string) => {
+export const useListGroupUsers = ({
+  groupSlug,
+  offset = 0,
+  limit = 10,
+  username
+}: {
+  groupSlug: string;
+  offset: number;
+  limit: number;
+  username: string;
+}) => {
   return useQuery({
-    queryKey: groupKeys.getGroupUserMembership(groupSlug),
+    queryKey: groupKeys.specificGroupUserMemberships({
+      slug: groupSlug,
+      offset,
+      limit,
+      username
+    }),
     enabled: Boolean(groupSlug),
     queryFn: async () => {
-      const { data: users } = await apiRequest.get<TUser[]>(`/api/v1/groups/${groupSlug}/users`);
-
-      return users;
-    }
+      const params = new URLSearchParams({
+        offset: String(offset),
+        limit: String(limit),
+        username
+      });
+      
+      const { data } = await apiRequest.get<{ users: TUser[]; totalCount: number; }>(
+        `/api/v1/groups/${groupSlug}/users`, {
+          params
+        }
+      );
+      
+      return data;
+    },
   });
 };

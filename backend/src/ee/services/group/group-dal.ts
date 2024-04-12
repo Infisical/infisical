@@ -59,10 +59,48 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
-  // special query
-  const findAllGroupMembers = async (orgId: string, groupId: string) => {
+  const countAllGroupMembers = async ({ orgId, groupId }: { orgId: string; groupId: string }) => {
     try {
-      const members = await db(TableName.OrgMembership)
+      interface CountResult {
+        count: string;
+      }
+
+      const doc = await db<CountResult>(TableName.OrgMembership)
+        .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.UserGroupMembership, function () {
+          this.on(`${TableName.UserGroupMembership}.userId`, "=", `${TableName.Users}.id`).andOn(
+            `${TableName.UserGroupMembership}.groupId`,
+            "=",
+            db.raw("?", [groupId])
+          );
+        })
+        .where({ isGhost: false })
+        .count(`${TableName.Users}.id`)
+        .first();
+
+      return parseInt((doc?.count as string) || "0", 10);
+    } catch (err) {
+      throw new DatabaseError({ error: err, name: "Count all group members" });
+    }
+  };
+
+  // special query
+  const findAllGroupMembers = async ({
+    orgId,
+    groupId,
+    offset = 0,
+    limit,
+    username
+  }: {
+    orgId: string;
+    groupId: string;
+    offset?: number;
+    limit?: number;
+    username?: string;
+  }) => {
+    try {
+      let query = db(TableName.OrgMembership)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.UserGroupMembership, function () {
@@ -82,16 +120,29 @@ export const groupDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Users).as("userId")
           // db.raw(`CASE WHEN "${TableName.UserGroupMembership}"."groupId" IS NOT NULL THEN TRUE ELSE FALSE END as isPartOfGroup`)
         )
-        .where({ isGhost: false }); // MAKE SURE USER IS NOT A GHOST USER
+        .where({ isGhost: false }) // MAKE SURE USER IS NOT A GHOST USER
+        .offset(offset);
 
-      return members.map(({ email, username, firstName, lastName, userId, groupId: memberGroupId }) => ({
-        id: userId,
-        email,
-        username,
-        firstName,
-        lastName,
-        isPartOfGroup: !!memberGroupId
-      }));
+      if (limit) {
+        query = query.limit(limit);
+      }
+
+      if (username) {
+        query = query.andWhere(`${TableName.Users}.username`, "ilike", `%${username}%`);
+      }
+
+      const members = await query;
+
+      return members.map(
+        ({ email, username: memberUsername, firstName, lastName, userId, groupId: memberGroupId }) => ({
+          id: userId,
+          email,
+          username: memberUsername,
+          firstName,
+          lastName,
+          isPartOfGroup: !!memberGroupId
+        })
+      );
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org members" });
     }
@@ -100,6 +151,7 @@ export const groupDALFactory = (db: TDbClient) => {
   return {
     findGroups,
     findByOrgId,
+    countAllGroupMembers,
     findAllGroupMembers,
     ...groupOrm
   };

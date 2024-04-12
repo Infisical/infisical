@@ -115,31 +115,40 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         slug: z.string().trim().describe(GROUPS.LIST_USERS.slug)
       }),
+      querystring: z.object({
+        offset: z.coerce.number().min(0).max(100).default(0).describe(GROUPS.LIST_USERS.offset),
+        limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_USERS.limit),
+        username: z.string().optional().describe(GROUPS.LIST_USERS.username)
+      }),
       response: {
-        200: UsersSchema.pick({
-          email: true,
-          username: true,
-          firstName: true,
-          lastName: true,
-          id: true
+        200: z.object({
+          users: UsersSchema.pick({
+            email: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            id: true
+          })
+            .merge(
+              z.object({
+                isPartOfGroup: z.boolean()
+              })
+            )
+            .array(),
+          totalCount: z.number()
         })
-          .merge(
-            z.object({
-              isPartOfGroup: z.boolean()
-            })
-          )
-          .array()
       }
     },
     handler: async (req) => {
-      const users = await server.services.group.listGroupUsers({
+      const { users, totalCount } = await server.services.group.listGroupUsers({
         groupSlug: req.params.slug,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        ...req.query
       });
-      return users;
+      return { users, totalCount };
     }
   });
 

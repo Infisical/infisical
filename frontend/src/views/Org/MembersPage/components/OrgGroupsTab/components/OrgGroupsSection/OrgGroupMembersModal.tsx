@@ -1,4 +1,4 @@
-import { useMemo,useState } from "react";
+import { useState } from "react";
 import { faMagnifyingGlass,faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -10,6 +10,7 @@ import {
     Input,
     Modal,
     ModalContent,
+    Pagination,
     Table,
     TableContainer,
     TableSkeleton,
@@ -17,8 +18,7 @@ import {
     Td,
     Th,
     THead,
-    Tr
-} from "@app/components/v2";
+    Tr} from "@app/components/v2";
 import {
     OrgPermissionActions,
     OrgPermissionSubjects
@@ -38,13 +38,21 @@ export const OrgGroupMembersModal = ({
     popUp,
     handlePopUpToggle
 }: Props) => {
+    const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(10);
     const [searchMemberFilter, setSearchMemberFilter] = useState("");
     
     const popUpData = popUp?.groupMembers?.data as {
         slug: string;
     };
     
-    const { data: users, isLoading } = useListGroupUsers(popUpData?.slug ?? "");
+    const { data, isLoading } = useListGroupUsers({
+        groupSlug: popUpData?.slug,
+        offset: (page - 1) * perPage,
+        limit: perPage,
+        username: searchMemberFilter
+    });
+    
     const { mutateAsync: assignMutateAsync } = useAddUserToGroup();
     const { mutateAsync: unassignMutateAsync } = useRemoveUserFromGroup();
     
@@ -76,17 +84,6 @@ export const OrgGroupMembersModal = ({
         }
     }
     
-    const filterdUser = useMemo(
-        () =>
-        users?.filter(
-            ({ firstName, lastName, username }) =>
-              firstName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
-              lastName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
-              username?.toLowerCase().includes(searchMemberFilter.toLowerCase())
-          ),
-        [users, searchMemberFilter]
-      );
-    
     return (
         <Modal
             isOpen={popUp?.groupMembers?.isOpen}
@@ -111,7 +108,7 @@ export const OrgGroupMembersModal = ({
                         </THead>
                         <TBody>
                             {isLoading && <TableSkeleton columns={2} innerKey="group-users" />}
-                            {!isLoading && filterdUser?.map(({
+                            {!isLoading && data?.users?.map(({
                                 id,
                                 firstName,
                                 lastName,
@@ -150,7 +147,16 @@ export const OrgGroupMembersModal = ({
                             })}
                         </TBody>
                     </Table>
-                    {!isLoading && !filterdUser?.length && (
+                    {!isLoading && data?.totalCount !== undefined && (
+                        <Pagination
+                            count={data.totalCount}
+                            page={page}
+                            perPage={perPage}
+                            onChangePage={(newPage) => setPage(newPage)}
+                            onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+                        />
+                    )}
+                    {!isLoading && !data?.users?.length && (
                         <EmptyState
                             title="No users found"
                             icon={faUsers}

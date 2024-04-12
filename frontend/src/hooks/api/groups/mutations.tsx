@@ -102,7 +102,7 @@ export const useAddUserToGroup = () => {
             return data;
         },
         onSuccess: (_, { slug }) => {
-            queryClient.invalidateQueries(groupKeys.getGroupUserMembership(slug));
+            queryClient.invalidateQueries(groupKeys.forGroupUserMemberships(slug));
         }
     });
 };
@@ -124,7 +124,7 @@ export const useRemoveUserFromGroup = () => {
             return data;
         },
         onSuccess: (_, { slug }) => {
-            queryClient.invalidateQueries(groupKeys.getGroupUserMembership(slug));
+            queryClient.invalidateQueries(groupKeys.forGroupUserMemberships(slug));
         }
     });
 };

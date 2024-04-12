@@ -29,7 +29,10 @@ import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findOne" | "findUserEncKeyByUsername">;
-  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "update" | "delete" | "findAllGroupMembers">;
+  groupDAL: Pick<
+    TGroupDALFactory,
+    "create" | "findOne" | "update" | "delete" | "findAllGroupMembers" | "countAllGroupMembers"
+  >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   userGroupMembershipDAL: Pick<
@@ -185,7 +188,16 @@ export const groupServiceFactory = ({
     return group;
   };
 
-  const listGroupUsers = async ({ groupSlug, actor, actorId, actorAuthMethod, actorOrgId }: TListGroupUsersDTO) => {
+  const listGroupUsers = async ({
+    groupSlug,
+    offset,
+    limit,
+    username,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListGroupUsersDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
@@ -207,8 +219,20 @@ export const groupServiceFactory = ({
         message: `Failed to find group with slug ${groupSlug}`
       });
 
-    const users = await groupDAL.findAllGroupMembers(group.orgId, group.id);
-    return users;
+    const users = await groupDAL.findAllGroupMembers({
+      orgId: group.orgId,
+      groupId: group.id,
+      offset,
+      limit,
+      username
+    });
+
+    const totalCount = await groupDAL.countAllGroupMembers({
+      orgId: group.orgId,
+      groupId: group.id
+    });
+
+    return { users, totalCount };
   };
 
   const addUserToGroup = async ({

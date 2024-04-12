@@ -14,7 +14,10 @@ export const GROUPS = {
     slug: "The slug of the group to delete"
   },
   LIST_USERS: {
-    slug: "The slug of the group to list users for"
+    slug: "The slug of the group to list users for",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
+    limit: "The number of users to return.",
+    username: "The username to search for."
   },
   ADD_USER: {
     slug: "The slug of the group to add the user to.",

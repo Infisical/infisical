@@ -21,6 +21,9 @@ export type TDeleteGroupDTO = {
 
 export type TListGroupUsersDTO = {
   groupSlug: string;
+  offset: number;
+  limit: number;
+  username?: string;
 } & TGenericPermission;
 
 export type TAddUserToGroupDTO = {
