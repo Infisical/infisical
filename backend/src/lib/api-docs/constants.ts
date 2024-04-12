@@ -192,6 +192,12 @@ export const PROJECTS = {
   },
   LIST_GROUPS_IN_PROJECT: {
     projectSlug: "The slug of the project to list groups for."
+  },
+  LIST_INTEGRATION: {
+    workspaceId: "The ID of the project to list integrations for."
+  },
+  LIST_INTEGRATION_AUTHORIZATION: {
+    workspaceId: "The ID of the project to list integration auths for."
   }
 } as const;
 
@@ -553,11 +559,8 @@ export const INTEGRATION_AUTH = {
     url: "",
     namespace: "",
     refreshToken: "The refresh token for integration authorization."
-  },
-  LIST_AUTHORIZATION: {
-    workspaceId: "The ID of the project to list integration auths for."
   }
-};
+} as const;
 
 export const INTEGRATION = {
   CREATE: {

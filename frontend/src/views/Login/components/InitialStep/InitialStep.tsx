@@ -251,7 +251,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
         <div className="mt-6 flex flex-row text-sm text-bunker-400">
           <Link href="/signup">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-              Don&apos;t have an acount yet? {t("login.create-account")}
+              Don&apos;t have an account yet? {t("login.create-account")}
             </span>
           </Link>
         </div>

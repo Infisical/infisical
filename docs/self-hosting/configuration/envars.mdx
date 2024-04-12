@@ -121,24 +121,35 @@ Without email configuration, Infisical's core functions like sign-up/login and s
 </Accordion>
 
 <Accordion title="AWS SES">
-  1. Create an account and [configure AWS SES](https://aws.amazon.com/premiumsupport/knowledge-center/ses-set-up-connect-smtp/) to send emails in the Amazon SES console.
-  2. Create an IAM user for SMTP authentication and obtain SMTP credentials in SMTP settings > Create SMTP credentials
+  <Steps>
+    <Step title="Create a verifed identity">
+      This will be used to verify the email you are sending from.
+      ![Create SES identity](../../images/self-hosting/configuration/email/ses-create-identity.png)
+      <Info>
+        If you AWS SES is under sandbox mode, you will only be able to send emails to verified identies. 
+      </Info>
+    </Step>
+    <Step title="Create an account and configure AWS SES">
+      Create an IAM user for SMTP authentication and obtain SMTP credentials in SMTP settings > Create SMTP credentials
 
-  ![opening AWS SES console](../../images/self-hosting/configuration/email/email-aws-ses-console.png)
+      ![opening AWS SES console](../../images/self-hosting/configuration/email/email-aws-ses-console.png)
 
-  ![creating AWS IAM SES user](../../images/self-hosting/configuration/email/email-aws-ses-user.png)
+      ![creating AWS IAM SES user](../../images/self-hosting/configuration/email/email-aws-ses-user.png)
+    </Step>
+    <Step title="Set up your SMTP environment variables">
+      With your AWS SES SMTP credentials, you can now set up your SMTP environment variables for your Infisical instance.
 
-  3. With your AWS SES SMTP credentials, you can now set up your SMTP environment variables:
-
-  ```
-  SMTP_HOST=email-smtp.ap-northeast-1.amazonaws.com # SMTP endpoint obtained from SMTP settings
-  SMTP_USERNAME=xxx # your SMTP username
-  SMTP_PASSWORD=xxx # your SMTP password
-  SMTP_PORT=587
-  SMTP_SECURE=true
-  SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
-  SMTP_FROM_NAME=Infisical
-  ```
+      ```
+      SMTP_HOST=email-smtp.ap-northeast-1.amazonaws.com # SMTP endpoint obtained from SMTP settings
+      SMTP_USERNAME=xxx # your SMTP username
+      SMTP_PASSWORD=xxx # your SMTP password
+      SMTP_PORT=587
+      SMTP_SECURE=false
+      SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
+      SMTP_FROM_NAME=Infisical
+      ```
+    </Step>
+  </Steps>
 
   <Info>
     Remember that you will need to restart Infisical for this to work properly.
