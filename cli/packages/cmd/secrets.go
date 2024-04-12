@@ -478,6 +478,17 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "To fetch all secrets")
 	}
 
+	if shouldExpand {
+		authParams := models.ExpandSecretsAuthentication{}
+		if token != nil && token.Type == "service-token" {
+			authParams.InfisicalToken = token.Token
+		} else if token != nil && token.Type == "universal-auth-token" {
+			authParams.UniversalAuthAccessToken = token.Token
+		}
+
+		secrets = util.ExpandSecrets(secrets, authParams, "")
+	}
+
 	requestedSecrets := []models.SingleEnvironmentVariable{}
 
 	secretsMap := getSecretsByKeys(secrets)
@@ -492,18 +503,6 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 				Value: "*not found*",
 			})
 		}
-	}
-
-	if shouldExpand {
-
-		authParams := models.ExpandSecretsAuthentication{}
-		if token != nil && token.Type == "service-token" {
-			authParams.InfisicalToken = token.Token
-		} else if token != nil && token.Type == "universal-auth-token" {
-			authParams.UniversalAuthAccessToken = token.Token
-		}
-
-		requestedSecrets = util.ExpandSecrets(requestedSecrets, authParams, "")
 	}
 
 	if showOnlyValue && len(requestedSecrets) > 1 {
