@@ -7,7 +7,7 @@ import {
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { INTEGRATION, INTEGRATION_AUTH, PROJECTS } from "@app/lib/api-docs";
+import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -333,7 +333,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(INTEGRATION.LIST_INTEGRATION.workspaceId)
+        workspaceId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION.workspaceId)
       }),
       response: {
         200: z.object({
@@ -376,7 +376,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(INTEGRATION_AUTH.LIST_AUTHORIZATION.workspaceId)
+        workspaceId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION_AUTHORIZATION.workspaceId)
       }),
       response: {
         200: z.object({
