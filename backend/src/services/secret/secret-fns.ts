@@ -92,7 +92,8 @@ const buildHierarchy = (folders: TSecretFolders[]): FolderMap => {
 const generatePaths = (
   map: FolderMap,
   parentId: string = "null",
-  basePath: string = ""
+  basePath: string = "",
+  currentDepth: number = 0
 ): { path: string; folderId: string }[] => {
   const children = map[parentId || "null"] || [];
   let paths: { path: string; folderId: string }[] = [];
@@ -105,13 +106,19 @@ const generatePaths = (
     // eslint-disable-next-line no-nested-ternary
     const currPath = basePath === "" ? (isRootFolder ? "/" : `/${child.name}`) : `${basePath}/${child.name}`;
 
+    // Add the current path
     paths.push({
       path: currPath,
       folderId: child.id
-    }); // Add the current path
+    });
 
-    // Recursively generate paths for children, passing down the formatted pathh
-    const childPaths = generatePaths(map, child.id, currPath);
+    // We make sure that the max depth doesn't exceed 20.
+    // We do this to make as a "circuit break", basically to ensure that we can't encounter any potential memory leaks.
+    if (currentDepth >= 20) {
+      return;
+    }
+    // Recursively generate paths for children, passing down the formatted path
+    const childPaths = generatePaths(map, child.id, currPath, currentDepth + 1);
     paths = paths.concat(
       childPaths.map((p) => ({
         path: p.path,
