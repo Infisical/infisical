@@ -37,6 +37,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   accessApprovalRequestDAL: Pick<
     TAccessApprovalRequestDALFactory,
     | "create"
+    | "find"
     | "findRequestsWithPrivilegeByPolicyIds"
     | "findById"
     | "transaction"
@@ -117,31 +118,33 @@ export const accessApprovalRequestServiceFactory = ({
       approvers.map((approver) => approver.approverId)
     );
 
-    const duplicateRequest = await accessApprovalRequestDAL.findOne({
+    const duplicateRequests = await accessApprovalRequestDAL.find({
       policyId: policy.id,
       requestedBy: membership.id,
       permissions: JSON.stringify(requestedPermissions),
       isTemporary
     });
 
-    if (duplicateRequest) {
-      if (duplicateRequest.privilegeId) {
-        const privilege = await additionalPrivilegeDAL.findById(duplicateRequest.privilegeId);
+    if (duplicateRequests?.length > 0) {
+      for await (const duplicateRequest of duplicateRequests) {
+        if (duplicateRequest.privilegeId) {
+          const privilege = await additionalPrivilegeDAL.findById(duplicateRequest.privilegeId);
 
-        const isExpired = new Date() > new Date(privilege.temporaryAccessEndTime || ("" as string));
+          const isExpired = new Date() > new Date(privilege.temporaryAccessEndTime || ("" as string));
 
-        if (!isExpired || !privilege.isTemporary) {
-          throw new BadRequestError({ message: "You already have an active privilege with the same criteria" });
-        }
-      } else {
-        const reviewers = await accessApprovalRequestReviewerDAL.find({
-          requestId: duplicateRequest.id
-        });
+          if (!isExpired || !privilege.isTemporary) {
+            throw new BadRequestError({ message: "You already have an active privilege with the same criteria" });
+          }
+        } else {
+          const reviewers = await accessApprovalRequestReviewerDAL.find({
+            requestId: duplicateRequest.id
+          });
 
-        const isRejected = reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED);
+          const isRejected = reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED);
 
-        if (!isRejected) {
-          throw new BadRequestError({ message: "You already have a pending access request with the same criteria" });
+          if (!isRejected) {
+            throw new BadRequestError({ message: "You already have a pending access request with the same criteria" });
+          }
         }
       }
     }
