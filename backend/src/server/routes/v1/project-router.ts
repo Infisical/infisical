@@ -349,7 +349,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const integrations = await server.services.integration.listIntegrationByProject({
         actorId: req.permission.id,
