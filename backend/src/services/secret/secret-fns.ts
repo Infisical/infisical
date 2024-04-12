@@ -21,6 +21,7 @@ import {
 } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
@@ -115,6 +116,7 @@ const generatePaths = (
     // We make sure that the recursion depth doesn't exceed 20.
     // We do this to create "circuit break", basically to ensure that we can't encounter any potential memory leaks.
     if (currentDepth >= 20) {
+      logger.info(`generatePaths: Recursion depth exceeded 20, breaking out of recursion [map=${JSON.stringify(map)}]`);
       return;
     }
     // Recursively generate paths for children, passing down the formatted path
