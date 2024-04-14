@@ -22,7 +22,8 @@ export const LogsSection = () => {
     resolver: yupResolver(auditLogFilterFormSchema),
     defaultValues: {
       page: 1,
-      perPage: 10
+      perPage: 10,
+      startDate: new Date(new Date().setDate(new Date().getDate() - 1))
     }
   });
 
