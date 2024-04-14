@@ -141,8 +141,7 @@ export const projectServiceFactory = ({
       const projectMembership = await projectMembershipDAL.create(
         {
           userId: ghostUser.user.id,
-          projectId: project.id,
-          role: ProjectMembershipRole.Admin
+          projectId: project.id
         },
         tx
       );
@@ -244,8 +243,7 @@ export const projectServiceFactory = ({
         const userProjectMembership = await projectMembershipDAL.create(
           {
             projectId: project.id,
-            userId: user.id,
-            role: projectAdmin.projectRole
+            userId: user.id
           },
           tx
         );
@@ -302,9 +300,7 @@ export const projectServiceFactory = ({
         const identityProjectMembership = await identityProjectDAL.create(
           {
             identityId: actorId,
-            projectId: project.id,
-            role: isCustomRole ? ProjectMembershipRole.Custom : ProjectMembershipRole.Admin,
-            roleId: customRole?.id
+            projectId: project.id
           },
           tx
         );
