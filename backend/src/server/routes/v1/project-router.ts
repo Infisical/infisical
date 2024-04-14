@@ -73,6 +73,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           users: ProjectMembershipsSchema.extend({
             user: UsersSchema.pick({
               email: true,
+              username: true,
               firstName: true,
               lastName: true,
               id: true
