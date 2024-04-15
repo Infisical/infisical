@@ -209,6 +209,12 @@
             "self-hosting/guides/mongo-to-postgres"
           ]
         },
+        {
+          "group": "Reference architectures",
+          "pages": [
+            "self-hosting/reference-architectures/aws-ecs"
+          ]
+        },
         "self-hosting/ee",
         "self-hosting/faq"
       ]

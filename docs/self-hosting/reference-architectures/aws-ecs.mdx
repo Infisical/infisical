@@ -1,0 +1,58 @@
+---
+title: "AWS ECS"
+description: "Reference architecture for self-hosting Infisical on AWS ECS"
+---
+
+# Infisical AWS ECS Reference Architecture 
+
+This guide will provide high-level architecture design for deploying the Infisical on AWS ECS and give insights into the core components, high availability strategies, and secure credential management for Infisical's root secrets. 
+
+## Overview
+
+In this guide, we'll focus on running Infisical on AWS Elastic Container Service (ECS) across multiple Availability Zones (AZs), ensuring high availability and resilience. 
+The architecture utilizes Amazon Relational Database Service (RDS) for persistent storage, ElastiCache for Redis as an in-memory data store for caching, and Amazon Simple Email Service (SES) to handle email based communications from Infisical.
+
+
+![AWS ECS architecture](/images/self-hosting/reference-architectures/Infisical-AWS-ECS-architecture.jpeg)
+
+### Core Components
+
+- **ECS Fargate:** In this architecture, Infisical is deployed on ECS using Fargate launch type. The ECS services are deployed across multiple Availability Zones to ensure high availability.
+
+- **Amazon RDS:** Infisical uses Postgres as it's persistent layer. As such, RDS for PostgreSQL is used as the database engine. The setup includes a primary instance in one AZ and a read replica in another AZ. 
+This ensures that if there is a failure in one availability zone, the working replica will become the primary and continue  processing workloads.
+
+- **Amazon ElastiCache for Redis:** To enhance performance, Infisical requires Redis. In this architecture, Redis is set up with a primary and standby replication group across two AZs to increase availability.
+
+- **Amazon Simple Email Service (SES):** Infisical requires email service to facilitate outbound communication. AWS SES is integrated into the architecture to handle such communication.
+
+### Network Setup
+
+- **Public Subnets:** Each Availability Zone contains a public subnet. There are two main reasons you might need internet access. First, if you intend to use Infisical to communicate with external secrets managers not located within your virtual private network, enabling internet access is necessary. Second, downloading the Docker image from Docker Hub requires internet access, though this can be avoided by utilizing AWS ECR with VPC Endpoints through AWS Private Link.
+
+- **NAT Gateway:** This is used to route outbound requests from Infisical to the internet and is only used to communicate with external secrets manager and or downloading container images.
+
+### Securing Infisical's root credential
+
+- **Parameter Store:** To secure Infisical's root credentials (database connection string, encryption key, etc), we highly recommend that you use AWS Parameter Store and only allow the tasks running Infisical to access them.
+- **AWS Secrets Manager:** We strongly advise securing the master credentials for RDS by utilizing the latest AWS RDS integration with AWS Secrets Manager. This integration automatically stores the master database user's credentials in AWS Secrets Manager, thereby reducing the risk of misplacing the root RDS credential.
+
+### High Availability (HA) and Scalability
+
+- **Multi-AZ Deployment:** By spreading resources across multiple Availability Zones, we ensure that if one AZ experiences issues, traffic can be redirected to the remaining healthy AZ without service interruption.
+
+- **Auto Scaling:** AWS Auto Scaling is in place to adjust capacity to maintain steady and predictable performance at the lowest possible cost.
+
+- **Cross-Region Deployment:** For even greater high availability, you may deploy Infisical across multiple regions. This extends the HA capabilities of the architecture and protects against regional service disruptions.
+
+
+### Frequently asked questions
+<Accordion title="Can Infisical run in an air-gapped environment without any internet access?" defaultOpen >
+    Yes, Infisical can function in an air-gapped environment. To do so, update your ECS task to use the publicly available AWS Elastic Container Registry (ECR) image instead of the default Docker Hub image. Additionally, it's necessary to configure VPC endpoints, which allows your system to access AWS ECR via a private network route instead of the internet, ensuring all connectivity remains within the secure, private network.
+</Accordion>
+<Accordion title="Since RDS is in a private subnet, how do run the Postgres schema migrations?">
+    Since the Amazon RDS instance is housed within a private network to enhance security, it is not directly accessible from the internet. This means that in order to run the required [Postgres schema migrations](/self-hosting/configuration/schema-migrations), you need to connect to this instance of RDS. There are many approaches you can take: 
+    - To automate schema migrations, you may setup CI/CD pipeline with access to the same RDS network to run the schema migrations before making deployment to ECS. This ensures that if migrations fail, your Infisical instances continues to run. 
+    - If you would like to run the migrations manually, consider using AWS Systems Manager Session Manager to access the RDS within the VPC on your local machine. 
+    - If your organization already has mechanisms in place for secure access to the VPC, such as VPNs or Direct Connect, these can also be utilized for performing database migrations manually.
+</Accordion>
