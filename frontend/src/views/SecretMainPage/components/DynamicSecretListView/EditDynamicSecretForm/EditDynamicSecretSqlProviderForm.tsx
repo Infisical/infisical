@@ -32,7 +32,7 @@ const formSchema = z.object({
       password: z.string().min(1),
       creationStatement: z.string().min(1),
       revocationStatement: z.string().min(1),
-      renewStatement: z.string().min(1),
+      renewStatement: z.string().optional(),
       ca: z.string().optional()
     })
     .partial(),
@@ -94,7 +94,7 @@ export const EditDynamicSecretSqlProviderForm = ({
       }
     }
   });
-  
+
   const updateDynamicSecret = useUpdateDynamicSecret();
 
   const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
@@ -186,11 +186,13 @@ export const EditDynamicSecretSqlProviderForm = ({
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                   <Select
+                    isDisabled
                     value={value}
                     onValueChange={(val) => onChange(val)}
                     className="w-full border border-mineshaft-500"
                   >
                     <SelectItem value={SqlProviders.Postgres}>PostgreSQL</SelectItem>
+                    <SelectItem value={SqlProviders.MySql}>MySQL</SelectItem>
                   </Select>
                 </FormControl>
               )}
@@ -221,7 +223,11 @@ export const EditDynamicSecretSqlProviderForm = ({
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
-                    <Input {...field} type="number" onChange={(el) => field.onChange(parseInt(el.target.value, 10))} />
+                    <Input
+                      {...field}
+                      type="number"
+                      onChange={(el) => field.onChange(parseInt(el.target.value, 10))}
+                    />
                   </FormControl>
                 )}
               />

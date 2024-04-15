@@ -31,7 +31,7 @@ const formSchema = z.object({
     password: z.string().min(1),
     creationStatement: z.string().min(1),
     revocationStatement: z.string().min(1),
-    renewStatement: z.string().min(1),
+    renewStatement: z.string().optional(),
     ca: z.string().optional()
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -66,6 +66,26 @@ type Props = {
   environment: string;
 };
 
+const getSqlStatements = (provider: SqlProviders) => {
+  if (provider === SqlProviders.MySql) {
+    return {
+      creationStatement:
+        "CREATE USER \"{{username}}\"@'%' IDENTIFIED BY '{{password}}' PASSWORD EXPIRE;\nGRANT ALL ON \"{{database}}\".* TO \"{{username}}\"@'%';",
+      renewStatement: "",
+      revocationStatement:
+        'REVOKE ALL PRIVILEGES ON "{{database}}".* FROM "{{username}}"@\'%\';\nDROP USER "{{username}}"@\'%\';'
+    };
+  }
+
+  return {
+    creationStatement:
+      "CREATE USER \"{{username}}\" WITH ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';\nGRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"{{username}}\";",
+    renewStatement: "ALTER ROLE \"{{username}}\" VALID UNTIL '{{expiration}}';",
+    revocationStatement:
+      'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{{username}}";\nDROP ROLE "{{username}}";'
+  };
+};
+
 export const SqlDatabaseInputForm = ({
   onCompleted,
   onCancel,
@@ -75,18 +95,13 @@ export const SqlDatabaseInputForm = ({
 }: Props) => {
   const {
     control,
+    setValue,
     formState: { isSubmitting },
     handleSubmit
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      provider: {
-        creationStatement:
-          "CREATE USER \"{{username}}\" WITH ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';\nGRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"{{username}}\";",
-        renewStatement: "ALTER ROLE \"{{username}}\" VALID UNTIL '{{expiration}}';",
-        revocationStatement:
-          'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{{username}}";\nDROP ROLE "{{username}}";'
-      }
+      provider: getSqlStatements(SqlProviders.Postgres)
     }
   });
 
@@ -182,10 +197,17 @@ export const SqlDatabaseInputForm = ({
                   <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                     <Select
                       value={value}
-                      onValueChange={(val) => onChange(val)}
+                      onValueChange={(val) => {
+                        onChange(val);
+                        const sqlStatment = getSqlStatements(val as SqlProviders);
+                        setValue("provider.creationStatement", sqlStatment.creationStatement);
+                        setValue("provider.renewStatement", sqlStatment.renewStatement);
+                        setValue("provider.revocationStatement", sqlStatment.revocationStatement);
+                      }}
                       className="w-full border border-mineshaft-500"
                     >
                       <SelectItem value={SqlProviders.Postgres}>PostgreSQL</SelectItem>
+                      <SelectItem value={SqlProviders.MySql}>MySQL</SelectItem>
                     </Select>
                   </FormControl>
                 )}
