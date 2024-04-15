@@ -70,7 +70,7 @@ const getSqlStatements = (provider: SqlProviders) => {
   if (provider === SqlProviders.MySql) {
     return {
       creationStatement:
-        "CREATE USER \"{{username}}\"@'%' IDENTIFIED BY '{{password}}' PASSWORD EXPIRE;\nGRANT ALL ON \"{{database}}\".* TO \"{{username}}\"@'%';",
+        "CREATE USER \"{{username}}\"@'%' IDENTIFIED BY '{{password}}';\nGRANT ALL ON \"{{database}}\".* TO \"{{username}}\"@'%';",
       renewStatement: "",
       revocationStatement:
         'REVOKE ALL PRIVILEGES ON "{{database}}".* FROM "{{username}}"@\'%\';\nDROP USER "{{username}}"@\'%\';'
