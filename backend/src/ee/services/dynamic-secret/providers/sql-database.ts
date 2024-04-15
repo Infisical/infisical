@@ -48,10 +48,10 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
         host: providerInputs.host,
         user: providerInputs.username,
         password: providerInputs.password,
-        connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
         ssl,
         pool: { min: 0, max: 1 }
-      }
+      },
+      acquireConnectionTimeout: EXTERNAL_REQUEST_TIMEOUT
     });
     return db;
   };
@@ -73,15 +73,25 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
 
     const username = alphaNumericNanoId(32);
     const password = generatePassword();
+    const { database } = providerInputs;
     const expiration = new Date(expireAt).toISOString();
 
     const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
       username,
       password,
-      expiration
+      expiration,
+      database
     });
 
-    await db.raw(creationStatement.toString());
+    await db.transaction(async (tx) =>
+      Promise.all(
+        creationStatement
+          .toString()
+          .split(";")
+          .filter(Boolean)
+          .map((query) => tx.raw(query))
+      )
+    );
     await db.destroy();
     return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
   };
@@ -91,9 +101,18 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     const db = await getClient(providerInputs);
 
     const username = entityId;
+    const { database } = providerInputs;
 
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
-    await db.raw(revokeStatement);
+    const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
+    await db.transaction(async (tx) =>
+      Promise.all(
+        revokeStatement
+          .toString()
+          .split(";")
+          .filter(Boolean)
+          .map((query) => tx.raw(query))
+      )
+    );
 
     await db.destroy();
     return { entityId: username };
@@ -105,9 +124,19 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
 
     const username = entityId;
     const expiration = new Date(expireAt).toISOString();
+    const { database } = providerInputs;
 
-    const renewStatement = handlebars.compile(providerInputs.renewStatement)({ username, expiration });
-    await db.raw(renewStatement);
+    const renewStatement = handlebars.compile(providerInputs.renewStatement)({ username, expiration, database });
+    if (renewStatement)
+      await db.transaction(async (tx) =>
+        Promise.all(
+          renewStatement
+            .toString()
+            .split(";")
+            .filter(Boolean)
+            .map((query) => tx.raw(query))
+        )
+      );
 
     await db.destroy();
     return { entityId: username };

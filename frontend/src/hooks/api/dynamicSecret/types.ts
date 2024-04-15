@@ -20,7 +20,8 @@ export enum DynamicSecretProviders {
 }
 
 export enum SqlProviders {
-  Postgres = "postgres"
+  Postgres = "postgres",
+  MySql = "mysql2"
 }
 
 export type TDynamicSecretProvider = {
@@ -34,7 +35,7 @@ export type TDynamicSecretProvider = {
     password: string;
     creationStatement: string;
     revocationStatement: string;
-    renewStatement: string;
+    renewStatement?: string;
     ca?: string | undefined;
   };
 };
