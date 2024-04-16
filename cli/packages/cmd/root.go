@@ -87,3 +87,7 @@ func initLog() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 }
+
+func NewRootCmd() *cobra.Command {
+	return rootCmd
+}
