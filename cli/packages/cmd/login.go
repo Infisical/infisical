@@ -57,7 +57,10 @@ var loginCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		loginMethod, err := cmd.Flags().GetString("method")
-
+		if err != nil {
+			util.HandleError(err)
+		}
+		plainOutput, err := cmd.Flags().GetBool("plain")
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -188,10 +191,16 @@ var loginCmd = &cobra.Command{
 				util.HandleError(err)
 			}
 
+			if plainOutput {
+				fmt.Println(res.AccessToken)
+				return
+			}
+
 			boldGreen := color.New(color.FgGreen).Add(color.Bold)
+			boldPlain := color.New(color.Bold)
 			time.Sleep(time.Second * 1)
 			boldGreen.Printf(">>>> Successfully authenticated with Universal Auth!\n\n")
-			boldGreen.Printf("Universal Auth Access Token:\n%v", res.AccessToken)
+			boldPlain.Printf("Universal Auth Access Token:\n%v", res.AccessToken)
 
 			plainBold := color.New(color.Bold)
 			plainBold.Println("\n\nYou can use this access token to authenticate through other commands in the CLI.")
@@ -368,6 +377,7 @@ func init() {
 	loginCmd.Flags().BoolP("interactive", "i", false, "login via the command line")
 	loginCmd.Flags().String("method", "user", "login method [user, universal-auth]")
 	loginCmd.Flags().String("client-id", "", "client id for universal auth")
+	loginCmd.Flags().Bool("plain", false, "only output the token without any formatting")
 	loginCmd.Flags().String("client-secret", "", "client secret for universal auth")
 }
 
