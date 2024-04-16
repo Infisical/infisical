@@ -1,13 +1,15 @@
 ---
 title: "AWS Amplify"
-description: "Learn how to sync secrets from Infisical to AWS Amplify."
+description: "Learn how to sync secrets from Infisical to AWS Amplify"
 ---
 
 Prerequisites:
+- Infisical Cloud account
+- Add the secrets you wish to sync to Amplify to [Infisical Cloud](https://app.infisical.com)
 
-- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+There are many approaches to sync secrets stored within Infisical to AWS Amplify. This guide describes two such approaches below. 
 
-## Sync Secrets On Build
+## Fetch Secrets On Build
 
 This approach enables the synchronization of secrets from Infisical to AWS Amplify during container build.
 
@@ -48,13 +50,13 @@ This approach enables the synchronization of secrets from Infisical to AWS Ampli
   </Step>
 </Steps>
 
-## Sync Secrets Using AWS SSM Parameter Store
+## Sync Secrets Using AWS SSM Parameter Store 
 
-[Environment secrets](https://docs.aws.amazon.com/amplify/latest/userguide/environment-variables.html#environment-secrets) are similar to environment variables, but they are AWS Systems Manager (SSM) Parameter Store key-value pairs that can be encrypted. By using Infisical AWS SSM integration, you can synchronize secrets from Infisical to SSM, which in turn synchronizes secrets to your AWS Amplify environment secrets.
+Another approach to use secrets from Infisical in AWS Amplify is to utilize AWS Parameter Store. At high level, you begin by using Infisical's AWS SSM integration to sync secrets from Infisical to AWS SSM. You then instruct AWS Amplify to consume those secrets from AWS SSM as environment variables.
 
 <Steps>
   <Step title="Follow the AWS SSM Parameter Store Integration guide">
-    Follow the [Infisical AWS SSM Parameter Store Integration Guide](./aws-parameter-store) to set up Infisical integration, up to the path option.
+    Follow the [Infisical AWS SSM Parameter Store Integration Guide](./aws-parameter-store) to set up the integration. Pause once you reach the step where it asks you to select the path you would like to sync. 
   </Step>
   <Step title="Find your Amplify App ID">
     ![amplify app id](../../images/integrations/aws/integrations-amplify-app-id.png)
