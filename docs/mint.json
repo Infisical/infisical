@@ -283,7 +283,8 @@
           "group": "AWS",
           "pages": [
             "integrations/cloud/aws-parameter-store",
-            "integrations/cloud/aws-secret-manager"
+            "integrations/cloud/aws-secret-manager",
+            "integrations/cloud/aws-amplify"
           ]
         },
         "integrations/cloud/vercel",
