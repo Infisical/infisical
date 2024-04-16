@@ -74,17 +74,15 @@ func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err erro
 		return nil, err
 	}
 
-	if infisicalToken == "" {
-		// If no flag is passed, we first check for the universal auth access token env variable.
+	if infisicalToken == "" { // If no flag is passed, we first check for the universal auth access token env variable.
 		infisicalToken = os.Getenv(INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN_NAME)
-		// If it's still empty after the first env check, we check for the service token env variable.
-		if infisicalToken == "" {
+
+		if infisicalToken == "" { // If it's still empty after the first env check, we check for the service token env variable.
 			infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
 		}
 	}
 
-	// If it's empty, we return nothing at all.
-	if infisicalToken == "" {
+	if infisicalToken == "" { // If it's empty, we return nothing at all.
 		return nil, nil
 	}
 
