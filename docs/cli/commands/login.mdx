@@ -29,6 +29,9 @@ If you have added multiple users, you can switch between the users by using the 
       When `method` is set to `universal-auth`, the `client-id` and `client-secret` flags are required. Optionally you can set the `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` environment variables instead of using the flags.
 
       When you authenticate with universal auth, an access token will be printed to the console upon successful login. This token can be used to authenticate with the Infisical API and the CLI by passing it in the `--token` flag when applicable.
+
+      Use flag `--plain` along with `--silent` to print only the token in plain text when using the `universal-auth` method. 
+      
     </Info>
 
   </Accordion>
