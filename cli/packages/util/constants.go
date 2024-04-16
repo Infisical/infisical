@@ -15,6 +15,9 @@ const (
 	KEYRING_SERVICE_NAME                        = "infisical"
 	PERSONAL_SECRET_TYPE_NAME                   = "personal"
 	SHARED_SECRET_TYPE_NAME                     = "shared"
+
+	SERVICE_TOKEN_IDENTIFIER        = "service-token"
+	UNIVERSAL_AUTH_TOKEN_IDENTIFIER = "universal-auth-token"
 )
 
 var (

@@ -116,9 +116,9 @@ var runCmd = &cobra.Command{
 			Recursive:     recursive,
 		}
 
-		if token != nil && token.Type == "service-token" {
+		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 			request.InfisicalToken = token.Token
-		} else if token != nil && token.Type == "universal-auth-token" {
+		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 			request.UniversalAuthAccessToken = token.Token
 		}
 
@@ -138,9 +138,9 @@ var runCmd = &cobra.Command{
 
 			authParams := models.ExpandSecretsAuthentication{}
 
-			if token != nil && token.Type == "service-token" {
+			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 				authParams.InfisicalToken = token.Token
-			} else if token != nil && token.Type == "universal-auth-token" {
+			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 				authParams.UniversalAuthAccessToken = token.Token
 			}
 
@@ -179,8 +179,8 @@ var runCmd = &cobra.Command{
 			posthog.NewProperties().
 				Set("secretsCount", len(secrets)).
 				Set("environment", environmentName).
-				Set("isUsingServiceToken", token.Type == "service-token").
-				Set("isUsingUniversalAuthToken", token.Type == "universal-auth-token").
+				Set("isUsingServiceToken", token.Type == util.SERVICE_TOKEN_IDENTIFIER).
+				Set("isUsingUniversalAuthToken", token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER).
 				Set("single-command", strings.Join(args, " ")).
 				Set("multi-command", cmd.Flag("command").Value.String()).
 				Set("version", util.CLI_VERSION))

@@ -87,9 +87,9 @@ var secretsCmd = &cobra.Command{
 			Recursive:     recursive,
 		}
 
-		if token != nil && token.Type == "service-token" {
+		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 			request.InfisicalToken = token.Token
-		} else if token != nil && token.Type == "universal-auth-token" {
+		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 			request.UniversalAuthAccessToken = token.Token
 		}
 
@@ -107,9 +107,9 @@ var secretsCmd = &cobra.Command{
 		if shouldExpandSecrets {
 
 			authParams := models.ExpandSecretsAuthentication{}
-			if token != nil && token.Type == "service-token" {
+			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 				authParams.InfisicalToken = token.Token
-			} else if token != nil && token.Type == "universal-auth-token" {
+			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 				authParams.UniversalAuthAccessToken = token.Token
 			}
 
@@ -467,9 +467,9 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		Recursive:     recursive,
 	}
 
-	if token != nil && token.Type == "service-token" {
+	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 		request.InfisicalToken = token.Token
-	} else if token != nil && token.Type == "universal-auth-token" {
+	} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 		request.UniversalAuthAccessToken = token.Token
 	}
 
@@ -480,9 +480,9 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 
 	if shouldExpand {
 		authParams := models.ExpandSecretsAuthentication{}
-		if token != nil && token.Type == "service-token" {
+		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 			authParams.InfisicalToken = token.Token
-		} else if token != nil && token.Type == "universal-auth-token" {
+		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 			authParams.UniversalAuthAccessToken = token.Token
 		}
 
@@ -554,9 +554,9 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		IncludeImport: true,
 	}
 
-	if token != nil && token.Type == "service-token" {
+	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 		request.InfisicalToken = token.Token
-	} else if token != nil && token.Type == "universal-auth-token" {
+	} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 		request.UniversalAuthAccessToken = token.Token
 	}
 

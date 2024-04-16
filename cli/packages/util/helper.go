@@ -90,13 +90,13 @@ func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err erro
 
 	if strings.HasPrefix(infisicalToken, "st.") {
 		return &models.TokenDetails{
-			Type:  "service-token",
+			Type:  SERVICE_TOKEN_IDENTIFIER,
 			Token: infisicalToken,
 		}, nil
 	}
 
 	return &models.TokenDetails{
-		Type:  "universal-auth-token",
+		Type:  UNIVERSAL_AUTH_TOKEN_IDENTIFIER,
 		Token: infisicalToken,
 	}, nil
 
