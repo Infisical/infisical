@@ -479,7 +479,7 @@ func (tm *AgentManager) GetToken() string {
 
 // Fetches a new access token using client credentials
 func (tm *AgentManager) FetchNewAccessToken() error {
-	clientID := os.Getenv("INFISICAL_UNIVERSAL_AUTH_CLIENT_ID")
+	clientID := os.Getenv(util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
 	if clientID == "" {
 		clientIDAsByte, err := ReadFile(tm.clientIdPath)
 		if err != nil {
@@ -509,7 +509,7 @@ func (tm *AgentManager) FetchNewAccessToken() error {
 	// save as cache in memory
 	tm.cachedClientSecret = clientSecret
 
-	err, loginResponse := universalAuthLogin(clientID, clientSecret)
+	loginResponse, err := util.UniversalAuthLogin(clientID, clientSecret)
 	if err != nil {
 		return err
 	}
@@ -723,20 +723,6 @@ func (tm *AgentManager) MonitorSecretChanges(secretTemplate Template, templateId
 			}
 		}
 	}
-}
-
-func universalAuthLogin(clientId string, clientSecret string) (error, api.UniversalAuthLoginResponse) {
-	httpClient := resty.New()
-	httpClient.SetRetryCount(10000).
-		SetRetryMaxWaitTime(20 * time.Second).
-		SetRetryWaitTime(5 * time.Second)
-
-	tokenResponse, err := api.CallUniversalAuthLogin(httpClient, api.UniversalAuthLoginRequest{ClientId: clientId, ClientSecret: clientSecret})
-	if err != nil {
-		return err, api.UniversalAuthLoginResponse{}
-	}
-
-	return nil, tokenResponse
 }
 
 // runCmd represents the run command

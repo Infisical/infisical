@@ -59,6 +59,11 @@ type DynamicSecretLease struct {
 	Data map[string]interface{} `json:"data"`
 }
 
+type TokenDetails struct {
+	Type  string
+	Token string
+}
+
 type SingleFolder struct {
 	ID   string `json:"_id"`
 	Name string `json:"name"`
@@ -97,10 +102,11 @@ type GetAllSecretsParameters struct {
 }
 
 type GetAllFoldersParameters struct {
-	WorkspaceId    string
-	Environment    string
-	FoldersPath    string
-	InfisicalToken string
+	WorkspaceId              string
+	Environment              string
+	FoldersPath              string
+	InfisicalToken           string
+	UniversalAuthAccessToken string
 }
 
 type CreateFolderParameters struct {
@@ -122,4 +128,9 @@ type DeleteFolderParameters struct {
 type ExpandSecretsAuthentication struct {
 	InfisicalToken           string
 	UniversalAuthAccessToken string
+}
+
+type MachineIdentityCredentials struct {
+	ClientId     string
+	ClientSecret string
 }

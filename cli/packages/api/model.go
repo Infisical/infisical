@@ -528,6 +528,7 @@ type GetRawSecretsV3Request struct {
 	WorkspaceId   string `json:"workspaceId"`
 	SecretPath    string `json:"secretPath"`
 	IncludeImport bool   `json:"include_imports"`
+	Recursive     bool   `json:"recursive"`
 }
 
 type GetRawSecretsV3Response struct {

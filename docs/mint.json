@@ -232,6 +232,7 @@
             "cli/commands/run",
             "cli/commands/secrets",
             "cli/commands/export",
+            "cli/commands/token",
             "cli/commands/service-token",
             "cli/commands/vault",
             "cli/commands/user",
