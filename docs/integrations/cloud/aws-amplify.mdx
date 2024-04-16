@@ -32,7 +32,8 @@ This approach enables you to fetch secrets from Infisical during Amplify build t
       phases:
         preBuild:
           commands:
-            - sudo curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' | sh && yum install -y infisical
+					- sudo curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' | sudo -E bash
+					- sudo yum install infisical
     ```
   </Step>
   <Step title="Modify the build command">
