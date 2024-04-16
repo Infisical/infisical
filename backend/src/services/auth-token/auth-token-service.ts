@@ -27,6 +27,11 @@ export const getTokenConfig = (tokenType: TokenType) => {
       const expiresAt = new Date(new Date().getTime() + 86400000);
       return { token, expiresAt };
     }
+    case TokenType.TOKEN_EMAIL_VERIFICATION: {
+      const token = crypto.randomBytes(16).toString("hex");
+      const expiresAt = new Date(new Date().getTime() + 300000);
+      return { token, expiresAt };
+    }
     case TokenType.TOKEN_EMAIL_MFA: {
       // generate random 6-digit code
       const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));

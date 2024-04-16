@@ -60,7 +60,7 @@ export const authSignupServiceFactory = ({
     });
 
     await smtpService.sendMail({
-      template: SmtpTemplates.EmailVerification,
+      template: SmtpTemplates.SignupEmailVerification,
       subjectLine: "Infisical confirmation code",
       recipients: [email],
       substitutions: {
@@ -129,7 +129,16 @@ export const authSignupServiceFactory = ({
     }
 
     const updateduser = await authDAL.transaction(async (tx) => {
-      const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
+      const us = await userDAL.updateById(
+        user.id,
+        {
+          firstName,
+          lastName,
+          isAccepted: true,
+          isEmailVerified: true
+        },
+        tx
+      );
       if (!us) throw new Error("User not found");
       const userEncKey = await userDAL.upsertUserEncryptionKey(
         us.id,
@@ -243,7 +252,16 @@ export const authSignupServiceFactory = ({
       });
 
     const updateduser = await authDAL.transaction(async (tx) => {
-      const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
+      const us = await userDAL.updateById(
+        user.id,
+        {
+          firstName,
+          lastName,
+          isAccepted: true,
+          isEmailVerified: true
+        },
+        tx
+      );
       if (!us) throw new Error("User not found");
       const userEncKey = await userDAL.upsertUserEncryptionKey(
         us.id,

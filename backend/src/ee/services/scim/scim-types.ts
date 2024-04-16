@@ -37,6 +37,7 @@ export type TCreateScimUserDTO = {
   firstName: string;
   lastName: string;
   orgId: string;
+  externalId: string;
 };
 
 export type TUpdateScimUserDTO = {

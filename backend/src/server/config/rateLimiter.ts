@@ -41,8 +41,8 @@ export const secretsLimit: RateLimitOptions = {
 };
 
 export const authRateLimit: RateLimitOptions = {
-  timeWindow: 60 * 1000,
-  max: 60,
+  timeWindow: 5 * 60 * 1000,
+  max: 30,
   keyGenerator: (req) => req.realIp
 };
 

@@ -16,6 +16,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -43,6 +44,7 @@ import {
 type TScimServiceFactoryDep = {
   scimDAL: Pick<TScimDALFactory, "create" | "find" | "findById" | "deleteById">;
   userDAL: Pick<TUserDALFactory, "findOne" | "create" | "transaction">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "create">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "findById" | "findMembership" | "deleteMembershipById" | "transaction"
@@ -231,7 +233,7 @@ export const scimServiceFactory = ({
     });
   };
 
-  const createScimUser = async ({ username, email, firstName, lastName, orgId }: TCreateScimUserDTO) => {
+  const createScimUser = async ({ orgId, username, email, firstName, lastName }: TCreateScimUserDTO) => {
     const org = await orgDAL.findById(orgId);
 
     if (!org)
@@ -473,7 +475,19 @@ export const scimServiceFactory = ({
   };
 
   const listScimGroups = async ({ orgId, offset, limit }: TListScimGroupsDTO) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to list SCIM groups due to plan restriction. Upgrade plan to list SCIM groups."
+      });
+
     const org = await orgDAL.findById(orgId);
+    if (!org) {
+      throw new ScimRequestError({
+        detail: "Organization Not Found",
+        status: 404
+      });
+    }
 
     if (!org.scimEnabled)
       throw new ScimRequestError({
@@ -501,7 +515,19 @@ export const scimServiceFactory = ({
   };
 
   const createScimGroup = async ({ displayName, orgId }: TCreateScimGroupDTO) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to create a SCIM group due to plan restriction. Upgrade plan to create a SCIM group."
+      });
+
     const org = await orgDAL.findById(orgId);
+    if (!org) {
+      throw new ScimRequestError({
+        detail: "Organization Not Found",
+        status: 404
+      });
+    }
 
     if (!org.scimEnabled)
       throw new ScimRequestError({
@@ -524,6 +550,12 @@ export const scimServiceFactory = ({
   };
 
   const getScimGroup = async ({ groupId, orgId }: TGetScimGroupDTO) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to get SCIM group due to plan restriction. Upgrade plan to get SCIM group."
+      });
+
     const group = await groupDAL.findOne({
       id: groupId,
       orgId
@@ -554,6 +586,26 @@ export const scimServiceFactory = ({
   };
 
   const updateScimGroupNamePut = async ({ groupId, orgId, displayName }: TUpdateScimGroupNamePutDTO) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
+      });
+
+    const org = await orgDAL.findById(orgId);
+    if (!org) {
+      throw new ScimRequestError({
+        detail: "Organization Not Found",
+        status: 404
+      });
+    }
+
+    if (!org.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
     const [group] = await groupDAL.update(
       {
         id: groupId,
@@ -580,7 +632,19 @@ export const scimServiceFactory = ({
 
   // TODO: add support for add/remove op
   const updateScimGroupNamePatch = async ({ groupId, orgId, operations }: TUpdateScimGroupNamePatchDTO) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
+      });
+
     const org = await orgDAL.findById(orgId);
+    if (!org) {
+      throw new ScimRequestError({
+        detail: "Organization Not Found",
+        status: 404
+      });
+    }
 
     if (!org.scimEnabled)
       throw new ScimRequestError({
@@ -635,6 +699,26 @@ export const scimServiceFactory = ({
   };
 
   const deleteScimGroup = async ({ groupId, orgId }: TDeleteScimGroupDTO) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to delete SCIM group due to plan restriction. Upgrade plan to delete SCIM group."
+      });
+
+    const org = await orgDAL.findById(orgId);
+    if (!org) {
+      throw new ScimRequestError({
+        detail: "Organization Not Found",
+        status: 404
+      });
+    }
+
+    if (!org.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
     const [group] = await groupDAL.delete({
       id: groupId,
       orgId

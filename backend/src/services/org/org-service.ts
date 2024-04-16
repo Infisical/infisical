@@ -175,7 +175,8 @@ export const orgServiceFactory = ({
         authMethods: [AuthMethod.EMAIL],
         username: email,
         email,
-        isAccepted: true
+        isAccepted: true,
+        isEmailVerified: false
       },
       tx
     );
