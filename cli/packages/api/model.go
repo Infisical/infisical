@@ -371,6 +371,22 @@ type ImportedSecretV3 struct {
 	Secrets     []EncryptedSecretV3 `json:"secrets"`
 }
 
+type ImportedRawSecretV3 struct {
+	SecretPath  string `json:"secretPath"`
+	Environment string `json:"environment"`
+	FolderId    string `json:"folderId"`
+	Secrets     []struct {
+		ID            string `json:"id"`
+		Workspace     string `json:"workspace"`
+		Environment   string `json:"environment"`
+		Version       int    `json:"version"`
+		Type          string `json:"type"`
+		SecretKey     string `json:"secretKey"`
+		SecretValue   string `json:"secretValue"`
+		SecretComment string `json:"secretComment"`
+	} `json:"secrets"`
+}
+
 type GetEncryptedSecretsV3Response struct {
 	Secrets         []EncryptedSecretV3 `json:"secrets"`
 	ImportedSecrets []ImportedSecretV3  `json:"imports,omitempty"`
@@ -542,6 +558,6 @@ type GetRawSecretsV3Response struct {
 		SecretValue   string `json:"secretValue"`
 		SecretComment string `json:"secretComment"`
 	} `json:"secrets"`
-	Imports []any `json:"imports"`
+	Imports []ImportedRawSecretV3 `json:"imports"`
 	ETag    string
 }
