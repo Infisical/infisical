@@ -179,8 +179,8 @@ var runCmd = &cobra.Command{
 			posthog.NewProperties().
 				Set("secretsCount", len(secrets)).
 				Set("environment", environmentName).
-				Set("isUsingServiceToken", token.Type == util.SERVICE_TOKEN_IDENTIFIER).
-				Set("isUsingUniversalAuthToken", token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER).
+				Set("isUsingServiceToken", token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER).
+				Set("isUsingUniversalAuthToken", token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER).
 				Set("single-command", strings.Join(args, " ")).
 				Set("multi-command", cmd.Flag("command").Value.String()).
 				Set("version", util.CLI_VERSION))
