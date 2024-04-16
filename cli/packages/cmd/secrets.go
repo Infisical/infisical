@@ -39,6 +39,7 @@ var secretsCmd = &cobra.Command{
 		}
 
 		token, err := util.GetInfisicalToken(cmd)
+
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -116,6 +117,7 @@ var secretsCmd = &cobra.Command{
 			secrets = util.ExpandSecrets(secrets, authParams, "")
 		}
 
+		util.HandleSendTestSecrets(cmd, secrets)
 		visualize.PrintAllSecretDetails(secrets)
 		Telemetry.CaptureEvent("cli-command:secrets", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 	},
@@ -504,6 +506,8 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 			})
 		}
 	}
+
+	util.HandleSendTestSecrets(cmd, requestedSecrets)
 
 	if showOnlyValue && len(requestedSecrets) > 1 {
 		util.PrintErrorMessageAndExit("--raw-value only works with one secret.")
