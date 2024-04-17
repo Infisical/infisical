@@ -31,7 +31,10 @@ func ExportSecrets(t *testing.T, authToken string, projectId string, envSlug str
 
 	var secrets []models.SingleEnvironmentVariable
 
-	json.Unmarshal(commandOutput.Bytes(), &secrets)
+	err := json.Unmarshal(commandOutput.Bytes(), &secrets)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+	}
 
 	expectedLength := len(ALL_SECRETS) - 1 // -1 because the default path is "/", and the secret in /folder will not be found.
 
@@ -68,7 +71,10 @@ func ExportSecretsWithoutImports(t *testing.T, authToken string, projectId strin
 
 	var secrets []models.SingleEnvironmentVariable
 
-	json.Unmarshal(commandOutput.Bytes(), &secrets)
+	err := json.Unmarshal(commandOutput.Bytes(), &secrets)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+	}
 
 	assert.Len(t, secrets, len(DEV_SECRETS))
 

@@ -33,7 +33,10 @@ func ListSecretsWithImportsAndRecursive(t *testing.T, authToken string, projectI
 
 	var secrets []models.SingleEnvironmentVariable
 
-	json.Unmarshal(commandOutput.Bytes(), &secrets)
+	err := json.Unmarshal(commandOutput.Bytes(), &secrets)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+	}
 
 	if len(secrets) == 0 {
 		t.Errorf("No secrets found")
@@ -79,7 +82,10 @@ func GetSecretsByNames(t *testing.T, authToken string, projectId string, envSlug
 
 	var secrets []models.SingleEnvironmentVariable
 
-	json.Unmarshal(commandOutput.Bytes(), &secrets)
+	err := json.Unmarshal(commandOutput.Bytes(), &secrets)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+	}
 
 	assert.Len(t, secrets, len(ALL_SECRETS))
 
