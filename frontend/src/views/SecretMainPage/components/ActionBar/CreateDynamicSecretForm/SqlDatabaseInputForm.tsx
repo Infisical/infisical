@@ -80,9 +80,10 @@ const getSqlStatements = (provider: SqlProviders) => {
   if (provider === SqlProviders.Oracle) {
     return {
       creationStatement:
-        'CREATE USER "{{username}}" IDENTIFIED BY \'{{password}}\';\nGRANT CONNECT TO "{{username}}";\nGRANT CREATE SESSION TO "{{username}}";',
+        'CREATE USER "{{username}}" IDENTIFIED BY "{{password}}";\nGRANT CONNECT TO "{{username}}";\nGRANT CREATE SESSION TO "{{username}}";',
       renewStatement: "",
-      revocationStatement: 'REVOKE ALL PRIVILEGES FROM "{{username}}";\nDROP USER "{{username}}";'
+      revocationStatement:
+        'REVOKE CONNECT FROM "{{username}}";\nREVOKE CREATE SESSION FROM "{{username}}";\nDROP USER "{{username}}";'
     };
   }
 
