@@ -93,9 +93,7 @@ export const identityProjectServiceFactory = ({
       const identityProjectMembership = await identityProjectDAL.create(
         {
           identityId,
-          projectId: project.id,
-          role: isCustomRole ? ProjectMembershipRole.Custom : role,
-          roleId: customRole?.id
+          projectId: project.id
         },
         tx
       );

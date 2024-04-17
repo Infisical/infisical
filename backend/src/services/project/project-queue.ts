@@ -232,8 +232,7 @@ export const projectQueueFactory = ({
         const projectMembership = await projectMembershipDAL.create(
           {
             projectId: project.id,
-            userId: ghostUser.user.id,
-            role: ProjectMembershipRole.Admin
+            userId: ghostUser.user.id
           },
           tx
         );

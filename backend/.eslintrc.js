@@ -23,16 +23,17 @@ module.exports = {
   root: true,
   overrides: [
     {
-      files: ["./e2e-test/**/*"],
+      files: ["./e2e-test/**/*", "./src/db/migrations/**/*"],
       rules: {
         "@typescript-eslint/no-unsafe-member-access": "off",
         "@typescript-eslint/no-unsafe-assignment": "off",
         "@typescript-eslint/no-unsafe-argument": "off",
         "@typescript-eslint/no-unsafe-return": "off",
-        "@typescript-eslint/no-unsafe-call": "off",
+        "@typescript-eslint/no-unsafe-call": "off"
       }
     }
   ],
+
   rules: {
     "@typescript-eslint/no-empty-function": "off",
     "@typescript-eslint/no-unsafe-enum-comparison": "off",

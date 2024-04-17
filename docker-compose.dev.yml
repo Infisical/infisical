@@ -66,6 +66,8 @@ services:
     environment:
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
     command: npm run migration:latest
+    volumes:
+      - ./backend/src:/app/src
 
   backend:
     container_name: infisical-dev-api
