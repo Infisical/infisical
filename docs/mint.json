@@ -142,7 +142,8 @@
           "group": "Dynamic Secrets",
           "pages": [
             "documentation/platform/dynamic-secrets/overview",
-            "documentation/platform/dynamic-secrets/postgresql"
+            "documentation/platform/dynamic-secrets/postgresql",
+            "documentation/platform/dynamic-secrets/mysql"
           ]
         },
         "documentation/platform/groups"

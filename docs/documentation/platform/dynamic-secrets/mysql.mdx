@@ -1,9 +1,9 @@
 ---
-title: "PostgreSQL"
-description: "Learn how to dynamically generate PostgreSQL Database user passwords."
+title: "MySQL"
+description: "Learn how to dynamically generate MySQL Database user passwords."
 ---
 
-The Infisical PostgreSQL secret rotation allows you to automatically rotate your PostgreSQL database user's password at a predefined interval.
+The Infisical MySQL secret rotation allows you to automatically rotate your MySQL database user's password at a predefined interval.
 
 
 ## Prerequisite
@@ -11,7 +11,7 @@ The Infisical PostgreSQL secret rotation allows you to automatically rotate your
 1. Create a user with the required permission in your SQL instance.
 
 
-## Set up Dynamic Secrets with PostgreSQL
+## Set up Dynamic Secrets with MySQL
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -37,7 +37,7 @@ The Infisical PostgreSQL secret rotation allows you to automatically rotate your
 	</ParamField>
 
 	<ParamField path="Service" type="string" required>
-		Choose the service you want to generate dynamic secrets for. This must be selected as **PostgreSQL**.
+		Choose the service you want to generate dynamic secrets for. This must be selected as **MySQL**.
 	</ParamField>
 
 	<ParamField path="Host" type="string" required>
@@ -64,13 +64,13 @@ The Infisical PostgreSQL secret rotation allows you to automatically rotate your
 		A CA may be required if your DB requires it for incoming connections. AWS RDS instances with default settings will requires a CA which can be downloaded [here](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions).
 	</ParamField>
 
-	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal.png)
+	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-mysql.png)
 
   </Step>
   <Step title="(Optional) Modify SQL Statements">
   	If you want to provide specific privileges for the future generated dynamic secrets, you are able to specify them as SQL statements. 
 
-	![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statements.png)
+	![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statements-mysql.png)
   </Step>
   <Step title="Click `Submit`">
   	After submitting the form, you will see a dynamic secret creates in the dashboard. 
