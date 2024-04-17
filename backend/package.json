@@ -112,6 +112,7 @@
     "nanoid": "^5.0.4",
     "nodemailer": "^6.9.9",
     "ora": "^7.0.1",
+    "oracledb": "^6.4.0",
     "passport-github": "^1.1.0",
     "passport-gitlab2": "^5.0.0",
     "passport-google-oauth20": "^2.0.0",
