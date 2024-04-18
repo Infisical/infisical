@@ -174,6 +174,7 @@ var runCmd = &cobra.Command{
 		}
 
 		log.Debug().Msgf("injecting the following environment variables into shell: %v", env)
+		util.HandleSendTestEnvVars(cmd, env)
 
 		Telemetry.CaptureEvent("cli-command:run",
 			posthog.NewProperties().
@@ -310,7 +311,10 @@ func execCmd(cmd *exec.Cmd) error {
 		return fmt.Errorf("failed to wait for command termination: %v", err)
 	}
 
-	waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
-	os.Exit(waitStatus.ExitStatus())
+	if !util.IS_TEST_MODE {
+		waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
+		os.Exit(waitStatus.ExitStatus())
+	}
+
 	return nil
 }
