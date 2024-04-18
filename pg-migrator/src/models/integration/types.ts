@@ -5,4 +5,8 @@ export type Metadata = {
         labelName: string;
         labelValue: string;
     }
+    secretAWSTag?: {
+        key: string;
+        value: string;
+    }
 }

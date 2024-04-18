@@ -56,7 +56,14 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
                 labelValue: z.string()
               })
               .optional()
-              .describe(INTEGRATION.CREATE.metadata.secretGCPLabel)
+              .describe(INTEGRATION.CREATE.metadata.secretGCPLabel),
+            secretAWSTag: z
+              .object({
+                key: z.string(),
+                value: z.string()
+              })
+              .optional()
+              .describe(INTEGRATION.CREATE.metadata.secretAWSTag)
           })
           .optional()
       }),
