@@ -1,9 +1,9 @@
 ---
 title: "PostgreSQL"
-description: "Learn how to dynamically generate PostgreSQL Database user passwords."
+description: "How to dynamically generate PostgreSQL database users"
 ---
 
-The Infisical PostgreSQL dynamic secret allows you to generate PostgreSQL Database credentials on demand based on configured role.
+The Infisical PostgreSQL dynamic secret allows you to generate PostgreSQL database credentials on demand based on configured role.
 
 ## Prerequisite
 
@@ -16,7 +16,7 @@ Create a user with the required permission in your SQL instance. This user will 
   <Step title="Open Secret Overview Dashboard">
 	Open the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret.
   </Step>
-  <Step title="Click on the `Add Dynamic Secret` button">
+  <Step title="Click on the 'Add Dynamic Secret' button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
   </Step>
   <Step title="Select `SQL Database`">
@@ -67,43 +67,52 @@ Create a user with the required permission in your SQL instance. This user will 
 
   </Step>
   <Step title="(Optional) Modify SQL Statements">
-  	If you want to provide specific privileges for the future generated dynamic secrets, you are able to specify them as SQL statements. 
+  	If you want to provide specific privileges for the generated dynamic credentials, you can modify the SQL statement to your needs. This is useful if you want to only give access to a specific table(s).
 
 	![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statements.png)
   </Step>
-  <Step title="Click `Submit`">
-  	After submitting the form, you will see a dynamic secret creates in the dashboard. 
+  <Step title="Click 'Submit'">
+  	After submitting the form, you will see a dynamic secret created in the dashboard. 
 
 	<Note>
-		If this step fails, you might have to add the CA certficate. 
+		If this step fails, you may have to add the CA certficate. 
 	</Note>
 
 	![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret.png)
   </Step>
   <Step title="Generate dynamic secrets">
-	Once you've successfully created the dynamic secret, you're all set to generate unique secret values. To do this, simply click on the Generate button located in the respective row. Alternatively, you can initiate the creation of a new lease by selecting New Leases from the dynamic secret lease list section, accessible by clicking on the relevant row.
+	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials. 
+	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item. 
+	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
-	![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret-generate.png)
-	![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
+	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
+	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
 
-	When generating these secrets, it's important to specify a Time-to-Live (TTL) duration within the predefined range. Ensure that the TTL falls within the maximum TTL defined in the previous step to maintain consistency and security.
+	When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate how long the credentials are valid for.
 
-	![Provision Lease](../../../images/platform/dynamic-secrets/provision-lease.png)
+	![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
 
-	After you click the `Submit` button, a new secret lease will be generated and the Database User and Database Password will be shown. 
+	<Tip>
+		Ensure that the TTL for the lease fall within the maximum TTL defined when configuring the dynamic secret.
+	</Tip>
 
-	![Provision Lease](../../../images/platform/dynamic-secrets/lease-values.png)
+
+	Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you. 
+
+	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
   </Step>
 </Steps>
 
 ## Audit or Revoke Leases
-As soon as you have generated a few secret leases, you will be able to access them by clicking on the respective dynamic secret row. In this modal, you are able to see the expiration time or delete a secret preemptively.
+Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard. 
+This will allow you see the expiration time of the lease or delete the lease before it's set time to live.
 
-![Provision Lease](../../../images/platform/dynamic-secrets/lease-data.png)
+![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew Leases
+To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** as illustrated below.
+![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
-![Provision Lease](../../../images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
-
-To extend the expiration of generated dynamic secret leases, simply click on the **Renew** button located above, as illustrated. This action also allows for an extension of the Time-to-Live (TTL). 
-However, it's crucial to note that the expiry cannot exceed the maximum TTL from created, specified in the configuration settings.
+<Warning>
+	Lease renewals cannot exceed the maximum TTL set when configuring the dynamic secret
+</Warning>
