@@ -192,7 +192,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log(`GET /Users/${req.params.userId}`);
       const user = await req.server.services.scim.getScimUser({
         userId: req.params.userId,
         orgId: req.permission.orgId
@@ -247,7 +246,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log(`POST /Users req.body: `, req.body);
       const primaryEmail = req.body.emails?.find((email) => email.primary)?.value;
 
       const user = await req.server.services.scim.createScimUser({
@@ -275,7 +273,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log(`DELETE /Users/${req.params.userId}`);
       const user = await req.server.services.scim.deleteScimUser({
         userId: req.params.userId,
         orgId: req.permission.orgId
@@ -322,7 +319,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log(`POST /Groups req.body: `, req.body);
       const group = await req.server.services.scim.createScimGroup({
         orgId: req.permission.orgId,
         ...req.body
@@ -363,7 +359,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log(`GET /Groups req.query: `, req.query);
       const groups = await req.server.services.scim.listScimGroups({
         orgId: req.permission.orgId,
         offset: req.query.startIndex,
@@ -400,7 +395,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log(`GET /Groups/${req.params.groupId}`);
       const group = await req.server.services.scim.getScimGroup({
         groupId: req.params.groupId,
         orgId: req.permission.orgId
@@ -446,7 +440,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log(`PUT /Groups/${req.params.groupId} req.body: `, req.body);
       const group = await req.server.services.scim.updateScimGroupNamePut({
         groupId: req.params.groupId,
         orgId: req.permission.orgId,
@@ -508,7 +501,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log(`PATCH /Groups/:${req.params.groupId} req.body: `, req.body);
       const group = await req.server.services.scim.updateScimGroupNamePatch({
         groupId: req.params.groupId,
         orgId: req.permission.orgId,
@@ -532,7 +524,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log(`DELETE /Groups/:${req.params.groupId}`);
       const group = await req.server.services.scim.deleteScimGroup({
         groupId: req.params.groupId,
         orgId: req.permission.orgId
@@ -583,7 +574,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log(`PUT /Users/:${req.params.userId} req.body: `, req.body);
       const user = await req.server.services.scim.replaceScimUser({
         userId: req.params.userId,
         orgId: req.permission.orgId,

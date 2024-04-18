@@ -187,7 +187,6 @@ export const authSignupServiceFactory = ({
     const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
     await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
 
-    console.log("conv A");
     await convertPendingGroupAdditionsToGroupMemberships({
       userIds: [user.id],
       userDAL,
@@ -199,7 +198,6 @@ export const authSignupServiceFactory = ({
       projectDAL,
       projectBotDAL
     });
-    console.log("conv B");
 
     const tokenSession = await tokenService.getUserTokenSession({
       userAgent,
@@ -258,16 +256,13 @@ export const authSignupServiceFactory = ({
     encryptedPrivateKeyTag,
     authorization
   }: TCompleteAccountInviteDTO) => {
-    console.log("conv 0");
     const user = await userDAL.findUserByUsername(email);
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
 
-    console.log("conv 1");
     validateSignUpAuthorization(authorization, user.id);
 
-    console.log("conv 2");
     const [orgMembership] = await orgDAL.findMembership({
       inviteEmail: email,
       status: OrgMembershipStatus.Invited
@@ -278,12 +273,9 @@ export const authSignupServiceFactory = ({
         name: "complete account invite"
       });
 
-    console.log("conv 3");
     const updateduser = await authDAL.transaction(async (tx) => {
-      console.log("conv 4");
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
-      console.log("conv 5");
       const userEncKey = await userDAL.upsertUserEncryptionKey(
         us.id,
         {
@@ -300,19 +292,15 @@ export const authSignupServiceFactory = ({
         },
         tx
       );
-      console.log("conv 6");
 
       const updatedMembersips = await orgDAL.updateMembership(
         { inviteEmail: email, status: OrgMembershipStatus.Invited },
         { userId: us.id, status: OrgMembershipStatus.Accepted },
         tx
       );
-      console.log("conv 7");
       const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
-      console.log("conv 8");
       await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
 
-      console.log("conv AA");
       await convertPendingGroupAdditionsToGroupMemberships({
         userIds: [user.id],
         userDAL,
@@ -325,7 +313,6 @@ export const authSignupServiceFactory = ({
         projectBotDAL,
         tx
       });
-      console.log("conv BB");
 
       return { info: us, key: userEncKey };
     });

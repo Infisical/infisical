@@ -658,9 +658,6 @@ export const removeUsersFromGroupByUserIds = async ({
       }
     });
 
-    console.log("removeUsersFromGroupByUserIds membersToRemoveFromGroupDirectly: ", membersToRemoveFromGroupDirectly);
-    console.log("removeUsersFromGroupByUserIds membersToRemoveFromGroupPending: ", membersToRemoveFromGroupPending);
-
     let removedUsers: TUsers[] = [];
 
     if (membersToRemoveFromGroupDirectly.length) {

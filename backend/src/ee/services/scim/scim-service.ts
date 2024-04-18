@@ -633,13 +633,6 @@ export const scimServiceFactory = ({
   };
 
   const updateScimGroupNamePut = async ({ groupId, orgId, displayName, members }: TUpdateScimGroupNamePutDTO) => {
-    console.log("updateScimGroupNamePut args: ", {
-      groupId,
-      orgId,
-      displayName,
-      members
-    });
-
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
       throw new BadRequestError({

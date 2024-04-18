@@ -248,7 +248,7 @@ export const orgServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Scim);
     }
 
-    if (authEnforced || scimEnabled) {
+    if (authEnforced) {
       const samlCfg = await samlConfigDAL.findEnforceableSamlCfg(orgId);
       if (!samlCfg)
         throw new BadRequestError({
