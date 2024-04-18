@@ -1,16 +1,16 @@
 ---
-title: "MySQL"
-description: "Learn how to dynamically generate MySQL Database user passwords."
+title: "Oracle"
+description: "Learn how to dynamically generate Oracle Database user passwords."
 ---
 
-The Infisical MySQL dynamic secret allows you to generate MySQL Database credentials on demand based on configured role.
+The Infisical Oracle dynamic secret allows you to generate Oracle Database credentials on demand based on configured role.
 
 ## Prerequisite
 
 1. Create a user with the required permission in your SQL instance.
 
 
-## Set up Dynamic Secrets with MySQL
+## Set up Dynamic Secrets with Oracle
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -36,7 +36,7 @@ The Infisical MySQL dynamic secret allows you to generate MySQL Database credent
 	</ParamField>
 
 	<ParamField path="Service" type="string" required>
-		Choose the service you want to generate dynamic secrets for. This must be selected as **MySQL**.
+		Choose the service you want to generate dynamic secrets for. This must be selected as **Oracle**.
 	</ParamField>
 
 	<ParamField path="Host" type="string" required>
@@ -63,13 +63,13 @@ The Infisical MySQL dynamic secret allows you to generate MySQL Database credent
 		A CA may be required if your DB requires it for incoming connections. AWS RDS instances with default settings will requires a CA which can be downloaded [here](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions).
 	</ParamField>
 
-	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-mysql.png)
+	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-oracle.png)
 
   </Step>
   <Step title="(Optional) Modify SQL Statements">
   	If you want to provide specific privileges for the future generated dynamic secrets, you are able to specify them as SQL statements. 
 
-	![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statements-mysql.png)
+	![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statements-oracle.png)
   </Step>
   <Step title="Click `Submit`">
   	After submitting the form, you will see a dynamic secret creates in the dashboard. 
