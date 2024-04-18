@@ -30,12 +30,9 @@ import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUsernameBatch" | "transaction" | "findOne">;
-  groupDAL: Pick<
-    TGroupDALFactory,
-    "create" | "findOne" | "update" | "delete" | "findAllGroupMembers" | "countGroupMembers"
-  >;
+  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "update" | "delete" | "findAllGroupMembers">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     "findOne" | "delete" | "filterProjectsByUserMembership" | "transaction" | "insertMany" | "find"
@@ -230,12 +227,9 @@ export const groupServiceFactory = ({
       username
     });
 
-    const totalCount = await groupDAL.countGroupMembers({
-      orgId: group.orgId,
-      groupId: group.id
-    });
+    const count = await orgDAL.countAllOrgMembers(group.orgId);
 
-    return { users, totalCount };
+    return { users, totalCount: count };
   };
 
   const addUserToGroup = async ({

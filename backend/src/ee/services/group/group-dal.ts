@@ -59,37 +59,6 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countGroupMembers = async ({ orgId, groupId }: { orgId: string; groupId: string }) => {
-    try {
-      interface CountResult {
-        count: string;
-      }
-
-      const directCount = await db<CountResult>(TableName.OrgMembership)
-        .where(`${TableName.OrgMembership}.orgId`, orgId)
-        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.UserGroupMembership, function () {
-          this.on(`${TableName.UserGroupMembership}.userId`, "=", `${TableName.Users}.id`).andOn(
-            `${TableName.UserGroupMembership}.groupId`,
-            "=",
-            db.raw("?", [groupId])
-          );
-        })
-        .where({ isGhost: false, isAccepted: true })
-        .count(`${TableName.Users}.id`)
-        .first();
-
-      const pendingCount = await db<CountResult>(TableName.PendingGroupAddition)
-        .where(`${TableName.PendingGroupAddition}.groupId`, groupId)
-        .count("*")
-        .first();
-
-      return parseInt((directCount?.count as string) || "0", 10) + parseInt((pendingCount?.count as string) || "0", 10);
-    } catch (err) {
-      throw new DatabaseError({ error: err, name: "Count all direct group members" });
-    }
-  };
-
   // special query
   const findAllGroupMembers = async ({
     orgId,
@@ -160,7 +129,6 @@ export const groupDALFactory = (db: TDbClient) => {
       const members = await query;
 
       return members.map(({ email, username: memberUsername, firstName, lastName, userId, isPartOfGroup }) => ({
-        // TODO: fix type
         id: userId,
         email,
         username: memberUsername,
@@ -176,7 +144,6 @@ export const groupDALFactory = (db: TDbClient) => {
   return {
     findGroups,
     findByOrgId,
-    countGroupMembers,
     findAllGroupMembers,
     ...groupOrm
   };

@@ -45,7 +45,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
-
       const users = await server.services.org.findAllOrgMembers(
         req.permission.id,
         req.params.organizationId,
