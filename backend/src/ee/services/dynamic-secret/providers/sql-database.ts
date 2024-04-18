@@ -13,7 +13,7 @@ import { DynamicSecretSqlDBSchema, SqlProviders, TDynamicProviderFns } from "./m
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 const generatePassword = (provider: SqlProviders) => {
-  // for now everyone else oracle can accept 48 password length
+  // oracle has limit of 48 password length
   const size = provider === SqlProviders.Oracle ? 30 : 48;
 
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
@@ -21,7 +21,7 @@ const generatePassword = (provider: SqlProviders) => {
 };
 
 const generateUsername = (provider: SqlProviders) => {
-  // for oracle without quotes in client it assumes everything is uppercase
+  // For oracle, the client assumes everything is upper case when not using quotes around the password
   if (provider === SqlProviders.Oracle) return alphaNumericNanoId(32).toUpperCase();
 
   return alphaNumericNanoId(32);
