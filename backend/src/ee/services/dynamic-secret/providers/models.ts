@@ -2,7 +2,8 @@ import { z } from "zod";
 
 export enum SqlProviders {
   Postgres = "postgres",
-  MySQL = "mysql2"
+  MySQL = "mysql2",
+  Oracle = "oracledb"
 }
 
 export const DynamicSecretSqlDBSchema = z.object({

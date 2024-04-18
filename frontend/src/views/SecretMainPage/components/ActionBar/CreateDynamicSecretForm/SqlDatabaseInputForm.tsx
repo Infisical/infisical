@@ -77,6 +77,16 @@ const getSqlStatements = (provider: SqlProviders) => {
     };
   }
 
+  if (provider === SqlProviders.Oracle) {
+    return {
+      creationStatement:
+        'CREATE USER "{{username}}" IDENTIFIED BY "{{password}}";\nGRANT CONNECT TO "{{username}}";\nGRANT CREATE SESSION TO "{{username}}";',
+      renewStatement: "",
+      revocationStatement:
+        'REVOKE CONNECT FROM "{{username}}";\nREVOKE CREATE SESSION FROM "{{username}}";\nDROP USER "{{username}}";'
+    };
+  }
+
   return {
     creationStatement:
       "CREATE USER \"{{username}}\" WITH ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';\nGRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"{{username}}\";",
@@ -208,6 +218,7 @@ export const SqlDatabaseInputForm = ({
                     >
                       <SelectItem value={SqlProviders.Postgres}>PostgreSQL</SelectItem>
                       <SelectItem value={SqlProviders.MySql}>MySQL</SelectItem>
+                      <SelectItem value={SqlProviders.Oracle}>Oracle</SelectItem>
                     </Select>
                   </FormControl>
                 )}
