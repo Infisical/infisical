@@ -14,13 +14,11 @@ import {
   TRemoveUsersFromPendingGroupAdditions
 } from "./group-types";
 
-// TODO: write docstrings
-
 /**
- * Add users with usernames [usernames] to group [group]
- * @param {group} group - group to add user to
+ * Add users with usernames [usernames] to group [group] directly.
+ * - Users must have finished completing their account and have private key(s).
+ * @param {group} group - group to add user(s) to
  * @param {string[]} usernames - username(s) of user(s) to add to group
- * @returns {Promise<TUsers>} - user that was added to group
  */
 export const addUsersToGroupDirectly = async ({
   group,
@@ -206,6 +204,12 @@ export const addUsersToGroupDirectly = async ({
   });
 };
 
+/**
+ * Add users with user ids [userIds] to group [group] via pending group additions.
+ * - Users must have not finished completing their accounts (i.e. they don't have private key(s) yet).
+ * @param {group} group - group to add user(s) to
+ * @param {string[]} userIds - id(s) of user(s) to add to group
+ */
 export const addUsersToPendingGroupAdditions = async ({
   group,
   userIds,
@@ -299,6 +303,13 @@ export const addUsersToPendingGroupAdditions = async ({
   });
 };
 
+/**
+ * Add users with user ids [userIds] to group [group].
+ * - Users may or may not have finished completing their accounts; this function will
+ * handle both adding users to groups directly and via pending group additions.
+ * @param {group} group - group to add user(s) to
+ * @param {string[]} userIds - id(s) of user(s) to add to group
+ */
 export const addUsersToGroupByUserIds = async ({
   group,
   userIds,
@@ -386,6 +397,12 @@ export const addUsersToGroupByUserIds = async ({
   });
 };
 
+/**
+ * Remove users with user ids [userIds] from group [group].
+ * - Users must be directly added to the group.
+ * @param {group} group - group to remove user(s) from
+ * @param {string[]} userIds - id(s) of user(s) to remove from group
+ */
 export const removeUsersFromGroupDirectly = async ({
   group,
   userIds,
@@ -485,6 +502,12 @@ export const removeUsersFromGroupDirectly = async ({
   });
 };
 
+/**
+ * Remove users with user ids [userIds] from group [group] via pending group additions.
+ * - Users must have pending group additions to the group.
+ * @param {group} group - group to remove user(s) from
+ * @param {string[]} userIds - id(s) of user(s) to remove from group
+ */
 export const removeUsersFromPendingGroupAdditions = async ({
   group,
   userIds,
@@ -552,71 +575,13 @@ export const removeUsersFromPendingGroupAdditions = async ({
   });
 };
 
-export const convertPendingGroupAdditionsToGroupMemberships = async ({
-  userIds,
-  userDAL,
-  pendingGroupAdditionDAL,
-  userGroupMembershipDAL,
-  orgDAL,
-  groupProjectDAL,
-  projectKeyDAL,
-  projectDAL,
-  projectBotDAL,
-  tx: outerTx
-}: TConvertPendingGroupAdditionsToGroupMemberships) => {
-  const processConversion = async (tx: Knex) => {
-    const users = await userDAL.find(
-      {
-        $in: {
-          id: userIds
-        }
-      },
-      { tx }
-    );
-
-    const usersUserIdsSet = new Set(users.map((u) => u.id));
-    userIds.forEach((userId) => {
-      if (!usersUserIdsSet.has(userId)) {
-        throw new BadRequestError({
-          message: `Failed to find user with id ${userId}`
-        });
-      }
-    });
-
-    users.forEach((user) => {
-      if (!user.isAccepted) {
-        throw new BadRequestError({
-          message: `Failed to convert pending group additions to group memberships for user ${user.username} because they have not confirmed their account`
-        });
-      }
-    });
-
-    const pendingGroupAdditions = await pendingGroupAdditionDAL.deletePendingGroupAdditionsByUserIds(userIds, tx);
-
-    for await (const pendingGroupAddition of pendingGroupAdditions) {
-      await addUsersToGroupDirectly({
-        group: pendingGroupAddition.group,
-        usernames: [pendingGroupAddition.user.username],
-        userDAL,
-        userGroupMembershipDAL,
-        orgDAL,
-        groupProjectDAL,
-        projectKeyDAL,
-        projectDAL,
-        projectBotDAL,
-        tx
-      });
-    }
-  };
-
-  if (outerTx) {
-    return processConversion(outerTx);
-  }
-  return userDAL.transaction(async (tx) => {
-    await processConversion(tx);
-  });
-};
-
+/**
+ * Remove users with user ids [userIds] from group [group].
+ * - Users may be part of the group directly or via pending group additions;
+ * this function will handle both cases.
+ * @param {group} group - group to remove user(s) from
+ * @param {string[]} userIds - id(s) of user(s) to remove from group
+ */
 export const removeUsersFromGroupByUserIds = async ({
   group,
   userIds,
@@ -694,5 +659,74 @@ export const removeUsersFromGroupByUserIds = async ({
   }
   return userDAL.transaction(async (tx) => {
     return processRemoval(tx);
+  });
+};
+
+/**
+ * Convert pending group additions for users with ids [userIds] to group memberships.
+ * @param {string[]} userIds - id(s) of user(s) to try to convert pending group additions to group memberships
+ */
+export const convertPendingGroupAdditionsToGroupMemberships = async ({
+  userIds,
+  userDAL,
+  pendingGroupAdditionDAL,
+  userGroupMembershipDAL,
+  orgDAL,
+  groupProjectDAL,
+  projectKeyDAL,
+  projectDAL,
+  projectBotDAL,
+  tx: outerTx
+}: TConvertPendingGroupAdditionsToGroupMemberships) => {
+  const processConversion = async (tx: Knex) => {
+    const users = await userDAL.find(
+      {
+        $in: {
+          id: userIds
+        }
+      },
+      { tx }
+    );
+
+    const usersUserIdsSet = new Set(users.map((u) => u.id));
+    userIds.forEach((userId) => {
+      if (!usersUserIdsSet.has(userId)) {
+        throw new BadRequestError({
+          message: `Failed to find user with id ${userId}`
+        });
+      }
+    });
+
+    users.forEach((user) => {
+      if (!user.isAccepted) {
+        throw new BadRequestError({
+          message: `Failed to convert pending group additions to group memberships for user ${user.username} because they have not confirmed their account`
+        });
+      }
+    });
+
+    const pendingGroupAdditions = await pendingGroupAdditionDAL.deletePendingGroupAdditionsByUserIds(userIds, tx);
+
+    for await (const pendingGroupAddition of pendingGroupAdditions) {
+      await addUsersToGroupDirectly({
+        group: pendingGroupAddition.group,
+        usernames: [pendingGroupAddition.user.username],
+        userDAL,
+        userGroupMembershipDAL,
+        orgDAL,
+        groupProjectDAL,
+        projectKeyDAL,
+        projectDAL,
+        projectBotDAL,
+        tx
+      });
+    }
+  };
+
+  if (outerTx) {
+    return processConversion(outerTx);
+  }
+  return userDAL.transaction(async (tx) => {
+    await processConversion(tx);
   });
 };
