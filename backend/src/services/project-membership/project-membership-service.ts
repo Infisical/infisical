@@ -134,8 +134,7 @@ export const projectMembershipServiceFactory = ({
       const projectMemberships = await projectMembershipDAL.insertMany(
         orgMembers.map(({ userId }) => ({
           projectId,
-          userId: userId as string,
-          role: ProjectMembershipRole.Member
+          userId: userId as string
         })),
         tx
       );
@@ -267,8 +266,7 @@ export const projectMembershipServiceFactory = ({
       const projectMemberships = await projectMembershipDAL.insertMany(
         orgMembers.map(({ user }) => ({
           projectId,
-          userId: user.id,
-          role: ProjectMembershipRole.Member
+          userId: user.id
         })),
         tx
       );
