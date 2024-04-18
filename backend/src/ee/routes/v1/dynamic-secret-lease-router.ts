@@ -10,8 +10,6 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-//
-
 export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
