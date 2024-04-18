@@ -3,8 +3,6 @@ package tests
 import (
 	"os"
 	"testing"
-
-	"github.com/Infisical/infisical-merge/packages/util"
 )
 
 var DEV_SECRETS = []Secret{
@@ -46,19 +44,21 @@ var ALL_SECRET_KEYS = []string{}
 var ALL_SECRET_VALUES = []string{}
 
 type Credentials struct {
-	ClientID     string
-	ClientSecret string
-	ServiceToken string
-	ProjectID    string
-	EnvSlug      string
+	ClientID      string
+	ClientSecret  string
+	UAAccessToken string
+	ServiceToken  string
+	ProjectID     string
+	EnvSlug       string
 }
 
 var creds = Credentials{
-	ClientID:     os.Getenv("CLI_TESTS_UA_CLIENT_ID"),
-	ClientSecret: os.Getenv("CLI_TESTS_UA_CLIENT_SECRET"),
-	ServiceToken: os.Getenv("CLI_TESTS_SERVICE_TOKEN"),
-	ProjectID:    os.Getenv("CLI_TESTS_PROJECT_ID"),
-	EnvSlug:      os.Getenv("CLI_TESTS_ENV_SLUG"),
+	UAAccessToken: "",
+	ClientID:      os.Getenv("CLI_TESTS_UA_CLIENT_ID"),
+	ClientSecret:  os.Getenv("CLI_TESTS_UA_CLIENT_SECRET"),
+	ServiceToken:  os.Getenv("CLI_TESTS_SERVICE_TOKEN"),
+	ProjectID:     os.Getenv("CLI_TESTS_PROJECT_ID"),
+	EnvSlug:       os.Getenv("CLI_TESTS_ENV_SLUG"),
 }
 
 func initialize() {
@@ -79,29 +79,37 @@ func initialize() {
 func Test_RunTests(t *testing.T) {
 	initialize()
 
-	res, err := util.UniversalAuthLogin(creds.ClientID, creds.ClientSecret)
-	if err != nil {
-		t.Errorf("Error: %v", err)
-	}
-	universalAuthAccessToken := res.AccessToken
+	t.Run("User login command", func(t *testing.T) {
+		UALoginCmd(t)
+	})
+
+	t.Run("Run command", func(t *testing.T) {
+		RunCmd(t, creds.UAAccessToken, creds.ProjectID, creds.EnvSlug)
+		RunCmd(t, creds.ServiceToken, creds.ProjectID, creds.EnvSlug)
+	})
+
+	t.Run("Run Command (without imports, with recursive)", func(t *testing.T) {
+		RunCmdWithoutImportsAndWithRecursive(t, creds.UAAccessToken, creds.ProjectID, creds.EnvSlug)
+		RunCmdWithoutImportsAndWithRecursive(t, creds.ServiceToken, creds.ProjectID, creds.EnvSlug)
+	})
 
 	t.Run("Export secrets", func(t *testing.T) {
-		ExportSecrets(t, universalAuthAccessToken, creds.ProjectID, creds.EnvSlug)
+		ExportSecrets(t, creds.UAAccessToken, creds.ProjectID, creds.EnvSlug)
 		ExportSecrets(t, creds.ServiceToken, creds.ProjectID, creds.EnvSlug)
 	})
 
 	t.Run("Export secrets (without imports)", func(t *testing.T) {
-		ExportSecretsWithoutImports(t, universalAuthAccessToken, creds.ProjectID, creds.EnvSlug)
+		ExportSecretsWithoutImports(t, creds.UAAccessToken, creds.ProjectID, creds.EnvSlug)
 		ExportSecretsWithoutImports(t, creds.ServiceToken, creds.ProjectID, creds.EnvSlug)
 	})
 
 	t.Run("List Secrets (with imports and recursive)", func(t *testing.T) {
-		ListSecretsWithImportsAndRecursive(t, universalAuthAccessToken, creds.ProjectID, creds.EnvSlug)
+		ListSecretsWithImportsAndRecursive(t, creds.UAAccessToken, creds.ProjectID, creds.EnvSlug)
 		ListSecretsWithImportsAndRecursive(t, creds.ServiceToken, creds.ProjectID, creds.EnvSlug)
 	})
 
 	t.Run("Get Secrets by Names", func(t *testing.T) {
-		GetSecretsByNames(t, universalAuthAccessToken, creds.ProjectID, creds.EnvSlug)
+		GetSecretsByNames(t, creds.UAAccessToken, creds.ProjectID, creds.EnvSlug)
 		GetSecretsByNames(t, creds.ServiceToken, creds.ProjectID, creds.EnvSlug)
 	})
 }
