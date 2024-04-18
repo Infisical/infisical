@@ -399,13 +399,6 @@
       "group": "Endpoints",
       "pages": [
         {
-          "group": "Users",
-          "pages": [
-            "api-reference/endpoints/users/me",
-            "api-reference/endpoints/users/my-organizations"
-          ]
-        },
-        {
           "group": "Identities",
           "pages": [
             "api-reference/endpoints/identities/create",
@@ -450,7 +443,6 @@
             "api-reference/endpoints/workspaces/list-identity-memberships",
             "api-reference/endpoints/workspaces/update-identity-membership",
             "api-reference/endpoints/workspaces/delete-identity-membership",
-            "api-reference/endpoints/workspaces/workspace-key",
             "api-reference/endpoints/workspaces/secret-snapshots",
             "api-reference/endpoints/workspaces/rollback-snapshot"
           ]

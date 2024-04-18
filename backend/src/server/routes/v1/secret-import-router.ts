@@ -19,8 +19,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       description: "Create secret imports",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       body: z.object({
@@ -84,8 +83,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       description: "Update secret imports",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -159,8 +157,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       description: "Delete secret imports",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -223,8 +220,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       description: "Get secret imports",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       querystring: z.object({

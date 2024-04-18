@@ -158,8 +158,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       description: "List secrets",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       querystring: z.object({
@@ -280,8 +279,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       description: "Get a secret by name",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -375,8 +373,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       description: "Create secret",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -464,8 +461,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       description: "Update secret",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -550,8 +546,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       description: "Delete secret",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({

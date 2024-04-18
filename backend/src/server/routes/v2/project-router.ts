@@ -36,11 +36,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       description: "Return encrypted project key",
-      security: [
-        {
-          apiKeyAuth: []
-        }
-      ],
       params: z.object({
         workspaceId: z.string().trim().describe(PROJECTS.GET_KEY.workspaceId)
       }),
