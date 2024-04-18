@@ -85,11 +85,6 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       description: "Return organizations that current user is part of",
-      security: [
-        {
-          apiKeyAuth: []
-        }
-      ],
       response: {
         200: z.object({
           organizations: OrganizationsSchema.array()
@@ -217,11 +212,6 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       description: "Retrieve the current user on the request",
-      security: [
-        {
-          apiKeyAuth: []
-        }
-      ],
       response: {
         200: z.object({
           user: UsersSchema.merge(UserEncryptionKeysSchema.omit({ verifier: true }))
