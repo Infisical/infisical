@@ -3,6 +3,7 @@ import { z } from "zod";
 export enum TableName {
   Users = "users",
   Groups = "groups",
+  PendingGroupAddition = "pending_group_additions",
   GroupProjectMembership = "group_project_memberships",
   GroupProjectMembershipRole = "group_project_membership_roles",
   UserGroupMembership = "user_group_membership",

@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -14,24 +16,28 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
    * - The user is a member of a group that is a member of the project, excluding projects that they are part of
    * through the group with id [groupId].
    */
-  const filterProjectsByUserMembership = async (userId: string, groupId: string, projectIds: string[]) => {
-    const userProjectMemberships: string[] = await db(TableName.ProjectMembership)
-      .where(`${TableName.ProjectMembership}.userId`, userId)
-      .whereIn(`${TableName.ProjectMembership}.projectId`, projectIds)
-      .pluck(`${TableName.ProjectMembership}.projectId`);
+  const filterProjectsByUserMembership = async (userId: string, groupId: string, projectIds: string[], tx?: Knex) => {
+    try {
+      const userProjectMemberships: string[] = await (tx || db)(TableName.ProjectMembership)
+        .where(`${TableName.ProjectMembership}.userId`, userId)
+        .whereIn(`${TableName.ProjectMembership}.projectId`, projectIds)
+        .pluck(`${TableName.ProjectMembership}.projectId`);
 
-    const userGroupMemberships: string[] = await db(TableName.UserGroupMembership)
-      .where(`${TableName.UserGroupMembership}.userId`, userId)
-      .whereNot(`${TableName.UserGroupMembership}.groupId`, groupId)
-      .join(
-        TableName.GroupProjectMembership,
-        `${TableName.UserGroupMembership}.groupId`,
-        `${TableName.GroupProjectMembership}.groupId`
-      )
-      .whereIn(`${TableName.GroupProjectMembership}.projectId`, projectIds)
-      .pluck(`${TableName.GroupProjectMembership}.projectId`);
+      const userGroupMemberships: string[] = await (tx || db)(TableName.UserGroupMembership)
+        .where(`${TableName.UserGroupMembership}.userId`, userId)
+        .whereNot(`${TableName.UserGroupMembership}.groupId`, groupId)
+        .join(
+          TableName.GroupProjectMembership,
+          `${TableName.UserGroupMembership}.groupId`,
+          `${TableName.GroupProjectMembership}.groupId`
+        )
+        .whereIn(`${TableName.GroupProjectMembership}.projectId`, projectIds)
+        .pluck(`${TableName.GroupProjectMembership}.projectId`);
 
-    return new Set(userProjectMemberships.concat(userGroupMemberships));
+      return new Set(userProjectMemberships.concat(userGroupMemberships));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Filter projects by user membership" });
+    }
   };
 
   // special query
@@ -45,7 +51,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
         )
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
-        .whereIn(`${TableName.Users}.username`, usernames) // TODO: pluck usernames
+        .whereIn(`${TableName.Users}.username`, usernames)
         .pluck(`${TableName.Users}.id`);
 
       return usernameDocs;

@@ -59,13 +59,13 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countAllGroupMembers = async ({ orgId, groupId }: { orgId: string; groupId: string }) => {
+  const countGroupMembers = async ({ orgId, groupId }: { orgId: string; groupId: string }) => {
     try {
       interface CountResult {
         count: string;
       }
 
-      const doc = await db<CountResult>(TableName.OrgMembership)
+      const directCount = await db<CountResult>(TableName.OrgMembership)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.UserGroupMembership, function () {
@@ -75,13 +75,18 @@ export const groupDALFactory = (db: TDbClient) => {
             db.raw("?", [groupId])
           );
         })
-        .where({ isGhost: false })
+        .where({ isGhost: false, isAccepted: true })
         .count(`${TableName.Users}.id`)
         .first();
 
-      return parseInt((doc?.count as string) || "0", 10);
+      const pendingCount = await db<CountResult>(TableName.PendingGroupAddition)
+        .where(`${TableName.PendingGroupAddition}.groupId`, groupId)
+        .count("*")
+        .first();
+
+      return parseInt((directCount?.count as string) || "0", 10) + parseInt((pendingCount?.count as string) || "0", 10);
     } catch (err) {
-      throw new DatabaseError({ error: err, name: "Count all group members" });
+      throw new DatabaseError({ error: err, name: "Count all direct group members" });
     }
   };
 
@@ -110,14 +115,36 @@ export const groupDALFactory = (db: TDbClient) => {
             db.raw("?", [groupId])
           );
         })
-        .select(
+        .leftJoin(TableName.PendingGroupAddition, function () {
+          this.on(`${TableName.PendingGroupAddition}.userId`, "=", `${TableName.Users}.id`).andOn(
+            `${TableName.PendingGroupAddition}.groupId`,
+            "=",
+            db.raw("?", [groupId])
+          );
+        })
+        .select<
+          {
+            id: string;
+            groupId: string;
+            email: string;
+            username: string;
+            firstName: string;
+            lastName: string;
+            userId: string;
+            isPartOfGroup: boolean;
+          }[]
+        >(
           db.ref("id").withSchema(TableName.OrgMembership),
           db.ref("groupId").withSchema(TableName.UserGroupMembership),
           db.ref("email").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
-          db.ref("id").withSchema(TableName.Users).as("userId")
+          db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.raw('CASE WHEN ?? IS NOT NULL OR ?? IS NOT NULL THEN TRUE ELSE FALSE END AS "isPartOfGroup"', [
+            `${TableName.UserGroupMembership}.groupId`,
+            `${TableName.PendingGroupAddition}.groupId`
+          ])
         )
         .where({ isGhost: false })
         .offset(offset);
@@ -132,16 +159,15 @@ export const groupDALFactory = (db: TDbClient) => {
 
       const members = await query;
 
-      return members.map(
-        ({ email, username: memberUsername, firstName, lastName, userId, groupId: memberGroupId }) => ({
-          id: userId,
-          email,
-          username: memberUsername,
-          firstName,
-          lastName,
-          isPartOfGroup: !!memberGroupId
-        })
-      );
+      return members.map(({ email, username: memberUsername, firstName, lastName, userId, isPartOfGroup }) => ({
+        // TODO: fix type
+        id: userId,
+        email,
+        username: memberUsername,
+        firstName,
+        lastName,
+        isPartOfGroup
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org members" });
     }
@@ -150,7 +176,7 @@ export const groupDALFactory = (db: TDbClient) => {
   return {
     findGroups,
     findByOrgId,
-    countAllGroupMembers,
+    countGroupMembers,
     findAllGroupMembers,
     ...groupOrm
   };

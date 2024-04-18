@@ -13,6 +13,7 @@ import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
+import { pendingGroupAdditionDALFactory } from "@app/ee/services/group/pending-group-addition-dal";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { identityProjectAdditionalPrivilegeDALFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-dal";
 import { identityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
@@ -217,6 +218,7 @@ export const registerRoutes = async (
   const groupProjectDAL = groupProjectDALFactory(db);
   const groupProjectMembershipRoleDAL = groupProjectMembershipRoleDALFactory(db);
   const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
+  const pendingGroupAdditionDAL = pendingGroupAdditionDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
@@ -268,6 +270,7 @@ export const registerRoutes = async (
     projectDAL,
     projectBotDAL,
     projectKeyDAL,
+    pendingGroupAdditionDAL,
     permissionService,
     licenseService
   });
@@ -290,6 +293,11 @@ export const registerRoutes = async (
     projectDAL,
     projectMembershipDAL,
     groupDAL,
+    groupProjectDAL,
+    userGroupMembershipDAL,
+    projectKeyDAL,
+    projectBotDAL,
+    pendingGroupAdditionDAL,
     permissionService,
     smtpService
   });
@@ -344,6 +352,12 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
+    pendingGroupAdditionDAL,
+    userGroupMembershipDAL,
+    projectKeyDAL,
+    projectDAL,
+    projectBotDAL,
+    groupProjectDAL,
     orgDAL,
     orgService,
     licenseService

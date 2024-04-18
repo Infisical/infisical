@@ -1,22 +1,23 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { OrgMembershipRole, SecretKeyEncoding, TOrgRoles } from "@app/db/schemas";
+import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
+import { TPendingGroupAdditionDALFactory } from "@app/ee/services/group/pending-group-addition-dal";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { decryptAsymmetric, encryptAsymmetric, infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { TGroupProjectDALFactory } from "../../../services/group-project/group-project-dal";
-import { TOrgDALFactory } from "../../../services/org/org-dal";
-import { TProjectDALFactory } from "../../../services/project/project-dal";
-import { TProjectBotDALFactory } from "../../../services/project-bot/project-bot-dal";
-import { TProjectKeyDALFactory } from "../../../services/project-key/project-key-dal";
-import { TUserDALFactory } from "../../../services/user/user-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TGroupDALFactory } from "./group-dal";
+import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "./group-fns";
 import {
   TAddUserToGroupDTO,
   TCreateGroupDTO,
@@ -28,20 +29,21 @@ import {
 import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
-  userDAL: Pick<TUserDALFactory, "findOne" | "findUserEncKeyByUsername">;
+  userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUsernameBatch" | "transaction" | "findOne">;
   groupDAL: Pick<
     TGroupDALFactory,
-    "create" | "findOne" | "update" | "delete" | "findAllGroupMembers" | "countAllGroupMembers"
+    "create" | "findOne" | "update" | "delete" | "findAllGroupMembers" | "countGroupMembers"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
-    "findOne" | "create" | "delete" | "filterProjectsByUserMembership"
+    "findOne" | "delete" | "filterProjectsByUserMembership" | "transaction" | "insertMany" | "find"
   >;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
-  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "create" | "delete" | "findLatestProjectKey">;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
+  pendingGroupAdditionDAL: TPendingGroupAdditionDALFactory; // remove?
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -57,6 +59,7 @@ export const groupServiceFactory = ({
   projectDAL,
   projectBotDAL,
   projectKeyDAL,
+  pendingGroupAdditionDAL,
   permissionService,
   licenseService
 }: TGroupServiceFactoryDep) => {
@@ -227,7 +230,7 @@ export const groupServiceFactory = ({
       username
     });
 
-    const totalCount = await groupDAL.countAllGroupMembers({
+    const totalCount = await groupDAL.countGroupMembers({
       orgId: group.orgId,
       groupId: group.id
     });
@@ -272,111 +275,23 @@ export const groupServiceFactory = ({
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to add user to more privileged group" });
 
-    // get user with username
-    const user = await userDAL.findUserEncKeyByUsername({
-      username
+    const user = await userDAL.findOne({ username });
+    if (!user) throw new BadRequestError({ message: `Failed to find user with username ${username}` });
+
+    const users = await addUsersToGroupByUserIds({
+      group,
+      userIds: [user.id],
+      userDAL,
+      userGroupMembershipDAL,
+      orgDAL,
+      groupProjectDAL,
+      pendingGroupAdditionDAL,
+      projectKeyDAL,
+      projectDAL,
+      projectBotDAL
     });
 
-    if (!user)
-      throw new BadRequestError({
-        message: `Failed to find user with username ${username}`
-      });
-
-    // check if user group membership already exists
-    const existingUserGroupMembership = await userGroupMembershipDAL.findOne({
-      groupId: group.id,
-      userId: user.userId
-    });
-
-    if (existingUserGroupMembership)
-      throw new BadRequestError({
-        message: `User ${username} is already part of the group ${groupSlug}`
-      });
-
-    // check if user is even part of the organization
-    const existingUserOrgMembership = await orgDAL.findMembership({
-      userId: user.userId,
-      orgId: actorOrgId
-    });
-
-    if (!existingUserOrgMembership)
-      throw new BadRequestError({
-        message: `User ${username} is not part of the organization`
-      });
-
-    await userGroupMembershipDAL.create({
-      userId: user.userId,
-      groupId: group.id
-    });
-
-    // check which projects the group is part of
-    const projectIds = (
-      await groupProjectDAL.find({
-        groupId: group.id
-      })
-    ).map((gp) => gp.projectId);
-
-    const keys = await projectKeyDAL.find({
-      receiverId: user.userId,
-      $in: {
-        projectId: projectIds
-      }
-    });
-
-    const keysSet = new Set(keys.map((k) => k.projectId));
-    const projectsToAddKeyFor = projectIds.filter((p) => !keysSet.has(p));
-
-    for await (const projectId of projectsToAddKeyFor) {
-      const ghostUser = await projectDAL.findProjectGhostUser(projectId);
-
-      if (!ghostUser) {
-        throw new BadRequestError({
-          message: "Failed to find sudo user"
-        });
-      }
-
-      const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, projectId);
-
-      if (!ghostUserLatestKey) {
-        throw new BadRequestError({
-          message: "Failed to find sudo user latest key"
-        });
-      }
-
-      const bot = await projectBotDAL.findOne({ projectId });
-
-      if (!bot) {
-        throw new BadRequestError({
-          message: "Failed to find bot"
-        });
-      }
-
-      const botPrivateKey = infisicalSymmetricDecrypt({
-        keyEncoding: bot.keyEncoding as SecretKeyEncoding,
-        iv: bot.iv,
-        tag: bot.tag,
-        ciphertext: bot.encryptedPrivateKey
-      });
-
-      const plaintextProjectKey = decryptAsymmetric({
-        ciphertext: ghostUserLatestKey.encryptedKey,
-        nonce: ghostUserLatestKey.nonce,
-        publicKey: ghostUserLatestKey.sender.publicKey,
-        privateKey: botPrivateKey
-      });
-
-      const { ciphertext: encryptedKey, nonce } = encryptAsymmetric(plaintextProjectKey, user.publicKey, botPrivateKey);
-
-      await projectKeyDAL.create({
-        encryptedKey,
-        nonce,
-        senderId: ghostUser.id,
-        receiverId: user.userId,
-        projectId
-      });
-    }
-
-    return user;
+    return users[0];
   };
 
   const removeUserFromGroup = async ({
@@ -416,51 +331,20 @@ export const groupServiceFactory = ({
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to delete user from more privileged group" });
 
-    const user = await userDAL.findOne({
-      username
+    const user = await userDAL.findOne({ username });
+    if (!user) throw new BadRequestError({ message: `Failed to find user with username ${username}` });
+
+    const users = await removeUsersFromGroupByUserIds({
+      group,
+      userIds: [user.id],
+      userDAL,
+      userGroupMembershipDAL,
+      pendingGroupAdditionDAL,
+      groupProjectDAL,
+      projectKeyDAL
     });
 
-    if (!user)
-      throw new BadRequestError({
-        message: `Failed to find user with username ${username}`
-      });
-
-    // check if user group membership already exists
-    const existingUserGroupMembership = await userGroupMembershipDAL.findOne({
-      groupId: group.id,
-      userId: user.id
-    });
-
-    if (!existingUserGroupMembership)
-      throw new BadRequestError({
-        message: `User ${username} is not part of the group ${groupSlug}`
-      });
-
-    const projectIds = (
-      await groupProjectDAL.find({
-        groupId: group.id
-      })
-    ).map((gp) => gp.projectId);
-
-    const t = await userGroupMembershipDAL.filterProjectsByUserMembership(user.id, group.id, projectIds);
-
-    const projectsToDeleteKeyFor = projectIds.filter((p) => !t.has(p));
-
-    if (projectsToDeleteKeyFor.length) {
-      await projectKeyDAL.delete({
-        receiverId: user.id,
-        $in: {
-          projectId: projectsToDeleteKeyFor
-        }
-      });
-    }
-
-    await userGroupMembershipDAL.delete({
-      groupId: group.id,
-      userId: user.id
-    });
-
-    return user;
+    return users[0];
   };
 
   return {

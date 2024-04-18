@@ -1,10 +1,17 @@
 import jwt from "jsonwebtoken";
 
 import { OrgMembershipStatus } from "@app/db/schemas";
+import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
+import { TPendingGroupAdditionDALFactory } from "@app/ee/services/group/pending-group-addition-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -20,6 +27,12 @@ import { AuthMethod, AuthTokenType } from "./auth-type";
 type TAuthSignupDep = {
   authDAL: TAuthDALFactory;
   userDAL: TUserDALFactory;
+  pendingGroupAdditionDAL: Pick<TPendingGroupAdditionDALFactory, "deletePendingGroupAdditionsByUserIds">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "transaction" | "insertMany">;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
@@ -31,6 +44,12 @@ export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
   authDAL,
   userDAL,
+  pendingGroupAdditionDAL,
+  userGroupMembershipDAL,
+  projectKeyDAL,
+  projectDAL,
+  projectBotDAL,
+  groupProjectDAL,
   tokenService,
   smtpService,
   orgService,
@@ -168,6 +187,20 @@ export const authSignupServiceFactory = ({
     const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
     await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
 
+    console.log("conv A");
+    await convertPendingGroupAdditionsToGroupMemberships({
+      userIds: [user.id],
+      userDAL,
+      pendingGroupAdditionDAL,
+      userGroupMembershipDAL,
+      orgDAL,
+      groupProjectDAL,
+      projectKeyDAL,
+      projectDAL,
+      projectBotDAL
+    });
+    console.log("conv B");
+
     const tokenSession = await tokenService.getUserTokenSession({
       userAgent,
       ip,
@@ -225,13 +258,16 @@ export const authSignupServiceFactory = ({
     encryptedPrivateKeyTag,
     authorization
   }: TCompleteAccountInviteDTO) => {
+    console.log("conv 0");
     const user = await userDAL.findUserByUsername(email);
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
 
+    console.log("conv 1");
     validateSignUpAuthorization(authorization, user.id);
 
+    console.log("conv 2");
     const [orgMembership] = await orgDAL.findMembership({
       inviteEmail: email,
       status: OrgMembershipStatus.Invited
@@ -242,9 +278,12 @@ export const authSignupServiceFactory = ({
         name: "complete account invite"
       });
 
+    console.log("conv 3");
     const updateduser = await authDAL.transaction(async (tx) => {
+      console.log("conv 4");
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
+      console.log("conv 5");
       const userEncKey = await userDAL.upsertUserEncryptionKey(
         us.id,
         {
@@ -261,14 +300,32 @@ export const authSignupServiceFactory = ({
         },
         tx
       );
+      console.log("conv 6");
 
       const updatedMembersips = await orgDAL.updateMembership(
         { inviteEmail: email, status: OrgMembershipStatus.Invited },
         { userId: us.id, status: OrgMembershipStatus.Accepted },
         tx
       );
+      console.log("conv 7");
       const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
+      console.log("conv 8");
       await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
+
+      console.log("conv AA");
+      await convertPendingGroupAdditionsToGroupMemberships({
+        userIds: [user.id],
+        userDAL,
+        pendingGroupAdditionDAL,
+        userGroupMembershipDAL,
+        orgDAL,
+        groupProjectDAL,
+        projectKeyDAL,
+        projectDAL,
+        projectBotDAL,
+        tx
+      });
+      console.log("conv BB");
 
       return { info: us, key: userEncKey };
     });

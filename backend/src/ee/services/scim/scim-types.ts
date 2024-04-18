@@ -81,6 +81,11 @@ export type TListScimGroups = {
 export type TCreateScimGroupDTO = {
   displayName: string;
   orgId: string;
+  members?: {
+    // TODO: account for members with value and display (is this optional?)
+    value: string;
+    display: string;
+  }[];
 };
 
 export type TGetScimGroupDTO = {
@@ -92,6 +97,10 @@ export type TUpdateScimGroupNamePutDTO = {
   groupId: string;
   orgId: string;
   displayName: string;
+  members: {
+    value: string;
+    display: string;
+  }[];
 };
 
 export type TUpdateScimGroupNamePatchDTO = {
