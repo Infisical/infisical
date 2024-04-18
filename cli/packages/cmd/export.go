@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/Infisical/infisical-merge/packages/models"
@@ -59,6 +60,11 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		templatePath, err := cmd.Flags().GetString("template")
+		if err != nil {
+			util.HandleError(err)
+		}
+
 		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -91,6 +97,31 @@ var exportCmd = &cobra.Command{
 			request.InfisicalToken = token.Token
 		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 			request.UniversalAuthAccessToken = token.Token
+		}
+
+		if templatePath != "" {
+			sigChan := make(chan os.Signal, 1)
+			dynamicSecretLeases := NewDynamicSecretLeaseManager(sigChan)
+			newEtag := ""
+
+			accessToken := ""
+			if token != nil {
+				accessToken = token.Token
+			} else {
+				log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
+				loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+				if err != nil {
+					util.HandleError(err)
+				}
+				accessToken = loggedInUserDetails.UserCredentials.JTWToken
+			}
+
+			processedTemplate, err := ProcessTemplate(1, templatePath, nil, accessToken, "", &newEtag, dynamicSecretLeases)
+			if err != nil {
+				util.HandleError(err)
+			}
+			fmt.Print(processedTemplate.String())
+			return
 		}
 
 		secrets, err := util.GetAllEnvironmentVariables(request, "")
@@ -140,6 +171,7 @@ func init() {
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
 	exportCmd.Flags().String("path", "/", "get secrets within a folder path")
+	exportCmd.Flags().String("template", "", "The path to the template file to output secrets")
 }
 
 // Format according to the format flag
