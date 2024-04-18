@@ -16,8 +16,9 @@ func ExportSecrets(t *testing.T, authToken string, projectId string, envSlug str
 	rootCommand := cmd.NewRootCmd()
 
 	commandOutput := new(bytes.Buffer)
+	errorOutput := new(bytes.Buffer)
 	rootCommand.SetOut(commandOutput)
-	rootCommand.SetErr(commandOutput)
+	rootCommand.SetErr(errorOutput)
 
 	args := []string{
 		"export",
@@ -25,6 +26,7 @@ func ExportSecrets(t *testing.T, authToken string, projectId string, envSlug str
 
 	args = append(args, fmt.Sprintf("--token=%s", authToken))
 	args = append(args, fmt.Sprintf("--projectId=%s", projectId))
+	args = append(args, fmt.Sprintf("--env=%s", envSlug))
 
 	rootCommand.SetArgs(args)
 	rootCommand.Execute()
@@ -36,7 +38,7 @@ func ExportSecrets(t *testing.T, authToken string, projectId string, envSlug str
 		t.Errorf("Error: %v", err)
 	}
 
-	expectedLength := len(ALL_SECRETS) - 1 // -1 because the default path is "/", and the secret in /folder will not be found.
+	expectedLength := len(DEV_SECRETS) + len(STAGING_SECRETS)
 
 	assert.Len(t, secrets, expectedLength)
 
@@ -47,7 +49,6 @@ func ExportSecrets(t *testing.T, authToken string, projectId string, envSlug str
 		assert.Contains(t, ALL_SECRET_KEYS, secret.Key)
 		assert.Contains(t, ALL_SECRET_VALUES, secret.Value)
 	}
-
 }
 
 func ExportSecretsWithoutImports(t *testing.T, authToken string, projectId string, envSlug string) {
@@ -64,6 +65,7 @@ func ExportSecretsWithoutImports(t *testing.T, authToken string, projectId strin
 
 	args = append(args, fmt.Sprintf("--token=%s", authToken))
 	args = append(args, fmt.Sprintf("--projectId=%s", projectId))
+	args = append(args, fmt.Sprintf("--env=%s", envSlug))
 	args = append(args, "--include-imports=false")
 
 	rootCommand.SetArgs(args)
