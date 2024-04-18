@@ -381,6 +381,12 @@ func ProcessTemplate(templateId int, templatePath string, data interface{}, acce
 	funcs := template.FuncMap{
 		"secret":         secretFunction,
 		"dynamic_secret": dynamicSecretFunction,
+		"minus": func(a, b int) int {
+			return a - b
+		},
+		"add": func(a, b int) int {
+			return a + b
+		},
 	}
 
 	templateName := path.Base(templatePath)
