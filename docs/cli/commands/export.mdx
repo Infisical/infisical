@@ -34,7 +34,7 @@ Export environment variables from the platform into a file format.
   # Export variables to a YAML file
   infisical export --format=yaml > secrets.yaml
 
-  # Export variables from a template
+  # Render secrets using a custom template file
   infisical export --template=<path to template>
   ```
 
@@ -61,20 +61,24 @@ Export environment variables from the platform into a file format.
 
   ### flags 
   <Accordion title="--template">
-    The --template flag specifies the path to the template file used for rendering secrets. In template mode, you can omit the other flags since the settings are already configured within the template.
+    The `--template` flag specifies the path to the template file used for rendering secrets. When using templates, you can omit the other format flags.
+
+		```text my-template-file
+    {{$secrets := secret "<infisical-project-id>" "<environment-slug>" "<folder-path>"}}
+    {{$length := len $secrets}}
+    {{- "{"}}
+    {{- with $secrets }}
+      {{- range $index, $secret := . }}
+        "{{ $secret.Key }}": "{{ $secret.Value }}"{{if lt $index (minus $length 1)}},{{end}}
+      {{- end }}
+    {{- end }}
+    {{ "}" -}}
+		```
 
     ```bash
     # Example
-    infisical export --template="/path/to/template"
+    infisical export --template="/path/to/template/file"
     ```
-
-		```text my-dot-env-secret-template
-		{{- with secret "<projectId>" "<environment slug>" "/" }}
-		{{- range . }}
-		{{ .Key }}={{ .Value }}
-		{{- end }}
-		{{- end }}
-		```
   </Accordion>
   <Accordion title="--env">
     Used to set the environment that secrets are pulled from. 

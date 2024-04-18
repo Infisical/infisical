@@ -171,7 +171,7 @@ func init() {
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
 	exportCmd.Flags().String("path", "/", "get secrets within a folder path")
-	exportCmd.Flags().String("template", "", "The path to the template file to output secrets")
+	exportCmd.Flags().String("template", "", "The path to the template file used to render secrets")
 }
 
 // Format according to the format flag
