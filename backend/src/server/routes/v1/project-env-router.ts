@@ -18,8 +18,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       description: "Create environment",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -77,8 +76,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       description: "Update environment",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -144,8 +142,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       description: "Delete environment",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({

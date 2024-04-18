@@ -26,8 +26,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       description: "Return project user memberships",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -139,8 +138,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       description: "Update project user membership",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -213,8 +211,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       description: "Delete project user membership",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({

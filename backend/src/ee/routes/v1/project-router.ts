@@ -19,7 +19,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       description: "Return project secret snapshots ids",
       security: [
         {
-          apiKeyAuth: [],
           bearerAuth: []
         }
       ],
@@ -97,8 +96,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       description: "Return audit logs",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({

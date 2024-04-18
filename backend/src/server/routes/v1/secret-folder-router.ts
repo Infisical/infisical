@@ -19,8 +19,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       description: "Create folders",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       body: z.object({
@@ -76,8 +75,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       description: "Update folder",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -140,8 +138,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       description: "Delete a folder",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -200,8 +197,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       description: "Get folders",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       querystring: z.object({
