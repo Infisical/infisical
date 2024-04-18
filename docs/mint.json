@@ -32,10 +32,7 @@
     "thumbsRating": true
   },
   "api": {
-    "baseUrl": [
-      "https://app.infisical.com",
-      "http://localhost:8080"
-    ]
+    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
   },
   "topbarLinks": [
     {
@@ -142,7 +139,9 @@
           "group": "Dynamic Secrets",
           "pages": [
             "documentation/platform/dynamic-secrets/overview",
-            "documentation/platform/dynamic-secrets/postgresql"
+            "documentation/platform/dynamic-secrets/postgresql",
+            "documentation/platform/dynamic-secrets/mysql",
+            "documentation/platform/dynamic-secrets/oracle"
           ]
         },
         "documentation/platform/groups"
@@ -370,15 +369,11 @@
     },
     {
       "group": "Build Tool Integrations",
-      "pages": [
-        "integrations/build-tools/gradle"
-      ]
+      "pages": ["integrations/build-tools/gradle"]
     },
     {
       "group": "",
-      "pages": [
-        "sdks/overview"
-      ]
+      "pages": ["sdks/overview"]
     },
     {
       "group": "SDK's",
@@ -396,9 +391,7 @@
         "api-reference/overview/authentication",
         {
           "group": "Examples",
-          "pages": [
-            "api-reference/overview/examples/integration"
-          ]
+          "pages": ["api-reference/overview/examples/integration"]
         }
       ]
     },
@@ -535,15 +528,11 @@
         },
         {
           "group": "Service Tokens",
-          "pages": [
-            "api-reference/endpoints/service-tokens/get"
-          ]
+          "pages": ["api-reference/endpoints/service-tokens/get"]
         },
         {
           "group": "Audit Logs",
-          "pages": [
-            "api-reference/endpoints/audit-logs/export-audit-log"
-          ]
+          "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
         }
       ]
     },
@@ -559,9 +548,7 @@
     },
     {
       "group": "",
-      "pages": [
-        "changelog/overview"
-      ]
+      "pages": ["changelog/overview"]
     },
     {
       "group": "Contributing",
@@ -585,9 +572,7 @@
         },
         {
           "group": "Contributing to SDK",
-          "pages": [
-            "contributing/sdk/developing"
-          ]
+          "pages": ["contributing/sdk/developing"]
         }
       ]
     }

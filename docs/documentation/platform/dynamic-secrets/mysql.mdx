@@ -1,16 +1,15 @@
 ---
-title: "PostgreSQL"
-description: "How to dynamically generate PostgreSQL database users"
+title: "MySQL"
+description: "Learn how to dynamically generate MySQL Database user passwords."
 ---
 
-The Infisical PostgreSQL dynamic secret allows you to generate PostgreSQL database credentials on demand based on configured role.
+The Infisical MySQL dynamic secret allows you to generate MySQL Database credentials on demand based on configured role.
 
 ## Prerequisite
-
 Create a user with the required permission in your SQL instance. This user will be used to create new accounts on-demand.
 
 
-## Set up Dynamic Secrets with PostgreSQL
+## Set up Dynamic Secrets with MySQL
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -19,7 +18,7 @@ Create a user with the required permission in your SQL instance. This user will 
   <Step title="Click on the 'Add Dynamic Secret' button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
   </Step>
-  <Step title="Select `SQL Database`">
+  <Step title="Select 'SQL Database'">
 	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal.png)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
@@ -36,7 +35,7 @@ Create a user with the required permission in your SQL instance. This user will 
 	</ParamField>
 
 	<ParamField path="Service" type="string" required>
-		Choose the service you want to generate dynamic secrets for. This must be selected as **PostgreSQL**.
+		Choose the service you want to generate dynamic secrets for. This must be selected as **MySQL**.
 	</ParamField>
 
 	<ParamField path="Host" type="string" required>
@@ -63,22 +62,20 @@ Create a user with the required permission in your SQL instance. This user will 
 		A CA may be required if your DB requires it for incoming connections. AWS RDS instances with default settings will requires a CA which can be downloaded [here](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions).
 	</ParamField>
 
-	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal.png)
-
   </Step>
   <Step title="(Optional) Modify SQL Statements">
   	If you want to provide specific privileges for the generated dynamic credentials, you can modify the SQL statement to your needs. This is useful if you want to only give access to a specific table(s).
 
-	![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statements.png)
+	![Modify SQL Statements Modal](/images/platform/dynamic-secrets/modify-sql-statement-mysql.png)
   </Step>
-  <Step title="Click 'Submit'">
+  <Step title="Click `Submit`">
   	After submitting the form, you will see a dynamic secret created in the dashboard. 
 
 	<Note>
-		If this step fails, you may have to add the CA certficate. 
+		If this step fails, you may have to add the CA certificate. 
 	</Note>
 
-	![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret.png)
+	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret.png)
   </Step>
   <Step title="Generate dynamic secrets">
 	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials. 
@@ -88,7 +85,7 @@ Create a user with the required permission in your SQL instance. This user will 
 	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
 	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
 
-	When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate how long the credentials are valid for.
+	When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate  how long the credentials are valid for.
 
 	![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
 
@@ -97,7 +94,7 @@ Create a user with the required permission in your SQL instance. This user will 
 	</Tip>
 
 
-	Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you. 
+	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you. 
 
 	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
   </Step>
@@ -105,7 +102,7 @@ Create a user with the required permission in your SQL instance. This user will 
 
 ## Audit or Revoke Leases
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard. 
-This will allow you see the expiration time of the lease or delete the lease before it's set time to live.
+This will allow you see the expiration time of the lease or delete a lease before it's set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
