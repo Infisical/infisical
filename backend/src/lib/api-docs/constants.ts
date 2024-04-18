@@ -589,7 +589,8 @@ export const INTEGRATION = {
       secretSuffix: "The suffix for the saved secret. Used by GCP",
       initialSyncBehavoir: "Type of syncing behavoir with the integration",
       shouldAutoRedeploy: "Used by Render to trigger auto deploy",
-      secretGCPLabel: "The label for the GCP secrets"
+      secretGCPLabel: "The label for the GCP secrets",
+      secretAWSTag: "The tag for the AWS secrets"
     }
   },
   UPDATE: {

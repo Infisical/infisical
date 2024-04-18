@@ -457,6 +457,8 @@ const syncSecretsAWSParameterStore = async ({
   });
   ssm.config.update(config);
 
+  const metadata = z.record(z.any()).parse(integration.metadata);
+
   const params = {
     Path: integration.path as string,
     Recursive: false,
@@ -486,7 +488,8 @@ const syncSecretsAWSParameterStore = async ({
             Name: `${integration.path}${key}`,
             Type: "SecureString",
             Value: secrets[key].value,
-            Overwrite: true
+            // Overwrite: true,
+            Tags: metadata.secretAWSTag ? [{ Key: metadata.secretAWSTag.key, Value: metadata.secretAWSTag.value }] : []
           })
           .promise();
         // case: secret exists in AWS parameter store
@@ -499,6 +502,7 @@ const syncSecretsAWSParameterStore = async ({
             Type: "SecureString",
             Value: secrets[key].value,
             Overwrite: true
+            // Tags: metadata.secretAWSTag ? [{ Key: metadata.secretAWSTag.key, Value: metadata.secretAWSTag.value }] : []
           })
           .promise();
       }
@@ -537,6 +541,7 @@ const syncSecretsAWSSecretManager = async ({
 }) => {
   let secretsManager;
   const secKeyVal = getSecretKeyValuePair(secrets);
+  const metadata = z.record(z.any()).parse(integration.metadata);
   try {
     if (!accessId) return;
 
@@ -573,7 +578,8 @@ const syncSecretsAWSSecretManager = async ({
       await secretsManager.send(
         new CreateSecretCommand({
           Name: integration.app as string,
-          SecretString: JSON.stringify(secKeyVal)
+          SecretString: JSON.stringify(secKeyVal),
+          Tags: metadata.secretAWSTag ? [{ Key: metadata.secretAWSTag.key, Value: metadata.secretAWSTag.value }] : []
         })
       );
     }
