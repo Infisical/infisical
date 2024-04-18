@@ -1,5 +1,12 @@
 name: Go CLI Tests
-on: [push] # Test
+
+on:
+    pull_request:
+        types: [opened, synchronize]
+        paths:
+            - "cli/**"
+
+    workflow_call:
 
 jobs:
     test:
