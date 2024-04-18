@@ -70,32 +70,29 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          users: ProjectMembershipsSchema.omit({ role: true })
-            .merge(
+          users: ProjectMembershipsSchema.extend({
+            user: UsersSchema.pick({
+              email: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+              id: true
+            }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            roles: z.array(
               z.object({
-                user: UsersSchema.pick({
-                  username: true,
-                  email: true,
-                  firstName: true,
-                  lastName: true,
-                  id: true
-                }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
-                roles: z.array(
-                  z.object({
-                    id: z.string(),
-                    role: z.string(),
-                    customRoleId: z.string().optional().nullable(),
-                    customRoleName: z.string().optional().nullable(),
-                    customRoleSlug: z.string().optional().nullable(),
-                    isTemporary: z.boolean(),
-                    temporaryMode: z.string().optional().nullable(),
-                    temporaryRange: z.string().nullable().optional(),
-                    temporaryAccessStartTime: z.date().nullable().optional(),
-                    temporaryAccessEndTime: z.date().nullable().optional()
-                  })
-                )
+                id: z.string(),
+                role: z.string(),
+                customRoleId: z.string().optional().nullable(),
+                customRoleName: z.string().optional().nullable(),
+                customRoleSlug: z.string().optional().nullable(),
+                isTemporary: z.boolean(),
+                temporaryMode: z.string().optional().nullable(),
+                temporaryRange: z.string().nullable().optional(),
+                temporaryAccessStartTime: z.date().nullable().optional(),
+                temporaryAccessEndTime: z.date().nullable().optional()
               })
             )
+          })
             .omit({ createdAt: true, updatedAt: true })
             .array()
         })

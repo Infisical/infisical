@@ -212,7 +212,8 @@
         {
           "group": "Reference architectures",
           "pages": [
-            "self-hosting/reference-architectures/aws-ecs"
+            "self-hosting/reference-architectures/aws-ecs",
+            "self-hosting/reference-architectures/on-premise"
           ]
         },
         "self-hosting/ee",

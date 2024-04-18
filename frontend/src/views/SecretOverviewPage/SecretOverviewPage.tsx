@@ -138,6 +138,7 @@ export const SecretOverviewPage = () => {
   const { isImportedSecretPresentInEnv } = useGetImportedSecretsAllEnvs({
     projectId: workspaceId,
     decryptFileKey: latestFileKey!,
+    path: secretPath,
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
 
@@ -340,6 +341,8 @@ export const SecretOverviewPage = () => {
   );
 
   const canViewOverviewPage = Boolean(userAvailableEnvs.length);
+  // This is needed to also show imports from other paths – right now those are missing.
+  // const combinedKeys = [...secKeys, ...secretImports.map((impSecrets) => impSecrets?.data?.map((impSec) => impSec.secrets?.map((impSecKey) => impSecKey.key))).flat().flat()];
   const filteredSecretNames = secKeys
     ?.filter((name) => name.toUpperCase().includes(searchFilter.toUpperCase()))
     .sort((a, b) => (sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a)));
