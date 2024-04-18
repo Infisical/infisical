@@ -6,8 +6,7 @@ description: "Learn how to dynamically generate MySQL Database user passwords."
 The Infisical MySQL dynamic secret allows you to generate MySQL Database credentials on demand based on configured role.
 
 ## Prerequisite
-
-1. Create a user with the required permission in your SQL instance.
+Create a user with the required permission in your SQL instance. This user will be used to create new accounts on-demand.
 
 
 ## Set up Dynamic Secrets with MySQL
@@ -16,10 +15,10 @@ The Infisical MySQL dynamic secret allows you to generate MySQL Database credent
   <Step title="Open Secret Overview Dashboard">
 	Open the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret.
   </Step>
-  <Step title="Click on the `Add Dynamic Secret` button">
+  <Step title="Click on the 'Add Dynamic Secret' button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
   </Step>
-  <Step title="Select `SQL Database`">
+  <Step title="Select 'SQL Database'">
 	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal.png)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
@@ -63,13 +62,13 @@ The Infisical MySQL dynamic secret allows you to generate MySQL Database credent
 		A CA may be required if your DB requires it for incoming connections. AWS RDS instances with default settings will requires a CA which can be downloaded [here](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions).
 	</ParamField>
 
-	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-mysql.png)
+	![Dynamic Secret Setup Modal](/images/platform/dynamic-secrets/dynamic-secret-setup-modal-mysql.png)
 
   </Step>
   <Step title="(Optional) Modify SQL Statements">
-  	If you want to provide specific privileges for the future generated dynamic secrets, you are able to specify them as SQL statements. 
+  	If you want to provide specific privileges for the generated dynamic credentials, you can modifythe SQL statement to your needs. 
 
-	![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statements-mysql.png)
+	![Modify SQL Statements Modal](/images/platform/dynamic-secrets/modify-sql-statement-mysql.png)
   </Step>
   <Step title="Click `Submit`">
   	After submitting the form, you will see a dynamic secret creates in the dashboard. 
@@ -78,32 +77,32 @@ The Infisical MySQL dynamic secret allows you to generate MySQL Database credent
 		If this step fails, you might have to add the CA certficate. 
 	</Note>
 
-	![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret.png)
+	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret.png)
   </Step>
   <Step title="Generate dynamic secrets">
 	Once you've successfully created the dynamic secret, you're all set to generate unique secret values. To do this, simply click on the Generate button located in the respective row. Alternatively, you can initiate the creation of a new lease by selecting New Leases from the dynamic secret lease list section, accessible by clicking on the relevant row.
 
-	![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret-generate.png)
-	![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
+	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
+	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
 
 	When generating these secrets, it's important to specify a Time-to-Live (TTL) duration within the predefined range. Ensure that the TTL falls within the maximum TTL defined in the previous step to maintain consistency and security.
 
-	![Provision Lease](../../../images/platform/dynamic-secrets/provision-lease.png)
+	![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
 
 	After you click the `Submit` button, a new secret lease will be generated and the Database User and Database Password will be shown. 
 
-	![Provision Lease](../../../images/platform/dynamic-secrets/lease-values.png)
+	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
   </Step>
 </Steps>
 
 ## Audit or Revoke Leases
 As soon as you have generated a few secret leases, you will be able to access them by clicking on the respective dynamic secret row. In this modal, you are able to see the expiration time or delete a secret preemptively.
 
-![Provision Lease](../../../images/platform/dynamic-secrets/lease-data.png)
+![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew Leases
 
-![Provision Lease](../../../images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
+![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 To extend the expiration of generated dynamic secret leases, simply click on the **Renew** button located above, as illustrated. This action also allows for an extension of the Time-to-Live (TTL). 
 However, it's crucial to note that the expiry cannot exceed the maximum TTL from created, specified in the configuration settings.
