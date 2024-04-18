@@ -39,7 +39,6 @@ var secretsCmd = &cobra.Command{
 		}
 
 		token, err := util.GetInfisicalToken(cmd)
-
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
