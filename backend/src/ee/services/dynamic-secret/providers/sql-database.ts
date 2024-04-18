@@ -20,6 +20,13 @@ const generatePassword = (provider: SqlProviders) => {
   return customAlphabet(charset, 48)(size);
 };
 
+const generateUsername = (provider: SqlProviders) => {
+  // for oracle without quotes in client it assumes everything is uppercase
+  if (provider === SqlProviders.Oracle) return alphaNumericNanoId(32).toUpperCase();
+
+  return alphaNumericNanoId(32);
+};
+
 export const SqlDatabaseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const appCfg = getConfig();
@@ -74,7 +81,7 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const db = await getClient(providerInputs);
 
-    const username = alphaNumericNanoId(32);
+    const username = generateUsername(providerInputs.client);
     const password = generatePassword(providerInputs.client);
     const { database } = providerInputs;
     const expiration = new Date(expireAt).toISOString();
