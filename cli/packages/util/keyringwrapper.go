@@ -17,7 +17,7 @@ func (e *TimeoutError) Error() string {
 func SetValueInKeyring(key, value string) error {
 	currentVaultBackend, err := GetCurrentVaultBackend()
 	if err != nil {
-		PrintErrorAndExit(1, err, "Unable to get current vault. Tip: run [infisical rest] then try again")
+		PrintErrorAndExit(1, err, "Unable to get current vault. Tip: run [infisical reset] then try again")
 	}
 
 	return keyring.Set(currentVaultBackend, MAIN_KEYRING_SERVICE, key, value)
@@ -26,7 +26,7 @@ func SetValueInKeyring(key, value string) error {
 func GetValueInKeyring(key string) (string, error) {
 	currentVaultBackend, err := GetCurrentVaultBackend()
 	if err != nil {
-		PrintErrorAndExit(1, err, "Unable to get current vault. Tip: run [infisical rest] then try again")
+		PrintErrorAndExit(1, err, "Unable to get current vault. Tip: run [infisical reset] then try again")
 	}
 
 	return keyring.Get(currentVaultBackend, MAIN_KEYRING_SERVICE, key)

@@ -286,6 +286,8 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 	// var serviceTokenDetails api.GetServiceTokenDetailsResponse
 	var errorToReturn error
 
+	var infisicalDotJson models.WorkspaceConfigFile
+
 	if params.InfisicalToken == "" && params.UniversalAuthAccessToken == "" {
 		if isConnected {
 			log.Debug().Msg("GetAllEnvironmentVariables: Connected to internet, checking logged in creds")
@@ -309,8 +311,6 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		if loggedInUserDetails.LoginExpired {
 			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
 		}
-
-		var infisicalDotJson models.WorkspaceConfigFile
 
 		if projectConfigFilePath == "" {
 			projectConfig, err := GetWorkSpaceFromFile()
@@ -368,6 +368,19 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			secretsToReturn = res.Secrets
 		}
 	}
+
+	project := models.SingleEnvironmentVariable{
+		Key:   string(PROJECT_NAME),
+		Value: string(infisicalDotJson.WorkspaceName),
+	}
+
+	environment := models.SingleEnvironmentVariable{
+		Key:   string(ENVIRONMENT_NAME),
+		Value: string(params.Environment),
+	}
+
+	// add some built-in env to the secrets
+	secretsToReturn = append(secretsToReturn, project, environment)
 
 	return secretsToReturn, errorToReturn
 }

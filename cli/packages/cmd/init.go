@@ -123,7 +123,8 @@ func init() {
 
 func writeWorkspaceFile(selectedWorkspace models.Workspace) error {
 	workspaceFileToSave := models.WorkspaceConfigFile{
-		WorkspaceId: selectedWorkspace.ID,
+		WorkspaceId:   selectedWorkspace.ID,
+		WorkspaceName: selectedWorkspace.Name,
 	}
 
 	marshalledWorkspaceFile, err := json.MarshalIndent(workspaceFileToSave, "", "    ")

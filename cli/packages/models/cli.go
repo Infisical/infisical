@@ -78,6 +78,7 @@ type Workspace struct {
 }
 
 type WorkspaceConfigFile struct {
+	WorkspaceName                 string            `json:"workspaceName"`
 	WorkspaceId                   string            `json:"workspaceId"`
 	DefaultEnvironment            string            `json:"defaultEnvironment"`
 	GitBranchToEnvironmentMapping map[string]string `json:"gitBranchToEnvironmentMapping"`

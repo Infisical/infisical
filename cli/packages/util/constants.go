@@ -15,6 +15,8 @@ const (
 	KEYRING_SERVICE_NAME                        = "infisical"
 	PERSONAL_SECRET_TYPE_NAME                   = "personal"
 	SHARED_SECRET_TYPE_NAME                     = "shared"
+	PROJECT_NAME                                = "INFISICAL_PROJECT"
+	ENVIRONMENT_NAME                            = "INFISICAL_ENVIRONMENT"
 
 	SERVICE_TOKEN_IDENTIFIER        = "service-token"
 	UNIVERSAL_AUTH_TOKEN_IDENTIFIER = "universal-auth-token"
