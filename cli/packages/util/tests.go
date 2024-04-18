@@ -9,10 +9,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func HandleSendTestSecrets(cmd *cobra.Command, secrets []models.SingleEnvironmentVariable) {
-	isTestMode := os.Getenv("TEST_MODE")
+var IS_TEST_MODE = os.Getenv("TEST_MODE") == "true"
 
-	if isTestMode != "true" {
+func HandleSendTestSecrets(cmd *cobra.Command, secrets []models.SingleEnvironmentVariable) {
+
+	if !IS_TEST_MODE {
 		return
 	}
 
@@ -22,5 +23,28 @@ func HandleSendTestSecrets(cmd *cobra.Command, secrets []models.SingleEnvironmen
 	}
 
 	fmt.Fprint(cmd.OutOrStdout(), string(jsonOut))
+}
 
+func HandleSendTestEnvVars(cmd *cobra.Command, envs []string) {
+
+	if !IS_TEST_MODE {
+		return
+	}
+
+	stringEnvVars := ""
+
+	for _, env := range envs {
+		stringEnvVars += env + "\n"
+	}
+
+	fmt.Fprint(cmd.OutOrStdout(), string(stringEnvVars))
+}
+
+func HandleSendUniversalAuthToken(cmd *cobra.Command, token string) {
+
+	if !IS_TEST_MODE {
+		return
+	}
+
+	fmt.Fprint(cmd.OutOrStdout(), token)
 }
