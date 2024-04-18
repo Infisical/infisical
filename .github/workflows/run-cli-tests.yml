@@ -19,4 +19,11 @@ jobs:
             - name: Build
               run: go build -v ./...
             - name: Test with the Go CLI
+              env:
+                  CLI_TESTS_UA_CLIENT_ID: ${{ secrets.CLI_TESTS_UA_CLIENT_ID }}
+                  CLI_TESTS_UA_CLIENT_SECRET: ${{ secrets.CLI_TESTS_UA_CLIENT_SECRET }}
+                  CLI_TESTS_SERVICE_TOKEN: ${{ secrets.CLI_TESTS_SERVICE_TOKEN }}
+                  CLI_TESTS_PROJECT_ID: ${{ secrets.CLI_TESTS_PROJECT_ID }}
+                  CLI_TESTS_ENV_SLUG: ${{ secrets.CLI_TESTS_ENV_SLUG }}
+
               run: TEST_MODE=true go test -v -count=1 ./test
