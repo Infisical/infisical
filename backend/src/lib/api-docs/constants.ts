@@ -301,6 +301,7 @@ export const RAW_SECRETS = {
   },
   UPDATE: {
     secretName: "The name of the secret to update.",
+    secretComment: "Update comment to the secret.",
     environment: "The slug of the environment where the secret is located.",
     secretPath: "The path of the secret to update",
     secretValue: "The new value of the secret.",

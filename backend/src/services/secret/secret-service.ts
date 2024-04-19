@@ -33,9 +33,11 @@ import { TSecretQueueFactory } from "./secret-queue";
 import {
   TAttachSecretTagsDTO,
   TCreateBulkSecretDTO,
+  TCreateManySecretRawDTO,
   TCreateSecretDTO,
   TCreateSecretRawDTO,
   TDeleteBulkSecretDTO,
+  TDeleteManySecretRawDTO,
   TDeleteSecretDTO,
   TDeleteSecretRawDTO,
   TFnSecretBlindIndexCheckV2,
@@ -46,6 +48,7 @@ import {
   TGetSecretsRawDTO,
   TGetSecretVersionsDTO,
   TUpdateBulkSecretDTO,
+  TUpdateManySecretRawDTO,
   TUpdateSecretDTO,
   TUpdateSecretRawDTO
 } from "./secret-types";
@@ -1036,6 +1039,131 @@ export const secretServiceFactory = ({
     return decryptSecretRaw(secret, botKey);
   };
 
+  const createManySecretsRaw = async ({
+    actorId,
+    projectId,
+    environment,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    secretPath,
+    secrets: inputSecrets = []
+  }: TCreateManySecretRawDTO) => {
+    const botKey = await projectBotService.getBotKey(projectId);
+    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+
+    const secrets = await createManySecret({
+      projectId,
+      environment,
+      path: secretPath,
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      secrets: inputSecrets.map(({ secretComment, secretKey, secretValue, skipMultilineEncoding }) => {
+        const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secretKey, botKey);
+        const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
+        const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
+        return {
+          secretName: secretKey,
+          skipMultilineEncoding,
+          secretKeyCiphertext: secretKeyEncrypted.ciphertext,
+          secretKeyIV: secretKeyEncrypted.iv,
+          secretKeyTag: secretKeyEncrypted.tag,
+          secretValueCiphertext: secretValueEncrypted.ciphertext,
+          secretValueIV: secretValueEncrypted.iv,
+          secretValueTag: secretValueEncrypted.tag,
+          secretCommentCiphertext: secretCommentEncrypted.ciphertext,
+          secretCommentIV: secretCommentEncrypted.iv,
+          secretCommentTag: secretCommentEncrypted.tag
+        };
+      })
+    });
+
+    await snapshotService.performSnapshot(secrets[0].folderId);
+    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
+
+    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+  };
+
+  const updateManySecretsRaw = async ({
+    actorId,
+    projectId,
+    environment,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    secretPath,
+    secrets: inputSecrets = []
+  }: TUpdateManySecretRawDTO) => {
+    const botKey = await projectBotService.getBotKey(projectId);
+    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+
+    const secrets = await updateManySecret({
+      projectId,
+      environment,
+      path: secretPath,
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      secrets: inputSecrets.map(({ secretComment, secretKey, secretValue, skipMultilineEncoding }) => {
+        const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secretKey, botKey);
+        const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
+        const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
+        return {
+          secretName: secretKey,
+          type: SecretType.Shared,
+          skipMultilineEncoding,
+          secretKeyCiphertext: secretKeyEncrypted.ciphertext,
+          secretKeyIV: secretKeyEncrypted.iv,
+          secretKeyTag: secretKeyEncrypted.tag,
+          secretValueCiphertext: secretValueEncrypted.ciphertext,
+          secretValueIV: secretValueEncrypted.iv,
+          secretValueTag: secretValueEncrypted.tag,
+          secretCommentCiphertext: secretCommentEncrypted.ciphertext,
+          secretCommentIV: secretCommentEncrypted.iv,
+          secretCommentTag: secretCommentEncrypted.tag
+        };
+      })
+    });
+
+    await snapshotService.performSnapshot(secrets[0].folderId);
+    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
+
+    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+  };
+
+  const deleteManySecretsRaw = async ({
+    actorId,
+    projectId,
+    environment,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    secretPath,
+    secrets: inputSecrets = []
+  }: TDeleteManySecretRawDTO) => {
+    const botKey = await projectBotService.getBotKey(projectId);
+    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+
+    const secrets = await deleteManySecret({
+      projectId,
+      environment,
+      path: secretPath,
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      secrets: inputSecrets.map(({ secretKey }) => ({ secretName: secretKey, type: SecretType.Shared }))
+    });
+
+    await snapshotService.performSnapshot(secrets[0].folderId);
+    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
+
+    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+  };
+
   const getSecretVersions = async ({
     actorId,
     actor,
@@ -1280,6 +1408,9 @@ export const secretServiceFactory = ({
     createSecretRaw,
     updateSecretRaw,
     deleteSecretRaw,
+    createManySecretsRaw,
+    updateManySecretsRaw,
+    deleteManySecretsRaw,
     getSecretVersions,
     // external services function
     fnSecretBulkDelete,

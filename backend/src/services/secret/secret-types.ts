@@ -181,6 +181,36 @@ export type TDeleteSecretRawDTO = TProjectPermission & {
   type: SecretType;
 };
 
+export type TCreateManySecretRawDTO = TProjectPermission & {
+  secretPath: string;
+  environment: string;
+  secrets: {
+    secretKey: string;
+    secretValue: string;
+    secretComment?: string;
+    skipMultilineEncoding?: boolean;
+  }[];
+};
+
+export type TUpdateManySecretRawDTO = TProjectPermission & {
+  secretPath: string;
+  environment: string;
+  secrets: {
+    secretKey: string;
+    secretValue: string;
+    secretComment?: string;
+    skipMultilineEncoding?: boolean;
+  }[];
+};
+
+export type TDeleteManySecretRawDTO = TProjectPermission & {
+  secretPath: string;
+  environment: string;
+  secrets: {
+    secretKey: string;
+  }[];
+};
+
 export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
   limit?: number;
   offset?: number;
