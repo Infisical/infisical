@@ -101,6 +101,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
         key: "snapshotId",
         parentMapper: ({
           snapshotId: id,
+          folderId,
           projectId,
           envId,
           envSlug,
@@ -109,6 +110,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
           snapshotUpdatedAt: updatedAt
         }) => ({
           id,
+          folderId,
           projectId,
           createdAt,
           updatedAt,
