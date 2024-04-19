@@ -2,11 +2,72 @@ import { z } from "zod";
 
 import { AuthTokenSessionsSchema, OrganizationsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { ApiKeysSchema } from "@app/db/schemas/api-keys";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "POST",
+    url: "/me/emails/code",
+    config: {
+      rateLimit: authRateLimit
+    },
+    schema: {
+      response: {
+        200: z.object({})
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.user.sendEmailVerificationCode(req.permission.id);
+      return {};
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/me/emails/verify",
+    config: {
+      rateLimit: authRateLimit
+    },
+    schema: {
+      body: z.object({
+        code: z.string().trim()
+      }),
+      response: {
+        200: z.object({})
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.user.verifyEmailVerificationCode(req.permission.id, req.body.code);
+      return {};
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/me/users/same-email",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          users: UsersSchema.array()
+        })
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const users = await server.services.user.listUsersWithSameEmail(req.permission.id);
+      return {
+        users
+      };
+    }
+  });
+
   server.route({
     method: "PATCH",
     url: "/me/mfa",

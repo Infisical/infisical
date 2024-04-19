@@ -1,15 +1,83 @@
 import { BadRequestError } from "@app/lib/errors";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { AuthMethod } from "../auth/auth-type";
 import { TUserDALFactory } from "./user-dal";
 
 type TUserServiceFactoryDep = {
   userDAL: TUserDALFactory;
+  tokenService: TAuthTokenServiceFactory;
+  smtpService: TSmtpService;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 
-export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
+export const userServiceFactory = ({ userDAL, tokenService, smtpService }: TUserServiceFactoryDep) => {
+  const sendEmailVerificationCode = async (userId: string) => {
+    console.log("sendEmailVerificationCode userId: ", userId);
+    const user = await userDAL.findById(userId);
+    if (!user) throw new BadRequestError({ name: "Failed to find user" });
+    if (!user.email)
+      throw new BadRequestError({ name: "Failed to send email verification code due to no email on user" });
+    if (user.isEmailVerified)
+      throw new BadRequestError({ name: "Failed to send email verification code due to email already verified" });
+
+    console.log("sendEmailVerificationCode user: ", user);
+    const token = await tokenService.createTokenForUser({
+      type: TokenType.TOKEN_EMAIL_VERIFICATION,
+      userId: user.id
+    });
+
+    console.log("sendEmailVerificationCode 2");
+    await smtpService.sendMail({
+      template: SmtpTemplates.EmailVerification,
+      subjectLine: "Infisical confirmation code",
+      recipients: [user.email],
+      substitutions: {
+        code: token
+      }
+    });
+  };
+
+  const verifyEmailVerificationCode = async (userId: string, code: string) => {
+    console.log("verifyEmailVerificationCode args: ", {
+      userId,
+      code
+    });
+
+    const user = await userDAL.findById(userId);
+    if (!user) throw new BadRequestError({ name: "Failed to find user" });
+    if (user.isEmailVerified)
+      throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
+
+    await tokenService.validateTokenForUser({
+      type: TokenType.TOKEN_EMAIL_VERIFICATION,
+      userId: user.id,
+      code
+    });
+
+    await userDAL.updateById(userId, { isEmailVerified: true });
+  };
+
+  // lists users with same verified email only
+  const listUsersWithSameEmail = async (userId: string) => {
+    const user = await userDAL.findById(userId);
+    if (!user) throw new BadRequestError({ name: "Failed to find user" });
+    if (!user.email)
+      throw new BadRequestError({ name: "Failed to list users with same email due to no email on user" });
+    if (!user.isEmailVerified)
+      throw new BadRequestError({ name: "Failed to list users with same email due to email not verified" });
+
+    const users = await userDAL.find({
+      email: user.email,
+      isEmailVerified: true
+    });
+
+    return users;
+  };
+
   const toggleUserMfa = async (userId: string, isMfaEnabled: boolean) => {
     const user = await userDAL.findById(userId);
 
@@ -72,6 +140,9 @@ export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
   };
 
   return {
+    sendEmailVerificationCode,
+    verifyEmailVerificationCode,
+    listUsersWithSameEmail,
     toggleUserMfa,
     updateUserName,
     updateAuthMethods,

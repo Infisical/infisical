@@ -315,7 +315,7 @@ export const registerRoutes = async (
   });
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
-  const userService = userServiceFactory({ userDAL });
+  const userService = userServiceFactory({ userDAL, tokenService, smtpService });
   const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, tokenDAL: authTokenDAL });
   const passwordService = authPaswordServiceFactory({
     tokenService,

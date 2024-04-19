@@ -61,3 +61,23 @@ export const useAddUserToWsNonE2EE = () => {
     }
   });
 };
+
+export const useSendEmailVerificationCode = () => {
+  return useMutation({
+    mutationFn: async () => {
+      await apiRequest.post("/api/v2/users/me/emails/code");
+      return {};
+    }
+  });
+};
+
+export const useVerifyEmailVerificationCode = () => {
+  return useMutation({
+    mutationFn: async ({ code }: { code: string }) => {
+      await apiRequest.post("/api/v2/users/me/emails/verify", {
+        code
+      });
+      return {};
+    }
+  });
+};

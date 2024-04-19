@@ -1,7 +1,7 @@
 import { useState } from "react";
 import jwt_decode from "jwt-decode";
 
-import { BackupPDFStep, UserInfoSSOStep } from "./components";
+import { BackupPDFStep, EmailConfirmationStep,UserInfoSSOStep } from "./components";
 
 type Props = {
   providerAuthToken: string;
@@ -28,6 +28,8 @@ export const SignupSSO = ({ providerAuthToken }: Props) => {
           />
         );
       case 1:
+        return <EmailConfirmationStep />;
+      case 2:
         return (
           <BackupPDFStep email={username} password={password} name={`${firstName} ${lastName}`} />
         );

@@ -57,6 +57,8 @@ type TScimServiceFactoryDep = {
 
 export type TScimServiceFactory = ReturnType<typeof scimServiceFactory>;
 
+// TODO: finish updating all userId refs to orgMembershipId
+
 export const scimServiceFactory = ({
   licenseService,
   scimDAL,
@@ -145,6 +147,7 @@ export const scimServiceFactory = ({
 
   // SCIM server endpoints
   const listScimUsers = async ({ offset, limit, filter, orgId }: TListScimUsersDTO): Promise<TListScimUsers> => {
+    console.log("listScimUsers"); // done
     const org = await orgDAL.findById(orgId);
 
     if (!org.scimEnabled)
@@ -178,9 +181,11 @@ export const scimServiceFactory = ({
       findOpts
     );
 
-    const scimUsers = users.map(({ userId, username, firstName, lastName, email }) =>
+    console.log("orgDAL.findMembership users: ", users);
+
+    const scimUsers = users.map(({ id, username, firstName, lastName, email }) =>
       buildScimUser({
-        userId: userId ?? "",
+        userId: id ?? "",
         username,
         firstName: firstName ?? "",
         lastName: lastName ?? "",
@@ -197,6 +202,7 @@ export const scimServiceFactory = ({
   };
 
   const getScimUser = async ({ userId, orgId }: TGetScimUserDTO) => {
+    console.log("getScimUser"); // done
     const [membership] = await orgDAL
       .findMembership({
         userId,
@@ -221,8 +227,10 @@ export const scimServiceFactory = ({
         status: 403
       });
 
+    console.log("getScimUser membership: ", membership);
+
     return buildScimUser({
-      userId: membership.userId as string,
+      userId: membership.id,
       username: membership.username,
       email: membership.email ?? "",
       firstName: membership.firstName as string,
@@ -232,6 +240,7 @@ export const scimServiceFactory = ({
   };
 
   const createScimUser = async ({ username, email, firstName, lastName, orgId }: TCreateScimUserDTO) => {
+    console.log("createScimUser"); // TODO: update implementation to always create a new user and be based on orgMembershipId
     const org = await orgDAL.findById(orgId);
 
     if (!org)
@@ -331,6 +340,7 @@ export const scimServiceFactory = ({
   };
 
   const updateScimUser = async ({ userId, orgId, operations }: TUpdateScimUserDTO) => {
+    console.log("updateScimUser"); // done
     const [membership] = await orgDAL
       .findMembership({
         userId,
@@ -380,7 +390,7 @@ export const scimServiceFactory = ({
     }
 
     return buildScimUser({
-      userId: membership.userId as string,
+      userId: membership.id,
       username: membership.username,
       email: membership.email,
       firstName: membership.firstName as string,
@@ -390,6 +400,7 @@ export const scimServiceFactory = ({
   };
 
   const replaceScimUser = async ({ userId, active, orgId }: TReplaceScimUserDTO) => {
+    console.log("replaceScimUser"); // done
     const [membership] = await orgDAL
       .findMembership({
         userId,
@@ -426,7 +437,7 @@ export const scimServiceFactory = ({
     }
 
     return buildScimUser({
-      userId: membership.userId as string,
+      userId: membership.id,
       username: membership.username,
       email: membership.email,
       firstName: membership.firstName as string,
@@ -436,6 +447,7 @@ export const scimServiceFactory = ({
   };
 
   const deleteScimUser = async ({ userId, orgId }: TDeleteScimUserDTO) => {
+    console.log("deleteScimUser"); // done
     const [membership] = await orgDAL
       .findMembership({
         userId,
@@ -489,7 +501,7 @@ export const scimServiceFactory = ({
       buildScimGroup({
         groupId: group.id,
         name: group.name,
-        members: []
+        members: [] // does this need to be populated?
       })
     );
 

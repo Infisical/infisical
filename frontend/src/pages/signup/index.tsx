@@ -13,7 +13,7 @@ import TeamInviteStep from "@app/components/signup/TeamInviteStep";
 import UserInfoStep from "@app/components/signup/UserInfoStep";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { useServerConfig } from "@app/context";
-import { useVerifyEmailVerificationCode } from "@app/hooks/api";
+import { useVerifySignupEmailVerificationCode } from "@app/hooks/api";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
@@ -34,7 +34,7 @@ export default function SignUp() {
   const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
   const [isCodeInputCheckLoading, setIsCodeInputCheckLoading] = useState(false);
   const { t } = useTranslation();
-  const { mutateAsync } = useVerifyEmailVerificationCode();
+  const { mutateAsync } = useVerifySignupEmailVerificationCode();
   const { config } = useServerConfig();
 
   useEffect(() => {

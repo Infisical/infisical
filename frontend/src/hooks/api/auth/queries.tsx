@@ -164,7 +164,7 @@ export const useSendVerificationEmail = () => {
   });
 };
 
-export const useVerifyEmailVerificationCode = () => {
+export const useVerifySignupEmailVerificationCode = () => {
   return useMutation({
     mutationFn: async ({ email, code }: { email: string; code: string }) => {
       const { data } = await apiRequest.post("/api/v3/signup/email/verify", {
