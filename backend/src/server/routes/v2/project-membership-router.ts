@@ -15,6 +15,12 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      description: "Invite members to project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         projectId: z.string().describe(PROJECTS.INVITE_MEMBER.projectId)
       }),
@@ -64,10 +70,15 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      description: "Remove members from project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         projectId: z.string().describe(PROJECTS.REMOVE_MEMBER.projectId)
       }),
-
       body: z.object({
         emails: z.string().email().array().default([]).describe(PROJECTS.REMOVE_MEMBER.emails),
         usernames: z.string().array().default([]).describe(PROJECTS.REMOVE_MEMBER.usernames)

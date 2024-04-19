@@ -138,6 +138,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      description: "Get project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim().describe(PROJECTS.GET.workspaceId)
       }),
@@ -170,6 +176,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      description: "Delete project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim().describe(PROJECTS.DELETE.workspaceId)
       }),
@@ -239,6 +251,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      description: "Update project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim().describe(PROJECTS.UPDATE.workspaceId)
       }),
