@@ -66,7 +66,7 @@ export const useCreateIntegration = () => {
         secretAWSTag?: {
           key: string;
           value: string;
-        };
+        }[];
       };
     }) => {
       const {

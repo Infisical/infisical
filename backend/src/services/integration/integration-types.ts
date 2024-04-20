@@ -25,7 +25,7 @@ export type TCreateIntegrationDTO = {
     secretAWSTag?: {
       key: string;
       value: string;
-    };
+    }[];
   };
 } & Omit<TProjectPermission, "projectId">;
 

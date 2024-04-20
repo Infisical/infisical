@@ -8,5 +8,5 @@ export type Metadata = {
     secretAWSTag?: {
         key: string;
         value: string;
-    }
+    }[]
 }

@@ -74,7 +74,7 @@ export const IntegrationsSection = ({
         </div>
       )}
       {!isLoading && isBotActive && (
-        <div className="flex flex-col space-y-4 p-6 pt-0">
+        <div className="flex flex-col min-w-max space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
             <div
               className="max-w-8xl flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3"
@@ -128,6 +128,8 @@ export const IntegrationsSection = ({
                   <FormLabel
                     label={
                       (integration.integration === "qovery" && integration?.scope) ||
+                      (integration.integration === "aws-secret-manager" && "Secret") ||
+                      (integration.integration === "aws-parameter-store" && "Path") ||
                       (integration?.scope === "github-org" && "Organization") ||
                       (["github-repo", "github-env"].includes(integration?.scope as string) &&
                         "Repository") ||
@@ -138,6 +140,7 @@ export const IntegrationsSection = ({
                     {(integration.integration === "hashicorp-vault" &&
                       `${integration.app} - path: ${integration.path}`) ||
                       (integration.scope === "github-org" && `${integration.owner}`) ||
+                      (integration.integration === "aws-parameter-store" && `${integration.path}`) ||
                       (integration.scope?.startsWith("github-") &&
                         `${integration.owner}/${integration.app}`) ||
                       integration.app}
