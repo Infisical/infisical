@@ -67,6 +67,7 @@ export const useCreateIntegration = () => {
           key: string;
           value: string;
         }[];
+        kmsKeyId?: string;
       };
     }) => {
       const {

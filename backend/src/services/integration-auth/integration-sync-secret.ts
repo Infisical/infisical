@@ -582,6 +582,7 @@ const syncSecretsAWSSecretManager = async ({
         new CreateSecretCommand({
           Name: integration.app as string,
           SecretString: JSON.stringify(secKeyVal),
+          KmsKeyId: metadata.kmsKeyId ? metadata.kmsKeyId : null,
           Tags: metadata.secretAWSTag
             ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
             : []

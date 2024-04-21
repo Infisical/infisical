@@ -9,4 +9,5 @@ export type Metadata = {
         key: string;
         value: string;
     }[]
+    kmsKeyId?: string;
 }

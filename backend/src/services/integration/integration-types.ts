@@ -26,6 +26,7 @@ export type TCreateIntegrationDTO = {
       key: string;
       value: string;
     }[];
+    kmsKeyId?: string;
   };
 } & Omit<TProjectPermission, "projectId">;
 

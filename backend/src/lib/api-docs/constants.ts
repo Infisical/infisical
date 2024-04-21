@@ -590,7 +590,8 @@ export const INTEGRATION = {
       initialSyncBehavoir: "Type of syncing behavoir with the integration.",
       shouldAutoRedeploy: "Used by Render to trigger auto deploy.",
       secretGCPLabel: "The label for GCP secrets.",
-      secretAWSTag: "The tags for AWS secrets."
+      secretAWSTag: "The tags for AWS secrets.",
+      kmsKeyId: "The ID of the encryption key from AWS KMS."
     }
   },
   UPDATE: {
