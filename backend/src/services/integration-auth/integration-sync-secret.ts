@@ -2157,16 +2157,29 @@ const syncSecretsQovery = async ({
  * @param {String} obj.accessToken - access token for Terraform Cloud API
  */
 const syncSecretsTerraformCloud = async ({
+  createManySecretsRawFn,
+  updateManySecretsRawFn,
   integration,
   secrets,
-  accessToken
+  accessToken,
+  integrationDAL
 }: {
-  integration: TIntegrations;
-  secrets: Record<string, { value: string; comment?: string }>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+  };
+  secrets: Record<string, { value: string; comment?: string } | null>;
   accessToken: string;
+  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
 }) => {
   // get secrets from Terraform Cloud
-  const getSecretsRes = (
+  const terraformSecrets = (
     await request.get<{ data: { attributes: { key: string; value: string }; id: string }[] }>(
       `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`,
       {
@@ -2184,9 +2197,74 @@ const syncSecretsTerraformCloud = async ({
     {} as Record<string, { attributes: { key: string; value: string }; id: string }>
   );
 
+  const secretsToAdd: { [key: string]: string } = {};
+  const secretsToUpdate: { [key: string]: string } = {};
+
+  const metadata = z.record(z.any()).parse(integration.metadata);
+
+  Object.keys(terraformSecrets).forEach((key) => {
+    if (!integration.lastUsed) {
+      // first time using integration
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        case IntegrationInitialSyncBehavior.PREFER_TARGET: {
+          if (!(key in secrets)) {
+            secretsToAdd[key] = terraformSecrets[key].attributes.value;
+          } else if (secrets[key]?.value !== terraformSecrets[key].attributes.value) {
+            secretsToUpdate[key] = terraformSecrets[key].attributes.value;
+          }
+          secrets[key] = {
+            value: terraformSecrets[key].attributes.value
+          };
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
+          if (!(key in secrets)) {
+            secrets[key] = {
+              value: terraformSecrets[key].attributes.value
+            };
+            secretsToAdd[key] = terraformSecrets[key].attributes.value;
+          }
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    } else if (!(key in secrets)) secrets[key] = null;
+  });
+
+  if (Object.keys(secretsToAdd).length) {
+    await createManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToAdd).map((key) => ({
+        secretName: key,
+        secretValue: secretsToAdd[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
+  if (Object.keys(secretsToUpdate).length) {
+    await updateManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToUpdate).map((key) => ({
+        secretName: key,
+        secretValue: secretsToUpdate[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
   // create or update secrets on Terraform Cloud
   for await (const key of Object.keys(secrets)) {
-    if (!(key in getSecretsRes)) {
+    if (!(key in terraformSecrets)) {
       // case: secret does not exist in Terraform Cloud
       // -> add secret
       await request.post(
@@ -2196,7 +2274,7 @@ const syncSecretsTerraformCloud = async ({
             type: "vars",
             attributes: {
               key,
-              value: secrets[key].value,
+              value: secrets[key]?.value,
               category: integration.targetService
             }
           }
@@ -2210,17 +2288,17 @@ const syncSecretsTerraformCloud = async ({
         }
       );
       // case: secret exists in Terraform Cloud
-    } else if (secrets[key].value !== getSecretsRes[key].attributes.value) {
+    } else if (secrets[key]?.value !== terraformSecrets[key].attributes.value) {
       // -> update secret
       await request.patch(
-        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${getSecretsRes[key].id}`,
+        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${terraformSecrets[key].id}`,
         {
           data: {
             type: "vars",
-            id: getSecretsRes[key].id,
+            id: terraformSecrets[key].id,
             attributes: {
-              ...getSecretsRes[key],
-              value: secrets[key].value
+              ...terraformSecrets[key],
+              value: secrets[key]?.value
             }
           }
         },
@@ -2235,11 +2313,11 @@ const syncSecretsTerraformCloud = async ({
     }
   }
 
-  for await (const key of Object.keys(getSecretsRes)) {
+  for await (const key of Object.keys(terraformSecrets)) {
     if (!(key in secrets)) {
       // case: delete secret
       await request.delete(
-        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${getSecretsRes[key].id}`,
+        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${terraformSecrets[key].id}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -2250,6 +2328,10 @@ const syncSecretsTerraformCloud = async ({
       );
     }
   }
+
+  await integrationDAL.updateById(integration.id, {
+    lastUsed: new Date()
+  });
 };
 
 /**
@@ -3291,9 +3373,12 @@ export const syncIntegrationSecrets = async ({
       break;
     case Integrations.TERRAFORM_CLOUD:
       await syncSecretsTerraformCloud({
+        createManySecretsRawFn,
+        updateManySecretsRawFn,
         integration,
         secrets,
-        accessToken
+        accessToken,
+        integrationDAL
       });
       break;
     case Integrations.HASHICORP_VAULT:

@@ -130,6 +130,7 @@ export const IntegrationsSection = ({
                       (integration.integration === "qovery" && integration?.scope) ||
                       (integration.integration === "aws-secret-manager" && "Secret") ||
                       (integration.integration === "aws-parameter-store" && "Path") ||
+                      (integration?.integration === "terraform-cloud" && "Project") ||
                       (integration?.scope === "github-org" && "Organization") ||
                       (["github-repo", "github-env"].includes(integration?.scope as string) &&
                         "Repository") ||
@@ -163,6 +164,14 @@ export const IntegrationsSection = ({
                 {integration.integration === "checkly" && integration.targetService && (
                   <div className="ml-2">
                     <FormLabel label="Group" />
+                    <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                      {integration.targetService}
+                    </div>
+                  </div>
+                )}
+                {integration.integration === "terraform-cloud" && integration.targetService && (
+                  <div className="ml-2">
+                    <FormLabel label="Category" />
                     <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                       {integration.targetService}
                     </div>
