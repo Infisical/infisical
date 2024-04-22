@@ -85,7 +85,8 @@
             "documentation/guides/introduction",
             "documentation/guides/node",
             "documentation/guides/python",
-            "documentation/guides/nextjs-vercel"
+            "documentation/guides/nextjs-vercel",
+            "documentation/guides/microsoft-power-apps"
           ]
         }
       ]
