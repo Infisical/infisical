@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
 import { useCreateIntegration } from "@app/hooks/api";
+import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
 
 import {
   Button,
@@ -18,6 +24,15 @@ import {
   useGetIntegrationAuthById
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+
+const initialSyncBehaviors = [
+  {
+    label: "No Import - Overwrite all values in Terraform Cloud",
+    value: IntegrationSyncBehavior.OVERWRITE_TARGET
+  },
+  { label: "Import non-sensitive - Prefer values from Terraform Cloud", value: IntegrationSyncBehavior.PREFER_TARGET },
+  { label: "Import non-sensitive - Prefer values from Infisical", value: IntegrationSyncBehavior.PREFER_SOURCE }
+];
 
 const variableTypes = [{ name: "env" }, { name: "terraform" }];
 
@@ -39,6 +54,7 @@ export default function TerraformCloudCreateIntegrationPage() {
   const [variableType, setVariableType] = useState("");
   const [variableTypeErrorText, setVariableTypeErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [initialSyncBehavior, setInitialSyncBehavior] = useState("prefer-source")
 
   useEffect(() => {
     if (workspace) {
@@ -78,7 +94,10 @@ export default function TerraformCloudCreateIntegrationPage() {
         )?.appId,
         sourceEnvironment: selectedSourceEnvironment,
         targetService: variableType,
-        secretPath
+        secretPath,
+        metadata: {
+          initialSyncBehavior
+        }
       });
 
       setIsLoading(false);
@@ -95,9 +114,40 @@ export default function TerraformCloudCreateIntegrationPage() {
     integrationAuthApps &&
     targetApp ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Terraform Cloud Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
+      <Head>
+        <title>Create Terraform Cloud Integration</title>
+        <link rel="icon" href="/infisical.ico" />
+      </Head>
+      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+        <CardTitle
+          className="px-6 text-left text-xl"
+          subTitle="Specify the encironment and path within Infisical that you want to push to which project in Terraform."
+        >
+          <div className="flex flex-row items-center">
+            <div className="inline flex items-center">
+              <Image
+                src="/images/integrations/Terraform.png"
+                height={35}
+                width={35}
+                alt="Terraform logo"
+              />
+            </div>
+            <span className="ml-1.5">Terraform Cloud Integration </span>
+            <Link href="https://infisical.com/docs/integrations/cloud/terraform-cloud" passHref>
+              <a target="_blank" rel="noopener noreferrer">
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
+                </div>
+              </a>
+            </Link>
+          </div>
+        </CardTitle>
+        <FormControl label="Project Environment" className="px-6">
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
@@ -113,7 +163,7 @@ export default function TerraformCloudCreateIntegrationPage() {
             ))}
           </Select>
         </FormControl>
-        <FormControl label="Secrets Path">
+        <FormControl label="Secrets Path" className="px-6">
           <Input
             value={secretPath}
             onChange={(evt) => setSecretPath(evt.target.value)}
@@ -122,7 +172,7 @@ export default function TerraformCloudCreateIntegrationPage() {
         </FormControl>
         <FormControl
           label="Category"
-          className="mt-4"
+          className="px-6"
           errorText={variableTypeErrorText}
           isError={variableTypeErrorText !== "" ?? false}
         >
@@ -138,7 +188,7 @@ export default function TerraformCloudCreateIntegrationPage() {
             ))}
           </Select>
         </FormControl>
-        <FormControl label="Terraform Cloud Project" className="mt-4">
+        <FormControl label="Terraform Cloud Project" className="px-6">
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
@@ -161,10 +211,22 @@ export default function TerraformCloudCreateIntegrationPage() {
             )}
           </Select>
         </FormControl>
+        <FormControl label="Initial Sync Behavior" className="px-6">
+          <Select value={initialSyncBehavior} onValueChange={(e) => setInitialSyncBehavior(e)} className="w-full border border-mineshaft-600">
+            {initialSyncBehaviors.map((b) => {
+              return (
+                <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
+                  {b.label}
+                </SelectItem>
+              );
+            })}
+          </Select>
+        </FormControl>
         <Button
           onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
+          colorSchema="primary"
+          variant="outline_bg"
+          className="mb-6 mt-2 ml-auto mr-6 w-min"
           isLoading={isLoading}
           isDisabled={integrationAuthApps.length === 0}
         >
