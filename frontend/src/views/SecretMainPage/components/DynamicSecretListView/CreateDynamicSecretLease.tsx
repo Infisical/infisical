@@ -55,7 +55,10 @@ const OutputDisplay = ({
 
 const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
   const { DB_PASSWORD, DB_USERNAME } = data as { DB_USERNAME: string; DB_PASSWORD: string };
-  if (provider === DynamicSecretProviders.SqlDatabase) {
+  if (
+    provider === DynamicSecretProviders.SqlDatabase ||
+    provider === DynamicSecretProviders.Cassandra
+  ) {
     return (
       <div>
         <OutputDisplay label="Database User" value={DB_USERNAME} />
@@ -102,7 +105,6 @@ export const CreateDynamicSecretLease = ({
       ttl: "1h"
     }
   });
-  
 
   const createDynamicSecretLease = useCreateDynamicSecretLease();
 

@@ -14,19 +14,17 @@ import {
   FormControl,
   Input,
   SecretInput,
-  Select,
-  SelectItem,
   TextArea
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
-import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
+import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 const formSchema = z.object({
   provider: z.object({
-    client: z.nativeEnum(SqlProviders),
     host: z.string().toLowerCase().min(1),
     port: z.coerce.number(),
-    database: z.string().min(1),
+    keyspace: z.string().optional(),
+    localDataCenter: z.string().min(1),
     username: z.string().min(1),
     password: z.string().min(1),
     creationStatement: z.string().min(1),
@@ -66,37 +64,16 @@ type Props = {
   environment: string;
 };
 
-const getSqlStatements = (provider: SqlProviders) => {
-  if (provider === SqlProviders.MySql) {
-    return {
-      creationStatement:
-        "CREATE USER \"{{username}}\"@'%' IDENTIFIED BY '{{password}}';\nGRANT ALL ON \"{{database}}\".* TO \"{{username}}\"@'%';",
-      renewStatement: "",
-      revocationStatement:
-        'REVOKE ALL PRIVILEGES ON "{{database}}".* FROM "{{username}}"@\'%\';\nDROP USER "{{username}}"@\'%\';'
-    };
-  }
-
-  if (provider === SqlProviders.Oracle) {
-    return {
-      creationStatement:
-        'CREATE USER "{{username}}" IDENTIFIED BY "{{password}}";\nGRANT CONNECT TO "{{username}}";\nGRANT CREATE SESSION TO "{{username}}";',
-      renewStatement: "",
-      revocationStatement:
-        'REVOKE CONNECT FROM "{{username}}";\nREVOKE CREATE SESSION FROM "{{username}}";\nDROP USER "{{username}}";'
-    };
-  }
-
+const getSqlStatements = () => {
   return {
     creationStatement:
-      "CREATE USER \"{{username}}\" WITH ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';\nGRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"{{username}}\";",
-    renewStatement: "ALTER ROLE \"{{username}}\" VALID UNTIL '{{expiration}}';",
-    revocationStatement:
-      'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{{username}}";\nDROP ROLE "{{username}}";'
+      "CREATE ROLE '{{username}}' WITH PASSWORD = '{{password}}' AND LOGIN=true;\nGRANT ALL PERMISSIONS ON ALL KEYSPACES TO '{{username}}';",
+    renewStatement: "",
+    revocationStatement: 'DROP ROLE "{{username}}";'
   };
 };
 
-export const SqlDatabaseInputForm = ({
+export const CassandraInputForm = ({
   onCompleted,
   onCancel,
   environment,
@@ -105,13 +82,12 @@ export const SqlDatabaseInputForm = ({
 }: Props) => {
   const {
     control,
-    setValue,
     formState: { isSubmitting },
     handleSubmit
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      provider: getSqlStatements(SqlProviders.Postgres)
+      provider: getSqlStatements()
     }
   });
 
@@ -122,7 +98,7 @@ export const SqlDatabaseInputForm = ({
     if (createDynamicSecret.isLoading) return;
     try {
       await createDynamicSecret.mutateAsync({
-        provider: { type: DynamicSecretProviders.SqlDatabase, inputs: provider },
+        provider: { type: DynamicSecretProviders.Cassandra, inputs: provider },
         maxTTL,
         name,
         path: secretPath,
@@ -198,31 +174,6 @@ export const SqlDatabaseInputForm = ({
               Configuration
             </div>
             <div className="flex flex-col">
-              <div className="pl-1 pb-0.5 text-sm text-mineshaft-400">Service</div>
-              <Controller
-                control={control}
-                name="provider.client"
-                defaultValue={SqlProviders.Postgres}
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
-                    <Select
-                      value={value}
-                      onValueChange={(val) => {
-                        onChange(val);
-                        const sqlStatment = getSqlStatements(val as SqlProviders);
-                        setValue("provider.creationStatement", sqlStatment.creationStatement);
-                        setValue("provider.renewStatement", sqlStatment.renewStatement);
-                        setValue("provider.revocationStatement", sqlStatment.revocationStatement);
-                      }}
-                      className="w-full border border-mineshaft-500"
-                    >
-                      <SelectItem value={SqlProviders.Postgres}>PostgreSQL</SelectItem>
-                      <SelectItem value={SqlProviders.MySql}>MySQL</SelectItem>
-                      <SelectItem value={SqlProviders.Oracle}>Oracle</SelectItem>
-                    </Select>
-                  </FormControl>
-                )}
-              />
               <div className="flex items-center space-x-2">
                 <Controller
                   control={control}
@@ -235,14 +186,14 @@ export const SqlDatabaseInputForm = ({
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <Input {...field} />
+                      <Input {...field} placeholder="host1,host2" />
                     </FormControl>
                   )}
                 />
                 <Controller
                   control={control}
                   name="provider.port"
-                  defaultValue={5432}
+                  defaultValue={9042}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="Port"
@@ -254,6 +205,20 @@ export const SqlDatabaseInputForm = ({
                   )}
                 />
               </div>
+              <Controller
+                control={control}
+                name="provider.localDataCenter"
+                defaultValue="datacenter1"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Local Data Center"
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                  >
+                    <Input {...field} />
+                  </FormControl>
+                )}
+              />
               <div className="flex items-center space-x-2">
                 <Controller
                   control={control}
@@ -284,12 +249,13 @@ export const SqlDatabaseInputForm = ({
                 />
                 <Controller
                   control={control}
-                  name="provider.database"
-                  defaultValue="default"
+                  name="provider.keyspace"
+                  defaultValue=""
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Database Name"
+                      label="Keyspace"
                       isError={Boolean(error?.message)}
+                      isOptional
                       errorText={error?.message}
                     >
                       <Input {...field} />
@@ -317,7 +283,7 @@ export const SqlDatabaseInputForm = ({
                 />
                 <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
                   <AccordionItem value="advance-statements">
-                    <AccordionTrigger>Modify SQL Statements</AccordionTrigger>
+                    <AccordionTrigger>Modify CQL Statements</AccordionTrigger>
                     <AccordionContent>
                       <Controller
                         control={control}
@@ -327,7 +293,7 @@ export const SqlDatabaseInputForm = ({
                             label="Creation Statement"
                             isError={Boolean(error?.message)}
                             errorText={error?.message}
-                            helperText="username, password and expiration are dynamically provisioned"
+                            helperText="variables: keyspace. username, password and expiration are dynamically provisioned"
                           >
                             <TextArea
                               {...field}
@@ -346,7 +312,7 @@ export const SqlDatabaseInputForm = ({
                             label="Revocation Statement"
                             isError={Boolean(error?.message)}
                             errorText={error?.message}
-                            helperText="username is dynamically provisioned"
+                            helperText="variables: keyspace, username is dynamically provisioned"
                           >
                             <TextArea
                               {...field}
@@ -363,7 +329,7 @@ export const SqlDatabaseInputForm = ({
                         render={({ field, fieldState: { error } }) => (
                           <FormControl
                             label="Renew Statement"
-                            helperText="username and expiration are dynamically provisioned"
+                            helperText="variables: keyspace, username and expiration are dynamically provisioned"
                             isError={Boolean(error?.message)}
                             errorText={error?.message}
                           >

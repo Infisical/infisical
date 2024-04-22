@@ -16,7 +16,8 @@ export type TDynamicSecret = {
 };
 
 export enum DynamicSecretProviders {
-  SqlDatabase = "sql-database"
+  SqlDatabase = "sql-database",
+  Cassandra = "cassandra"
 }
 
 export enum SqlProviders {
@@ -25,21 +26,37 @@ export enum SqlProviders {
   Oracle = "oracledb"
 }
 
-export type TDynamicSecretProvider = {
-  type: DynamicSecretProviders;
-  inputs: {
-    client: SqlProviders;
-    host: string;
-    port: number;
-    database: string;
-    username: string;
-    password: string;
-    creationStatement: string;
-    revocationStatement: string;
-    renewStatement?: string;
-    ca?: string | undefined;
+export type TDynamicSecretProvider =
+  | {
+    type: DynamicSecretProviders.SqlDatabase;
+    inputs: {
+      client: SqlProviders;
+      host: string;
+      port: number;
+      database: string;
+      username: string;
+      password: string;
+      creationStatement: string;
+      revocationStatement: string;
+      renewStatement?: string;
+      ca?: string | undefined;
+    };
+  }
+  | {
+    type: DynamicSecretProviders.Cassandra;
+    inputs: {
+      host: string;
+      port: number;
+      keyspace?: string;
+      localDataCenter: string;
+      username: string;
+      password: string;
+      creationStatement: string;
+      revocationStatement: string;
+      renewStatement?: string;
+      ca?: string | undefined;
+    };
   };
-};
 
 export type TCreateDynamicSecretDTO = {
   projectSlug: string;

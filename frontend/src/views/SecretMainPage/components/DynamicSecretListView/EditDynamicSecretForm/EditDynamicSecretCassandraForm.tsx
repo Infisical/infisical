@@ -14,20 +14,18 @@ import {
   FormControl,
   Input,
   SecretInput,
-  Select,
-  SelectItem,
   TextArea
 } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
-import { SqlProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 const formSchema = z.object({
   inputs: z
     .object({
-      client: z.nativeEnum(SqlProviders),
       host: z.string().toLowerCase().min(1),
-      port: z.number(),
-      database: z.string().min(1),
+      port: z.coerce.number(),
+      keyspace: z.string().optional(),
+      localDataCenter: z.string().min(1),
       username: z.string().min(1),
       password: z.string().min(1),
       creationStatement: z.string().min(1),
@@ -72,7 +70,7 @@ type Props = {
   projectSlug: string;
 };
 
-export const EditDynamicSecretSqlProviderForm = ({
+export const EditDynamicSecretCassandraForm = ({
   onClose,
   dynamicSecret,
   environment,
@@ -179,25 +177,6 @@ export const EditDynamicSecretSqlProviderForm = ({
         <div>
           <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
           <div className="flex flex-col">
-            <Controller
-              control={control}
-              name="inputs.client"
-              defaultValue={SqlProviders.Postgres}
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
-                  <Select
-                    isDisabled
-                    value={value}
-                    onValueChange={(val) => onChange(val)}
-                    className="w-full border border-mineshaft-500"
-                  >
-                    <SelectItem value={SqlProviders.Postgres}>PostgreSQL</SelectItem>
-                    <SelectItem value={SqlProviders.MySql}>MySQL</SelectItem>
-                    <SelectItem value={SqlProviders.Oracle}>Oracle</SelectItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
             <div className="flex items-center space-x-2">
               <Controller
                 control={control}
@@ -217,7 +196,7 @@ export const EditDynamicSecretSqlProviderForm = ({
               <Controller
                 control={control}
                 name="inputs.port"
-                defaultValue={5432}
+                defaultValue={9042}
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="Port"
@@ -233,6 +212,20 @@ export const EditDynamicSecretSqlProviderForm = ({
                 )}
               />
             </div>
+            <Controller
+              control={control}
+              name="inputs.localDataCenter"
+              defaultValue="datacenter1"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Local Data Center"
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} />
+                </FormControl>
+              )}
+            />
             <div className="flex items-center space-x-2">
               <Controller
                 control={control}
@@ -263,11 +256,12 @@ export const EditDynamicSecretSqlProviderForm = ({
               />
               <Controller
                 control={control}
-                name="inputs.database"
+                name="inputs.keyspace"
                 defaultValue="default"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
-                    label="Database Name"
+                    label="Keyspace"
+                    isOptional
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
@@ -296,20 +290,20 @@ export const EditDynamicSecretSqlProviderForm = ({
               />
               <Accordion type="multiple" className="w-full bg-mineshaft-700">
                 <AccordionItem value="modify-sql-statement">
-                  <AccordionTrigger>Modify SQL Statements</AccordionTrigger>
+                  <AccordionTrigger>Modify CQL Statements</AccordionTrigger>
                   <AccordionContent>
                     <Controller
                       control={control}
                       name="inputs.creationStatement"
                       defaultValue={
-                        "CREATE USER \"{{username}}\" WITH SUPERUSER ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';\nGRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"{{username}}\";"
+                        "CREATE ROLE '{{username}}' WITH PASSWORD '{{password}}' AND LOGIN=true;\nGRANT ALL PERMISSIONS ON ALL KEYSPACES TO '{{username}}';"
                       }
                       render={({ field, fieldState: { error } }) => (
                         <FormControl
                           label="Creation Statement"
                           isError={Boolean(error?.message)}
                           errorText={error?.message}
-                          helperText="username, password and expiration are dynamically provisioned"
+                          helperText="variables: keyspace. username, password and expiration are dynamically provisioned"
                         >
                           <TextArea
                             {...field}
@@ -323,15 +317,13 @@ export const EditDynamicSecretSqlProviderForm = ({
                     <Controller
                       control={control}
                       name="inputs.revocationStatement"
-                      defaultValue={
-                        'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{{username}}";\nDROP OWNED BY "{{username}}"; DROP ROLE "{{username}}";'
-                      }
+                      defaultValue='DROP ROLE "{{username}}";'
                       render={({ field, fieldState: { error } }) => (
                         <FormControl
                           label="Revocation Statement"
                           isError={Boolean(error?.message)}
                           errorText={error?.message}
-                          helperText="username is dynamically provisioned"
+                          helperText="variables: keyspace, username is dynamically provisioned"
                         >
                           <TextArea
                             {...field}
@@ -345,11 +337,11 @@ export const EditDynamicSecretSqlProviderForm = ({
                     <Controller
                       control={control}
                       name="inputs.renewStatement"
-                      defaultValue={"ALTER ROLE \"{{username}}\" VALID UNTIL '{{expiration}}';"}
+                      defaultValue=""
                       render={({ field, fieldState: { error } }) => (
                         <FormControl
                           label="Renew Statement"
-                          helperText="username and expiration are dynamically provisioned"
+                          helperText="variables: keyspace, username and expiration are dynamically provisioned"
                           isError={Boolean(error?.message)}
                           errorText={error?.message}
                         >
