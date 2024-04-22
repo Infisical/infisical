@@ -157,7 +157,13 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           data: z.object({
-            membership: ProjectMembershipsSchema,
+            membership: ProjectMembershipsSchema.extend({
+              roles: z
+                .object({
+                  role: z.string()
+                })
+                .array()
+            }),
             permissions: z.any().array()
           })
         })
