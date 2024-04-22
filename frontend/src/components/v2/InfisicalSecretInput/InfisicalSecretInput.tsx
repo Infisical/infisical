@@ -94,7 +94,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const [referenceKey, setReferenceKey] = useState<string>();
     const [lastCaretPos, setLastCaretPos] = useState<number>(0);
 
-    function isCaretInsideReference(str: string, start: number) {
+    const isCaretInsideReference = (str: string, start: number) => {
       const matches = [...str.matchAll(REGEX_SECRET_REFERENCE_FIND)];
       for (let i = 0; i < matches.length; i += 1) {
         const match = matches[i];
@@ -107,9 +107,9 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         }
       }
       return null;
-    }
+    };
 
-    function setCaretPos(caretPos: number) {
+    const setCaretPos = (caretPos: number) => {
       if (childRef?.current) {
         childRef.current.focus();
         const timeout = setTimeout(() => {
@@ -119,26 +119,26 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           clearTimeout(timeout);
         }, 200);
       }
-    }
+    };
 
-    function referencePopup(text: string, pos: number) {
+    const referencePopup = (text: string, pos: number) => {
       const match = isCaretInsideReference(text, pos);
       if (match && typeof match.index !== "undefined") {
         setLastCaretPos(pos);
         setReferenceKey(match?.[2]);
       }
       setShowReferencePopup(!!match);
-    }
+    };
 
-    function handleReferencePopup(element: HTMLTextAreaElement) {
+    const handleReferencePopup = (element: HTMLTextAreaElement) => {
       const { selectionStart, selectionEnd, value: text } = element;
       if (selectionStart !== selectionEnd || selectionStart === 0) {
         return;
       }
       referencePopup(text, selectionStart);
-    }
+    };
 
-    function handleKeyUp(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    const handleKeyUp = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Escape") {
         setShowReferencePopup(false);
         return;
@@ -169,9 +169,9 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       if (!(event.key.startsWith("Arrow") || event.key === "Backspace" || event.key === "Delete")) {
         handleReferencePopup(event.currentTarget);
       }
-    }
+    };
 
-    function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (
         !(
           event.key.startsWith("Arrow") ||
@@ -182,13 +182,13 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         const match = isCaretInsideReference(value, event.currentTarget.selectionEnd);
         if (match) event.preventDefault();
       }
-    }
+    };
 
-    function handleMouseClick(event: React.MouseEvent<HTMLTextAreaElement, MouseEvent>) {
+    const handleMouseClick = (event: React.MouseEvent<HTMLTextAreaElement, MouseEvent>) => {
       handleReferencePopup(event.currentTarget);
-    }
+    };
 
-    async function handleReferenceSelect({
+    const handleReferenceSelect = ({
       name,
       type,
       slug
@@ -196,7 +196,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       name: string;
       type: "folder" | "secret" | "environment";
       slug?: string;
-    }) {
+    }) => {
       setShowReferencePopup(false);
 
       // forward ref for parent component
@@ -252,16 +252,16 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         setCaretPos(caretPos);
         clearTimeout(timeout);
       }, 100);
-    }
+    };
 
-    function handleChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
       setValue(event.target.value);
       if (typeof onChange === "function") onChange(event);
-    }
+    };
 
-    function handleReferenceOpenChange(currOpen: boolean) {
+    const handleReferenceOpenChange = (currOpen: boolean) => {
       if (!currOpen) setShowReferencePopup(false);
-    }
+    };
 
     return (
       <div
