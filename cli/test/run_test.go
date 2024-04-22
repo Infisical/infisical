@@ -1,137 +1,118 @@
 package tests
 
 import (
-	"bytes"
 	"fmt"
-	"slices"
-	"strings"
 	"testing"
 
-	"github.com/Infisical/infisical-merge/packages/cmd"
-	"github.com/stretchr/testify/assert"
+	"github.com/bradleyjkemp/cupaloy/v2"
 )
 
-func RunCmd(t *testing.T, authToken string, projectId string, envSlug string) {
+func TestServiceToken_RunCmdRecursiveAndImports(t *testing.T) {
+	SetupCli(t)
 
-	rootCommand := cmd.NewRootCmd()
+	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "run", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent", "--", "echo", "hello world")
 
-	commandOutput := new(bytes.Buffer)
-	errorOutput := new(bytes.Buffer)
-	rootCommand.SetOut(commandOutput)
-	rootCommand.SetErr(errorOutput)
+	fmt.Printf("output: %v\n", output)
 
-	args := []string{
-		"run",
+	if err != nil {
+		t.Fatalf("error running CLI command: %v", err)
 	}
 
-	args = append(args, fmt.Sprintf("--token=%s", authToken))
-	args = append(args, fmt.Sprintf("--projectId=%s", projectId))
-	args = append(args, fmt.Sprintf("--env=%s", envSlug))
-	args = append(args, "--", "echo", "TEST_COMMAND_BEING_EXECUTED")
+	// Use cupaloy to snapshot test the output
+	err = cupaloy.Snapshot(output)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
+	}
+}
+func TestServiceToken_RunCmdWithImports(t *testing.T) {
+	SetupCli(t)
 
-	rootCommand.SetArgs(args)
-	rootCommand.Execute()
+	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "run", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent", "--", "echo", "hello world")
 
-	var secrets []Secret
+	fmt.Printf("output: %v\n", output)
 
-	stringSecrets := commandOutput.String()
-	arraySecrets := strings.Split(stringSecrets, "\n")
-
-	for idx, secret := range arraySecrets {
-		if idx == len(arraySecrets)-1 && secret == "" {
-			continue
-		}
-
-		secretParts := strings.Split(secret, "=")
-
-		if len(secretParts) != 2 {
-			t.Errorf("Error: secret at index %d is not formatted correctly", idx)
-		}
-
-		newSecret := Secret{
-			Key:   secretParts[0],
-			Value: secretParts[1],
-		}
-
-		// make sure the new secret key is at least one of the expected keys
-		if !slices.Contains(ALL_SECRET_KEYS, newSecret.Key) {
-			continue
-		}
-
-		secrets = append(secrets, newSecret)
+	if err != nil {
+		t.Fatalf("error running CLI command: %v", err)
 	}
 
-	expectedLength := len(DEV_SECRETS) + len(STAGING_SECRETS)
-
-	assert.Len(t, secrets, expectedLength)
-
-	for _, secret := range secrets {
-		assert.Contains(t, ALL_SECRET_KEYS, secret.Key)
-		assert.Contains(t, ALL_SECRET_VALUES, secret.Value)
+	// Use cupaloy to snapshot test the output
+	err = cupaloy.Snapshot(output)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
 	}
 }
 
-func RunCmdWithoutImportsAndWithRecursive(t *testing.T, authToken string, projectId string, envSlug string) {
+func TestUniversalAuth_RunCmdRecursiveAndImports(t *testing.T) {
+	MachineIdentityLoginCmd(t)
+	SetupCli(t)
 
-	rootCommand := cmd.NewRootCmd()
+	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "run", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent", "--", "echo", "hello world")
 
-	commandOutput := new(bytes.Buffer)
-	errorOutput := new(bytes.Buffer)
-	rootCommand.SetOut(commandOutput)
-	rootCommand.SetErr(errorOutput)
+	fmt.Printf("output: %v\n", output)
 
-	args := []string{
-		"run",
+	if err != nil {
+		t.Fatalf("error running CLI command: %v", err)
 	}
 
-	args = append(args, fmt.Sprintf("--token=%s", authToken))
-	args = append(args, fmt.Sprintf("--projectId=%s", projectId))
-	args = append(args, fmt.Sprintf("--env=%s", envSlug))
-	args = append(args, "--include-imports=false")
-	args = append(args, "--recursive")
-	args = append(args, "--", "echo", "TEST_COMMAND_BEING_EXECUTED_RECURSIVE")
+	// Use cupaloy to snapshot test the output
+	err = cupaloy.Snapshot(output)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
+	}
+}
 
-	rootCommand.SetArgs(args)
-	rootCommand.Execute()
+func TestUniversalAuth_RunCmdWithImports(t *testing.T) {
+	MachineIdentityLoginCmd(t)
+	SetupCli(t)
 
-	var secrets []Secret
+	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "run", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent", "--", "echo", "hello world")
 
-	stringSecrets := commandOutput.String()
-	arraySecrets := strings.Split(stringSecrets, "\n")
+	fmt.Printf("output: %v\n", output)
 
-	for idx, secret := range arraySecrets {
-		if idx == len(arraySecrets)-1 && secret == "" {
-			continue
-		}
-
-		secretParts := strings.Split(secret, "=")
-
-		if len(secretParts) != 2 {
-			t.Errorf("Error: secret at index %d is not formatted correctly", idx)
-		}
-
-		newSecret := Secret{
-			Key:   secretParts[0],
-			Value: secretParts[1],
-		}
-
-		// make sure the new secret key is at least one of the expected keys
-		if !slices.Contains(ALL_SECRET_KEYS, newSecret.Key) {
-			continue
-		}
-
-		secrets = append(secrets, newSecret)
+	if err != nil {
+		t.Fatalf("error running CLI command: %v", err)
 	}
 
-	nestedDevSecrets := append(DEV_FOLDER_SECRETS, DEV_SECRETS...)
-	nestedDevSecretsKeys := Map(nestedDevSecrets, func(secret Secret) string { return secret.Key })
-	nestedDevSecretsValues := Map(nestedDevSecrets, func(secret Secret) string { return secret.Value })
+	// Use cupaloy to snapshot test the output
+	err = cupaloy.Snapshot(output)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
+	}
+}
 
-	expectedLength := len(nestedDevSecrets)
-	assert.Len(t, secrets, expectedLength)
+func TestUniversalAuth_RunCmdWithoutImports(t *testing.T) {
+	MachineIdentityLoginCmd(t)
+	SetupCli(t)
 
-	for _, secret := range secrets {
-		assert.Contains(t, nestedDevSecretsKeys, secret.Key)
-		assert.Contains(t, nestedDevSecretsValues, secret.Value)
+	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "run", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent", "--include-imports=false", "--", "echo", "hello world")
+
+	fmt.Printf("output: %v\n", output)
+
+	if err != nil {
+		t.Fatalf("error running CLI command: %v", err)
+	}
+
+	// Use cupaloy to snapshot test the output
+	err = cupaloy.Snapshot(output)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
+	}
+}
+
+func TestServiceToken_RunCmdWithoutImports(t *testing.T) {
+	SetupCli(t)
+
+	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "run", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent", "--include-imports=false", "--", "echo", "hello world")
+
+	fmt.Printf("output: %v\n", output)
+
+	if err != nil {
+		t.Fatalf("error running CLI command: %v", err)
+	}
+
+	// Use cupaloy to snapshot test the output
+	err = cupaloy.Snapshot(output)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
 	}
 }
