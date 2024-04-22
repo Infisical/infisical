@@ -185,13 +185,13 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                         )}
                       </OrgPermissionCan>
                       <DropdownMenu>
-                        <Tooltip asChild content="More options">
-                          <DropdownMenuTrigger asChild className="rounded-lg">
-                            <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                        <DropdownMenuTrigger asChild className="rounded-lg">
+                          <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                            <Tooltip content="More options">
                               <FontAwesomeIcon size="lg" icon={faEllipsis} />
-                            </div>
-                          </DropdownMenuTrigger>
-                        </Tooltip>
+                            </Tooltip>
+                          </div>
+                        </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="p-1">
                           <OrgPermissionCan
                             I={OrgPermissionActions.Edit}
