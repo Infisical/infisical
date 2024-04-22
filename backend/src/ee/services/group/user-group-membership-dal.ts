@@ -61,7 +61,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
   };
 
   /**
-   * Return list of users that are part of the group with id [groupId]
+   * Return list of completed/accepted users that are part of the group with id [groupId]
    * that have not yet been added individually to project with id [projectId].
    *
    * Note: Filters out users that are part of other groups in the project.
@@ -69,18 +69,19 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
    * @param projectId
    * @returns
    */
-  const findGroupMembersNotInProject = async (groupId: string, projectId: string) => {
+  const findGroupMembersNotInProject = async (groupId: string, projectId: string, tx?: Knex) => {
     try {
       // get list of groups in the project with id [projectId]
       // that that are not the group with id [groupId]
-      const groups: string[] = await db(TableName.GroupProjectMembership)
+      const groups: string[] = await (tx || db)(TableName.GroupProjectMembership)
         .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
         .whereNot(`${TableName.GroupProjectMembership}.groupId`, groupId)
         .pluck(`${TableName.GroupProjectMembership}.groupId`);
 
       // main query
-      const members = await db(TableName.UserGroupMembership)
+      const members = await (tx || db)(TableName.UserGroupMembership)
         .where(`${TableName.UserGroupMembership}.groupId`, groupId)
+        .where(`${TableName.UserGroupMembership}.isPending`, false)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.ProjectMembership, function () {
           this.on(`${TableName.Users}.id`, "=", `${TableName.ProjectMembership}.userId`).andOn(
