@@ -282,6 +282,7 @@ export const RAW_SECRETS = {
   },
   CREATE: {
     secretName: "The name of the secret to create.",
+    projectSlug: "The slug of the project to create the secret in.",
     environment: "The slug of the environment to create the secret in.",
     secretComment: "Attach a comment to the secret.",
     secretPath: "The path to create the secret in.",
@@ -301,11 +302,13 @@ export const RAW_SECRETS = {
   },
   UPDATE: {
     secretName: "The name of the secret to update.",
+    secretComment: "Update comment to the secret.",
     environment: "The slug of the environment where the secret is located.",
     secretPath: "The path of the secret to update",
     secretValue: "The new value of the secret.",
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to update.",
+    projectSlug: "The slug of the project to update the secret in.",
     workspaceId: "The ID of the project to update the secret in."
   },
   DELETE: {
@@ -313,6 +316,7 @@ export const RAW_SECRETS = {
     environment: "The slug of the environment where the secret is located.",
     secretPath: "The path of the secret.",
     type: "The type of the secret to delete.",
+    projectSlug: "The slug of the project to delete the secret in.",
     workspaceId: "The ID of the project where the secret is located."
   }
 } as const;

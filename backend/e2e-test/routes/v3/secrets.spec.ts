@@ -942,6 +942,113 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       const secrets = await getSecrets(seedData1.environment.slug, path);
       expect(secrets).toEqual([]);
     });
+
+    test.each(testRawSecrets)("Bulk create secret raw in path $path", async ({ path, secret }) => {
+      const createSecretReqBody = {
+        projectSlug: seedData1.project.slug,
+        environment: seedData1.environment.slug,
+        secretPath: path,
+        secrets: [
+          {
+            secretKey: secret.key,
+            secretValue: secret.value,
+            secretComment: secret.comment
+          }
+        ]
+      };
+      const createSecRes = await testServer.inject({
+        method: "POST",
+        url: `/api/v3/secrets/batch/raw`,
+        headers: {
+          authorization: `Bearer ${authToken}`
+        },
+        body: createSecretReqBody
+      });
+      expect(createSecRes.statusCode).toBe(200);
+      const createdSecretPayload = JSON.parse(createSecRes.payload);
+      expect(createdSecretPayload).toHaveProperty("secrets");
+
+      // fetch secrets
+      const secrets = await getSecrets(seedData1.environment.slug, path);
+      expect(secrets).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: secret.key,
+            value: secret.value,
+            type: SecretType.Shared
+          })
+        ])
+      );
+
+      await deleteRawSecret({ path, key: secret.key });
+    });
+
+    test.each(testRawSecrets)("Bulk update secret raw in path $path", async ({ secret, path }) => {
+      await createRawSecret({ path, ...secret });
+      const updateSecretReqBody = {
+        projectSlug: seedData1.project.slug,
+        environment: seedData1.environment.slug,
+        secretPath: path,
+        secrets: [
+          {
+            secretValue: "new-value",
+            secretKey: secret.key
+          }
+        ]
+      };
+      const updateSecRes = await testServer.inject({
+        method: "PATCH",
+        url: `/api/v3/secrets/batch/raw`,
+        headers: {
+          authorization: `Bearer ${authToken}`
+        },
+        body: updateSecretReqBody
+      });
+      expect(updateSecRes.statusCode).toBe(200);
+      const updatedSecretPayload = JSON.parse(updateSecRes.payload);
+      expect(updatedSecretPayload).toHaveProperty("secrets");
+
+      // fetch secrets
+      const secrets = await getSecrets(seedData1.environment.slug, path);
+      expect(secrets).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: secret.key,
+            value: "new-value",
+            version: 2,
+            type: SecretType.Shared
+          })
+        ])
+      );
+
+      await deleteRawSecret({ path, key: secret.key });
+    });
+
+    test.each(testRawSecrets)("Bulk delete secret raw in path $path", async ({ path, secret }) => {
+      await createRawSecret({ path, ...secret });
+
+      const deletedSecretReqBody = {
+        projectSlug: seedData1.project.slug,
+        environment: seedData1.environment.slug,
+        secretPath: path,
+        secrets: [{ secretKey: secret.key }]
+      };
+      const deletedSecRes = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v3/secrets/batch/raw`,
+        headers: {
+          authorization: `Bearer ${authToken}`
+        },
+        body: deletedSecretReqBody
+      });
+      expect(deletedSecRes.statusCode).toBe(200);
+      const deletedSecretPayload = JSON.parse(deletedSecRes.payload);
+      expect(deletedSecretPayload).toHaveProperty("secrets");
+
+      // fetch secrets
+      const secrets = await getSecrets(seedData1.environment.slug, path);
+      expect(secrets).toEqual([]);
+    });
   }
 );
 
