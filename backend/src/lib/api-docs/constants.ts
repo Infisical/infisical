@@ -585,12 +585,13 @@ export const INTEGRATION = {
     region: "AWS region to sync secrets to.",
     scope: "Scope of the provider. Used by Github, Qovery",
     metadata: {
-      secretPrefix: "The prefix for the saved secret. Used by GCP",
-      secretSuffix: "The suffix for the saved secret. Used by GCP",
-      initialSyncBehavoir: "Type of syncing behavoir with the integration",
-      shouldAutoRedeploy: "Used by Render to trigger auto deploy",
-      secretGCPLabel: "The label for the GCP secrets",
-      secretAWSTag: "The tag for the AWS secrets"
+      secretPrefix: "The prefix for the saved secret. Used by GCP.",
+      secretSuffix: "The suffix for the saved secret. Used by GCP.",
+      initialSyncBehavoir: "Type of syncing behavoir with the integration.",
+      shouldAutoRedeploy: "Used by Render to trigger auto deploy.",
+      secretGCPLabel: "The label for GCP secrets.",
+      secretAWSTag: "The tags for AWS secrets.",
+      kmsKeyId: "The ID of the encryption key from AWS KMS."
     }
   },
   UPDATE: {

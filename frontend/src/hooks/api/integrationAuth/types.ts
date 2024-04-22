@@ -58,6 +58,11 @@ export type Project = {
   projectId: string;
 };
 
+export type KmsKey = {
+  id: string;
+  alias: string;
+};
+
 export type Service = {
   name: string;
   serviceId: string;

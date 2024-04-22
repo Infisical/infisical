@@ -1,5 +1,10 @@
 import { useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -49,12 +54,56 @@ export default function TerraformCloudCreateIntegrationPage() {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Terraform Cloud Integration</CardTitle>
+      <Head>
+        <title>Authorize Terraform Cloud Integration</title>
+        <link rel="icon" href="/infisical.ico" />
+      </Head>
+      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+        <CardTitle
+          className="px-6 text-left text-xl"
+          subTitle="After adding the details below, you will be prompted to set up an integration for a particular Infisical project and environment."
+        >
+          <div className="flex flex-row items-center">
+            <div className="inline flex items-center">
+              <Image
+                src="/images/integrations/Terraform.png"
+                height={35}
+                width={35}
+                alt="Terraform logo"
+              />
+            </div>
+            <span className="ml-1.5">Terraform Cloud Integration </span>
+            <Link href="https://infisical.com/docs/integrations/cloud/terraform-cloud" passHref>
+              <a target="_blank" rel="noopener noreferrer">
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
+                </div>
+              </a>
+            </Link>
+          </div>
+        </CardTitle>
+        <FormControl
+          label="Terraform Cloud Workspace ID"
+          errorText={workspacesIdErrorText}
+          isError={workspacesIdErrorText !== "" ?? false}
+          className="px-6"
+        >
+          <Input
+            placeholder="Workspace Id"
+            value={workspacesId}
+            onChange={(e) => setWorkSpacesId(e.target.value)}
+          />
+        </FormControl>
         <FormControl
           label="Terraform Cloud API Token"
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== "" ?? false}
+          className="px-6"
         >
           <Input
             placeholder="API Token"
@@ -64,21 +113,11 @@ export default function TerraformCloudCreateIntegrationPage() {
             onChange={(e) => setApiKey(e.target.value)}
           />
         </FormControl>
-        <FormControl
-          label="Terraform Cloud Workspace ID"
-          errorText={workspacesIdErrorText}
-          isError={workspacesIdErrorText !== "" ?? false}
-        >
-          <Input
-            placeholder="Workspace Id"
-            value={workspacesId}
-            onChange={(e) => setWorkSpacesId(e.target.value)}
-          />
-        </FormControl>
         <Button
           onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
+          colorSchema="primary"
+          variant="outline_bg"
+          className="mb-6 mt-2 ml-auto mr-6 w-min"
           isLoading={isLoading}
         >
           Connect to Terraform Cloud

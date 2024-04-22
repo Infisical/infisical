@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -51,6 +52,14 @@ func GetBase64DecodedSymmetricEncryptionDetails(key string, cipher string, IV st
 		IV:     IVx,
 		Tag:    tagx,
 	}, nil
+}
+
+// Helper function to sort the secrets by key so we can create a consistent output
+func SortSecretsByKeys(secrets []models.SingleEnvironmentVariable) []models.SingleEnvironmentVariable {
+	sort.Slice(secrets, func(i, j int) bool {
+		return secrets[i].Key < secrets[j].Key
+	})
+	return secrets
 }
 
 func IsSecretEnvironmentValid(env string) bool {

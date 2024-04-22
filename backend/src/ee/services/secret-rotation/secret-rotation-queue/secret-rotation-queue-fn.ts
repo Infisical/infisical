@@ -90,16 +90,20 @@ export const secretRotationDbFn = async ({
   const appCfg = getConfig();
 
   const ssl = ca ? { rejectUnauthorized: false, ca } : undefined;
+  const isCloud = Boolean(appCfg.LICENSE_SERVER_KEY); // quick and dirty way to check if its cloud or not
   const dbHost = appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI);
+
+  if (
+    isCloud &&
+    // internal ips
+    (host === "host.docker.internal" || host.match(/^10\.\d+\.\d+\.\d+/) || host.match(/^192\.168\.\d+\.\d+/))
+  )
+    throw new Error("Invalid db host");
   if (
     host === "localhost" ||
     host === "127.0.0.1" ||
     // database infisical uses
-    dbHost === host ||
-    // internal ips
-    host === "host.docker.internal" ||
-    host.match(/^10\.\d+\.\d+\.\d+/) ||
-    host.match(/^192\.168\.\d+\.\d+/)
+    dbHost === host
   )
     throw new Error("Invalid db host");
 

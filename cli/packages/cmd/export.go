@@ -149,6 +149,8 @@ var exportCmd = &cobra.Command{
 			secrets = util.ExpandSecrets(secrets, authParams, "")
 		}
 		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
+		secrets = util.SortSecretsByKeys(secrets)
+
 		output, err = formatEnvs(secrets, format)
 		if err != nil {
 			util.HandleError(err)
