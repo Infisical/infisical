@@ -106,7 +106,7 @@ const getUserProjectPermissions = async ({ workspaceId }: TGetUserProjectPermiss
   const { data } = await apiRequest.get<{
     data: {
       permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
-      membership: TProjectMembership;
+      membership: Omit<TProjectMembership, "roles"> & { roles: { role: string }[] };
     };
   }>(`/api/v1/workspace/${workspaceId}/permissions`, {});
 
@@ -121,6 +121,14 @@ export const useGetUserProjectPermissions = ({ workspaceId }: TGetUserProjectPer
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);
       const ability = createMongoAbility<ProjectPermissionSet>(rule, { conditionsMatcher });
-      return { permission: ability, membership: data.membership };
+
+      const membership = {
+        ...data.membership,
+        roles: data.membership.roles.map(({ role }) => {
+          return role;
+        })
+      };
+
+      return { permission: ability, membership };
     }
   });
