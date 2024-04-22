@@ -63,6 +63,11 @@ export type TIntegrationAuthQoveryProjectDTO = {
   orgId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TIntegrationAuthAwsKmsKeyDTO = {
+  id: string;
+  region: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TIntegrationAuthQoveryEnvironmentsDTO = {
   id: string;
 } & TProjectPermission;

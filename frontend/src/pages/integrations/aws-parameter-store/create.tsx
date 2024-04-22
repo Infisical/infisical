@@ -128,10 +128,10 @@ export default function AWSParameterStoreCreateIntegrationPage() {
         metadata: {
           ...(shouldTag
             ? {
-                secretAWSTag: {
+                secretAWSTag: [{
                   key: tagKey,
                   value: tagValue
-                }
+                }]
               }
             : {})
         }
@@ -279,7 +279,7 @@ export default function AWSParameterStoreCreateIntegrationPage() {
                     label="Tag Value"
                   >
                     <Input 
-                      placeholder="managed-by" 
+                      placeholder="infisical" 
                       value={tagValue}
                       onChange={(e) => setTagValue(e.target.value)}
                     />

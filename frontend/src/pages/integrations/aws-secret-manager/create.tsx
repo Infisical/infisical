@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import queryString from "query-string";
 
 import { useCreateIntegration } from "@app/hooks/api";
+import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
 
 import {
   Button,
@@ -87,12 +88,26 @@ export default function AWSSecretManagerCreateIntegrationPage() {
   const [targetSecretNameErrorText, setTargetSecretNameErrorText] = useState("");
   const [tagKey, setTagKey] = useState("");
   const [tagValue, setTagValue] = useState("");
+  const [kmsKeyId, setKmsKeyId] = useState("");
 
   // const [path, setPath] = useState('');
   // const [pathErrorText, setPathErrorText] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
   const [shouldTag, setShouldTag] = useState(false);
+
+
+  const { data: integrationAuthAwsKmsKeys, isLoading: isIntegrationAuthAwsKmsKeysLoading } =
+    useGetIntegrationAuthAwsKmsKeys({
+      integrationAuthId: String(integrationAuthId), 
+      region: selectedAWSRegion
+    });
+
+  useEffect(() => {
+    if (integrationAuthAwsKmsKeys) {
+      setKmsKeyId(String(integrationAuthAwsKmsKeys?.filter(key => key.alias === "alias/aws/secretsmanager")[0]?.id))
+    }
+  }, [integrationAuthAwsKmsKeys])
 
   useEffect(() => {
     if (workspace) {
@@ -127,12 +142,16 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         metadata: {
           ...(shouldTag
             ? {
-                secretAWSTag: {
+                secretAWSTag: [{
                   key: tagKey,
                   value: tagValue
-                }
+                }]
               }
-            : {})
+            : {}),
+          ...((kmsKeyId && integrationAuthAwsKmsKeys?.filter(key => key.id === kmsKeyId)[0]?.alias !== "alias/aws/secretsmanager") ? 
+              {
+                kmsKeyId
+              }: {})
         }
       });
 
@@ -145,7 +164,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
     }
   };
 
-  return integrationAuth && workspace && selectedSourceEnvironment ? (
+  return (integrationAuth && workspace && selectedSourceEnvironment && !isIntegrationAuthAwsKmsKeysLoading) ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
       <Head>
         <title>Set Up AWS Secrets Manager Integration</title>
@@ -278,13 +297,38 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                     label="Tag Value"
                   >
                     <Input 
-                      placeholder="managed-by" 
+                      placeholder="infisical" 
                       value={tagValue}
                       onChange={(e) => setTagValue(e.target.value)}
                     />
                   </FormControl>
                 </div>
               )}
+              <FormControl label="Encryption Key" className="mt-4">
+                <Select
+                  value={kmsKeyId}
+                  onValueChange={(e) => {
+                    setKmsKeyId(e)
+                  }}
+                  className="w-full border border-mineshaft-500"
+                >
+                  {integrationAuthAwsKmsKeys?.length ? (
+                    integrationAuthAwsKmsKeys.map((key) => {
+                      return (
+                        <SelectItem
+                          value={key.id as string}
+                          key={`repo-id-${key.id}`}
+                          className="w-[28.4rem] text-sm"
+                        >
+                          {key.alias}
+                        </SelectItem>
+                      );
+                    })
+                  ) : (
+                    <div />
+                  )}
+                </Select>
+              </FormControl>
             </motion.div>
           </TabPanel>
         </Tabs>
@@ -317,7 +361,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         <title>Set Up AWS Secrets Manager Integration</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      {isintegrationAuthLoading ? (
+      {(isintegrationAuthLoading || isIntegrationAuthAwsKmsKeysLoading) ? (
         <img
           src="/images/loading/loading.gif"
           height={70}
