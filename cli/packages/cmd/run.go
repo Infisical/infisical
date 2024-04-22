@@ -312,6 +312,5 @@ func execCmd(cmd *exec.Cmd) error {
 
 	waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
 	os.Exit(waitStatus.ExitStatus())
-
 	return nil
 }

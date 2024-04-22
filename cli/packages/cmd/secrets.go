@@ -116,7 +116,7 @@ var secretsCmd = &cobra.Command{
 			secrets = util.ExpandSecrets(secrets, authParams, "")
 		}
 
-		// convert secrets to the same order as the keys
+		// Sort the secrets by key so we can create a consistent output
 		secrets = util.SortSecretsByKeys(secrets)
 
 		visualize.PrintAllSecretDetails(secrets)
