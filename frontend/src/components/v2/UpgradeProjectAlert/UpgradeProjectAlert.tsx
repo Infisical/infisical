@@ -25,12 +25,13 @@ export const UpgradeProjectAlert = ({
   project,
   transparent
 }: UpgradeProjectAlertProps): JSX.Element | null => {
-  
   const router = useRouter();
-  const { membership } = useProjectPermission();
+  const { hasProjectRole } = useProjectPermission();
   const upgradeProject = useUpgradeProject();
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
   const [isUpgrading, setIsUpgrading] = useState(false);
+
+  const isProjectAdmin = hasProjectRole("admin");
 
   const {
     data: projectStatus,
@@ -38,10 +39,10 @@ export const UpgradeProjectAlert = ({
     refetch: manualProjectStatusRefetch
   } = useGetUpgradeProjectStatus({
     projectId: project.id,
-    enabled: membership.role === "admin" && project.version === ProjectVersion.V1,
+    enabled: isProjectAdmin && project.version === ProjectVersion.V1,
     refetchInterval: 5_000,
     onSuccess: (data) => {
-      if (membership.role !== "admin") {
+      if (!isProjectAdmin) {
         return;
       }
 
@@ -101,7 +102,7 @@ export const UpgradeProjectAlert = ({
         variant="solid"
         size="md"
         isLoading={isLoading}
-        isDisabled={isLoading || membership.role !== "admin"}
+        isDisabled={isLoading || !isProjectAdmin}
         onClick={onUpgradeProject}
       >
         Upgrade
@@ -113,13 +114,13 @@ export const UpgradeProjectAlert = ({
     <div
       className={twMerge(
         "mt-4 flex w-full flex-row items-center rounded-md border border-primary-600/70  bg-primary/[.07] p-4 text-base text-white",
-        membership.role !== "admin" && "opacity-80"
+        !isProjectAdmin && "opacity-80"
       )}
     >
       <FontAwesomeIcon icon={faWarning} className="pr-6 text-6xl text-white/80" />
       <div className="flex w-full flex-col text-sm">
         <span className="mb-2 text-lg font-semibold">Upgrade your project</span>
-        {membership.role === "admin" ? (
+        {isProjectAdmin ? (
           <>
             <p>
               Upgrade your project version to continue receiving the latest improvements and
@@ -150,12 +151,12 @@ export const UpgradeProjectAlert = ({
       </div>
       <div className="my-2">
         <Tooltip
-          className={twMerge(membership.role === "admin" && "hidden")}
+          className={twMerge(isProjectAdmin && "hidden")}
           content="You need to be an admin to upgrade the project."
         >
           <Button
             isLoading={isLoading}
-            isDisabled={isLoading || membership.role !== "admin"}
+            isDisabled={isLoading || !isProjectAdmin}
             onClick={onUpgradeProject}
           >
             Upgrade
