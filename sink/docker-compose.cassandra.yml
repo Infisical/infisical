@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  cassandra:
+    image: cassandra
+    volumes:
+      - ./cassandra.yaml:/etc/cassandra/cassandra.yaml
+    ports:
+      - "9042:9042"
+
