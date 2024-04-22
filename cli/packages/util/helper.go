@@ -53,6 +53,19 @@ func GetBase64DecodedSymmetricEncryptionDetails(key string, cipher string, IV st
 	}, nil
 }
 
+func SortSecretsByKeys(secrets []models.SingleEnvironmentVariable) []models.SingleEnvironmentVariable {
+	// sort secrets by key
+	for i := 0; i < len(secrets); i++ {
+		for j := i + 1; j < len(secrets); j++ {
+			if secrets[i].Key > secrets[j].Key {
+				secrets[i], secrets[j] = secrets[j], secrets[i]
+			}
+		}
+	}
+
+	return secrets
+}
+
 func IsSecretEnvironmentValid(env string) bool {
 	if env == "prod" || env == "dev" || env == "test" || env == "staging" {
 		return true

@@ -116,6 +116,9 @@ var secretsCmd = &cobra.Command{
 			secrets = util.ExpandSecrets(secrets, authParams, "")
 		}
 
+		// convert secrets to the same order as the keys
+		secrets = util.SortSecretsByKeys(secrets)
+
 		util.HandleSendTestSecrets(cmd, secrets)
 		visualize.PrintAllSecretDetails(secrets)
 		Telemetry.CaptureEvent("cli-command:secrets", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
