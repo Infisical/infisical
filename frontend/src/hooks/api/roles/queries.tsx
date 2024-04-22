@@ -124,9 +124,7 @@ export const useGetUserProjectPermissions = ({ workspaceId }: TGetUserProjectPer
 
       const membership = {
         ...data.membership,
-        roles: data.membership.roles.map(({ role }) => {
-          return role;
-        })
+        roles: data.membership.roles.map(({ role }) => role)
       };
 
       return { permission: ability, membership };
