@@ -36,11 +36,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       description: "Return encrypted project key",
-      security: [
-        {
-          apiKeyAuth: []
-        }
-      ],
       params: z.object({
         workspaceId: z.string().trim().describe(PROJECTS.GET_KEY.workspaceId)
       }),
@@ -149,6 +144,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: creationLimit
     },
     schema: {
+      description: "Create a new project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
         projectName: z.string().trim().describe(PROJECTS.CREATE.projectName),
         slug: z
@@ -200,6 +201,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      description: "Delete project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         slug: slugSchema.describe("The slug of the project to delete.")
       }),

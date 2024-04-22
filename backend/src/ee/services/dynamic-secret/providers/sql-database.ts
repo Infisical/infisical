@@ -8,13 +8,23 @@ import { BadRequestError } from "@app/lib/errors";
 import { getDbConnectionHost } from "@app/lib/knex";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { DynamicSecretSqlDBSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretSqlDBSchema, SqlProviders, TDynamicProviderFns } from "./models";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
-const generatePassword = (size?: number) => {
+const generatePassword = (provider: SqlProviders) => {
+  // oracle has limit of 48 password length
+  const size = provider === SqlProviders.Oracle ? 30 : 48;
+
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
   return customAlphabet(charset, 48)(size);
+};
+
+const generateUsername = (provider: SqlProviders) => {
+  // For oracle, the client assumes everything is upper case when not using quotes around the password
+  if (provider === SqlProviders.Oracle) return alphaNumericNanoId(32).toUpperCase();
+
+  return alphaNumericNanoId(32);
 };
 
 export const SqlDatabaseProvider = (): TDynamicProviderFns => {
@@ -59,10 +69,10 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
     const db = await getClient(providerInputs);
-    const isConnected = await db
-      .raw("SELECT NOW()")
-      .then(() => true)
-      .catch(() => false);
+    // oracle needs from keyword
+    const testStatement = providerInputs.client === SqlProviders.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1";
+
+    const isConnected = await db.raw(testStatement).then(() => true);
     await db.destroy();
     return isConnected;
   };
@@ -71,8 +81,8 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const db = await getClient(providerInputs);
 
-    const username = alphaNumericNanoId(32);
-    const password = generatePassword();
+    const username = generateUsername(providerInputs.client);
+    const password = generatePassword(providerInputs.client);
     const { database } = providerInputs;
     const expiration = new Date(expireAt).toISOString();
 

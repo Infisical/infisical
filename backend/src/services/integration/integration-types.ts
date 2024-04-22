@@ -22,6 +22,10 @@ export type TCreateIntegrationDTO = {
       labelName: string;
       labelValue: string;
     };
+    secretAWSTag?: {
+      key: string;
+      value: string;
+    };
   };
 } & Omit<TProjectPermission, "projectId">;
 

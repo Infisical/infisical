@@ -21,7 +21,8 @@ export enum DynamicSecretProviders {
 
 export enum SqlProviders {
   Postgres = "postgres",
-  MySql = "mysql2"
+  MySql = "mysql2",
+  Oracle = "oracledb"
 }
 
 export type TDynamicSecretProvider = {

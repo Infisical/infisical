@@ -10,6 +10,7 @@ import {
   faCircleInfo
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { motion } from "framer-motion";
 import queryString from "query-string";
 
 import { useCreateIntegration } from "@app/hooks/api";
@@ -21,10 +22,20 @@ import {
   FormControl,
   Input,
   Select,
-  SelectItem
+  SelectItem,
+  Switch,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs
 } from "../../../components/v2";
 import { useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+
+enum TabSections {
+  Connection = "connection",
+  Options = "options"
+}
 
 const awsRegions = [
   { name: "US East (Ohio)", slug: "us-east-2" },
@@ -74,11 +85,14 @@ export default function AWSSecretManagerCreateIntegrationPage() {
   const [selectedAWSRegion, setSelectedAWSRegion] = useState("");
   const [targetSecretName, setTargetSecretName] = useState("");
   const [targetSecretNameErrorText, setTargetSecretNameErrorText] = useState("");
+  const [tagKey, setTagKey] = useState("");
+  const [tagValue, setTagValue] = useState("");
 
   // const [path, setPath] = useState('');
   // const [pathErrorText, setPathErrorText] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
+  const [shouldTag, setShouldTag] = useState(false);
 
   useEffect(() => {
     if (workspace) {
@@ -109,7 +123,17 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         app: targetSecretName.trim(),
         sourceEnvironment: selectedSourceEnvironment,
         region: selectedAWSRegion,
-        secretPath
+        secretPath,
+        metadata: {
+          ...(shouldTag
+            ? {
+                secretAWSTag: {
+                  key: tagKey,
+                  value: tagValue
+                }
+              }
+            : {})
+        }
       });
 
       setIsLoading(false);
@@ -156,56 +180,114 @@ export default function AWSSecretManagerCreateIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
-        <FormControl label="Project Environment" className="px-6">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`flyio-environment-${sourceEnvironment.slug}`}
+        <Tabs defaultValue={TabSections.Connection} className="px-6">
+          <TabList>
+            <div className="flex w-full flex-row border-b border-mineshaft-600">
+              <Tab value={TabSections.Connection}>Connection</Tab>
+              <Tab value={TabSections.Options}>Options</Tab>
+            </div>
+          </TabList>
+          <TabPanel value={TabSections.Connection}>
+            <motion.div
+              key="panel-1"
+              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, translateX: 30 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 30 }}
+            >
+              <FormControl label="Project Environment">
+                <Select
+                  value={selectedSourceEnvironment}
+                  onValueChange={(val) => setSelectedSourceEnvironment(val)}
+                  className="w-full border border-mineshaft-500"
+                >
+                  {workspace?.environments.map((sourceEnvironment) => (
+                    <SelectItem
+                      value={sourceEnvironment.slug}
+                      key={`flyio-environment-${sourceEnvironment.slug}`}
+                    >
+                      {sourceEnvironment.name}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl label="Secrets Path">
+                <Input
+                  value={secretPath}
+                  onChange={(evt) => setSecretPath(evt.target.value)}
+                  placeholder="Provide a path, default is /"
+                />
+              </FormControl>
+              <FormControl label="AWS Region">
+                <Select
+                  value={selectedAWSRegion}
+                  onValueChange={(val) => setSelectedAWSRegion(val)}
+                  className="w-full border border-mineshaft-500"
+                >
+                  {awsRegions.map((awsRegion) => (
+                    <SelectItem value={awsRegion.slug} key={`flyio-environment-${awsRegion.slug}`}>
+                      {awsRegion.name}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl
+                label="AWS SM Secret Name"
+                errorText={targetSecretNameErrorText}
+                isError={targetSecretNameErrorText !== "" ?? false}
               >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path" className="px-6">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl label="AWS Region" className="px-6">
-          <Select
-            value={selectedAWSRegion}
-            onValueChange={(val) => setSelectedAWSRegion(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {awsRegions.map((awsRegion) => (
-              <SelectItem value={awsRegion.slug} key={`flyio-environment-${awsRegion.slug}`}>
-                {awsRegion.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl
-          label="AWS SM Secret Name"
-          errorText={targetSecretNameErrorText}
-          isError={targetSecretNameErrorText !== "" ?? false}
-          className="px-6"
-        >
-          <Input
-            placeholder={`${workspace.name
-              .toLowerCase()
-              .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
-            value={targetSecretName}
-            onChange={(e) => setTargetSecretName(e.target.value)}
-          />
-        </FormControl>
+                <Input
+                  placeholder={`${workspace.name
+                    .toLowerCase()
+                    .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
+                  value={targetSecretName}
+                  onChange={(e) => setTargetSecretName(e.target.value)}
+                />
+              </FormControl>
+            </motion.div>
+          </TabPanel>
+          <TabPanel value={TabSections.Options}>
+            <motion.div
+              key="panel-1"
+              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, translateX: -30 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 30 }}
+            >
+              <div className="mt-2 ml-1">
+                <Switch
+                  id="tag-aws"
+                  onCheckedChange={() => setShouldTag(!shouldTag)}
+                  isChecked={shouldTag}
+                >
+                  Tag in AWS Secrets Manager
+                </Switch>
+              </div>
+              {shouldTag && (
+                <div className="mt-4">
+                  <FormControl
+                    label="Tag Key"
+                  >
+                    <Input 
+                      placeholder="managed-by" 
+                      value={tagKey}
+                      onChange={(e) => setTagKey(e.target.value)}
+                    />
+                  </FormControl>
+                  <FormControl
+                    label="Tag Value"
+                  >
+                    <Input 
+                      placeholder="managed-by" 
+                      value={tagValue}
+                      onChange={(e) => setTagValue(e.target.value)}
+                    />
+                  </FormControl>
+                </div>
+              )}
+            </motion.div>
+          </TabPanel>
+        </Tabs>
         <Button
           onClick={handleButtonClick}
           color="mineshaft"

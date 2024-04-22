@@ -30,12 +30,6 @@ export const fastifySwagger = fp(async (fastify) => {
             scheme: "bearer",
             bearerFormat: "JWT",
             description: "An access token in Infisical"
-          },
-          apiKeyAuth: {
-            type: "apiKey",
-            in: "header",
-            name: "X-API-Key",
-            description: "An API Key in Infisical"
           }
         }
       }

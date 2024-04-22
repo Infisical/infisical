@@ -63,6 +63,10 @@ export const useCreateIntegration = () => {
         secretSuffix?: string;
         initialSyncBehavior?: string;
         shouldAutoRedeploy?: boolean;
+        secretAWSTag?: {
+          key: string;
+          value: string;
+        };
       };
     }) => {
       const {

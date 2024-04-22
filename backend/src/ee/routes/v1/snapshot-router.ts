@@ -69,7 +69,6 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
       description: "Roll back project secrets to those captured in a secret snapshot version.",
       security: [
         {
-          apiKeyAuth: [],
           bearerAuth: []
         }
       ],

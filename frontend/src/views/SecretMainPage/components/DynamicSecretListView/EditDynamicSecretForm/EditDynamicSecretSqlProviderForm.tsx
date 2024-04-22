@@ -193,6 +193,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                   >
                     <SelectItem value={SqlProviders.Postgres}>PostgreSQL</SelectItem>
                     <SelectItem value={SqlProviders.MySql}>MySQL</SelectItem>
+                    <SelectItem value={SqlProviders.Oracle}>Oracle</SelectItem>
                   </Select>
                 </FormControl>
               )}

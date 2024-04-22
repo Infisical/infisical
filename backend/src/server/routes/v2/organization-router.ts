@@ -17,8 +17,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       description: "Return organization user memberships",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -65,8 +64,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       description: "Return projects in organization that user is part of",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -114,8 +112,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       description: "Update organization user memberships",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -157,8 +154,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       description: "Delete organization user memberships",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({

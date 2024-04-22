@@ -5,6 +5,7 @@ on:
     types: [opened, synchronize]
     paths:
       - "backend/src/server/routes/**"
+      - "backend/src/ee/routes/**"
 
 jobs:
   check-be-api-changes:

@@ -1,16 +1,15 @@
 ---
-title: "PostgreSQL"
-description: "How to dynamically generate PostgreSQL database users"
+title: "Oracle"
+description: "Learn how to dynamically generate Oracle Database user passwords."
 ---
 
-The Infisical PostgreSQL dynamic secret allows you to generate PostgreSQL database credentials on demand based on configured role.
+The Infisical Oracle dynamic secret allows you to generate Oracle Database credentials on demand based on configured role.
 
 ## Prerequisite
-
 Create a user with the required permission in your SQL instance. This user will be used to create new accounts on-demand.
 
 
-## Set up Dynamic Secrets with PostgreSQL
+## Set up Dynamic Secrets with Oracle
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -36,7 +35,7 @@ Create a user with the required permission in your SQL instance. This user will 
 	</ParamField>
 
 	<ParamField path="Service" type="string" required>
-		Choose the service you want to generate dynamic secrets for. This must be selected as **PostgreSQL**.
+		Choose the service you want to generate dynamic secrets for. This must be selected as **Oracle**.
 	</ParamField>
 
 	<ParamField path="Host" type="string" required>
@@ -63,13 +62,11 @@ Create a user with the required permission in your SQL instance. This user will 
 		A CA may be required if your DB requires it for incoming connections. AWS RDS instances with default settings will requires a CA which can be downloaded [here](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions).
 	</ParamField>
 
-	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal.png)
+	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-oracle.png)
 
   </Step>
   <Step title="(Optional) Modify SQL Statements">
   	If you want to provide specific privileges for the generated dynamic credentials, you can modify the SQL statement to your needs. This is useful if you want to only give access to a specific table(s).
-
-	![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statements.png)
   </Step>
   <Step title="Click 'Submit'">
   	After submitting the form, you will see a dynamic secret created in the dashboard. 
@@ -105,7 +102,7 @@ Create a user with the required permission in your SQL instance. This user will 
 
 ## Audit or Revoke Leases
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard. 
-This will allow you see the expiration time of the lease or delete the lease before it's set time to live.
+This will allow you see the expiration time of the lease or delete a lease before it's set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
