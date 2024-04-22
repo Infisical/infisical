@@ -2,7 +2,6 @@ package tests
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/bradleyjkemp/cupaloy/v2"
@@ -18,7 +17,6 @@ func TestServiceToken_RunCmdRecursiveAndImports(t *testing.T) {
 	}
 
 	output = string(bytes.Split([]byte(output), []byte("INF"))[1])
-	fmt.Printf("output: %v\n", output)
 
 	// Use cupaloy to snapshot test the output
 	err = cupaloy.Snapshot(output)
@@ -36,7 +34,6 @@ func TestServiceToken_RunCmdWithImports(t *testing.T) {
 	}
 
 	output = string(bytes.Split([]byte(output), []byte("INF"))[1])
-	fmt.Printf("output: %v\n", output)
 
 	// Use cupaloy to snapshot test the output
 	err = cupaloy.Snapshot(output)
@@ -56,7 +53,6 @@ func TestUniversalAuth_RunCmdRecursiveAndImports(t *testing.T) {
 	}
 
 	output = string(bytes.Split([]byte(output), []byte("INF"))[1])
-	fmt.Printf("output: %v\n", output)
 
 	// Use cupaloy to snapshot test the output
 	err = cupaloy.Snapshot(output)
@@ -77,7 +73,6 @@ func TestUniversalAuth_RunCmdWithImports(t *testing.T) {
 
 	// remove the first few characters from the output because we don't care about the time, and it will change every time
 	output = string(bytes.Split([]byte(output), []byte("INF"))[1])
-	fmt.Printf("output: %v\n", output)
 
 	// Use cupaloy to snapshot test the output
 	err = cupaloy.Snapshot(output)
@@ -97,7 +92,6 @@ func TestUniversalAuth_RunCmdWithoutImports(t *testing.T) {
 	}
 
 	output = string(bytes.Split([]byte(output), []byte("INF"))[1])
-	fmt.Printf("output: %v\n", output)
 
 	// Use cupaloy to snapshot test the output
 	err = cupaloy.Snapshot(output)
@@ -117,7 +111,6 @@ func TestServiceToken_RunCmdWithoutImports(t *testing.T) {
 
 	// Remove everything before "INF" because it's not relevant to the test
 	output = string(bytes.Split([]byte(output), []byte("INF"))[1])
-	fmt.Printf("output: %v\n", output)
 
 	// Use cupaloy to snapshot test the output
 	err = cupaloy.Snapshot(output)
