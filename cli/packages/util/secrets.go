@@ -186,12 +186,12 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 		plainTextSecrets = append(plainTextSecrets, models.SingleEnvironmentVariable{Key: secret.SecretKey, Value: secret.SecretValue, Type: secret.Type, WorkspaceId: secret.Workspace})
 	}
 
-	// if includeImports {
-	// 	plainTextSecrets, err = InjectImportedSecret(plainTextWorkspaceKey, plainTextSecrets, encryptedSecrets.ImportedSecrets)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
+	if includeImports {
+		plainTextSecrets, err = InjectRawImportedSecret(plainTextSecrets, rawSecrets.Imports)
+		if err != nil {
+			return models.PlaintextSecretResult{}, err
+		}
+	}
 
 	return models.PlaintextSecretResult{
 		Secrets: plainTextSecrets,
@@ -246,6 +246,36 @@ func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleE
 			if _, ok := hasOverriden[sec.Key]; !ok {
 				secrets = append(secrets, sec)
 				hasOverriden[sec.Key] = true
+			}
+		}
+	}
+	return secrets, nil
+}
+
+func InjectRawImportedSecret(secrets []models.SingleEnvironmentVariable, importedSecrets []api.ImportedRawSecretV3) ([]models.SingleEnvironmentVariable, error) {
+	if importedSecrets == nil {
+		return secrets, nil
+	}
+
+	hasOverriden := make(map[string]bool)
+	for _, sec := range secrets {
+		hasOverriden[sec.Key] = true
+	}
+
+	for i := len(importedSecrets) - 1; i >= 0; i-- {
+		importSec := importedSecrets[i]
+		plainTextImportedSecrets := importSec.Secrets
+
+		for _, sec := range plainTextImportedSecrets {
+			if _, ok := hasOverriden[sec.SecretKey]; !ok {
+				secrets = append(secrets, models.SingleEnvironmentVariable{
+					Key:         sec.SecretKey,
+					WorkspaceId: sec.Workspace,
+					Value:       sec.SecretValue,
+					Type:        sec.Type,
+					ID:          sec.ID,
+				})
+				hasOverriden[sec.SecretKey] = true
 			}
 		}
 	}
