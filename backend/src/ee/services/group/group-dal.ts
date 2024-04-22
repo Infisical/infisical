@@ -84,36 +84,14 @@ export const groupDALFactory = (db: TDbClient) => {
             db.raw("?", [groupId])
           );
         })
-        .leftJoin(TableName.PendingGroupAddition, function () {
-          this.on(`${TableName.PendingGroupAddition}.userId`, "=", `${TableName.Users}.id`).andOn(
-            `${TableName.PendingGroupAddition}.groupId`,
-            "=",
-            db.raw("?", [groupId])
-          );
-        })
-        .select<
-          {
-            id: string;
-            groupId: string;
-            email: string;
-            username: string;
-            firstName: string;
-            lastName: string;
-            userId: string;
-            isPartOfGroup: boolean;
-          }[]
-        >(
+        .select(
           db.ref("id").withSchema(TableName.OrgMembership),
           db.ref("groupId").withSchema(TableName.UserGroupMembership),
           db.ref("email").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
-          db.ref("id").withSchema(TableName.Users).as("userId"),
-          db.raw('CASE WHEN ?? IS NOT NULL OR ?? IS NOT NULL THEN TRUE ELSE FALSE END AS "isPartOfGroup"', [
-            `${TableName.UserGroupMembership}.groupId`,
-            `${TableName.PendingGroupAddition}.groupId`
-          ])
+          db.ref("id").withSchema(TableName.Users).as("userId")
         )
         .where({ isGhost: false })
         .offset(offset);
@@ -128,14 +106,16 @@ export const groupDALFactory = (db: TDbClient) => {
 
       const members = await query;
 
-      return members.map(({ email, username: memberUsername, firstName, lastName, userId, isPartOfGroup }) => ({
-        id: userId,
-        email,
-        username: memberUsername,
-        firstName,
-        lastName,
-        isPartOfGroup
-      }));
+      return members.map(
+        ({ email, username: memberUsername, firstName, lastName, userId, groupId: memberGroupId }) => ({
+          id: userId,
+          email,
+          username: memberUsername,
+          firstName,
+          lastName,
+          isPartOfGroup: !!memberGroupId
+        })
+      );
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org members" });
     }

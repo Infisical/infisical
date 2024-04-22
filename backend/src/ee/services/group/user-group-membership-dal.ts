@@ -122,10 +122,49 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deletePendingUserGroupMembershipsByUserIds = async (userIds: string[], tx?: Knex) => {
+    try {
+      const members = await (tx || db)(TableName.UserGroupMembership)
+        .whereIn(`${TableName.UserGroupMembership}.userId`, userIds)
+        .where(`${TableName.UserGroupMembership}.isPending`, true)
+        .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+        .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`);
+
+      await userGroupMembershipOrm.delete(
+        {
+          $in: {
+            userId: userIds
+          }
+        },
+        tx
+      );
+
+      return members.map(({ userId, username, groupId, orgId, name, slug, role, roleId }) => ({
+        user: {
+          id: userId,
+          username
+        },
+        group: {
+          id: groupId,
+          orgId,
+          name,
+          slug,
+          role,
+          roleId,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete pending user group memberships by user ids" });
+    }
+  };
+
   return {
     ...userGroupMembershipOrm,
     filterProjectsByUserMembership,
     findUserGroupMembershipsInProject,
-    findGroupMembersNotInProject
+    findGroupMembersNotInProject,
+    deletePendingUserGroupMembershipsByUserIds
   };
 };

@@ -86,9 +86,6 @@ import {
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
-  TPendingGroupAdditions,
-  TPendingGroupAdditionsInsert,
-  TPendingGroupAdditionsUpdate,
   TProjectBots,
   TProjectBotsInsert,
   TProjectBotsUpdate,
@@ -215,11 +212,6 @@ declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.Groups]: Knex.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
-    [TableName.PendingGroupAddition]: Knex.CompositeTableType<
-      TPendingGroupAdditions,
-      TPendingGroupAdditionsInsert,
-      TPendingGroupAdditionsUpdate
-    >;
     [TableName.UserGroupMembership]: Knex.CompositeTableType<
       TUserGroupMembership,
       TUserGroupMembershipInsert,

@@ -2,7 +2,6 @@ import jwt from "jsonwebtoken";
 
 import { OrgMembershipStatus } from "@app/db/schemas";
 import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
-import { TPendingGroupAdditionDALFactory } from "@app/ee/services/group/pending-group-addition-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { getConfig } from "@app/lib/config/env";
@@ -27,8 +26,10 @@ import { AuthMethod, AuthTokenType } from "./auth-type";
 type TAuthSignupDep = {
   authDAL: TAuthDALFactory;
   userDAL: TUserDALFactory;
-  pendingGroupAdditionDAL: Pick<TPendingGroupAdditionDALFactory, "deletePendingGroupAdditionsByUserIds">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "transaction" | "insertMany">;
+  userGroupMembershipDAL: Pick<
+    TUserGroupMembershipDALFactory,
+    "find" | "transaction" | "insertMany" | "deletePendingUserGroupMembershipsByUserIds"
+  >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
@@ -44,7 +45,6 @@ export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
   authDAL,
   userDAL,
-  pendingGroupAdditionDAL,
   userGroupMembershipDAL,
   projectKeyDAL,
   projectDAL,
@@ -190,9 +190,7 @@ export const authSignupServiceFactory = ({
     await convertPendingGroupAdditionsToGroupMemberships({
       userIds: [user.id],
       userDAL,
-      pendingGroupAdditionDAL,
       userGroupMembershipDAL,
-      orgDAL,
       groupProjectDAL,
       projectKeyDAL,
       projectDAL,
@@ -304,9 +302,7 @@ export const authSignupServiceFactory = ({
       await convertPendingGroupAdditionsToGroupMemberships({
         userIds: [user.id],
         userDAL,
-        pendingGroupAdditionDAL,
         userGroupMembershipDAL,
-        orgDAL,
         groupProjectDAL,
         projectKeyDAL,
         projectDAL,

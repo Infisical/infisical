@@ -34,16 +34,16 @@ export const userDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findUserEncKeyByUsernameBatch = async ({ usernames }: { usernames: string[] }, tx?: Knex) => {
+  const findUserEncKeyByUserIdsBatch = async ({ userIds }: { userIds: string[] }, tx?: Knex) => {
     try {
       return await (tx || db)(TableName.Users)
         .where({
           isGhost: false
         })
-        .whereIn("username", usernames)
+        .whereIn(`${TableName.Users}.id`, userIds)
         .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find user enc by email batch" });
+      throw new DatabaseError({ error, name: "Find user enc by user ids batch" });
     }
   };
 
@@ -136,7 +136,7 @@ export const userDALFactory = (db: TDbClient) => {
     ...userOrm,
     findUserByUsername,
     findUserEncKeyByUsername,
-    findUserEncKeyByUsernameBatch, // TODO: if successful, replace findUserEncKeyByUsername with this
+    findUserEncKeyByUserIdsBatch,
     findUserEncKeyByUserId,
     updateUserEncryptionByUserId,
     findUserByProjectMembershipId,

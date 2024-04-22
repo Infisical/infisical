@@ -2,7 +2,6 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
-import { TPendingGroupAdditionDALFactory } from "@app/ee/services/group/pending-group-addition-dal";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -29,7 +28,7 @@ import {
 import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
-  userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUsernameBatch" | "transaction" | "findOne">;
+  userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findOne">;
   groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "update" | "delete" | "findAllGroupMembers">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers">;
@@ -40,7 +39,6 @@ type TGroupServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
-  pendingGroupAdditionDAL: TPendingGroupAdditionDALFactory; // remove?
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -56,7 +54,6 @@ export const groupServiceFactory = ({
   projectDAL,
   projectBotDAL,
   projectKeyDAL,
-  pendingGroupAdditionDAL,
   permissionService,
   licenseService
 }: TGroupServiceFactoryDep) => {
@@ -279,7 +276,6 @@ export const groupServiceFactory = ({
       userGroupMembershipDAL,
       orgDAL,
       groupProjectDAL,
-      pendingGroupAdditionDAL,
       projectKeyDAL,
       projectDAL,
       projectBotDAL
@@ -333,7 +329,6 @@ export const groupServiceFactory = ({
       userIds: [user.id],
       userDAL,
       userGroupMembershipDAL,
-      pendingGroupAdditionDAL,
       groupProjectDAL,
       projectKeyDAL
     });

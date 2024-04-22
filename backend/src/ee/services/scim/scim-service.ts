@@ -5,7 +5,6 @@ import jwt from "jsonwebtoken";
 import { OrgMembershipRole, OrgMembershipStatus, TableName, TGroups } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
-import { TPendingGroupAdditionDALFactory } from "@app/ee/services/group/pending-group-addition-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -48,7 +47,7 @@ import {
 
 type TScimServiceFactoryDep = {
   scimDAL: Pick<TScimDALFactory, "create" | "find" | "findById" | "deleteById">;
-  userDAL: Pick<TUserDALFactory, "find" | "findOne" | "create" | "transaction" | "findUserEncKeyByUsernameBatch">;
+  userDAL: Pick<TUserDALFactory, "find" | "findOne" | "create" | "transaction" | "findUserEncKeyByUserIdsBatch">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "findById" | "findMembership" | "deleteMembershipById" | "transaction"
@@ -63,7 +62,6 @@ type TScimServiceFactoryDep = {
   userGroupMembershipDAL: TUserGroupMembershipDALFactory; // TODO: Pick
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
-  pendingGroupAdditionDAL: TPendingGroupAdditionDALFactory; // TODO: Pick
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: TSmtpService;
@@ -83,7 +81,6 @@ export const scimServiceFactory = ({
   userGroupMembershipDAL,
   projectKeyDAL,
   projectBotDAL,
-  pendingGroupAdditionDAL,
   permissionService,
   smtpService
 }: TScimServiceFactoryDep) => {
@@ -572,7 +569,6 @@ export const scimServiceFactory = ({
           userGroupMembershipDAL,
           orgDAL,
           groupProjectDAL,
-          pendingGroupAdditionDAL,
           projectKeyDAL,
           projectDAL,
           projectBotDAL,
@@ -614,7 +610,6 @@ export const scimServiceFactory = ({
       });
     }
 
-    // TODO: update to include pending group additions
     const users = await groupDAL.findAllGroupMembers({
       orgId: group.orgId,
       groupId: group.id
@@ -676,13 +671,15 @@ export const scimServiceFactory = ({
 
         const directMemberUserIds = (
           await userGroupMembershipDAL.find({
-            groupId: group.id
+            groupId: group.id,
+            isPending: false
           })
         ).map((membership) => membership.userId);
 
         const pendingGroupAdditionsUserIds = (
-          await pendingGroupAdditionDAL.find({
-            groupId: group.id
+          await userGroupMembershipDAL.find({
+            groupId: group.id,
+            isPending: true
           })
         ).map((pendingGroupAddition) => pendingGroupAddition.userId);
 
@@ -700,7 +697,6 @@ export const scimServiceFactory = ({
             userGroupMembershipDAL,
             orgDAL,
             groupProjectDAL,
-            pendingGroupAdditionDAL,
             projectKeyDAL,
             projectDAL,
             projectBotDAL,
@@ -715,7 +711,6 @@ export const scimServiceFactory = ({
             userDAL,
             userGroupMembershipDAL,
             groupProjectDAL,
-            pendingGroupAdditionDAL,
             projectKeyDAL,
             tx
           });
