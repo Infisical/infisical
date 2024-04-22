@@ -191,10 +191,6 @@ var loginCmd = &cobra.Command{
 				util.HandleError(err)
 			}
 
-			if util.IS_TEST_MODE {
-				util.HandleSendUniversalAuthToken(cmd, res.AccessToken)
-				return
-			}
 			if plainOutput {
 				fmt.Println(res.AccessToken)
 				return

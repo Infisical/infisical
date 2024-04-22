@@ -119,7 +119,6 @@ var secretsCmd = &cobra.Command{
 		// convert secrets to the same order as the keys
 		secrets = util.SortSecretsByKeys(secrets)
 
-		util.HandleSendTestSecrets(cmd, secrets)
 		visualize.PrintAllSecretDetails(secrets)
 		Telemetry.CaptureEvent("cli-command:secrets", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 	},
@@ -508,8 +507,6 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 			})
 		}
 	}
-
-	util.HandleSendTestSecrets(cmd, requestedSecrets)
 
 	if showOnlyValue && len(requestedSecrets) > 1 {
 		util.PrintErrorMessageAndExit("--raw-value only works with one secret.")

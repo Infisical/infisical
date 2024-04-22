@@ -120,7 +120,6 @@ var exportCmd = &cobra.Command{
 
 		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
 		secrets = util.SortSecretsByKeys(secrets)
-		util.HandleSendTestSecrets(cmd, secrets)
 
 		output, err = formatEnvs(secrets, format)
 		if err != nil {
