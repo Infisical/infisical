@@ -8,14 +8,16 @@ The Infisical Cassandra dynamic secret allows you to generate Cassandra database
 ## Prerequisite
 
 Infisical requires a Cassandra user in your instance with the necessary permissions. This user will facilitate the creation of new accounts as needed. 
-Ensure the user possesses privileges for Creating, Dropping, and Granting permissions to roles.
+Ensure the user possesses privileges for creating, dropping, and granting permissions to roles for it to be able to create dynamic secrets.
 
-In your Cassandra configuration file cassandra.yaml, make sure you have the following settings:
+<Tip>
+In your Cassandra configuration file `cassandra.yaml`, make sure you have the following settings:
 
 ```yaml
 authenticator: PasswordAuthenticator
 authorizer: CassandraAuthorizer
 ```
+</Tip>
 
 The above configuration allows user creation and granting permissions. 
 
@@ -76,7 +78,7 @@ The above configuration allows user creation and granting permissions.
 
   </Step>
   <Step title="(Optional) Modify CQL Statements">
-  	If you want to provide specific privileges for the generated dynamic credentials, you can modify the CQL statement to your needs. This is useful if you want to only give access to a specific table(s).
+  	If you want to provide specific privileges for the generated dynamic credentials, you can modify the CQL statement to your needs. This is useful if you want to only give access to a specific key-space(s).
 
 	![Modify CQL Statements Modal](../../../images/platform/dynamic-secrets/modify-cql-statements.png)
   </Step>
@@ -102,7 +104,7 @@ The above configuration allows user creation and granting permissions.
 	![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
 
 	<Tip>
-		Ensure that the TTL for the lease fall within the maximum TTL defined when configuring the dynamic secret.
+		Ensure that the TTL for the lease fall within the maximum TTL defined when configuring the dynamic secret in step 4.
 	</Tip>
 
 
@@ -114,12 +116,12 @@ The above configuration allows user creation and granting permissions.
 
 ## Audit or Revoke Leases
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard. 
-This will allow you see the expiration time of the lease or delete the lease before it's set time to live.
+This will allow you see the lease details  and delete the lease ahead of its expiration time.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew Leases
-To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** as illustrated below.
+To extend the life of the generated dynamic secret lease past its initial time to live, simply click on the **Renew** as illustrated below.
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
