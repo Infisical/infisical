@@ -112,10 +112,11 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     function setCaretPos(caretPos: number) {
       if (childRef?.current) {
         childRef.current.focus();
-        setTimeout(() => {
+        const timeout = setTimeout(() => {
           if (!childRef?.current) return;
           childRef.current.selectionStart = caretPos;
           childRef.current.selectionEnd = caretPos;
+          clearTimeout(timeout);
         }, 200);
       }
     }
@@ -157,8 +158,9 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         setCaretPos(currCaretPos);
 
         if (event.currentTarget) {
-          setTimeout(() => {
+          const timeout = setTimeout(() => {
             referencePopup(newValue, currCaretPos);
+            clearTimeout(timeout);
           }, 200);
 
           return;
@@ -243,11 +245,12 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       // TODO: there should be a better way to do
       onChange?.({ target: { value: newValue } } as any);
       setShowReferencePopup(type !== "secret");
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         setIsSecretFocused.on();
         if (type !== "secret") setReferenceKey(replaceReference);
         const caretPos = start.length + replaceReference.length + offset;
         setCaretPos(caretPos);
+        clearTimeout(timeout);
       }, 100);
     }
 
@@ -311,8 +314,9 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           handleOpenChange={(isOpen) => handleReferenceOpenChange(isOpen)}
           onSelect={(refValue) => handleReferenceSelect(refValue)}
           onEscapeKeyDown={() => {
-            setTimeout(() => {
+            const timeout = setTimeout(() => {
               setCaretPos(lastCaretPos);
+              clearTimeout(timeout);
             }, 200);
           }}
         />
@@ -321,4 +325,4 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
   }
 );
 
-InfisicalSecretInput.displayName = "SecretInput";
+InfisicalSecretInput.displayName = "InfisicalSecretInput";
