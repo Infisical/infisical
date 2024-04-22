@@ -31,4 +31,4 @@ jobs:
                   CLI_TESTS_PROJECT_ID: ${{ secrets.CLI_TESTS_PROJECT_ID }}
                   CLI_TESTS_ENV_SLUG: ${{ secrets.CLI_TESTS_ENV_SLUG }}
 
-              run: TEST_MODE=true go test -v -count=1 ./test
+              run: go test -v -count=1 ./test
