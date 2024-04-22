@@ -117,7 +117,6 @@ var exportCmd = &cobra.Command{
 
 			secrets = util.ExpandSecrets(secrets, authParams, "")
 		}
-
 		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
 		secrets = util.SortSecretsByKeys(secrets)
 
