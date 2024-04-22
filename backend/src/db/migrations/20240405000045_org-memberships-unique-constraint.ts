@@ -98,8 +98,6 @@ export async function up(knex: Knex): Promise<void> {
         `Deleted ${numberOfRowsDeleted} duplicate organization memberships for ${row.userId} and ${row.orgId}`
       );
     }
-
-    throw new Error("This is a test error");
   });
 
   await knex.schema.alterTable(TableName.OrgMembership, (table) => {
