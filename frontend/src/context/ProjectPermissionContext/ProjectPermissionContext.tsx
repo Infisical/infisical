@@ -56,5 +56,7 @@ export const useProjectPermission = () => {
     throw new Error("useProjectPermission to be used within <ProjectPermissionContext>");
   }
 
-  return ctx;
+  const hasProjectRole = (role: string) => ctx?.membership?.roles?.includes(role) || false;
+
+  return { ...ctx, hasProjectRole };
 };
