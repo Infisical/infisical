@@ -67,3 +67,4 @@ yarn-error.log*
 frontend-build
 
 *.tgz
+cli/infisical-merge
