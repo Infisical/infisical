@@ -1,90 +1,82 @@
 package tests
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"testing"
 
-	"github.com/Infisical/infisical-merge/packages/cmd"
-	"github.com/Infisical/infisical-merge/packages/models"
-	"github.com/stretchr/testify/assert"
+	"github.com/bradleyjkemp/cupaloy/v2"
 )
 
-func ExportSecrets(t *testing.T, authToken string, projectId string, envSlug string) {
+func TestUniversalAuth_ExportSecretsWithImports(t *testing.T) {
+	MachineIdentityLoginCmd(t)
+	SetupCli(t)
 
-	rootCommand := cmd.NewRootCmd()
+	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "export", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent")
 
-	commandOutput := new(bytes.Buffer)
-	errorOutput := new(bytes.Buffer)
-	rootCommand.SetOut(commandOutput)
-	rootCommand.SetErr(errorOutput)
+	fmt.Printf("output: %v\n", output)
 
-	args := []string{
-		"export",
-	}
-
-	args = append(args, fmt.Sprintf("--token=%s", authToken))
-	args = append(args, fmt.Sprintf("--projectId=%s", projectId))
-	args = append(args, fmt.Sprintf("--env=%s", envSlug))
-
-	rootCommand.SetArgs(args)
-	rootCommand.Execute()
-
-	var secrets []models.SingleEnvironmentVariable
-
-	err := json.Unmarshal(commandOutput.Bytes(), &secrets)
 	if err != nil {
-		t.Errorf("Error: %v", err)
+		t.Fatalf("error running CLI command: %v", err)
 	}
 
-	expectedLength := len(DEV_SECRETS) + len(STAGING_SECRETS)
-
-	assert.Len(t, secrets, expectedLength)
-
-	for _, secret := range secrets {
-		if secret.Key == "FOLDER-SECRET-1" {
-			continue
-		}
-		assert.Contains(t, ALL_SECRET_KEYS, secret.Key)
-		assert.Contains(t, ALL_SECRET_VALUES, secret.Value)
+	// Use cupaloy to snapshot test the output
+	err = cupaloy.Snapshot(output)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
 	}
 }
 
-func ExportSecretsWithoutImports(t *testing.T, authToken string, projectId string, envSlug string) {
+func TestServiceToken_ExportSecretsWithImports(t *testing.T) {
+	SetupCli(t)
 
-	rootCommand := cmd.NewRootCmd()
+	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "export", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent")
 
-	commandOutput := new(bytes.Buffer)
-	rootCommand.SetOut(commandOutput)
-	rootCommand.SetErr(commandOutput)
+	fmt.Printf("output: %v\n", output)
 
-	args := []string{
-		"export",
-	}
-
-	args = append(args, fmt.Sprintf("--token=%s", authToken))
-	args = append(args, fmt.Sprintf("--projectId=%s", projectId))
-	args = append(args, fmt.Sprintf("--env=%s", envSlug))
-	args = append(args, "--include-imports=false")
-
-	rootCommand.SetArgs(args)
-	rootCommand.Execute()
-
-	var secrets []models.SingleEnvironmentVariable
-
-	err := json.Unmarshal(commandOutput.Bytes(), &secrets)
 	if err != nil {
-		t.Errorf("Error: %v", err)
+		t.Fatalf("error running CLI command: %v", err)
 	}
 
-	assert.Len(t, secrets, len(DEV_SECRETS))
+	// Use cupaloy to snapshot test the output
+	err = cupaloy.Snapshot(output)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
+	}
+}
 
-	allDevSecretKeys, allDevSecretValues := getSecretKeysAndValues(DEV_SECRETS)
+func TestUniversalAuth_ExportSecretsWithoutImports(t *testing.T) {
+	MachineIdentityLoginCmd(t)
+	SetupCli(t)
 
-	for _, secret := range secrets {
-		assert.Contains(t, allDevSecretKeys, secret.Key)
-		assert.Contains(t, allDevSecretValues, secret.Value)
+	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "export", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent", "--include-imports=false")
+
+	fmt.Printf("output: %v\n", output)
+
+	if err != nil {
+		t.Fatalf("error running CLI command: %v", err)
 	}
 
+	// Use cupaloy to snapshot test the output
+	err = cupaloy.Snapshot(output)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
+	}
+}
+
+func TestServiceToken_ExportSecretsWithoutImports(t *testing.T) {
+	SetupCli(t)
+
+	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "export", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent", "--include-imports=false")
+
+	fmt.Printf("output: %v\n", output)
+
+	if err != nil {
+		t.Fatalf("error running CLI command: %v", err)
+	}
+
+	// Use cupaloy to snapshot test the output
+	err = cupaloy.Snapshot(output)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
+	}
 }
