@@ -30,19 +30,24 @@ const generateUsername = (provider: SqlProviders) => {
 export const SqlDatabaseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const appCfg = getConfig();
+    const isCloud = Boolean(appCfg.LICENSE_SERVER_KEY); // quick and dirty way to check if its cloud or not
     const dbHost = appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI);
 
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
     if (
+      isCloud &&
       // localhost
+      // internal ips
+      (providerInputs.host === "host.docker.internal" ||
+        providerInputs.host.match(/^10\.\d+\.\d+\.\d+/) ||
+        providerInputs.host.match(/^192\.168\.\d+\.\d+/))
+    )
+      throw new BadRequestError({ message: "Invalid db host" });
+    if (
       providerInputs.host === "localhost" ||
       providerInputs.host === "127.0.0.1" ||
       // database infisical uses
-      dbHost === providerInputs.host ||
-      // internal ips
-      providerInputs.host === "host.docker.internal" ||
-      providerInputs.host.match(/^10\.\d+\.\d+\.\d+/) ||
-      providerInputs.host.match(/^192\.168\.\d+\.\d+/)
+      dbHost === providerInputs.host
     )
       throw new BadRequestError({ message: "Invalid db host" });
     return providerInputs;
@@ -93,15 +98,13 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
       database
     });
 
-    await db.transaction(async (tx) =>
-      Promise.all(
-        creationStatement
-          .toString()
-          .split(";")
-          .filter(Boolean)
-          .map((query) => tx.raw(query))
-      )
-    );
+    const queries = creationStatement.toString().split(";").filter(Boolean);
+    await db.transaction(async (tx) => {
+      for (const query of queries) {
+        // eslint-disable-next-line
+        await tx.raw(query);
+      }
+    });
     await db.destroy();
     return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
   };
@@ -114,15 +117,13 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     const { database } = providerInputs;
 
     const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
-    await db.transaction(async (tx) =>
-      Promise.all(
-        revokeStatement
-          .toString()
-          .split(";")
-          .filter(Boolean)
-          .map((query) => tx.raw(query))
-      )
-    );
+    const queries = revokeStatement.toString().split(";").filter(Boolean);
+    await db.transaction(async (tx) => {
+      for (const query of queries) {
+        // eslint-disable-next-line
+        await tx.raw(query);
+      }
+    });
 
     await db.destroy();
     return { entityId: username };
@@ -137,16 +138,15 @@ export const SqlDatabaseProvider = (): TDynamicProviderFns => {
     const { database } = providerInputs;
 
     const renewStatement = handlebars.compile(providerInputs.renewStatement)({ username, expiration, database });
-    if (renewStatement)
-      await db.transaction(async (tx) =>
-        Promise.all(
-          renewStatement
-            .toString()
-            .split(";")
-            .filter(Boolean)
-            .map((query) => tx.raw(query))
-        )
-      );
+    if (renewStatement) {
+      const queries = renewStatement.toString().split(";").filter(Boolean);
+      await db.transaction(async (tx) => {
+        for (const query of queries) {
+          // eslint-disable-next-line
+          await tx.raw(query);
+        }
+      });
+    }
 
     await db.destroy();
     return { entityId: username };
