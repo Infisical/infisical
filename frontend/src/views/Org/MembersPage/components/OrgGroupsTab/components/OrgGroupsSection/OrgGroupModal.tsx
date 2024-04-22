@@ -19,7 +19,10 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const GroupFormSchema = z.object({
   name: z.string().min(1, "Name cannot be empty").max(50, "Name must be 50 characters or fewer"),
-  slug: z.string().min(5, "Slug cannot be empty").max(36, "Slug must be 36 characters or fewer"),
+  slug: z
+    .string()
+    .min(5, "Slug must be at least 5 characters long")
+    .max(36, "Slug must be 36 characters or fewer"),
   role: z.string()
 });
 

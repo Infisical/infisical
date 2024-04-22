@@ -81,9 +81,9 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectGhostUser = async (projectId: string) => {
+  const findProjectGhostUser = async (projectId: string, tx?: Knex) => {
     try {
-      const ghostUser = await db(TableName.ProjectMembership)
+      const ghostUser = await (tx || db)(TableName.ProjectMembership)
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.Users))

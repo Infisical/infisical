@@ -59,32 +59,6 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countAllGroupMembers = async ({ orgId, groupId }: { orgId: string; groupId: string }) => {
-    try {
-      interface CountResult {
-        count: string;
-      }
-
-      const doc = await db<CountResult>(TableName.OrgMembership)
-        .where(`${TableName.OrgMembership}.orgId`, orgId)
-        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.UserGroupMembership, function () {
-          this.on(`${TableName.UserGroupMembership}.userId`, "=", `${TableName.Users}.id`).andOn(
-            `${TableName.UserGroupMembership}.groupId`,
-            "=",
-            db.raw("?", [groupId])
-          );
-        })
-        .where({ isGhost: false })
-        .count(`${TableName.Users}.id`)
-        .first();
-
-      return parseInt((doc?.count as string) || "0", 10);
-    } catch (err) {
-      throw new DatabaseError({ error: err, name: "Count all group members" });
-    }
-  };
-
   // special query
   const findAllGroupMembers = async ({
     orgId,
@@ -150,7 +124,6 @@ export const groupDALFactory = (db: TDbClient) => {
   return {
     findGroups,
     findByOrgId,
-    countAllGroupMembers,
     findAllGroupMembers,
     ...groupOrm
   };

@@ -290,6 +290,10 @@ export const registerRoutes = async (
     projectDAL,
     projectMembershipDAL,
     groupDAL,
+    groupProjectDAL,
+    userGroupMembershipDAL,
+    projectKeyDAL,
+    projectBotDAL,
     permissionService,
     smtpService
   });
@@ -344,6 +348,11 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
+    userGroupMembershipDAL,
+    projectKeyDAL,
+    projectDAL,
+    projectBotDAL,
+    groupProjectDAL,
     orgDAL,
     orgService,
     licenseService

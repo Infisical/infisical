@@ -4,15 +4,20 @@ import jwt from "jsonwebtoken";
 
 import { OrgMembershipRole, OrgMembershipStatus, TableName, TGroups } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TOrgPermission } from "@app/lib/types";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { deleteOrgMembership } from "@app/services/org/org-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -42,14 +47,21 @@ import {
 
 type TScimServiceFactoryDep = {
   scimDAL: Pick<TScimDALFactory, "create" | "find" | "findById" | "deleteById">;
-  userDAL: Pick<TUserDALFactory, "findOne" | "create" | "transaction">;
+  userDAL: Pick<TUserDALFactory, "find" | "findOne" | "create" | "transaction" | "findUserEncKeyByUserIdsBatch">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "findById" | "findMembership" | "deleteMembershipById" | "transaction"
   >;
-  projectDAL: Pick<TProjectDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "find" | "findProjectGhostUser">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete">;
-  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "findAllGroupMembers" | "update" | "delete" | "findGroups">;
+  groupDAL: Pick<
+    TGroupDALFactory,
+    "create" | "findOne" | "findAllGroupMembers" | "update" | "delete" | "findGroups" | "transaction"
+  >;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
+  userGroupMembershipDAL: TUserGroupMembershipDALFactory; // TODO: Pick
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: TSmtpService;
@@ -65,6 +77,10 @@ export const scimServiceFactory = ({
   projectDAL,
   projectMembershipDAL,
   groupDAL,
+  groupProjectDAL,
+  userGroupMembershipDAL,
+  projectKeyDAL,
+  projectBotDAL,
   permissionService,
   smtpService
 }: TScimServiceFactoryDep) => {
@@ -473,7 +489,19 @@ export const scimServiceFactory = ({
   };
 
   const listScimGroups = async ({ orgId, offset, limit }: TListScimGroupsDTO) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to list SCIM groups due to plan restriction. Upgrade plan to list SCIM groups."
+      });
+
     const org = await orgDAL.findById(orgId);
+    if (!org) {
+      throw new ScimRequestError({
+        detail: "Organization Not Found",
+        status: 404
+      });
+    }
 
     if (!org.scimEnabled)
       throw new ScimRequestError({
@@ -500,8 +528,21 @@ export const scimServiceFactory = ({
     });
   };
 
-  const createScimGroup = async ({ displayName, orgId }: TCreateScimGroupDTO) => {
+  const createScimGroup = async ({ displayName, orgId, members }: TCreateScimGroupDTO) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to create a SCIM group due to plan restriction. Upgrade plan to create a SCIM group."
+      });
+
     const org = await orgDAL.findById(orgId);
+
+    if (!org) {
+      throw new ScimRequestError({
+        detail: "Organization Not Found",
+        status: 404
+      });
+    }
 
     if (!org.scimEnabled)
       throw new ScimRequestError({
@@ -509,21 +550,54 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const group = await groupDAL.create({
-      name: displayName,
-      slug: slugify(`${displayName}-${alphaNumericNanoId(4)}`),
-      orgId,
-      role: OrgMembershipRole.NoAccess
+    const newGroup = await groupDAL.transaction(async (tx) => {
+      const group = await groupDAL.create(
+        {
+          name: displayName,
+          slug: slugify(`${displayName}-${alphaNumericNanoId(4)}`),
+          orgId,
+          role: OrgMembershipRole.NoAccess
+        },
+        tx
+      );
+
+      if (members && members.length) {
+        const newMembers = await addUsersToGroupByUserIds({
+          group,
+          userIds: members.map((member) => member.value),
+          userDAL,
+          userGroupMembershipDAL,
+          orgDAL,
+          groupProjectDAL,
+          projectKeyDAL,
+          projectDAL,
+          projectBotDAL,
+          tx
+        });
+
+        return { group, newMembers };
+      }
+
+      return { group, newMembers: [] };
     });
 
     return buildScimGroup({
-      groupId: group.id,
-      name: group.name,
-      members: []
+      groupId: newGroup.group.id,
+      name: newGroup.group.name,
+      members: newGroup.newMembers.map((member) => ({
+        value: member.id,
+        display: `${member.firstName} ${member.lastName}`
+      }))
     });
   };
 
   const getScimGroup = async ({ groupId, orgId }: TGetScimGroupDTO) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to get SCIM group due to plan restriction. Upgrade plan to get SCIM group."
+      });
+
     const group = await groupDAL.findOne({
       id: groupId,
       orgId
@@ -553,34 +627,122 @@ export const scimServiceFactory = ({
     });
   };
 
-  const updateScimGroupNamePut = async ({ groupId, orgId, displayName }: TUpdateScimGroupNamePutDTO) => {
-    const [group] = await groupDAL.update(
-      {
-        id: groupId,
-        orgId
-      },
-      {
-        name: displayName
-      }
-    );
+  const updateScimGroupNamePut = async ({ groupId, orgId, displayName, members }: TUpdateScimGroupNamePutDTO) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
+      });
 
-    if (!group) {
+    const org = await orgDAL.findById(orgId);
+    if (!org) {
       throw new ScimRequestError({
-        detail: "Group Not Found",
+        detail: "Organization Not Found",
         status: 404
       });
     }
 
+    if (!org.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
+    const updatedGroup = await groupDAL.transaction(async (tx) => {
+      const [group] = await groupDAL.update(
+        {
+          id: groupId,
+          orgId
+        },
+        {
+          name: displayName
+        }
+      );
+
+      if (!group) {
+        throw new ScimRequestError({
+          detail: "Group Not Found",
+          status: 404
+        });
+      }
+
+      if (members) {
+        const membersIdsSet = new Set(members.map((member) => member.value));
+
+        const directMemberUserIds = (
+          await userGroupMembershipDAL.find({
+            groupId: group.id,
+            isPending: false
+          })
+        ).map((membership) => membership.userId);
+
+        const pendingGroupAdditionsUserIds = (
+          await userGroupMembershipDAL.find({
+            groupId: group.id,
+            isPending: true
+          })
+        ).map((pendingGroupAddition) => pendingGroupAddition.userId);
+
+        const allMembersUserIds = directMemberUserIds.concat(pendingGroupAdditionsUserIds);
+        const allMembersUserIdsSet = new Set(allMembersUserIds);
+
+        const toAddUserIds = members.filter((member) => !allMembersUserIdsSet.has(member.value));
+        const toRemoveUserIds = allMembersUserIds.filter((userId) => !membersIdsSet.has(userId));
+
+        if (toAddUserIds.length) {
+          await addUsersToGroupByUserIds({
+            group,
+            userIds: toAddUserIds.map((member) => member.value),
+            userDAL,
+            userGroupMembershipDAL,
+            orgDAL,
+            groupProjectDAL,
+            projectKeyDAL,
+            projectDAL,
+            projectBotDAL,
+            tx
+          });
+        }
+
+        if (toRemoveUserIds.length) {
+          await removeUsersFromGroupByUserIds({
+            group,
+            userIds: toRemoveUserIds,
+            userDAL,
+            userGroupMembershipDAL,
+            groupProjectDAL,
+            projectKeyDAL,
+            tx
+          });
+        }
+      }
+
+      return group;
+    });
+
     return buildScimGroup({
-      groupId: group.id,
-      name: group.name,
-      members: []
+      groupId: updatedGroup.id,
+      name: updatedGroup.name,
+      members
     });
   };
 
   // TODO: add support for add/remove op
   const updateScimGroupNamePatch = async ({ groupId, orgId, operations }: TUpdateScimGroupNamePatchDTO) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
+      });
+
     const org = await orgDAL.findById(orgId);
+
+    if (!org) {
+      throw new ScimRequestError({
+        detail: "Organization Not Found",
+        status: 404
+      });
+    }
 
     if (!org.scimEnabled)
       throw new ScimRequestError({
@@ -635,6 +797,26 @@ export const scimServiceFactory = ({
   };
 
   const deleteScimGroup = async ({ groupId, orgId }: TDeleteScimGroupDTO) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to delete SCIM group due to plan restriction. Upgrade plan to delete SCIM group."
+      });
+
+    const org = await orgDAL.findById(orgId);
+    if (!org) {
+      throw new ScimRequestError({
+        detail: "Organization Not Found",
+        status: 404
+      });
+    }
+
+    if (!org.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
     const [group] = await groupDAL.delete({
       id: groupId,
       orgId
