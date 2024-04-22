@@ -181,8 +181,9 @@ export type TDeleteSecretRawDTO = TProjectPermission & {
   type: SecretType;
 };
 
-export type TCreateManySecretRawDTO = TProjectPermission & {
+export type TCreateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
+  projectSlug: string;
   environment: string;
   secrets: {
     secretKey: string;
@@ -192,8 +193,9 @@ export type TCreateManySecretRawDTO = TProjectPermission & {
   }[];
 };
 
-export type TUpdateManySecretRawDTO = TProjectPermission & {
+export type TUpdateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
+  projectSlug: string;
   environment: string;
   secrets: {
     secretKey: string;
@@ -203,8 +205,9 @@ export type TUpdateManySecretRawDTO = TProjectPermission & {
   }[];
 };
 
-export type TDeleteManySecretRawDTO = TProjectPermission & {
+export type TDeleteManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
+  projectSlug: string;
   environment: string;
   secrets: {
     secretKey: string;

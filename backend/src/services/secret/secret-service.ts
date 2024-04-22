@@ -1041,7 +1041,7 @@ export const secretServiceFactory = ({
 
   const createManySecretsRaw = async ({
     actorId,
-    projectId,
+    projectSlug,
     environment,
     actor,
     actorOrgId,
@@ -1049,6 +1049,10 @@ export const secretServiceFactory = ({
     secretPath,
     secrets: inputSecrets = []
   }: TCreateManySecretRawDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new BadRequestError({ message: "Project not found" });
+    const projectId = project.id;
+
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
@@ -1088,7 +1092,7 @@ export const secretServiceFactory = ({
 
   const updateManySecretsRaw = async ({
     actorId,
-    projectId,
+    projectSlug,
     environment,
     actor,
     actorOrgId,
@@ -1096,6 +1100,10 @@ export const secretServiceFactory = ({
     secretPath,
     secrets: inputSecrets = []
   }: TUpdateManySecretRawDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new BadRequestError({ message: "Project not found" });
+    const projectId = project.id;
+
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
@@ -1136,7 +1144,7 @@ export const secretServiceFactory = ({
 
   const deleteManySecretsRaw = async ({
     actorId,
-    projectId,
+    projectSlug,
     environment,
     actor,
     actorOrgId,
@@ -1144,6 +1152,10 @@ export const secretServiceFactory = ({
     secretPath,
     secrets: inputSecrets = []
   }: TDeleteManySecretRawDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new BadRequestError({ message: "Project not found" });
+    const projectId = project.id;
+
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 

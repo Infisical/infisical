@@ -945,7 +945,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
 
     test.each(testRawSecrets)("Bulk create secret raw in path $path", async ({ path, secret }) => {
       const createSecretReqBody = {
-        workspaceId: seedData1.project.id,
+        projectSlug: seedData1.project.slug,
         environment: seedData1.environment.slug,
         secretPath: path,
         secrets: [
@@ -986,7 +986,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
     test.each(testRawSecrets)("Bulk update secret raw in path $path", async ({ secret, path }) => {
       await createRawSecret({ path, ...secret });
       const updateSecretReqBody = {
-        workspaceId: seedData1.project.id,
+        projectSlug: seedData1.project.slug,
         environment: seedData1.environment.slug,
         secretPath: path,
         secrets: [
@@ -1028,7 +1028,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       await createRawSecret({ path, ...secret });
 
       const deletedSecretReqBody = {
-        workspaceId: seedData1.project.id,
+        projectSlug: seedData1.project.slug,
         environment: seedData1.environment.slug,
         secretPath: path,
         secrets: [{ secretKey: secret.key }]
