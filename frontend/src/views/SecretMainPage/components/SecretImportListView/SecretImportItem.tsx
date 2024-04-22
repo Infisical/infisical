@@ -172,12 +172,7 @@ export const SecretImportItem = ({
                           {key}
                         </td>
                         <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
-                          <SecretInput
-                            value={value}
-                            isReadOnly 
-                            environment={overriden?.env}
-                            secretPath={overriden?.secretPath}
-                          />
+                          <SecretInput value={value} isReadOnly />
                         </td>
                         <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
                           <EnvFolderIcon env={overriden?.env} secretPath={overriden?.secretPath} />

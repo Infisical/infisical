@@ -14,7 +14,6 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  SecretInput,
   Spinner,
   TextArea,
   Tooltip
@@ -49,6 +48,7 @@ import { memo, useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
 
+import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput/InfisicalSecretInput";
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
 
@@ -263,7 +263,7 @@ export const SecretItem = memo(
                     key="value-overriden"
                     control={control}
                     render={({ field }) => (
-                      <SecretInput
+                      <InfisicalSecretInput
                         key="value-overriden"
                         isVisible={isVisible}
                         isReadOnly={isReadOnly}
@@ -280,7 +280,7 @@ export const SecretItem = memo(
                     key="secret-value"
                     control={control}
                     render={({ field }) => (
-                      <SecretInput
+                      <InfisicalSecretInput
                         isReadOnly={isReadOnly}
                         key="secret-value"
                         isVisible={isVisible}

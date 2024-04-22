@@ -3,7 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { Button, FormControl, Input, Modal, ModalContent, SecretInput } from "@app/components/v2";
+import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput/InfisicalSecretInput";
 import { useCreateSecretV3 } from "@app/hooks/api";
 import { UserWsKeyPair } from "@app/hooks/api/types";
 
@@ -103,7 +104,7 @@ export const CreateSecretForm = ({
                 isError={Boolean(errors?.value)}
                 errorText={errors?.value?.message}
               >
-                <SecretInput
+                <InfisicalSecretInput
                   {...field}
                   environment={environment}
                   secretPath={secretPath}

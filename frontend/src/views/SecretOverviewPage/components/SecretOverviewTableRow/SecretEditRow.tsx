@@ -5,7 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { IconButton, SecretInput, Tooltip } from "@app/components/v2";
+import { IconButton, Tooltip } from "@app/components/v2";
+import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
@@ -87,13 +88,19 @@ export const SecretEditRow = ({
   };
 
   return (
-    <div className="group flex w-full cursor-text space-x-2 items-center">
+    <div className="group flex w-full cursor-text items-center space-x-2">
       <div className="flex-grow border-r border-r-mineshaft-600 pr-2 pl-1">
         <Controller
           control={control}
           name="value"
           render={({ field }) => (
-            <SecretInput {...field} value={field.value as string} isVisible={isVisible} secretPath={secretPath} environment={environment} />
+            <InfisicalSecretInput
+              {...field}
+              value={field.value as string}
+              isVisible={isVisible}
+              secretPath={secretPath}
+              environment={environment}
+            />
           )}
         />
       </div>
