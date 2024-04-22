@@ -65,14 +65,14 @@ export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
       }
 
       createNotification({
-        text: `Successfully ${assign ? "assigned" : "removed "} user ${
+        text: `Successfully ${assign ? "assigned" : "removed"} user ${
           assign ? "to" : "from"
         } group`,
         type: "success"
       });
     } catch (err) {
       createNotification({
-        text: `Failed to ${assign ? "assigned" : "remove"} user ${assign ? "to" : "from"} group`,
+        text: `Failed to ${assign ? "assign" : "remove"} user ${assign ? "to" : "from"} group`,
         type: "error"
       });
     }
