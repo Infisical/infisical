@@ -1,5 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import slugify from "@sindresorhus/slugify";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -16,7 +17,14 @@ type Props = {
 
 const schema = yup.object({
   environmentName: yup.string().label("Environment Name").required(),
-  environmentSlug: yup.string().label("Environment Slug").matches(/^[^./]*$/g, { message: "Invalid [.] or [/] not allowed"}).required()
+  environmentSlug: yup
+    .string()
+    .label("Environment Slug")
+    .test({
+      test: (slug) => slugify(slug as string) === slug,
+      message: "Slug must be a valid slug"
+    })
+    .required()
 });
 
 export type FormData = yup.InferType<typeof schema>;

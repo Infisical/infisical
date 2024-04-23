@@ -166,7 +166,7 @@ export default function SecretReferenceSelect({
               })}
 
               {listReference.length !== 0 && (
-                <SelectPrimitive.Separator className="m-1 h-[1px] mb-2 bg-mineshaft-400" />
+                <SelectPrimitive.Separator className="m-1 mb-2 h-[1px] bg-mineshaft-400" />
               )}
             </SelectPrimitive.Group>
 

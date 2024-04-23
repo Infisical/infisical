@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ProjectEnvironmentsSchema } from "@app/db/schemas";
@@ -24,8 +25,10 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         name: z.string().trim(),
         slug: z
           .string()
-          .regex(/^[^./]*$/g)
           .trim()
+          .refine((v) => slugify(v) === v, {
+            message: "Slug must be a valid slug"
+          })
       }),
       response: {
         200: z.object({
