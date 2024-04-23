@@ -100,6 +100,7 @@ export const SecretEditRow = ({
             <InfisicalSecretInput
               {...field}
               value={field.value as string}
+              key="secret-input"
               isVisible={isVisible}
               secretPath={secretPath}
               environment={environment}

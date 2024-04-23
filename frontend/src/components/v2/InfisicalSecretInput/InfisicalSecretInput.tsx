@@ -1,5 +1,5 @@
 /* eslint-disable react/no-danger */
-import React, { forwardRef, TextareaHTMLAttributes, useRef, useState } from "react";
+import React, { forwardRef, TextareaHTMLAttributes, useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -97,15 +97,23 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const [referenceKey, setReferenceKey] = useState<string>();
     const [lastCaretPos, setLastCaretPos] = useState<number>(0);
 
-    const isCaretInsideReference = (str: string, start: number) => {
-      const match = [...str.matchAll(REGEX_SECRET_REFERENCE_FIND)].find(
-        (entry) =>
-          typeof entry?.index !== "undefined" &&
-          entry.index <= start &&
-          start < entry.index + entry[0].length
-      );
+    useEffect(() => {
+      setValue(propValue as string);
+    }, [propValue]);
 
-      return match || null;
+    const isCaretInsideReference = (str: string, start: number) => {
+      if (str) {
+        const match = [...str.matchAll(REGEX_SECRET_REFERENCE_FIND)].find(
+          (entry) =>
+            typeof entry?.index !== "undefined" &&
+            entry.index <= start &&
+            start < entry.index + entry[0].length
+        );
+
+        return match || null;
+      }
+
+      return null;
     };
 
     const setCaretPos = (caretPos: number) => {
@@ -299,7 +307,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                 if (!showReferencePopup) setIsSecretFocused.off();
               }}
               {...props}
-              value={value}
+              value={value || ""}
               readOnly={isReadOnly}
             />
           </div>
