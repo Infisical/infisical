@@ -5,6 +5,8 @@ import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
+import { auditLogStreamDALFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-dal";
+import { auditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { dynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { dynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/providers";
@@ -193,6 +195,7 @@ export const registerRoutes = async (
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
 
   const auditLogDAL = auditLogDALFactory(db);
+  const auditLogStreamDAL = auditLogStreamDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
 
@@ -243,9 +246,16 @@ export const registerRoutes = async (
     auditLogDAL,
     queueService,
     projectDAL,
-    licenseService
+    licenseService,
+    auditLogStreamDAL
   });
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
+  const auditLogStreamService = auditLogStreamServiceFactory({
+    projectDAL,
+    licenseService,
+    permissionService,
+    auditLogStreamDAL
+  });
   const sapService = secretApprovalPolicyServiceFactory({
     projectMembershipDAL,
     projectEnvDAL,
@@ -715,6 +725,7 @@ export const registerRoutes = async (
     saml: samlService,
     ldap: ldapService,
     auditLog: auditLogService,
+    auditLogStream: auditLogStreamService,
     secretScanning: secretScanningService,
     license: licenseService,
     trustedIp: trustedIpService,

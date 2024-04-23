@@ -1,3 +1,4 @@
+import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerGroupRouter } from "./group-router";
@@ -55,6 +56,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerSecretRotationRouter, { prefix: "/secret-rotations" });
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
   await server.register(registerGroupRouter, { prefix: "/groups" });
+  await server.register(registerAuditLogStreamRouter, { prefix: "/audit-log-streams" });
   await server.register(
     async (privilegeRouter) => {
       await privilegeRouter.register(registerUserAdditionalPrivilegeRouter, { prefix: "/users" });
