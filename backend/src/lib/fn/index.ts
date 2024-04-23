@@ -2,5 +2,6 @@
 // Full credits goes to https://github.com/rayapps to those functions
 // Code taken to keep in in house and to adjust somethings for our needs
 export * from "./array";
+export * from "./dates";
 export * from "./object";
 export * from "./string";

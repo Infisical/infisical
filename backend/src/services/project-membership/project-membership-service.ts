@@ -17,6 +17,7 @@ import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
+import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
 import { ActorType } from "../auth/auth-type";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -45,6 +46,7 @@ type TProjectMembershipServiceFactoryDep = {
   projectMembershipDAL: TProjectMembershipDALFactory;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany" | "find" | "delete">;
   userDAL: Pick<TUserDALFactory, "findById" | "findOne" | "findUserByProjectMembershipId" | "find">;
+  userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByUsername">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction">;
@@ -63,12 +65,25 @@ export const projectMembershipServiceFactory = ({
   projectBotDAL,
   orgDAL,
   userDAL,
+  userGroupMembershipDAL,
   projectDAL,
   projectKeyDAL,
   licenseService
 }: TProjectMembershipServiceFactoryDep) => {
-  const getProjectMemberships = async ({ actorId, actor, actorOrgId, projectId }: TGetProjectMembershipDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+  const getProjectMemberships = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TGetProjectMembershipDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
     return projectMembershipDAL.findAllProjectMembers(projectId);
@@ -79,13 +94,20 @@ export const projectMembershipServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     members,
     sendEmails = true
   }: TAddUsersToWorkspaceDTO) => {
     const project = await projectDAL.findById(projectId);
     if (!project) throw new BadRequestError({ message: "Project not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
     const orgMembers = await orgDAL.findMembership({
       orgId: project.orgId,
@@ -101,12 +123,18 @@ export const projectMembershipServiceFactory = ({
     });
     if (existingMembers.length) throw new BadRequestError({ message: "Some users are already part of project" });
 
+    const userIdsToExcludeForProjectKeyAddition = new Set(
+      await userGroupMembershipDAL.findUserGroupMembershipsInProject(
+        orgMembers.map(({ username }) => username),
+        projectId
+      )
+    );
+
     await projectMembershipDAL.transaction(async (tx) => {
       const projectMemberships = await projectMembershipDAL.insertMany(
         orgMembers.map(({ userId }) => ({
           projectId,
-          userId: userId as string,
-          role: ProjectMembershipRole.Member
+          userId: userId as string
         })),
         tx
       );
@@ -116,13 +144,15 @@ export const projectMembershipServiceFactory = ({
       );
       const encKeyGroupByOrgMembId = groupBy(members, (i) => i.orgMembershipId);
       await projectKeyDAL.insertMany(
-        orgMembers.map(({ userId, id }) => ({
-          encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
-          nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
-          senderId: actorId,
-          receiverId: userId as string,
-          projectId
-        })),
+        orgMembers
+          .filter(({ userId }) => !userIdsToExcludeForProjectKeyAddition.has(userId as string))
+          .map(({ userId, id }) => ({
+            encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
+            nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
+            senderId: actorId,
+            receiverId: userId as string,
+            projectId
+          })),
         tx
       );
     });
@@ -145,7 +175,9 @@ export const projectMembershipServiceFactory = ({
   const addUsersToProjectNonE2EE = async ({
     projectId,
     actorId,
+    actorAuthMethod,
     actor,
+    actorOrgId,
     emails,
     usernames,
     sendEmails = true
@@ -157,7 +189,13 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({ message: "Please upgrade your project on your dashboard" });
     }
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
 
     const usernamesAndEmails = [...emails, ...usernames];
@@ -220,12 +258,15 @@ export const projectMembershipServiceFactory = ({
 
     const members: TProjectMemberships[] = [];
 
+    const userIdsToExcludeForProjectKeyAddition = new Set(
+      await userGroupMembershipDAL.findUserGroupMembershipsInProject(usernamesAndEmails, projectId)
+    );
+
     await projectMembershipDAL.transaction(async (tx) => {
       const projectMemberships = await projectMembershipDAL.insertMany(
         orgMembers.map(({ user }) => ({
           projectId,
-          userId: user.id,
-          role: ProjectMembershipRole.Member
+          userId: user.id
         })),
         tx
       );
@@ -238,13 +279,15 @@ export const projectMembershipServiceFactory = ({
 
       const encKeyGroupByOrgMembId = groupBy(newWsMembers, (i) => i.orgMembershipId);
       await projectKeyDAL.insertMany(
-        orgMembers.map(({ user, id }) => ({
-          encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
-          nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
-          senderId: ghostUser.id,
-          receiverId: user.id,
-          projectId
-        })),
+        orgMembers
+          .filter(({ user }) => !userIdsToExcludeForProjectKeyAddition.has(user.id))
+          .map(({ user, id }) => ({
+            encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
+            nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
+            senderId: ghostUser.id,
+            receiverId: user.id,
+            projectId
+          })),
         tx
       );
     });
@@ -273,11 +316,18 @@ export const projectMembershipServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     projectId,
     membershipId,
     roles
   }: TUpdateProjectMembershipDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
 
     const membershipUser = await userDAL.findUserByProjectMembershipId(membershipId);
@@ -294,7 +344,7 @@ export const projectMembershipServiceFactory = ({
     );
     const hasCustomRole = Boolean(customInputRoles.length);
     if (hasCustomRole) {
-      const plan = await licenseService.getPlan(actorOrgId as string);
+      const plan = await licenseService.getPlan(actorOrgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
@@ -310,7 +360,7 @@ export const projectMembershipServiceFactory = ({
     if (customRoles.length !== customInputRoles.length) throw new BadRequestError({ message: "Custom role not found" });
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
-    const santiziedProjectMembershipRoles = roles.map((inputRole) => {
+    const sanitizedProjectMembershipRoles = roles.map((inputRole) => {
       const isCustomRole = Boolean(customRolesGroupBySlug?.[inputRole.role]?.[0]);
       if (!inputRole.isTemporary) {
         return {
@@ -336,7 +386,7 @@ export const projectMembershipServiceFactory = ({
 
     const updatedRoles = await projectMembershipDAL.transaction(async (tx) => {
       await projectUserMembershipRoleDAL.delete({ projectMembershipId: membershipId }, tx);
-      return projectUserMembershipRoleDAL.insertMany(santiziedProjectMembershipRoles, tx);
+      return projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });
 
     return updatedRoles;
@@ -347,10 +397,17 @@ export const projectMembershipServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     projectId,
     membershipId
   }: TDeleteProjectMembershipOldDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
 
     const member = await userDAL.findUserByProjectMembershipId(membershipId);
@@ -374,11 +431,18 @@ export const projectMembershipServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     projectId,
     emails,
     usernames
   }: TDeleteProjectMembershipsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
 
     const project = await projectDAL.findById(projectId);
@@ -410,6 +474,10 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
+    const userIdsToExcludeFromProjectKeyRemoval = new Set(
+      await userGroupMembershipDAL.findUserGroupMembershipsInProject(usernamesAndEmails, projectId)
+    );
+
     const memberships = await projectMembershipDAL.transaction(async (tx) => {
       const deletedMemberships = await projectMembershipDAL.delete(
         {
@@ -421,11 +489,15 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
+      // delete project keys belonging to users that are not part of any other groups in the project
       await projectKeyDAL.delete(
         {
           projectId,
           $in: {
-            receiverId: projectMembers.map(({ user }) => user.id).filter(Boolean)
+            receiverId: projectMembers
+              .filter(({ user }) => !userIdsToExcludeFromProjectKeyRemoval.has(user.id))
+              .map(({ user }) => user.id)
+              .filter(Boolean)
           }
         },
         tx

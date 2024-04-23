@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   ContentLoader,
@@ -62,7 +62,7 @@ export const AdminDashboardPage = () => {
   const { orgs } = useOrganization();
   const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
 
-  const { createNotification } = useNotificationContext();
+  
 
   const isNotAllowed = !user?.superAdmin;
 
@@ -119,9 +119,12 @@ export const AdminDashboardPage = () => {
                 className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
                 onSubmit={handleSubmit(onFormSubmit)}
               >
-                <div className="flex justify-between">
-                  <div className="mb-4 text-xl font-semibold text-mineshaft-100">
-                    Allow user sign up
+                <div className="flex flex-col justify-start">
+                  <div className="mb-2 text-xl font-semibold text-mineshaft-100">
+                    Allow user signups
+                  </div>
+                  <div className="mb-4 text-sm max-w-sm text-mineshaft-400">
+                    Select if you want users to be able to signup freely into your Infisical instance.
                   </div>
                   <Controller
                     control={control}
@@ -147,9 +150,9 @@ export const AdminDashboardPage = () => {
                   />
                 </div>
                 {signupMode === "anyone" && (
-                  <div className="mt-4 flex items-center justify-between">
-                    <div className="mb-4 flex text-mineshaft-100">
-                      Restrict sign up by email domain(s)
+                  <div className="mt-8 mb-8 flex flex-col justify-start">
+                    <div className="mb-4 text-xl font-semibold text-mineshaft-100">
+                      Restrict signup by email domain(s)
                     </div>
                     <Controller
                       control={control}

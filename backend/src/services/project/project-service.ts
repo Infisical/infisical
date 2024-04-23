@@ -1,11 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
 import { createSecretBlindIndex } from "@app/lib/crypto";
@@ -18,6 +19,7 @@ import { ActorType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -34,7 +36,9 @@ import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
   TGetProjectDTO,
+  TToggleProjectAutoCapitalizationDTO,
   TUpdateProjectDTO,
+  TUpdateProjectNameDTO,
   TUpgradeProjectDTO
 } from "./project-types";
 
@@ -61,6 +65,8 @@ type TProjectServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  orgDAL: Pick<TOrgDALFactory, "findOne">;
+  keyStore: Pick<TKeyStoreFactory, "deleteItem">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -70,6 +76,7 @@ export const projectServiceFactory = ({
   projectQueue,
   projectKeyDAL,
   permissionService,
+  orgDAL,
   userDAL,
   folderDAL,
   orgService,
@@ -81,16 +88,27 @@ export const projectServiceFactory = ({
   projectEnvDAL,
   licenseService,
   projectUserMembershipRoleDAL,
-  identityProjectMembershipRoleDAL
+  identityProjectMembershipRoleDAL,
+  keyStore
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
    * */
-  const createProject = async ({ orgId, actor, actorId, actorOrgId, workspaceName, slug }: TCreateProjectDTO) => {
+  const createProject = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    workspaceName,
+    slug: projectSlug
+  }: TCreateProjectDTO) => {
+    const organization = await orgDAL.findOne({ id: actorOrgId });
+
     const { permission, membership: orgMembership } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      orgId,
+      organization.id,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
@@ -98,7 +116,7 @@ export const projectServiceFactory = ({
     const appCfg = getConfig();
     const blindIndex = createSecretBlindIndex(appCfg.ROOT_ENCRYPTION_KEY, appCfg.ENCRYPTION_KEY);
 
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await licenseService.getPlan(organization.id);
     if (plan.workspaceLimit !== null && plan.workspacesUsed >= plan.workspaceLimit) {
       // case: limit imposed on number of workspaces allowed
       // case: number of workspaces used exceeds the number of workspaces allowed
@@ -108,13 +126,13 @@ export const projectServiceFactory = ({
     }
 
     const results = await projectDAL.transaction(async (tx) => {
-      const ghostUser = await orgService.addGhostUser(orgId, tx);
+      const ghostUser = await orgService.addGhostUser(organization.id, tx);
 
       const project = await projectDAL.create(
         {
           name: workspaceName,
-          orgId,
-          slug: slug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
+          orgId: organization.id,
+          slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
           version: ProjectVersion.V2
         },
         tx
@@ -123,8 +141,7 @@ export const projectServiceFactory = ({
       const projectMembership = await projectMembershipDAL.create(
         {
           userId: ghostUser.user.id,
-          projectId: project.id,
-          role: ProjectMembershipRole.Admin
+          projectId: project.id
         },
         tx
       );
@@ -226,8 +243,7 @@ export const projectServiceFactory = ({
         const userProjectMembership = await projectMembershipDAL.create(
           {
             projectId: project.id,
-            userId: user.id,
-            role: projectAdmin.projectRole
+            userId: user.id
           },
           tx
         );
@@ -269,10 +285,11 @@ export const projectServiceFactory = ({
 
         // Get the role permission for the identity
         const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
-          ProjectMembershipRole.Admin,
-          orgId
+          OrgMembershipRole.Member,
+          organization.id
         );
 
+        // Identity has to be at least a member in order to create projects
         const hasPrivilege = isAtLeastAsPrivileged(permission, rolePermission);
         if (!hasPrivilege)
           throw new ForbiddenRequestError({
@@ -283,9 +300,7 @@ export const projectServiceFactory = ({
         const identityProjectMembership = await identityProjectDAL.create(
           {
             identityId: actorId,
-            projectId: project.id,
-            role: isCustomRole ? ProjectMembershipRole.Custom : ProjectMembershipRole.Admin,
-            roleId: customRole?.id
+            projectId: project.id
           },
           tx
         );
@@ -307,25 +322,35 @@ export const projectServiceFactory = ({
       };
     });
 
+    await keyStore.deleteItem(`infisical-cloud-plan-${actorOrgId}`);
     return results;
   };
 
-  const deleteProject = async ({ actor, actorId, actorOrgId, projectId }: TDeleteProjectDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+  const deleteProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, filter }: TDeleteProjectDTO) => {
+    const project = await projectDAL.findProjectByFilter(filter);
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
     const deletedProject = await projectDAL.transaction(async (tx) => {
-      const project = await projectDAL.deleteById(projectId, tx);
-      const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(projectId).catch(() => null);
+      const delProject = await projectDAL.deleteById(project.id, tx);
+      const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(project.id).catch(() => null);
 
       // Delete the org membership for the ghost user if it's found.
       if (projectGhostUser) {
         await userDAL.deleteById(projectGhostUser.id, tx);
       }
 
-      return project;
+      return delProject;
     });
 
+    await keyStore.deleteItem(`infisical-cloud-plan-${actorOrgId}`);
     return deletedProject;
   };
 
@@ -334,16 +359,26 @@ export const projectServiceFactory = ({
     return workspaces;
   };
 
-  const getAProject = async ({ actorId, actorOrgId, projectId, actor }: TGetProjectDTO) => {
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
-    return projectDAL.findProjectById(projectId);
+  const getAProject = async ({ actorId, actorOrgId, actorAuthMethod, filter, actor }: TGetProjectDTO) => {
+    const project = await projectDAL.findProjectByFilter(filter);
+
+    await permissionService.getProjectPermission(actor, actorId, project.id, actorAuthMethod, actorOrgId);
+    return project;
   };
 
-  const updateProject = async ({ projectId, actor, actorId, actorOrgId, update }: TUpdateProjectDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+  const updateProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, update, filter }: TUpdateProjectDTO) => {
+    const project = await projectDAL.findProjectByFilter(filter);
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
-    const updatedProject = await projectDAL.updateById(projectId, {
+    const updatedProject = await projectDAL.updateById(project.id, {
       name: update.name,
       autoCapitalization: update.autoCapitalization
     });
@@ -355,25 +390,58 @@ export const projectServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    actorAuthMethod,
     autoCapitalization
-  }: TGetProjectDTO & { autoCapitalization: boolean }) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+  }: TToggleProjectAutoCapitalizationDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
     const updatedProject = await projectDAL.updateById(projectId, { autoCapitalization });
     return updatedProject;
   };
 
-  const updateName = async ({ projectId, actor, actorId, actorOrgId, name }: TGetProjectDTO & { name: string }) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+  const updateName = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    name
+  }: TUpdateProjectNameDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
     const updatedProject = await projectDAL.updateById(projectId, { name });
     return updatedProject;
   };
 
-  const upgradeProject = async ({ projectId, actor, actorId, userPrivateKey }: TUpgradeProjectDTO) => {
-    const { permission, hasRole } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const upgradeProject = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    userPrivateKey
+  }: TUpgradeProjectDTO) => {
+    const { permission, hasRole } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
@@ -397,8 +465,20 @@ export const projectServiceFactory = ({
     });
   };
 
-  const getProjectUpgradeStatus = async ({ projectId, actor, actorId }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getProjectUpgradeStatus = async ({
+    projectId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    actorId
+  }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
 
     const project = await projectDAL.findProjectById(projectId);

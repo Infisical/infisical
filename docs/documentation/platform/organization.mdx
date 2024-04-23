@@ -1,9 +1,9 @@
 ---
-title: "Organization"
-description: "How Infisical structures its organizations."
+title: "Organizations"
+description: "Learn more and understand the concept of Infisical organizations."
 ---
 
-An organization houses projects and members.
+An Infisical organization is a set of [projects](./project) that use the same billing. Organizations allow one or more users to control billing and project permissions for all of the projects belonging to the organization. Each project belongs to an organization.
 
 ## Projects
 
@@ -18,21 +18,23 @@ The **Settings** page lets you manage information about your organization includ
 
 - Name: The name of your organization.
 - Incident contacts: Emails that should be alerted if anything abnormal is detected within the organization.
-- SAML Authentication: The SAML SSO configuration of the organization (if applicable); Infisical currently
-supports Okta, Azure, and JumpCloud identity providers.
 
 ![organization settings general](../../images/platform/organization/organization-settings-general.png)
+
+
+- Security and Authentication: A set of setting to enforce or manage [SAML](/documentation/platform/sso/overview), [SCIM](/documentation/platform/scim/overview), [LDAP](/documentation/platform/ldap/overview), and other authentication configurations.
+
 ![organization settings auth](../../images/platform/organization/organization-settings-auth.png)
 
-## Members
+## Access Control
 
-The **Members** page is where you can manage members and their permissions within the organization.
-In the **Members** tab, you can add external members to your organization or remove them; you can also
-change their role.
+The **Access Control** page is where you can manage identities (both people and machines) that are part of your organization. 
+You can add or remove additional members as well as modify their permissions.
 
-![organization members](../../images/organization-members.png)
+![organization members](../../images/platform/organization/organization-members.png)
+![organization identities](../../images/platform/organization/organization-machine-identities.png)
 
-In the **Roles** tab, you can manage roles for members within the organization. 
+In the **Organization Roles** tab, you can edit current or create new custom roles for members within the organization. 
 
 <Info>
   Note that Role-Based Access Management (RBAC) is partly a paid feature.
@@ -41,13 +43,13 @@ In the **Roles** tab, you can manage roles for members within the organization.
   at the organization and project level for free.
 
   If you're using Infisical Cloud, the ability to create custom roles is available under the **Pro Tier**. 
-  If you're self-hosting Infisical, then you should contact team@infisical.com to purchase an enterprise license to use it.
+  If you're self-hosting Infisical, then you should contact sales@infisical.com to purchase an enterprise license to use it.
 </Info>
 
 ![organization roles](../../images/platform/organization/organization-members-roles.png)
 
-As you can see next, Infisical supports granular permissions that you can tailor to each role. So,
-if you need certain members to only be able to access billing details, for example, then you can
+As you can see next, Infisical supports granular permissions that you can tailor to each role. 
+If you need certain members to only be able to access billing details, for example, then you can
 assign them that permission only.
 
 ![organization role permissions](../../images/platform/organization/organization-members-roles-add-perm.png)

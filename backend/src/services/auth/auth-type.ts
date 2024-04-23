@@ -6,6 +6,8 @@ export enum AuthMethod {
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
   JUMPCLOUD_SAML = "jumpcloud-saml",
+  GOOGLE_SAML = "google-saml",
+  KEYCLOAK_SAML = "keycloak-saml",
   LDAP = "ldap"
 }
 
@@ -38,8 +40,12 @@ export enum ActorType { // would extend to AWS, Azure, ...
   SCIM_CLIENT = "scimClient"
 }
 
+// This will be null unless the token-type is JWT
+export type ActorAuthMethod = AuthMethod | null;
+
 export type AuthModeJwtTokenPayload = {
   authTokenType: AuthTokenType.ACCESS_TOKEN;
+  authMethod: AuthMethod;
   userId: string;
   tokenVersionId: string;
   accessVersion: number;
@@ -48,12 +54,15 @@ export type AuthModeJwtTokenPayload = {
 
 export type AuthModeMfaJwtTokenPayload = {
   authTokenType: AuthTokenType.MFA_TOKEN;
+  authMethod: AuthMethod;
   userId: string;
   organizationId?: string;
 };
 
 export type AuthModeRefreshJwtTokenPayload = {
+  // authMode
   authTokenType: AuthTokenType.REFRESH_TOKEN;
+  authMethod: AuthMethod;
   userId: string;
   tokenVersionId: string;
   refreshVersion: number;
@@ -63,6 +72,8 @@ export type AuthModeRefreshJwtTokenPayload = {
 export type AuthModeProviderJwtTokenPayload = {
   authTokenType: AuthTokenType.PROVIDER_TOKEN;
   username: string;
+  authMethod: AuthMethod;
+  email: string;
   organizationId?: string;
 };
 

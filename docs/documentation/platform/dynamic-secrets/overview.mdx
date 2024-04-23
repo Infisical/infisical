@@ -1,0 +1,30 @@
+---
+title: "Overview"
+description: "Learn how to generate secrets dynamically on-demand."
+---
+
+## Introduction
+
+Contrary to static key-value secrets, which require manual input of data into the secure Infisical storage, dynamic secrets are generated on-demand upon access. 
+
+Dynamic secrets are unique to every identity using them. Such secrets come are generated only at the moment they are retrieved, eliminating the possibility of theft or reuse by another identity. Thanks to Infisical's integrated revocation capabilities, dynamic secrets can be promptly invalidated post-use, significantly reducing their lifespan.
+
+## Benefits of Dynamic Secrets
+
+This approach offers several advantages in terms of security and management:
+
+- **Enhanced Security**: By frequently changing secrets, dynamic secrets minimize the risk associated with secret compromise. Even if an attacker manages to obtain a secret, it would likely be invalid by the time they attempt to use it.
+
+- **Reduced Secret Lifetime**: The limited validity period of dynamic secrets means that they are less valuable targets for attackers. This inherently reduces the time window during which a secret can be exploited.
+
+- **Automated Management**: Dynamic secrets enable automated systems to handle the generation, distribution, revocation, and rotation of secrets without human intervention, thus reducing the risk of human error.
+
+- **Auditing and Traceability**: The generation of dynamic secrets can be tightly controlled and monitored. This allows for detailed auditing of who accessed what secret and when, improving overall security posture and compliance with regulatory standards.
+
+- **Scalability**: Dynamic secret management systems can scale more effectively to handle a large number of services and applications, as they automate much of the overhead associated with manual secret management.
+
+Dynamic secrets are particularly useful in environments with stringent security requirements, such as cloud environments, distributed systems, and microservices architectures, where they help to manage database credentials, API keys, service tokens, and other types of secrets.
+
+## Infisical Dynamic Secret Templates
+
+1. [PostgreSQL](./postgresql)

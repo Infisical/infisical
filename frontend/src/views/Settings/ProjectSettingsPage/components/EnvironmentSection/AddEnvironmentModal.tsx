@@ -3,7 +3,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import slugify from "@sindresorhus/slugify";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useCreateWsEnvironment } from "@app/hooks/api";
@@ -30,7 +30,7 @@ const schema = yup.object({
 export type FormData = yup.InferType<typeof schema>;
 
 export const AddEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync, isLoading } = useCreateWsEnvironment();
   const { control, handleSubmit, reset } = useForm<FormData>({
@@ -112,7 +112,7 @@ export const AddEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpToggle
               Create
             </Button>
 
-            <Button colorSchema="secondary" variant="plain">
+            <Button onClick={() => handlePopUpClose("createEnv")} colorSchema="secondary" variant="plain">
               Cancel
             </Button>
           </div>

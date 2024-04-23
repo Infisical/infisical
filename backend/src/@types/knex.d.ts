@@ -17,12 +17,27 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
+  TDynamicSecretLeases,
+  TDynamicSecretLeasesInsert,
+  TDynamicSecretLeasesUpdate,
+  TDynamicSecrets,
+  TDynamicSecretsInsert,
+  TDynamicSecretsUpdate,
   TGitAppInstallSessions,
   TGitAppInstallSessionsInsert,
   TGitAppInstallSessionsUpdate,
   TGitAppOrg,
   TGitAppOrgInsert,
   TGitAppOrgUpdate,
+  TGroupProjectMembershipRoles,
+  TGroupProjectMembershipRolesInsert,
+  TGroupProjectMembershipRolesUpdate,
+  TGroupProjectMemberships,
+  TGroupProjectMembershipsInsert,
+  TGroupProjectMembershipsUpdate,
+  TGroups,
+  TGroupsInsert,
+  TGroupsUpdate,
   TIdentities,
   TIdentitiesInsert,
   TIdentitiesUpdate,
@@ -32,6 +47,9 @@ import {
   TIdentityOrgMemberships,
   TIdentityOrgMembershipsInsert,
   TIdentityOrgMembershipsUpdate,
+  TIdentityProjectAdditionalPrivilege,
+  TIdentityProjectAdditionalPrivilegeInsert,
+  TIdentityProjectAdditionalPrivilegeUpdate,
   TIdentityProjectMembershipRole,
   TIdentityProjectMembershipRoleInsert,
   TIdentityProjectMembershipRoleUpdate,
@@ -86,6 +104,9 @@ import {
   TProjects,
   TProjectsInsert,
   TProjectsUpdate,
+  TProjectUserAdditionalPrivilege,
+  TProjectUserAdditionalPrivilegeInsert,
+  TProjectUserAdditionalPrivilegeUpdate,
   TProjectUserMembershipRoles,
   TProjectUserMembershipRolesInsert,
   TProjectUserMembershipRolesUpdate,
@@ -176,6 +197,9 @@ import {
   TUserEncryptionKeys,
   TUserEncryptionKeysInsert,
   TUserEncryptionKeysUpdate,
+  TUserGroupMembership,
+  TUserGroupMembershipInsert,
+  TUserGroupMembershipUpdate,
   TUsers,
   TUsersInsert,
   TUsersUpdate,
@@ -187,6 +211,22 @@ import {
 declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
+    [TableName.Groups]: Knex.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.UserGroupMembership]: Knex.CompositeTableType<
+      TUserGroupMembership,
+      TUserGroupMembershipInsert,
+      TUserGroupMembershipUpdate
+    >;
+    [TableName.GroupProjectMembership]: Knex.CompositeTableType<
+      TGroupProjectMemberships,
+      TGroupProjectMembershipsInsert,
+      TGroupProjectMembershipsUpdate
+    >;
+    [TableName.GroupProjectMembershipRole]: Knex.CompositeTableType<
+      TGroupProjectMembershipRoles,
+      TGroupProjectMembershipRolesInsert,
+      TGroupProjectMembershipRolesUpdate
+    >;
     [TableName.UserAliases]: Knex.CompositeTableType<TUserAliases, TUserAliasesInsert, TUserAliasesUpdate>;
     [TableName.UserEncryptionKey]: Knex.CompositeTableType<
       TUserEncryptionKeys,
@@ -233,6 +273,11 @@ declare module "knex/types/tables" {
       TProjectUserMembershipRolesUpdate
     >;
     [TableName.ProjectRoles]: Knex.CompositeTableType<TProjectRoles, TProjectRolesInsert, TProjectRolesUpdate>;
+    [TableName.ProjectUserAdditionalPrivilege]: Knex.CompositeTableType<
+      TProjectUserAdditionalPrivilege,
+      TProjectUserAdditionalPrivilegeInsert,
+      TProjectUserAdditionalPrivilegeUpdate
+    >;
     [TableName.ProjectKeys]: Knex.CompositeTableType<TProjectKeys, TProjectKeysInsert, TProjectKeysUpdate>;
     [TableName.Secret]: Knex.CompositeTableType<TSecrets, TSecretsInsert, TSecretsUpdate>;
     [TableName.SecretBlindIndex]: Knex.CompositeTableType<
@@ -288,6 +333,11 @@ declare module "knex/types/tables" {
       TIdentityProjectMembershipRoleInsert,
       TIdentityProjectMembershipRoleUpdate
     >;
+    [TableName.IdentityProjectAdditionalPrivilege]: Knex.CompositeTableType<
+      TIdentityProjectAdditionalPrivilege,
+      TIdentityProjectAdditionalPrivilegeInsert,
+      TIdentityProjectAdditionalPrivilegeUpdate
+    >;
     [TableName.ScimToken]: Knex.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
     [TableName.SecretApprovalPolicy]: Knex.CompositeTableType<
       TSecretApprovalPolicies,
@@ -339,6 +389,12 @@ declare module "knex/types/tables" {
       TSecretSnapshotFolders,
       TSecretSnapshotFoldersInsert,
       TSecretSnapshotFoldersUpdate
+    >;
+    [TableName.DynamicSecret]: Knex.CompositeTableType<TDynamicSecrets, TDynamicSecretsInsert, TDynamicSecretsUpdate>;
+    [TableName.DynamicSecretLease]: Knex.CompositeTableType<
+      TDynamicSecretLeases,
+      TDynamicSecretLeasesInsert,
+      TDynamicSecretLeasesUpdate
     >;
     [TableName.SamlConfig]: Knex.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
     [TableName.LdapConfig]: Knex.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;

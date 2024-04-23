@@ -29,11 +29,11 @@ export const AddUpdateEnvironmentDialog = ({
   onCreateSubmit,
   onEditSubmit,
   initialValues,
-  isEditMode,
+  isEditMode
 }: Props) => {
   const [formInput, setFormInput] = useState<FormFields>({
     name: "",
-    slug: "",
+    slug: ""
   });
 
   // This use effect can be removed when the unmount is happening from outside the component
@@ -51,7 +51,7 @@ export const AddUpdateEnvironmentDialog = ({
     e.preventDefault();
     const data = {
       name: formInput.name,
-      slug: formInput.slug.toLowerCase(),
+      slug: formInput.slug.toLowerCase()
     };
     if (isEditMode) {
       onEditSubmit(data);
@@ -63,75 +63,70 @@ export const AddUpdateEnvironmentDialog = ({
   return (
     <div>
       <Transition appear show={isOpen} as={Fragment}>
-        <Dialog as='div' className='relative z-20' onClose={onClose}>
+        <Dialog as="div" className="relative z-20" onClose={onClose}>
           <Transition.Child
             as={Fragment}
-            enter='ease-out duration-300'
-            enterFrom='opacity-0'
-            enterTo='opacity-100'
-            leave='ease-out duration-150'
-            leaveFrom='opacity-100'
-            leaveTo='opacity-0'
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-out duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
           >
-            <div className='fixed inset-0 bg-black bg-opacity-70' />
+            <div className="fixed inset-0 bg-black bg-opacity-70" />
           </Transition.Child>
 
-          <div className='fixed inset-0 overflow-y-auto z-50'>
-            <div className='flex min-h-full items-center justify-center p-4 text-center'>
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
               <Transition.Child
                 as={Fragment}
-                enter='ease-out duration-300'
-                enterFrom='opacity-0 scale-95'
-                enterTo='opacity-100 scale-100'
-                leave='ease-in duration-200'
-                leaveFrom='opacity-100 scale-100'
-                leaveTo='opacity-0 scale-95'
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className='w-full max-w-md transform overflow-hidden rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all'>
-                  <Dialog.Title
-                    as='h3'
-                    className='text-lg font-medium leading-6 text-gray-400'
-                  >
-                    {isEditMode
-                      ? "Update environment"
-                      : "Create a new environment"}
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-md border border-gray-700 bg-bunker-800 p-6 text-left align-middle shadow-xl transition-all">
+                  <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-400">
+                    {isEditMode ? "Update environment" : "Create a new environment"}
                   </Dialog.Title>
                   <form onSubmit={onFormSubmit}>
-                    <div className='max-h-28 mt-4'>
+                    <div className="mt-4 max-h-28">
                       <InputField
-                        label='Environment Name'
+                        label="Environment Name"
                         onChangeHandler={(val) => onInputChange("name", val)}
-                        type='varName'
+                        type="varName"
                         value={formInput.name}
-                        placeholder=''
+                        placeholder=""
                         isRequired
                         // error={error.length > 0}
                         // errorText={error}
                       />
                     </div>
-                    <div className='max-h-28 mt-4'>
+                    <div className="mt-4 max-h-28">
                       <InputField
-                        label='Environment Slug'
+                        label="Environment Slug"
                         onChangeHandler={(val) => onInputChange("slug", val)}
-                        type='varName'
+                        type="varName"
                         value={formInput.slug}
-                        placeholder=''
+                        placeholder=""
                         isRequired
                         // error={error.length > 0}
                         // errorText={error}
                       />
                     </div>
-                    <p className='text-xs text-gray-500 mt-2'>
+                    <p className="mt-2 text-xs text-gray-500">
                       Slugs are shorthands used in cli to access environment
                     </p>
-                    <div className='mt-4 max-w-min'>
+                    <div className="mt-4 max-w-min">
                       <Button
                         onButtonPressed={() => null}
-                        type='submit'
-                        color='mineshaft'
+                        type="submit"
+                        color="mineshaft"
                         text={isEditMode ? "Update" : "Create"}
                         active={formInput.name !== "" && formInput.slug !== ""}
-                        size='md'
+                        size="md"
                       />
                     </div>
                   </form>

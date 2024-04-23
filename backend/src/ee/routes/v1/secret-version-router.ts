@@ -1,13 +1,17 @@
 import { z } from "zod";
 
 import { SecretVersionsSchema } from "@app/db/schemas";
+import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretVersionRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:secretId/secret-versions",
     method: "GET",
+    url: "/:secretId/secret-versions",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         secretId: z.string()
@@ -27,6 +31,7 @@ export const registerSecretVersionRouter = async (server: FastifyZodProvider) =>
       const secretVersions = await server.services.secret.getSecretVersions({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         limit: req.query.limit,
         offset: req.query.offset,

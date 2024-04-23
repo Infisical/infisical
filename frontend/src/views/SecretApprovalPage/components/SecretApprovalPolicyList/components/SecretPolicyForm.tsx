@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   DropdownMenu,
@@ -65,7 +65,7 @@ export const SecretPolicyForm = ({
     values: editValues ? { ...editValues, environment: editValues.environment.slug } : undefined
   });
   const { currentWorkspace } = useWorkspace();
-  const { createNotification } = useNotificationContext();
+  
 
   const environments = currentWorkspace?.environments || [];
   useEffect(() => {

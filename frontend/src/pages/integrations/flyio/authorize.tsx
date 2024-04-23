@@ -96,7 +96,12 @@ export default function FlyioAuthorizeIntegrationPage() {
                 errorText={error?.message}
                 isError={Boolean(error)}
               >
-                <Input {...field} placeholder="" />
+                <Input 
+                  {...field} 
+                  placeholder="" 
+                  type="password"
+                  autoComplete="new-password"
+                />
               </FormControl>
             )}
           />

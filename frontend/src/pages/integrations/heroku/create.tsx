@@ -4,11 +4,11 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { 
-  faArrowUpRightFromSquare, 
-  faBookOpen, 
-  faBugs, 
-  // faCircleInfo 
+import {
+  faArrowUpRightFromSquare,
+  faBookOpen,
+  faBugs
+  // faCircleInfo
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -34,13 +34,16 @@ import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
 } from "../../../hooks/api/integrationAuth";
-import { 
-  // useCreateWsEnvironment, 
-  useGetWorkspaceById 
+import {
+  // useCreateWsEnvironment,
+  useGetWorkspaceById
 } from "../../../hooks/api/workspace";
 
 const initialSyncBehaviors = [
-  { label: "No Import - Overwrite all values in Heroku", value: IntegrationSyncBehavior.OVERWRITE_TARGET },
+  {
+    label: "No Import - Overwrite all values in Heroku",
+    value: IntegrationSyncBehavior.OVERWRITE_TARGET
+  },
   { label: "Import - Prefer values from Heroku", value: IntegrationSyncBehavior.PREFER_TARGET },
   { label: "Import - Prefer values from Infisical", value: IntegrationSyncBehavior.PREFER_SOURCE }
 ];
@@ -51,7 +54,10 @@ const schema = yup.object({
   targetApp: yup.string().required("Heroku app is required"),
   initialSyncBehavior: yup
     .string()
-    .oneOf(initialSyncBehaviors.map((b) => b.value), "Invalid initial sync behavior")
+    .oneOf(
+      initialSyncBehaviors.map((b) => b.value),
+      "Invalid initial sync behavior"
+    )
     .required("Initial sync behavior is required")
 });
 
@@ -59,7 +65,7 @@ type FormData = yup.InferType<typeof schema>;
 
 export default function HerokuCreateIntegrationPage() {
   const router = useRouter();
-  
+
   const { control, handleSubmit, setValue, watch } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
@@ -70,7 +76,6 @@ export default function HerokuCreateIntegrationPage() {
 
   const selectedSourceEnvironment = watch("selectedSourceEnvironment");
 
-
   const { mutateAsync } = useCreateIntegration();
   // const { mutateAsync: mutateAsyncEnv } = useCreateWsEnvironment();
 
@@ -78,19 +83,20 @@ export default function HerokuCreateIntegrationPage() {
 
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
-  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading  } = useGetIntegrationAuthApps({
-    integrationAuthId: (integrationAuthId as string) ?? ""
-  });
+  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } =
+    useGetIntegrationAuthApps({
+      integrationAuthId: (integrationAuthId as string) ?? ""
+    });
 
   // const { data: integrationAuthPipelineCouplings } = useGetIntegrationAuthHerokuPipelines({
   //   integrationAuthId: (integrationAuthId as string) ?? ""
   // });
-  
+
   // const [uniquePipelines, setUniquePipelines] = useState<Pipeline[]>();
   // const [selectedPipeline, setSelectedPipeline] = useState("");
   // const [selectedPipelineApps, setSelectedPipelineApps] = useState<App[]>();
   // const [integrationType, setIntegrationType] = useState("App");
-  
+
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -110,7 +116,7 @@ export default function HerokuCreateIntegrationPage() {
   //             }))
   //             .map((obj) => JSON.stringify(obj))
   //         )).map((str) => JSON.parse(str)) as { pipelineId: string; name: string }[]
-          
+
   //         [... (new Set())]
   //       setUniquePipelines(uniquePipelinesConst);
   //       if (uniquePipelinesConst) {
@@ -181,11 +187,7 @@ export default function HerokuCreateIntegrationPage() {
   //   }
   // };
 
-  const onFormSubmit = async ({
-    secretPath,
-    targetApp,
-    initialSyncBehavior,
-  }: FormData) => {
+  const onFormSubmit = async ({ secretPath, targetApp, initialSyncBehavior }: FormData) => {
     try {
       if (!integrationAuth?.id) return;
 
@@ -207,13 +209,10 @@ export default function HerokuCreateIntegrationPage() {
     } catch (err) {
       console.error(err);
     }
-  }
+  };
 
-  return integrationAuth &&
-    workspace &&
-    selectedSourceEnvironment &&
-    integrationAuthApps ? (
-    <div className="flex flex-col h-full w-full items-center justify-center">
+  return integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps ? (
+    <div className="flex h-full w-full flex-col items-center justify-center">
       <Head>
         <title>Set Up Heroku Integration</title>
         <link rel="icon" href="/infisical.ico" />
@@ -280,11 +279,7 @@ export default function HerokuCreateIntegrationPage() {
             defaultValue=""
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Secrets Path"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
+              <FormControl label="Secrets Path" isError={Boolean(error)} errorText={error?.message}>
                 <Input {...field} placeholder="/" />
               </FormControl>
             )}
@@ -294,11 +289,7 @@ export default function HerokuCreateIntegrationPage() {
             name="targetApp"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => {
               return (
-                <FormControl
-                  label="Heroku App"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
+                <FormControl label="Heroku App" errorText={error?.message} isError={Boolean(error)}>
                   <Select
                     {...field}
                     onValueChange={(e) => {

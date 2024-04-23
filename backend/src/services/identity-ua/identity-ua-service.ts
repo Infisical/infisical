@@ -144,6 +144,7 @@ export const identityUaServiceFactory = ({
     accessTokenTrustedIps,
     clientSecretTrustedIps,
     actorId,
+    actorAuthMethod,
     actor,
     actorOrgId
   }: TAttachUaDTO) => {
@@ -162,6 +163,7 @@ export const identityUaServiceFactory = ({
       actor,
       actorId,
       identityMembershipOrg.orgId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
@@ -233,6 +235,7 @@ export const identityUaServiceFactory = ({
     accessTokenTrustedIps,
     clientSecretTrustedIps,
     actorId,
+    actorAuthMethod,
     actor,
     actorOrgId
   }: TUpdateUaDTO) => {
@@ -256,6 +259,7 @@ export const identityUaServiceFactory = ({
       actor,
       actorId,
       identityMembershipOrg.orgId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
@@ -308,7 +312,7 @@ export const identityUaServiceFactory = ({
     return { ...updatedUaAuth, orgId: identityMembershipOrg.orgId };
   };
 
-  const getIdentityUa = async ({ identityId, actorId, actor, actorOrgId }: TGetUaDTO) => {
+  const getIdentityUa = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetUaDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
@@ -322,6 +326,7 @@ export const identityUaServiceFactory = ({
       actor,
       actorId,
       identityMembershipOrg.orgId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
@@ -334,6 +339,7 @@ export const identityUaServiceFactory = ({
     actorOrgId,
     identityId,
     ttl,
+    actorAuthMethod,
     description,
     numUsesLimit
   }: TCreateUaClientSecretDTO) => {
@@ -347,6 +353,7 @@ export const identityUaServiceFactory = ({
       actor,
       actorId,
       identityMembershipOrg.orgId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
@@ -355,6 +362,7 @@ export const identityUaServiceFactory = ({
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
+      actorAuthMethod,
       actorOrgId
     );
     const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
@@ -388,7 +396,13 @@ export const identityUaServiceFactory = ({
     };
   };
 
-  const getUaClientSecrets = async ({ actor, actorId, actorOrgId, identityId }: TGetUaClientSecretsDTO) => {
+  const getUaClientSecrets = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    identityId
+  }: TGetUaClientSecretsDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
@@ -399,6 +413,7 @@ export const identityUaServiceFactory = ({
       actor,
       actorId,
       identityMembershipOrg.orgId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
@@ -407,6 +422,7 @@ export const identityUaServiceFactory = ({
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
+      actorAuthMethod,
       actorOrgId
     );
     const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
@@ -431,6 +447,7 @@ export const identityUaServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     clientSecretId
   }: TRevokeUaClientSecretDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
@@ -443,6 +460,7 @@ export const identityUaServiceFactory = ({
       actor,
       actorId,
       identityMembershipOrg.orgId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
@@ -451,6 +469,7 @@ export const identityUaServiceFactory = ({
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
+      actorAuthMethod,
       actorOrgId
     );
     const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);

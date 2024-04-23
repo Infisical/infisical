@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
@@ -31,7 +31,7 @@ type Props = {
 export const IntegrationsPage = withProjectPermission(
   ({ frameworkIntegrations }: Props) => {
     const { t } = useTranslation();
-    const { createNotification } = useNotificationContext();
+    
 
     const { currentWorkspace } = useWorkspace();
     const workspaceId = currentWorkspace?.id || "";

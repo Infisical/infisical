@@ -1,5 +1,1 @@
-export { 
-    useCreateServiceToken, 
-    useDeleteServiceToken, 
-    useGetUserWsServiceTokens,
-} from "./queries";
+export { useCreateServiceToken, useDeleteServiceToken, useGetUserWsServiceTokens } from "./queries";

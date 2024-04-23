@@ -3,6 +3,7 @@ import { z } from "zod";
 import { WebhooksSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -27,6 +28,9 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
@@ -47,6 +51,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       const webhook = await server.services.webhook.createWebhook({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.body.workspaceId,
         ...req.body
@@ -74,6 +79,9 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "PATCH",
     url: "/:webhookId",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -93,6 +101,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       const webhook = await server.services.webhook.updateWebhook({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.webhookId,
         isDisabled: req.body.isDisabled
@@ -120,6 +129,9 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/:webhookId",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -130,6 +142,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       const webhook = await server.services.webhook.deleteWebhook({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.webhookId
       });
@@ -156,6 +169,9 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:webhookId/test",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -172,6 +188,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       const webhook = await server.services.webhook.testWebhook({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.webhookId
       });
@@ -182,6 +199,9 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       querystring: z.object({
@@ -204,6 +224,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       const webhooks = await server.services.webhook.listWebhooks({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.query,
         projectId: req.query.workspaceId

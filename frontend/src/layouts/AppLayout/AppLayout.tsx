@@ -31,7 +31,7 @@ import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { twMerge } from "tailwind-merge";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { tempLocalStorage } from "@app/components/utilities/checks/tempLocalStorage";
 import {
@@ -68,8 +68,10 @@ import {
   useGetSecretApprovalRequestCount,
   useGetUserAction,
   useLogoutUser,
-  useRegisterUserAction
+  useRegisterUserAction,
+  useSelectOrganization
 } from "@app/hooks/api";
+import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 import { CreateOrgModal } from "@app/views/Org/components";
 
 interface LayoutProps {
@@ -100,7 +102,12 @@ const supportOptions = [
 ];
 
 const formSchema = yup.object({
-  name: yup.string().required().label("Project Name").trim().max(64, "Too long, maximum length is 64 characters"),
+  name: yup
+    .string()
+    .required()
+    .label("Project Name")
+    .trim()
+    .max(64, "Too long, maximum length is 64 characters"),
   addMembers: yup.bool().required().label("Add Members")
 });
 
@@ -108,10 +115,9 @@ type TAddProjectFormData = yup.InferType<typeof formSchema>;
 
 export const AppLayout = ({ children }: LayoutProps) => {
   const router = useRouter();
-  const { createNotification } = useNotificationContext();
+  
   const { mutateAsync } = useGetOrgTrialUrl();
 
-  // eslint-disable-next-line prefer-const
   const { workspaces, currentWorkspace } = useWorkspace();
   const { orgs, currentOrg } = useOrganization();
 
@@ -148,6 +154,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { t } = useTranslation();
 
   const registerUserAction = useRegisterUserAction();
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   const closeUpdate = async () => {
     await registerUserAction.mutateAsync("december_update_closed");
@@ -165,8 +172,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
   };
 
   const changeOrg = async (orgId: string) => {
-    localStorage.setItem("orgData.id", orgId);
-    router.push(`/org/${orgId}/overview`);
+    await selectOrganization({
+      organizationId: orgId
+    });
+
+    await navigateUserToOrg(router, orgId);
   };
 
   // TODO(akhilmhdh): This entire logic will be rechecked and will try to avoid
@@ -226,7 +236,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
           project: { id: newProjectId }
         }
       } = await createWs.mutateAsync({
-        organizationId: currentOrg.id,
         projectName: name
       });
 
@@ -426,7 +435,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <Select
                         defaultValue={currentWorkspace?.id}
                         value={currentWorkspace?.id}
-                        className="w-full [&>*:first-child]:truncate bg-mineshaft-600 py-2.5 font-medium"
+                        className="w-full bg-mineshaft-600 py-2.5 font-medium [&>*:first-child]:truncate"
                         onValueChange={(value) => {
                           router.push(`/project/${value}/secrets/overview`);
                           localStorage.setItem("projectData.id", value);

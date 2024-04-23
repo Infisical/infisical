@@ -9,5 +9,5 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <div className="bg-bunker-800 w-screen" />;
+  return <div className="w-screen bg-bunker-800" />;
 }

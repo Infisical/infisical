@@ -45,7 +45,6 @@ export type TGetUpgradeProjectStatusDTO = {
 // mutation dto
 export type CreateWorkspaceDTO = {
   projectName: string;
-  organizationId: string;
 };
 
 export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
@@ -82,16 +81,16 @@ export type TUpdateWorkspaceUserRoleDTO = {
   workspaceId: string;
   roles: (
     | {
-      role: string;
-      isTemporary?: false;
-    }
+        role: string;
+        isTemporary?: false;
+      }
     | {
-      role: string;
-      isTemporary: true;
-      temporaryMode: ProjectUserMembershipTemporaryMode;
-      temporaryRange: string;
-      temporaryAccessStartTime: string;
-    }
+        role: string;
+        isTemporary: true;
+        temporaryMode: ProjectUserMembershipTemporaryMode;
+        temporaryRange: string;
+        temporaryAccessStartTime: string;
+      }
   )[];
 };
 
@@ -100,15 +99,33 @@ export type TUpdateWorkspaceIdentityRoleDTO = {
   workspaceId: string;
   roles: (
     | {
-      role: string;
-      isTemporary?: false;
-    }
+        role: string;
+        isTemporary?: false;
+      }
     | {
-      role: string;
-      isTemporary: true;
-      temporaryMode: ProjectUserMembershipTemporaryMode;
-      temporaryRange: string;
-      temporaryAccessStartTime: string;
-    }
+        role: string;
+        isTemporary: true;
+        temporaryMode: ProjectUserMembershipTemporaryMode;
+        temporaryRange: string;
+        temporaryAccessStartTime: string;
+      }
+  )[];
+};
+
+export type TUpdateWorkspaceGroupRoleDTO = {
+  groupSlug: string;
+  projectSlug: string;
+  roles: (
+    | {
+        role: string;
+        isTemporary?: false;
+      }
+    | {
+        role: string;
+        isTemporary: true;
+        temporaryMode: ProjectUserMembershipTemporaryMode;
+        temporaryRange: string;
+        temporaryAccessStartTime: string;
+      }
   )[];
 };

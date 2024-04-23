@@ -1,6 +1,6 @@
 ---
 title: "AWS Parameter Store"
-description: "How to sync secrets from Infisical to AWS Parameter Store"
+description: "Learn how to sync secrets from Infisical to AWS Parameter Store."
 ---
 
 Prerequisites:
@@ -29,7 +29,8 @@ Prerequisites:
             "ssm:PutParameter",
             "ssm:DeleteParameter",
             "ssm:GetParametersByPath",
-            "ssm:DeleteParameters"
+            "ssm:DeleteParameters",
+            "ssm:AddTagsToResource" // if you need to add tags to secrets
           ],
           "Resource": "*"
         }

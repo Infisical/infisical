@@ -3,32 +3,37 @@ import { z } from "zod";
 
 import { ProjectEnvironmentsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ENVIRONMENTS } from "@app/lib/api-docs";
+import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:workspaceId/environments",
     method: "POST",
+    url: "/:workspaceId/environments",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Create environment",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim().describe(ENVIRONMENTS.CREATE.workspaceId)
       }),
       body: z.object({
-        name: z.string().trim(),
+        name: z.string().trim().describe(ENVIRONMENTS.CREATE.name),
         slug: z
           .string()
           .trim()
           .refine((v) => slugify(v) === v, {
             message: "Slug must be a valid slug"
           })
+          .describe(ENVIRONMENTS.CREATE.slug)
       }),
       response: {
         200: z.object({
@@ -44,6 +49,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         projectId: req.params.workspaceId,
         ...req.body
       });
@@ -68,28 +74,33 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/environments/:id",
     method: "PATCH",
+    url: "/:workspaceId/environments/:id",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Update environment",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim(),
-        id: z.string().trim()
+        workspaceId: z.string().trim().describe(ENVIRONMENTS.UPDATE.workspaceId),
+        id: z.string().trim().describe(ENVIRONMENTS.UPDATE.id)
       }),
       body: z.object({
         slug: z
           .string()
-          .regex(/^[^./]*$/g)
           .trim()
-          .optional(),
-        name: z.string().trim().optional(),
-        position: z.number().optional()
+          .optional()
+          .refine((v) => !v || slugify(v) === v, {
+            message: "Slug must be a valid slug"
+          })
+          .describe(ENVIRONMENTS.UPDATE.slug),
+        name: z.string().trim().optional().describe(ENVIRONMENTS.UPDATE.name),
+        position: z.number().optional().describe(ENVIRONMENTS.UPDATE.position)
       }),
       response: {
         200: z.object({
@@ -104,6 +115,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       const { environment, old } = await server.services.projectEnv.updateEnvironment({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         id: req.params.id,
@@ -135,19 +147,21 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/environments/:id",
     method: "DELETE",
+    url: "/:workspaceId/environments/:id",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Delete environment",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim(),
-        id: z.string().trim()
+        workspaceId: z.string().trim().describe(ENVIRONMENTS.DELETE.workspaceId),
+        id: z.string().trim().describe(ENVIRONMENTS.DELETE.id)
       }),
       response: {
         200: z.object({
@@ -162,6 +176,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       const environment = await server.services.projectEnv.deleteEnvironment({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         id: req.params.id

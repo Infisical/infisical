@@ -10,6 +10,7 @@ import {
   Environment,
   HerokuPipelineCoupling,
   IntegrationAuth,
+  KmsKey,
   NorthflankSecretGroup,
   Org,
   Project,
@@ -39,6 +40,18 @@ const integrationAuthKeys = {
     integrationAuthId: string;
     accountId: string;
   }) => [{ integrationAuthId, accountId }, "integrationAuthChecklyGroups"] as const,
+  getIntegrationAuthGithubOrgs: (integrationAuthId: string) =>
+    [{ integrationAuthId }, "integrationAuthGithubOrgs"] as const,
+  getIntegrationAuthGithubEnvs: (integrationAuthId: string, repoName: string, repoOwner: string) =>
+    [{ integrationAuthId, repoName, repoOwner }, "integrationAuthGithubOrgs"] as const,
+  getIntegrationAuthAwsKmsKeys: ({
+    integrationAuthId,
+    region
+  }: {
+    integrationAuthId: string, 
+    region: string
+  }) =>
+    [{ integrationAuthId, region }, "integrationAuthAwsKmsKeyIds"] as const,
   getIntegrationAuthQoveryOrgs: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuthQoveryOrgs"] as const,
   getIntegrationAuthQoveryProjects: ({
@@ -64,8 +77,8 @@ const integrationAuthKeys = {
     environmentId: string;
     scope: "job" | "application" | "container";
   }) => [{ integrationAuthId, environmentId, scope }, "integrationAuthQoveryScopes"] as const,
-  getIntegrationAuthHerokuPipelines: ({ integrationAuthId }: { integrationAuthId: string; }) => 
-  [{ integrationAuthId}, "integrationAuthHerokuPipelines"] as const,
+  getIntegrationAuthHerokuPipelines: ({ integrationAuthId }: { integrationAuthId: string }) =>
+    [{ integrationAuthId }, "integrationAuthHerokuPipelines"] as const,
   getIntegrationAuthRailwayEnvironments: ({
     integrationAuthId,
     appId
@@ -177,6 +190,32 @@ const fetchIntegrationAuthVercelBranches = async ({
   return branches;
 };
 
+const fetchIntegrationAuthGithubOrgs = async (integrationAuthId: string) => {
+  const {
+    data: { orgs }
+  } = await apiRequest.get<{ orgs: Org[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/github/orgs`
+  );
+
+  return orgs;
+};
+
+const fetchIntegrationAuthGithubEnvs = async (
+  integrationAuthId: string,
+  repoName: string,
+  repoOwner: string
+) => {
+  if (!repoName || !repoOwner) return [];
+
+  const {
+    data: { envs }
+  } = await apiRequest.get<{ envs: Array<{ name: string; envId: string }> }>(
+    `/api/v1/integration-auth/${integrationAuthId}/github/envs?repoName=${repoName}&repoOwner=${repoOwner}`
+  );
+
+  return envs;
+};
+
 const fetchIntegrationAuthQoveryOrgs = async (integrationAuthId: string) => {
   const {
     data: { orgs }
@@ -185,6 +224,27 @@ const fetchIntegrationAuthQoveryOrgs = async (integrationAuthId: string) => {
   );
 
   return orgs;
+};
+
+const fetchIntegrationAuthAwsKmsKeys = async ({
+  integrationAuthId,
+  region
+}: {
+  integrationAuthId: string;
+  region: string;
+}) => {
+  const {
+    data: { kmsKeys }
+  } = await apiRequest.get<{ kmsKeys: KmsKey[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/aws-secrets-manager/kms-keys`,
+    {
+      params: {
+        region
+      }
+    }
+  );
+
+  return kmsKeys;
 };
 
 const fetchIntegrationAuthQoveryProjects = async ({
@@ -292,16 +352,16 @@ const fetchIntegrationAuthQoveryScopes = async ({
   return undefined;
 };
 
-const fetchIntegrationAuthHerokuPipelines = async ({ integrationAuthId }: { 
-  integrationAuthId: string; 
+const fetchIntegrationAuthHerokuPipelines = async ({
+  integrationAuthId
+}: {
+  integrationAuthId: string;
 }) => {
   const {
     data: { pipelines }
   } = await apiRequest.get<{ pipelines: HerokuPipelineCoupling[] }>(
     `/api/v1/integration-auth/${integrationAuthId}/heroku/pipelines`
   );
-
-  console.log(99999, pipelines)
 
   return pipelines;
 };
@@ -482,10 +542,55 @@ export const useGetIntegrationAuthChecklyGroups = ({
   });
 };
 
+export const useGetIntegrationAuthGithubOrgs = (integrationAuthId: string) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthGithubOrgs(integrationAuthId),
+    queryFn: () => fetchIntegrationAuthGithubOrgs(integrationAuthId),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthGithubEnvs = (
+  integrationAuthId: string,
+  repoName: string,
+  repoOwner: string
+) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthGithubEnvs(
+      integrationAuthId,
+      repoName,
+      repoOwner
+    ),
+    queryFn: () => fetchIntegrationAuthGithubEnvs(integrationAuthId, repoName, repoOwner),
+    enabled: true
+  });
+};
+
 export const useGetIntegrationAuthQoveryOrgs = (integrationAuthId: string) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthQoveryOrgs(integrationAuthId),
     queryFn: () => fetchIntegrationAuthQoveryOrgs(integrationAuthId),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthAwsKmsKeys = ({
+  integrationAuthId,
+  region
+}: {
+  integrationAuthId: string;
+  region: string;
+}) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthAwsKmsKeys({
+      integrationAuthId,
+      region
+    }),
+    queryFn: () =>
+      fetchIntegrationAuthAwsKmsKeys({
+        integrationAuthId,
+        region
+      }),
     enabled: true
   });
 };

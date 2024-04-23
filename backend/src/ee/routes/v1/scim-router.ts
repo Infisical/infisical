@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ScimTokensSchema } from "@app/db/schemas";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -20,6 +21,9 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/scim-tokens",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
@@ -39,6 +43,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         orgId: req.body.organizationId,
+        actorAuthMethod: req.permission.authMethod,
         description: req.body.description,
         ttlDays: req.body.ttlDays
       });
@@ -50,6 +55,9 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/scim-tokens",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       querystring: z.object({
@@ -65,6 +73,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       const scimTokens = await server.services.scim.listScimTokens({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.query.organizationId
       });
@@ -76,6 +85,9 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/scim-tokens/:scimTokenId",
     method: "DELETE",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -92,6 +104,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         scimTokenId: req.params.scimTokenId,
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
 
@@ -143,7 +156,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         offset: req.query.startIndex,
         limit: req.query.count,
         filter: req.query.filter,
-        orgId: req.permission.orgId as string
+        orgId: req.permission.orgId
       });
       return users;
     }
@@ -181,7 +194,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const user = await req.server.services.scim.getScimUser({
         userId: req.params.userId,
-        orgId: req.permission.orgId as string
+        orgId: req.permission.orgId
       });
       return user;
     }
@@ -193,7 +206,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         schemas: z.array(z.string()),
-        userName: z.string().trim().email(),
+        userName: z.string().trim(),
         name: z.object({
           familyName: z.string().trim(),
           givenName: z.string().trim()
@@ -214,7 +227,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           schemas: z.array(z.string()),
           id: z.string().trim(),
-          userName: z.string().trim().email(),
+          userName: z.string().trim(),
           name: z.object({
             familyName: z.string().trim(),
             givenName: z.string().trim()
@@ -240,7 +253,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         email: primaryEmail,
         firstName: req.body.name.givenName,
         lastName: req.body.name.familyName,
-        orgId: req.permission.orgId as string
+        orgId: req.permission.orgId
       });
 
       return user;
@@ -249,25 +262,10 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     url: "/Users/:userId",
-    method: "PATCH",
+    method: "DELETE",
     schema: {
       params: z.object({
         userId: z.string().trim()
-      }),
-      body: z.object({
-        schemas: z.array(z.string()),
-        Operations: z.array(
-          z.object({
-            op: z.string().trim(),
-            path: z.string().trim().optional(),
-            value: z.union([
-              z.object({
-                active: z.boolean()
-              }),
-              z.string().trim()
-            ])
-          })
-        )
       }),
       response: {
         200: z.object({})
@@ -275,12 +273,246 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      const user = await req.server.services.scim.updateScimUser({
+      const user = await req.server.services.scim.deleteScimUser({
         userId: req.params.userId,
-        orgId: req.permission.orgId as string,
+        orgId: req.permission.orgId
+      });
+
+      return user;
+    }
+  });
+
+  server.route({
+    url: "/Groups",
+    method: "POST",
+    schema: {
+      body: z.object({
+        schemas: z.array(z.string()),
+        displayName: z.string().trim(),
+        members: z.array(z.any()).length(0).optional() // okta-specific
+      }),
+      response: {
+        200: z.object({
+          schemas: z.array(z.string()),
+          id: z.string().trim(),
+          displayName: z.string().trim(),
+          members: z.array(z.any()).length(0),
+          meta: z.object({
+            resourceType: z.string().trim()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
+    handler: async (req) => {
+      const group = await req.server.services.scim.createScimGroup({
+        displayName: req.body.displayName,
+        orgId: req.permission.orgId
+      });
+
+      return group;
+    }
+  });
+
+  server.route({
+    url: "/Groups",
+    method: "GET",
+    schema: {
+      querystring: z.object({
+        startIndex: z.coerce.number().default(1),
+        count: z.coerce.number().default(20),
+        filter: z.string().trim().optional()
+      }),
+      response: {
+        200: z.object({
+          Resources: z.array(
+            z.object({
+              schemas: z.array(z.string()),
+              id: z.string().trim(),
+              displayName: z.string().trim(),
+              members: z.array(z.any()).length(0),
+              meta: z.object({
+                resourceType: z.string().trim()
+              })
+            })
+          ),
+          itemsPerPage: z.number(),
+          schemas: z.array(z.string()),
+          startIndex: z.number(),
+          totalResults: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
+    handler: async (req) => {
+      const groups = await req.server.services.scim.listScimGroups({
+        orgId: req.permission.orgId,
+        offset: req.query.startIndex,
+        limit: req.query.count
+      });
+
+      return groups;
+    }
+  });
+
+  server.route({
+    url: "/Groups/:groupId",
+    method: "GET",
+    schema: {
+      params: z.object({
+        groupId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          schemas: z.array(z.string()),
+          id: z.string().trim(),
+          displayName: z.string().trim(),
+          members: z.array(
+            z.object({
+              value: z.string(),
+              display: z.string()
+            })
+          ),
+          meta: z.object({
+            resourceType: z.string().trim()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
+    handler: async (req) => {
+      const group = await req.server.services.scim.getScimGroup({
+        groupId: req.params.groupId,
+        orgId: req.permission.orgId
+      });
+      return group;
+    }
+  });
+
+  server.route({
+    url: "/Groups/:groupId",
+    method: "PUT",
+    schema: {
+      params: z.object({
+        groupId: z.string().trim()
+      }),
+      body: z.object({
+        schemas: z.array(z.string()),
+        id: z.string().trim(),
+        displayName: z.string().trim(),
+        members: z.array(z.any()).length(0)
+      }),
+      response: {
+        200: z.object({
+          schemas: z.array(z.string()),
+          id: z.string().trim(),
+          displayName: z.string().trim(),
+          members: z.array(
+            z.object({
+              value: z.string(),
+              display: z.string()
+            })
+          ),
+          meta: z.object({
+            resourceType: z.string().trim()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
+    handler: async (req) => {
+      const group = await req.server.services.scim.updateScimGroupNamePut({
+        groupId: req.params.groupId,
+        orgId: req.permission.orgId,
+        displayName: req.body.displayName
+      });
+
+      return group;
+    }
+  });
+
+  server.route({
+    url: "/Groups/:groupId",
+    method: "PATCH",
+    schema: {
+      params: z.object({
+        groupId: z.string().trim()
+      }),
+      body: z.object({
+        schemas: z.array(z.string()),
+        Operations: z.array(
+          z.union([
+            z.object({
+              op: z.literal("replace"),
+              value: z.object({
+                id: z.string().trim(),
+                displayName: z.string().trim()
+              })
+            }),
+            z.object({
+              op: z.literal("remove"),
+              path: z.string().trim()
+            }),
+            z.object({
+              op: z.literal("add"),
+              value: z.object({
+                value: z.string().trim(),
+                display: z.string().trim().optional()
+              })
+            })
+          ])
+        )
+      }),
+      response: {
+        200: z.object({
+          schemas: z.array(z.string()),
+          id: z.string().trim(),
+          displayName: z.string().trim(),
+          members: z.array(
+            z.object({
+              value: z.string(),
+              display: z.string()
+            })
+          ),
+          meta: z.object({
+            resourceType: z.string().trim()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
+    handler: async (req) => {
+      // console.log("PATCH /Groups/:groupId req.body: ", req.body);
+      // console.log("PATCH /Groups/:groupId req.body: ", req.body.Operations[0]);
+      const group = await req.server.services.scim.updateScimGroupNamePatch({
+        groupId: req.params.groupId,
+        orgId: req.permission.orgId,
         operations: req.body.Operations
       });
-      return user;
+
+      return group;
+    }
+  });
+
+  server.route({
+    url: "/Groups/:groupId",
+    method: "DELETE",
+    schema: {
+      params: z.object({
+        groupId: z.string().trim()
+      }),
+      response: {
+        200: z.object({})
+      }
+    },
+    onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
+    handler: async (req) => {
+      const group = await req.server.services.scim.deleteScimGroup({
+        groupId: req.params.groupId,
+        orgId: req.permission.orgId
+      });
+
+      return group;
     }
   });
 
@@ -327,7 +559,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const user = await req.server.services.scim.replaceScimUser({
         userId: req.params.userId,
-        orgId: req.permission.orgId as string,
+        orgId: req.permission.orgId,
         active: req.body.active
       });
       return user;

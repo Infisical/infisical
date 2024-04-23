@@ -16,8 +16,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import NavHeader from "@app/components/navigation/NavHeader";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -54,7 +54,9 @@ import {
   useCreateFolder,
   useCreateSecretV3,
   useDeleteSecretV3,
+  useGetDynamicSecretsOfAllEnv,
   useGetFoldersByEnv,
+  useGetImportedSecretsAllEnvs,
   useGetProjectSecretsAllEnv,
   useGetUserWsKey,
   useUpdateSecretV3
@@ -65,12 +67,13 @@ import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
+import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
 
 export const SecretOverviewPage = () => {
   const { t } = useTranslation();
-  const { createNotification } = useNotificationContext();
+
   const router = useRouter();
 
   // this is to set expandable table width
@@ -97,6 +100,7 @@ export const SecretOverviewPage = () => {
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const { currentOrg } = useOrganization();
   const workspaceId = currentWorkspace?.id as string;
+  const projectSlug = currentWorkspace?.slug as string;
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
@@ -130,6 +134,20 @@ export const SecretOverviewPage = () => {
     path: secretPath,
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
+
+  const { isImportedSecretPresentInEnv } = useGetImportedSecretsAllEnvs({
+    projectId: workspaceId,
+    decryptFileKey: latestFileKey!,
+    path: secretPath,
+    environments: userAvailableEnvs.map(({ slug }) => slug)
+  });
+
+  const { dynamicSecretNames, dynamicSecrets, isDynamicSecretPresentInEnv } =
+    useGetDynamicSecretsOfAllEnv({
+      projectSlug,
+      environmentSlugs: userAvailableEnvs.map(({ slug }) => slug),
+      path: secretPath
+    });
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
@@ -323,18 +341,27 @@ export const SecretOverviewPage = () => {
   );
 
   const canViewOverviewPage = Boolean(userAvailableEnvs.length);
+  // This is needed to also show imports from other paths – right now those are missing.
+  // const combinedKeys = [...secKeys, ...secretImports.map((impSecrets) => impSecrets?.data?.map((impSec) => impSec.secrets?.map((impSecKey) => impSecKey.key))).flat().flat()];
   const filteredSecretNames = secKeys
     ?.filter((name) => name.toUpperCase().includes(searchFilter.toUpperCase()))
     .sort((a, b) => (sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a)));
   const filteredFolderNames = folderNames?.filter((name) =>
     name.toLowerCase().includes(searchFilter.toLowerCase())
   );
+  const filteredDynamicSecrets = dynamicSecretNames?.filter((name) =>
+    name.toLowerCase().includes(searchFilter.toLowerCase())
+  );
+
   const isTableEmpty =
     !(
-      folders?.every(({ isLoading }) => isLoading) && secrets?.every(({ isLoading }) => isLoading)
+      folders?.every(({ isLoading }) => isLoading) &&
+      secrets?.every(({ isLoading }) => isLoading) &&
+      dynamicSecrets?.every(({ isLoading }) => isLoading)
     ) &&
     filteredSecretNames?.length === 0 &&
-    filteredFolderNames?.length === 0;
+    filteredFolderNames?.length === 0 &&
+    filteredDynamicSecrets?.length === 0;
 
   return (
     <>
@@ -645,10 +672,20 @@ export const SecretOverviewPage = () => {
                     />
                   ))}
                 {!isTableLoading &&
+                  filteredDynamicSecrets.map((dynamicSecretName, index) => (
+                    <SecretOverviewDynamicSecretRow
+                      dynamicSecretName={dynamicSecretName}
+                      isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
+                      environments={visibleEnvs}
+                      key={`overview-${dynamicSecretName}-${index + 1}`}
+                    />
+                  ))}
+                {!isTableLoading &&
                   visibleEnvs?.length > 0 &&
                   filteredSecretNames.map((key, index) => (
                     <SecretOverviewTableRow
                       secretPath={secretPath}
+                      isImportedSecretPresentInEnv={isImportedSecretPresentInEnv}
                       onSecretCreate={handleSecretCreate}
                       onSecretDelete={handleSecretDelete}
                       onSecretUpdate={handleSecretUpdate}

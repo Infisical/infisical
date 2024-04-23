@@ -64,7 +64,7 @@ const AddProjectMemberDialog = ({
                   ) : (
                     <Dialog.Title
                       as="h3"
-                      className="z-50 text-lg font-medium text-mineshaft-300 mb-4"
+                      className="z-50 mb-4 text-lg font-medium text-mineshaft-300"
                     >
                       {t("section.members.add-dialog.already-all-invited")}
                     </Dialog.Title>
@@ -127,7 +127,9 @@ const AddProjectMemberDialog = ({
                       </div>
                     ) : (
                       <Button
-                        onButtonPressed={() => router.push(`/org/${localStorage.getItem("orgData.id")}/members`)}
+                        onButtonPressed={() =>
+                          router.push(`/org/${localStorage.getItem("orgData.id")}/members`)
+                        }
                         color="mineshaft"
                         text={t("section.members.add-dialog.add-user-to-org") as string}
                         size="md"

@@ -151,7 +151,7 @@ export const SecretApprovalRequestChangeItem = ({
                 </Td>
                 <Td>
                   {(op === CommitType.CREATE ? newVersion?.tags : secretVersion?.tags)?.map(
-                    ({ name, id: tagId, color}) => (
+                    ({ name, id: tagId, color }) => (
                       <Tag
                         className="flex w-min items-center space-x-2"
                         key={`${

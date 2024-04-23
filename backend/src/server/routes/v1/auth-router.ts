@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
-import { authRateLimit } from "@app/server/config/rateLimiter";
+import { authRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode, AuthModeRefreshJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 
@@ -21,7 +21,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req, res) => {
       const appCfg = getConfig();
       if (req.auth.authMode === AuthMode.JWT) {
@@ -38,8 +38,11 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/checkAuth",
     method: "POST",
+    url: "/checkAuth",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       response: {
         200: z.object({
@@ -52,8 +55,11 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/token",
     method: "POST",
+    url: "/token",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       response: {
         200: z.object({
@@ -85,6 +91,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
 
       const token = jwt.sign(
         {
+          authMethod: decodedToken.authMethod,
           authTokenType: AuthTokenType.ACCESS_TOKEN,
           userId: decodedToken.userId,
           tokenVersionId: tokenVersion.id,

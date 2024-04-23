@@ -59,6 +59,8 @@ yarn-error.log*
 # Infisical init
 .infisical.json
 
+.infisicalignore
+
 # Editor specific
 .vscode/*
 

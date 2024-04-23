@@ -2,13 +2,17 @@ import { z } from "zod";
 
 import { SecretRotationOutputsSchema, SecretRotationsSchema, SecretsSchema } from "@app/db/schemas";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretRotationRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/",
     method: "POST",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         workspaceId: z.string().trim(),
@@ -39,6 +43,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
     handler: async (req) => {
       const secretRotation = await server.services.secretRotation.createRotation({
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         ...req.body,
@@ -51,6 +56,9 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
   server.route({
     url: "/restart",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         id: z.string().trim()
@@ -74,6 +82,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
       const secretRotation = await server.services.secretRotation.restartById({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         rotationId: req.body.id
       });
@@ -84,6 +93,9 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
   server.route({
     url: "/",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim()
@@ -125,6 +137,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
       const secretRotations = await server.services.secretRotation.getByProjectId({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.query.workspaceId
       });
@@ -133,8 +146,11 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
   });
 
   server.route({
-    url: "/:id",
     method: "DELETE",
+    url: "/:id",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         id: z.string().trim()
@@ -158,6 +174,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
       const secretRotation = await server.services.secretRotation.deleteById({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         rotationId: req.params.id
       });

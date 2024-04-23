@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop */
+import { subject } from "@casl/ability";
 import path from "path";
 
 import {
@@ -7,8 +8,11 @@ import {
   SecretType,
   TableName,
   TSecretBlindIndexes,
+  TSecretFolders,
   TSecrets
 } from "@app/db/schemas";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import {
   buildSecretBlindIndexFromName,
@@ -17,8 +21,11 @@ import {
 } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
@@ -43,6 +50,141 @@ export const generateSecretBlindIndexBySalt = async (secretName: string, secretB
     iv: secretBlindIndexDoc.saltIV
   });
   return secretBlindIndex;
+};
+
+type TRecursivelyFetchSecretsFromFoldersArg = {
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "find">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+};
+
+type TGetPathsDTO = {
+  projectId: string;
+  environment: string;
+  currentPath: string;
+
+  auth: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string | undefined;
+  };
+};
+
+// Introduce a new interface for mapping parent IDs to their children
+interface FolderMap {
+  [parentId: string]: TSecretFolders[];
+}
+const buildHierarchy = (folders: TSecretFolders[]): FolderMap => {
+  const map: FolderMap = {};
+  map.null = []; // Initialize mapping for root directory
+
+  folders.forEach((folder) => {
+    const parentId = folder.parentId || "null";
+    if (!map[parentId]) {
+      map[parentId] = [];
+    }
+    map[parentId].push(folder);
+  });
+
+  return map;
+};
+
+const generatePaths = (
+  map: FolderMap,
+  parentId: string = "null",
+  basePath: string = "",
+  currentDepth: number = 0
+): { path: string; folderId: string }[] => {
+  const children = map[parentId || "null"] || [];
+  let paths: { path: string; folderId: string }[] = [];
+
+  children.forEach((child) => {
+    // Determine if this is the root folder of the environment. If no parentId is present and the name is root, it's the root folder
+    const isRootFolder = child.name === "root" && !child.parentId;
+
+    // Form the current path based on the base path and the current child
+    // eslint-disable-next-line no-nested-ternary
+    const currPath = basePath === "" ? (isRootFolder ? "/" : `/${child.name}`) : `${basePath}/${child.name}`;
+
+    // Add the current path
+    paths.push({
+      path: currPath,
+      folderId: child.id
+    });
+
+    // We make sure that the recursion depth doesn't exceed 20.
+    // We do this to create "circuit break", basically to ensure that we can't encounter any potential memory leaks.
+    if (currentDepth >= 20) {
+      logger.info(`generatePaths: Recursion depth exceeded 20, breaking out of recursion [map=${JSON.stringify(map)}]`);
+      return;
+    }
+    // Recursively generate paths for children, passing down the formatted path
+    const childPaths = generatePaths(map, child.id, currPath, currentDepth + 1);
+    paths = paths.concat(
+      childPaths.map((p) => ({
+        path: p.path,
+        folderId: p.folderId
+      }))
+    );
+  });
+
+  return paths;
+};
+
+export const recursivelyGetSecretPaths = ({
+  folderDAL,
+  projectEnvDAL,
+  permissionService
+}: TRecursivelyFetchSecretsFromFoldersArg) => {
+  const getPaths = async ({ projectId, environment, currentPath, auth }: TGetPathsDTO) => {
+    const env = await projectEnvDAL.findOne({
+      projectId,
+      slug: environment
+    });
+
+    if (!env) {
+      throw new Error(`'${environment}' environment not found in project with ID ${projectId}`);
+    }
+
+    // Fetch all folders in env once with a single query
+    const folders = await folderDAL.find({
+      envId: env.id
+    });
+
+    // Build the folder hierarchy map
+    const folderMap = buildHierarchy(folders);
+
+    // Generate the paths paths and normalize the root path to /
+    const paths = generatePaths(folderMap).map((p) => ({
+      path: p.path === "/" ? p.path : p.path.substring(1),
+      folderId: p.folderId
+    }));
+
+    const { permission } = await permissionService.getProjectPermission(
+      auth.actor,
+      auth.actorId,
+      projectId,
+      auth.actorAuthMethod,
+      auth.actorOrgId
+    );
+
+    // Filter out paths that the user does not have permission to access, and paths that are not in the current path
+    const allowedPaths = paths.filter(
+      (folder) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath: folder.path
+          })
+        ) && folder.path.startsWith(currentPath === "/" ? "" : currentPath)
+    );
+
+    return allowedPaths;
+  };
+
+  return getPaths;
 };
 
 type TInterpolateSecretArg = {
@@ -202,9 +344,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
       );
 
       // eslint-disable-next-line
-      secrets[key].value = secrets[key].skipMultilineEncoding
-        ? expandedVal
-        : formatMultiValueEnv(expandedVal);
+      secrets[key].value = secrets[key].skipMultilineEncoding ? expandedVal : formatMultiValueEnv(expandedVal);
     }
 
     return secrets;
@@ -212,7 +352,10 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
   return expandSecrets;
 };
 
-export const decryptSecretRaw = (secret: TSecrets & { workspace: string; environment: string }, key: string) => {
+export const decryptSecretRaw = (
+  secret: TSecrets & { workspace: string; environment: string; secretPath?: string },
+  key: string
+) => {
   const secretKey = decryptSymmetric128BitHexKeyUTF8({
     ciphertext: secret.secretKeyCiphertext,
     iv: secret.secretKeyIV,
@@ -240,6 +383,7 @@ export const decryptSecretRaw = (secret: TSecrets & { workspace: string; environ
 
   return {
     secretKey,
+    secretPath: secret.secretPath,
     workspace: secret.workspace,
     environment: secret.environment,
     secretValue,

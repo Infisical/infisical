@@ -17,6 +17,7 @@ import { z } from "zod";
 import { LdapConfigsSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -97,8 +98,11 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/config",
     method: "GET",
+    url: "/config",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       querystring: z.object({
@@ -122,6 +126,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.query.organizationId,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
       return ldap;
@@ -129,8 +134,11 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/config",
     method: "POST",
+    url: "/config",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
@@ -151,6 +159,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.body.organizationId,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
       });
@@ -162,6 +171,9 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/config",
     method: "PATCH",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z
@@ -184,6 +196,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.body.organizationId,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
       });

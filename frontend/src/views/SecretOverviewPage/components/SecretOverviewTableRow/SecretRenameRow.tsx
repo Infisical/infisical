@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { IconButton, Input, Spinner, Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
@@ -37,7 +37,7 @@ type TFormSchema = z.infer<typeof formSchema>;
 function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }: Props) {
   const { currentWorkspace } = useWorkspace();
   const { permission } = useProjectPermission();
-  const { createNotification } = useNotificationContext();
+  
 
   const secrets = environments.map((env) => getSecretByKey(env.slug, secretKey));
 

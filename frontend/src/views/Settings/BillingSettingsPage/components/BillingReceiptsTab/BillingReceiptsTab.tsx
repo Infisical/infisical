@@ -1,10 +1,10 @@
 import { InvoicesTable } from "./InvoicesTable";
 
 export const BillingReceiptsTab = () => {
-    return (
-        <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
-          <h2 className="text-xl font-semibold flex-1 text-white">Invoices</h2>
-          <InvoicesTable />
-        </div>
-    );
-}
+  return (
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <h2 className="flex-1 text-xl font-semibold text-white">Invoices</h2>
+      <InvoicesTable />
+    </div>
+  );
+};

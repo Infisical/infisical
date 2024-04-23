@@ -135,6 +135,14 @@ type GetOrganizationsResponse struct {
 	} `json:"organizations"`
 }
 
+type SelectOrganizationResponse struct {
+	Token string `json:"token"`
+}
+
+type SelectOrganizationRequest struct {
+	OrganizationId string `json:"organizationId"`
+}
+
 type Secret struct {
 	SecretKeyCiphertext     string `json:"secretKeyCiphertext,omitempty"`
 	SecretKeyIV             string `json:"secretKeyIV,omitempty"`
@@ -283,6 +291,7 @@ type GetEncryptedSecretsV3Request struct {
 	WorkspaceId   string `json:"workspaceId"`
 	SecretPath    string `json:"secretPath"`
 	IncludeImport bool   `json:"include_imports"`
+	Recursive     bool   `json:"recursive"`
 }
 
 type GetFoldersV1Request struct {
@@ -393,7 +402,6 @@ type DeleteSecretV3Request struct {
 }
 
 type UpdateSecretByNameV3Request struct {
-	SecretName            string `json:"secretName"`
 	WorkspaceID           string `json:"workspaceId"`
 	Environment           string `json:"environment"`
 	Type                  string `json:"type"`
@@ -493,11 +501,34 @@ type UniversalAuthRefreshResponse struct {
 	AccessTokenMaxTTL int    `json:"accessTokenMaxTTL"`
 }
 
+type CreateDynamicSecretLeaseV1Request struct {
+	Environment string `json:"environment"`
+	ProjectSlug string `json:"projectSlug"`
+	SecretPath  string `json:"secretPath,omitempty"`
+	Slug        string `json:"slug"`
+	TTL         string `json:"ttl,omitempty"`
+}
+
+type CreateDynamicSecretLeaseV1Response struct {
+	Lease struct {
+		Id       string    `json:"id"`
+		ExpireAt time.Time `json:"expireAt"`
+	} `json:"lease"`
+	DynamicSecret struct {
+		Id         string `json:"id"`
+		DefaultTTL string `json:"defaultTTL"`
+		MaxTTL     string `json:"maxTTL"`
+		Type       string `json:"type"`
+	} `json:"dynamicSecret"`
+	Data map[string]interface{} `json:"data"`
+}
+
 type GetRawSecretsV3Request struct {
 	Environment   string `json:"environment"`
 	WorkspaceId   string `json:"workspaceId"`
 	SecretPath    string `json:"secretPath"`
 	IncludeImport bool   `json:"include_imports"`
+	Recursive     bool   `json:"recursive"`
 }
 
 type GetRawSecretsV3Response struct {

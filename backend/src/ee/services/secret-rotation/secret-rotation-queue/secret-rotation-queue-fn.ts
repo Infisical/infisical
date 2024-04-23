@@ -9,6 +9,7 @@ import jmespath from "jmespath";
 import knex from "knex";
 
 import { getConfig } from "@app/lib/config/env";
+import { getDbConnectionHost } from "@app/lib/knex";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TAssignOp, TDbProviderClients, TDirectAssignOp, THttpProviderFunction } from "../templates/types";
@@ -89,7 +90,17 @@ export const secretRotationDbFn = async ({
   const appCfg = getConfig();
 
   const ssl = ca ? { rejectUnauthorized: false, ca } : undefined;
-  if (host === "localhost" || host === "127.0.0.1" || appCfg.DB_CONNECTION_URI.includes(host))
+  const dbHost = appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI);
+  if (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    // database infisical uses
+    dbHost === host ||
+    // internal ips
+    host === "host.docker.internal" ||
+    host.match(/^10\.\d+\.\d+\.\d+/) ||
+    host.match(/^192\.168\.\d+\.\d+/)
+  )
     throw new Error("Invalid db host");
 
   const db = knex({

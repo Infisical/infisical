@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ProjectMembershipsSchema, ProjectRolesSchema } from "@app/db/schemas";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -8,6 +9,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:projectId/roles",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim()
@@ -31,6 +35,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.projectId,
         req.body,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { role };
@@ -40,6 +45,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "PATCH",
     url: "/:projectId/roles/:roleId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim(),
@@ -65,6 +73,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.params.projectId,
         req.params.roleId,
         req.body,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { role };
@@ -74,6 +83,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/:projectId/roles/:roleId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim(),
@@ -92,6 +104,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.projectId,
         req.params.roleId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { role };
@@ -101,6 +114,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:projectId/roles",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim()
@@ -121,6 +137,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.type,
         req.permission.id,
         req.params.projectId,
+        req.permission.authMethod,
         req.permission.orgId
       );
       return { data: { roles } };
@@ -130,6 +147,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:projectId/permissions",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim()
@@ -148,8 +168,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       const { permissions, membership } = await server.services.projectRole.getUserPermission(
         req.permission.id,
         req.params.projectId,
+        req.permission.authMethod,
         req.permission.orgId
       );
+
       return { data: { permissions, membership } };
     }
   });

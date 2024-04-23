@@ -31,11 +31,13 @@ export const formSchema = z.object({
   slug: z
     .string()
     .trim()
+    .toLowerCase()
     .refine((val) => val !== "custom", { message: "Cannot use custom as its a keyword" }),
   permissions: z
     .object({
       secrets: z.record(multiEnvPermissionSchema).optional(),
       member: generalPermissionSchema,
+      groups: generalPermissionSchema,
       identity: generalPermissionSchema,
       role: generalPermissionSchema,
       integrations: generalPermissionSchema,

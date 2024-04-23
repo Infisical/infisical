@@ -2,8 +2,9 @@ import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faCheck, faCopy, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { IconButton, Tooltip } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput/InfisicalSecretInput";
@@ -16,6 +17,7 @@ type Props = {
   secretId?: string;
   isCreatable?: boolean;
   isVisible?: boolean;
+  isImportedSecret: boolean;
   environment: string;
   secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
@@ -26,6 +28,7 @@ type Props = {
 export const SecretEditRow = ({
   defaultValue,
   isCreatable,
+  isImportedSecret,
   onSecretUpdate,
   secretName,
   onSecretCreate,
@@ -47,7 +50,6 @@ export const SecretEditRow = ({
     }
   });
   const [isDeleting, setIsDeleting] = useToggle();
-  const { createNotification } = useNotificationContext();
 
   const handleFormReset = () => {
     reset();
@@ -91,6 +93,7 @@ export const SecretEditRow = ({
     <div className="group flex w-full cursor-text items-center space-x-2">
       <div className="flex-grow border-r border-r-mineshaft-600 pr-2 pl-1">
         <Controller
+          disabled={isImportedSecret}
           control={control}
           name="value"
           render={({ field }) => (
@@ -100,11 +103,17 @@ export const SecretEditRow = ({
               isVisible={isVisible}
               secretPath={secretPath}
               environment={environment}
+              isImport={isImportedSecret}
             />
           )}
         />
       </div>
-      <div className="flex w-16 justify-center space-x-3 pl-2 transition-all">
+      <div
+        className={twMerge(
+          "flex w-16 justify-center space-x-3 pl-2 transition-all",
+          isImportedSecret && "pointer-events-none opacity-0"
+        )}
+      >
         {isDirty ? (
           <>
             <ProjectPermissionCan

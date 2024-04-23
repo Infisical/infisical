@@ -7,6 +7,7 @@
 /* eslint-disable vars-on-top */
 /* eslint-disable no-var */
 /* eslint-disable func-names */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 
 import { INTERCOMid as APPid } from "@app/components/utilities/config";

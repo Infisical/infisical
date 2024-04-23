@@ -1,0 +1,164 @@
+---
+title: 'Docker Swarm'
+description: "Learn how to manage secrets in Docker Swarm services."
+---
+
+In this guide, we'll demonstrate how to use Infisical for managing secrets within Docker Swarm. 
+Specifically, we'll set up a sidecar container using the [Infisical Agent](/infisical-agent/overview), which authenticates with Infisical to retrieve secrets and access tokens. 
+These secrets are then stored in a shared volume accessible by other services in your Docker Swarm.
+
+## Prerequisites
+- Infisical account
+- Docker version 20.10.24 or newer
+- Basic knowledge of Docker Swarm
+- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed on your system
+- Familiarity with the [Infisical Agent](/infisical-agent/overview)
+
+## Objective
+Our goal is to deploy an Nginx instance in your Docker Swarm cluster, configured to display Infisical secrets on its landing page. This will provide hands-on experience in fetching and utilizing secrets from Infisical within Docker Swarm. The principles demonstrated here are also applicable to Docker Compose deployments.
+
+<Steps>
+  <Step title="Cloning the Guide Assets Repository">
+    Start by cloning the [Infisical guide assets repository](https://github.com/Infisical/infisical-guides.git) from Github. This repository includes necessary assets for this and other Infisical guides. Focus on the `docker-swarm-with-agent` sub-directory, which we'll use as our working directory.
+  </Step>
+
+  <Step title="Setting Up Authentication with Infisical">
+    To allow the agent to fetch your Infisical secrets, choose an authentication method for the agent. For this guide, we will use [Universal Auth](/documentation/platform/identities/universal-auth) for authentication. Follow the instructions [here](/documentation/platform/identities/universal-auth) to generate a client ID and client secret.
+  </Step>
+
+  <Step title="Entering Universal Auth Credentials">
+    Copy the client ID and client secret obtained in the previous step into the `client-id` and `client-secret` text files, respectively.
+  </Step>
+
+  <Step title="Configuring the Infisical Agent">
+    The Infisical Agent will authenticate using Universal Auth and retrieve secrets for rendering as specified in the template(s). 
+    Adjust the `polling-interval` to control the frequency of secret updates. 
+
+    In the example template, the secrets are rendered as an HTML page, which will be set as Nginx's home page to demonstrate successful secret retrieval and utilization.
+
+    <Tip>
+      Remember to add your project id, environment slug and path of corresponding Infisical project to the secret template.
+    </Tip>
+    <Tabs>
+      <Tab title="Agent Configuration">
+        ```yaml infisical-agent-config
+        infisical:
+        address: "https://app.infisical.com"
+        auth:
+          type: "universal-auth"
+          config:
+            client-id: "/run/secrets/infisical-universal-auth-client-id"
+            client-secret: "/run/secrets/infisical-universal-auth-client-secret"
+            remove_client_secret_on_read: false
+        sinks:
+          - type: "file"
+            config:
+              path: "/infisical-secrets/access-token"
+        templates:
+          - source-path: /run/secrets/nginx-home-page-template
+            destination-path: /infisical-secrets/index.html
+            config:
+              polling-interval: 60s
+        ```
+        <Info>
+          Some paths contain `/run/secrets/` because the contents of those files reside in a [Docker secret](https://docs.docker.com/engine/swarm/secrets/#how-docker-manages-secrets).
+        </Info>
+      </Tab>
+      <Tab title="Secret Template for Agent">
+        ```html nginx-home-page-template
+        <!DOCTYPE html>
+        <html lang="en">
+        <body>
+            <h1>This file is rendered by Infisical agent template engine</h1>
+            <p>Here are the secrets that have been fetched from Infisical and stored in your volume mount</p>
+            <ol>
+              {{- with secret "7df67a5f-d26a-4988-a375-7153c08149da" "dev" "/" }}
+              {{- range . }}
+              <li>{{ .Key }}={{ .Value }}</li>
+              {{- end }}
+              {{- end }}
+            </ol>
+        </body>
+        </html>
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Creating the Docker Compose File">
+    Define the `infisical-agent` and `nginx` services in your Docker Compose file. `infisical-agent` will handle secret retrieval and storage. These secrets are stored in a volume, accessible by other services like Nginx.
+
+    ```yaml docker-compose.yaml
+    version: "3.1"
+
+    services:
+      infisical-agent:
+        container_name: infisical-agnet
+        image: infisical/cli:0.18.0
+        command: agent --config=/run/secrets/infisical-agent-config
+        volumes:
+          - infisical-agent:/infisical-secrets
+        secrets:
+          - infisical-universal-auth-client-id
+          - infisical-universal-auth-client-secret
+          - infisical-agent-config
+          - nginx-home-page-template
+        networks:
+          - infisical_network
+
+      nginx:
+        image: nginx:latest
+        ports:
+          - "80:80"
+        volumes:
+          - infisical-agent:/usr/share/nginx/html
+        networks:
+          - infisical_network
+
+    volumes:
+      infisical-agent: 
+
+    secrets:
+      infisical-universal-auth-client-id:
+        file: ./client-id
+      infisical-universal-auth-client-secret:
+        file: ./client-secret
+      infisical-agent-config:
+        file: ./infisical-agent-config
+      nginx-home-page-template:
+        file: ./nginx-home-page-template
+        
+
+    networks:
+      infisical_network:
+    ```
+  </Step>
+
+  <Step title="Initializing Docker Swarm">
+    ```
+    docker swarm init
+    ```
+  </Step>
+
+  <Step title="Deploying the Docker Stack">
+    ```
+    docker stack deploy -c docker-compose.yaml agent-demo
+    ```
+  </Step>
+
+  <Step title="Verifying Secret Consumption">
+    To confirm that secrets are properly rendered and accessible, navigate to `http://localhost`. You should see the Infisical secrets displayed on the Nginx landing page.
+
+    ![Nginx displaying Infisical secrets](/images/docker-swarm-secrets-complete.png)
+  </Step>
+
+  <Step title="Clean up">
+    ```
+    docker stack rm agent-demo
+    ```
+  </Step>
+</Steps>
+
+## Considerations
+- Secret Updates: Applications that access secrets directly from the volume mount will receive updates in real-time, in accordance with the `polling-interval` set in agent config.
+- In-Memory Secrets: If your application loads secrets into memory, the new secrets will be available to the application on the next deployment.

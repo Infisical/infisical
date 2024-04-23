@@ -4,9 +4,9 @@ import { useRouter } from "next/router";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
-import { useCreateOrg } from "@app/hooks/api";
+import { useCreateOrg, useSelectOrganization } from "@app/hooks/api";
 
 const schema = z
   .object({
@@ -22,7 +22,7 @@ interface CreateOrgModalProps {
 }
 
 export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => {
-  const { createNotification } = useNotificationContext();
+  
   const router = useRouter();
 
   const {
@@ -37,12 +37,19 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
     }
   });
 
-  const { mutateAsync } = useCreateOrg();
+  const { mutateAsync: createOrg } = useCreateOrg({
+    invalidate: false
+  });
+  const { mutateAsync: selectOrg } = useSelectOrganization();
 
   const onFormSubmit = async ({ name }: FormData) => {
     try {
-      const organization = await mutateAsync({
+      const organization = await createOrg({
         name
+      });
+
+      await selectOrg({
+        organizationId: organization.id
       });
 
       createNotification({

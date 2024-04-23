@@ -12,6 +12,12 @@ export type TSecretImport = {
   updatedAt: string;
 };
 
+export type TGetImportedFoldersByEnvDTO = {
+  projectId: string;
+  environment: string;
+  path?: string;
+};
+
 export type TImportedSecrets = {
   environment: string;
   environmentInfo: WorkspaceEnv;
@@ -26,11 +32,24 @@ export type TGetSecretImports = {
   path?: string;
 };
 
+export type TGetSecretImportsAllEnvs = {
+  projectId: string;
+  decryptFileKey: UserWsKeyPair;
+  path?: string;
+  environments: string[];
+};
+
 export type TGetImportedSecrets = {
   projectId: string;
   environment: string;
   path?: string;
   decryptFileKey: UserWsKeyPair;
+};
+
+export type TuseGetImportedFoldersByEnv = {
+  environments: string[];
+  projectId: string;
+  path?: string;
 };
 
 export type TCreateSecretImportDTO = {

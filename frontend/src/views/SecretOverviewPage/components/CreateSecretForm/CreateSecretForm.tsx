@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Checkbox,
@@ -64,7 +64,7 @@ export const CreateSecretForm = ({
   const workspaceId = currentWorkspace?.id || "";
   const environments = currentWorkspace?.environments || [];
 
-  const { createNotification } = useNotificationContext();
+  
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();

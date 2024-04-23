@@ -1,13 +1,13 @@
 ---
 title: "Okta SCIM"
-description: "Configure SCIM provisioning with Okta for Infisical"
+description: "Learn how to configure SCIM provisioning with Okta for Infisical."
 ---
 
 <Info>
     Okta SCIM provisioning is a paid feature.
     
     If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
-    then you should contact team@infisical.com to purchase an enterprise license to use it.
+    then you should contact sales@infisical.com to purchase an enterprise license to use it.
 </Info>
 
 Prerequisites:
@@ -16,7 +16,7 @@ Prerequisites:
 <Steps>
     <Step title="Create a SCIM token in Infisical">
         In Infisical, head to your Organization Settings > Authentication > SCIM Configuration and
-        press the **Enable SCIM provisioning** toggle to allow Okta to provision/deprovision users for your organization.
+        press the **Enable SCIM provisioning** toggle to allow Okta to provision/deprovision users and user groups for your organization.
         
         ![SCIM enable provisioning](/images/platform/scim/scim-enable-provisioning.png)
         
@@ -38,7 +38,7 @@ Prerequisites:
         
         - SCIM connector base URL: Input the **SCIM URL** from Step 1.
         - Unique identifier field for users: Input `email`.
-        - Supported provisioning actions: Select **Push New Users** and **Push Profile Updates**.
+        - Supported provisioning actions: Select **Push New Users**, **Push Profile Updates**, and **Push Groups**.
         - Authentication Mode: `HTTP Header`.
         
         ![SCIM Okta](/images/platform/scim/okta/scim-okta-config.png)
@@ -55,7 +55,7 @@ Prerequisites:
         
         ![SCIM Okta](/images/platform/scim/okta/scim-okta-app-settings.png)
         
-        Now Okta can provision/deprovision users to/from your organization in Infisical.
+        Now Okta can provision/deprovision users and user groups to/from your organization in Infisical.
     </Step>
 </Steps>
 

@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
@@ -30,7 +30,7 @@ export const AddOrgMemberModal = ({
   completeInviteLink,
   setCompleteInviteLink
 }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const { currentOrg } = useOrganization();
 
   const { data: serverDetails } = useFetchServerStatus();

@@ -150,11 +150,15 @@ export const authSignupServiceFactory = ({
     });
 
     if (!organizationId) {
-      await orgService.createOrganization({
+      const newOrganization = await orgService.createOrganization({
         userId: user.id,
         userEmail: user.email ?? user.username,
         orgName: organizationName
       });
+
+      if (!newOrganization) throw new Error("Failed to create organization");
+
+      organizationId = newOrganization.id;
     }
 
     const updatedMembersips = await orgDAL.updateMembership(
@@ -174,6 +178,7 @@ export const authSignupServiceFactory = ({
 
     const accessToken = jwt.sign(
       {
+        authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
@@ -186,6 +191,7 @@ export const authSignupServiceFactory = ({
 
     const refreshToken = jwt.sign(
       {
+        authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
@@ -196,7 +202,7 @@ export const authSignupServiceFactory = ({
       { expiresIn: appCfg.JWT_REFRESH_LIFETIME }
     );
 
-    return { user: updateduser.info, accessToken, refreshToken };
+    return { user: updateduser.info, accessToken, refreshToken, organizationId };
   };
 
   /*
@@ -277,6 +283,7 @@ export const authSignupServiceFactory = ({
 
     const accessToken = jwt.sign(
       {
+        authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
@@ -288,6 +295,7 @@ export const authSignupServiceFactory = ({
 
     const refreshToken = jwt.sign(
       {
+        authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,

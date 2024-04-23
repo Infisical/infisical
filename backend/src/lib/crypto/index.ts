@@ -17,4 +17,5 @@ export {
   decryptSecrets,
   decryptSecretVersions
 } from "./secret-encryption";
+export { verifyOfflineLicense } from "./signing";
 export { generateSrpServerKey, srpCheckClientProof } from "./srp";

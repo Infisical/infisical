@@ -45,7 +45,7 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
         ref={forwardedRef}
         className={twMerge(drawerContentVariation({ direction, className }))}
       >
-        <Card isRounded={false} className="h-full w-full dark">
+        <Card isRounded={false} className="dark h-full w-full">
           {title && (
             <CardTitle subTitle={subTitle} className="px-4">
               {title}

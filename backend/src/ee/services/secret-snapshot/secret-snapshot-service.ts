@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { TableName, TSecretTagJunctionInsert } from "@app/db/schemas";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
@@ -23,6 +23,7 @@ import {
 import { TSnapshotDALFactory } from "./snapshot-dal";
 import { TSnapshotFolderDALFactory } from "./snapshot-folder-dal";
 import { TSnapshotSecretDALFactory } from "./snapshot-secret-dal";
+import { getFullFolderPath } from "./snapshot-service-fns";
 
 type TSecretSnapshotServiceFactoryDep = {
   snapshotDAL: TSnapshotDALFactory;
@@ -33,7 +34,7 @@ type TSecretSnapshotServiceFactoryDep = {
   secretDAL: Pick<TSecretDALFactory, "delete" | "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findById" | "findBySecretPath" | "delete" | "insertMany">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findById" | "findBySecretPath" | "delete" | "insertMany" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "isValidLicense">;
 };
@@ -59,10 +60,23 @@ export const secretSnapshotServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     path
   }: TProjectSnapshotCountDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
+
+    // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+    );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
@@ -77,12 +91,25 @@ export const secretSnapshotServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    actorAuthMethod,
     path,
     limit = 20,
     offset = 0
   }: TProjectSnapshotListDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
+
+    // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+    );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
@@ -91,11 +118,30 @@ export const secretSnapshotServiceFactory = ({
     return snapshots;
   };
 
-  const getSnapshotData = async ({ actorId, actor, actorOrgId, id }: TGetSnapshotDataDTO) => {
+  const getSnapshotData = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TGetSnapshotDataDTO) => {
     const snapshot = await snapshotDAL.findSecretSnapshotDataById(id);
     if (!snapshot) throw new BadRequestError({ message: "Snapshot not found" });
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, snapshot.projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      snapshot.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
+
+    const fullFolderPath = await getFullFolderPath({
+      folderDAL,
+      folderId: snapshot.folderId,
+      envId: snapshot.environment.id
+    });
+
+    // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment: snapshot.environment.slug, secretPath: fullFolderPath })
+    );
+
     return snapshot;
   };
 
@@ -145,11 +191,23 @@ export const secretSnapshotServiceFactory = ({
     }
   };
 
-  const rollbackSnapshot = async ({ id: snapshotId, actor, actorId, actorOrgId }: TRollbackSnapshotDTO) => {
+  const rollbackSnapshot = async ({
+    id: snapshotId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TRollbackSnapshotDTO) => {
     const snapshot = await snapshotDAL.findById(snapshotId);
     if (!snapshot) throw new BadRequestError({ message: "Snapshot not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, snapshot.projectId, actorOrgId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      snapshot.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretRollback

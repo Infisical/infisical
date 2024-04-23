@@ -1,7 +1,7 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal, UpgradePlanModal } from "@app/components/v2";
 import {
@@ -17,7 +17,7 @@ import { IPAllowlistModal } from "./IPAllowlistModal";
 import { IPAllowlistTable } from "./IPAllowlistTable";
 
 export const IPAllowlistSection = () => {
-  const { createNotification } = useNotificationContext();
+  
   const { mutateAsync } = useDeleteTrustedIp();
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();

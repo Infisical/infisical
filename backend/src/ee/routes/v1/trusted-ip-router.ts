@@ -2,13 +2,17 @@ import { z } from "zod";
 
 import { TrustedIpsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:workspaceId/trusted-ips",
     method: "GET",
+    url: "/:workspaceId/trusted-ips",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()
@@ -22,6 +26,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const trustedIps = await server.services.trustedIp.listIpsByProjectId({
+        actorAuthMethod: req.permission.authMethod,
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -32,8 +37,11 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/trusted-ips",
     method: "POST",
+    url: "/:workspaceId/trusted-ips",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim()
@@ -52,6 +60,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { trustedIp, project } = await server.services.trustedIp.addProjectIp({
+        actorAuthMethod: req.permission.authMethod,
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -76,8 +85,11 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/trusted-ips/:trustedIpId",
     method: "PATCH",
+    url: "/:workspaceId/trusted-ips/:trustedIpId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim(),
@@ -99,6 +111,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         trustedIpId: req.params.trustedIpId,
         ...req.body
@@ -121,8 +134,11 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:workspaceId/trusted-ips/:trustedIpId",
     method: "DELETE",
+    url: "/:workspaceId/trusted-ips/:trustedIpId",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         workspaceId: z.string().trim(),
@@ -140,6 +156,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         trustedIpId: req.params.trustedIpId
       });

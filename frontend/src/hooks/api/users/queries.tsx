@@ -194,7 +194,7 @@ export const useRegisterUserAction = () => {
   });
 };
 
-export const useLogoutUser = () => {
+export const useLogoutUser = (keepQueryClient?: boolean) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
@@ -214,7 +214,9 @@ export const useLogoutUser = () => {
       localStorage.removeItem("orgData.id");
       localStorage.removeItem("projectData.id");
 
-      queryClient.clear();
+      if (!keepQueryClient) {
+        queryClient.clear();
+      }
     }
   });
 };

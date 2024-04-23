@@ -18,6 +18,7 @@ const envSchema = z
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
       `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
     ),
+    MAX_LEASE_LIMIT: z.coerce.number().default(10000),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
     DB_PORT: zpStr(z.string().describe("Postgres database port").optional()).default("5432"),
@@ -106,13 +107,15 @@ const envSchema = z
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
+    LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
 
     // GENERIC
     STANDALONE_MODE: z
       .enum(["true", "false"])
       .transform((val) => val === "true")
       .optional(),
-    INFISICAL_CLOUD: zodStrBool.default("false")
+    INFISICAL_CLOUD: zodStrBool.default("false"),
+    MAINTENANCE_MODE: zodStrBool.default("false")
   })
   .transform((data) => ({
     ...data,

@@ -24,7 +24,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "min-w-[220px] z-30 bg-mineshaft-900 border border-mineshaft-600 will-change-auto text-bunker-300 rounded-md shadow data-[side=top]:animate-slideDownAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade",
+            "z-30 min-w-[220px] rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow will-change-auto data-[side=top]:animate-slideDownAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade",
             className
           )}
         >
@@ -48,7 +48,7 @@ export const DropdownSubMenuContent = forwardRef<HTMLDivElement, DropdownSubMenu
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "min-w-[220px] z-30 bg-mineshaft-900 border border-mineshaft-600 will-change-auto text-bunker-300 rounded-md shadow data-[side=top]:animate-slideDownAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade",
+            "z-30 min-w-[220px] rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow will-change-auto data-[side=top]:animate-slideDownAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade",
             className
           )}
         >
@@ -66,7 +66,7 @@ export type DropdownLabelProps = DropdownMenuPrimitive.MenuLabelProps;
 export const DropdownMenuLabel = ({ className, ...props }: DropdownLabelProps) => (
   <DropdownMenuPrimitive.Label
     {...props}
-    className={twMerge("text-xs text-bunker-400 px-4 pt-2 pb-1", className)}
+    className={twMerge("px-4 pt-2 pb-1 text-xs text-bunker-400", className)}
   />
 );
 
@@ -91,14 +91,14 @@ export const DropdownMenuItem = <T extends ElementType = "button">({
   <DropdownMenuPrimitive.Item
     {...props}
     className={twMerge(
-      "text-xs text-mineshaft-200 block font-inter px-4 py-2 data-[highlighted]:bg-mineshaft-700 rounded-sm outline-none cursor-pointer",
+      "block cursor-pointer rounded-sm px-4 py-2 font-inter text-xs text-mineshaft-200 outline-none data-[highlighted]:bg-mineshaft-700",
       className
     )}
   >
     <Item type="button" role="menuitem" className="flex w-full items-center" ref={inputRef}>
-      {icon && iconPos === "left" && <span className="flex items-center mr-2">{icon}</span>}
+      {icon && iconPos === "left" && <span className="mr-2 flex items-center">{icon}</span>}
       <span className="flex-grow text-left">{children}</span>
-      {icon && iconPos === "right" && <span className="flex items-center ml-2">{icon}</span>}
+      {icon && iconPos === "right" && <span className="ml-2 flex items-center">{icon}</span>}
     </Item>
   </DropdownMenuPrimitive.Item>
 );
@@ -124,14 +124,14 @@ export const DropdownSubMenuTrigger = <T extends ElementType = "button">({
   <DropdownMenuPrimitive.SubTrigger
     {...props}
     className={twMerge(
-      "text-xs text-mineshaft-200 block font-inter px-4 py-2 data-[highlighted]:bg-mineshaft-700 rounded-sm outline-none cursor-pointer",
+      "block cursor-pointer rounded-sm px-4 py-2 font-inter text-xs text-mineshaft-200 outline-none data-[highlighted]:bg-mineshaft-700",
       className
     )}
   >
     <Item type="button" role="menuitem" className="flex w-full items-center" ref={inputRef}>
-      {icon && iconPos === "left" && <span className="flex items-center mr-2">{icon}</span>}
+      {icon && iconPos === "left" && <span className="mr-2 flex items-center">{icon}</span>}
       <span className="flex-grow text-left">{children}</span>
-      {icon && iconPos === "right" && <span className="flex items-center ml-2">{icon}</span>}
+      {icon && iconPos === "right" && <span className="ml-2 flex items-center">{icon}</span>}
     </Item>
   </DropdownMenuPrimitive.SubTrigger>
 );
@@ -143,7 +143,7 @@ export const DropdownMenuGroup = forwardRef<HTMLDivElement, DropdownMenuGroupPro
   ({ ...props }, ref) => (
     <DropdownMenuPrimitive.Group
       {...props}
-      className={twMerge("text-xs py-2 pl-3", props.className)}
+      className={twMerge("py-2 pl-3 text-xs", props.className)}
       ref={ref}
     />
   )
@@ -159,7 +159,7 @@ export const DropdownMenuSeparator = forwardRef<
   <DropdownMenuPrimitive.Separator
     ref={ref}
     {...props}
-    className={twMerge("h-[1px] bg-gray-700 m-1", className)}
+    className={twMerge("m-1 h-[1px] bg-gray-700", className)}
   />
 ));
 

@@ -38,12 +38,12 @@ var secretsCmd = &cobra.Command{
 			}
 		}
 
-		infisicalToken, err := util.GetInfisicalServiceToken(cmd)
-
+		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -63,6 +63,11 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		recursive, err := cmd.Flags().GetBool("recursive")
+		if err != nil {
+			util.HandleError(err)
+		}
+
 		tagSlugs, err := cmd.Flags().GetString("tags")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -73,7 +78,22 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports}, "")
+		request := models.GetAllSecretsParameters{
+			Environment:   environmentName,
+			WorkspaceId:   projectId,
+			TagSlugs:      tagSlugs,
+			SecretsPath:   secretsPath,
+			IncludeImport: includeImports,
+			Recursive:     recursive,
+		}
+
+		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+			request.InfisicalToken = token.Token
+		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+			request.UniversalAuthAccessToken = token.Token
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables(request, "")
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -85,9 +105,15 @@ var secretsCmd = &cobra.Command{
 		}
 
 		if shouldExpandSecrets {
-			secrets = util.ExpandSecrets(secrets, models.ExpandSecretsAuthentication{
-				InfisicalToken: infisicalToken,
-			}, "")
+
+			authParams := models.ExpandSecretsAuthentication{}
+			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+				authParams.InfisicalToken = token.Token
+			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+				authParams.UniversalAuthAccessToken = token.Token
+			}
+
+			secrets = util.ExpandSecrets(secrets, authParams, "")
 		}
 
 		visualize.PrintAllSecretDetails(secrets)
@@ -297,7 +323,6 @@ var secretsSetCmd = &cobra.Command{
 			updateSecretRequest := api.UpdateSecretByNameV3Request{
 				WorkspaceID:           workspaceFile.WorkspaceId,
 				Environment:           environmentName,
-				SecretName:            secret.PlainTextKey,
 				SecretValueCiphertext: secret.SecretValueCiphertext,
 				SecretValueIV:         secret.SecretValueIV,
 				SecretValueTag:        secret.SecretValueTag,
@@ -305,7 +330,7 @@ var secretsSetCmd = &cobra.Command{
 				SecretPath:            secretsPath,
 			}
 
-			err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest)
+			err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest, secret.PlainTextKey)
 			if err != nil {
 				util.HandleError(err, "Unable to process secret update request")
 				return
@@ -398,8 +423,12 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	infisicalToken, err := util.GetInfisicalServiceToken(cmd)
+	token, err := util.GetInfisicalToken(cmd)
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
 
+	shouldExpand, err := cmd.Flags().GetBool("expand")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
@@ -409,9 +438,19 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
+	projectId, err := cmd.Flags().GetString("projectId")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
 	secretsPath, err := cmd.Flags().GetString("path")
 	if err != nil {
 		util.HandleError(err, "Unable to parse path flag")
+	}
+
+	recursive, err := cmd.Flags().GetBool("recursive")
+	if err != nil {
+		util.HandleError(err, "Unable to parse recursive flag")
 	}
 
 	showOnlyValue, err := cmd.Flags().GetBool("raw-value")
@@ -419,9 +458,35 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse path flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath}, "")
+	request := models.GetAllSecretsParameters{
+		Environment:   environmentName,
+		WorkspaceId:   projectId,
+		TagSlugs:      tagSlugs,
+		SecretsPath:   secretsPath,
+		IncludeImport: true,
+		Recursive:     recursive,
+	}
+
+	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+		request.InfisicalToken = token.Token
+	} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+		request.UniversalAuthAccessToken = token.Token
+	}
+
+	secrets, err := util.GetAllEnvironmentVariables(request, "")
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
+	}
+
+	if shouldExpand {
+		authParams := models.ExpandSecretsAuthentication{}
+		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+			authParams.InfisicalToken = token.Token
+		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+			authParams.UniversalAuthAccessToken = token.Token
+		}
+
+		secrets = util.ExpandSecrets(secrets, authParams, "")
 	}
 
 	requestedSecrets := []models.SingleEnvironmentVariable{}
@@ -466,8 +531,12 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	infisicalToken, err := util.GetInfisicalServiceToken(cmd)
+	token, err := util.GetInfisicalToken(cmd)
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
 
+	projectId, err := cmd.Flags().GetString("projectId")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
@@ -477,7 +546,21 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath}, "")
+	request := models.GetAllSecretsParameters{
+		Environment:   environmentName,
+		WorkspaceId:   projectId,
+		TagSlugs:      tagSlugs,
+		SecretsPath:   secretsPath,
+		IncludeImport: true,
+	}
+
+	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+		request.InfisicalToken = token.Token
+	} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+		request.UniversalAuthAccessToken = token.Token
+	}
+
+	secrets, err := util.GetAllEnvironmentVariables(request, "")
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
@@ -677,18 +760,23 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 
 func init() {
 	secretsGenerateExampleEnvCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsGenerateExampleEnvCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	secretsGenerateExampleEnvCmd.Flags().String("path", "/", "Fetch secrets from within a folder path")
 	secretsCmd.AddCommand(secretsGenerateExampleEnvCmd)
 
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
-	secretsCmd.AddCommand(secretsGetCmd)
+	secretsGetCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
+	secretsGetCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	secretsGetCmd.Flags().Bool("raw-value", false, "Returns only the value of secret, only works with one secret")
+	secretsGetCmd.Flags().Bool("recursive", false, "Fetch secrets from all sub-folders")
+	secretsCmd.AddCommand(secretsGetCmd)
 
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
 	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
 
+	// Only supports logged in users (JWT auth)
 	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
@@ -697,6 +785,8 @@ func init() {
 	secretsDeleteCmd.Flags().String("type", "personal", "the type of secret to delete: personal or shared  (default: personal)")
 	secretsDeleteCmd.Flags().String("path", "/", "get secrets within a folder path")
 	secretsCmd.AddCommand(secretsDeleteCmd)
+
+	// Only supports logged in users (JWT auth)
 	secretsDeleteCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
@@ -708,6 +798,7 @@ func init() {
 	// Add getCmd, createCmd and deleteCmd flags here
 	getCmd.Flags().StringP("path", "p", "/", "The path from where folders should be fetched from")
 	getCmd.Flags().String("token", "", "Fetch folders using the infisical token")
+	getCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	folderCmd.AddCommand(getCmd)
 
 	// Add createCmd flags here
@@ -725,9 +816,11 @@ func init() {
 	// ** End of folders sub command
 
 	secretsCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
 	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	secretsCmd.Flags().Bool("include-imports", true, "Imported linked secrets ")
+	secretsCmd.Flags().Bool("recursive", false, "Fetch secrets from all sub-folders")
 	secretsCmd.PersistentFlags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	secretsCmd.Flags().String("path", "/", "get secrets within a folder path")
 	rootCmd.AddCommand(secretsCmd)

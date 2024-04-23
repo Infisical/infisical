@@ -55,95 +55,157 @@ var loginCmd = &cobra.Command{
 	Short:                 "Login into your Infisical account",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
-		// if the key can't be found or there is an error getting current credentials from key ring, allow them to override
-		if err != nil && (strings.Contains(err.Error(), "we couldn't find your logged in details")) {
-			log.Debug().Err(err)
-		} else if err != nil {
+
+		loginMethod, err := cmd.Flags().GetString("method")
+		if err != nil {
+			util.HandleError(err)
+		}
+		plainOutput, err := cmd.Flags().GetBool("plain")
+		if err != nil {
 			util.HandleError(err)
 		}
 
-		if currentLoggedInUserDetails.IsUserLoggedIn && !currentLoggedInUserDetails.LoginExpired && len(currentLoggedInUserDetails.UserCredentials.PrivateKey) != 0 {
-			shouldOverride, err := userLoginMenu(currentLoggedInUserDetails.UserCredentials.Email)
-			if err != nil {
+		if loginMethod != "user" && loginMethod != "universal-auth" {
+			util.PrintErrorMessageAndExit("Invalid login method. Please use either 'user' or 'universal-auth'")
+		}
+
+		if loginMethod == "user" {
+
+			currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+			// if the key can't be found or there is an error getting current credentials from key ring, allow them to override
+			if err != nil && (strings.Contains(err.Error(), "we couldn't find your logged in details")) {
+				log.Debug().Err(err)
+			} else if err != nil {
 				util.HandleError(err)
 			}
 
-			if !shouldOverride {
-				return
+			if currentLoggedInUserDetails.IsUserLoggedIn && !currentLoggedInUserDetails.LoginExpired && len(currentLoggedInUserDetails.UserCredentials.PrivateKey) != 0 {
+				shouldOverride, err := userLoginMenu(currentLoggedInUserDetails.UserCredentials.Email)
+				if err != nil {
+					util.HandleError(err)
+				}
+
+				if !shouldOverride {
+					return
+				}
 			}
-		}
-		//override domain
-		domainQuery := true
-		if config.INFISICAL_URL_MANUAL_OVERRIDE != "" && config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
-			overrideDomain, err := DomainOverridePrompt()
-			if err != nil {
-				util.HandleError(err)
+			//override domain
+			domainQuery := true
+			if config.INFISICAL_URL_MANUAL_OVERRIDE != "" && config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
+				overrideDomain, err := DomainOverridePrompt()
+				if err != nil {
+					util.HandleError(err)
+				}
+
+				//if not override set INFISICAL_URL to exported var
+				//set domainQuery to false
+				if !overrideDomain {
+					domainQuery = false
+					config.INFISICAL_URL = config.INFISICAL_URL_MANUAL_OVERRIDE
+				}
+
 			}
 
-			//if not override set INFISICAL_URL to exported var
-			//set domainQuery to false
-			if !overrideDomain {
-				domainQuery = false
-				config.INFISICAL_URL = config.INFISICAL_URL_MANUAL_OVERRIDE
+			//prompt user to select domain between Infisical cloud and self hosting
+			if domainQuery {
+				err = askForDomain()
+				if err != nil {
+					util.HandleError(err, "Unable to parse domain url")
+				}
 			}
+			var userCredentialsToBeStored models.UserCredentials
 
-		}
-
-		//prompt user to select domain between Infisical cloud and self hosting
-		if domainQuery {
-			err = askForDomain()
-			if err != nil {
-				util.HandleError(err, "Unable to parse domain url")
-			}
-		}
-		var userCredentialsToBeStored models.UserCredentials
-
-		interactiveLogin := false
-		if cmd.Flags().Changed("interactive") {
-			interactiveLogin = true
-			cliDefaultLogin(&userCredentialsToBeStored)
-		}
-
-		//call browser login function
-		if !interactiveLogin {
-			fmt.Println("Logging in via browser... To login via interactive mode run [infisical login -i]")
-			userCredentialsToBeStored, err = browserCliLogin()
-			if err != nil {
-				//default to cli login on error
+			interactiveLogin := false
+			if cmd.Flags().Changed("interactive") {
+				interactiveLogin = true
 				cliDefaultLogin(&userCredentialsToBeStored)
 			}
+
+			//call browser login function
+			if !interactiveLogin {
+				fmt.Println("Logging in via browser... To login via interactive mode run [infisical login -i]")
+				userCredentialsToBeStored, err = browserCliLogin()
+				if err != nil {
+					//default to cli login on error
+					cliDefaultLogin(&userCredentialsToBeStored)
+				}
+			}
+
+			err = util.StoreUserCredsInKeyRing(&userCredentialsToBeStored)
+			if err != nil {
+				log.Error().Msgf("Unable to store your credentials in system vault [%s]")
+				log.Error().Msgf("\nTo trouble shoot further, read https://infisical.com/docs/cli/faq")
+				log.Debug().Err(err)
+				//return here
+				util.HandleError(err)
+			}
+
+			err = util.WriteInitalConfig(&userCredentialsToBeStored)
+			if err != nil {
+				util.HandleError(err, "Unable to write write to Infisical Config file. Please try again")
+			}
+
+			// clear backed up secrets from prev account
+			util.DeleteBackupSecrets()
+
+			whilte := color.New(color.FgGreen)
+			boldWhite := whilte.Add(color.Bold)
+			time.Sleep(time.Second * 1)
+			boldWhite.Printf(">>>> Welcome to Infisical!")
+			boldWhite.Printf(" You are now logged in as %v <<<< \n", userCredentialsToBeStored.Email)
+
+			plainBold := color.New(color.Bold)
+
+			plainBold.Println("\nQuick links")
+			fmt.Println("- Learn to inject secrets into your application at https://infisical.com/docs/cli/usage")
+			fmt.Println("- Stuck? Join our slack for quick support https://infisical.com/slack")
+			Telemetry.CaptureEvent("cli-command:login", posthog.NewProperties().Set("infisical-backend", config.INFISICAL_URL).Set("version", util.CLI_VERSION))
+		} else if loginMethod == "universal-auth" {
+
+			clientId, err := cmd.Flags().GetString("client-id")
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			clientSecret, err := cmd.Flags().GetString("client-secret")
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			if clientId == "" {
+				clientId = os.Getenv(util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
+				if clientId == "" {
+					util.PrintErrorMessageAndExit("Please provide client-id")
+				}
+			}
+			if clientSecret == "" {
+				clientSecret = os.Getenv(util.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET_NAME)
+				if clientSecret == "" {
+					util.PrintErrorMessageAndExit("Please provide client-secret")
+				}
+			}
+
+			res, err := util.UniversalAuthLogin(clientId, clientSecret)
+
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			if plainOutput {
+				fmt.Println(res.AccessToken)
+				return
+			}
+
+			boldGreen := color.New(color.FgGreen).Add(color.Bold)
+			boldPlain := color.New(color.Bold)
+			time.Sleep(time.Second * 1)
+			boldGreen.Printf(">>>> Successfully authenticated with Universal Auth!\n\n")
+			boldPlain.Printf("Universal Auth Access Token:\n%v", res.AccessToken)
+
+			plainBold := color.New(color.Bold)
+			plainBold.Println("\n\nYou can use this access token to authenticate through other commands in the CLI.")
+
 		}
-
-		err = util.StoreUserCredsInKeyRing(&userCredentialsToBeStored)
-		if err != nil {
-			log.Error().Msgf("Unable to store your credentials in system vault [%s]")
-			log.Error().Msgf("\nTo trouble shoot further, read https://infisical.com/docs/cli/faq")
-			log.Debug().Err(err)
-			//return here
-			util.HandleError(err)
-		}
-
-		err = util.WriteInitalConfig(&userCredentialsToBeStored)
-		if err != nil {
-			util.HandleError(err, "Unable to write write to Infisical Config file. Please try again")
-		}
-
-		// clear backed up secrets from prev account
-		util.DeleteBackupSecrets()
-
-		whilte := color.New(color.FgGreen)
-		boldWhite := whilte.Add(color.Bold)
-		time.Sleep(time.Second * 1)
-		boldWhite.Printf(">>>> Welcome to Infisical!")
-		boldWhite.Printf(" You are now logged in as %v <<<< \n", userCredentialsToBeStored.Email)
-
-		plainBold := color.New(color.Bold)
-
-		plainBold.Println("\nQuick links")
-		fmt.Println("- Learn to inject secrets into your application at https://infisical.com/docs/cli/usage")
-		fmt.Println("- Stuck? Join our slack for quick support https://infisical.com/slack")
-		Telemetry.CaptureEvent("cli-command:login", posthog.NewProperties().Set("infisical-backend", config.INFISICAL_URL).Set("version", util.CLI_VERSION))
 	},
 }
 
@@ -301,16 +363,22 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 		log.Debug().Msgf("[decryptedPrivateKey=%s] [email=%s] [loginTwoResponse.Token=%s]", string(decryptedPrivateKey), email, loginTwoResponse.Token)
 		util.PrintErrorMessageAndExit("We were unable to fetch required details to complete your login. Run with -d to see more info")
 	}
+	// Login is successful so ask user to choose organization
+	newJwtToken := GetJwtTokenWithOrganizationId(loginTwoResponse.Token)
 
 	//updating usercredentials
 	userCredentialsToBeStored.Email = email
 	userCredentialsToBeStored.PrivateKey = string(decryptedPrivateKey)
-	userCredentialsToBeStored.JTWToken = loginTwoResponse.Token
+	userCredentialsToBeStored.JTWToken = newJwtToken
 }
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
 	loginCmd.Flags().BoolP("interactive", "i", false, "login via the command line")
+	loginCmd.Flags().String("method", "user", "login method [user, universal-auth]")
+	loginCmd.Flags().String("client-id", "", "client id for universal auth")
+	loginCmd.Flags().Bool("plain", false, "only output the token without any formatting")
+	loginCmd.Flags().String("client-secret", "", "client secret for universal auth")
 }
 
 func DomainOverridePrompt() (bool, error) {
@@ -478,6 +546,44 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	}
 
 	return &loginOneResponseResult, &loginTwoResponseResult, nil
+}
+
+func GetJwtTokenWithOrganizationId(oldJwtToken string) string {
+	log.Debug().Msg(fmt.Sprint("GetJwtTokenWithOrganizationId: ", "oldJwtToken", oldJwtToken))
+
+	httpClient := resty.New()
+	httpClient.SetAuthToken(oldJwtToken)
+
+	organizationResponse, err := api.CallGetAllOrganizations(httpClient)
+
+	if err != nil {
+		util.HandleError(err, "Unable to pull organizations that belong to you")
+	}
+
+	organizations := organizationResponse.Organizations
+
+	organizationNames := util.GetOrganizationsNameList(organizationResponse)
+
+	prompt := promptui.Select{
+		Label: "Which Infisical organization would you like to log into?",
+		Items: organizationNames,
+	}
+
+	index, _, err := prompt.Run()
+	if err != nil {
+		util.HandleError(err)
+	}
+
+	selectedOrganization := organizations[index]
+
+	selectedOrgRes, err := api.CallSelectOrganization(httpClient, api.SelectOrganizationRequest{OrganizationId: selectedOrganization.ID})
+
+	if err != nil {
+		util.HandleError(err)
+	}
+
+	return selectedOrgRes.Token
+
 }
 
 func userLoginMenu(currentLoggedInUserEmail string) (bool, error) {

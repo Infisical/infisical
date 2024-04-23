@@ -2,7 +2,7 @@ import { useState } from "react";
 import { faContactBook, faMagnifyingGlass, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   DeleteActionModal,
@@ -23,7 +23,7 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteIncidentContact, useGetOrgIncidentContact } from "@app/hooks/api";
 
 export const OrgIncidentContactsTable = () => {
-  const { createNotification } = useNotificationContext();
+  
   const { currentOrg } = useOrganization();
   const { data: contacts, isLoading } = useGetOrgIncidentContact(currentOrg?.id ?? "");
   const [searchContact, setSearchContact] = useState("");

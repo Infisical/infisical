@@ -1,13 +1,17 @@
 import { z } from "zod";
 
 import { SecretsSchema } from "@app/db/schemas";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:projectId/secrets/blind-index-status",
     method: "GET",
+    url: "/:projectId/secrets/blind-index-status",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim()
@@ -20,6 +24,7 @@ export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const count = await server.services.secretBlindIndex.getSecretBlindIndexStatus({
         projectId: req.params.projectId,
+        actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId
@@ -29,8 +34,11 @@ export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider)
   });
 
   server.route({
-    url: "/:projectId/secrets",
     method: "GET",
+    url: "/:projectId/secrets",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim()
@@ -52,6 +60,7 @@ export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const secrets = await server.services.secretBlindIndex.getProjectSecrets({
         projectId: req.params.projectId,
+        actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId
@@ -61,8 +70,11 @@ export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider)
   });
 
   server.route({
-    url: "/:projectId/secrets/names",
     method: "POST",
+    url: "/:projectId/secrets/names",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         projectId: z.string().trim()
@@ -86,6 +98,7 @@ export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider)
       await server.services.secretBlindIndex.updateProjectSecretName({
         projectId: req.params.projectId,
         secretsToUpdate: req.body.secretsToUpdate,
+        actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId

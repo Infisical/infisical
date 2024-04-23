@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { TGroupMembership } from "../groups/types";
 import { IdentityMembership } from "../identities/types";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
@@ -36,7 +37,9 @@ export const workspaceKeys = {
     [{ workspaceId }, "workspace-audit-logs"] as const,
   getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }, "workspace-users"] as const,
   getWorkspaceIdentityMemberships: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-identity-memberships"] as const
+    [{ workspaceId }, "workspace-identity-memberships"] as const,
+  getWorkspaceGroupMemberships: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-groups"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -199,19 +202,17 @@ export const useGetWorkspaceIntegrations = (workspaceId: string) =>
   });
 
 export const createWorkspace = ({
-  organizationId,
   projectName
 }: CreateWorkspaceDTO): Promise<{ data: { project: Workspace } }> => {
-  return apiRequest.post("/api/v2/workspace", { projectName, organizationId });
+  return apiRequest.post("/api/v2/workspace", { projectName });
 };
 
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{ data: { project: Workspace } }, {}, CreateWorkspaceDTO>({
-    mutationFn: async ({ organizationId, projectName }) =>
+    mutationFn: async ({ projectName }) =>
       createWorkspace({
-        organizationId,
         projectName
       }),
     onSuccess: () => {
@@ -325,7 +326,13 @@ export const useDeleteUserFromWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ usernames, workspaceId }: { workspaceId: string; usernames: string[] }) => {
+    mutationFn: async ({
+      usernames,
+      workspaceId
+    }: {
+      workspaceId: string;
+      usernames: string[];
+    }) => {
       const {
         data: { deletedMembership }
       } = await apiRequest.delete(`/api/v2/workspace/${workspaceId}/memberships`, {
@@ -391,11 +398,7 @@ export const useAddIdentityToWorkspace = () => {
 export const useUpdateIdentityWorkspaceRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      identityId,
-      workspaceId,
-      roles
-    }:TUpdateWorkspaceIdentityRoleDTO)=> {
+    mutationFn: async ({ identityId, workspaceId, roles }: TUpdateWorkspaceIdentityRoleDTO) => {
       const {
         data: { identityMembership }
       } = await apiRequest.patch(
@@ -446,6 +449,21 @@ export const useGetWorkspaceIdentityMemberships = (workspaceId: string) => {
         `/api/v2/workspace/${workspaceId}/identity-memberships`
       );
       return identityMemberships;
+    },
+    enabled: true
+  });
+};
+
+export const useListWorkspaceGroups = (projectSlug: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectSlug),
+    queryFn: async () => {
+      const {
+        data: { groupMemberships }
+      } = await apiRequest.get<{ groupMemberships: TGroupMembership[] }>(
+        `/api/v2/workspace/${projectSlug}/groups`
+      );
+      return groupMemberships;
     },
     enabled: true
   });

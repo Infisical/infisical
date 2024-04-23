@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
+import { inviteUserRateLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -9,6 +10,9 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/signup",
+    config: {
+      rateLimit: inviteUserRateLimit
+    },
     method: "POST",
     schema: {
       body: z.object({
@@ -29,6 +33,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         orgId: req.body.organizationId,
         userId: req.permission.id,
         inviteeEmail: req.body.inviteeEmail,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
 
@@ -51,6 +56,9 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/verify",
     method: "POST",
+    config: {
+      rateLimit: inviteUserRateLimit
+    },
     schema: {
       body: z.object({
         email: z.string().trim().email(),

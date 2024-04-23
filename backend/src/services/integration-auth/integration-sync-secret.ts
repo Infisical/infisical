@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
@@ -457,9 +458,11 @@ const syncSecretsAWSParameterStore = async ({
   });
   ssm.config.update(config);
 
+  const metadata = z.record(z.any()).parse(integration.metadata);
+
   const params = {
     Path: integration.path as string,
-    Recursive: true,
+    Recursive: false,
     WithDecryption: true
   };
 
@@ -486,7 +489,10 @@ const syncSecretsAWSParameterStore = async ({
             Name: `${integration.path}${key}`,
             Type: "SecureString",
             Value: secrets[key].value,
-            Overwrite: true
+            // Overwrite: true,
+            Tags: metadata.secretAWSTag
+              ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
+              : []
           })
           .promise();
         // case: secret exists in AWS parameter store
@@ -499,6 +505,7 @@ const syncSecretsAWSParameterStore = async ({
             Type: "SecureString",
             Value: secrets[key].value,
             Overwrite: true
+            // Tags: metadata.secretAWSTag ? [{ Key: metadata.secretAWSTag.key, Value: metadata.secretAWSTag.value }] : []
           })
           .promise();
       }
@@ -537,6 +544,7 @@ const syncSecretsAWSSecretManager = async ({
 }) => {
   let secretsManager;
   const secKeyVal = getSecretKeyValuePair(secrets);
+  const metadata = z.record(z.any()).parse(integration.metadata);
   try {
     if (!accessId) return;
 
@@ -573,7 +581,11 @@ const syncSecretsAWSSecretManager = async ({
       await secretsManager.send(
         new CreateSecretCommand({
           Name: integration.app as string,
-          SecretString: JSON.stringify(secKeyVal)
+          SecretString: JSON.stringify(secKeyVal),
+          KmsKeyId: metadata.kmsKeyId ? metadata.kmsKeyId : null,
+          Tags: metadata.secretAWSTag
+            ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
+            : []
         })
       );
     }
@@ -1110,98 +1122,176 @@ const syncSecretsGitHub = async ({
   interface GitHubRepoKey {
     key_id: string;
     key: string;
+    id?: number | undefined;
+    url?: string | undefined;
+    title?: string | undefined;
+    created_at?: string | undefined;
   }
 
   interface GitHubSecret {
     name: string;
     created_at: string;
     updated_at: string;
-  }
-
-  interface GitHubSecretRes {
-    [index: string]: GitHubSecret;
+    visibility?: "all" | "private" | "selected";
+    selected_repositories_url?: string | undefined;
   }
 
   const octokit = new Octokit({
     auth: accessToken
   });
 
-  // const user = (await octokit.request('GET /user', {})).data;
-  const repoPublicKey: GitHubRepoKey = (
-    await octokit.request("GET /repos/{owner}/{repo}/actions/secrets/public-key", {
-      owner: integration.owner as string,
-      repo: integration.app as string
-    })
-  ).data;
+  enum GithubScope {
+    Repo = "github-repo",
+    Org = "github-org",
+    Env = "github-env"
+  }
+
+  let repoPublicKey: GitHubRepoKey;
+
+  switch (integration.scope) {
+    case GithubScope.Org: {
+      const { data } = await octokit.request("GET /orgs/{org}/actions/secrets/public-key", {
+        org: integration.owner as string
+      });
+      repoPublicKey = data;
+      break;
+    }
+    case GithubScope.Env: {
+      const { data } = await octokit.request(
+        "GET /repositories/{repository_id}/environments/{environment_name}/secrets/public-key",
+        {
+          repository_id: Number(integration.appId),
+          environment_name: integration.targetEnvironmentId as string
+        }
+      );
+      repoPublicKey = data;
+      break;
+    }
+    default: {
+      const { data } = await octokit.request("GET /repos/{owner}/{repo}/actions/secrets/public-key", {
+        owner: integration.owner as string,
+        repo: integration.app as string
+      });
+      repoPublicKey = data;
+      break;
+    }
+  }
 
   // Get local copy of decrypted secrets. We cannot decrypt them as we dont have access to GH private key
-  let encryptedSecrets: GitHubSecretRes = (
-    await octokit.request("GET /repos/{owner}/{repo}/actions/secrets", {
-      owner: integration.owner as string,
-      repo: integration.app as string
-    })
-  ).data.secrets.reduce(
-    (obj, secret) => ({
-      ...obj,
-      [secret.name]: secret
-    }),
-    {}
-  );
+  let encryptedSecrets: GitHubSecret[];
 
-  encryptedSecrets = Object.keys(encryptedSecrets).reduce(
-    (
-      result: {
-        [key: string]: GitHubSecret;
-      },
-      key
-    ) => {
-      if (
-        (appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) &&
-        (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)
-      ) {
-        result[key] = encryptedSecrets[key];
-      }
-      return result;
-    },
-    {}
-  );
-
-  await Promise.all(
-    Object.keys(encryptedSecrets).map(async (key) => {
-      if (!(key in secrets)) {
-        return octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+  switch (integration.scope) {
+    case GithubScope.Org: {
+      encryptedSecrets = (
+        await octokit.request("GET /orgs/{org}/actions/secrets", {
+          org: integration.owner as string
+        })
+      ).data.secrets;
+      break;
+    }
+    case GithubScope.Env: {
+      encryptedSecrets = (
+        await octokit.request("GET /repositories/{repository_id}/environments/{environment_name}/secrets", {
+          repository_id: Number(integration.appId),
+          environment_name: integration.targetEnvironmentId as string
+        })
+      ).data.secrets;
+      break;
+    }
+    default: {
+      encryptedSecrets = (
+        await octokit.request("GET /repos/{owner}/{repo}/actions/secrets", {
           owner: integration.owner as string,
-          repo: integration.app as string,
-          secret_name: key
-        });
+          repo: integration.app as string
+        })
+      ).data.secrets;
+      break;
+    }
+  }
+
+  for await (const encryptedSecret of encryptedSecrets) {
+    if (
+      !(encryptedSecret.name in secrets) &&
+      !(appendices?.prefix !== undefined && !encryptedSecret.name.startsWith(appendices?.prefix)) &&
+      !(appendices?.suffix !== undefined && !encryptedSecret.name.endsWith(appendices?.suffix))
+    ) {
+      switch (integration.scope) {
+        case GithubScope.Org: {
+          await octokit.request("DELETE /orgs/{org}/actions/secrets/{secret_name}", {
+            org: integration.owner as string,
+            secret_name: encryptedSecret.name
+          });
+          break;
+        }
+        case GithubScope.Env: {
+          await octokit.request(
+            "DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
+            {
+              repository_id: Number(integration.appId),
+              environment_name: integration.targetEnvironmentId as string,
+              secret_name: encryptedSecret.name
+            }
+          );
+          break;
+        }
+        default: {
+          await octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+            owner: integration.owner as string,
+            repo: integration.app as string,
+            secret_name: encryptedSecret.name
+          });
+          break;
+        }
       }
-    })
-  );
+    }
+  }
 
-  await Promise.all(
-    Object.keys(secrets).map((key) => {
-      // let encryptedSecret;
-      return sodium.ready.then(async () => {
-        // convert secret & base64 key to Uint8Array.
-        const binkey = sodium.from_base64(repoPublicKey.key, sodium.base64_variants.ORIGINAL);
-        const binsec = sodium.from_string(secrets[key].value);
+  await sodium.ready.then(async () => {
+    for await (const key of Object.keys(secrets)) {
+      // convert secret & base64 key to Uint8Array.
+      const binkey = sodium.from_base64(repoPublicKey.key, sodium.base64_variants.ORIGINAL);
+      const binsec = sodium.from_string(secrets[key].value);
 
-        // encrypt secret using libsodium
-        const encBytes = sodium.crypto_box_seal(binsec, binkey);
+      // encrypt secret using libsodium
+      const encBytes = sodium.crypto_box_seal(binsec, binkey);
 
-        // convert encrypted Uint8Array to base64
-        const encryptedSecret = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
+      // convert encrypted Uint8Array to base64
+      const encryptedSecret = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
 
-        await octokit.request("PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
-          owner: integration.owner as string,
-          repo: integration.app as string,
-          secret_name: key,
-          encrypted_value: encryptedSecret,
-          key_id: repoPublicKey.key_id
-        });
-      });
-    })
-  );
+      switch (integration.scope) {
+        case GithubScope.Org:
+          await octokit.request("PUT /orgs/{org}/actions/secrets/{secret_name}", {
+            org: integration.owner as string,
+            secret_name: key,
+            visibility: "all",
+            encrypted_value: encryptedSecret,
+            key_id: repoPublicKey.key_id
+          });
+          break;
+        case GithubScope.Env:
+          await octokit.request(
+            "PUT /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
+            {
+              repository_id: Number(integration.appId),
+              environment_name: integration.targetEnvironmentId as string,
+              secret_name: key,
+              encrypted_value: encryptedSecret,
+              key_id: repoPublicKey.key_id
+            }
+          );
+          break;
+        default:
+          await octokit.request("PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+            owner: integration.owner as string,
+            repo: integration.app as string,
+            secret_name: key,
+            encrypted_value: encryptedSecret,
+            key_id: repoPublicKey.key_id
+          });
+          break;
+      }
+    }
+  });
 };
 
 /**
@@ -1229,6 +1319,22 @@ const syncSecretsRender = async ({
       }
     }
   );
+
+  if (integration.metadata) {
+    const metadata = z.record(z.any()).parse(integration.metadata);
+    if (metadata.shouldAutoRedeploy === true) {
+      await request.post(
+        `${IntegrationUrls.RENDER_API_URL}/v1/services/${integration.appId}/deploys`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      );
+    }
+  }
 };
 
 /**
@@ -2051,16 +2157,29 @@ const syncSecretsQovery = async ({
  * @param {String} obj.accessToken - access token for Terraform Cloud API
  */
 const syncSecretsTerraformCloud = async ({
+  createManySecretsRawFn,
+  updateManySecretsRawFn,
   integration,
   secrets,
-  accessToken
+  accessToken,
+  integrationDAL
 }: {
-  integration: TIntegrations;
-  secrets: Record<string, { value: string; comment?: string }>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+  };
+  secrets: Record<string, { value: string; comment?: string } | null>;
   accessToken: string;
+  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
 }) => {
   // get secrets from Terraform Cloud
-  const getSecretsRes = (
+  const terraformSecrets = (
     await request.get<{ data: { attributes: { key: string; value: string }; id: string }[] }>(
       `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`,
       {
@@ -2078,9 +2197,74 @@ const syncSecretsTerraformCloud = async ({
     {} as Record<string, { attributes: { key: string; value: string }; id: string }>
   );
 
+  const secretsToAdd: { [key: string]: string } = {};
+  const secretsToUpdate: { [key: string]: string } = {};
+
+  const metadata = z.record(z.any()).parse(integration.metadata);
+
+  Object.keys(terraformSecrets).forEach((key) => {
+    if (!integration.lastUsed) {
+      // first time using integration
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        case IntegrationInitialSyncBehavior.PREFER_TARGET: {
+          if (!(key in secrets)) {
+            secretsToAdd[key] = terraformSecrets[key].attributes.value;
+          } else if (secrets[key]?.value !== terraformSecrets[key].attributes.value) {
+            secretsToUpdate[key] = terraformSecrets[key].attributes.value;
+          }
+          secrets[key] = {
+            value: terraformSecrets[key].attributes.value
+          };
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
+          if (!(key in secrets)) {
+            secrets[key] = {
+              value: terraformSecrets[key].attributes.value
+            };
+            secretsToAdd[key] = terraformSecrets[key].attributes.value;
+          }
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    } else if (!(key in secrets)) secrets[key] = null;
+  });
+
+  if (Object.keys(secretsToAdd).length) {
+    await createManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToAdd).map((key) => ({
+        secretName: key,
+        secretValue: secretsToAdd[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
+  if (Object.keys(secretsToUpdate).length) {
+    await updateManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToUpdate).map((key) => ({
+        secretName: key,
+        secretValue: secretsToUpdate[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
   // create or update secrets on Terraform Cloud
   for await (const key of Object.keys(secrets)) {
-    if (!(key in getSecretsRes)) {
+    if (!(key in terraformSecrets)) {
       // case: secret does not exist in Terraform Cloud
       // -> add secret
       await request.post(
@@ -2090,7 +2274,7 @@ const syncSecretsTerraformCloud = async ({
             type: "vars",
             attributes: {
               key,
-              value: secrets[key].value,
+              value: secrets[key]?.value,
               category: integration.targetService
             }
           }
@@ -2104,17 +2288,17 @@ const syncSecretsTerraformCloud = async ({
         }
       );
       // case: secret exists in Terraform Cloud
-    } else if (secrets[key].value !== getSecretsRes[key].attributes.value) {
+    } else if (secrets[key]?.value !== terraformSecrets[key].attributes.value) {
       // -> update secret
       await request.patch(
-        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${getSecretsRes[key].id}`,
+        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${terraformSecrets[key].id}`,
         {
           data: {
             type: "vars",
-            id: getSecretsRes[key].id,
+            id: terraformSecrets[key].id,
             attributes: {
-              ...getSecretsRes[key],
-              value: secrets[key].value
+              ...terraformSecrets[key],
+              value: secrets[key]?.value
             }
           }
         },
@@ -2129,11 +2313,11 @@ const syncSecretsTerraformCloud = async ({
     }
   }
 
-  for await (const key of Object.keys(getSecretsRes)) {
+  for await (const key of Object.keys(terraformSecrets)) {
     if (!(key in secrets)) {
       // case: delete secret
       await request.delete(
-        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${getSecretsRes[key].id}`,
+        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${terraformSecrets[key].id}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -2144,6 +2328,10 @@ const syncSecretsTerraformCloud = async ({
       );
     }
   }
+
+  await integrationDAL.updateById(integration.id, {
+    lastUsed: new Date()
+  });
 };
 
 /**
@@ -3185,9 +3373,12 @@ export const syncIntegrationSecrets = async ({
       break;
     case Integrations.TERRAFORM_CLOUD:
       await syncSecretsTerraformCloud({
+        createManySecretsRawFn,
+        updateManySecretsRawFn,
         integration,
         secrets,
-        accessToken
+        accessToken,
+        integrationDAL
       });
       break;
     case Integrations.HASHICORP_VAULT:

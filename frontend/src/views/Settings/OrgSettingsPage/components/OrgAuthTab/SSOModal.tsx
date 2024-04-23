@@ -3,7 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
@@ -22,6 +22,7 @@ enum AuthProvider {
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
   JUMPCLOUD_SAML = "jumpcloud-saml",
+  KEYCLOAK_SAML = "keycloak-saml",
   GOOGLE_SAML = "google-saml"
 }
 
@@ -29,6 +30,7 @@ const ssoAuthProviders = [
   { label: "Okta SAML", value: AuthProvider.OKTA_SAML },
   { label: "Azure SAML", value: AuthProvider.AZURE_SAML },
   { label: "JumpCloud SAML", value: AuthProvider.JUMPCLOUD_SAML },
+  { label: "Keycloak SAML", value: AuthProvider.KEYCLOAK_SAML },
   { label: "Google SAML", value: AuthProvider.GOOGLE_SAML }
 ];
 
@@ -51,7 +53,7 @@ type Props = {
 
 export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
-  const { createNotification } = useNotificationContext();
+  
   const { mutateAsync: createMutateAsync, isLoading: createIsLoading } = useCreateSSOConfig();
   const { mutateAsync: updateMutateAsync, isLoading: updateIsLoading } = useUpdateSSOConfig();
   const { data } = useGetSSOConfig(currentOrg?.id ?? "");
@@ -141,6 +143,15 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) 
           entryPointPlaceholder: "https://sso.jumpcloud.com/saml2/xxx",
           issuer: "IdP Entity ID",
           issuerPlaceholder: "xxx"
+        };
+      case AuthProvider.KEYCLOAK_SAML:
+        return {
+          acsUrl: "Valid redirect URI",
+          entityId: "SP Entity ID",
+          entryPoint: "IDP URL",
+          entryPointPlaceholder: "https://keycloak.mysite.com/realms/myrealm/protocol/saml",
+          issuer: "Client ID",
+          issuerPlaceholder: window.origin
         };
       case AuthProvider.GOOGLE_SAML:
         return {

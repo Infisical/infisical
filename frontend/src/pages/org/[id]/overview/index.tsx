@@ -21,14 +21,16 @@ import {
   faNetworkWired,
   faPlug,
   faPlus,
-  faUserPlus
+  faUserPlus,
+  faWarning,
+  faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
 import {
@@ -44,6 +46,7 @@ import {
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
+  useOrganization,
   useSubscription,
   useUser,
   useWorkspace
@@ -53,6 +56,7 @@ import {
   fetchOrgUsers,
   useAddUserToWsNonE2EE,
   useCreateWorkspace,
+  useGetUserAction,
   useRegisterUserAction
 } from "@app/hooks/api";
 // import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
@@ -453,7 +457,12 @@ const LearningItemSquare = ({
 };
 
 const formSchema = yup.object({
-  name: yup.string().required().label("Project Name").trim().max(64, "Too long, maximum length is 64 characters"),
+  name: yup
+    .string()
+    .required()
+    .label("Project Name")
+    .trim()
+    .max(64, "Too long, maximum length is 64 characters"),
   addMembers: yup.bool().required().label("Add Members")
 });
 
@@ -468,10 +477,17 @@ const OrganizationPage = withPermission(
     const router = useRouter();
 
     const { workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
-    const currentOrg = String(router.query.id);
-    const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === currentOrg) || [];
-    const { createNotification } = useNotificationContext();
+    const { currentOrg } = useOrganization();
+    const routerOrgId = String(router.query.id);
+    const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === routerOrgId) || [];
+    
     const addUsersToProject = useAddUserToWsNonE2EE();
+
+    const { data: updateClosed } = useGetUserAction("april_13_2024_db_update_closed");
+    const registerUserAction = useRegisterUserAction();
+    const closeUpdate = async () => {
+      await registerUserAction.mutateAsync("april_13_2024_db_update_closed");
+    };
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "addNewWs",
@@ -505,12 +521,11 @@ const OrganizationPage = withPermission(
             project: { id: newProjectId }
           }
         } = await createWs.mutateAsync({
-          organizationId: currentOrg,
           projectName: name
         });
 
         if (addMembers) {
-          const orgUsers = await fetchOrgUsers(currentOrg);
+          const orgUsers = await fetchOrgUsers(currentOrg.id);
 
           await addUsersToProject.mutateAsync({
             usernames: orgUsers
@@ -540,7 +555,7 @@ const OrganizationPage = withPermission(
 
     useEffect(() => {
       onboardingCheck({
-        orgId: currentOrg,
+        orgId: routerOrgId,
         setHasUserClickedIntro,
         setHasUserClickedSlack,
         setHasUserPushedSecrets,
@@ -579,6 +594,31 @@ const OrganizationPage = withPermission(
           </div>
         )}
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
+        {window.location.origin.includes("https://app.infisical.com") || window.location.origin.includes("http://localhost:8080") && (
+        <div
+            className={`${
+              !updateClosed ? "block" : "hidden"
+            } mb-4 flex w-full flex-row items-center rounded-md border border-primary-600 bg-primary/10 p-2 text-base text-white`}
+          >
+            <FontAwesomeIcon icon={faWarning} className="p-6 text-4xl text-primary" />
+            <div className="text-sm">
+              <span className="text-lg font-semibold">Scheduled maintenance on April 13th 2024 </span>{" "}
+              <br />
+              Infisical will undergo scheduled maintenance for approximately 1 hour on Saturday, April 13th, 11am EST. During these hours, read
+              operations will continue to function normally but no resources will be editable. 
+              No action is required on your end — your applications will continue to fetch secrets.
+              <br />
+            </div>
+            <button
+              type="button"
+              onClick={() => closeUpdate()}
+              aria-label="close"
+              className="flex h-full items-start text-mineshaft-100 duration-200 hover:text-red-400"
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </div>)}
+          
           <p className="mr-4 font-semibold text-white">Projects</p>
           <div className="mt-6 flex w-full flex-row">
             <Input
@@ -629,22 +669,21 @@ const OrganizationPage = withPermission(
             {orgWorkspaces
               .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
               .map((workspace) => (
+                // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
                 <div
+                  onClick={() => {
+                    router.push(`/project/${workspace.id}/secrets/overview`);
+                    localStorage.setItem("projectData.id", workspace.id);
+                  }}
                   key={workspace.id}
-                  className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+                  className="min-w-72 group flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
                 >
                   <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
                   <div className="mt-0 pb-6 text-sm text-mineshaft-300">
                     {workspace.environments?.length || 0} environments
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      router.push(`/project/${workspace.id}/secrets/overview`);
-                      localStorage.setItem("projectData.id", workspace.id);
-                    }}
-                  >
-                    <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
+                  <button type="button">
+                    <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all group-hover:border-primary-500/80 group-hover:bg-primary-800/20 group-hover:text-mineshaft-200">
                       Explore{" "}
                       <FontAwesomeIcon
                         icon={faArrowRight}
@@ -691,7 +730,7 @@ const OrganizationPage = withPermission(
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group ml-auto w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200"
+                    className="group ml-auto w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200"
                     href={feature.link}
                   >
                     Learn more{" "}

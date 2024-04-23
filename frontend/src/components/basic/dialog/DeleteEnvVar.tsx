@@ -5,13 +5,13 @@ import { Dialog, Transition } from "@headlessui/react";
 // #TODO: USE THIS. Currently it's not. Kinda complicated to set up because of state.
 
 type Props = {
-  isOpen: boolean
-  onClose: () => void
-  onSubmit: () => void 
-}
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: () => void;
+};
 
 export const DeleteEnvVar = ({ isOpen, onClose, onSubmit }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
   return (
     <div>
       <Transition appear show={isOpen} as={Fragment}>
@@ -45,7 +45,7 @@ export const DeleteEnvVar = ({ isOpen, onClose, onSubmit }: Props) => {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-md bg-bunker border border-mineshaft-600 p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-md border border-mineshaft-600 bg-bunker p-6 text-left align-middle shadow-xl transition-all">
                   <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-bunker-200">
                     {t("dashboard:sidebar.delete-key-dialog.title")}
                   </Dialog.Title>
@@ -57,14 +57,14 @@ export const DeleteEnvVar = ({ isOpen, onClose, onSubmit }: Props) => {
                   <div className="mt-6 flex justify-start">
                     <button
                       type="button"
-                      className="inline-flex justify-center rounded-md border border-transparent bg-red-500 opacity-80 hover:opacity-100 px-4 py-2 text-sm font-medium text-bunker-100 text-semibold duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                      className="text-semibold inline-flex justify-center rounded-md border border-transparent bg-red-500 px-4 py-2 text-sm font-medium text-bunker-100 opacity-80 duration-200 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                       onClick={onSubmit}
                     >
                       Delete
                     </button>
                     <button
                       type="button"
-                      className="ml-2 inline-flex justify-center rounded-md border border-transparent bg-bunker-500 px-4 py-2 text-sm font-medium text-gray-400 hover:bg-mineshaft-500 hover:text-white hover:text-semibold duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                      className="hover:text-semibold ml-2 inline-flex justify-center rounded-md border border-transparent bg-bunker-500 px-4 py-2 text-sm font-medium text-gray-400 duration-200 hover:bg-mineshaft-500 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                       onClick={onClose}
                     >
                       Cancel

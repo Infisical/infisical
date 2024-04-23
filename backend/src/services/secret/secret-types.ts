@@ -74,6 +74,7 @@ export type TGetSecretsDTO = {
   path: string;
   environment: string;
   includeImports?: boolean;
+  recursive?: boolean;
 } & TProjectPermission;
 
 export type TGetASecretDTO = {
@@ -140,6 +141,7 @@ export type TGetSecretsRawDTO = {
   path: string;
   environment: string;
   includeImports?: boolean;
+  recursive?: boolean;
 } & TProjectPermission;
 
 export type TGetASecretRawDTO = {
@@ -205,6 +207,15 @@ export type TFnSecretBulkUpdate = {
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   tx?: Knex;
 };
+
+export type TAttachSecretTagsDTO = {
+  projectSlug: string;
+  secretName: string;
+  tagSlugs: string[];
+  environment: string;
+  path: string;
+  type: SecretType;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TFnSecretBulkDelete = {
   folderId: string;

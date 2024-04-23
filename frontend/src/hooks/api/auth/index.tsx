@@ -1,6 +1,7 @@
 export {
   useGetAuthToken,
   useResetPassword,
+  useSelectOrganization,
   useSendMfaToken,
   useSendPasswordResetEmail,
   useSendVerificationEmail,

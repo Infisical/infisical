@@ -2,7 +2,7 @@ import Link from "next/link";
 import { faArrowUpRightFromSquare, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
@@ -20,7 +20,7 @@ export const IdentitySection = withPermission(
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
 
-    const { createNotification } = useNotificationContext();
+    
     const { mutateAsync: deleteMutateAsync } = useDeleteIdentity();
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "identity",

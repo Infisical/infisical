@@ -2,6 +2,10 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  Groups = "groups",
+  GroupProjectMembership = "group_project_memberships",
+  GroupProjectMembershipRole = "group_project_membership_roles",
+  UserGroupMembership = "user_group_membership",
   UserAliases = "user_aliases",
   UserEncryptionKey = "user_encryption_keys",
   AuthTokens = "auth_tokens",
@@ -20,6 +24,7 @@ export enum TableName {
   Environment = "project_environments",
   ProjectMembership = "project_memberships",
   ProjectRoles = "project_roles",
+  ProjectUserAdditionalPrivilege = "project_user_additional_privilege",
   ProjectUserMembershipRole = "project_user_membership_roles",
   ProjectKeys = "project_keys",
   Secret = "secrets",
@@ -43,6 +48,7 @@ export enum TableName {
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
+  IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
   ScimToken = "scim_tokens",
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
@@ -59,6 +65,8 @@ export enum TableName {
   GitAppOrg = "git_app_org",
   SecretScanningGitRisk = "secret_scanning_git_risks",
   TrustedIps = "trusted_ips",
+  DynamicSecret = "dynamic_secrets",
+  DynamicSecretLease = "dynamic_secret_leases",
   // junction tables with tags
   JnSecretTag = "secret_tag_junction",
   SecretVersionTag = "secret_version_tag_junction"

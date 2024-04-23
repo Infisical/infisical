@@ -11,13 +11,15 @@ import {
 } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 
 import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
+import { validateOrgSAML } from "./permission-fns";
 import { TBuildProjectPermissionDTO } from "./permission-types";
 import {
   buildServiceTokenProjectPermission,
@@ -32,6 +34,7 @@ type TPermissionServiceFactoryDep = {
   orgRoleDAL: Pick<TOrgRoleDALFactory, "findOne">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionDAL: TPermissionDALFactory;
 };
 
@@ -41,7 +44,8 @@ export const permissionServiceFactory = ({
   permissionDAL,
   orgRoleDAL,
   projectRoleDAL,
-  serviceTokenDAL
+  serviceTokenDAL,
+  projectDAL
 }: TPermissionServiceFactoryDep) => {
   const buildOrgPermission = (role: string, permission?: unknown) => {
     switch (role) {
@@ -98,16 +102,30 @@ export const permissionServiceFactory = ({
 
   /*
    * Get user permission in an organization
-   * */
-  const getUserOrgPermission = async (userId: string, orgId: string, userOrgId?: string) => {
+   */
+  const getUserOrgPermission = async (
+    userId: string,
+    orgId: string,
+    authMethod: ActorAuthMethod,
+    userOrgId?: string
+  ) => {
     const membership = await permissionDAL.getOrgPermission(userId, orgId);
     if (!membership) throw new UnauthorizedError({ name: "User not in org" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
-    if (membership.orgAuthEnforced && membership.orgId !== userOrgId) {
-      throw new BadRequestError({ name: "Cannot access org-scoped resource" });
+
+    // If the org ID is API_KEY, the request is being made with an API Key.
+    // Since we can't scope API keys to an organization, we'll need to do an arbitrary check to see if the user is a member of the organization.
+
+    // Extra: This means that when users are using API keys to make requests, they can't use slug-based routes.
+    // Slug-based routes depend on the organization ID being present on the request, since project slugs aren't globally unique, and we need a way to filter by organization.
+    if (userOrgId !== "API_KEY" && membership.orgId !== userOrgId) {
+      throw new UnauthorizedError({ name: "You are not logged into this organization" });
     }
+
+    validateOrgSAML(authMethod, membership.orgAuthEnforced);
+
     return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
   };
 
@@ -120,10 +138,16 @@ export const permissionServiceFactory = ({
     return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
   };
 
-  const getOrgPermission = async (type: ActorType, id: string, orgId: string, actorOrgId?: string) => {
+  const getOrgPermission = async (
+    type: ActorType,
+    id: string,
+    orgId: string,
+    authMethod: ActorAuthMethod,
+    actorOrgId: string | undefined
+  ) => {
     switch (type) {
       case ActorType.USER:
-        return getUserOrgPermission(id, orgId, actorOrgId);
+        return getUserOrgPermission(id, orgId, authMethod, actorOrgId);
       case ActorType.IDENTITY:
         return getIdentityOrgPermission(id, orgId);
       default:
@@ -153,6 +177,7 @@ export const permissionServiceFactory = ({
   const getUserProjectPermission = async (
     userId: string,
     projectId: string,
+    authMethod: ActorAuthMethod,
     userOrgId?: string
   ): Promise<TProjectPermissionRT<ActorType.USER>> => {
     const userProjectPermission = await permissionDAL.getProjectPermission(userId, projectId);
@@ -164,12 +189,27 @@ export const permissionServiceFactory = ({
       throw new BadRequestError({ name: "Custom permission not found" });
     }
 
-    if (userProjectPermission.orgAuthEnforced && userProjectPermission.orgId !== userOrgId) {
-      throw new BadRequestError({ name: "Cannot access org-scoped resource" });
+    // If the org ID is API_KEY, the request is being made with an API Key.
+    // Since we can't scope API keys to an organization, we'll need to do an arbitrary check to see if the user is a member of the organization.
+
+    // Extra: This means that when users are using API keys to make requests, they can't use slug-based routes.
+    // Slug-based routes depend on the organization ID being present on the request, since project slugs aren't globally unique, and we need a way to filter by organization.
+    if (userOrgId !== "API_KEY" && userProjectPermission.orgId !== userOrgId) {
+      throw new UnauthorizedError({ name: "You are not logged into this organization" });
     }
 
+    validateOrgSAML(authMethod, userProjectPermission.orgAuthEnforced);
+
+    // join two permissions and pass to build the final permission set
+    const rolePermissions = userProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+    const additionalPrivileges =
+      userProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
+        role: ProjectMembershipRole.Custom,
+        permissions
+      })) || [];
+
     return {
-      permission: buildProjectPermission(userProjectPermission.roles),
+      permission: buildProjectPermission(rolePermissions.concat(additionalPrivileges)),
       membership: userProjectPermission,
       hasRole: (role: string) =>
         userProjectPermission.roles.findIndex(
@@ -180,7 +220,8 @@ export const permissionServiceFactory = ({
 
   const getIdentityProjectPermission = async (
     identityId: string,
-    projectId: string
+    projectId: string,
+    identityOrgId: string | undefined
   ): Promise<TProjectPermissionRT<ActorType.IDENTITY>> => {
     const identityProjectPermission = await permissionDAL.getProjectIdentityPermission(identityId, projectId);
     if (!identityProjectPermission) throw new UnauthorizedError({ name: "Identity not in project" });
@@ -193,8 +234,20 @@ export const permissionServiceFactory = ({
       throw new BadRequestError({ name: "Custom permission not found" });
     }
 
+    if (identityProjectPermission.orgId !== identityOrgId) {
+      throw new UnauthorizedError({ name: "You are not a member of this organization" });
+    }
+
+    const rolePermissions =
+      identityProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+    const additionalPrivileges =
+      identityProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
+        role: ProjectMembershipRole.Custom,
+        permissions
+      })) || [];
+
     return {
-      permission: buildProjectPermission(identityProjectPermission.roles),
+      permission: buildProjectPermission(rolePermissions.concat(additionalPrivileges)),
       membership: identityProjectPermission,
       hasRole: (role: string) =>
         identityProjectPermission.roles.findIndex(
@@ -203,14 +256,32 @@ export const permissionServiceFactory = ({
     };
   };
 
-  const getServiceTokenProjectPermission = async (serviceTokenId: string, projectId: string) => {
+  const getServiceTokenProjectPermission = async (
+    serviceTokenId: string,
+    projectId: string,
+    actorOrgId: string | undefined
+  ) => {
     const serviceToken = await serviceTokenDAL.findById(serviceTokenId);
     if (!serviceToken) throw new BadRequestError({ message: "Service token not found" });
+
+    const serviceTokenProject = await projectDAL.findById(serviceToken.projectId);
+
+    if (!serviceTokenProject) throw new BadRequestError({ message: "Service token not linked to a project" });
+
+    if (serviceTokenProject.orgId !== actorOrgId) {
+      throw new UnauthorizedError({ message: "Service token not a part of this organization" });
+    }
 
     if (serviceToken.projectId !== projectId)
       throw new UnauthorizedError({
         message: "Failed to find service authorization for given project"
       });
+
+    if (serviceTokenProject.orgId !== actorOrgId)
+      throw new UnauthorizedError({
+        message: "Failed to find service authorization for given project"
+      });
+
     const scopes = ServiceTokenScopes.parse(serviceToken.scopes || []);
     return {
       permission: buildServiceTokenProjectPermission(scopes, serviceToken.permissions),
@@ -238,15 +309,16 @@ export const permissionServiceFactory = ({
     type: T,
     id: string,
     projectId: string,
-    actorOrgId?: string
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId: string | undefined
   ): Promise<TProjectPermissionRT<T>> => {
     switch (type) {
       case ActorType.USER:
-        return getUserProjectPermission(id, projectId, actorOrgId) as Promise<TProjectPermissionRT<T>>;
+        return getUserProjectPermission(id, projectId, actorAuthMethod, actorOrgId) as Promise<TProjectPermissionRT<T>>;
       case ActorType.SERVICE:
-        return getServiceTokenProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
+        return getServiceTokenProjectPermission(id, projectId, actorOrgId) as Promise<TProjectPermissionRT<T>>;
       case ActorType.IDENTITY:
-        return getIdentityProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
+        return getIdentityProjectPermission(id, projectId, actorOrgId) as Promise<TProjectPermissionRT<T>>;
       default:
         throw new UnauthorizedError({
           message: "Permission not defined",

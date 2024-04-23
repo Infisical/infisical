@@ -25,8 +25,16 @@ export const identityServiceFactory = ({
   identityOrgMembershipDAL,
   permissionService
 }: TIdentityServiceFactoryDep) => {
-  const createIdentity = async ({ name, role, actor, orgId, actorId, actorOrgId }: TCreateIdentityDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const createIdentity = async ({
+    name,
+    role,
+    actor,
+    orgId,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TCreateIdentityDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
@@ -54,7 +62,15 @@ export const identityServiceFactory = ({
     return identity;
   };
 
-  const updateIdentity = async ({ id, role, name, actor, actorId, actorOrgId }: TUpdateIdentityDTO) => {
+  const updateIdentity = async ({
+    id,
+    role,
+    name,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TUpdateIdentityDTO) => {
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership) throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 
@@ -62,6 +78,7 @@ export const identityServiceFactory = ({
       actor,
       actorId,
       identityOrgMembership.orgId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
@@ -70,6 +87,7 @@ export const identityServiceFactory = ({
       ActorType.IDENTITY,
       id,
       identityOrgMembership.orgId,
+      actorAuthMethod,
       actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
@@ -108,7 +126,7 @@ export const identityServiceFactory = ({
     return { ...identity, orgId: identityOrgMembership.orgId };
   };
 
-  const deleteIdentity = async ({ actorId, actor, actorOrgId, id }: TDeleteIdentityDTO) => {
+  const deleteIdentity = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TDeleteIdentityDTO) => {
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership) throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 
@@ -116,13 +134,16 @@ export const identityServiceFactory = ({
       actor,
       actorId,
       identityOrgMembership.orgId,
+      actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
     const { permission: identityRolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       id,
-      identityOrgMembership.orgId
+      identityOrgMembership.orgId,
+      actorAuthMethod,
+      actorOrgId
     );
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
     if (!hasRequiredPriviledges)
@@ -132,12 +153,12 @@ export const identityServiceFactory = ({
     return { ...deletedIdentity, orgId: identityOrgMembership.orgId };
   };
 
-  const listOrgIdentities = async ({ orgId, actor, actorId, actorOrgId }: TOrgPermission) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorOrgId);
+  const listOrgIdentities = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TOrgPermission) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
 
-    const identityMemberhips = await identityOrgMembershipDAL.findByOrgId(orgId);
-    return identityMemberhips;
+    const identityMemberships = await identityOrgMembershipDAL.findByOrgId(orgId);
+    return identityMemberships;
   };
 
   return {

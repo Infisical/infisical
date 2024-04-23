@@ -17,6 +17,7 @@ import { SamlProviders, TGetSamlCfgDTO } from "@app/ee/services/saml-config/saml
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -203,8 +204,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/config",
     method: "GET",
+    url: "/config",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       querystring: z.object({
@@ -231,6 +235,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         orgId: req.query.organizationId,
         type: "org"
       });
@@ -239,8 +244,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/config",
     method: "POST",
+    url: "/config",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
@@ -259,6 +267,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       const saml = await server.services.saml.createSamlCfg({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.body.organizationId,
         ...req.body
@@ -268,8 +277,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/config",
     method: "PATCH",
+    url: "/config",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z
@@ -290,6 +302,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       const saml = await server.services.saml.updateSamlCfg({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.body.organizationId,
         ...req.body

@@ -6,17 +6,20 @@ import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 
 import { AuthTokenType } from "../auth/auth-type";
+import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload, TRenewAccessTokenDTO } from "./identity-access-token-types";
 
 type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
+  identityOrgMembershipDAL: TIdentityOrgDALFactory;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
 
 export const identityAccessTokenServiceFactory = ({
-  identityAccessTokenDAL
+  identityAccessTokenDAL,
+  identityOrgMembershipDAL
 }: TIdentityAccessTokenServiceFactoryDep) => {
   const validateAccessTokenExp = (identityAccessToken: TIdentityAccessTokens) => {
     const {
@@ -117,8 +120,16 @@ export const identityAccessTokenServiceFactory = ({
       });
     }
 
+    const identityOrgMembership = await identityOrgMembershipDAL.findOne({
+      identityId: identityAccessToken.identityId
+    });
+
+    if (!identityOrgMembership) {
+      throw new UnauthorizedError({ message: "Identity does not belong to any organization" });
+    }
+
     validateAccessTokenExp(identityAccessToken);
-    return identityAccessToken;
+    return { ...identityAccessToken, orgId: identityOrgMembership.orgId };
   };
 
   return { renewAccessToken, fnValidateIdentityAccessToken };

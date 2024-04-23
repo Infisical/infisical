@@ -1,0 +1,107 @@
+---
+mode: 'custom'
+---
+
+export function openSearch() {
+  document.getElementById('search-bar-entry').click();
+}
+
+<div
+  className="relative w-full flex items-center justify-center"
+  style={{ height: '24rem', backgroundColor: '#1F1F33', overflow: 'hidden' }}
+>
+  <div style={{ flex: 'none' }}>
+    <img
+      src="/images/background.png"
+      style={{ height: '68rem', width: '68rem' }}
+    />
+  </div>
+  <div style={{ position: 'absolute', textAlign: 'center' }}>
+    <div
+      style={{
+        color: 'white',
+        fontWeight: '400',
+        fontSize: '48px',
+        margin: '0',
+      }}
+    >
+      Infisical Documentation
+    </div>
+    <p
+      style={{
+        color: 'white',
+        fontWeight: '400',
+        fontSize: '20px',
+        opacity: '0.7',
+      }}
+    >
+      What can we help you build?
+    </p>
+    <button
+      type="button"
+      className="mx-auto w-full flex items-center text-sm leading-6 shadow-sm text-gray-400 bg-white ring-1 ring-gray-400/20 focus:outline-primary"
+      id="home-search-entry"
+      style={{
+        maxWidth: '24rem',
+        borderRadius: '4px',
+        marginTop: '3rem',
+        paddingLeft: '0.75rem',
+        paddingRight: '0.75rem',
+        paddingTop: '0.75rem',
+        paddingBottom: '0.75rem',
+      }}
+      onClick={openSearch}
+    >
+      <svg
+        className="h-4 w-4 ml-1.5 mr-3 flex-none bg-gray-500 hover:bg-gray-600 dark:bg-white/50 dark:hover:bg-white/70"
+        style={{
+          maskImage:
+            'url("https://mintlify.b-cdn.net/v6.5.1/solid/magnifying-glass.svg")',
+          maskRepeat: 'no-repeat',
+          maskPosition: 'center center',
+        }}
+      />
+      Start a chat with us...
+    </button>
+  </div>
+</div>
+
+<div style={{marginTop: '6rem', marginBottom: '8rem', maxWidth: '70rem', marginLeft: 'auto',
+    marginRight: 'auto', paddingLeft: '1.25rem',
+    paddingRight: '1.25rem' }}>
+
+<div
+  style={{
+    textAlign: 'center',
+    fontSize: '24px',
+    fontWeight: '600',
+    color: '#121142',
+    marginBottom: '3rem',
+  }}
+>
+  Choose a topic below or simply{' '}
+  <span className="text-primary">get started</span>
+</div>
+
+<CardGroup cols={3}>
+  <Card title="Getting Started" icon="book-open" href="/guides">
+    Practical guides and best practices to get you up and running quickly.
+  </Card>
+  <Card title="API Reference" icon="code-simple" href="/reference">
+    Comprehensive details about the Infisical API.
+  </Card>
+  <Card title="Security" icon="code-simple" href="/reference">
+    Learn more about Infisical's architecture and underlying security.
+  </Card>
+  <Card title="Self-hosting" icon="link-simple" href="/integrations">
+    Read self-hosting instruction for Infisical.
+  </Card>
+  <Card title="Integrations" icon="link-simple" href="/integrations">
+    Infisical's growing number of third-party integrations.
+  </Card>
+  <Card title="Releases" icon="party-horn" href="/release-notes">
+    News about features and changes in Pinecone and related tools.
+  </Card>
+</CardGroup>
+
+</div>

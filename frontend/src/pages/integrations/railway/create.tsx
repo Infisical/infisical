@@ -114,7 +114,9 @@ export default function RailwayCreateIntegrationPage() {
     }
   };
 
-  const filteredTargetServices = targetServices ? [ { name: "", serviceId: "none" }, ...targetServices ] : [ { name: "", serviceId: "none" } ];
+  const filteredTargetServices = targetServices
+    ? [{ name: "", serviceId: "none" }, ...targetServices]
+    : [{ name: "", serviceId: "none" }];
 
   return workspace &&
     selectedSourceEnvironment &&
@@ -201,14 +203,14 @@ export default function RailwayCreateIntegrationPage() {
             className="w-full border border-mineshaft-500"
             isDisabled={targetServices.length === 0}
           >
-              {filteredTargetServices.map((targetService) => (
-                <SelectItem
-                  value={targetService.serviceId as string}
-                  key={`target-service-${targetService.serviceId as string}`}
-                >
-                  {targetService.name}
-                </SelectItem>
-              ))}
+            {filteredTargetServices.map((targetService) => (
+              <SelectItem
+                value={targetService.serviceId as string}
+                key={`target-service-${targetService.serviceId as string}`}
+              >
+                {targetService.name}
+              </SelectItem>
+            ))}
           </Select>
         </FormControl>
         <Button

@@ -36,18 +36,33 @@ var getCmd = &cobra.Command{
 			}
 		}
 
-		infisicalToken, err := util.GetInfisicalServiceToken(cmd)
-
+		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		token, err := util.GetInfisicalToken(cmd)
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
 		foldersPath, err := cmd.Flags().GetString("path")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		folders, err := util.GetAllFolders(models.GetAllFoldersParameters{Environment: environmentName, InfisicalToken: infisicalToken, FoldersPath: foldersPath})
+		request := models.GetAllFoldersParameters{
+			Environment: environmentName,
+			WorkspaceId: projectId,
+			FoldersPath: foldersPath,
+		}
+
+		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+			request.InfisicalToken = token.Token
+		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+			request.UniversalAuthAccessToken = token.Token
+		}
+
+		folders, err := util.GetAllFolders(request)
 		if err != nil {
 			util.HandleError(err, "Unable to get folders")
 		}

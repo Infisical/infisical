@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -9,6 +10,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z
         .object({
@@ -34,6 +38,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       const approval = await server.services.secretApprovalPolicy.createSecretApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.body.workspaceId,
         ...req.body,
@@ -46,6 +51,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/:sapId",
     method: "PATCH",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         sapId: z.string()
@@ -72,6 +80,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       const approval = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
         secretPolicyId: req.params.sapId
@@ -83,6 +92,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/:sapId",
     method: "DELETE",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         sapId: z.string()
@@ -98,6 +110,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       const approval = await server.services.secretApprovalPolicy.deleteSecretApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         secretPolicyId: req.params.sapId
       });
@@ -108,6 +121,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim()
@@ -123,6 +139,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       const approvals = await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.query.workspaceId
       });
@@ -133,6 +150,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/board",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim(),
@@ -150,6 +170,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.query.workspaceId,
         ...req.query

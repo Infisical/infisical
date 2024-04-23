@@ -76,7 +76,7 @@ export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props)
   return (
     <div
       className={twMerge(
-        "px-10 py-6 bg-mineshaft-800 rounded-md",
+        "rounded-md bg-mineshaft-800 px-10 py-6",
         selectedPermissionCategory !== Permission.NoAccess && "border-l-2 border-primary-600"
       )}
     >
@@ -84,8 +84,8 @@ export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props)
         <div>
           <FontAwesomeIcon icon={faMoneyBill} className="text-4xl" />
         </div>
-        <div className="flex-grow flex flex-col">
-          <div className="font-medium mb-1 text-lg">Project</div>
+        <div className="flex flex-grow flex-col">
+          <div className="mb-1 text-lg font-medium">Project</div>
           <div className="text-xs font-light">
             View and create new projects in this organization
           </div>
@@ -107,7 +107,7 @@ export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props)
       <motion.div
         initial={false}
         animate={{ height: isCustom ? "2.5rem" : 0, paddingTop: isCustom ? "1rem" : 0 }}
-        className="overflow-hidden grid gap-8 grid-flow-col auto-cols-min"
+        className="grid auto-cols-min grid-flow-col gap-8 overflow-hidden"
       >
         {isCustom &&
           PERMISSIONS.map(({ action, label }) => (

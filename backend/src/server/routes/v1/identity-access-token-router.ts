@@ -1,13 +1,19 @@
 import { z } from "zod";
 
+import { UNIVERSAL_AUTH } from "@app/lib/api-docs";
+import { writeLimit } from "@app/server/config/rateLimiter";
+
 export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/token/renew",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Renew access token",
       body: z.object({
-        accessToken: z.string().trim()
+        accessToken: z.string().trim().describe(UNIVERSAL_AUTH.RENEW_ACCESS_TOKEN.accessToken)
       }),
       response: {
         200: z.object({

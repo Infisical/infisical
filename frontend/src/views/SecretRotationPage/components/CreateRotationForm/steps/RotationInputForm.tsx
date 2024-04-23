@@ -41,7 +41,7 @@ export const RotationInputForm = ({ onSubmit, onCancel, inputSchema, secretPath,
               key={`provider-input-${inputName}`}
               label={
                 <div className="flex items-center space-x-2">
-                  <FormLabel className="uppercase mb-0" label={inputName.replaceAll("_", " ")} />
+                  <FormLabel className="mb-0 uppercase" label={inputName.replaceAll("_", " ")} />
                   {Boolean(inputSchema.properties[inputName]?.desc) && (
                     <Tooltip
                       className="max-w-xs"

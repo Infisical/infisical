@@ -1,0 +1,140 @@
+name: Deployment pipeline
+on: [workflow_dispatch]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  infisical-image:
+    name: Build backend image
+    runs-on: ubuntu-latest
+    steps:
+      - name: ☁️ Checkout source
+        uses: actions/checkout@v3
+      - name: 📦 Install dependencies to test all dependencies
+        run: npm ci --only-production
+        working-directory: backend
+      - name: Save commit hashes for tag
+        id: commit
+        uses: pr-mpt/actions-commit-hash@v2
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: 🐋 Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
+      - name: 🏗️ Build backend and push to docker hub
+        uses: depot/build-push-action@v1
+        with:
+          project: 64mmf0n610
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          push: true
+          context: .
+          file: Dockerfile.standalone-infisical
+          tags: |
+            infisical/staging_infisical:${{ steps.commit.outputs.short }}
+            infisical/staging_infisical:latest
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            INFISICAL_PLATFORM_VERSION=${{ steps.commit.outputs.short }}
+    
+  gamma-deployment:
+    name: Deploy to gamma
+    runs-on: ubuntu-latest
+    needs: [infisical-image]
+    environment:
+      name: Gamma
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v2
+        with:
+          node-version: "20"
+      - name: Change directory to backend and install dependencies
+        env:
+          DB_CONNECTION_URI: ${{ secrets.DB_CONNECTION_URI }}
+        run: |
+          cd backend
+          npm install
+          npm run migration:latest
+      - name: Configure AWS Credentials 
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::905418227878:role/deploy-new-ecs-img
+      - name: Save commit hashes for tag
+        id: commit
+        uses: pr-mpt/actions-commit-hash@v2
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition --task-definition infisical-prod-platform --query taskDefinition > task-definition.json
+      - name: Render Amazon ECS task definition
+        id: render-web-container
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: infisical-prod-platform
+          image: infisical/staging_infisical:${{ steps.commit.outputs.short }}
+          environment-variables: "LOG_LEVEL=info"
+      - name: Deploy to Amazon ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-web-container.outputs.task-definition }}
+          service: infisical-prod-platform
+          cluster: infisical-prod-platform
+          wait-for-service-stability: true
+
+  production-postgres-deployment:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    needs: [gamma-deployment]
+    environment:
+      name: Production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v2
+        with:
+          node-version: "20"
+      - name: Change directory to backend and install dependencies
+        env:
+          DB_CONNECTION_URI: ${{ secrets.DB_CONNECTION_URI }}
+        run: |
+          cd backend
+          npm install
+          npm run migration:latest
+      - name: Configure AWS Credentials 
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::381492033652:role/gha-make-prod-deployment
+      - name: Save commit hashes for tag
+        id: commit
+        uses: pr-mpt/actions-commit-hash@v2
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition --task-definition infisical-prod-platform --query taskDefinition > task-definition.json
+      - name: Render Amazon ECS task definition
+        id: render-web-container
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: infisical-prod-platform
+          image: infisical/staging_infisical:${{ steps.commit.outputs.short }}
+          environment-variables: "LOG_LEVEL=info"
+      - name: Deploy to Amazon ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-web-container.outputs.task-definition }}
+          service: infisical-prod-platform
+          cluster: infisical-prod-platform
+          wait-for-service-stability: true

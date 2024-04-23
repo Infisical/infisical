@@ -3,9 +3,7 @@ import React, { useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 
-import {
-  useSendVerificationEmail
-} from "@app/hooks/api";
+import { useSendVerificationEmail } from "@app/hooks/api";
 
 import Error from "../basic/Error";
 import { Button } from "../v2";
@@ -90,8 +88,8 @@ export default function CodeInputStep({
   return (
     <div className="mx-auto h-full w-full pb-4 md:px-8">
       <p className="text-md flex justify-center text-bunker-200">{t("signup.step2-message")}</p>
-      <p className="text-md flex justify-center font-semibold my-1 text-bunker-200">{email} </p>
-      <div className="hidden md:block w-max min-w-[20rem] mx-auto">
+      <p className="text-md my-1 flex justify-center font-semibold text-bunker-200">{email} </p>
+      <div className="mx-auto hidden w-max min-w-[20rem] md:block">
         <ReactCodeInput
           name=""
           inputMode="tel"
@@ -102,7 +100,7 @@ export default function CodeInputStep({
           className="mt-6 mb-2"
         />
       </div>
-      <div className="block md:hidden w-max mt-4 mx-auto">
+      <div className="mx-auto mt-4 block w-max md:hidden">
         <ReactCodeInput
           name=""
           inputMode="tel"
@@ -114,26 +112,29 @@ export default function CodeInputStep({
         />
       </div>
       {codeError && <Error text={t("signup.step2-code-error")} />}
-      <div className="flex flex-col items-center justify-center lg:w-[19%] w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
-        <div className="text-l py-1 text-lg w-full">
+      <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
+        <div className="text-l w-full py-1 text-lg">
           <Button
             type="submit"
             onClick={incrementStep}
             size="sm"
             isFullWidth
-            className='h-14'
+            className="h-14"
             colorSchema="primary"
             variant="outline_bg"
             isLoading={isCodeInputCheckLoading}
-          > {String(t("signup.verify"))} </Button>
+          >
+            {" "}
+            {String(t("signup.verify"))}{" "}
+          </Button>
         </div>
       </div>
-      <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
+      <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
         <div className="flex flex-row items-baseline gap-1 text-sm">
           <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
-          <div className="mt-2 text-bunker-400 text-md flex flex-row">
+          <div className="text-md mt-2 flex flex-row text-bunker-400">
             <button disabled={isLoading} onClick={resendVerificationEmail} type="button">
-              <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>
+              <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
                 {isResendingVerificationEmail
                   ? t("signup.step2-resend-progress")
                   : t("signup.step2-resend-submit")}
@@ -141,7 +142,7 @@ export default function CodeInputStep({
             </button>
           </div>
         </div>
-        <p className="text-sm text-bunker-400 pb-2">{t("signup.step2-spam-alert")}</p>
+        <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
       </div>
     </div>
   );

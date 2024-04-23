@@ -10,7 +10,7 @@ import { seedData1 } from "@app/db/seed-data";
 import { initEnvConfig } from "@app/lib/config/env";
 import { initLogger } from "@app/lib/logger";
 import { main } from "@app/server/app";
-import { AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
 import { mockQueue } from "./mocks/queue";
 import { mockSmtpServer } from "./mocks/smtp";
@@ -52,6 +52,8 @@ export default {
           authTokenType: AuthTokenType.ACCESS_TOKEN,
           userId: seedData1.id,
           tokenVersionId: seedData1.token.id,
+          authMethod: AuthMethod.EMAIL,
+          organizationId: seedData1.organization.id,
           accessVersion: 1
         },
         cfg.AUTH_SECRET,
