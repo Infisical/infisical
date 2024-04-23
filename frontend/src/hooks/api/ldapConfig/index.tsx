@@ -1,1 +1,2 @@
-export { useCreateLDAPConfig, useGetLDAPConfig, useUpdateLDAPConfig } from "./queries";
+export { useCreateLDAPConfig, useUpdateLDAPConfig } from "./mutations";
+export { useGetLDAPConfig } from "./queries";

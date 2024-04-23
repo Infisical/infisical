@@ -7,6 +7,8 @@ export type TCreateLdapCfgDTO = {
   bindDN: string;
   bindPass: string;
   searchBase: string;
+  groupSearchBase: string;
+  groupSearchFilter: string;
   caCert: string;
 } & TOrgPermission;
 
@@ -18,6 +20,8 @@ export type TUpdateLdapCfgDTO = {
   bindDN: string;
   bindPass: string;
   searchBase: string;
+  groupSearchBase: string;
+  groupSearchFilter: string;
   caCert: string;
 }> &
   TOrgPermission;

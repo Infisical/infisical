@@ -15,8 +15,9 @@ import { LDAPModal } from "./LDAPModal";
 export const OrgLDAPSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
-  
+
   const { data } = useGetLDAPConfig(currentOrg?.id ?? "");
+
   const { mutateAsync } = useUpdateLDAPConfig();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addLDAP",
@@ -63,7 +64,9 @@ export const OrgLDAPSection = (): JSX.Element => {
             url: "",
             bindDN: "",
             bindPass: "",
-            searchBase: ""
+            searchBase: "",
+            groupSearchBase: "",
+            groupSearchFilter: ""
           });
         }
 

@@ -19,7 +19,7 @@ export const getDefaultOnPremFeatures = () => {
     auditLogsRetentionDays: 0,
     samlSSO: false,
     scim: false,
-    ldap: false,
+    ldap: true,
     groups: false,
     status: null,
     trial_end: null,

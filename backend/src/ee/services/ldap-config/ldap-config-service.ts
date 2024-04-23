@@ -60,6 +60,8 @@ export const ldapConfigServiceFactory = ({
     bindDN,
     bindPass,
     searchBase,
+    groupSearchBase,
+    groupSearchFilter,
     caCert
   }: TCreateLdapCfgDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
@@ -135,6 +137,8 @@ export const ldapConfigServiceFactory = ({
       bindPassIV,
       bindPassTag,
       searchBase,
+      groupSearchBase,
+      groupSearchFilter,
       encryptedCACert,
       caCertIV,
       caCertTag
@@ -154,6 +158,8 @@ export const ldapConfigServiceFactory = ({
     bindDN,
     bindPass,
     searchBase,
+    groupSearchBase,
+    groupSearchFilter,
     caCert
   }: TUpdateLdapCfgDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
@@ -169,7 +175,9 @@ export const ldapConfigServiceFactory = ({
     const updateQuery: TLdapConfigsUpdate = {
       isActive,
       url,
-      searchBase
+      searchBase,
+      groupSearchBase,
+      groupSearchFilter
     };
 
     const orgBot = await orgBotDAL.findOne({ orgId });
@@ -271,6 +279,8 @@ export const ldapConfigServiceFactory = ({
       bindDN,
       bindPass,
       searchBase: ldapConfig.searchBase,
+      groupSearchBase: ldapConfig.groupSearchBase,
+      groupSearchFilter: ldapConfig.groupSearchFilter,
       caCert
     };
   };
@@ -305,7 +315,7 @@ export const ldapConfigServiceFactory = ({
         bindCredentials: ldapConfig.bindPass,
         searchBase: ldapConfig.searchBase,
         searchFilter: "(uid={{username}})",
-        searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
+        // searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
         ...(ldapConfig.caCert !== ""
           ? {
               tlsOptions: {

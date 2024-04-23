@@ -11,10 +11,12 @@ import { IncomingMessage } from "node:http";
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
 import { FastifyRequest } from "fastify";
+import ldapjs from "ldapjs";
 import LdapStrategy from "passport-ldapauth";
 import { z } from "zod";
 
 import { LdapConfigsSchema } from "@app/db/schemas";
+import { searchGroups } from "@app/ee/services/ldap-config/ldap-fns";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -44,26 +46,70 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     });
   };
 
+  interface LDAPConfig {
+    id: string;
+    organization: string;
+    isActive: boolean;
+    url: string;
+    bindDN: string;
+    bindPass: string;
+    searchBase: string;
+    groupSearchBase: string;
+    groupSearchFilter: string;
+    caCert: string;
+  }
+
   passport.use(
     new LdapStrategy(
       getLdapPassportOpts as any,
       // eslint-disable-next-line
       async (req: IncomingMessage, user, cb) => {
         try {
-          const { isUserCompleted, providerAuthToken } = await server.services.ldap.ldapLogin({
-            externalId: user.uidNumber,
-            username: user.uid,
-            firstName: user.givenName,
-            lastName: user.sn,
-            emails: user.mail ? [user.mail] : [],
-            relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
-            orgId: (req as unknown as FastifyRequest).ldapConfig.organization
+          const ldapConfig = (req as unknown as FastifyRequest).ldapConfig as LDAPConfig;
+
+          const ldapClient = ldapjs.createClient({
+            url: ldapConfig.url,
+            bindDN: ldapConfig.bindDN,
+            bindCredentials: ldapConfig.bindPass
           });
 
-          return cb(null, { isUserCompleted, providerAuthToken });
-        } catch (err) {
-          logger.error(err);
-          return cb(err, false);
+          ldapClient.bind(ldapConfig.bindDN, ldapConfig.bindPass, (err) => {
+            if (err) {
+              ldapClient.unbind();
+              return cb(err);
+            }
+
+            const groupFilter =
+              ldapConfig.groupSearchFilter ||
+              "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))";
+            const searchFilter = groupFilter.replace("{{.Username}}", user.uid).replace("{{.UserDN}}", user.dn);
+
+            searchGroups(ldapClient, searchFilter, ldapConfig.groupSearchBase)
+              .then(() => {
+                // groups here
+                ldapClient.unbind();
+                return server.services.ldap.ldapLogin({
+                  externalId: user.uidNumber,
+                  username: user.uid,
+                  firstName: user.givenName,
+                  lastName: user.sn,
+                  emails: user.mail ? [user.mail] : [],
+                  relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
+                  orgId: (req as unknown as FastifyRequest).ldapConfig.organization
+                });
+              })
+              .then(({ isUserCompleted, providerAuthToken }) => {
+                cb(null, { isUserCompleted, providerAuthToken });
+              })
+              .catch((err2) => {
+                ldapClient.unbind();
+                logger.error(err);
+                cb(err2, false);
+              });
+          });
+        } catch (error) {
+          logger.error(error);
+          return cb(error, false);
         }
       }
     )
@@ -117,6 +163,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           bindDN: z.string(),
           bindPass: z.string(),
           searchBase: z.string(),
+          groupSearchBase: z.string(),
+          groupSearchFilter: z.string(),
           caCert: z.string()
         })
       }
@@ -148,6 +196,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         bindDN: z.string().trim(),
         bindPass: z.string().trim(),
         searchBase: z.string().trim(),
+        groupSearchBase: z.string().trim(),
+        groupSearchFilter: z.string().trim(),
         caCert: z.string().trim().default("")
       }),
       response: {
@@ -183,6 +233,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           bindDN: z.string().trim(),
           bindPass: z.string().trim(),
           searchBase: z.string().trim(),
+          groupSearchBase: z.string().trim(),
+          groupSearchFilter: z.string().trim(),
           caCert: z.string().trim()
         })
         .partial()
