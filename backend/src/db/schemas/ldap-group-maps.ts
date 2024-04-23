@@ -11,7 +11,7 @@ export const LdapGroupMapsSchema = z.object({
   id: z.string().uuid(),
   ldapConfigId: z.string().uuid(),
   ldapGroupCN: z.string(),
-  groupSlug: z.string()
+  groupId: z.string().uuid()
 });
 
 export type TLdapGroupMaps = z.infer<typeof LdapGroupMapsSchema>;

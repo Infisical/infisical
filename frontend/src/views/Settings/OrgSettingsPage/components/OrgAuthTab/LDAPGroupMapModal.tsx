@@ -14,6 +14,8 @@ import {
   Input,
   Modal,
   ModalContent,
+  Select,
+  SelectItem,
   Table,
   TableContainer,
   TableSkeleton,
@@ -27,7 +29,9 @@ import {
   useCreateLDAPGroupMapping,
   useDeleteLDAPGroupMapping,
   useGetLDAPConfig,
-  useGetLDAPGroupMaps} from "@app/hooks/api";
+  useGetLDAPGroupMaps,
+  useGetOrganizationGroups
+} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -56,6 +60,7 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
   const { currentOrg } = useOrganization();
 
   const { data: ldapConfig } = useGetLDAPConfig(currentOrg?.id ?? "");
+  const { data: groups } = useGetOrganizationGroups(currentOrg?.id ?? "");
   const { data: groupMaps, isLoading } = useGetLDAPGroupMaps(ldapConfig?.id ?? "");
   const { mutateAsync: createLDAPGroupMapping, isLoading: createIsLoading } =
     useCreateLDAPGroupMapping();
@@ -152,15 +157,27 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
             <Controller
               control={control}
               name="groupSlug"
-              render={({ field, fieldState: { error } }) => (
+              defaultValue=""
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl
-                  label="Group Slug"
+                  label="Infisical Group"
                   errorText={error?.message}
                   isError={Boolean(error)}
-                  className="ml-4"
+                  className="ml-4 w-full"
                 >
                   <div className="flex">
-                    <Input {...field} placeholder="engineering" />
+                    <Select
+                      defaultValue={field.value}
+                      {...field}
+                      onValueChange={(e) => onChange(e)}
+                      className="w-full"
+                    >
+                      {(groups || []).map(({ name, id, slug }) => (
+                        <SelectItem value={slug} key={`internal-group-${id}`}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </Select>
                     <Button className="ml-4" size="sm" type="submit" isLoading={createIsLoading}>
                       Add mapping
                     </Button>
@@ -183,11 +200,11 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
             <TBody>
               {isLoading && <TableSkeleton columns={3} innerKey="ldap-group-maps" />}
               {!isLoading &&
-                groupMaps?.map(({ id, ldapGroupCN, groupSlug }) => {
+                groupMaps?.map(({ id, ldapGroupCN, group: { name } }) => {
                   return (
                     <Tr className="h-10 items-center" key={`ldap-group-map-${id}`}>
                       <Td>{ldapGroupCN}</Td>
-                      <Td>{groupSlug}</Td>
+                      <Td>{name}</Td>
                       <Td>
                         <IconButton
                           onClick={() => {

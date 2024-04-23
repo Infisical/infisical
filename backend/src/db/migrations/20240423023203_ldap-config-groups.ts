@@ -10,8 +10,9 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("ldapConfigId").notNullable();
       t.foreign("ldapConfigId").references("id").inTable(TableName.LdapConfig).onDelete("CASCADE");
       t.string("ldapGroupCN").notNullable();
-      t.string("groupSlug").notNullable();
-      t.unique(["ldapGroupCN", "groupSlug", "ldapConfigId"]);
+      t.uuid("groupId").notNullable();
+      t.foreign("groupId").references("id").inTable(TableName.Groups).onDelete("CASCADE");
+      t.unique(["ldapGroupCN", "groupId", "ldapConfigId"]);
     });
   }
 

@@ -83,7 +83,6 @@ export const OrgLDAPSection = (): JSX.Element => {
   };
 
   const openLDAPGroupMapModal = () => {
-    console.log("openLDAPGroupMapModal sub: ", subscription);
     if (!subscription?.ldap) {
       handlePopUpOpen("upgradePlan");
       return;

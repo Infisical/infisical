@@ -37,7 +37,7 @@ import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
   ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne">;
-  ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete">;
+  ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete" | "findLdapGroupMapsByLdapConfigId">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
@@ -57,6 +57,7 @@ export const ldapConfigServiceFactory = ({
   ldapGroupMapDAL,
   orgDAL,
   orgBotDAL,
+  groupDAL,
   userDAL,
   userAliasDAL,
   permissionService,
@@ -343,7 +344,17 @@ export const ldapConfigServiceFactory = ({
     return { opts, ldapConfig };
   };
 
-  const ldapLogin = async ({ externalId, username, firstName, lastName, emails, orgId, relayState }: TLdapLoginDTO) => {
+  const ldapLogin = async ({
+    // ldapConfigId,
+    externalId,
+    username,
+    firstName,
+    lastName,
+    emails,
+    groups,
+    orgId,
+    relayState
+  }: TLdapLoginDTO) => {
     const appCfg = getConfig();
     let userAlias = await userAliasDAL.findOne({
       externalId,
@@ -419,23 +430,28 @@ export const ldapConfigServiceFactory = ({
 
     const user = await userDAL.findOne({ id: userAlias.userId });
 
-    // if (groups) { // TODO
-    //   /**
-    //    * TODO:
-    //    * - Query for groups matching name
-    //    * - Provision, de-provision user to groups accordingly
-    //    */
-
-    //   console.log("there are groups");
-
-    //   const matchingGroups = await groupDAL.find({
-    //     $in: {
-    //       name: groups.map((group) => group.cn)
-    //     }
-    //   });
-
-    //   console.log("found matching groups");
-    // }
+    if (groups) {
+      // TODO
+      // const m = await ldapGroupMapDAL.find({
+      //   ldapConfigId,
+      //   $in: {
+      //     ldapGroupCN: groups.map((group) => group.cn)
+      //   }
+      // });
+      /**
+       * TODO:
+       * - Find relevant group maps
+       * - Query for groups matching name
+       * - Provision, de-provision user to groups accordingly
+       */
+      // console.log("there are groups");
+      // const matchingGroups = await groupDAL.find({
+      //   $in: {
+      //     name: groups.map((group) => group.cn)
+      //   }
+      // });
+      // console.log("found matching groups");
+    }
 
     const isUserCompleted = Boolean(user.isAccepted);
 
@@ -483,9 +499,7 @@ export const ldapConfigServiceFactory = ({
 
     if (!ldapConfig) throw new BadRequestError({ message: "Failed to find organization LDAP data" });
 
-    const groupMaps = await ldapGroupMapDAL.find({
-      ldapConfigId
-    });
+    const groupMaps = await ldapGroupMapDAL.findLdapGroupMapsByLdapConfigId(ldapConfigId);
 
     return groupMaps;
   };
@@ -507,13 +521,15 @@ export const ldapConfigServiceFactory = ({
       id: ldapConfigId,
       orgId
     });
-
     if (!ldapConfig) throw new BadRequestError({ message: "Failed to find organization LDAP data" });
+
+    const group = await groupDAL.findOne({ slug: groupSlug, orgId });
+    if (!group) throw new BadRequestError({ message: "Failed to find group" });
 
     const groupMap = await ldapGroupMapDAL.create({
       ldapConfigId,
       ldapGroupCN,
-      groupSlug
+      groupId: group.id
     });
 
     return groupMap;

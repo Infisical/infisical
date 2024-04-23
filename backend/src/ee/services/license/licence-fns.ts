@@ -27,7 +27,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   samlSSO: false,
   scim: false,
   ldap: true,
-  groups: false,
+  groups: true,
   status: null,
   trial_end: null,
   has_used_trial: true,

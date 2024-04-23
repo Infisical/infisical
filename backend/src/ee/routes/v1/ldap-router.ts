@@ -71,6 +71,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
             // If group search values are not provided, proceed directly to LDAP login
             return await server.services.ldap
               .ldapLogin({
+                ldapConfigId: ldapConfig.id,
                 externalId: user.uidNumber,
                 username: user.uid,
                 firstName: user.givenName,
@@ -111,6 +112,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
                 // groups here
                 ldapClient.unbind();
                 return server.services.ldap.ldapLogin({
+                  ldapConfigId: ldapConfig.id,
                   externalId: user.uidNumber,
                   username: user.uid,
                   firstName: user.givenName,
@@ -292,7 +294,18 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         configId: z.string().trim()
       }),
       response: {
-        200: z.array(LdapGroupMapsSchema)
+        200: z.array(
+          z.object({
+            id: z.string(),
+            ldapConfigId: z.string(),
+            ldapGroupCN: z.string(),
+            group: z.object({
+              id: z.string(),
+              name: z.string(),
+              slug: z.string()
+            })
+          })
+        )
       }
     },
     handler: async (req) => {
