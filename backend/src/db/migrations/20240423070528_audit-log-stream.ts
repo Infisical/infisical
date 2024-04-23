@@ -13,8 +13,8 @@ export async function up(knex: Knex): Promise<void> {
       t.text("encryptedTokenTag");
       t.string("encryptedTokenAlgorithm");
       t.string("encryptedTokenKeyEncoding");
-      t.string("projectId").notNullable();
-      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      t.uuid("orgId").notNullable();
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
   }

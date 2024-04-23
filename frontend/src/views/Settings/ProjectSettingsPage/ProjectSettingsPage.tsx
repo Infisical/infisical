@@ -4,12 +4,10 @@ import { Tab } from "@headlessui/react";
 
 import { ProjectGeneralTab } from "./components/ProjectGeneralTab";
 import { WebhooksTab } from "./components/WebhooksTab";
-import { AuditLogStreamsTab } from "./components";
 
 const tabs = [
   { name: "General", key: "tab-project-general" },
   { name: "Webhooks", key: "tab-project-webhooks" },
-  { name: "Audit Log Streams", key: "tab-project-audit-log-stream" }
 ];
 
 export const ProjectSettingsPage = () => {
@@ -42,9 +40,6 @@ export const ProjectSettingsPage = () => {
             </Tab.Panel>
             <Tab.Panel>
               <WebhooksTab />
-            </Tab.Panel>
-            <Tab.Panel>
-              <AuditLogStreamsTab />
             </Tab.Panel>
           </Tab.Panels>
         </Tab.Group>

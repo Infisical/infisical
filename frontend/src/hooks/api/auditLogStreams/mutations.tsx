@@ -21,8 +21,8 @@ export const useCreateAuditLogStream = () => {
       );
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(auditLogStreamKeys.list(projectSlug));
+    onSuccess: (_, { orgId }) => {
+      queryClient.invalidateQueries(auditLogStreamKeys.list(orgId));
     }
   });
 };
@@ -38,8 +38,8 @@ export const useUpdateAuditLogStream = () => {
       );
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(auditLogStreamKeys.list(projectSlug));
+    onSuccess: (_, { orgId }) => {
+      queryClient.invalidateQueries(auditLogStreamKeys.list(orgId));
     }
   });
 };
@@ -54,8 +54,8 @@ export const useDeleteAuditLogStream = () => {
       );
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(auditLogStreamKeys.list(projectSlug));
+    onSuccess: (_, { orgId }) => {
+      queryClient.invalidateQueries(auditLogStreamKeys.list(orgId));
     }
   });
 };

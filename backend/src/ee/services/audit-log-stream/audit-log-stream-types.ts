@@ -1,25 +1,22 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TOrgPermission } from "@app/lib/types";
 
-export type TCreateAuditLogStreamDTO = Omit<TProjectPermission, "projectId"> & {
-  projectSlug: string;
+export type TCreateAuditLogStreamDTO = Omit<TOrgPermission, "orgId"> & {
   url: string;
   token?: string;
 };
 
-export type TUpdateAuditLogStreamDTO = Omit<TProjectPermission, "projectId"> & {
+export type TUpdateAuditLogStreamDTO = Omit<TOrgPermission, "orgId"> & {
   id: string;
   url?: string;
   token?: string;
 };
 
-export type TDeleteAuditLogStreamDTO = Omit<TProjectPermission, "projectId"> & {
+export type TDeleteAuditLogStreamDTO = Omit<TOrgPermission, "orgId"> & {
   id: string;
 };
 
-export type TListAuditLogStreamDTO = Omit<TProjectPermission, "projectId"> & {
-  projectSlug: string;
-};
+export type TListAuditLogStreamDTO = Omit<TOrgPermission, "orgId">;
 
-export type TGetDetailsAuditLogStreamDTO = Omit<TProjectPermission, "projectId"> & {
+export type TGetDetailsAuditLogStreamDTO = Omit<TOrgPermission, "orgId"> & {
   id: string;
 };

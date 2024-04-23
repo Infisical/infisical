@@ -251,7 +251,6 @@ export const registerRoutes = async (
   });
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
   const auditLogStreamService = auditLogStreamServiceFactory({
-    projectDAL,
     licenseService,
     permissionService,
     auditLogStreamDAL

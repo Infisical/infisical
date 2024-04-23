@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Spinner } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useOrganization } from "@app/context";
 import {
 	useCreateAuditLogStream,
 	useGetAuditLogStreamDetails,
@@ -23,8 +23,8 @@ type TForm = z.infer<typeof formSchema>;
 
 export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
 	const isEdit = Boolean(id);
-	const { currentWorkspace } = useWorkspace();
-	const projectSlug = currentWorkspace?.slug || "";
+	const { currentOrg } = useOrganization();
+	const orgId = currentOrg?.id || "";
 
 	const auditLogStream = useGetAuditLogStreamDetails(id);
 	const createAuditLogStream = useCreateAuditLogStream();
@@ -43,7 +43,7 @@ export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
 		try {
 			await updateAuditLogStream.mutateAsync({
 				id,
-				projectSlug,
+				orgId,
 				token,
 				url
 			});
@@ -69,7 +69,7 @@ export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
 		}
 		try {
 			await createAuditLogStream.mutateAsync({
-				projectSlug,
+				orgId,
 				token,
 				url
 			});

@@ -617,7 +617,6 @@ export const INTEGRATION = {
 
 export const AUDIT_LOG_STREAMS = {
   CREATE: {
-    projectSlug: "The slug of the project to create audit log stream.",
     url: "The socket URL to push logs to.",
     token: "Authentication token for the external provider used for identification."
   },
@@ -628,9 +627,6 @@ export const AUDIT_LOG_STREAMS = {
   },
   DELETE: {
     id: "The ID of the audit log stream to delete."
-  },
-  LIST: {
-    projectSlug: "The slug of the project to list audit log streams."
   },
   GET_BY_ID: {
     id: "The ID of the audit log stream to get details."

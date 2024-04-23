@@ -2,7 +2,7 @@ import { faPlug, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
 	Button,
 	DeleteActionModal,
@@ -19,21 +19,21 @@ import {
 	UpgradePlanModal
 } from "@app/components/v2";
 import {
-	ProjectPermissionActions,
-	ProjectPermissionSub,
-	useSubscription,
-	useWorkspace
+	OrgPermissionActions,
+	OrgPermissionSubjects,
+	useOrganization,
+	useSubscription
 } from "@app/context";
-import { withProjectPermission } from "@app/hoc";
+import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useDeleteAuditLogStream, useGetAuditLogStreams } from "@app/hooks/api";
 
 import { AuditLogStreamForm } from "./AuditLogStreamForm";
 
-export const AuditLogStreamsTab = withProjectPermission(
+export const AuditLogStreamsTab = withPermission(
 	() => {
-		const { currentWorkspace } = useWorkspace();
-		const projectSlug = currentWorkspace?.slug || "";
+		const { currentOrg } = useOrganization();
+		const orgId = currentOrg?.id || "";
 		const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
 			"auditLogStreamForm",
 			"deleteAuditLogStream",
@@ -42,7 +42,7 @@ export const AuditLogStreamsTab = withProjectPermission(
 		const { subscription } = useSubscription();
 
 		const { data: auditLogStreams, isLoading: isAuditLogStreamsLoading } =
-			useGetAuditLogStreams(projectSlug);
+			useGetAuditLogStreams(orgId);
 
 		// mutation
 		const { mutateAsync: deleteAuditLogStream } = useDeleteAuditLogStream();
@@ -52,7 +52,7 @@ export const AuditLogStreamsTab = withProjectPermission(
 				const auditLogStreamId = popUp?.deleteAuditLogStream?.data as string;
 				await deleteAuditLogStream({
 					id: auditLogStreamId,
-					projectSlug
+					orgId
 				});
 				handlePopUpClose("deleteAuditLogStream");
 				createNotification({
@@ -72,10 +72,7 @@ export const AuditLogStreamsTab = withProjectPermission(
 			<div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
 				<div className="flex justify-between">
 					<p className="text-xl font-semibold text-mineshaft-100">Audit Log Streams</p>
-					<ProjectPermissionCan
-						I={ProjectPermissionActions.Create}
-						a={ProjectPermissionSub.Settings}
-					>
+					<OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Settings}>
 						{(isAllowed) => (
 							<Button
 								onClick={() => {
@@ -91,7 +88,7 @@ export const AuditLogStreamsTab = withProjectPermission(
 								Create
 							</Button>
 						)}
-					</ProjectPermissionCan>
+					</OrgPermissionCan>
 				</div>
 				<p className="mb-8 text-gray-400">
 					Manage audit log streams to send audit log to any logging providers with syslog support.
@@ -124,9 +121,9 @@ export const AuditLogStreamsTab = withProjectPermission(
 											</Td>
 											<Td>
 												<div className="flex items-center justify-end space-x-2">
-													<ProjectPermissionCan
-														I={ProjectPermissionActions.Edit}
-														a={ProjectPermissionSub.Settings}
+													<OrgPermissionCan
+														I={OrgPermissionActions.Edit}
+														a={OrgPermissionSubjects.Settings}
 													>
 														{(isAllowed) => (
 															<Button
@@ -138,10 +135,10 @@ export const AuditLogStreamsTab = withProjectPermission(
 																Edit
 															</Button>
 														)}
-													</ProjectPermissionCan>
-													<ProjectPermissionCan
-														I={ProjectPermissionActions.Delete}
-														a={ProjectPermissionSub.Settings}
+													</OrgPermissionCan>
+													<OrgPermissionCan
+														I={OrgPermissionActions.Delete}
+														a={OrgPermissionSubjects.Settings}
 													>
 														{(isAllowed) => (
 															<Button
@@ -155,7 +152,7 @@ export const AuditLogStreamsTab = withProjectPermission(
 																Delete
 															</Button>
 														)}
-													</ProjectPermissionCan>
+													</OrgPermissionCan>
 												</div>
 											</Td>
 										</Tr>
@@ -196,5 +193,5 @@ export const AuditLogStreamsTab = withProjectPermission(
 			</div>
 		);
 	},
-	{ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Settings }
+	{ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Settings }
 );

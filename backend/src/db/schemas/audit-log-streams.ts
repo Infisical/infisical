@@ -15,7 +15,7 @@ export const AuditLogStreamsSchema = z.object({
   encryptedTokenTag: z.string().nullable().optional(),
   encryptedTokenAlgorithm: z.string().nullable().optional(),
   encryptedTokenKeyEncoding: z.string().nullable().optional(),
-  projectId: z.string(),
+  orgId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

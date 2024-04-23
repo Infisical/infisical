@@ -21,7 +21,6 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
         }
       ],
       body: z.object({
-        projectSlug: z.string().min(1).describe(AUDIT_LOG_STREAMS.CREATE.projectSlug),
         url: z.string().min(1).describe(AUDIT_LOG_STREAMS.CREATE.url),
         token: z.string().optional().describe(AUDIT_LOG_STREAMS.CREATE.token)
       }),
@@ -38,7 +37,6 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        projectSlug: req.body.projectSlug,
         url: req.body.url,
         token: req.body.token
       });
@@ -174,9 +172,6 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
           bearerAuth: []
         }
       ],
-      querystring: z.object({
-        projectSlug: z.string().describe(AUDIT_LOG_STREAMS.LIST.projectSlug)
-      }),
       response: {
         200: z.object({
           auditLogStreams: SanitizedAuditLogStreamSchema.array()
@@ -189,8 +184,7 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        projectSlug: req.query.projectSlug
+        actorAuthMethod: req.permission.authMethod
       });
 
       return { auditLogStreams };

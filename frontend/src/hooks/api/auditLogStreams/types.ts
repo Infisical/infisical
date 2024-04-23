@@ -5,19 +5,19 @@ export type TAuditLogStream = {
 };
 
 export type TCreateAuditLogStreamDTO = {
-  projectSlug: string;
   url: string;
   token?: string;
+  orgId: string;
 };
 
 export type TUpdateAuditLogStreamDTO = {
   id: string;
-  projectSlug: string;
   url?: string;
   token?: string;
+  orgId: string;
 };
 
 export type TDeleteAuditLogStreamDTO = {
   id: string;
-  projectSlug: string;
+  orgId: string;
 };

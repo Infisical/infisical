@@ -4,11 +4,10 @@ import { SecretKeyEncoding } from "@app/db/schemas";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { validateLocalIps } from "@app/lib/validator";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
+import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
 import {
   TCreateAuditLogStreamDTO,
@@ -20,8 +19,7 @@ import {
 
 type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
@@ -30,40 +28,29 @@ export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServ
 export const auditLogStreamServiceFactory = ({
   auditLogStreamDAL,
   permissionService,
-  projectDAL,
   licenseService
 }: TAuditLogStreamServiceFactoryDep) => {
-  const create = async ({
-    projectSlug,
-    url,
-    actor,
-    token,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: TCreateAuditLogStreamDTO) => {
+  const create = async ({ url, actor, token, actorId, actorOrgId, actorAuthMethod }: TCreateAuditLogStreamDTO) => {
+    if (!actorOrgId) throw new BadRequestError({ message: "Missing org id from token" });
+
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.auditLogStreams)
       throw new BadRequestError({
         message: "Failed to create audit log streams due to plan restriction. Upgrade plan to create group."
       });
 
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new BadRequestError({ message: "Project not found" });
-    const projectId = project.id;
-
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      projectId,
+      actorOrgId,
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
     validateLocalIps(url);
 
-    const totalStreams = await auditLogStreamDAL.find({ projectId });
+    const totalStreams = await auditLogStreamDAL.find({ orgId: actorOrgId });
     if (totalStreams.length >= plan.auditLogStreamLimit) {
       throw new BadRequestError({
         message:
@@ -72,7 +59,7 @@ export const auditLogStreamServiceFactory = ({
     }
     const encryptedToken = token ? infisicalSymmetricEncypt(token) : undefined;
     const logStream = await auditLogStreamDAL.create({
-      projectId,
+      orgId: actorOrgId,
       url,
       ...(encryptedToken
         ? {
@@ -96,6 +83,8 @@ export const auditLogStreamServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TUpdateAuditLogStreamDTO) => {
+    if (!actorOrgId) throw new BadRequestError({ message: "Missing org id from token" });
+
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.auditLogStreams)
       throw new BadRequestError({
@@ -105,20 +94,13 @@ export const auditLogStreamServiceFactory = ({
     const logStream = await auditLogStreamDAL.findById(id);
     if (!logStream) throw new BadRequestError({ message: "Audit log stream not found" });
 
-    const { projectId } = logStream;
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+    const { orgId } = logStream;
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
     if (url) validateLocalIps(url);
     const encryptedToken = token ? infisicalSymmetricEncypt(token) : undefined;
     const updatedLogStream = await auditLogStreamDAL.updateById(id, {
-      projectId,
       url,
       ...(encryptedToken
         ? {
@@ -134,18 +116,14 @@ export const auditLogStreamServiceFactory = ({
   };
 
   const deleteById = async ({ id, actor, actorId, actorOrgId, actorAuthMethod }: TDeleteAuditLogStreamDTO) => {
+    if (!actorOrgId) throw new BadRequestError({ message: "Missing org id from token" });
+
     const logStream = await auditLogStreamDAL.findById(id);
     if (!logStream) throw new BadRequestError({ message: "Audit log stream not found" });
 
-    const { projectId } = logStream;
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Settings);
+    const { orgId } = logStream;
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
 
     const deletedLogStream = await auditLogStreamDAL.deleteById(id);
     return deletedLogStream;
@@ -155,15 +133,10 @@ export const auditLogStreamServiceFactory = ({
     const logStream = await auditLogStreamDAL.findById(id);
     if (!logStream) throw new BadRequestError({ message: "Audit log stream not found" });
 
-    const { projectId } = logStream;
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
+    const { orgId } = logStream;
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+
     const token =
       logStream?.encryptedTokenCiphertext && logStream?.encryptedTokenIV && logStream?.encryptedTokenTag
         ? infisicalSymmetricDecrypt({
@@ -177,21 +150,17 @@ export const auditLogStreamServiceFactory = ({
     return { ...logStream, token };
   };
 
-  const list = async ({ projectSlug, actor, actorId, actorOrgId, actorAuthMethod }: TListAuditLogStreamDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new BadRequestError({ message: "Project not found" });
-    const projectId = project.id;
-
-    const { permission } = await permissionService.getProjectPermission(
+  const list = async ({ actor, actorId, actorOrgId, actorAuthMethod }: TListAuditLogStreamDTO) => {
+    const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      projectId,
+      actorOrgId,
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 
-    const logStreams = await auditLogStreamDAL.find({ projectId });
+    const logStreams = await auditLogStreamDAL.find({ orgId: actorOrgId });
     return logStreams;
   };
 

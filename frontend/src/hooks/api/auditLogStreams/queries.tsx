@@ -5,28 +5,23 @@ import { apiRequest } from "@app/config/request";
 import { TAuditLogStream } from "./types";
 
 export const auditLogStreamKeys = {
-	list: (projectSlug: string) => ["audit-log-stream", { projectSlug }],
+	list: (orgId: string) => ["audit-log-stream", { orgId }],
 	getById: (id: string) => ["audit-log-stream-details", { id }]
 };
 
-const fetchAuditLogStreams = async (projectSlug: string) => {
+const fetchAuditLogStreams = async () => {
 	const { data } = await apiRequest.get<{ auditLogStreams: TAuditLogStream[] }>(
-		"/api/v1/audit-log-streams",
-		{
-			params: {
-				projectSlug
-			}
-		}
+		"/api/v1/audit-log-streams"
 	);
 
 	return data.auditLogStreams;
 };
 
-export const useGetAuditLogStreams = (projectSlug: string) =>
+export const useGetAuditLogStreams = (orgId: string) =>
 	useQuery({
-		queryKey: auditLogStreamKeys.list(projectSlug),
-		queryFn: () => fetchAuditLogStreams(projectSlug),
-		enabled: Boolean(projectSlug)
+		queryKey: auditLogStreamKeys.list(orgId),
+		queryFn: () => fetchAuditLogStreams(),
+		enabled: Boolean(orgId)
 	});
 
 const fetchAuditLogStreamDetails = async (id: string) => {
