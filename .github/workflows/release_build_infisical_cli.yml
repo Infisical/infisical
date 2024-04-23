@@ -14,7 +14,7 @@ permissions:
     # issues: write
 jobs:
     cli-integration-tests:
-        name: CLI Integration Tests
+        name: Run tests before deployment
         uses: ./.github/workflows/run-cli-tests.yml
         secrets:
             CLI_TESTS_UA_CLIENT_ID: ${{ secrets.CLI_TESTS_UA_CLIENT_ID }}
@@ -23,17 +23,9 @@ jobs:
             CLI_TESTS_PROJECT_ID: ${{ secrets.CLI_TESTS_PROJECT_ID }}
             CLI_TESTS_ENV_SLUG: ${{ secrets.CLI_TESTS_ENV_SLUG }}
 
-    run-tests:
-        name: Run tests before deployment
-        needs: [cli-integration-tests]
-        runs-on: ubuntu-latest
-
-    # only run if the event is not a workflow_dispatch
     goreleaser:
-        if: github.event_name != 'workflow_dispatch'
-        name: Build and release CLI
         runs-on: ubuntu-20.04
-        needs: [run-tests]
+        needs: [cli-integration-tests]
         steps:
             - uses: actions/checkout@v3
               with:
