@@ -1,10 +1,10 @@
 name: Go CLI Tests
 
 on:
-    #pull_request:
-    #    types: [opened, synchronize]
-    #    paths:
-    #        - "cli/**"
+    pull_request:
+        types: [opened, synchronize]
+        paths:
+            - "cli/**"
 
     workflow_call:
         secrets:
