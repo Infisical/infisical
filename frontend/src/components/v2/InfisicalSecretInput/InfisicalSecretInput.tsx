@@ -8,7 +8,7 @@ import {
 } from "@app/helpers/secret-reference";
 import { useToggle } from "@app/hooks";
 
-import SecretReferenceSelect from "./SecretReferenceSelect";
+import SecretReferenceSelect, { ReferenceType } from "./SecretReferenceSelect";
 
 const replaceContentWithDot = (str: string) => {
   let finalStr = "";
@@ -194,7 +194,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       slug
     }: {
       name: string;
-      type: "folder" | "secret" | "environment";
+      type: ReferenceType;
       slug?: string;
     }) => {
       setShowReferencePopup(false);
@@ -218,22 +218,22 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       ];
 
       let oldReferenceStr = oldReference.slice(2, -1);
-      let currentPath = type === "environment" ? slug! : name;
+      let currentPath = type === ReferenceType.ENVIRONMENT ? slug! : name;
       currentPath = currentPath.replace(/\./g, "\\.");
 
       let replaceReference = "";
       let offset = 3;
       switch (type) {
-        case "folder":
+        case ReferenceType.FOLDER:
           replaceReference = `${oldReferenceStr}${currentPath}.`;
           offset -= 1;
           break;
-        case "secret": {
+        case ReferenceType.SECRET: {
           if (oldReferenceStr.indexOf(".") === -1) oldReferenceStr = "";
           replaceReference = `${oldReferenceStr}${currentPath}`;
           break;
         }
-        case "environment":
+        case ReferenceType.ENVIRONMENT:
           replaceReference = `${currentPath}.`;
           offset -= 1;
           break;
@@ -244,10 +244,10 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       setValue(newValue);
       // TODO: there should be a better way to do
       onChange?.({ target: { value: newValue } } as any);
-      setShowReferencePopup(type !== "secret");
+      setShowReferencePopup(type !== ReferenceType.SECRET);
       const timeout = setTimeout(() => {
         setIsSecretFocused.on();
-        if (type !== "secret") setReferenceKey(replaceReference);
+        if (type !== ReferenceType.SECRET) setReferenceKey(replaceReference);
         const caretPos = start.length + replaceReference.length + offset;
         setCaretPos(caretPos);
         clearTimeout(timeout);

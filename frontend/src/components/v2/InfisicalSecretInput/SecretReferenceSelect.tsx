@@ -16,7 +16,11 @@ import { useGetUserWsKey } from "@app/hooks/api";
 import { useGetFoldersByEnv } from "@app/hooks/api/secretFolders/queries";
 import { useGetProjectSecrets } from "@app/hooks/api/secrets/queries";
 
-type ReferenceType = "environment" | "folder" | "secret";
+export enum ReferenceType {
+  ENVIRONMENT = "environment",
+  FOLDER = "folder",
+  SECRET = "secret"
+}
 
 type Props = {
   open: boolean;
@@ -30,7 +34,7 @@ type Props = {
 
 type ReferenceItem = {
   name: string;
-  type: "folder" | "secret";
+  type: ReferenceType.FOLDER | ReferenceType.SECRET;
   slug?: string;
 };
 
@@ -95,12 +99,12 @@ export default function SecretReferenceSelect({
 
     if (isNested) {
       folders?.forEach((folder) => {
-        currentListReference.unshift({ name: folder, type: "folder" });
+        currentListReference.unshift({ name: folder, type: ReferenceType.FOLDER });
       });
     }
 
     secrets?.forEach((secret) => {
-      currentListReference.unshift({ name: secret.key, type: "secret" });
+      currentListReference.unshift({ name: secret.key, type: ReferenceType.SECRET });
     });
 
     setListReference(currentListReference);
@@ -179,7 +183,7 @@ export default function SecretReferenceSelect({
                 <SelectPrimitive.Item
                   className="flex items-center justify-between border-b border-mineshaft-600 px-2  text-left last:border-b-0"
                   key={`secret-reference-env-${i + 1}`}
-                  value={JSON.stringify({ ...env, type: "environment" })}
+                  value={JSON.stringify({ ...env, type: ReferenceType.ENVIRONMENT })}
                   asChild
                 >
                   <SelectPrimitive.ItemText asChild>
