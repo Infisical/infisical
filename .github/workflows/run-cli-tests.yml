@@ -1,12 +1,23 @@
 name: Go CLI Tests
 
 on:
-    pull_request:
-        types: [opened, synchronize]
-        paths:
-            - "cli/**"
+    #pull_request:
+    #    types: [opened, synchronize]
+    #    paths:
+    #        - "cli/**"
 
     workflow_call:
+        secrets:
+            CLI_TESTS_UA_CLIENT_ID:
+                required: true
+            CLI_TESTS_UA_CLIENT_SECRET:
+                required: true
+            CLI_TESTS_SERVICE_TOKEN:
+                required: true
+            CLI_TESTS_PROJECT_ID:
+                required: true
+            CLI_TESTS_ENV_SLUG:
+                required: true
 
 jobs:
     test:
