@@ -1,0 +1,38 @@
+name: Build patroni 
+on: [workflow_dispatch]
+
+jobs:
+  patroni-image:
+    name: Build patroni
+    runs-on: ubuntu-latest
+    steps:
+      - name: ☁️ Checkout source
+        uses: actions/checkout@v3
+        with:
+          repository: 'zalando/patroni'
+      - name: Save commit hashes for tag
+        id: commit
+        uses: pr-mpt/actions-commit-hash@v2
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: 🐋 Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
+      - name: 🏗️ Build backend and push to docker hub
+        uses: depot/build-push-action@v1
+        with:
+          project: 64mmf0n610
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          push: true
+          context: .
+          file: Dockerfile
+          tags: |
+            infisical/patroni:${{ steps.commit.outputs.short }}
+            infisical/patroni:latest
+          platforms: linux/amd64,linux/arm64
+    
+  
