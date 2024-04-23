@@ -3,8 +3,8 @@ name: Go CLI Tests
 on:
     pull_request:
         types: [opened, synchronize]
-        paths:
-            - "cli/**"
+        # paths:
+        # - "cli/**"
 
 jobs:
     call-workflow:
