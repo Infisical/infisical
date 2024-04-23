@@ -2,13 +2,37 @@
 import React, { forwardRef, TextareaHTMLAttributes, useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
-import {
-  REGEX_SECRET_REFERENCE_FIND,
-  REGEX_SECRET_REFERENCE_INVALID
-} from "@app/helpers/secret-reference";
 import { useToggle } from "@app/hooks";
 
 import SecretReferenceSelect, { ReferenceType } from "./SecretReferenceSelect";
+
+const REGEX_SECRET_REFERENCE_FIND = /(\${([^}]*)})/g;
+const REGEX_SECRET_REFERENCE_INVALID = /(?:\/|\\|\n|\.$|^\.)/;
+
+const isValidSecretReferenceValue = (str: string): boolean => {
+  try {
+    if (!str) return true;
+    let skipNext = false;
+    str.split(REGEX_SECRET_REFERENCE_FIND).flatMap((el) => {
+      if (skipNext) {
+        skipNext = false;
+        return [];
+      }
+
+      const isInterpolationSyntax = el.startsWith("${") && el.endsWith("}");
+      if (!isInterpolationSyntax) return [];
+
+      skipNext = true;
+      if (REGEX_SECRET_REFERENCE_INVALID.test(el.slice(2, -1)))
+        throw new Error("Invalid reference");
+
+      return el;
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
 
 const replaceContentWithDot = (str: string) => {
   let finalStr = "";
@@ -160,7 +184,6 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         const newValue = `${value.slice(0, currCaretPos)}}${value.slice(currCaretPos)}`;
 
         setValue(newValue);
-        // TODO: there should be a better way to do
         onChange?.({ target: { value: newValue } } as any);
         setCaretPos(currCaretPos);
 
@@ -318,9 +341,29 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           secretPath={propSecretPath}
           environment={propEnvironment}
           open={showReferencePopup}
-          handleOpenChange={(isOpen) => handleReferenceOpenChange(isOpen)}
+          handleOpenChange={(isOpen) => {
+            if (!isOpen && !isValidSecretReferenceValue(value)) {
+              return;
+            }
+            handleReferenceOpenChange(isOpen);
+          }}
           onSelect={(refValue) => handleReferenceSelect(refValue)}
           onEscapeKeyDown={() => {
+            if (showReferencePopup && !isValidSecretReferenceValue(value)) {
+              // remove incomplete reference
+              const match = isCaretInsideReference(value, lastCaretPos);
+              const referenceStartIndex = match?.index || 0;
+              const referenceEndIndex = referenceStartIndex + (match?.[0]?.length || 0);
+              const [start, end] = [
+                value.slice(0, referenceStartIndex),
+                value.slice(referenceEndIndex)
+              ];
+
+              const newValue = start + end;
+              setValue(newValue);
+              onChange?.({ target: { value: newValue } } as any);
+            }
+
             const timeout = setTimeout(() => {
               setCaretPos(lastCaretPos);
               clearTimeout(timeout);
