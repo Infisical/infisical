@@ -98,18 +98,14 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const [lastCaretPos, setLastCaretPos] = useState<number>(0);
 
     const isCaretInsideReference = (str: string, start: number) => {
-      const matches = [...str.matchAll(REGEX_SECRET_REFERENCE_FIND)];
-      for (let i = 0; i < matches.length; i += 1) {
-        const match = matches[i];
-        if (
-          typeof match?.index !== "undefined" &&
-          match.index <= start &&
-          start < match.index + match[0].length
-        ) {
-          return match;
-        }
-      }
-      return null;
+      const match = [...str.matchAll(REGEX_SECRET_REFERENCE_FIND)].find(
+        (entry) =>
+          typeof entry?.index !== "undefined" &&
+          entry.index <= start &&
+          start < entry.index + entry[0].length
+      );
+
+      return match || null;
     };
 
     const setCaretPos = (caretPos: number) => {
