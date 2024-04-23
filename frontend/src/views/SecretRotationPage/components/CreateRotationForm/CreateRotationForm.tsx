@@ -102,8 +102,7 @@ export const CreateRotationForm = ({
           ))}
         </Stepper>
         <AnimatePresence exitBeforeEnter>
-          {/* TODO: Check this before merge */}
-          {wizardStep === 0 && wizardData.current.output && (
+          {wizardStep === 0 && (
             <motion.div
               key="input-step"
               transition={{ duration: 0.1 }}
@@ -118,8 +117,6 @@ export const CreateRotationForm = ({
                   setWizardStep((state) => state + 1);
                 }}
                 inputSchema={provider.template?.inputs || {}}
-                secretPath={wizardData.current.output.secretPath}
-                environment={wizardData.current.output.environment}
               />
             </motion.div>
           )}
