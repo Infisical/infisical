@@ -4,10 +4,12 @@ import { Tab } from "@headlessui/react";
 
 import { ProjectGeneralTab } from "./components/ProjectGeneralTab";
 import { WebhooksTab } from "./components/WebhooksTab";
+import { AuditLogStreamsTab } from "./components";
 
 const tabs = [
   { name: "General", key: "tab-project-general" },
-  { name: "Webhooks", key: "tab-project-webhooks" }
+  { name: "Webhooks", key: "tab-project-webhooks" },
+  { name: "Audit Log Streams", key: "tab-project-audit-log-stream" }
 ];
 
 export const ProjectSettingsPage = () => {
@@ -25,9 +27,8 @@ export const ProjectSettingsPage = () => {
                 {({ selected }) => (
                   <button
                     type="button"
-                    className={`w-30 mx-2 mr-4 py-2 text-sm font-medium outline-none ${
-                      selected ? "border-b border-white text-white" : "text-mineshaft-400"
-                    }`}
+                    className={`w-30 mx-2 mr-4 py-2 text-sm font-medium outline-none ${selected ? "border-b border-white text-white" : "text-mineshaft-400"
+                      }`}
                   >
                     {tab.name}
                   </button>
@@ -41,6 +42,9 @@ export const ProjectSettingsPage = () => {
             </Tab.Panel>
             <Tab.Panel>
               <WebhooksTab />
+            </Tab.Panel>
+            <Tab.Panel>
+              <AuditLogStreamsTab />
             </Tab.Panel>
           </Tab.Panels>
         </Tab.Group>

@@ -1,3 +1,4 @@
+export { AuditLogStreamsTab } from "./AuditLogStreamTab";
 export { AutoCapitalizationSection } from "./AutoCapitalizationSection";
 export { DeleteProjectSection } from "./DeleteProjectSection";
 export { E2EESection } from "./E2EESection";
