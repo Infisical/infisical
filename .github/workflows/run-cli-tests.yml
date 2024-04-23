@@ -6,6 +6,8 @@ on:
         paths:
             - "cli/**"
 
+    workflow_dispatch:
+
     workflow_call:
         secrets:
             CLI_TESTS_UA_CLIENT_ID:
