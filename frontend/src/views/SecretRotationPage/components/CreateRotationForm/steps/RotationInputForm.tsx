@@ -4,7 +4,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, FormControl, FormLabel, SecretInput, Tooltip } from "@app/components/v2";
+import { Button, FormControl, FormLabel, Tooltip } from "@app/components/v2";
+import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput/InfisicalSecretInput";
 
 type Props = {
   onSubmit: (data: Record<string, string>) => void;
@@ -19,7 +20,13 @@ type Props = {
 
 const formSchema = z.record(z.string().trim().optional());
 
-export const RotationInputForm = ({ onSubmit, onCancel, inputSchema, secretPath, environment }: Props) => {
+export const RotationInputForm = ({
+  onSubmit,
+  onCancel,
+  inputSchema,
+  secretPath,
+  environment
+}: Props) => {
   const {
     control,
     handleSubmit,
@@ -58,11 +65,12 @@ export const RotationInputForm = ({ onSubmit, onCancel, inputSchema, secretPath,
                 </div>
               }
             >
-              <SecretInput
+              <InfisicalSecretInput
                 {...field}
                 containerClassName="normal-case text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
                 required={inputSchema.required.includes(inputName)}
-                secretPath={secretPath} environment={environment}
+                secretPath={secretPath}
+                environment={environment}
               />
             </FormControl>
           )}

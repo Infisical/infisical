@@ -13,9 +13,9 @@ import {
   Input,
   Modal,
   ModalContent,
-  SecretInput,
   Tooltip
 } from "@app/components/v2";
+import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput/InfisicalSecretInput";
 import { useWorkspace } from "@app/context";
 import { useCreateFolder, useCreateSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
 import { DecryptedSecret, UserWsKeyPair } from "@app/hooks/api/types";
@@ -63,8 +63,6 @@ export const CreateSecretForm = ({
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
   const environments = currentWorkspace?.environments || [];
-
-  
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
@@ -163,7 +161,7 @@ export const CreateSecretForm = ({
                 isError={Boolean(errors?.value)}
                 errorText={errors?.value?.message}
               >
-                <SecretInput
+                <InfisicalSecretInput
                   {...field}
                   containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
                 />
