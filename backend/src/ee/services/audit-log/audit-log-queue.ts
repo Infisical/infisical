@@ -71,7 +71,7 @@ export const auditLogQueueServiceFactory = ({
       userAgentType
     });
 
-    const logStreams = await auditLogStreamDAL.find({ projectId });
+    const logStreams = projectId ? await auditLogStreamDAL.find({ projectId }) : [];
     await Promise.allSettled(
       logStreams.map(
         async ({ url, encryptedTokenTag, encryptedTokenIV, encryptedTokenKeyEncoding, encryptedTokenCiphertext }) => {
