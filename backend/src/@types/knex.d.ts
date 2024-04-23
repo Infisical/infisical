@@ -74,6 +74,9 @@ import {
   TLdapConfigs,
   TLdapConfigsInsert,
   TLdapConfigsUpdate,
+  TLdapGroupMaps,
+  TLdapGroupMapsInsert,
+  TLdapGroupMapsUpdate,
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
@@ -398,6 +401,7 @@ declare module "knex/types/tables" {
     >;
     [TableName.SamlConfig]: Knex.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
     [TableName.LdapConfig]: Knex.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
+    [TableName.LdapGroupMap]: Knex.CompositeTableType<TLdapGroupMaps, TLdapGroupMapsInsert, TLdapGroupMapsUpdate>;
     [TableName.OrgBot]: Knex.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;
     [TableName.AuditLog]: Knex.CompositeTableType<TAuditLogs, TAuditLogsInsert, TAuditLogsUpdate>;
     [TableName.GitAppInstallSession]: Knex.CompositeTableType<

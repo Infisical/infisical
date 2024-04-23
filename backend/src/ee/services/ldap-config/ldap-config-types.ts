@@ -37,5 +37,24 @@ export type TLdapLoginDTO = {
   lastName: string;
   emails: string[];
   orgId: string;
+  groups?: {
+    dn: string;
+    cn: string;
+  }[];
   relayState?: string;
 };
+
+export type TGetLdapGroupMapsDTO = {
+  ldapConfigId: string;
+} & TOrgPermission;
+
+export type TCreateLdapGroupMapDTO = {
+  ldapConfigId: string;
+  ldapGroupCN: string;
+  groupSlug: string;
+} & TOrgPermission;
+
+export type TDeleteLdapGroupMapDTO = {
+  ldapConfigId: string;
+  ldapGroupMapId: string;
+} & TOrgPermission;

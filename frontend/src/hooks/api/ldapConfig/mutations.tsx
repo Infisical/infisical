@@ -91,3 +91,48 @@ export const useUpdateLDAPConfig = () => {
     }
   });
 };
+
+export const useCreateLDAPGroupMapping = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      ldapConfigId,
+      ldapGroupCN,
+      groupSlug
+    }: {
+      ldapConfigId: string;
+      ldapGroupCN: string;
+      groupSlug: string;
+    }) => {
+      const { data } = await apiRequest.post(`/api/v1/ldap/config/${ldapConfigId}/group-maps`, {
+        ldapGroupCN,
+        groupSlug
+      });
+      return data;
+    },
+    onSuccess(_, { ldapConfigId }) {
+      queryClient.invalidateQueries(ldapConfigKeys.getLDAPGroupMaps(ldapConfigId));
+    }
+  });
+};
+
+export const useDeleteLDAPGroupMapping = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      ldapConfigId,
+      ldapGroupMapId
+    }: {
+      ldapConfigId: string;
+      ldapGroupMapId: string;
+    }) => {
+      const { data } = await apiRequest.delete(
+        `/api/v1/ldap/config/${ldapConfigId}/group-maps/${ldapGroupMapId}`
+      );
+      return data;
+    },
+    onSuccess(_, { ldapConfigId }) {
+      queryClient.invalidateQueries(ldapConfigKeys.getLDAPGroupMaps(ldapConfigId));
+    }
+  });
+};

@@ -10,6 +10,7 @@ import {
 import { useCreateLDAPConfig, useGetLDAPConfig, useUpdateLDAPConfig } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { LDAPGroupMapModal } from "./LDAPGroupMapModal";
 import { LDAPModal } from "./LDAPModal";
 
 export const OrgLDAPSection = (): JSX.Element => {
@@ -21,6 +22,8 @@ export const OrgLDAPSection = (): JSX.Element => {
   const { mutateAsync } = useUpdateLDAPConfig();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addLDAP",
+    "ldapGroupMap",
+    "deleteLdapGroupMap",
     "upgradePlan"
   ] as const);
 
@@ -79,6 +82,16 @@ export const OrgLDAPSection = (): JSX.Element => {
     }
   };
 
+  const openLDAPGroupMapModal = () => {
+    console.log("openLDAPGroupMapModal sub: ", subscription);
+    if (!subscription?.ldap) {
+      handlePopUpOpen("upgradePlan");
+      return;
+    }
+
+    handlePopUpOpen("ldapGroupMap");
+  };
+
   return (
     <>
       <hr className="border-mineshaft-600" />
@@ -94,6 +107,25 @@ export const OrgLDAPSection = (): JSX.Element => {
           </OrgPermissionCan>
         </div>
         <p className="text-sm text-mineshaft-300">Manage LDAP authentication configuration</p>
+      </div>
+      <div className="py-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-md text-mineshaft-100">LDAP Group Mappings</h2>
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
+            {(isAllowed) => (
+              <Button
+                onClick={openLDAPGroupMapModal}
+                colorSchema="secondary"
+                isDisabled={!isAllowed}
+              >
+                Manage
+              </Button>
+            )}
+          </OrgPermissionCan>
+        </div>
+        <p className="text-sm text-mineshaft-300">
+          Manage how LDAP groups are mapped to internal groups in Infisical
+        </p>
       </div>
       {data && (
         <div className="py-4">
@@ -120,6 +152,11 @@ export const OrgLDAPSection = (): JSX.Element => {
       <LDAPModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
+        handlePopUpToggle={handlePopUpToggle}
+      />
+      <LDAPGroupMapModal
+        popUp={popUp}
+        handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
       />
       <UpgradePlanModal

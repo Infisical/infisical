@@ -15,7 +15,7 @@ import ldapjs from "ldapjs";
 import LdapStrategy from "passport-ldapauth";
 import { z } from "zod";
 
-import { LdapConfigsSchema } from "@app/db/schemas";
+import { LdapConfigsSchema, LdapGroupMapsSchema } from "@app/db/schemas";
 import { searchGroups } from "@app/ee/services/ldap-config/ldap-fns";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
@@ -67,6 +67,28 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         try {
           const ldapConfig = (req as unknown as FastifyRequest).ldapConfig as LDAPConfig;
 
+          if (!ldapConfig.groupSearchFilter || !ldapConfig.groupSearchBase) {
+            // If group search values are not provided, proceed directly to LDAP login
+            return await server.services.ldap
+              .ldapLogin({
+                externalId: user.uidNumber,
+                username: user.uid,
+                firstName: user.givenName,
+                lastName: user.sn,
+                emails: user.mail ? [user.mail] : [],
+                relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
+                orgId: (req as unknown as FastifyRequest).ldapConfig.organization
+              })
+              .then(({ isUserCompleted, providerAuthToken }) => {
+                cb(null, { isUserCompleted, providerAuthToken });
+              })
+              .catch((err) => {
+                logger.error(err);
+                cb(err, false);
+              });
+          }
+
+          // query for groups
           const ldapClient = ldapjs.createClient({
             url: ldapConfig.url,
             bindDN: ldapConfig.bindDN,
@@ -85,7 +107,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
             const searchFilter = groupFilter.replace("{{.Username}}", user.uid).replace("{{.UserDN}}", user.dn);
 
             searchGroups(ldapClient, searchFilter, ldapConfig.groupSearchBase)
-              .then(() => {
+              .then((groups) => {
                 // groups here
                 ldapClient.unbind();
                 return server.services.ldap.ldapLogin({
@@ -94,6 +116,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
                   firstName: user.givenName,
                   lastName: user.sn,
                   emails: user.mail ? [user.mail] : [],
+                  groups,
                   relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
                   orgId: (req as unknown as FastifyRequest).ldapConfig.organization
                 });
@@ -254,6 +277,97 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
       });
 
       return ldap;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/config/:configId/group-maps",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        configId: z.string().trim()
+      }),
+      response: {
+        200: z.array(LdapGroupMapsSchema)
+      }
+    },
+    handler: async (req) => {
+      const ldapGroupMaps = await server.services.ldap.getLdapGroupMaps({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ldapConfigId: req.params.configId
+      });
+      return ldapGroupMaps;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/config/:configId/group-maps",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        configId: z.string().trim()
+      }),
+      body: z.object({
+        ldapGroupCN: z.string().trim(),
+        groupSlug: z.string().trim()
+      }),
+      response: {
+        200: LdapGroupMapsSchema
+      }
+    },
+    handler: async (req) => {
+      const ldapGroupMap = await server.services.ldap.createLdapGroupMap({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ldapConfigId: req.params.configId,
+        ...req.body
+      });
+      return ldapGroupMap;
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/config/:configId/group-maps/:groupMapId",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        configId: z.string().trim(),
+        groupMapId: z.string().trim()
+      }),
+      response: {
+        200: LdapGroupMapsSchema
+      }
+    },
+    handler: async (req) => {
+      const ldapGroupMap = await server.services.ldap.deleteLdapGroupMap({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ldapConfigId: req.params.configId,
+        ldapGroupMapId: req.params.groupMapId
+      });
+      return ldapGroupMap;
     }
   });
 };
