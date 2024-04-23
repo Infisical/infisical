@@ -19,7 +19,8 @@ const replaceContentWithDot = (str: string) => {
   return finalStr;
 };
 
-const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
+const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?: boolean) => {
+  if (isImport) return "IMPORTED";
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
   if (!isVisible) return replaceContentWithDot(content);
@@ -59,6 +60,7 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
 
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   value?: string | null;
+  isImport?: boolean;
   isVisible?: boolean;
   isReadOnly?: boolean;
   isDisabled?: boolean;
@@ -77,6 +79,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       containerClassName,
       onBlur,
       isDisabled,
+      isImport,
       isReadOnly,
       onFocus,
       secretPath: propSecretPath,
@@ -275,7 +278,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             <pre aria-hidden className="m-0 ">
               <code className={`inline-block w-full  ${commonClassName}`}>
                 <span style={{ whiteSpace: "break-spaces" }}>
-                  {syntaxHighlight(value, isVisible || isSecretFocused)}
+                  {syntaxHighlight(value, isVisible || isSecretFocused, isImport)}
                 </span>
               </code>
             </pre>
