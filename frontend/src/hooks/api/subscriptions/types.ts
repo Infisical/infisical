@@ -5,6 +5,8 @@ export type SubscriptionPlan = {
   auditLogs: boolean;
   dynamicSecret: boolean;
   auditLogsRetentionDays: number;
+  auditLogStreamLimit: number;
+  auditLogStreams: boolean;
   customAlerts: boolean;
   customRateLimits: boolean;
   pitRecovery: boolean;
