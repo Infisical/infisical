@@ -1656,4 +1656,263 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       return { secrets };
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/batch/raw",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      description: "Create many secrets",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        projectSlug: z.string().trim().describe(RAW_SECRETS.CREATE.projectSlug),
+        environment: z.string().trim().describe(RAW_SECRETS.CREATE.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(RAW_SECRETS.CREATE.secretPath),
+        secrets: z
+          .object({
+            secretKey: z.string().trim().describe(RAW_SECRETS.CREATE.secretName),
+            secretValue: z
+              .string()
+              .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+              .describe(RAW_SECRETS.CREATE.secretValue),
+            secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
+            skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding)
+          })
+          .array()
+          .min(1)
+      }),
+      response: {
+        200: z.object({
+          secrets: secretRawSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { environment, projectSlug, secretPath, secrets: inputSecrets } = req.body;
+
+      const secrets = await server.services.secret.createManySecretsRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        secretPath,
+        environment,
+        projectSlug,
+        secrets: inputSecrets
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: secrets[0].workspace,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.CREATE_SECRETS,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secrets: secrets.map((secret, i) => ({
+              secretId: secret.id,
+              secretKey: inputSecrets[i].secretKey,
+              secretVersion: secret.version
+            }))
+          }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretCreated,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          numberOfSecrets: secrets.length,
+          workspaceId: secrets[0].workspace,
+          environment: req.body.environment,
+          secretPath: req.body.secretPath,
+          channel: getUserAgentType(req.headers["user-agent"]),
+          ...req.auditLogInfo
+        }
+      });
+      return { secrets };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/batch/raw",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      description: "Update many secrets",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        projectSlug: z.string().trim().describe(RAW_SECRETS.UPDATE.projectSlug),
+        environment: z.string().trim().describe(RAW_SECRETS.UPDATE.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(RAW_SECRETS.UPDATE.secretPath),
+        secrets: z
+          .object({
+            secretKey: z.string().trim().describe(RAW_SECRETS.UPDATE.secretName),
+            secretValue: z
+              .string()
+              .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+              .describe(RAW_SECRETS.UPDATE.secretValue),
+            secretComment: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.secretComment),
+            skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding)
+          })
+          .array()
+          .min(1)
+      }),
+      response: {
+        200: z.object({
+          secrets: secretRawSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { environment, projectSlug, secretPath, secrets: inputSecrets } = req.body;
+      const secrets = await server.services.secret.updateManySecretsRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        secretPath,
+        environment,
+        projectSlug,
+        secrets: inputSecrets
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: secrets[0].workspace,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.UPDATE_SECRETS,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secrets: secrets.map((secret, i) => ({
+              secretId: secret.id,
+              secretKey: inputSecrets[i].secretKey,
+              secretVersion: secret.version
+            }))
+          }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          numberOfSecrets: secrets.length,
+          workspaceId: secrets[0].workspace,
+          environment: req.body.environment,
+          secretPath: req.body.secretPath,
+          channel: getUserAgentType(req.headers["user-agent"]),
+          ...req.auditLogInfo
+        }
+      });
+      return { secrets };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/batch/raw",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      description: "Delete many secrets",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        projectSlug: z.string().trim().describe(RAW_SECRETS.DELETE.projectSlug),
+        environment: z.string().trim().describe(RAW_SECRETS.DELETE.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(RAW_SECRETS.DELETE.secretPath),
+        secrets: z
+          .object({
+            secretKey: z.string().trim().describe(RAW_SECRETS.DELETE.secretName)
+          })
+          .array()
+          .min(1)
+      }),
+      response: {
+        200: z.object({
+          secrets: secretRawSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { environment, projectSlug, secretPath, secrets: inputSecrets } = req.body;
+      const secrets = await server.services.secret.deleteManySecretsRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        environment,
+        projectSlug,
+        secretPath,
+        secrets: inputSecrets
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: secrets[0].workspace,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.DELETE_SECRETS,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secrets: secrets.map((secret, i) => ({
+              secretId: secret.id,
+              secretKey: inputSecrets[i].secretKey,
+              secretVersion: secret.version
+            }))
+          }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          numberOfSecrets: secrets.length,
+          workspaceId: secrets[0].workspace,
+          environment: req.body.environment,
+          secretPath: req.body.secretPath,
+          channel: getUserAgentType(req.headers["user-agent"]),
+          ...req.auditLogInfo
+        }
+      });
+      return { secrets };
+    }
+  });
 };

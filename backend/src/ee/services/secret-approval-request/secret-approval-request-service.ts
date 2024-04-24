@@ -495,7 +495,11 @@ export const secretApprovalRequestServiceFactory = ({
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "GenSecretApproval" });
+    if (!folder)
+      throw new BadRequestError({
+        message: "Folder not found for the given environment slug & secret path",
+        name: "GenSecretApproval"
+      });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });

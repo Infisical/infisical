@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -204,8 +205,10 @@ var secretsSetCmd = &cobra.Command{
 		// decrypt workspace key
 		plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
+		infisicalTokenEnv := os.Getenv(util.INFISICAL_TOKEN_NAME)
+
 		// pull current secrets
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath}, "")
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath, InfisicalToken: infisicalTokenEnv}, "")
 		if err != nil {
 			util.HandleError(err, "unable to retrieve secrets")
 		}

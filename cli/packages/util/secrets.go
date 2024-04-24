@@ -307,10 +307,6 @@ func FilterSecretsByTag(plainTextSecrets []models.SingleEnvironmentVariable, tag
 }
 
 func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectConfigFilePath string) ([]models.SingleEnvironmentVariable, error) {
-	if params.InfisicalToken == "" {
-		params.InfisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
-	}
-
 	isConnected := CheckIsConnectedToInternet()
 	var secretsToReturn []models.SingleEnvironmentVariable
 	// var serviceTokenDetails api.GetServiceTokenDetailsResponse

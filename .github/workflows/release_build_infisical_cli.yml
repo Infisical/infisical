@@ -1,6 +1,8 @@
 name: Build and release CLI
 
 on:
+    workflow_dispatch:
+
     push:
         # run only against tags
         tags:
@@ -14,6 +16,12 @@ jobs:
     cli-integration-tests:
         name: Run tests before deployment
         uses: ./.github/workflows/run-cli-tests.yml
+        secrets:
+            CLI_TESTS_UA_CLIENT_ID: ${{ secrets.CLI_TESTS_UA_CLIENT_ID }}
+            CLI_TESTS_UA_CLIENT_SECRET: ${{ secrets.CLI_TESTS_UA_CLIENT_SECRET }}
+            CLI_TESTS_SERVICE_TOKEN: ${{ secrets.CLI_TESTS_SERVICE_TOKEN }}
+            CLI_TESTS_PROJECT_ID: ${{ secrets.CLI_TESTS_PROJECT_ID }}
+            CLI_TESTS_ENV_SLUG: ${{ secrets.CLI_TESTS_ENV_SLUG }}
 
     goreleaser:
         runs-on: ubuntu-20.04
