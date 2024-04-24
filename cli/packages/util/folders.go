@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/Infisical/infisical-merge/packages/api"
@@ -12,10 +11,6 @@ import (
 )
 
 func GetAllFolders(params models.GetAllFoldersParameters) ([]models.SingleFolder, error) {
-
-	if params.InfisicalToken == "" {
-		params.InfisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
-	}
 
 	var foldersToReturn []models.SingleFolder
 	var folderErr error
