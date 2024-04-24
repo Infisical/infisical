@@ -23,7 +23,8 @@ import {
   Td,
   Th,
   THead,
-  Tr} from "@app/components/v2";
+  Tr
+} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import {
   useCreateLDAPGroupMapping,
@@ -193,7 +194,7 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
             <THead>
               <Tr>
                 <Th>LDAP Group CN</Th>
-                <Th>Group Slug</Th>
+                <Th>Infisical Group</Th>
                 <Th className="w-5" />
               </Tr>
             </THead>

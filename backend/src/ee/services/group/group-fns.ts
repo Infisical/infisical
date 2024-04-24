@@ -22,10 +22,6 @@ const addAcceptedUsersToGroup = async ({
   projectBotDAL,
   tx
 }: TAddUsersToGroup) => {
-  console.log("addAcceptedUsersToGroup args: ", {
-    userIds,
-    group
-  });
   const users = await userDAL.findUserEncKeyByUserIdsBatch(
     {
       userIds

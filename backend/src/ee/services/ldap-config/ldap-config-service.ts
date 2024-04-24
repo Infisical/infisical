@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 
 import { OrgMembershipRole, OrgMembershipStatus, SecretKeyEncoding, TLdapConfigsUpdate } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getConfig } from "@app/lib/config/env";
 import {
   decryptSymmetric,
@@ -14,8 +16,12 @@ import {
 } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -43,8 +49,19 @@ type TLdapConfigServiceFactoryDep = {
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
-  groupDAL: TGroupDALFactory; // TODO: Pick
-  userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById">;
+  groupDAL: Pick<TGroupDALFactory, "find" | "findOne">;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
+  userGroupMembershipDAL: Pick<
+    TUserGroupMembershipDALFactory,
+    "find" | "transaction" | "insertMany" | "filterProjectsByUserMembership" | "delete"
+  >;
+  userDAL: Pick<
+    TUserDALFactory,
+    "create" | "findOne" | "transaction" | "updateById" | "findUserEncKeyByUserIdsBatch" | "find"
+  >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -58,6 +75,11 @@ export const ldapConfigServiceFactory = ({
   orgDAL,
   orgBotDAL,
   groupDAL,
+  groupProjectDAL,
+  projectKeyDAL,
+  projectDAL,
+  projectBotDAL,
+  userGroupMembershipDAL,
   userDAL,
   userAliasDAL,
   permissionService,
@@ -345,7 +367,7 @@ export const ldapConfigServiceFactory = ({
   };
 
   const ldapLogin = async ({
-    // ldapConfigId,
+    ldapConfigId,
     externalId,
     username,
     firstName,
@@ -431,26 +453,75 @@ export const ldapConfigServiceFactory = ({
     const user = await userDAL.findOne({ id: userAlias.userId });
 
     if (groups) {
-      // TODO
-      // const m = await ldapGroupMapDAL.find({
-      //   ldapConfigId,
-      //   $in: {
-      //     ldapGroupCN: groups.map((group) => group.cn)
-      //   }
-      // });
-      /**
-       * TODO:
-       * - Find relevant group maps
-       * - Query for groups matching name
-       * - Provision, de-provision user to groups accordingly
-       */
-      // console.log("there are groups");
-      // const matchingGroups = await groupDAL.find({
-      //   $in: {
-      //     name: groups.map((group) => group.cn)
-      //   }
-      // });
-      // console.log("found matching groups");
+      const ldapGroupIdsToBePartOf = (
+        await ldapGroupMapDAL.find({
+          ldapConfigId,
+          $in: {
+            ldapGroupCN: groups.map((group) => group.cn)
+          }
+        })
+      ).map((groupMap) => groupMap.groupId);
+
+      const groupsToBePartOf = await groupDAL.find({
+        orgId,
+        $in: {
+          id: ldapGroupIdsToBePartOf
+        }
+      });
+      const toBePartOfGroupIdsSet = new Set(groupsToBePartOf.map((groupToBePartOf) => groupToBePartOf.id));
+
+      const allLdapGroupMaps = await ldapGroupMapDAL.find({
+        ldapConfigId
+      });
+
+      const ldapGroupIdsCurrentlyPartOf = (
+        await userGroupMembershipDAL.find({
+          userId: user.id,
+          $in: {
+            groupId: allLdapGroupMaps.map((groupMap) => groupMap.groupId)
+          }
+        })
+      ).map((userGroupMembership) => userGroupMembership.groupId);
+
+      const userGroupMembershipGroupIdsSet = new Set(ldapGroupIdsCurrentlyPartOf);
+
+      for await (const group of groupsToBePartOf) {
+        if (!userGroupMembershipGroupIdsSet.has(group.id)) {
+          // add user to group that they should be part of
+          await addUsersToGroupByUserIds({
+            group,
+            userIds: [user.id],
+            userDAL,
+            userGroupMembershipDAL,
+            orgDAL,
+            groupProjectDAL,
+            projectKeyDAL,
+            projectDAL,
+            projectBotDAL
+          });
+        }
+      }
+
+      const groupsCurrentlyPartOf = await groupDAL.find({
+        orgId,
+        $in: {
+          id: ldapGroupIdsCurrentlyPartOf
+        }
+      });
+
+      for await (const group of groupsCurrentlyPartOf) {
+        if (!toBePartOfGroupIdsSet.has(group.id)) {
+          // remove user from group that they should no longer be part of
+          await removeUsersFromGroupByUserIds({
+            group,
+            userIds: [user.id],
+            userDAL,
+            userGroupMembershipDAL,
+            groupProjectDAL,
+            projectKeyDAL
+          });
+        }
+      }
     }
 
     const isUserCompleted = Boolean(user.isAccepted);

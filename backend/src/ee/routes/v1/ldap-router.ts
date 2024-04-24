@@ -93,7 +93,14 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           const ldapClient = ldapjs.createClient({
             url: ldapConfig.url,
             bindDN: ldapConfig.bindDN,
-            bindCredentials: ldapConfig.bindPass
+            bindCredentials: ldapConfig.bindPass,
+            ...(ldapConfig.caCert !== ""
+              ? {
+                  tlsOptions: {
+                    ca: [ldapConfig.caCert]
+                  }
+                }
+              : {})
           });
 
           ldapClient.bind(ldapConfig.bindDN, ldapConfig.bindPass, (err) => {
@@ -109,7 +116,6 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
 
             searchGroups(ldapClient, searchFilter, ldapConfig.groupSearchBase)
               .then((groups) => {
-                // groups here
                 ldapClient.unbind();
                 return server.services.ldap.ldapLogin({
                   ldapConfigId: ldapConfig.id,
