@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { faAws } from "@fortawesome/free-brands-svg-icons";
 import { faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
@@ -6,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Modal, ModalContent } from "@app/components/v2";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
+import { AwsIamInputForm } from "./AwsIamInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
 
@@ -32,6 +34,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: faDatabase,
     provider: DynamicSecretProviders.Cassandra,
     title: "Cassandra"
+  },
+  {
+    icon: faAws,
+    provider: DynamicSecretProviders.AwsIam,
+    title: "AWS IAM"
   }
 ];
 
@@ -121,6 +128,24 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <CassandraInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environment={environment}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.AwsIam && (
+              <motion.div
+                key="dynamic-aws-iam-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <AwsIamInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
