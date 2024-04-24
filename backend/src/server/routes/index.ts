@@ -18,6 +18,7 @@ import { identityProjectAdditionalPrivilegeDALFactory } from "@app/ee/services/i
 import { identityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
+import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
@@ -200,6 +201,7 @@ export const registerRoutes = async (
   const samlConfigDAL = samlConfigDALFactory(db);
   const scimDAL = scimDALFactory(db);
   const ldapConfigDAL = ldapConfigDALFactory(db);
+  const ldapGroupMapDAL = ldapGroupMapDALFactory(db);
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
   const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
   const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
@@ -300,8 +302,15 @@ export const registerRoutes = async (
 
   const ldapService = ldapConfigServiceFactory({
     ldapConfigDAL,
+    ldapGroupMapDAL,
     orgDAL,
     orgBotDAL,
+    groupDAL,
+    groupProjectDAL,
+    projectKeyDAL,
+    projectDAL,
+    projectBotDAL,
+    userGroupMembershipDAL,
     userDAL,
     userAliasDAL,
     permissionService,

@@ -14,6 +14,8 @@ const LDAPFormSchema = z.object({
   bindDN: z.string().default(""),
   bindPass: z.string().default(""),
   searchBase: z.string().default(""),
+  groupSearchBase: z.string().default(""),
+  groupSearchFilter: z.string().default(""),
   caCert: z.string().optional()
 });
 
@@ -27,7 +29,7 @@ type Props = {
 
 export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
-  
+
   const { mutateAsync: createMutateAsync, isLoading: createIsLoading } = useCreateLDAPConfig();
   const { mutateAsync: updateMutateAsync, isLoading: updateIsLoading } = useUpdateLDAPConfig();
   const { data } = useGetLDAPConfig(currentOrg?.id ?? "");
@@ -43,12 +45,22 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
         bindDN: data?.bindDN ?? "",
         bindPass: data?.bindPass ?? "",
         searchBase: data?.searchBase ?? "",
+        groupSearchBase: data?.groupSearchBase ?? "",
+        groupSearchFilter: data?.groupSearchFilter ?? "",
         caCert: data?.caCert ?? ""
       });
     }
   }, [data]);
 
-  const onSSOModalSubmit = async ({ url, bindDN, bindPass, searchBase, caCert }: TLDAPFormData) => {
+  const onSSOModalSubmit = async ({
+    url,
+    bindDN,
+    bindPass,
+    searchBase,
+    groupSearchBase,
+    groupSearchFilter,
+    caCert
+  }: TLDAPFormData) => {
     try {
       if (!currentOrg) return;
 
@@ -60,6 +72,8 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
           bindDN,
           bindPass,
           searchBase,
+          groupSearchBase,
+          groupSearchFilter,
           caCert
         });
       } else {
@@ -70,6 +84,8 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
           bindDN,
           bindPass,
           searchBase,
+          groupSearchBase,
+          groupSearchFilter,
           caCert
         });
       }
@@ -136,6 +152,32 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
                 isError={Boolean(error)}
               >
                 <Input {...field} placeholder="ou=people,dc=acme,dc=com" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="groupSearchBase"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Group Search Base / Group DN (Optional)"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
+                <Input {...field} placeholder="ou=groups,dc=acme,dc=com" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="groupSearchFilter"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Group Filter (Optional)"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
+                <Input {...field} placeholder="(objectClass=posixGroup)" />
               </FormControl>
             )}
           />

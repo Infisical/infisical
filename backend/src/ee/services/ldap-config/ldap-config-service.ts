@@ -2,6 +2,9 @@ import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
 import { OrgMembershipRole, OrgMembershipStatus, SecretKeyEncoding, TLdapConfigsUpdate } from "@app/db/schemas";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getConfig } from "@app/lib/config/env";
 import {
   decryptSymmetric,
@@ -13,8 +16,12 @@ import {
 } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -23,16 +30,38 @@ import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TLdapConfigDALFactory } from "./ldap-config-dal";
-import { TCreateLdapCfgDTO, TGetLdapCfgDTO, TLdapLoginDTO, TUpdateLdapCfgDTO } from "./ldap-config-types";
+import {
+  TCreateLdapCfgDTO,
+  TCreateLdapGroupMapDTO,
+  TDeleteLdapGroupMapDTO,
+  TGetLdapCfgDTO,
+  TGetLdapGroupMapsDTO,
+  TLdapLoginDTO,
+  TUpdateLdapCfgDTO
+} from "./ldap-config-types";
+import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
-  ldapConfigDAL: TLdapConfigDALFactory;
+  ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne">;
+  ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete" | "findLdapGroupMapsByLdapConfigId">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
-  userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById">;
+  groupDAL: Pick<TGroupDALFactory, "find" | "findOne">;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
+  userGroupMembershipDAL: Pick<
+    TUserGroupMembershipDALFactory,
+    "find" | "transaction" | "insertMany" | "filterProjectsByUserMembership" | "delete"
+  >;
+  userDAL: Pick<
+    TUserDALFactory,
+    "create" | "findOne" | "transaction" | "updateById" | "findUserEncKeyByUserIdsBatch" | "find"
+  >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -42,8 +71,15 @@ export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFacto
 
 export const ldapConfigServiceFactory = ({
   ldapConfigDAL,
+  ldapGroupMapDAL,
   orgDAL,
   orgBotDAL,
+  groupDAL,
+  groupProjectDAL,
+  projectKeyDAL,
+  projectDAL,
+  projectBotDAL,
+  userGroupMembershipDAL,
   userDAL,
   userAliasDAL,
   permissionService,
@@ -60,6 +96,8 @@ export const ldapConfigServiceFactory = ({
     bindDN,
     bindPass,
     searchBase,
+    groupSearchBase,
+    groupSearchFilter,
     caCert
   }: TCreateLdapCfgDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
@@ -135,6 +173,8 @@ export const ldapConfigServiceFactory = ({
       bindPassIV,
       bindPassTag,
       searchBase,
+      groupSearchBase,
+      groupSearchFilter,
       encryptedCACert,
       caCertIV,
       caCertTag
@@ -154,6 +194,8 @@ export const ldapConfigServiceFactory = ({
     bindDN,
     bindPass,
     searchBase,
+    groupSearchBase,
+    groupSearchFilter,
     caCert
   }: TUpdateLdapCfgDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
@@ -169,7 +211,9 @@ export const ldapConfigServiceFactory = ({
     const updateQuery: TLdapConfigsUpdate = {
       isActive,
       url,
-      searchBase
+      searchBase,
+      groupSearchBase,
+      groupSearchFilter
     };
 
     const orgBot = await orgBotDAL.findOne({ orgId });
@@ -271,6 +315,8 @@ export const ldapConfigServiceFactory = ({
       bindDN,
       bindPass,
       searchBase: ldapConfig.searchBase,
+      groupSearchBase: ldapConfig.groupSearchBase,
+      groupSearchFilter: ldapConfig.groupSearchFilter,
       caCert
     };
   };
@@ -305,7 +351,7 @@ export const ldapConfigServiceFactory = ({
         bindCredentials: ldapConfig.bindPass,
         searchBase: ldapConfig.searchBase,
         searchFilter: "(uid={{username}})",
-        searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
+        // searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
         ...(ldapConfig.caCert !== ""
           ? {
               tlsOptions: {
@@ -320,7 +366,17 @@ export const ldapConfigServiceFactory = ({
     return { opts, ldapConfig };
   };
 
-  const ldapLogin = async ({ externalId, username, firstName, lastName, emails, orgId, relayState }: TLdapLoginDTO) => {
+  const ldapLogin = async ({
+    ldapConfigId,
+    externalId,
+    username,
+    firstName,
+    lastName,
+    emails,
+    groups,
+    orgId,
+    relayState
+  }: TLdapLoginDTO) => {
     const appCfg = getConfig();
     let userAlias = await userAliasDAL.findOne({
       externalId,
@@ -394,7 +450,84 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const user = await userDAL.findOne({ id: userAlias.userId });
+    const user = await userDAL.transaction(async (tx) => {
+      const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);
+      if (groups) {
+        const ldapGroupIdsToBePartOf = (
+          await ldapGroupMapDAL.find({
+            ldapConfigId,
+            $in: {
+              ldapGroupCN: groups.map((group) => group.cn)
+            }
+          })
+        ).map((groupMap) => groupMap.groupId);
+
+        const groupsToBePartOf = await groupDAL.find({
+          orgId,
+          $in: {
+            id: ldapGroupIdsToBePartOf
+          }
+        });
+        const toBePartOfGroupIdsSet = new Set(groupsToBePartOf.map((groupToBePartOf) => groupToBePartOf.id));
+
+        const allLdapGroupMaps = await ldapGroupMapDAL.find({
+          ldapConfigId
+        });
+
+        const ldapGroupIdsCurrentlyPartOf = (
+          await userGroupMembershipDAL.find({
+            userId: newUser.id,
+            $in: {
+              groupId: allLdapGroupMaps.map((groupMap) => groupMap.groupId)
+            }
+          })
+        ).map((userGroupMembership) => userGroupMembership.groupId);
+
+        const userGroupMembershipGroupIdsSet = new Set(ldapGroupIdsCurrentlyPartOf);
+
+        for await (const group of groupsToBePartOf) {
+          if (!userGroupMembershipGroupIdsSet.has(group.id)) {
+            // add user to group that they should be part of
+            await addUsersToGroupByUserIds({
+              group,
+              userIds: [newUser.id],
+              userDAL,
+              userGroupMembershipDAL,
+              orgDAL,
+              groupProjectDAL,
+              projectKeyDAL,
+              projectDAL,
+              projectBotDAL,
+              tx
+            });
+          }
+        }
+
+        const groupsCurrentlyPartOf = await groupDAL.find({
+          orgId,
+          $in: {
+            id: ldapGroupIdsCurrentlyPartOf
+          }
+        });
+
+        for await (const group of groupsCurrentlyPartOf) {
+          if (!toBePartOfGroupIdsSet.has(group.id)) {
+            // remove user from group that they should no longer be part of
+            await removeUsersFromGroupByUserIds({
+              group,
+              userIds: [newUser.id],
+              userDAL,
+              userGroupMembershipDAL,
+              groupProjectDAL,
+              projectKeyDAL,
+              tx
+            });
+          }
+        }
+      }
+
+      return newUser;
+    });
 
     const isUserCompleted = Boolean(user.isAccepted);
 
@@ -424,6 +557,99 @@ export const ldapConfigServiceFactory = ({
     return { isUserCompleted, providerAuthToken };
   };
 
+  const getLdapGroupMaps = async ({
+    ldapConfigId,
+    actor,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetLdapGroupMapsDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
+
+    const ldapConfig = await ldapConfigDAL.findOne({
+      id: ldapConfigId,
+      orgId
+    });
+
+    if (!ldapConfig) throw new BadRequestError({ message: "Failed to find organization LDAP data" });
+
+    const groupMaps = await ldapGroupMapDAL.findLdapGroupMapsByLdapConfigId(ldapConfigId);
+
+    return groupMaps;
+  };
+
+  const createLdapGroupMap = async ({
+    ldapConfigId,
+    ldapGroupCN,
+    groupSlug,
+    actor,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId
+  }: TCreateLdapGroupMapDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
+
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.ldap)
+      throw new BadRequestError({
+        message: "Failed to create LDAP group map due to plan restriction. Upgrade plan to create LDAP group map."
+      });
+
+    const ldapConfig = await ldapConfigDAL.findOne({
+      id: ldapConfigId,
+      orgId
+    });
+    if (!ldapConfig) throw new BadRequestError({ message: "Failed to find organization LDAP data" });
+
+    const group = await groupDAL.findOne({ slug: groupSlug, orgId });
+    if (!group) throw new BadRequestError({ message: "Failed to find group" });
+
+    const groupMap = await ldapGroupMapDAL.create({
+      ldapConfigId,
+      ldapGroupCN,
+      groupId: group.id
+    });
+
+    return groupMap;
+  };
+
+  const deleteLdapGroupMap = async ({
+    ldapConfigId,
+    ldapGroupMapId,
+    actor,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId
+  }: TDeleteLdapGroupMapDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
+
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.ldap)
+      throw new BadRequestError({
+        message: "Failed to delete LDAP group map due to plan restriction. Upgrade plan to delete LDAP group map."
+      });
+
+    const ldapConfig = await ldapConfigDAL.findOne({
+      id: ldapConfigId,
+      orgId
+    });
+
+    if (!ldapConfig) throw new BadRequestError({ message: "Failed to find organization LDAP data" });
+
+    const [deletedGroupMap] = await ldapGroupMapDAL.delete({
+      ldapConfigId: ldapConfig.id,
+      id: ldapGroupMapId
+    });
+
+    return deletedGroupMap;
+  };
+
   return {
     createLdapCfg,
     updateLdapCfg,
@@ -431,6 +657,9 @@ export const ldapConfigServiceFactory = ({
     getLdapCfg,
     // getLdapPassportOpts,
     ldapLogin,
-    bootLdap
+    bootLdap,
+    getLdapGroupMaps,
+    createLdapGroupMap,
+    deleteLdapGroupMap
   };
 };

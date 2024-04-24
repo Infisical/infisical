@@ -22,6 +22,7 @@ export * from "./incident-contacts";
 export * from "./integration-auths";
 export * from "./integrations";
 export * from "./ldap-configs";
+export * from "./ldap-group-maps";
 export * from "./models";
 export * from "./org-bots";
 export * from "./org-memberships";
