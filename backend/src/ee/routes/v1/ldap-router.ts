@@ -103,41 +103,34 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
               : {})
           });
 
-          ldapClient.bind(ldapConfig.bindDN, ldapConfig.bindPass, (err) => {
-            if (err) {
+          const groupFilter = "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))";
+          const searchFilter =
+            ldapConfig.groupSearchFilter ||
+            groupFilter.replace("{{.Username}}", user.uid).replace("{{.UserDN}}", user.dn);
+
+          searchGroups(ldapClient, searchFilter, ldapConfig.groupSearchBase)
+            .then((groups) => {
               ldapClient.unbind();
-              return cb(err);
-            }
-
-            const groupFilter =
-              ldapConfig.groupSearchFilter ||
-              "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))";
-            const searchFilter = groupFilter.replace("{{.Username}}", user.uid).replace("{{.UserDN}}", user.dn);
-
-            searchGroups(ldapClient, searchFilter, ldapConfig.groupSearchBase)
-              .then((groups) => {
-                ldapClient.unbind();
-                return server.services.ldap.ldapLogin({
-                  ldapConfigId: ldapConfig.id,
-                  externalId: user.uidNumber,
-                  username: user.uid,
-                  firstName: user.givenName,
-                  lastName: user.sn,
-                  emails: user.mail ? [user.mail] : [],
-                  groups,
-                  relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
-                  orgId: (req as unknown as FastifyRequest).ldapConfig.organization
-                });
-              })
-              .then(({ isUserCompleted, providerAuthToken }) => {
-                cb(null, { isUserCompleted, providerAuthToken });
-              })
-              .catch((err2) => {
-                ldapClient.unbind();
-                logger.error(err);
-                cb(err2, false);
+              return server.services.ldap.ldapLogin({
+                ldapConfigId: ldapConfig.id,
+                externalId: user.uidNumber,
+                username: user.uid,
+                firstName: user.givenName,
+                lastName: user.sn,
+                emails: user.mail ? [user.mail] : [],
+                groups,
+                relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
+                orgId: (req as unknown as FastifyRequest).ldapConfig.organization
               });
-          });
+            })
+            .then(({ isUserCompleted, providerAuthToken }) => {
+              cb(null, { isUserCompleted, providerAuthToken });
+            })
+            .catch((err2) => {
+              ldapClient.unbind();
+              logger.error(err2);
+              cb(err2, false);
+            });
         } catch (error) {
           logger.error(error);
           return cb(error, false);

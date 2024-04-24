@@ -14,19 +14,24 @@ export const searchGroups = async (
       },
       (err, res) => {
         if (err) {
-          reject(err);
+          return reject(err);
         }
 
         const groups: { dn: string; cn: string }[] = [];
 
         res.on("searchEntry", (entry) => {
-          groups.push({ dn: entry.object.dn, cn: entry.object.cn as string });
-        });
+          const dn = entry.dn.toString();
+          const regex = /cn=([^,]+)/;
+          const match = dn.match(regex);
+          // parse the cn from the dn
+          const cn = (match && match[1]) as string;
 
+          groups.push({ dn, cn });
+        });
         res.on("error", (error) => {
+          console.error(`error: ${error.message}`);
           reject(error);
         });
-
         res.on("end", () => {
           resolve(groups);
         });
