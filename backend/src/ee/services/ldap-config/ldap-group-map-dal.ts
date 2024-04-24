@@ -16,8 +16,8 @@ export const ldapGroupMapDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.LdapGroupMap))
         .select(
           db.ref("id").withSchema(TableName.Groups).as("groupId"),
-          db.ref("name").withSchema(TableName.Groups).as("groupSlug"),
-          db.ref("slug").withSchema(TableName.Groups).as("groupName")
+          db.ref("name").withSchema(TableName.Groups).as("groupName"),
+          db.ref("slug").withSchema(TableName.Groups).as("groupSlug")
         );
 
       return docs.map((doc) => {

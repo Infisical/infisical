@@ -1,11 +1,28 @@
-import ldap from "ldapjs";
+import ldapjs from "ldapjs";
+
+import { logger } from "@app/lib/logger";
+
+import { TLDAPConfig } from "./ldap-config-types";
 
 export const searchGroups = async (
-  ldapClient: ldap.Client,
+  ldapConfig: TLDAPConfig,
   filter: string,
   base: string
 ): Promise<{ dn: string; cn: string }[]> => {
   return new Promise((resolve, reject) => {
+    const ldapClient = ldapjs.createClient({
+      url: ldapConfig.url,
+      bindDN: ldapConfig.bindDN,
+      bindCredentials: ldapConfig.bindPass,
+      ...(ldapConfig.caCert !== ""
+        ? {
+            tlsOptions: {
+              ca: [ldapConfig.caCert]
+            }
+          }
+        : {})
+    });
+
     ldapClient.search(
       base,
       {
@@ -14,6 +31,11 @@ export const searchGroups = async (
       },
       (err, res) => {
         if (err) {
+          ldapClient.unbind((unbindError) => {
+            if (unbindError) {
+              logger.error("Error unbinding LDAP client:", unbindError);
+            }
+          });
           return reject(err);
         }
 
@@ -29,10 +51,19 @@ export const searchGroups = async (
           groups.push({ dn, cn });
         });
         res.on("error", (error) => {
-          console.error(`error: ${error.message}`);
+          ldapClient.unbind((unbindError) => {
+            if (unbindError) {
+              logger.error("Error unbinding LDAP client:", unbindError);
+            }
+          });
           reject(error);
         });
         res.on("end", () => {
+          ldapClient.unbind((unbindError) => {
+            if (unbindError) {
+              logger.error("Error unbinding LDAP client:", unbindError);
+            }
+          });
           resolve(groups);
         });
       }

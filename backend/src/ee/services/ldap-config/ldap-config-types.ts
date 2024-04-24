@@ -1,5 +1,18 @@
 import { TOrgPermission } from "@app/lib/types";
 
+export type TLDAPConfig = {
+  id: string;
+  organization: string;
+  isActive: boolean;
+  url: string;
+  bindDN: string;
+  bindPass: string;
+  searchBase: string;
+  groupSearchBase: string;
+  groupSearchFilter: string;
+  caCert: string;
+};
+
 export type TCreateLdapCfgDTO = {
   orgId: string;
   isActive: boolean;

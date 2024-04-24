@@ -450,79 +450,84 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const user = await userDAL.findOne({ id: userAlias.userId });
+    const user = await userDAL.transaction(async (tx) => {
+      const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);
+      if (groups) {
+        const ldapGroupIdsToBePartOf = (
+          await ldapGroupMapDAL.find({
+            ldapConfigId,
+            $in: {
+              ldapGroupCN: groups.map((group) => group.cn)
+            }
+          })
+        ).map((groupMap) => groupMap.groupId);
 
-    if (groups) {
-      const ldapGroupIdsToBePartOf = (
-        await ldapGroupMapDAL.find({
-          ldapConfigId,
+        const groupsToBePartOf = await groupDAL.find({
+          orgId,
           $in: {
-            ldapGroupCN: groups.map((group) => group.cn)
+            id: ldapGroupIdsToBePartOf
           }
-        })
-      ).map((groupMap) => groupMap.groupId);
+        });
+        const toBePartOfGroupIdsSet = new Set(groupsToBePartOf.map((groupToBePartOf) => groupToBePartOf.id));
 
-      const groupsToBePartOf = await groupDAL.find({
-        orgId,
-        $in: {
-          id: ldapGroupIdsToBePartOf
+        const allLdapGroupMaps = await ldapGroupMapDAL.find({
+          ldapConfigId
+        });
+
+        const ldapGroupIdsCurrentlyPartOf = (
+          await userGroupMembershipDAL.find({
+            userId: newUser.id,
+            $in: {
+              groupId: allLdapGroupMaps.map((groupMap) => groupMap.groupId)
+            }
+          })
+        ).map((userGroupMembership) => userGroupMembership.groupId);
+
+        const userGroupMembershipGroupIdsSet = new Set(ldapGroupIdsCurrentlyPartOf);
+
+        for await (const group of groupsToBePartOf) {
+          if (!userGroupMembershipGroupIdsSet.has(group.id)) {
+            // add user to group that they should be part of
+            await addUsersToGroupByUserIds({
+              group,
+              userIds: [newUser.id],
+              userDAL,
+              userGroupMembershipDAL,
+              orgDAL,
+              groupProjectDAL,
+              projectKeyDAL,
+              projectDAL,
+              projectBotDAL,
+              tx
+            });
+          }
         }
-      });
-      const toBePartOfGroupIdsSet = new Set(groupsToBePartOf.map((groupToBePartOf) => groupToBePartOf.id));
 
-      const allLdapGroupMaps = await ldapGroupMapDAL.find({
-        ldapConfigId
-      });
-
-      const ldapGroupIdsCurrentlyPartOf = (
-        await userGroupMembershipDAL.find({
-          userId: user.id,
+        const groupsCurrentlyPartOf = await groupDAL.find({
+          orgId,
           $in: {
-            groupId: allLdapGroupMaps.map((groupMap) => groupMap.groupId)
+            id: ldapGroupIdsCurrentlyPartOf
           }
-        })
-      ).map((userGroupMembership) => userGroupMembership.groupId);
+        });
 
-      const userGroupMembershipGroupIdsSet = new Set(ldapGroupIdsCurrentlyPartOf);
-
-      for await (const group of groupsToBePartOf) {
-        if (!userGroupMembershipGroupIdsSet.has(group.id)) {
-          // add user to group that they should be part of
-          await addUsersToGroupByUserIds({
-            group,
-            userIds: [user.id],
-            userDAL,
-            userGroupMembershipDAL,
-            orgDAL,
-            groupProjectDAL,
-            projectKeyDAL,
-            projectDAL,
-            projectBotDAL
-          });
+        for await (const group of groupsCurrentlyPartOf) {
+          if (!toBePartOfGroupIdsSet.has(group.id)) {
+            // remove user from group that they should no longer be part of
+            await removeUsersFromGroupByUserIds({
+              group,
+              userIds: [newUser.id],
+              userDAL,
+              userGroupMembershipDAL,
+              groupProjectDAL,
+              projectKeyDAL,
+              tx
+            });
+          }
         }
       }
 
-      const groupsCurrentlyPartOf = await groupDAL.find({
-        orgId,
-        $in: {
-          id: ldapGroupIdsCurrentlyPartOf
-        }
-      });
-
-      for await (const group of groupsCurrentlyPartOf) {
-        if (!toBePartOfGroupIdsSet.has(group.id)) {
-          // remove user from group that they should no longer be part of
-          await removeUsersFromGroupByUserIds({
-            group,
-            userIds: [user.id],
-            userDAL,
-            userGroupMembershipDAL,
-            groupProjectDAL,
-            projectKeyDAL
-          });
-        }
-      }
-    }
+      return newUser;
+    });
 
     const isUserCompleted = Boolean(user.isAccepted);
 

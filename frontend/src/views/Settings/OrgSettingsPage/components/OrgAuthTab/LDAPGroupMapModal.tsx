@@ -201,11 +201,11 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
             <TBody>
               {isLoading && <TableSkeleton columns={3} innerKey="ldap-group-maps" />}
               {!isLoading &&
-                groupMaps?.map(({ id, ldapGroupCN, group: { name } }) => {
+                groupMaps?.map(({ id, ldapGroupCN, group }) => {
                   return (
                     <Tr className="h-10 items-center" key={`ldap-group-map-${id}`}>
                       <Td>{ldapGroupCN}</Td>
-                      <Td>{name}</Td>
+                      <Td>{group.name}</Td>
                       <Td>
                         <IconButton
                           onClick={() => {

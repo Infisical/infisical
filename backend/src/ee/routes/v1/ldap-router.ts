@@ -11,11 +11,11 @@ import { IncomingMessage } from "node:http";
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
 import { FastifyRequest } from "fastify";
-import ldapjs from "ldapjs";
 import LdapStrategy from "passport-ldapauth";
 import { z } from "zod";
 
 import { LdapConfigsSchema, LdapGroupMapsSchema } from "@app/db/schemas";
+import { TLDAPConfig } from "@app/ee/services/ldap-config/ldap-config-types";
 import { searchGroups } from "@app/ee/services/ldap-config/ldap-fns";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
@@ -46,91 +46,36 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     });
   };
 
-  interface LDAPConfig {
-    id: string;
-    organization: string;
-    isActive: boolean;
-    url: string;
-    bindDN: string;
-    bindPass: string;
-    searchBase: string;
-    groupSearchBase: string;
-    groupSearchFilter: string;
-    caCert: string;
-  }
-
   passport.use(
     new LdapStrategy(
       getLdapPassportOpts as any,
       // eslint-disable-next-line
       async (req: IncomingMessage, user, cb) => {
         try {
-          const ldapConfig = (req as unknown as FastifyRequest).ldapConfig as LDAPConfig;
-
-          if (!ldapConfig.groupSearchFilter || !ldapConfig.groupSearchBase) {
-            // If group search values are not provided, proceed directly to LDAP login
-            return await server.services.ldap
-              .ldapLogin({
-                ldapConfigId: ldapConfig.id,
-                externalId: user.uidNumber,
-                username: user.uid,
-                firstName: user.givenName ?? user.cn ?? "",
-                lastName: user.sn ?? "",
-                emails: user.mail ? [user.mail] : [],
-                relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
-                orgId: (req as unknown as FastifyRequest).ldapConfig.organization
-              })
-              .then(({ isUserCompleted, providerAuthToken }) => {
-                cb(null, { isUserCompleted, providerAuthToken });
-              })
-              .catch((err) => {
-                logger.error(err);
-                cb(err, false);
-              });
-          }
-
-          // query for groups
-          const ldapClient = ldapjs.createClient({
-            url: ldapConfig.url,
-            bindDN: ldapConfig.bindDN,
-            bindCredentials: ldapConfig.bindPass,
-            ...(ldapConfig.caCert !== ""
-              ? {
-                  tlsOptions: {
-                    ca: [ldapConfig.caCert]
-                  }
-                }
-              : {})
-          });
+          const ldapConfig = (req as unknown as FastifyRequest).ldapConfig as TLDAPConfig;
 
           const groupFilter = "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))";
           const searchFilter =
             ldapConfig.groupSearchFilter ||
             groupFilter.replace("{{.Username}}", user.uid).replace("{{.UserDN}}", user.dn);
 
-          searchGroups(ldapClient, searchFilter, ldapConfig.groupSearchBase)
-            .then((groups) => {
-              ldapClient.unbind();
-              return server.services.ldap.ldapLogin({
-                ldapConfigId: ldapConfig.id,
-                externalId: user.uidNumber,
-                username: user.uid,
-                firstName: user.givenName ?? user.cn ?? "",
-                lastName: user.sn ?? "",
-                emails: user.mail ? [user.mail] : [],
-                groups,
-                relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
-                orgId: (req as unknown as FastifyRequest).ldapConfig.organization
-              });
-            })
-            .then(({ isUserCompleted, providerAuthToken }) => {
-              cb(null, { isUserCompleted, providerAuthToken });
-            })
-            .catch((err2) => {
-              ldapClient.unbind();
-              logger.error(err2);
-              cb(err2, false);
-            });
+          const shouldProcessGroups = ldapConfig.groupSearchFilter && ldapConfig.groupSearchBase;
+
+          const { isUserCompleted, providerAuthToken } = await server.services.ldap.ldapLogin({
+            ldapConfigId: ldapConfig.id,
+            externalId: user.uidNumber,
+            username: user.uid,
+            firstName: user.givenName ?? user.cn ?? "",
+            lastName: user.sn ?? "",
+            emails: user.mail ? [user.mail] : [],
+            groups: shouldProcessGroups
+              ? await searchGroups(ldapConfig, searchFilter, ldapConfig.groupSearchBase)
+              : undefined,
+            relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
+            orgId: (req as unknown as FastifyRequest).ldapConfig.organization
+          });
+
+          return cb(null, { isUserCompleted, providerAuthToken });
         } catch (error) {
           logger.error(error);
           return cb(error, false);
@@ -220,8 +165,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         bindDN: z.string().trim(),
         bindPass: z.string().trim(),
         searchBase: z.string().trim(),
-        groupSearchBase: z.string().trim(),
-        groupSearchFilter: z.string().trim(),
+        groupSearchBase: z.string().trim().default(""),
+        groupSearchFilter: z.string().trim().default(""),
         caCert: z.string().trim().default("")
       }),
       response: {
