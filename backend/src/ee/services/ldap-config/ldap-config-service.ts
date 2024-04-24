@@ -588,6 +588,12 @@ export const ldapConfigServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.ldap)
+      throw new BadRequestError({
+        message: "Failed to create LDAP group map due to plan restriction. Upgrade plan to create LDAP group map."
+      });
+
     const ldapConfig = await ldapConfigDAL.findOne({
       id: ldapConfigId,
       orgId
@@ -617,6 +623,12 @@ export const ldapConfigServiceFactory = ({
   }: TDeleteLdapGroupMapDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
+
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.ldap)
+      throw new BadRequestError({
+        message: "Failed to delete LDAP group map due to plan restriction. Upgrade plan to delete LDAP group map."
+      });
 
     const ldapConfig = await ldapConfigDAL.findOne({
       id: ldapConfigId,
