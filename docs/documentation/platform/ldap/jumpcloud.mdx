@@ -37,7 +37,7 @@ description: "Learn how to configure JumpCloud LDAP for authenticating into Infi
             - Bind Pass: The password to use along with `Bind DN` when performing the user search.
             - Search Base / User DN: Base DN under which to perform user search (`ou=Users,o=<your-org-id>,dc=jumpcloud,dc=com`).
             - Group Search Base / Group DN (optional): LDAP search base to use for group membership search (`ou=Users,o=<your-org-id>,dc=jumpcloud,dc=com`).
-            - Group Filter (optional): Template used when constructing the group membership query (`(objectClass=groupOfNames)`).
+            - Group Filter (optional): Template used when constructing the group membership query (`(&(objectClass=groupOfNames)(member=uid={{.Username}},ou=Users,o=<your-org-id>,dc=jumpcloud,dc=com))`)
             - CA Certificate: The CA certificate to use when verifying the LDAP server certificate (instructions to obtain the certificate for JumpCloud [here](https://jumpcloud.com/support/connect-to-ldap-with-tls-ssl)).
 
             <Tip>

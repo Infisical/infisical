@@ -55,11 +55,9 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           const ldapConfig = (req as unknown as FastifyRequest).ldapConfig as TLDAPConfig;
 
           const groupFilter = "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))";
-          const searchFilter =
-            ldapConfig.groupSearchFilter ||
-            groupFilter.replace("{{.Username}}", user.uid).replace("{{.UserDN}}", user.dn);
-
-          const shouldProcessGroups = ldapConfig.groupSearchFilter && ldapConfig.groupSearchBase;
+          const searchFilter = (ldapConfig.groupSearchFilter || groupFilter)
+            .replace(/{{\.Username}}/g, user.uid)
+            .replace(/{{\.UserDN}}/g, user.dn);
 
           const { isUserCompleted, providerAuthToken } = await server.services.ldap.ldapLogin({
             ldapConfigId: ldapConfig.id,
@@ -68,7 +66,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
             firstName: user.givenName ?? user.cn ?? "",
             lastName: user.sn ?? "",
             emails: user.mail ? [user.mail] : [],
-            groups: shouldProcessGroups
+            groups: ldapConfig.groupSearchBase
               ? await searchGroups(ldapConfig, searchFilter, ldapConfig.groupSearchBase)
               : undefined,
             relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
@@ -325,6 +323,34 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         ldapGroupMapId: req.params.groupMapId
       });
       return ldapGroupMap;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/config/:configId/test-connection",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        configId: z.string().trim()
+      }),
+      response: {
+        200: z.boolean()
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.ldap.testLDAPConnection({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ldapConfigId: req.params.configId
+      });
+      return result;
     }
   });
 };

@@ -72,3 +72,7 @@ export type TDeleteLdapGroupMapDTO = {
   ldapConfigId: string;
   ldapGroupMapId: string;
 } & TOrgPermission;
+
+export type TTestLdapConnectionDTO = {
+  ldapConfigId: string;
+} & TOrgPermission;

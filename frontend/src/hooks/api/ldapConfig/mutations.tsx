@@ -136,3 +136,14 @@ export const useDeleteLDAPGroupMapping = () => {
     }
   });
 };
+
+export const useTestLDAPConnection = () => {
+  return useMutation({
+    mutationFn: async (ldapConfigId: string) => {
+      const { data } = await apiRequest.post<boolean>(
+        `/api/v1/ldap/config/${ldapConfigId}/test-connection`
+      );
+      return data;
+    }
+  });
+};
