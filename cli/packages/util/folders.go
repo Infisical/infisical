@@ -15,6 +15,8 @@ func GetAllFolders(params models.GetAllFoldersParameters) ([]models.SingleFolder
 	var foldersToReturn []models.SingleFolder
 	var folderErr error
 	if params.InfisicalToken == "" && params.UniversalAuthAccessToken == "" {
+		RequireLogin()
+		RequireLocalWorkspaceFile()
 
 		log.Debug().Msg("GetAllFolders: Trying to fetch folders using logged in details")
 
