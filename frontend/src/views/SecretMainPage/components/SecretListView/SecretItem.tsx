@@ -48,7 +48,7 @@ import { memo, useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
 
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput/InfisicalSecretInput";
+import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
 

@@ -32,7 +32,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput/InfisicalSecretInput";
+import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useGetSecretVersion } from "@app/hooks/api";
@@ -71,7 +71,6 @@ export const SecretDetailSidebar = ({
   environment,
   secretPath
 }: Props) => {
-  
   const {
     register,
     control,

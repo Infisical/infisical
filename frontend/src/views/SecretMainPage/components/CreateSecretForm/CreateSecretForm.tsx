@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput/InfisicalSecretInput";
+import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { useCreateSecretV3 } from "@app/hooks/api";
 import { UserWsKeyPair } from "@app/hooks/api/types";
 

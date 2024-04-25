@@ -15,7 +15,7 @@ import {
   ModalContent,
   Tooltip
 } from "@app/components/v2";
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput/InfisicalSecretInput";
+import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { useWorkspace } from "@app/context";
 import { useCreateFolder, useCreateSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
 import { DecryptedSecret, UserWsKeyPair } from "@app/hooks/api/types";
