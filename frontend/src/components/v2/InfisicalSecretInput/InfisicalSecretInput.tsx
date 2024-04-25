@@ -1,5 +1,5 @@
 import { TextareaHTMLAttributes, useEffect, useRef, useState } from "react";
-import { faFolder, faKey } from "@fortawesome/free-solid-svg-icons";
+import { faFolder, faFolderOpen, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
 import { twMerge } from "tailwind-merge";
@@ -109,6 +109,11 @@ export const InfisicalSecretInput = ({
     const currentListReference: ReferenceItem[] = [];
     const isNested = currentReference?.includes(".");
 
+    if (!currentReference) {
+      setListReference(currentListReference);
+      return;
+    }
+
     if (!environment) {
       currentWorkspace?.environments.forEach((env) => {
         currentListReference.unshift({
@@ -116,18 +121,11 @@ export const InfisicalSecretInput = ({
           type: ReferenceType.ENVIRONMENT
         });
       });
-    }
-
-    if (!environment || !currentReference) {
-      setListReference(currentListReference);
-      return;
-    }
-
-    if (isNested) {
+    } else if (isNested) {
       folders?.forEach((folder) => {
         currentListReference.unshift({ name: folder, type: ReferenceType.FOLDER });
       });
-    } else {
+    } else if (environment) {
       currentWorkspace?.environments.forEach((env) => {
         currentListReference.unshift({
           name: env.slug,
@@ -182,8 +180,9 @@ export const InfisicalSecretInput = ({
     }
   };
 
-  const handleSuggestionSelect = () => {
-    const selectedSuggestion = listReference[highlightedIndex];
+  const handleSuggestionSelect = (selectedIndex?: number) => {
+    const selectedSuggestion = listReference[selectedIndex ?? highlightedIndex];
+
     // update current reference based on selection
     const indexIter = getIndexOfUnclosedRefToTheLeft(currentCursorPosition);
     if (indexIter === -1) {
@@ -290,26 +289,44 @@ export const InfisicalSecretInput = ({
         }}
       >
         <div className="max-w-60 h-full w-full flex-col items-center justify-center rounded-md p-1 py-2 text-white">
-          {listReference.map((item, i) => (
-            <div
-              style={{ pointerEvents: "auto" }}
-              className="flex items-center justify-between border-b border-mineshaft-600 px-2  text-left last:border-b-0"
-              key={`secret-reference-secret-${i + 1}`}
-            >
+          {listReference.map((item, i) => {
+            let entryIcon;
+            if (item.type === ReferenceType.SECRET) {
+              entryIcon = faKey;
+            } else if (item.type === ReferenceType.ENVIRONMENT) {
+              entryIcon = faFolderOpen;
+            } else {
+              entryIcon = faFolder;
+            }
+
+            return (
               <div
-                className={`${
-                  highlightedIndex === i ? "bg-gray-600" : ""
-                } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
+                tabIndex={0}
+                role="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setHighlightedIndex(i);
+                  handleSuggestionSelect(i);
+                }}
+                style={{ pointerEvents: "auto" }}
+                className="flex items-center justify-between border-b border-mineshaft-600 px-2  text-left last:border-b-0"
+                key={`secret-reference-secret-${i + 1}`}
               >
-                <div className="flex gap-2">
-                  <div className="flex items-center text-yellow-700">
-                    <FontAwesomeIcon icon={item.type === "secret" ? faKey : faFolder} />
+                <div
+                  className={`${
+                    highlightedIndex === i ? "bg-gray-600" : ""
+                  } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
+                >
+                  <div className="flex gap-2">
+                    <div className="flex items-center text-yellow-700">
+                      <FontAwesomeIcon icon={entryIcon} />
+                    </div>
+                    <div className="text-md w-48 truncate text-left">{item.name}</div>
                   </div>
-                  <div className="text-md w-48 truncate text-left">{item.name}</div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Popover.Content>
     </Popover.Root>
