@@ -157,7 +157,7 @@ export const InfisicalSecretInput = ({
     // find unclosed reference index less than the current cursor position
     let indexIter = -1;
     unclosedReferenceIndexMatches.forEach((index) => {
-      if (index > indexIter && index < pos) {
+      if (index && index > indexIter && index < pos) {
         indexIter = index;
       }
     });
@@ -174,7 +174,7 @@ export const InfisicalSecretInput = ({
     // this is so that we know the limitation for slicing references
     let indexIter = Infinity;
     unclosedReferenceIndexMatches.forEach((index) => {
-      if (index > pos && index < indexIter) {
+      if (index && index > pos && index < indexIter) {
         indexIter = index;
       }
     });
