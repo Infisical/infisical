@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ProjectEnvironmentsSchema } from "@app/db/schemas";
@@ -26,7 +27,13 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         name: z.string().trim().describe(ENVIRONMENTS.CREATE.name),
-        slug: z.string().trim().describe(ENVIRONMENTS.CREATE.slug)
+        slug: z
+          .string()
+          .trim()
+          .refine((v) => slugify(v) === v, {
+            message: "Slug must be a valid slug"
+          })
+          .describe(ENVIRONMENTS.CREATE.slug)
       }),
       response: {
         200: z.object({
@@ -84,7 +91,14 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().describe(ENVIRONMENTS.UPDATE.id)
       }),
       body: z.object({
-        slug: z.string().trim().optional().describe(ENVIRONMENTS.UPDATE.slug),
+        slug: z
+          .string()
+          .trim()
+          .optional()
+          .refine((v) => !v || slugify(v) === v, {
+            message: "Slug must be a valid slug"
+          })
+          .describe(ENVIRONMENTS.UPDATE.slug),
         name: z.string().trim().optional().describe(ENVIRONMENTS.UPDATE.name),
         position: z.number().optional().describe(ENVIRONMENTS.UPDATE.position)
       }),

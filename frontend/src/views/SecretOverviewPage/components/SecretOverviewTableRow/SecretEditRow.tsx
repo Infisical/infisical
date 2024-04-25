@@ -6,7 +6,8 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { IconButton, SecretInput, Tooltip } from "@app/components/v2";
+import { IconButton, Tooltip } from "@app/components/v2";
+import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
@@ -49,7 +50,6 @@ export const SecretEditRow = ({
     }
   });
   const [isDeleting, setIsDeleting] = useToggle();
-  
 
   const handleFormReset = () => {
     reset();
@@ -97,10 +97,13 @@ export const SecretEditRow = ({
           control={control}
           name="value"
           render={({ field }) => (
-            <SecretInput
+            <InfisicalSecretInput
               {...field}
               value={field.value as string}
+              key="secret-input"
               isVisible={isVisible}
+              secretPath={secretPath}
+              environment={environment}
               isImport={isImportedSecret}
             />
           )}

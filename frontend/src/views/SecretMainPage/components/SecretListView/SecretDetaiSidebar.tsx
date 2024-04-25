@@ -27,12 +27,12 @@ import {
   FormControl,
   IconButton,
   Input,
-  SecretInput,
   Switch,
   Tag,
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useGetSecretVersion } from "@app/hooks/api";
@@ -71,7 +71,6 @@ export const SecretDetailSidebar = ({
   environment,
   secretPath
 }: Props) => {
-  
   const {
     register,
     control,
@@ -204,8 +203,10 @@ export const SecretDetailSidebar = ({
                     control={control}
                     render={({ field }) => (
                       <FormControl label="Value">
-                        <SecretInput
+                        <InfisicalSecretInput
                           isReadOnly={isReadOnly}
+                          environment={environment}
+                          secretPath={secretPath}
                           key="secret-value"
                           isDisabled={isOverridden || !isAllowed}
                           containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
@@ -240,8 +241,10 @@ export const SecretDetailSidebar = ({
                   control={control}
                   render={({ field }) => (
                     <FormControl label="Value Override">
-                      <SecretInput
+                      <InfisicalSecretInput
                         isReadOnly={isReadOnly}
+                        environment={environment}
+                        secretPath={secretPath}
                         containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
                         {...field}
                       />
