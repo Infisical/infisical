@@ -4,6 +4,17 @@ import { logger } from "@app/lib/logger";
 
 import { TLDAPConfig } from "./ldap-config-types";
 
+export const isValidLdapFilter = (filter: string) => {
+  try {
+    ldapjs.parseFilter(filter);
+    return true;
+  } catch (error) {
+    logger.error("Invalid LDAP filter");
+    logger.error(error);
+    return false;
+  }
+};
+
 /**
  * Test the LDAP configuration by attempting to bind to the LDAP server
  * @param ldapConfig - The LDAP configuration to test

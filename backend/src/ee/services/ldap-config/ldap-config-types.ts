@@ -20,6 +20,7 @@ export type TCreateLdapCfgDTO = {
   bindDN: string;
   bindPass: string;
   searchBase: string;
+  searchFilter: string;
   groupSearchBase: string;
   groupSearchFilter: string;
   caCert: string;
@@ -33,6 +34,7 @@ export type TUpdateLdapCfgDTO = {
   bindDN: string;
   bindPass: string;
   searchBase: string;
+  searchFilter: string;
   groupSearchBase: string;
   groupSearchFilter: string;
   caCert: string;

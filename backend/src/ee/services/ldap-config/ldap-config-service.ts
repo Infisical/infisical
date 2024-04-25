@@ -40,7 +40,7 @@ import {
   TTestLdapConnectionDTO,
   TUpdateLdapCfgDTO
 } from "./ldap-config-types";
-import { testLDAPConfig } from "./ldap-fns";
+import { isValidLdapFilter, testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
@@ -98,6 +98,7 @@ export const ldapConfigServiceFactory = ({
     bindDN,
     bindPass,
     searchBase,
+    searchFilter,
     groupSearchBase,
     groupSearchFilter,
     caCert
@@ -110,6 +111,18 @@ export const ldapConfigServiceFactory = ({
       throw new BadRequestError({
         message:
           "Failed to create LDAP configuration due to plan restriction. Upgrade plan to create LDAP configuration."
+      });
+
+    const isSearchFilterValid = isValidLdapFilter(searchFilter);
+    if (!isSearchFilterValid)
+      throw new BadRequestError({
+        message: "Failed to create LDAP configuration due to invalid search filter."
+      });
+
+    const isGroupSearchFilterValid = isValidLdapFilter(groupSearchFilter);
+    if (!isGroupSearchFilterValid)
+      throw new BadRequestError({
+        message: "Failed to create LDAP configuration due to invalid group search filter."
       });
 
     const orgBot = await orgBotDAL.transaction(async (tx) => {
@@ -175,6 +188,7 @@ export const ldapConfigServiceFactory = ({
       bindPassIV,
       bindPassTag,
       searchBase,
+      searchFilter,
       groupSearchBase,
       groupSearchFilter,
       encryptedCACert,
@@ -196,6 +210,7 @@ export const ldapConfigServiceFactory = ({
     bindDN,
     bindPass,
     searchBase,
+    searchFilter,
     groupSearchBase,
     groupSearchFilter,
     caCert
@@ -210,10 +225,27 @@ export const ldapConfigServiceFactory = ({
           "Failed to update LDAP configuration due to plan restriction. Upgrade plan to update LDAP configuration."
       });
 
+    if (searchFilter) {
+      const isSearchFilterValid = isValidLdapFilter(searchFilter);
+      if (!isSearchFilterValid)
+        throw new BadRequestError({
+          message: "Failed to update LDAP configuration due to invalid search filter."
+        });
+    }
+
+    if (groupSearchFilter) {
+      const isGroupSearchFilterValid = isValidLdapFilter(groupSearchFilter);
+      if (!isGroupSearchFilterValid)
+        throw new BadRequestError({
+          message: "Failed to update LDAP configuration due to invalid group search filter."
+        });
+    }
+
     const updateQuery: TLdapConfigsUpdate = {
       isActive,
       url,
       searchBase,
+      searchFilter,
       groupSearchBase,
       groupSearchFilter
     };
@@ -317,6 +349,7 @@ export const ldapConfigServiceFactory = ({
       bindDN,
       bindPass,
       searchBase: ldapConfig.searchBase,
+      searchFilter: ldapConfig.searchFilter,
       groupSearchBase: ldapConfig.groupSearchBase,
       groupSearchFilter: ldapConfig.groupSearchFilter,
       caCert
@@ -352,7 +385,7 @@ export const ldapConfigServiceFactory = ({
         bindDN: ldapConfig.bindDN,
         bindCredentials: ldapConfig.bindPass,
         searchBase: ldapConfig.searchBase,
-        searchFilter: "(uid={{username}})",
+        searchFilter: ldapConfig.searchFilter || "(uid={{username}})",
         // searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
         ...(ldapConfig.caCert !== ""
           ? {

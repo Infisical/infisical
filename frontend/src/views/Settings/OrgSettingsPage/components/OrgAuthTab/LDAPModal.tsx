@@ -10,7 +10,8 @@ import {
   useCreateLDAPConfig,
   useGetLDAPConfig,
   useTestLDAPConnection,
-  useUpdateLDAPConfig} from "@app/hooks/api";
+  useUpdateLDAPConfig
+} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const LDAPFormSchema = z.object({
@@ -18,6 +19,7 @@ const LDAPFormSchema = z.object({
   bindDN: z.string().default(""),
   bindPass: z.string().default(""),
   searchBase: z.string().default(""),
+  searchFilter: z.string().default(""),
   groupSearchBase: z.string().default(""),
   groupSearchFilter: z.string().default(""),
   caCert: z.string().optional()
@@ -47,6 +49,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
   const watchBindDN = watch("bindDN");
   const watchBindPass = watch("bindPass");
   const watchSearchBase = watch("searchBase");
+  const watchSearchFilter = watch("searchFilter");
   const watchGroupSearchBase = watch("groupSearchBase");
   const watchGroupSearchFilter = watch("groupSearchFilter");
   const watchCaCert = watch("caCert");
@@ -58,6 +61,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
         bindDN: data?.bindDN ?? "",
         bindPass: data?.bindPass ?? "",
         searchBase: data?.searchBase ?? "",
+        searchFilter: data?.searchFilter ?? "",
         groupSearchBase: data?.groupSearchBase ?? "",
         groupSearchFilter: data?.groupSearchFilter ?? "",
         caCert: data?.caCert ?? ""
@@ -70,6 +74,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
     bindDN,
     bindPass,
     searchBase,
+    searchFilter,
     groupSearchBase,
     groupSearchFilter,
     caCert,
@@ -86,6 +91,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
           bindDN,
           bindPass,
           searchBase,
+          searchFilter,
           groupSearchBase,
           groupSearchFilter,
           caCert
@@ -98,6 +104,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
           bindDN,
           bindPass,
           searchBase,
+          searchFilter,
           groupSearchBase,
           groupSearchFilter,
           caCert
@@ -128,6 +135,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
         bindDN: watchBindDN,
         bindPass: watchBindPass,
         searchBase: watchSearchBase,
+        searchFilter: watchSearchFilter,
         groupSearchBase: watchGroupSearchBase,
         groupSearchFilter: watchGroupSearchFilter,
         caCert: watchCaCert,
@@ -201,11 +209,24 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
             name="searchBase"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Search Base / User DN"
+                label="User Search Base / User DN"
                 errorText={error?.message}
                 isError={Boolean(error)}
               >
                 <Input {...field} placeholder="ou=people,dc=acme,dc=com" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="searchFilter"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="User Search Filter (Optional)"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
+                <Input {...field} placeholder="(uid={{username}})" />
               </FormControl>
             )}
           />
@@ -231,7 +252,10 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
                 errorText={error?.message}
                 isError={Boolean(error)}
               >
-                <Input {...field} placeholder="(objectClass=posixGroup)" />
+                <Input
+                  {...field}
+                  placeholder="(&(objectClass=posixGroup)(memberUid={{.Username}}))"
+                />
               </FormControl>
             )}
           />
