@@ -19,12 +19,14 @@ type TSecretImportSecrets = {
 };
 
 const LEVEL_BREAK = 10;
+const getImportUniqKey = (envSlug: string, path: string) => `${envSlug}=${path}`;
 export const fnSecretsFromImports = async ({
-  allowedImports,
+  allowedImports: nonCyclicImports,
   folderDAL,
   secretDAL,
   secretImportDAL,
-  depth = 0
+  depth = 0,
+  cyclicDetector = new Set()
 }: {
   allowedImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string };
@@ -33,9 +35,14 @@ export const fnSecretsFromImports = async ({
   secretDAL: Pick<TSecretDALFactory, "find">;
   secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds">;
   depth?: number;
+  cyclicDetector?: Set<string>;
 }) => {
   // avoid going more than a depth
   if (depth >= LEVEL_BREAK) return [];
+
+  const allowedImports = nonCyclicImports.filter(
+    ({ importPath, importEnv }) => !cyclicDetector.has(getImportUniqKey(importEnv.slug, importPath))
+  );
 
   const importedFolders = (
     await folderDAL.findByManySecretPath(
@@ -63,6 +70,9 @@ export const fnSecretsFromImports = async ({
 
   const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
 
+  allowedImports.forEach(({ importPath, importEnv }) => {
+    cyclicDetector.add(getImportUniqKey(importEnv.slug, importPath));
+  });
   // now we need to check recursively deeper imports made inside other imports
   // we go level wise meaning we take all imports of a tree level and then go deeper ones level by level
   const deeperImports = await secretImportDAL.findByFolderIds(importedFolderIds);
@@ -73,7 +83,8 @@ export const fnSecretsFromImports = async ({
       secretImportDAL,
       folderDAL,
       secretDAL,
-      depth: depth + 1
+      depth: depth + 1,
+      cyclicDetector
     });
   }
   const secretsFromdeeperImportGroupedByFolderId = groupBy(secretsFromDeeperImports, (i) => i.importFolderId);
