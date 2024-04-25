@@ -54,13 +54,18 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         try {
           const ldapConfig = (req as unknown as FastifyRequest).ldapConfig as TLDAPConfig;
 
-          const groupFilter = "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))";
-          const groupSearchFilter = (ldapConfig.groupSearchFilter || groupFilter)
-            .replace(/{{\.Username}}/g, user.uid)
-            .replace(/{{\.UserDN}}/g, user.dn);
+          let groups: { dn: string; cn: string }[] | undefined;
+          if (ldapConfig.groupSearchBase) {
+            const groupFilter = "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))";
+            const groupSearchFilter = (ldapConfig.groupSearchFilter || groupFilter)
+              .replace(/{{\.Username}}/g, user.uid)
+              .replace(/{{\.UserDN}}/g, user.dn);
 
-          if (!isValidLdapFilter(groupSearchFilter)) {
-            throw new Error("Generated LDAP search filter is invalid.");
+            if (!isValidLdapFilter(groupSearchFilter)) {
+              throw new Error("Generated LDAP search filter is invalid.");
+            }
+
+            groups = await searchGroups(ldapConfig, groupSearchFilter, ldapConfig.groupSearchBase);
           }
 
           const { isUserCompleted, providerAuthToken } = await server.services.ldap.ldapLogin({
@@ -70,9 +75,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
             firstName: user.givenName ?? user.cn ?? "",
             lastName: user.sn ?? "",
             emails: user.mail ? [user.mail] : [],
-            groups: ldapConfig.groupSearchBase
-              ? await searchGroups(ldapConfig, groupSearchFilter, ldapConfig.groupSearchBase)
-              : undefined,
+            groups,
             relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
             orgId: (req as unknown as FastifyRequest).ldapConfig.organization
           });
