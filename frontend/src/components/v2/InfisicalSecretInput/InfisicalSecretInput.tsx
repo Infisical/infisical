@@ -360,7 +360,7 @@ export const InfisicalSecretInput = ({
                         size={item.type === ReferenceType.ENVIRONMENT ? "xs" : "1x"}
                       />
                     </div>
-                    <div className="text-md w-48 truncate text-left">{item.name}</div>
+                    <div className="text-md w-10/12 truncate text-left">{item.name}</div>
                   </div>
                 </div>
               </div>
