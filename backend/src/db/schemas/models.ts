@@ -60,6 +60,7 @@ export enum TableName {
   SecretRotationOutput = "secret_rotation_outputs",
   SamlConfig = "saml_configs",
   LdapConfig = "ldap_configs",
+  LdapGroupMap = "ldap_group_maps",
   AuditLog = "audit_logs",
   GitAppInstallSession = "git_app_install_sessions",
   GitAppOrg = "git_app_org",

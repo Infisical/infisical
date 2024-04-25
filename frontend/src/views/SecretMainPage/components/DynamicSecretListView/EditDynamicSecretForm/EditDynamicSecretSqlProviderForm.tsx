@@ -128,7 +128,7 @@ export const EditDynamicSecretSqlProviderForm = ({
 
   return (
     <div>
-      <form onSubmit={handleSubmit(handleUpdateDynamicSecret)}>
+      <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
         <div className="flex items-center space-x-2">
           <div className="flex-grow">
             <Controller
@@ -244,7 +244,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
-                    <Input {...field} />
+                    <Input {...field} autoComplete="off" />
                   </FormControl>
                 )}
               />
@@ -257,7 +257,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
-                    <Input {...field} type="password" />
+                    <Input {...field} type="password" autoComplete="new-password" />
                   </FormControl>
                 )}
               />

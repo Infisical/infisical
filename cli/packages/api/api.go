@@ -512,16 +512,23 @@ func CallUniversalAuthRefreshAccessToken(httpClient *resty.Client, request Unive
 
 func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Request) (GetRawSecretsV3Response, error) {
 	var getRawSecretsV3Response GetRawSecretsV3Response
-	response, err := httpClient.
+	req := httpClient.
 		R().
 		SetResult(&getRawSecretsV3Response).
 		SetHeader("User-Agent", USER_AGENT).
 		SetBody(request).
 		SetQueryParam("workspaceId", request.WorkspaceId).
 		SetQueryParam("environment", request.Environment).
-		SetQueryParam("secretPath", request.SecretPath).
-		SetQueryParam("include_imports", "false").
-		Get(fmt.Sprintf("%v/v3/secrets/raw", config.INFISICAL_URL))
+		SetQueryParam("secretPath", request.SecretPath)
+
+	if request.IncludeImport {
+		req.SetQueryParam("include_imports", "true")
+	}
+	if request.Recursive {
+		req.SetQueryParam("recursive", "true")
+	}
+
+	response, err := req.Get(fmt.Sprintf("%v/v3/secrets/raw", config.INFISICAL_URL))
 
 	if err != nil {
 		return GetRawSecretsV3Response{}, fmt.Errorf("CallGetRawSecretsV3: Unable to complete api request [err=%w]", err)

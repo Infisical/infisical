@@ -289,14 +289,28 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         schemas: z.array(z.string()),
         displayName: z.string().trim(),
-        members: z.array(z.any()).length(0).optional() // okta-specific
+        members: z
+          .array(
+            z.object({
+              value: z.string(),
+              display: z.string()
+            })
+          )
+          .optional() // okta-specific
       }),
       response: {
         200: z.object({
           schemas: z.array(z.string()),
           id: z.string().trim(),
           displayName: z.string().trim(),
-          members: z.array(z.any()).length(0),
+          members: z
+            .array(
+              z.object({
+                value: z.string(),
+                display: z.string()
+              })
+            )
+            .optional(),
           meta: z.object({
             resourceType: z.string().trim()
           })
@@ -306,8 +320,8 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
       const group = await req.server.services.scim.createScimGroup({
-        displayName: req.body.displayName,
-        orgId: req.permission.orgId
+        orgId: req.permission.orgId,
+        ...req.body
       });
 
       return group;
@@ -400,7 +414,12 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         schemas: z.array(z.string()),
         id: z.string().trim(),
         displayName: z.string().trim(),
-        members: z.array(z.any()).length(0)
+        members: z.array(
+          z.object({
+            value: z.string(), // infisical userId
+            display: z.string()
+          })
+        ) // note: is this where members are added to group?
       }),
       response: {
         200: z.object({
@@ -424,7 +443,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       const group = await req.server.services.scim.updateScimGroupNamePut({
         groupId: req.params.groupId,
         orgId: req.permission.orgId,
-        displayName: req.body.displayName
+        ...req.body
       });
 
       return group;
@@ -482,8 +501,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      // console.log("PATCH /Groups/:groupId req.body: ", req.body);
-      // console.log("PATCH /Groups/:groupId req.body: ", req.body.Operations[0]);
       const group = await req.server.services.scim.updateScimGroupNamePatch({
         groupId: req.params.groupId,
         orgId: req.permission.orgId,

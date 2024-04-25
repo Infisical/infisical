@@ -19,12 +19,27 @@ export const DynamicSecretSqlDBSchema = z.object({
   ca: z.string().optional()
 });
 
+export const DynamicSecretCassandraSchema = z.object({
+  host: z.string().toLowerCase(),
+  port: z.number(),
+  localDataCenter: z.string().min(1),
+  keyspace: z.string().optional(),
+  username: z.string(),
+  password: z.string(),
+  creationStatement: z.string(),
+  revocationStatement: z.string(),
+  renewStatement: z.string().optional(),
+  ca: z.string().optional()
+});
+
 export enum DynamicSecretProviders {
-  SqlDatabase = "sql-database"
+  SqlDatabase = "sql-database",
+  Cassandra = "cassandra"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal(DynamicSecretProviders.SqlDatabase), inputs: DynamicSecretSqlDBSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.SqlDatabase), inputs: DynamicSecretSqlDBSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Cassandra), inputs: DynamicSecretCassandraSchema })
 ]);
 
 export type TDynamicProviderFns = {
