@@ -314,12 +314,13 @@ export const InfisicalSecretInput = ({
         />
       </Popover.Trigger>
       <Popover.Content
+        align="start"
         onOpenAutoFocus={(e) => e.preventDefault()}
         className={twMerge(
-          "relative top-3 z-[100] ml-4 overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
+          "relative top-2 z-[100] overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
         )}
         style={{
-          width: "300px",
+          width: "var(--radix-popover-trigger-width)",
           maxHeight: "var(--radix-select-content-available-height)"
         }}
       >
@@ -350,7 +351,7 @@ export const InfisicalSecretInput = ({
                 <div
                   className={`${
                     highlightedIndex === i ? "bg-gray-600" : ""
-                  } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-1 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
+                  } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-2 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
                 >
                   <div className="flex gap-2">
                     <div className="flex items-center text-yellow-700">
