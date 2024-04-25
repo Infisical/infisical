@@ -4,6 +4,65 @@ import { logger } from "@app/lib/logger";
 
 import { TLDAPConfig } from "./ldap-config-types";
 
+export const isValidLdapFilter = (filter: string) => {
+  try {
+    ldapjs.parseFilter(filter);
+    return true;
+  } catch (error) {
+    logger.error("Invalid LDAP filter");
+    logger.error(error);
+    return false;
+  }
+};
+
+/**
+ * Test the LDAP configuration by attempting to bind to the LDAP server
+ * @param ldapConfig - The LDAP configuration to test
+ * @returns {Boolean} isConnected - Whether or not the connection was successful
+ */
+export const testLDAPConfig = async (ldapConfig: TLDAPConfig): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const ldapClient = ldapjs.createClient({
+      url: ldapConfig.url,
+      bindDN: ldapConfig.bindDN,
+      bindCredentials: ldapConfig.bindPass,
+      ...(ldapConfig.caCert !== ""
+        ? {
+            tlsOptions: {
+              ca: [ldapConfig.caCert]
+            }
+          }
+        : {})
+    });
+
+    ldapClient.on("error", (err) => {
+      logger.error("LDAP client error:", err);
+      logger.error(err);
+      resolve(false);
+    });
+
+    ldapClient.bind(ldapConfig.bindDN, ldapConfig.bindPass, (err) => {
+      if (err) {
+        logger.error("Error binding to LDAP");
+        logger.error(err);
+        ldapClient.unbind();
+        resolve(false);
+      } else {
+        logger.info("Successfully connected and bound to LDAP.");
+        ldapClient.unbind();
+        resolve(true);
+      }
+    });
+  });
+};
+
+/**
+ * Search for groups in the LDAP server
+ * @param ldapConfig - The LDAP configuration to use
+ * @param filter - The filter to use when searching for groups
+ * @param base - The base to search from
+ * @returns
+ */
 export const searchGroups = async (
   ldapConfig: TLDAPConfig,
   filter: string,
@@ -31,11 +90,7 @@ export const searchGroups = async (
       },
       (err, res) => {
         if (err) {
-          ldapClient.unbind((unbindError) => {
-            if (unbindError) {
-              logger.error("Error unbinding LDAP client:", unbindError);
-            }
-          });
+          ldapClient.unbind();
           return reject(err);
         }
 
@@ -51,19 +106,11 @@ export const searchGroups = async (
           groups.push({ dn, cn });
         });
         res.on("error", (error) => {
-          ldapClient.unbind((unbindError) => {
-            if (unbindError) {
-              logger.error("Error unbinding LDAP client:", unbindError);
-            }
-          });
+          ldapClient.unbind();
           reject(error);
         });
         res.on("end", () => {
-          ldapClient.unbind((unbindError) => {
-            if (unbindError) {
-              logger.error("Error unbinding LDAP client:", unbindError);
-            }
-          });
+          ldapClient.unbind();
           resolve(groups);
         });
       }

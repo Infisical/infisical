@@ -68,6 +68,7 @@ export const OrgLDAPSection = (): JSX.Element => {
             bindDN: "",
             bindPass: "",
             searchBase: "",
+            searchFilter: "",
             groupSearchBase: "",
             groupSearchFilter: ""
           });
@@ -97,13 +98,15 @@ export const OrgLDAPSection = (): JSX.Element => {
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">LDAP</h2>
-          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
-            {(isAllowed) => (
-              <Button onClick={addLDAPBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
-                Manage
-              </Button>
-            )}
-          </OrgPermissionCan>
+          <div className="flex">
+            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
+              {(isAllowed) => (
+                <Button onClick={addLDAPBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
+                  Manage
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </div>
         </div>
         <p className="text-sm text-mineshaft-300">Manage LDAP authentication configuration</p>
       </div>

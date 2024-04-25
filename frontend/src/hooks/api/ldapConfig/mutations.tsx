@@ -14,6 +14,7 @@ export const useCreateLDAPConfig = () => {
       bindDN,
       bindPass,
       searchBase,
+      searchFilter,
       groupSearchBase,
       groupSearchFilter,
       caCert
@@ -24,6 +25,7 @@ export const useCreateLDAPConfig = () => {
       bindDN: string;
       bindPass: string;
       searchBase: string;
+      searchFilter: string;
       groupSearchBase: string;
       groupSearchFilter: string;
       caCert?: string;
@@ -35,6 +37,7 @@ export const useCreateLDAPConfig = () => {
         bindDN,
         bindPass,
         searchBase,
+        searchFilter,
         groupSearchBase,
         groupSearchFilter,
         caCert
@@ -58,6 +61,7 @@ export const useUpdateLDAPConfig = () => {
       bindDN,
       bindPass,
       searchBase,
+      searchFilter,
       groupSearchBase,
       groupSearchFilter,
       caCert
@@ -68,6 +72,7 @@ export const useUpdateLDAPConfig = () => {
       bindDN?: string;
       bindPass?: string;
       searchBase?: string;
+      searchFilter?: string;
       groupSearchBase?: string;
       groupSearchFilter?: string;
       caCert?: string;
@@ -79,6 +84,7 @@ export const useUpdateLDAPConfig = () => {
         bindDN,
         bindPass,
         searchBase,
+        searchFilter,
         groupSearchBase,
         groupSearchFilter,
         caCert
@@ -133,6 +139,17 @@ export const useDeleteLDAPGroupMapping = () => {
     },
     onSuccess(_, { ldapConfigId }) {
       queryClient.invalidateQueries(ldapConfigKeys.getLDAPGroupMaps(ldapConfigId));
+    }
+  });
+};
+
+export const useTestLDAPConnection = () => {
+  return useMutation({
+    mutationFn: async (ldapConfigId: string) => {
+      const { data } = await apiRequest.post<boolean>(
+        `/api/v1/ldap/config/${ldapConfigId}/test-connection`
+      );
+      return data;
     }
   });
 };

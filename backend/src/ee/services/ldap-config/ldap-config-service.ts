@@ -37,8 +37,10 @@ import {
   TGetLdapCfgDTO,
   TGetLdapGroupMapsDTO,
   TLdapLoginDTO,
+  TTestLdapConnectionDTO,
   TUpdateLdapCfgDTO
 } from "./ldap-config-types";
+import { testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
@@ -96,6 +98,7 @@ export const ldapConfigServiceFactory = ({
     bindDN,
     bindPass,
     searchBase,
+    searchFilter,
     groupSearchBase,
     groupSearchFilter,
     caCert
@@ -173,6 +176,7 @@ export const ldapConfigServiceFactory = ({
       bindPassIV,
       bindPassTag,
       searchBase,
+      searchFilter,
       groupSearchBase,
       groupSearchFilter,
       encryptedCACert,
@@ -194,6 +198,7 @@ export const ldapConfigServiceFactory = ({
     bindDN,
     bindPass,
     searchBase,
+    searchFilter,
     groupSearchBase,
     groupSearchFilter,
     caCert
@@ -212,6 +217,7 @@ export const ldapConfigServiceFactory = ({
       isActive,
       url,
       searchBase,
+      searchFilter,
       groupSearchBase,
       groupSearchFilter
     };
@@ -315,6 +321,7 @@ export const ldapConfigServiceFactory = ({
       bindDN,
       bindPass,
       searchBase: ldapConfig.searchBase,
+      searchFilter: ldapConfig.searchFilter,
       groupSearchBase: ldapConfig.groupSearchBase,
       groupSearchFilter: ldapConfig.groupSearchFilter,
       caCert
@@ -350,7 +357,7 @@ export const ldapConfigServiceFactory = ({
         bindDN: ldapConfig.bindDN,
         bindCredentials: ldapConfig.bindPass,
         searchBase: ldapConfig.searchBase,
-        searchFilter: "(uid={{username}})",
+        searchFilter: ldapConfig.searchFilter || "(uid={{username}})",
         // searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
         ...(ldapConfig.caCert !== ""
           ? {
@@ -650,6 +657,23 @@ export const ldapConfigServiceFactory = ({
     return deletedGroupMap;
   };
 
+  const testLDAPConnection = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TTestLdapConnectionDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
+
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.ldap)
+      throw new BadRequestError({
+        message: "Failed to test LDAP connection due to plan restriction. Upgrade plan to test the LDAP connection."
+      });
+
+    const ldapConfig = await getLdapCfg({
+      orgId
+    });
+
+    return testLDAPConfig(ldapConfig);
+  };
+
   return {
     createLdapCfg,
     updateLdapCfg,
@@ -660,6 +684,7 @@ export const ldapConfigServiceFactory = ({
     bootLdap,
     getLdapGroupMaps,
     createLdapGroupMap,
-    deleteLdapGroupMap
+    deleteLdapGroupMap,
+    testLDAPConnection
   };
 };

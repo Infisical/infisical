@@ -21,7 +21,6 @@ description: "Learn how to configure JumpCloud LDAP for authenticating into Infi
         Next, under User Security Settings and Permissions > Permission Settings, check the box next to **Enable as LDAP Bind DN**.
 
         ![LDAP JumpCloud](/images/platform/ldap/jumpcloud/ldap-jumpcloud-enable-bind-dn.png)
-
     </Step>
     <Step title="Prepare the LDAP configuration in Infisical">
             In Infisical, head to your Organization Settings > Security > LDAP and select **Manage**.
@@ -35,9 +34,10 @@ description: "Learn how to configure JumpCloud LDAP for authenticating into Infi
             - URL: The LDAP server to connect to (`ldaps://ldap.jumpcloud.com:636`).
             - Bind DN: The distinguished name of object to bind when performing the user search (`uid=<ldap-user-username>,ou=Users,o=<your-org-id>,dc=jumpcloud,dc=com`).
             - Bind Pass: The password to use along with `Bind DN` when performing the user search.
-            - Search Base / User DN: Base DN under which to perform user search (`ou=Users,o=<your-org-id>,dc=jumpcloud,dc=com`).
+            - User Search Base / User DN: Base DN under which to perform user search (`ou=Users,o=<your-org-id>,dc=jumpcloud,dc=com`).
+            - User Search Filter (optional): Template used to construct the LDAP user search filter (`(uid={{username}})`).
             - Group Search Base / Group DN (optional): LDAP search base to use for group membership search (`ou=Users,o=<your-org-id>,dc=jumpcloud,dc=com`).
-            - Group Filter (optional): Template used when constructing the group membership query (`(objectClass=groupOfNames)`).
+            - Group Filter (optional): Template used when constructing the group membership query (`(&(objectClass=groupOfNames)(member=uid={{.Username}},ou=Users,o=<your-org-id>,dc=jumpcloud,dc=com))`)
             - CA Certificate: The CA certificate to use when verifying the LDAP server certificate (instructions to obtain the certificate for JumpCloud [here](https://jumpcloud.com/support/connect-to-ldap-with-tls-ssl)).
 
             <Tip>
@@ -46,6 +46,13 @@ description: "Learn how to configure JumpCloud LDAP for authenticating into Infi
                 Also, for the **Bind DN** and **Search Base / User DN** fields, you'll want to use the organization ID that appears
                 in your LDAP instance **ORG DN**.
             </Tip>
+    </Step>
+    <Step title="Test the LDAP connection">
+      Once you've filled out the LDAP configuration, you can test that part of the configuration is correct by pressing the **Test Connection** button.
+
+      Infisical will attempt to bind to the LDAP server using the provided **URL**, **Bind DN**, and **Bind Pass**. If the operation is successful, then Infisical will display a success message; if not, then Infisical will display an error message and provide a fuller error in the server logs.
+
+        ![LDAP test connection](/images/platform/ldap/ldap-test-connection.png)
     </Step>
     <Step title="Define mappings from LDAP groups to groups in Infisical">
      In order to sync LDAP groups to Infisical, head to the **LDAP Group Mappings** section to define mappings from LDAP groups to groups in Infisical.

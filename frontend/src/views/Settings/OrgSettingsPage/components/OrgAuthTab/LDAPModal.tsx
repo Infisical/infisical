@@ -6,7 +6,12 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, TextArea } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { useCreateLDAPConfig, useGetLDAPConfig, useUpdateLDAPConfig } from "@app/hooks/api";
+import {
+  useCreateLDAPConfig,
+  useGetLDAPConfig,
+  useTestLDAPConnection,
+  useUpdateLDAPConfig
+} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const LDAPFormSchema = z.object({
@@ -14,6 +19,7 @@ const LDAPFormSchema = z.object({
   bindDN: z.string().default(""),
   bindPass: z.string().default(""),
   searchBase: z.string().default(""),
+  searchFilter: z.string().default(""),
   groupSearchBase: z.string().default(""),
   groupSearchFilter: z.string().default(""),
   caCert: z.string().optional()
@@ -32,11 +38,21 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
 
   const { mutateAsync: createMutateAsync, isLoading: createIsLoading } = useCreateLDAPConfig();
   const { mutateAsync: updateMutateAsync, isLoading: updateIsLoading } = useUpdateLDAPConfig();
+  const { mutateAsync: testLDAPConnection } = useTestLDAPConnection();
   const { data } = useGetLDAPConfig(currentOrg?.id ?? "");
 
-  const { control, handleSubmit, reset } = useForm<TLDAPFormData>({
+  const { control, handleSubmit, reset, watch } = useForm<TLDAPFormData>({
     resolver: zodResolver(LDAPFormSchema)
   });
+
+  const watchUrl = watch("url");
+  const watchBindDN = watch("bindDN");
+  const watchBindPass = watch("bindPass");
+  const watchSearchBase = watch("searchBase");
+  const watchSearchFilter = watch("searchFilter");
+  const watchGroupSearchBase = watch("groupSearchBase");
+  const watchGroupSearchFilter = watch("groupSearchFilter");
+  const watchCaCert = watch("caCert");
 
   useEffect(() => {
     if (data) {
@@ -45,6 +61,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
         bindDN: data?.bindDN ?? "",
         bindPass: data?.bindPass ?? "",
         searchBase: data?.searchBase ?? "",
+        searchFilter: data?.searchFilter ?? "",
         groupSearchBase: data?.groupSearchBase ?? "",
         groupSearchFilter: data?.groupSearchFilter ?? "",
         caCert: data?.caCert ?? ""
@@ -57,10 +74,12 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
     bindDN,
     bindPass,
     searchBase,
+    searchFilter,
     groupSearchBase,
     groupSearchFilter,
-    caCert
-  }: TLDAPFormData) => {
+    caCert,
+    shouldCloseModal = true
+  }: TLDAPFormData & { shouldCloseModal?: boolean }) => {
     try {
       if (!currentOrg) return;
 
@@ -72,6 +91,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
           bindDN,
           bindPass,
           searchBase,
+          searchFilter,
           groupSearchBase,
           groupSearchFilter,
           caCert
@@ -84,13 +104,16 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
           bindDN,
           bindPass,
           searchBase,
+          searchFilter,
           groupSearchBase,
           groupSearchFilter,
           caCert
         });
       }
 
-      handlePopUpClose("addLDAP");
+      if (shouldCloseModal) {
+        handlePopUpClose("addLDAP");
+      }
 
       createNotification({
         text: `Successfully ${!data ? "added" : "updated"} LDAP configuration`,
@@ -100,6 +123,45 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
       console.error(err);
       createNotification({
         text: `Failed to ${!data ? "add" : "update"} LDAP configuration`,
+        type: "error"
+      });
+    }
+  };
+
+  const handleTestLDAPConnection = async () => {
+    try {
+      await onSSOModalSubmit({
+        url: watchUrl,
+        bindDN: watchBindDN,
+        bindPass: watchBindPass,
+        searchBase: watchSearchBase,
+        searchFilter: watchSearchFilter,
+        groupSearchBase: watchGroupSearchBase,
+        groupSearchFilter: watchGroupSearchFilter,
+        caCert: watchCaCert,
+        shouldCloseModal: false
+      });
+
+      if (!data) return;
+
+      const result = await testLDAPConnection(data.id);
+
+      if (!result) {
+        createNotification({
+          text: "Failed to test the LDAP connection: Bind operation was unsuccessful",
+          type: "error"
+        });
+        return;
+      }
+
+      createNotification({
+        text: "Successfully tested the LDAP connection: Bind operation was successful",
+        type: "success"
+      });
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to test the LDAP connection",
         type: "error"
       });
     }
@@ -147,11 +209,24 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
             name="searchBase"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Search Base / User DN"
+                label="User Search Base / User DN"
                 errorText={error?.message}
                 isError={Boolean(error)}
               >
                 <Input {...field} placeholder="ou=people,dc=acme,dc=com" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="searchFilter"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="User Search Filter (Optional)"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
+                <Input {...field} placeholder="(uid={{username}})" />
               </FormControl>
             )}
           />
@@ -177,7 +252,10 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
                 errorText={error?.message}
                 isError={Boolean(error)}
               >
-                <Input {...field} placeholder="(objectClass=posixGroup)" />
+                <Input
+                  {...field}
+                  placeholder="(&(objectClass=posixGroup)(memberUid={{.Username}}))"
+                />
               </FormControl>
             )}
           />
@@ -203,12 +281,8 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
             >
               {!data ? "Add" : "Update"}
             </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpClose("addLDAP")}
-            >
-              Cancel
+            <Button colorSchema="secondary" onClick={handleTestLDAPConnection}>
+              Test Connection
             </Button>
           </div>
         </form>

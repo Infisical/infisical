@@ -16,7 +16,7 @@ import { z } from "zod";
 
 import { LdapConfigsSchema, LdapGroupMapsSchema } from "@app/db/schemas";
 import { TLDAPConfig } from "@app/ee/services/ldap-config/ldap-config-types";
-import { searchGroups } from "@app/ee/services/ldap-config/ldap-fns";
+import { isValidLdapFilter, searchGroups } from "@app/ee/services/ldap-config/ldap-fns";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -54,12 +54,19 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         try {
           const ldapConfig = (req as unknown as FastifyRequest).ldapConfig as TLDAPConfig;
 
-          const groupFilter = "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))";
-          const searchFilter =
-            ldapConfig.groupSearchFilter ||
-            groupFilter.replace("{{.Username}}", user.uid).replace("{{.UserDN}}", user.dn);
+          let groups: { dn: string; cn: string }[] | undefined;
+          if (ldapConfig.groupSearchBase) {
+            const groupFilter = "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))";
+            const groupSearchFilter = (ldapConfig.groupSearchFilter || groupFilter)
+              .replace(/{{\.Username}}/g, user.uid)
+              .replace(/{{\.UserDN}}/g, user.dn);
 
-          const shouldProcessGroups = ldapConfig.groupSearchFilter && ldapConfig.groupSearchBase;
+            if (!isValidLdapFilter(groupSearchFilter)) {
+              throw new Error("Generated LDAP search filter is invalid.");
+            }
+
+            groups = await searchGroups(ldapConfig, groupSearchFilter, ldapConfig.groupSearchBase);
+          }
 
           const { isUserCompleted, providerAuthToken } = await server.services.ldap.ldapLogin({
             ldapConfigId: ldapConfig.id,
@@ -68,9 +75,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
             firstName: user.givenName ?? user.cn ?? "",
             lastName: user.sn ?? "",
             emails: user.mail ? [user.mail] : [],
-            groups: shouldProcessGroups
-              ? await searchGroups(ldapConfig, searchFilter, ldapConfig.groupSearchBase)
-              : undefined,
+            groups,
             relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
             orgId: (req as unknown as FastifyRequest).ldapConfig.organization
           });
@@ -132,6 +137,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           bindDN: z.string(),
           bindPass: z.string(),
           searchBase: z.string(),
+          searchFilter: z.string(),
           groupSearchBase: z.string(),
           groupSearchFilter: z.string(),
           caCert: z.string()
@@ -165,8 +171,12 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         bindDN: z.string().trim(),
         bindPass: z.string().trim(),
         searchBase: z.string().trim(),
-        groupSearchBase: z.string().trim().default(""),
-        groupSearchFilter: z.string().trim().default(""),
+        searchFilter: z.string().trim().default("(uid={{username}})"),
+        groupSearchBase: z.string().trim(),
+        groupSearchFilter: z
+          .string()
+          .trim()
+          .default("(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))"),
         caCert: z.string().trim().default("")
       }),
       response: {
@@ -202,6 +212,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           bindDN: z.string().trim(),
           bindPass: z.string().trim(),
           searchBase: z.string().trim(),
+          searchFilter: z.string().trim(),
           groupSearchBase: z.string().trim(),
           groupSearchFilter: z.string().trim(),
           caCert: z.string().trim()
@@ -325,6 +336,34 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         ldapGroupMapId: req.params.groupMapId
       });
       return ldapGroupMap;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/config/:configId/test-connection",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        configId: z.string().trim()
+      }),
+      response: {
+        200: z.boolean()
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.ldap.testLDAPConnection({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ldapConfigId: req.params.configId
+      });
+      return result;
     }
   });
 };

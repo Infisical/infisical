@@ -20,6 +20,7 @@ export type TCreateLdapCfgDTO = {
   bindDN: string;
   bindPass: string;
   searchBase: string;
+  searchFilter: string;
   groupSearchBase: string;
   groupSearchFilter: string;
   caCert: string;
@@ -33,6 +34,7 @@ export type TUpdateLdapCfgDTO = {
   bindDN: string;
   bindPass: string;
   searchBase: string;
+  searchFilter: string;
   groupSearchBase: string;
   groupSearchFilter: string;
   caCert: string;
@@ -71,4 +73,8 @@ export type TCreateLdapGroupMapDTO = {
 export type TDeleteLdapGroupMapDTO = {
   ldapConfigId: string;
   ldapGroupMapId: string;
+} & TOrgPermission;
+
+export type TTestLdapConnectionDTO = {
+  ldapConfigId: string;
 } & TOrgPermission;
