@@ -141,9 +141,11 @@ export const InfisicalSecretInput = ({
 
     // Get fragment inside currentReference
     const searchFragment = isNested ? currentReference.split(".").pop() || "" : currentReference;
-    const filteredListRef = currentListReference.filter((suggestionEntry) =>
-      suggestionEntry.name.toUpperCase().startsWith(searchFragment.toUpperCase())
-    );
+    const filteredListRef = currentListReference
+      .filter((suggestionEntry) =>
+        suggestionEntry.name.toUpperCase().startsWith(searchFragment.toUpperCase())
+      )
+      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
     setListReference(filteredListRef);
   }, [secrets, environment, debouncedCurrentReference]);
@@ -157,7 +159,7 @@ export const InfisicalSecretInput = ({
     // find unclosed reference index less than the current cursor position
     let indexIter = -1;
     unclosedReferenceIndexMatches.forEach((index) => {
-      if (index && index > indexIter && index < pos) {
+      if (index !== undefined && index > indexIter && index < pos) {
         indexIter = index;
       }
     });
@@ -174,7 +176,7 @@ export const InfisicalSecretInput = ({
     // this is so that we know the limitation for slicing references
     let indexIter = Infinity;
     unclosedReferenceIndexMatches.forEach((index) => {
-      if (index && index > pos && index < indexIter) {
+      if (index !== undefined && index > pos && index < indexIter) {
         indexIter = index;
       }
     });
