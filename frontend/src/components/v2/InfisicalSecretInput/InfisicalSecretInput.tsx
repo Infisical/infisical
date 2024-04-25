@@ -1,5 +1,5 @@
 import { TextareaHTMLAttributes, useEffect, useRef, useState } from "react";
-import { faFolder, faFolderOpen, faKey } from "@fortawesome/free-solid-svg-icons";
+import { faCircle, faFolder, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
 import { twMerge } from "tailwind-merge";
@@ -11,6 +11,7 @@ import { useGetFoldersByEnv, useGetProjectSecrets, useGetUserWsKey } from "@app/
 import { SecretInput } from "../SecretInput";
 
 const REGEX_UNCLOSED_SECRET_REFERENCE = /\${(?![^{}]*\})/g;
+const REGEX_OPEN_SECRET_REFERENCE = /\${/g;
 
 export enum ReferenceType {
   ENVIRONMENT = "environment",
@@ -143,6 +144,7 @@ export const InfisicalSecretInput = ({
     const filteredListRef = currentListReference.filter((suggestionEntry) =>
       suggestionEntry.name.toUpperCase().startsWith(searchFragment.toUpperCase())
     );
+
     setListReference(filteredListRef);
   }, [secrets, environment, debouncedCurrentReference]);
 
@@ -156,6 +158,23 @@ export const InfisicalSecretInput = ({
     let indexIter = -1;
     unclosedReferenceIndexMatches.forEach((index) => {
       if (index > indexIter && index < pos) {
+        indexIter = index;
+      }
+    });
+
+    return indexIter;
+  };
+
+  const getIndexOfUnclosedRefToTheRight = (pos: number) => {
+    const unclosedReferenceIndexMatches = [...inputValue.matchAll(REGEX_OPEN_SECRET_REFERENCE)].map(
+      (match) => match.index
+    );
+
+    // find the next unclosed reference index to the right of the current cursor position
+    // this is so that we know the limitation for slicing references
+    let indexIter = Infinity;
+    unclosedReferenceIndexMatches.forEach((index) => {
+      if (index > pos && index < indexIter) {
         indexIter = index;
       }
     });
@@ -183,46 +202,57 @@ export const InfisicalSecretInput = ({
   const handleSuggestionSelect = (selectedIndex?: number) => {
     const selectedSuggestion = listReference[selectedIndex ?? highlightedIndex];
 
-    // update current reference based on selection
-    const indexIter = getIndexOfUnclosedRefToTheLeft(currentCursorPosition);
-    if (indexIter === -1) {
+    if (!selectedSuggestion) {
+      return;
+    }
+
+    const leftIndexIter = getIndexOfUnclosedRefToTheLeft(currentCursorPosition);
+    const rightIndexLimit = getIndexOfUnclosedRefToTheRight(currentCursorPosition);
+
+    if (leftIndexIter === -1) {
       return;
     }
 
     let newValue = "";
-    const currentOpenRef = inputValue.slice(indexIter + 2, currentCursorPosition);
+    const currentOpenRef = inputValue.slice(leftIndexIter + 2, currentCursorPosition);
     if (currentOpenRef.includes(".")) {
-      // append suggestion after last DOT
+      // append suggestion after last DOT (.)
       const lastDotIndex = currentReference.lastIndexOf(".");
       const existingPath = currentReference.slice(0, lastDotIndex);
-      const refEndAfterAppending =
-        indexIter +
-        3 +
-        existingPath.length +
-        selectedSuggestion.name.length +
-        Number(selectedSuggestion.type !== ReferenceType.SECRET);
+      const refEndAfterAppending = Math.min(
+        leftIndexIter +
+          3 +
+          existingPath.length +
+          selectedSuggestion.name.length +
+          Number(selectedSuggestion.type !== ReferenceType.SECRET),
+        rightIndexLimit - 1
+      );
 
-      newValue = `${inputValue.slice(0, indexIter + 2)}${existingPath}.${selectedSuggestion.name}${
-        selectedSuggestion.type !== ReferenceType.SECRET ? "." : "}"
-      }${inputValue.slice(refEndAfterAppending)}`;
-      const openReferenceValue = newValue.slice(indexIter + 2, refEndAfterAppending);
+      newValue = `${inputValue.slice(0, leftIndexIter + 2)}${existingPath}.${
+        selectedSuggestion.name
+      }${selectedSuggestion.type !== ReferenceType.SECRET ? "." : "}"}${inputValue.slice(
+        refEndAfterAppending
+      )}`;
+      const openReferenceValue = newValue.slice(leftIndexIter + 2, refEndAfterAppending);
       setCurrentReference(openReferenceValue);
 
       // add 1 in order to prevent referenceOpen from being triggered by handleKeyUp
       setCurrentCursorPosition(refEndAfterAppending + 1);
     } else {
       // append selectedSuggestion at position after unclosed ${
-      const refEndAfterAppending =
+      const refEndAfterAppending = Math.min(
         selectedSuggestion.name.length +
-        indexIter +
-        2 +
-        Number(selectedSuggestion.type !== ReferenceType.SECRET);
+          leftIndexIter +
+          2 +
+          Number(selectedSuggestion.type !== ReferenceType.SECRET),
+        rightIndexLimit - 1
+      );
 
-      newValue = `${inputValue.slice(0, indexIter + 2)}${selectedSuggestion.name}${
+      newValue = `${inputValue.slice(0, leftIndexIter + 2)}${selectedSuggestion.name}${
         selectedSuggestion.type !== ReferenceType.SECRET ? "." : "}"
       }${inputValue.slice(refEndAfterAppending)}`;
 
-      const openReferenceValue = newValue.slice(indexIter + 2, refEndAfterAppending);
+      const openReferenceValue = newValue.slice(leftIndexIter + 2, refEndAfterAppending);
       setCurrentReference(openReferenceValue);
       setCurrentCursorPosition(refEndAfterAppending);
     }
@@ -266,7 +296,10 @@ export const InfisicalSecretInput = ({
   };
 
   return (
-    <Popover.Root open={isSuggestionsOpen && listReference.length > 0} onOpenChange={setIsOpen}>
+    <Popover.Root
+      open={isSuggestionsOpen && listReference.length > 0 && currentReference.length > 0}
+      onOpenChange={setIsOpen}
+    >
       <Popover.Trigger asChild>
         <SecretInput
           {...props}
@@ -288,13 +321,13 @@ export const InfisicalSecretInput = ({
           maxHeight: "var(--radix-select-content-available-height)"
         }}
       >
-        <div className="max-w-60 h-full w-full flex-col items-center justify-center rounded-md p-1 py-2 text-white">
+        <div className="max-w-60 h-full w-full flex-col items-center justify-center rounded-md text-white">
           {listReference.map((item, i) => {
             let entryIcon;
             if (item.type === ReferenceType.SECRET) {
               entryIcon = faKey;
             } else if (item.type === ReferenceType.ENVIRONMENT) {
-              entryIcon = faFolderOpen;
+              entryIcon = faCircle;
             } else {
               entryIcon = faFolder;
             }
@@ -309,17 +342,20 @@ export const InfisicalSecretInput = ({
                   handleSuggestionSelect(i);
                 }}
                 style={{ pointerEvents: "auto" }}
-                className="flex items-center justify-between border-b border-mineshaft-600 px-2  text-left last:border-b-0"
+                className="flex items-center justify-between border-mineshaft-600 text-left"
                 key={`secret-reference-secret-${i + 1}`}
               >
                 <div
                   className={`${
                     highlightedIndex === i ? "bg-gray-600" : ""
-                  } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
+                  } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-1 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
                 >
                   <div className="flex gap-2">
                     <div className="flex items-center text-yellow-700">
-                      <FontAwesomeIcon icon={entryIcon} />
+                      <FontAwesomeIcon
+                        icon={entryIcon}
+                        size={item.type === ReferenceType.ENVIRONMENT ? "xs" : "1x"}
+                      />
                     </div>
                     <div className="text-md w-48 truncate text-left">{item.name}</div>
                   </div>
