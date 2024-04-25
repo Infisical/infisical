@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import { Octokit } from "@octokit/rest";
+import AWS from "aws-sdk";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TIntegrationAuths, TIntegrationAuthsInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -23,6 +24,7 @@ import {
   TGetIntegrationAuthTeamCityBuildConfigDTO,
   THerokuPipelineCoupling,
   TIntegrationAuthAppsDTO,
+  TIntegrationAuthAwsKmsKeyDTO,
   TIntegrationAuthBitbucketWorkspaceDTO,
   TIntegrationAuthChecklyGroupsDTO,
   TIntegrationAuthGithubEnvsDTO,
@@ -532,6 +534,52 @@ export const integrationAuthServiceFactory = ({
     );
 
     return data.results.map(({ name, id: orgId }) => ({ name, orgId }));
+  };
+
+  const getAwsKmsKeys = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id,
+    region
+  }: TIntegrationAuthAwsKmsKeyDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessId, accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+
+    AWS.config.update({
+      region,
+      credentials: {
+        accessKeyId: String(accessId),
+        secretAccessKey: accessToken
+      }
+    });
+    const kms = new AWS.KMS();
+
+    const aliases = await kms.listAliases({}).promise();
+    const keys = await kms.listKeys({}).promise();
+    const response = keys
+      .Keys!.map((key) => {
+        const keyAlias = aliases.Aliases!.find((alias) => key.KeyId === alias.TargetKeyId);
+        if (!keyAlias?.AliasName?.includes("alias/aws/") || keyAlias?.AliasName?.includes("alias/aws/secretsmanager")) {
+          return { id: String(key.KeyId), alias: String(keyAlias?.AliasName || key.KeyId) };
+        }
+        return { id: "null", alias: "null" };
+      })
+      .filter((elem) => elem.id !== "null");
+
+    return response;
   };
 
   const getQoveryProjects = async ({
@@ -1133,6 +1181,7 @@ export const integrationAuthServiceFactory = ({
     getIntegrationApps,
     getVercelBranches,
     getApps,
+    getAwsKmsKeys,
     getGithubOrgs,
     getGithubEnvs,
     getChecklyGroups,

@@ -141,7 +141,7 @@ export const SqlDatabaseInputForm = ({
 
   return (
     <div>
-      <form onSubmit={handleSubmit(handleCreateDynamicSecret)}>
+      <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
         <div>
           <div className="flex items-center space-x-2">
             <div className="flex-grow">
@@ -265,7 +265,7 @@ export const SqlDatabaseInputForm = ({
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <Input {...field} />
+                      <Input {...field} autoComplete="off" />
                     </FormControl>
                   )}
                 />
@@ -278,7 +278,7 @@ export const SqlDatabaseInputForm = ({
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <Input {...field} type="password" />
+                      <Input {...field} type="password" autoComplete="new-password" />
                     </FormControl>
                   )}
                 />

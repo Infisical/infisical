@@ -32,7 +32,7 @@ type TGroupProjectServiceFactoryDep = {
     TGroupProjectMembershipRoleDALFactory,
     "create" | "transaction" | "insertMany" | "delete"
   >;
-  userGroupMembershipDAL: TUserGroupMembershipDALFactory;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembersNotInProject">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "findProjectGhostUser">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany" | "transaction">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
@@ -116,67 +116,68 @@ export const groupProjectServiceFactory = ({
         },
         tx
       );
+
+      // share project key with users in group that have not
+      // individually been added to the project and that are not part of
+      // other groups that are in the project
+      const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group.id, project.id, tx);
+
+      if (groupMembers.length) {
+        const ghostUser = await projectDAL.findProjectGhostUser(project.id, tx);
+
+        if (!ghostUser) {
+          throw new BadRequestError({
+            message: "Failed to find sudo user"
+          });
+        }
+
+        const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, project.id, tx);
+
+        if (!ghostUserLatestKey) {
+          throw new BadRequestError({
+            message: "Failed to find sudo user latest key"
+          });
+        }
+
+        const bot = await projectBotDAL.findOne({ projectId: project.id }, tx);
+
+        if (!bot) {
+          throw new BadRequestError({
+            message: "Failed to find bot"
+          });
+        }
+
+        const botPrivateKey = infisicalSymmetricDecrypt({
+          keyEncoding: bot.keyEncoding as SecretKeyEncoding,
+          iv: bot.iv,
+          tag: bot.tag,
+          ciphertext: bot.encryptedPrivateKey
+        });
+
+        const plaintextProjectKey = decryptAsymmetric({
+          ciphertext: ghostUserLatestKey.encryptedKey,
+          nonce: ghostUserLatestKey.nonce,
+          publicKey: ghostUserLatestKey.sender.publicKey,
+          privateKey: botPrivateKey
+        });
+
+        const projectKeyData = groupMembers.map(({ user: { publicKey, id } }) => {
+          const { ciphertext: encryptedKey, nonce } = encryptAsymmetric(plaintextProjectKey, publicKey, botPrivateKey);
+
+          return {
+            encryptedKey,
+            nonce,
+            senderId: ghostUser.id,
+            receiverId: id,
+            projectId: project.id
+          };
+        });
+
+        await projectKeyDAL.insertMany(projectKeyData, tx);
+      }
+
       return groupProjectMembership;
     });
-
-    // share project key with users in group that have not
-    // individually been added to the project and that are not part of
-    // other groups that are in the project
-    const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group.id, project.id);
-
-    if (groupMembers.length) {
-      const ghostUser = await projectDAL.findProjectGhostUser(project.id);
-
-      if (!ghostUser) {
-        throw new BadRequestError({
-          message: "Failed to find sudo user"
-        });
-      }
-
-      const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, project.id);
-
-      if (!ghostUserLatestKey) {
-        throw new BadRequestError({
-          message: "Failed to find sudo user latest key"
-        });
-      }
-
-      const bot = await projectBotDAL.findOne({ projectId: project.id });
-
-      if (!bot) {
-        throw new BadRequestError({
-          message: "Failed to find bot"
-        });
-      }
-
-      const botPrivateKey = infisicalSymmetricDecrypt({
-        keyEncoding: bot.keyEncoding as SecretKeyEncoding,
-        iv: bot.iv,
-        tag: bot.tag,
-        ciphertext: bot.encryptedPrivateKey
-      });
-
-      const plaintextProjectKey = decryptAsymmetric({
-        ciphertext: ghostUserLatestKey.encryptedKey,
-        nonce: ghostUserLatestKey.nonce,
-        publicKey: ghostUserLatestKey.sender.publicKey,
-        privateKey: botPrivateKey
-      });
-
-      const projectKeyData = groupMembers.map(({ user: { publicKey, id } }) => {
-        const { ciphertext: encryptedKey, nonce } = encryptAsymmetric(plaintextProjectKey, publicKey, botPrivateKey);
-
-        return {
-          encryptedKey,
-          nonce,
-          senderId: ghostUser.id,
-          receiverId: id,
-          projectId: project.id
-        };
-      });
-
-      await projectKeyDAL.insertMany(projectKeyData);
-    }
 
     return projectGroup;
   };
@@ -287,20 +288,26 @@ export const groupProjectServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Groups);
 
-    const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group.id, project.id);
+    const deletedProjectGroup = await groupProjectDAL.transaction(async (tx) => {
+      const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group.id, project.id, tx);
 
-    if (groupMembers.length) {
-      await projectKeyDAL.delete({
-        projectId: project.id,
-        $in: {
-          receiverId: groupMembers.map(({ user: { id } }) => id)
-        }
-      });
-    }
+      if (groupMembers.length) {
+        await projectKeyDAL.delete(
+          {
+            projectId: project.id,
+            $in: {
+              receiverId: groupMembers.map(({ user: { id } }) => id)
+            }
+          },
+          tx
+        );
+      }
 
-    const [deletedGroup] = await groupProjectDAL.delete({ groupId: group.id, projectId: project.id });
+      const [projectGroup] = await groupProjectDAL.delete({ groupId: group.id, projectId: project.id }, tx);
+      return projectGroup;
+    });
 
-    return deletedGroup;
+    return deletedProjectGroup;
   };
 
   const listGroupsInProject = async ({

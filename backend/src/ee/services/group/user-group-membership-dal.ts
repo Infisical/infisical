@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -14,24 +16,28 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
    * - The user is a member of a group that is a member of the project, excluding projects that they are part of
    * through the group with id [groupId].
    */
-  const filterProjectsByUserMembership = async (userId: string, groupId: string, projectIds: string[]) => {
-    const userProjectMemberships: string[] = await db(TableName.ProjectMembership)
-      .where(`${TableName.ProjectMembership}.userId`, userId)
-      .whereIn(`${TableName.ProjectMembership}.projectId`, projectIds)
-      .pluck(`${TableName.ProjectMembership}.projectId`);
+  const filterProjectsByUserMembership = async (userId: string, groupId: string, projectIds: string[], tx?: Knex) => {
+    try {
+      const userProjectMemberships: string[] = await (tx || db)(TableName.ProjectMembership)
+        .where(`${TableName.ProjectMembership}.userId`, userId)
+        .whereIn(`${TableName.ProjectMembership}.projectId`, projectIds)
+        .pluck(`${TableName.ProjectMembership}.projectId`);
 
-    const userGroupMemberships: string[] = await db(TableName.UserGroupMembership)
-      .where(`${TableName.UserGroupMembership}.userId`, userId)
-      .whereNot(`${TableName.UserGroupMembership}.groupId`, groupId)
-      .join(
-        TableName.GroupProjectMembership,
-        `${TableName.UserGroupMembership}.groupId`,
-        `${TableName.GroupProjectMembership}.groupId`
-      )
-      .whereIn(`${TableName.GroupProjectMembership}.projectId`, projectIds)
-      .pluck(`${TableName.GroupProjectMembership}.projectId`);
+      const userGroupMemberships: string[] = await (tx || db)(TableName.UserGroupMembership)
+        .where(`${TableName.UserGroupMembership}.userId`, userId)
+        .whereNot(`${TableName.UserGroupMembership}.groupId`, groupId)
+        .join(
+          TableName.GroupProjectMembership,
+          `${TableName.UserGroupMembership}.groupId`,
+          `${TableName.GroupProjectMembership}.groupId`
+        )
+        .whereIn(`${TableName.GroupProjectMembership}.projectId`, projectIds)
+        .pluck(`${TableName.GroupProjectMembership}.projectId`);
 
-    return new Set(userProjectMemberships.concat(userGroupMemberships));
+      return new Set(userProjectMemberships.concat(userGroupMemberships));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Filter projects by user membership" });
+    }
   };
 
   // special query
@@ -45,7 +51,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
         )
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
-        .whereIn(`${TableName.Users}.username`, usernames) // TODO: pluck usernames
+        .whereIn(`${TableName.Users}.username`, usernames)
         .pluck(`${TableName.Users}.id`);
 
       return usernameDocs;
@@ -55,7 +61,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
   };
 
   /**
-   * Return list of users that are part of the group with id [groupId]
+   * Return list of completed/accepted users that are part of the group with id [groupId]
    * that have not yet been added individually to project with id [projectId].
    *
    * Note: Filters out users that are part of other groups in the project.
@@ -63,18 +69,19 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
    * @param projectId
    * @returns
    */
-  const findGroupMembersNotInProject = async (groupId: string, projectId: string) => {
+  const findGroupMembersNotInProject = async (groupId: string, projectId: string, tx?: Knex) => {
     try {
       // get list of groups in the project with id [projectId]
       // that that are not the group with id [groupId]
-      const groups: string[] = await db(TableName.GroupProjectMembership)
+      const groups: string[] = await (tx || db)(TableName.GroupProjectMembership)
         .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
         .whereNot(`${TableName.GroupProjectMembership}.groupId`, groupId)
         .pluck(`${TableName.GroupProjectMembership}.groupId`);
 
       // main query
-      const members = await db(TableName.UserGroupMembership)
+      const members = await (tx || db)(TableName.UserGroupMembership)
         .where(`${TableName.UserGroupMembership}.groupId`, groupId)
+        .where(`${TableName.UserGroupMembership}.isPending`, false)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.ProjectMembership, function () {
           this.on(`${TableName.Users}.id`, "=", `${TableName.ProjectMembership}.userId`).andOn(
@@ -116,10 +123,49 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deletePendingUserGroupMembershipsByUserIds = async (userIds: string[], tx?: Knex) => {
+    try {
+      const members = await (tx || db)(TableName.UserGroupMembership)
+        .whereIn(`${TableName.UserGroupMembership}.userId`, userIds)
+        .where(`${TableName.UserGroupMembership}.isPending`, true)
+        .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+        .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`);
+
+      await userGroupMembershipOrm.delete(
+        {
+          $in: {
+            userId: userIds
+          }
+        },
+        tx
+      );
+
+      return members.map(({ userId, username, groupId, orgId, name, slug, role, roleId }) => ({
+        user: {
+          id: userId,
+          username
+        },
+        group: {
+          id: groupId,
+          orgId,
+          name,
+          slug,
+          role,
+          roleId,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete pending user group memberships by user ids" });
+    }
+  };
+
   return {
     ...userGroupMembershipOrm,
     filterProjectsByUserMembership,
     findUserGroupMembershipsInProject,
-    findGroupMembersNotInProject
+    findGroupMembersNotInProject,
+    deletePendingUserGroupMembershipsByUserIds
   };
 };

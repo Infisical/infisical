@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -116,6 +117,9 @@ var secretsCmd = &cobra.Command{
 			secrets = util.ExpandSecrets(secrets, authParams, "")
 		}
 
+		// Sort the secrets by key so we can create a consistent output
+		secrets = util.SortSecretsByKeys(secrets)
+
 		visualize.PrintAllSecretDetails(secrets)
 		Telemetry.CaptureEvent("cli-command:secrets", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 	},
@@ -201,8 +205,10 @@ var secretsSetCmd = &cobra.Command{
 		// decrypt workspace key
 		plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
+		infisicalTokenEnv := os.Getenv(util.INFISICAL_TOKEN_NAME)
+
 		// pull current secrets
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath}, "")
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath, InfisicalToken: infisicalTokenEnv}, "")
 		if err != nil {
 			util.HandleError(err, "unable to retrieve secrets")
 		}

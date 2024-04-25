@@ -89,6 +89,25 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countAllOrgMembers = async (orgId: string) => {
+    try {
+      interface CountResult {
+        count: string;
+      }
+
+      const count = await db(TableName.OrgMembership)
+        .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .count("*")
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .where({ isGhost: false })
+        .first();
+
+      return parseInt((count as unknown as CountResult).count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count all org members" });
+    }
+  };
+
   const findOrgMembersByUsername = async (orgId: string, usernames: string[]) => {
     try {
       const members = await db(TableName.OrgMembership)
@@ -269,6 +288,7 @@ export const orgDALFactory = (db: TDbClient) => {
     ...orgOrm,
     findOrgByProjectId,
     findAllOrgMembers,
+    countAllOrgMembers,
     findOrgById,
     findAllOrgsByUserId,
     ghostUserExists,

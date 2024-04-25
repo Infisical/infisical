@@ -513,6 +513,39 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
 
   server.route({
     method: "GET",
+    url: "/:integrationAuthId/aws-secrets-manager/kms-keys",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      querystring: z.object({
+        region: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          kmsKeys: z.object({ id: z.string(), alias: z.string() }).array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const kmsKeys = await server.services.integrationAuth.getAwsKmsKeys({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationAuthId,
+        region: req.query.region
+      });
+      return { kmsKeys };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:integrationAuthId/qovery/projects",
     config: {
       rateLimit: readLimit

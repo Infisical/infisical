@@ -4,16 +4,17 @@ description: "Learn how to log in to Infisical with LDAP."
 ---
 
 <Info>
-    LDAP is a paid feature.
-   If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
-   then you should contact sales@infisical.com to purchase an enterprise license to use it.
+  LDAP is a paid feature. If you're using Infisical Cloud, then it is available
+  under the **Enterprise Tier**. If you're self-hosting Infisical, then you
+  should contact sales@infisical.com to purchase an enterprise license to use
+  it.
 </Info>
 
 You can configure your organization in Infisical to have members authenticate with the platform via [LDAP](https://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol)
 
 <Steps>
    <Step title="Prepare the LDAP configuration in Infisical">
-        In Infisical, head to your Organization Settings > Authentication > LDAP Configuration and select **Set up LDAP**.
+        In Infisical, head to your Organization Settings > Security > LDAP and select **Manage**.
 
         Next, input your LDAP server settings.
 
@@ -24,8 +25,47 @@ You can configure your organization in Infisical to have members authenticate wi
         - URL: The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` (for connection over SSL/TLS), etc.
         - Bind DN: The distinguished name of object to bind when performing the user search such as `cn=infisical,ou=Users,dc=acme,dc=com`.
         - Bind Pass: The password to use along with `Bind DN` when performing the user search.
-        - Search Base / User DN: Base DN under which to perform user search such as `ou=Users,dc=example,dc=com`
+        - User Search Base / User DN: Base DN under which to perform user search such as `ou=Users,dc=acme,dc=com`.
+        - User Search Filter (optional): Template used to construct the LDAP user search filter such as `(uid={{username}})`; use literal `{{username}}` to have the given username used in the search. The default is `(uid={{username}})` which is compatible with several common directory schemas.
+        - Group Search Base / Group DN (optional): LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`.
+        - Group Filter (optional): Template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: [`UserDN`, `UserName`]. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.
         - CA Certificate: The CA certificate to use when verifying the LDAP server certificate.
+
+     <Note>
+          The **Group Search Base / Group DN** and **Group Filter** fields are both required if you wish to sync LDAP groups to Infisical.
+     </Note>
+
+   </Step>
+   <Step title="Test the LDAP connection">
+      Once you've filled out the LDAP configuration, you can test that part of the configuration is correct by pressing the **Test Connection** button.
+
+      Infisical will attempt to bind to the LDAP server using the provided **URL**, **Bind DN**, and **Bind Pass**. If the operation is successful, then Infisical will display a success message; if not, then Infisical will display an error message and provide a fuller error in the server logs.
+
+        ![LDAP test connection](/images/platform/ldap/ldap-test-connection.png)
+    </Step>
+
+   <Step title="Define mappings from LDAP groups to groups in Infisical">
+     In order to sync LDAP groups to Infisical, head to the **LDAP Group Mappings** section to define mappings from LDAP groups to groups in Infisical.
+     
+     ![LDAP group mappings section](/images/platform/ldap/ldap-group-mappings-section.png)
+     
+     Group mappings ensure that users who log into Infisical via LDAP are added to or removed from the Infisical group(s) that corresponds to the LDAP group(s) they are a member of.
+     
+     ![LDAP group mappings table](/images/platform/ldap/ldap-group-mappings-table.png)
+     
+     Each group mapping consists of two parts: 
+     - LDAP Group CN: The common name of the LDAP group to map.
+     - Infisical Group: The Infisical group to map the LDAP group to.
+     
+     For example, suppose you want to automatically add a user who is part of the LDAP group with CN `Engineers` to the Infisical group `Engineers` when the user sets up their account with Infisical.
+     
+     In this case, you would specify a mapping from the LDAP group with CN `Engineers` to the Infisical group `Engineers`.
+     Now when the user logs into Infisical via LDAP, Infisical will check the LDAP groups that the user is a part of whilst referencing the group mappings you created earlier. Since the user is a member of the LDAP group with CN `Engineers`, they will be added to the Infisical group `Engineers`.
+     In the future, if the user is no longer part of the LDAP group with CN `Engineers`, they will be removed from the Infisical group `Engineers` upon their next login.
+     <Note>
+          Prior to defining any group mappings, ensure that you've created the Infisical groups that you want to map the LDAP groups to.
+          You can read more about creating (user) groups in Infisical [here](/documentation/platform/groups).
+     </Note>
    </Step>
    <Step title="Enable LDAP in Infisical">
         Enabling LDAP allows members in your organization to log into Infisical via LDAP.

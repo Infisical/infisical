@@ -22,10 +22,6 @@ var folderCmd = &cobra.Command{
 var getCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get folders in a directory",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		util.RequireLocalWorkspaceFile()
-		util.RequireLogin()
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 
 		environmentName, _ := cmd.Flags().GetString("env")

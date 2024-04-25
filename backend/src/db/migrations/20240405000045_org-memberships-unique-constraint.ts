@@ -42,6 +42,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.transaction(async (tx) => {
     const duplicateRows = await tx(TableName.OrgMembership)
       .select("userId", "orgId") // Select the userId and orgId so we can group by them
+      .whereNotNull("userId") // Ensure that the userId is not null
       .count("* as cnt") // Count the number of rows for each userId and orgId, so we can make sure there are more than 1 row (a duplicate)
       .groupBy("userId", "orgId")
       .havingRaw("count(*) > ?", [1]); // Using havingRaw for direct SQL expressions

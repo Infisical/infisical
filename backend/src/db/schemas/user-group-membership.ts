@@ -12,7 +12,8 @@ export const UserGroupMembershipSchema = z.object({
   userId: z.string().uuid(),
   groupId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  isPending: z.boolean().default(false)
 });
 
 export type TUserGroupMembership = z.infer<typeof UserGroupMembershipSchema>;
