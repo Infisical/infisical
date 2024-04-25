@@ -68,6 +68,7 @@ export const OrgLDAPSection = (): JSX.Element => {
             bindDN: "",
             bindPass: "",
             searchBase: "",
+            searchFilter: "",
             groupSearchBase: "",
             groupSearchFilter: ""
           });
