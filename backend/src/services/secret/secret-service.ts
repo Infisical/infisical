@@ -525,7 +525,8 @@ export const secretServiceFactory = ({
       const importedSecrets = await fnSecretsFromImports({
         allowedImports,
         secretDAL,
-        folderDAL
+        folderDAL,
+        secretImportDAL
       });
 
       return {
@@ -630,7 +631,8 @@ export const secretServiceFactory = ({
       const importedSecrets = await fnSecretsFromImports({
         allowedImports,
         secretDAL,
-        folderDAL
+        folderDAL,
+        secretImportDAL
       });
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
         for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {

@@ -290,7 +290,7 @@ export const secretImportServiceFactory = ({
         })
       )
     );
-    return fnSecretsFromImports({ allowedImports, folderDAL, secretDAL });
+    return fnSecretsFromImports({ allowedImports, folderDAL, secretDAL, secretImportDAL });
   };
 
   return {
