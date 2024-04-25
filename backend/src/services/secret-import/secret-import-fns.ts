@@ -21,7 +21,7 @@ type TSecretImportSecrets = {
 const LEVEL_BREAK = 10;
 const getImportUniqKey = (envSlug: string, path: string) => `${envSlug}=${path}`;
 export const fnSecretsFromImports = async ({
-  allowedImports: nonCyclicImports,
+  allowedImports: possibleCyclicImports,
   folderDAL,
   secretDAL,
   secretImportDAL,
@@ -40,7 +40,7 @@ export const fnSecretsFromImports = async ({
   // avoid going more than a depth
   if (depth >= LEVEL_BREAK) return [];
 
-  const allowedImports = nonCyclicImports.filter(
+  const allowedImports = possibleCyclicImports.filter(
     ({ importPath, importEnv }) => !cyclicDetector.has(getImportUniqKey(importEnv.slug, importPath))
   );
 
