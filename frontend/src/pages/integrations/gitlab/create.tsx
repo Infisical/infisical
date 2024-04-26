@@ -11,6 +11,7 @@ import { motion } from "framer-motion";
 import queryString from "query-string";
 import * as yup from "yup";
 
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { usePopUp } from "@app/hooks";
 import { useCreateIntegration } from "@app/hooks/api";
 
@@ -268,7 +269,11 @@ export default function GitLabCreateIntegrationPage() {
                     isError={Boolean(error)}
                     errorText={error?.message}
                   >
-                    <Input {...field} placeholder="/" />
+                    <SecretPathInput
+                      {...field}
+                      placeholder="/"
+                      environment={selectedSourceEnvironment}
+                    />
                   </FormControl>
                 )}
               />

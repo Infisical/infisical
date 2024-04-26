@@ -15,6 +15,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import queryString from "query-string";
 import * as yup from "yup";
 
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useCreateIntegration } from "@app/hooks/api";
 
 import {
@@ -22,7 +23,6 @@ import {
   Card,
   CardTitle,
   FormControl,
-  Input,
   Select,
   SelectItem,
   Switch
@@ -185,7 +185,11 @@ export default function RenderCreateIntegrationPage() {
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Secrets Path" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="/" />
+                <SecretPathInput
+                  {...field}
+                  placeholder="/"
+                  environment={selectedSourceEnvironment}
+                />
               </FormControl>
             )}
           />

@@ -43,19 +43,26 @@ export const SecretPathInput = ({
   });
 
   useEffect(() => {
-    setInputValue(propValue ?? "");
+    const initialValue = propValue ?? "/";
+    setInputValue(initialValue);
+    setSecretPath(initialValue);
+    onChange?.({ target: { value: initialValue } } as any);
   }, [propValue]);
 
   useEffect(() => {
-    setInputValue("/");
-    setSecretPath("/");
+    if (environment) {
+      setInputValue("/");
+      setSecretPath("/");
+      onChange?.({ target: { value: "/" } } as any);
+    }
   }, [environment]);
 
   useEffect(() => {
     // update secret path if input is valid
     if (
-      debouncedInputValue.length > 0 &&
-      debouncedInputValue[debouncedInputValue.length - 1] === "/"
+      (debouncedInputValue.length > 0 &&
+        debouncedInputValue[debouncedInputValue.length - 1] === "/") ||
+      debouncedInputValue.length === 0
     ) {
       setSecretPath(debouncedInputValue);
     }

@@ -28,6 +28,7 @@ import {
   Skeleton,
   Tooltip
 } from "@app/components/v2";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import { useGetProjectSecrets } from "@app/hooks/api";
@@ -193,7 +194,11 @@ export const CopySecretsFromBoard = ({
               )}
             />
             <FormControl label="Secret Path" className="flex-grow" isRequired>
-              <Input {...register("secretPath")} placeholder="Provide a path, default is /" />
+              <SecretPathInput
+                {...register("secretPath")}
+                placeholder="Provide a path, default is /"
+                environment={selectedEnvSlug}
+              />
             </FormControl>
           </div>
           <div className="border-t border-mineshaft-600 pt-4">

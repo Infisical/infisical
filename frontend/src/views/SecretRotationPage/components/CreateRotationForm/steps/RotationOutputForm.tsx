@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, FormControl, Input, Select, SelectItem, Spinner } from "@app/components/v2";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useWorkspace } from "@app/context";
 import { useGetProjectSecrets, useGetUserWsKey } from "@app/hooks/api";
 
@@ -78,7 +79,7 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
         defaultValue="/"
         render={({ field }) => (
           <FormControl className="capitalize" label="Secret path">
-            <Input {...field} />
+            <SecretPathInput {...field} environment={environment} />
           </FormControl>
         )}
       />
