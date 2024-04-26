@@ -30,8 +30,10 @@ jobs:
           git add ./backend/src/db/migrations
           git commit -m "chore: renamed new migration files to latest timestamp (gh-action)"
       
-      - name: Push changes
-        env:
-          TOKEN: ${{ secrets.GH_PERSONAL_TOKEN }}
-        run: |
-          git push https://$GITHUB_ACTOR:$TOKEN@github.com/${{ github.repository }}.git HEAD:refs/heads/main
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: renamed new migration files to latest UTC(gh-action)'
+          title: 'GH Action: rename new migration file timestamp'
+          branch: main
