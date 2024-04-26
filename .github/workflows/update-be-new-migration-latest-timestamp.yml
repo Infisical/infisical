@@ -36,4 +36,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: 'chore: renamed new migration files to latest UTC(gh-action)'
           title: 'GH Action: rename new migration file timestamp'
-          branch: main
+          branch-suffix: timestamp
