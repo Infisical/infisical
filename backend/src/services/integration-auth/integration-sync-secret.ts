@@ -458,7 +458,7 @@ const syncSecretsAWSParameterStore = async ({
   });
   ssm.config.update(config);
 
-  const metadata = z.record(z.any()).parse(integration.metadata);
+  const metadata = z.record(z.any()).parse(integration.metadata || {});
 
   const params = {
     Path: integration.path as string,
@@ -544,7 +544,7 @@ const syncSecretsAWSSecretManager = async ({
 }) => {
   let secretsManager;
   const secKeyVal = getSecretKeyValuePair(secrets);
-  const metadata = z.record(z.any()).parse(integration.metadata);
+  const metadata = z.record(z.any()).parse(integration.metadata || {});
   try {
     if (!accessId) return;
 
