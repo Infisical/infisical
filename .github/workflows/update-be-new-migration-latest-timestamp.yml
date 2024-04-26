@@ -1,0 +1,39 @@
+name: Rename Migrations
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/db/migrations/**'
+
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Install GH CLI - Local Testing Using Nektos Act
+        if: ${{ env.ACT }}
+        run: |
+          sudo apt update
+          sudo apt install gh
+  
+      - name: Checkout PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr checkout ${{ github.event.pull_request.number }}
+
+      - name: Get list of newly added files in migration folder
+        run: git diff --name-status HEAD^ HEAD backend/src/db/migrations | grep '^A' | cut -f2  | xargs -n1 basename > added_files.txt
+      
+      - name: Script to rename migrations 
+        run: python .github/resources/rename_migration_files.py
+
+      - name: Commit and push changes
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add ./backend/src/db/migrations
+          git commit -m "chore: renamed new migration files to latest timestamp (gh-action)"
+          git push
+
