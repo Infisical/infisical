@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, useEffect, useRef, useState } from "react";
+import { InputHTMLAttributes, useEffect, useState } from "react";
 import { faFolder } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
@@ -31,7 +31,6 @@ export const SecretPathInput = ({
   const [secretPath, setSecretPath] = useState("/");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const inputRef = useRef<HTMLInputElement>(null);
   const debouncedInputValue = useDebounce(inputValue, 200);
 
   const { currentWorkspace } = useWorkspace();
@@ -88,6 +87,7 @@ export const SecretPathInput = ({
     setInputValue(newValue);
     setSecretPath(newValue);
     setHighlightedIndex(-1);
+    setSuggestions([]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -125,7 +125,6 @@ export const SecretPathInput = ({
           {...props}
           type="text"
           autoComplete="off"
-          ref={inputRef}
           onKeyDown={handleKeyDown}
           value={inputValue}
           onChange={handleInputChange}

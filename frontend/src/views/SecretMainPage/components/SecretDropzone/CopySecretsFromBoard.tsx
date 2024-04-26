@@ -77,7 +77,6 @@ export const CopySecretsFromBoard = ({
     handleSubmit,
     control,
     watch,
-    register,
     reset,
     setValue,
     formState: { isDirty }
@@ -193,13 +192,19 @@ export const CopySecretsFromBoard = ({
                 </FormControl>
               )}
             />
-            <FormControl label="Secret Path" className="flex-grow" isRequired>
-              <SecretPathInput
-                {...register("secretPath")}
-                placeholder="Provide a path, default is /"
-                environment={selectedEnvSlug}
-              />
-            </FormControl>
+            <Controller
+              control={control}
+              name="secretPath"
+              render={({ field }) => (
+                <FormControl label="Secret Path" className="flex-grow" isRequired>
+                  <SecretPathInput
+                    {...field}
+                    placeholder="Provide a path, default is /"
+                    environment={selectedEnvSlug}
+                  />
+                </FormControl>
+              )}
+            />
           </div>
           <div className="border-t border-mineshaft-600 pt-4">
             <div className="mb-4 flex items-center justify-between">
