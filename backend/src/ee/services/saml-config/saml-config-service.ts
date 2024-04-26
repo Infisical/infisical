@@ -342,11 +342,12 @@ export const samlConfigServiceFactory = ({
               orgId,
               inviteEmail: email,
               role: OrgMembershipRole.Member,
-              status: OrgMembershipStatus.Accepted
+              status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
             },
             tx
           );
-        } else if (orgMembership.status === OrgMembershipStatus.Invited) {
+          // Only update the membership to Accepted if the user account is already completed.
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
           await orgDAL.updateMembershipById(
             orgMembership.id,
             {

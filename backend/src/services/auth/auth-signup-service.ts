@@ -4,6 +4,7 @@ import { OrgMembershipStatus } from "@app/db/schemas";
 import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
@@ -139,9 +140,11 @@ export const authSignupServiceFactory = ({
       throw new Error("Failed to complete account for complete user");
     }
 
-    let organizationId;
+    let organizationId: string | null = null;
+    let authMethod: AuthMethod | null = null;
     if (providerAuthToken) {
-      const { orgId } = validateProviderAuthToken(providerAuthToken, user.username);
+      const { orgId, authMethod: userAuthMethod } = validateProviderAuthToken(providerAuthToken, user.username);
+      authMethod = userAuthMethod;
       organizationId = orgId;
     } else {
       validateSignUpAuthorization(authorization, user.id);
@@ -165,6 +168,26 @@ export const authSignupServiceFactory = ({
         },
         tx
       );
+      // If it's SAML Auth and the organization ID is present, we should check if the user has a pending invite for this org, and accept it
+      if (isAuthMethodSaml(authMethod) && organizationId) {
+        const [pendingOrgMembership] = await orgDAL.findMembership({
+          inviteEmail: email,
+          userId: user.id,
+          status: OrgMembershipStatus.Invited,
+          orgId: organizationId
+        });
+
+        if (pendingOrgMembership) {
+          await orgDAL.updateMembershipById(
+            pendingOrgMembership.id,
+            {
+              status: OrgMembershipStatus.Accepted
+            },
+            tx
+          );
+        }
+      }
+
       return { info: us, key: userEncKey };
     });
 
