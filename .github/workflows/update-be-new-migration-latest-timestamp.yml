@@ -13,8 +13,10 @@ jobs:
     if: github.event.pull_request.merged == true
     steps:
       - name: Check out repository
-        uses: actions/checkout@v2
-
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
       - name: Get list of newly added files in migration folder
         run: git diff --name-status HEAD^ HEAD backend/src/db/migrations | grep '^A' | cut -f2  | xargs -n1 basename > added_files.txt
       
@@ -33,4 +35,3 @@ jobs:
           TOKEN: ${{ secrets.GH_PERSONAL_TOKEN }}
         run: |
           git push https://$GITHUB_ACTOR:$TOKEN@github.com/${{ github.repository }}.git HEAD:main
-
