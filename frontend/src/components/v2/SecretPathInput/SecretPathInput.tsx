@@ -93,9 +93,9 @@ export const SecretPathInput = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const mod = (n: number, m: number) => ((n % m) + m) % m;
     if (e.key === "ArrowDown") {
-      setHighlightedIndex((prevIndex) => mod(prevIndex + 1, folders.length));
+      setHighlightedIndex((prevIndex) => mod(prevIndex + 1, suggestions.length));
     } else if (e.key === "ArrowUp") {
-      setHighlightedIndex((prevIndex) => mod(prevIndex - 1, folders.length));
+      setHighlightedIndex((prevIndex) => mod(prevIndex - 1, suggestions.length));
     } else if (e.key === "Enter" && highlightedIndex >= 0) {
       handleSuggestionSelect(highlightedIndex);
     }
