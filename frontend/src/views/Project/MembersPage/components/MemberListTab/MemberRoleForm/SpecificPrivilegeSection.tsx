@@ -34,6 +34,7 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -107,6 +108,7 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
   });
 
   const temporaryAccessField = privilegeForm.watch("temporaryAccess");
+  const selectedEnvironmentSlug = privilegeForm.watch("environmentSlug");
   const isTemporary = temporaryAccessField?.isTemporary;
   const isExpired =
     temporaryAccessField.isTemporary &&
@@ -208,7 +210,12 @@ const SpecificPrivilegeSecretForm = ({ privilege }: { privilege: TProjectUserPri
             name="secretPath"
             render={({ field }) => (
               <FormControl label="Secret Path">
-                <Input {...field} isDisabled={isMemberEditDisabled} className="w-48" />
+                <SecretPathInput
+                  {...field}
+                  isDisabled={isMemberEditDisabled}
+                  containerClassName="w-48"
+                  environment={selectedEnvironmentSlug}
+                />
               </FormControl>
             )}
           />

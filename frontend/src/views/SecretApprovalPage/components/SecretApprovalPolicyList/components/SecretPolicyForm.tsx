@@ -20,6 +20,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useWorkspace } from "@app/context";
 import { useCreateSecretApprovalPolicy, useUpdateSecretApprovalPolicy } from "@app/hooks/api";
 import { TSecretApprovalPolicy } from "@app/hooks/api/types";
@@ -59,13 +60,14 @@ export const SecretPolicyForm = ({
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { isSubmitting }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
     values: editValues ? { ...editValues, environment: editValues.environment.slug } : undefined
   });
   const { currentWorkspace } = useWorkspace();
-  
+  const selectedEnvironment = watch("environment");
 
   const environments = currentWorkspace?.environments || [];
   useEffect(() => {
@@ -174,7 +176,11 @@ export const SecretPolicyForm = ({
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Secret Path" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} value={field.value || ""} />
+                <SecretPathInput
+                  {...field}
+                  value={field.value || ""}
+                  environment={selectedEnvironment}
+                />
               </FormControl>
             )}
           />
