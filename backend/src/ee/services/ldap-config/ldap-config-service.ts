@@ -1,7 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
-import { OrgMembershipRole, OrgMembershipStatus, SecretKeyEncoding, TLdapConfigsUpdate } from "@app/db/schemas";
+import {
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  SecretKeyEncoding,
+  TableName,
+  TLdapConfigsUpdate
+} from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -25,6 +31,7 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -388,7 +395,7 @@ export const ldapConfigServiceFactory = ({
     let userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
-      aliasType: AuthMethod.LDAP
+      aliasType: UserAliasType.LDAP
     });
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -396,7 +403,13 @@ export const ldapConfigServiceFactory = ({
 
     if (userAlias) {
       await userDAL.transaction(async (tx) => {
-        const [orgMembership] = await orgDAL.findMembership({ userId: userAlias.userId }, { tx });
+        const [orgMembership] = await orgDAL.findMembership(
+          {
+            userId: userAlias.userId,
+            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+          },
+          { tx }
+        );
         if (!orgMembership) {
           await orgDAL.createMembership(
             {
@@ -426,7 +439,7 @@ export const ldapConfigServiceFactory = ({
             email: emails[0],
             firstName,
             lastName,
-            authMethods: [AuthMethod.LDAP],
+            authMethods: [AuthMethod.LDAP], // should this be empty?
             isGhost: false
           },
           tx
@@ -435,7 +448,7 @@ export const ldapConfigServiceFactory = ({
           {
             userId: newUser.id,
             username,
-            aliasType: AuthMethod.LDAP,
+            aliasType: UserAliasType.LDAP,
             externalId,
             emails,
             orgId

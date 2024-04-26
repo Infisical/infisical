@@ -99,6 +99,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       // eslint-disable-next-line
       async (req, profile, cb) => {
         try {
+          console.log("saml login profile: ", profile);
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
           const email = profile?.email ?? (profile?.emailAddress as string); // emailRippling is added because in Rippling the field `email` reserved
 
@@ -107,6 +108,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           }
 
           const { isUserCompleted, providerAuthToken } = await server.services.saml.samlLogin({
+            externalId: profile.nameID,
             username: profile.nameID ?? email,
             email,
             firstName: profile.firstName as string,

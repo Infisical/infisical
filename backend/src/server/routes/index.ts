@@ -260,6 +260,7 @@ export const registerRoutes = async (
     orgBotDAL,
     orgDAL,
     userDAL,
+    userAliasDAL,
     samlConfigDAL,
     licenseService
   });
