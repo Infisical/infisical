@@ -28,6 +28,7 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add ./backend/src/db/migrations
+          rm added_files.txt
           git commit -m "chore: renamed new migration files to latest timestamp (gh-action)"
       
       - name: Create Pull Request
