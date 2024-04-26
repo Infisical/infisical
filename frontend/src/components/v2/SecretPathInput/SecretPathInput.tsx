@@ -10,7 +10,7 @@ import { useGetFoldersByEnv } from "@app/hooks/api";
 
 import { Input } from "../Input";
 
-type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & {
+type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "onChange"> & {
   value?: string | null;
   isImport?: boolean;
   isVisible?: boolean;
@@ -18,6 +18,7 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & {
   isDisabled?: boolean;
   environment?: string;
   containerClassName?: string;
+  onChange?: (arg: string) => void;
 };
 
 export const SecretPathInput = ({
@@ -49,7 +50,7 @@ export const SecretPathInput = ({
     if (environment) {
       setInputValue("/");
       setSecretPath("/");
-      onChange?.({ target: { value: "/" } } as any);
+      onChange?.("/");
     }
   }, [environment]);
 
@@ -83,7 +84,7 @@ export const SecretPathInput = ({
     validPaths.pop();
 
     const newValue = `${validPaths.join("/")}/${suggestions[selectedIndex]}`;
-    onChange?.({ target: { value: newValue } } as any);
+    onChange?.(newValue);
     setInputValue(newValue);
     setSecretPath(newValue);
     setHighlightedIndex(-1);
@@ -107,7 +108,7 @@ export const SecretPathInput = ({
   const handleInputChange = (e: any) => {
     // propagate event to react-hook-form onChange
     if (onChange) {
-      onChange(e);
+      onChange(e.target.value);
     }
 
     setInputValue(e.target.value);

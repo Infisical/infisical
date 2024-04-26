@@ -116,7 +116,7 @@ export default function CloudflareWorkersIntegrationPage() {
         <FormControl label="Infisical Secret Path" className="mt-2 px-6">
           <SecretPathInput
             value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
+            onChange={(value) => setSecretPath(value)}
             environment={selectedSourceEnvironment}
             placeholder="Provide a path, default is /"
           />
