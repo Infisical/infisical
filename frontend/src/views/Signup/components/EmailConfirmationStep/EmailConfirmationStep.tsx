@@ -3,11 +3,19 @@
 import { useState } from "react";
 import ReactCodeInput from "react-code-input";
 
-// import Error from "@app/components/basic/Error";
+import Error from "@app/components/basic/Error";
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
 import { useUser } from "@app/context";
-import { useSendEmailVerificationCode, useVerifyEmailVerificationCode } from "@app/hooks/api";
+import {
+  fetchUsersWithMyEmail,
+  useSendEmailVerificationCode,
+  useVerifyEmailVerificationCode} from "@app/hooks/api";
+
+type Props = {
+  email: string;
+  setStep: (step: number) => void;
+};
 
 // The style for the verification code input
 const props = {
@@ -47,10 +55,10 @@ const propsPhone = {
   }
 } as const;
 
-export const EmailConfirmationStep = () => {
+export const EmailConfirmationStep = ({ email, setStep }: Props) => {
   const { user } = useUser();
   const [code, setCode] = useState("");
-  // const [codeError, setCodeError] = useState(false);
+  const [codeError, setCodeError] = useState(false);
   const [isResendingVerificationEmail] = useState(false);
   const [isLoading] = useState(false);
 
@@ -59,22 +67,32 @@ export const EmailConfirmationStep = () => {
 
   const checkCode = async () => {
     try {
-      console.log("checkCode code: ", code);
       await verifyEmailVerificationCode({ code });
-      console.log("checkCode 2");
+      setCodeError(false);
+
+      const usersWithSameEmail = await fetchUsersWithMyEmail();
+
+      if (usersWithSameEmail.length > 1) {
+        setStep(2);
+      }
+
+      createNotification({
+        text: "Successfully verified code",
+        type: "success"
+      });
     } catch (err) {
       createNotification({
         text: "Failed to verify code",
         type: "error"
       });
     }
+
+    setCode("");
   };
 
   const resendCode = async () => {
     try {
-      console.log("resendCode");
       await sendEmailVerificationCode();
-      console.log("resendCode");
     } catch (err) {
       createNotification({
         text: "Failed to resend code",
@@ -86,7 +104,7 @@ export const EmailConfirmationStep = () => {
   return (
     <div className="mx-auto h-full w-full pb-4 md:px-8">
       <p className="text-md flex justify-center text-bunker-200">
-        We&apos;ve sent a verification code to
+        We&apos;ve sent a verification code to {email}
       </p>
       <p className="text-md my-1 flex justify-center font-semibold text-bunker-200">
         {user?.email}
@@ -113,7 +131,7 @@ export const EmailConfirmationStep = () => {
           className="mt-2 mb-2"
         />
       </div>
-      {/* {codeError && <Error text="Oops. Your code is wrong. Please try again." />} */}
+      {codeError && <Error text="Oops. Your code is wrong. Please try again." />}
       <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
         <div className="text-l w-full py-1 text-lg">
           <Button

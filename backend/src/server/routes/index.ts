@@ -86,6 +86,7 @@ import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
+import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
@@ -153,6 +154,7 @@ export const registerRoutes = async (
   const authDAL = authDALFactory(db);
   const authTokenDAL = tokenDALFactory(db);
   const orgDAL = orgDALFactory(db);
+  const orgMembershipDAL = orgMembershipDALFactory(db);
   const orgBotDAL = orgBotDALFactory(db);
   const incidentContactDAL = incidentContactDALFactory(db);
   const orgRoleDAL = orgRoleDALFactory(db);
@@ -328,7 +330,14 @@ export const registerRoutes = async (
   });
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
-  const userService = userServiceFactory({ userDAL, tokenService, smtpService });
+  const userService = userServiceFactory({
+    userDAL,
+    userAliasDAL,
+    orgDAL,
+    orgMembershipDAL,
+    tokenService,
+    smtpService
+  });
   const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, tokenDAL: authTokenDAL });
   const passwordService = authPaswordServiceFactory({
     tokenService,

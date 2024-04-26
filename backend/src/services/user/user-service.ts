@@ -1,20 +1,34 @@
 import { BadRequestError } from "@app/lib/errors";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { AuthMethod } from "../auth/auth-type";
 import { TUserDALFactory } from "./user-dal";
 
+// TODO: Pick all of these
 type TUserServiceFactoryDep = {
   userDAL: TUserDALFactory;
+  userAliasDAL: TUserAliasDALFactory;
+  orgDAL: TOrgDALFactory;
+  orgMembershipDAL: TOrgMembershipDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 
-export const userServiceFactory = ({ userDAL, tokenService, smtpService }: TUserServiceFactoryDep) => {
+export const userServiceFactory = ({
+  userDAL,
+  userAliasDAL,
+  // orgDAL,
+  orgMembershipDAL,
+  tokenService,
+  smtpService
+}: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (userId: string) => {
     console.log("sendEmailVerificationCode userId: ", userId);
     const user = await userDAL.findById(userId);
@@ -76,6 +90,68 @@ export const userServiceFactory = ({ userDAL, tokenService, smtpService }: TUser
     });
 
     return users;
+  };
+
+  /**
+   * Merges two users with the same email. Specifically:
+   * - Deletes the current user with id [userId] and transfers any resources to the user with username [username]
+   * @param userId
+   * @param username
+   */
+  const mergeUsers = async (userId: string, username: string) => {
+    const targetUser = await userDAL.transaction(async (tx) => {
+      const myUser = await userDAL.findById(userId, tx);
+      if (!myUser || !myUser.isEmailVerified) throw new BadRequestError({});
+
+      const mergeUser = await userDAL.findOne(
+        {
+          username
+        },
+        tx
+      );
+      if (!mergeUser || !mergeUser.isEmailVerified) throw new BadRequestError({});
+
+      if (myUser.email !== mergeUser.email) throw new BadRequestError({});
+
+      const mergeUserOrgMembershipSet = new Set(
+        (await orgMembershipDAL.find({ userId: mergeUser.id }, { tx })).map((m) => m.orgId)
+      );
+      const myOrgMemberships = (await orgMembershipDAL.find({ userId: myUser.id }, { tx })).filter(
+        (m) => !mergeUserOrgMembershipSet.has(m.orgId)
+      );
+
+      const userAliases = await userAliasDAL.find(
+        {
+          userId: myUser.id
+        },
+        { tx }
+      );
+      await userDAL.deleteById(myUser.id, tx);
+
+      if (myOrgMemberships.length) {
+        await orgMembershipDAL.insertMany(
+          myOrgMemberships.map((orgMembership) => ({
+            ...orgMembership,
+            userId: mergeUser.id
+          })),
+          tx
+        );
+      }
+
+      if (userAliases.length) {
+        await userAliasDAL.insertMany(
+          userAliases.map((userAlias) => ({
+            ...userAlias,
+            userId: mergeUser.id
+          })),
+          tx
+        );
+      }
+
+      return mergeUser;
+    });
+
+    return targetUser;
   };
 
   const toggleUserMfa = async (userId: string, isMfaEnabled: boolean) => {
@@ -143,6 +219,7 @@ export const userServiceFactory = ({ userDAL, tokenService, smtpService }: TUser
     sendEmailVerificationCode,
     verifyEmailVerificationCode,
     listUsersWithSameEmail,
+    mergeUsers,
     toggleUserMfa,
     updateUserName,
     updateAuthMethods,

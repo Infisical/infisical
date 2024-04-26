@@ -23,6 +23,7 @@ import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -33,6 +34,7 @@ import { TCreateSamlCfgDTO, TGetSamlCfgDTO, TSamlLoginDTO, TUpdateSamlCfgDTO } f
 type TSamlConfigServiceFactoryDep = {
   samlConfigDAL: TSamlConfigDALFactory;
   userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
@@ -360,6 +362,7 @@ export const samlConfigServiceFactory = ({
           {
             username,
             email,
+            isEmailVerified: false,
             firstName,
             lastName,
             authMethods: [AuthMethod.EMAIL],
@@ -382,6 +385,7 @@ export const samlConfigServiceFactory = ({
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
+        ...(user.email && { email: user.email }),
         firstName,
         lastName,
         organizationName: organization.name,

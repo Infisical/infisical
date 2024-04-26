@@ -7,7 +7,8 @@ import {
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace/queries";
-import { AddUserToWsDTOE2EE, AddUserToWsDTONonE2EE } from "./types";
+import { userKeys } from "./queries";
+import { AddUserToWsDTOE2EE, AddUserToWsDTONonE2EE, User } from "./types";
 
 export const useAddUserToWsE2EE = () => {
   const queryClient = useQueryClient();
@@ -72,12 +73,27 @@ export const useSendEmailVerificationCode = () => {
 };
 
 export const useVerifyEmailVerificationCode = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ code }: { code: string }) => {
       await apiRequest.post("/api/v2/users/me/emails/verify", {
         code
       });
       return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.usersWithMyEmail);
+    }
+  });
+};
+
+export const useMergeUsers = () => {
+  return useMutation({
+    mutationFn: async ({ username }: { username: string }) => {
+      const { data } = await apiRequest.post<{ user: User }>("/api/v2/users/me/users/merge-user", {
+        username
+      });
+      return data;
     }
   });
 };

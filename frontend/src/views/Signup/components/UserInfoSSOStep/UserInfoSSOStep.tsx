@@ -25,6 +25,7 @@ const client = new jsrp.client();
 type Props = {
   setStep: (step: number) => void;
   username: string;
+  email?: string;
   password: string;
   setPassword: (value: string) => void;
   name: string;
@@ -58,6 +59,7 @@ type Errors = {
  */
 export const UserInfoSSOStep = ({
   username,
+  email,
   name,
   providerOrganizationName,
   password,
@@ -201,7 +203,13 @@ export const UserInfoSSOStep = ({
               localStorage.setItem("orgData.id", orgId);
               localStorage.setItem("projectData.id", project.id);
 
-              setStep(1);
+              if (email) {
+                // move to verify email
+                setStep(1);
+              } else {
+                // move to backup PDF step
+                setStep(2);
+              }
             } catch (error) {
               setIsLoading(false);
               console.error(error);
