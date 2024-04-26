@@ -34,5 +34,4 @@ jobs:
         env:
           TOKEN: ${{ secrets.GH_PERSONAL_TOKEN }}
         run: |
-          git remote add origin https://$GITHUB_ACTOR:$TOKEN@github.com/${{ github.repository }}.git
-          git push origin HEAD:main
+          git push https://$GITHUB_ACTOR:$TOKEN@github.com/${{ github.repository }}.git origin HEAD:main
