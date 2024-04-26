@@ -81,6 +81,9 @@ spec:
                 secretName: universal-auth-credentials
                 secretNamespace: default
 
+
+
+         # Service tokens are deprecated and will be removed in the near future. Please use Machine Identities for authenticating with Infisical.       
         serviceToken:
             serviceTokenSecretReference:
                 secretName: service-token
@@ -174,6 +177,10 @@ Default re-sync interval is every 1 minute.
 </Accordion>
 
 <Accordion title="authentication.serviceToken">
+  <Warning>
+    Service tokens are deprecated and will be removed in the near future. Please use Machine Identities (Universal Auth) for authenticating with Infisical.
+  </Warning>
+
   The service token required to authenticate with Infisical needs to be stored in a Kubernetes secret. This block defines the reference to the name and namespace of secret that stores this service token. 
   Follow the instructions below to create and store the service token in a Kubernetes secrets and reference it in your CRD.
 

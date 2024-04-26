@@ -33,26 +33,67 @@ The distinguishing factor, however, is the authentication method used.
   </Tab>
 
   <Tab title="Staging, production & all other use case">
-    To use Infisical for non local development scenarios, please create a [service token](../documentation/platform/token). The service token will allow you to authenticate and interact with Infisical. 
-    Once you have created a service token with the required permissions, you'll need to feed the token to the CLI. 
+    <Tabs>
+      <Tab title="Machine Identities (Recommended)">
 
-    #### Pass as flag
-    You may use the --token flag to set the token 
+        ## Machine Identities
 
-    ```
-    infisical export --token=<>
-    infisical secrets --token=<>
-    infisical run --token=<> -- npm run dev
-    ```
+        To use Infisical for non local development scenarios, please create a [machine identity](../documentation/platform/identities/machine-identities). The machine identity will allow you to authenticate and interact with Infisical. 
+        Once you have created a machine identity with the required permissions, you'll need to feed the token to the CLI. 
 
-    #### Pass via shell environment variable
-    The CLI is configured to look for an environment variable named `INFISICAL_TOKEN`. If set, it'll attempt to use it for authentication.
+        #### Use `infisical login` to obtain a universal auth access token
 
-    ```
-    export INFISICAL_TOKEN=<>
-    ```
-    
+        ```bash
+        export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<identity-client-id> --client-secret=<identity-client-secret> --silent --plain) # --plain flag will output only the token, so it can be fed to an environment variable. --silent will disable any update messages.
+        ```
 
+        The CLI is configured to look for the `INFISICAL_TOKEN` environment variable. You can also pass the universal auth token as a `--token` flag to commands.
+
+        <Info>
+        Keep in mind that the universal auth token has a limited lifetime. It is recommended to use it only for the duration of the task at hand.
+        You can [refresh the token](./commands/token) if needed.
+        </Info> 
+
+        #### Run commands with the universal auth token
+
+        When using universal auth it's required to pass the `--projectId` flag.
+
+        ```bash
+        # Use the token for your commands.
+        infisical export --projectId=<project-id>
+        infisical secrets --projectId=<project-id>
+        infisical run --projectId=<project-id> -- npm run dev
+        ```
+      </Tab>
+      <Tab title="Service Tokens (Deprecated)">
+
+        ## Service Tokens
+
+        <Warning>
+          Service tokens are deprecated and will be removed in the near future. Please switch to [Machine Identities](../documentation/platform/identities/machine-identities) for authenticating with Infisical.
+        </Warning>
+
+        To use Infisical for non local development scenarios, please create a service token. The service token will allow you to authenticate and interact with Infisical. Once you have created a service token with the required permissions, you’ll need to feed the token to the CLI.
+
+        ```bash
+          infisical export --token=<service-token>
+          infisical secrets --token=<service-token>
+          infisical run --token=<service-token> -- npm run dev
+        ```
+
+
+        #### Pass via shell environment variable
+        The CLI is configured to look for an environment variable named `INFISICAL_TOKEN`. If set, it’ll attempt to use it for authentication.
+
+        ```bash
+          export INFISICAL_TOKEN=<service-token>
+        ```
+
+
+
+
+      </Tab>
+    </Tabs>
   </Tab>
 </Tabs>
 
@@ -61,7 +102,7 @@ The distinguishing factor, however, is the authentication method used.
 <Tabs>
   <Tab title="Feed secrets to your application">
     ```bash
-    infisical run --env=dev --path=/apps/firefly -- [your application start command]
+    infisical run --env=dev --path=/apps/firefly -- [your application start command] # e.g. npm run dev
 
     # example with node (nodemon)
     infisical run --env=staging --path=/apps/spotify -- nodemon index.js

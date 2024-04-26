@@ -43,7 +43,23 @@ To interact with various resources in Infisical, Machine Identities are able to 
 ## FAQ
 
 <AccordionGroup>
+<Accordion title="How do I use Machine Identities with the CLI?">
+To use Machine Identities with the CLI, you need to authenticate with the Infisical API using the identity's access token. Here's how you can do it.
+
+  ```bash
+    export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<your-identity-client-id> --client-secret=<your-identity-client-secret> --silent --plain)
+    infisical secrets --env dev --projectId=<your-project-id>
+  ```
+
+  The CLI is built to look for the `INFISICAL_TOKEN` environment variable. You can also pass the universal auth token as a `--token` flag to most commands.
+</Accordion>
+
+
 <Accordion title="What is the difference between an identity and service token?">
+  <Warning>
+    Service tokens are deprecated and will be removed in the near future. Please switch to Machine Identities for authenticating with Infisical.
+  </Warning>
+  
   A service token is a project-level authentication method that is being phased out in favor of identities.
   
   Amongst many differences, identities provide broader access over the Infisical API, utilizes the same
