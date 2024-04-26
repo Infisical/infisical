@@ -43,10 +43,7 @@ export const SecretPathInput = ({
   });
 
   useEffect(() => {
-    const initialValue = propValue ?? "/";
-    setInputValue(initialValue);
-    setSecretPath(initialValue);
-    onChange?.({ target: { value: initialValue } } as any);
+    setInputValue(propValue ?? "/");
   }, [propValue]);
 
   useEffect(() => {
@@ -69,7 +66,6 @@ export const SecretPathInput = ({
 
     // filter suggestions based on matching
     const searchFragment = debouncedInputValue.split("/").pop() || "";
-
     const filteredSuggestions = folders
       .filter((suggestionEntry) =>
         suggestionEntry.toUpperCase().startsWith(searchFragment.toUpperCase())
