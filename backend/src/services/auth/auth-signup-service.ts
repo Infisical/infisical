@@ -135,11 +135,6 @@ export const authSignupServiceFactory = ({
     userAgent,
     authorization
   }: TCompleteAccountSignupDTO) => {
-    console.log("completeEmailAccountSignup args: ", {
-      email,
-      firstName,
-      lastName
-    });
     const user = await userDAL.findOne({ username: email });
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");

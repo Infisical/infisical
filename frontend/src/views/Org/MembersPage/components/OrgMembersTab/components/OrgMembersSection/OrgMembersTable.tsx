@@ -149,8 +149,6 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
     [members, searchMemberFilter]
   );
 
-  console.log("filterdUser: ", filterdUser);
-
   return (
     <div>
       <Input

@@ -374,7 +374,7 @@ export const samlConfigServiceFactory = ({
           {
             username: uniqueUsername,
             email,
-            isEmailVerified: false,
+            isEmailVerified: appCfg.TRUST_SAML_EMAILS,
             firstName,
             lastName,
             authMethods: [],
@@ -414,7 +414,7 @@ export const samlConfigServiceFactory = ({
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
-        ...(user.email && { email: user.email }),
+        ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
         firstName,
         lastName,
         organizationName: organization.name,

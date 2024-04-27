@@ -437,7 +437,7 @@ export const ldapConfigServiceFactory = ({
           {
             username: uniqueUsername,
             email: emails[0],
-            isEmailVerified: false,
+            isEmailVerified: appCfg.TRUST_LDAP_EMAILS,
             firstName,
             lastName,
             authMethods: [],
@@ -557,7 +557,7 @@ export const ldapConfigServiceFactory = ({
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
-        ...(user.email && { email: user.email }),
+        ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
         firstName,
         lastName,
         organizationName: organization.name,

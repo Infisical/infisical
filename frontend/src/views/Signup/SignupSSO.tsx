@@ -16,8 +16,16 @@ export const SignupSSO = ({ providerAuthToken }: Props) => {
   const [step, setStep] = useState(0);
   const [password, setPassword] = useState("");
 
-  const { username, email, organizationName, organizationSlug, firstName, lastName, authType } =
-    jwt_decode(providerAuthToken) as any;
+  const {
+    username,
+    email,
+    organizationName,
+    organizationSlug,
+    firstName,
+    lastName,
+    authType,
+    isEmailVerified
+  } = jwt_decode(providerAuthToken) as any;
 
   const renderView = () => {
     switch (step) {
@@ -25,7 +33,7 @@ export const SignupSSO = ({ providerAuthToken }: Props) => {
         return (
           <UserInfoSSOStep
             username={username}
-            email={email}
+            isEmailVerified={isEmailVerified}
             name={`${firstName} ${lastName}`}
             providerOrganizationName={organizationName}
             password={password}

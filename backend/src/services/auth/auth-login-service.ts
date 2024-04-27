@@ -361,6 +361,7 @@ export const authLoginServiceFactory = ({
       user = await userDAL.create({
         username: email,
         email,
+        isEmailVerified: true,
         firstName,
         lastName,
         authMethods: [authMethod],
@@ -374,6 +375,8 @@ export const authLoginServiceFactory = ({
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
+        email: user.email,
+        isEmailVerified: user.isEmailVerified,
         firstName: user.firstName,
         lastName: user.lastName,
         authMethod,

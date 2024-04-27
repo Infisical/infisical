@@ -98,6 +98,9 @@ const envSchema = z
     CLIENT_ID_GITLAB: zpStr(z.string().optional()),
     CLIENT_SECRET_GITLAB: zpStr(z.string().optional()),
     URL_GITLAB_URL: zpStr(z.string().optional().default(GITLAB_URL)),
+    // email verification
+    TRUST_SAML_EMAILS: zodStrBool.default("false"),
+    TRUST_LDAP_EMAILS: zodStrBool.default("false"),
     // SECRET-SCANNING
     SECRET_SCANNING_WEBHOOK_PROXY: zpStr(z.string().optional()),
     SECRET_SCANNING_WEBHOOK_SECRET: zpStr(z.string().optional()),
