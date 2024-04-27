@@ -135,6 +135,11 @@ export const authSignupServiceFactory = ({
     userAgent,
     authorization
   }: TCompleteAccountSignupDTO) => {
+    console.log("completeEmailAccountSignup args: ", {
+      email,
+      firstName,
+      lastName
+    });
     const user = await userDAL.findOne({ username: email });
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
@@ -169,9 +174,8 @@ export const authSignupServiceFactory = ({
         tx
       );
       // If it's SAML Auth and the organization ID is present, we should check if the user has a pending invite for this org, and accept it
-      if (isAuthMethodSaml(authMethod) && organizationId) {
+      if ((isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && organizationId) {
         const [pendingOrgMembership] = await orgDAL.findMembership({
-          inviteEmail: email,
           userId: user.id,
           status: OrgMembershipStatus.Invited,
           orgId: organizationId

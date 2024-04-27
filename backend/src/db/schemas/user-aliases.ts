@@ -10,7 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const UserAliasesSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
-  username: z.string(),
+  username: z.string().nullable().optional(),
   aliasType: z.string(),
   externalId: z.string(),
   emails: z.string().array().nullable().optional(),

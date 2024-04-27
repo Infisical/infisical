@@ -23,10 +23,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
-import { UserAliasType } from "@app/services/user-alias/user-alias-types";
+import { TUserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -35,13 +36,14 @@ import { TSamlConfigDALFactory } from "./saml-config-dal";
 import { TCreateSamlCfgDTO, TGetSamlCfgDTO, TSamlLoginDTO, TUpdateSamlCfgDTO } from "./saml-config-types";
 
 type TSamlConfigServiceFactoryDep = {
-  samlConfigDAL: TSamlConfigDALFactory;
+  samlConfigDAL: TSamlConfigDALFactory; // TODO: Pick
   userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById" | "findById">;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
+  orgMembershipDAL: TOrgMembershipDALFactory; // TODO: Pick
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -53,6 +55,7 @@ export const samlConfigServiceFactory = ({
   samlConfigDAL,
   orgBotDAL,
   orgDAL,
+  orgMembershipDAL,
   userDAL,
   userAliasDAL,
   permissionService,
@@ -312,7 +315,6 @@ export const samlConfigServiceFactory = ({
 
   const samlLogin = async ({
     externalId,
-    username, // what to do about this?
     email,
     firstName,
     lastName,
@@ -320,31 +322,18 @@ export const samlConfigServiceFactory = ({
     orgId,
     relayState
   }: TSamlLoginDTO) => {
-    console.log("samlLogin args: ", {
-      externalId,
-      username,
-      email,
-      firstName,
-      lastName,
-      authProvider,
-      orgId,
-      relayState
-    });
     const appCfg = getConfig();
     const userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
-      aliasType: UserAliasType.SAML
+      aliasType: TUserAliasType.SAML
     });
-
-    console.log("found userAlias: ", userAlias);
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new BadRequestError({ message: "Org not found" });
 
     let user: TUsers;
     if (userAlias) {
-      console.log("samlLogin A");
       user = await userDAL.transaction(async (tx) => {
         const foundUser = await userDAL.findById(userAlias.userId, tx);
         const [orgMembership] = await orgDAL.findMembership(
@@ -355,9 +344,10 @@ export const samlConfigServiceFactory = ({
           { tx }
         );
         if (!orgMembership) {
-          await orgDAL.createMembership(
+          await orgMembershipDAL.create(
             {
               userId: userAlias.userId,
+              inviteEmail: email,
               orgId,
               role: OrgMembershipRole.Member,
               status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
@@ -365,7 +355,7 @@ export const samlConfigServiceFactory = ({
             tx
           );
           // Only update the membership to Accepted if the user account is already completed.
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && foundUser.isAccepted) {
           await orgDAL.updateMembershipById(
             orgMembership.id,
             {
@@ -378,9 +368,8 @@ export const samlConfigServiceFactory = ({
         return foundUser;
       });
     } else {
-      console.log("samlLogin B");
       user = await userDAL.transaction(async (tx) => {
-        const uniqueUsername = await normalizeUsername(username, userDAL);
+        const uniqueUsername = await normalizeUsername(externalId, userDAL);
         const newUser = await userDAL.create(
           {
             username: uniqueUsername,
@@ -396,8 +385,7 @@ export const samlConfigServiceFactory = ({
         await userAliasDAL.create(
           {
             userId: newUser.id,
-            username,
-            aliasType: UserAliasType.SAML,
+            aliasType: TUserAliasType.SAML,
             externalId,
             emails: email ? [email] : [],
             orgId
@@ -405,10 +393,10 @@ export const samlConfigServiceFactory = ({
           tx
         );
 
-        await orgDAL.createMembership(
-          // note: this creates a duplicate membership atm
+        await orgMembershipDAL.create(
           {
             userId: newUser.id,
+            inviteEmail: email,
             orgId,
             role: OrgMembershipRole.Member,
             status: OrgMembershipStatus.Invited
@@ -419,7 +407,6 @@ export const samlConfigServiceFactory = ({
         return newUser;
       });
     }
-    console.log("samlLogin C");
 
     const isUserCompleted = Boolean(user.isAccepted);
     const providerAuthToken = jwt.sign(
@@ -432,7 +419,9 @@ export const samlConfigServiceFactory = ({
         lastName,
         organizationName: organization.name,
         organizationId: organization.id,
+        organizationSlug: organization.slug,
         authMethod: authProvider,
+        authType: TUserAliasType.SAML,
         isUserCompleted,
         ...(relayState
           ? {

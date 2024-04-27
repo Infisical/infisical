@@ -25,7 +25,7 @@ type Props = {
 
 export const InitialStep = ({ setStep, email, setEmail, password, setPassword }: Props) => {
   const router = useRouter();
-  
+
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(false);
@@ -33,7 +33,10 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
   const queryParams = new URLSearchParams(window.location.search);
 
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_SAML_ORG_SLUG && process.env.NEXT_PUBLIC_SAML_ORG_SLUG !== "saml-org-slug-default") {
+    if (
+      process.env.NEXT_PUBLIC_SAML_ORG_SLUG &&
+      process.env.NEXT_PUBLIC_SAML_ORG_SLUG !== "saml-org-slug-default"
+    ) {
       const callbackPort = queryParams.get("callback_port");
       window.open(
         `/api/v1/sso/redirect/saml2/organizations/${process.env.NEXT_PUBLIC_SAML_ORG_SLUG}${
@@ -42,7 +45,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
       );
       window.close();
     }
-  }, [])
+  }, []);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -196,7 +199,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           colorSchema="primary"
           variant="outline_bg"
           onClick={() => {
-            setStep(3);
+            router.push("/login/ldap");
           }}
           leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
           className="mx-0 h-10 w-full"

@@ -6,11 +6,11 @@ import ReactCodeInput from "react-code-input";
 import Error from "@app/components/basic/Error";
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
-import { useUser } from "@app/context";
 import {
   fetchUsersWithMyEmail,
   useSendEmailVerificationCode,
-  useVerifyEmailVerificationCode} from "@app/hooks/api";
+  useVerifyEmailVerificationCode
+} from "@app/hooks/api";
 
 type Props = {
   email: string;
@@ -56,7 +56,6 @@ const propsPhone = {
 } as const;
 
 export const EmailConfirmationStep = ({ email, setStep }: Props) => {
-  const { user } = useUser();
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState(false);
   const [isResendingVerificationEmail] = useState(false);
@@ -105,9 +104,6 @@ export const EmailConfirmationStep = ({ email, setStep }: Props) => {
     <div className="mx-auto h-full w-full pb-4 md:px-8">
       <p className="text-md flex justify-center text-bunker-200">
         We&apos;ve sent a verification code to {email}
-      </p>
-      <p className="text-md my-1 flex justify-center font-semibold text-bunker-200">
-        {user?.email}
       </p>
       <div className="mx-auto hidden w-max min-w-[20rem] md:block">
         <ReactCodeInput

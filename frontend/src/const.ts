@@ -6,6 +6,7 @@ export const publicPaths = [
   "/signup",
   "/signup/sso",
   "/login",
+  "/login/ldap",
   "/blog",
   "/docs",
   "/changelog",

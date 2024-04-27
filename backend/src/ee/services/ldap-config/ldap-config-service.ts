@@ -31,7 +31,7 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
-import { UserAliasType } from "@app/services/user-alias/user-alias-types";
+import { TUserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -395,7 +395,7 @@ export const ldapConfigServiceFactory = ({
     let userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
-      aliasType: UserAliasType.LDAP
+      aliasType: TUserAliasType.LDAP
     });
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -437,9 +437,10 @@ export const ldapConfigServiceFactory = ({
           {
             username: uniqueUsername,
             email: emails[0],
+            isEmailVerified: false,
             firstName,
             lastName,
-            authMethods: [AuthMethod.LDAP], // should this be empty?
+            authMethods: [],
             isGhost: false
           },
           tx
@@ -448,7 +449,7 @@ export const ldapConfigServiceFactory = ({
           {
             userId: newUser.id,
             username,
-            aliasType: UserAliasType.LDAP,
+            aliasType: TUserAliasType.LDAP,
             externalId,
             emails,
             orgId
@@ -556,11 +557,14 @@ export const ldapConfigServiceFactory = ({
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
+        ...(user.email && { email: user.email }),
         firstName,
         lastName,
         organizationName: organization.name,
         organizationId: organization.id,
+        organizationSlug: organization.slug,
         authMethod: AuthMethod.LDAP,
+        authType: TUserAliasType.LDAP,
         isUserCompleted,
         ...(relayState
           ? {

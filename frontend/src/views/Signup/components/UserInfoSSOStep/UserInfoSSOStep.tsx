@@ -17,6 +17,7 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { sendEmailVerificationCode } from "@app/hooks/api/users/mutation";
 import ProjectService from "@app/services/ProjectService";
 
 // eslint-disable-next-line new-cap
@@ -205,10 +206,11 @@ export const UserInfoSSOStep = ({
 
               if (email) {
                 // move to verify email
+                await sendEmailVerificationCode();
                 setStep(1);
               } else {
                 // move to backup PDF step
-                setStep(2);
+                setStep(3);
               }
             } catch (error) {
               setIsLoading(false);

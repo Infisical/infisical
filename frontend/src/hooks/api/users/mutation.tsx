@@ -5,6 +5,7 @@ import {
   encryptAssymmetric
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
+import { setAuthToken } from "@app/reactQuery";
 
 import { workspaceKeys } from "../workspace/queries";
 import { userKeys } from "./queries";
@@ -63,10 +64,14 @@ export const useAddUserToWsNonE2EE = () => {
   });
 };
 
+export const sendEmailVerificationCode = async () => {
+  return apiRequest.post("/api/v2/users/me/emails/code");
+};
+
 export const useSendEmailVerificationCode = () => {
   return useMutation({
     mutationFn: async () => {
-      await apiRequest.post("/api/v2/users/me/emails/code");
+      await sendEmailVerificationCode();
       return {};
     }
   });
@@ -88,12 +93,29 @@ export const useVerifyEmailVerificationCode = () => {
 };
 
 export const useMergeUsers = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ username }: { username: string }) => {
       const { data } = await apiRequest.post<{ user: User }>("/api/v2/users/me/users/merge-user", {
         username
       });
       return data;
+    },
+    onSuccess: () => {
+      setAuthToken("");
+      // Delete the cookie by not setting a value; Alternatively clear the local storage
+      localStorage.removeItem("protectedKey");
+      localStorage.removeItem("protectedKeyIV");
+      localStorage.removeItem("protectedKeyTag");
+      localStorage.removeItem("publicKey");
+      localStorage.removeItem("encryptedPrivateKey");
+      localStorage.removeItem("iv");
+      localStorage.removeItem("tag");
+      localStorage.removeItem("PRIVATE_KEY");
+      localStorage.removeItem("orgData.id");
+      localStorage.removeItem("projectData.id");
+
+      queryClient.clear();
     }
   });
 };

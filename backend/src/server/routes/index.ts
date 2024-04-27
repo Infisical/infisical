@@ -259,6 +259,7 @@ export const registerRoutes = async (
     permissionService,
     orgBotDAL,
     orgDAL,
+    orgMembershipDAL,
     userDAL,
     userAliasDAL,
     samlConfigDAL,
@@ -334,7 +335,6 @@ export const registerRoutes = async (
   const userService = userServiceFactory({
     userDAL,
     userAliasDAL,
-    orgDAL,
     orgMembershipDAL,
     tokenService,
     smtpService

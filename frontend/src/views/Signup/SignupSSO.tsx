@@ -5,7 +5,8 @@ import {
   BackupPDFStep,
   EmailConfirmationStep,
   MergeUsersStep,
-  UserInfoSSOStep} from "./components";
+  UserInfoSSOStep
+} from "./components";
 
 type Props = {
   providerAuthToken: string;
@@ -15,9 +16,8 @@ export const SignupSSO = ({ providerAuthToken }: Props) => {
   const [step, setStep] = useState(0);
   const [password, setPassword] = useState("");
 
-  const { username, email, organizationName, firstName, lastName } = jwt_decode(
-    providerAuthToken
-  ) as any;
+  const { username, email, organizationName, organizationSlug, firstName, lastName, authType } =
+    jwt_decode(providerAuthToken) as any;
 
   const renderView = () => {
     switch (step) {
@@ -37,7 +37,13 @@ export const SignupSSO = ({ providerAuthToken }: Props) => {
       case 1:
         return <EmailConfirmationStep email={email} setStep={setStep} />;
       case 2:
-        return <MergeUsersStep username={username} />;
+        return (
+          <MergeUsersStep
+            username={username}
+            authType={authType}
+            organizationSlug={organizationSlug}
+          />
+        );
       case 3:
         return (
           <BackupPDFStep email={username} password={password} name={`${firstName} ${lastName}`} />

@@ -27,6 +27,11 @@ export type User = {
   id: string;
 };
 
+export enum UserAliasType {
+  LDAP = "ldap",
+  SAML = "saml"
+}
+
 export type UserEnc = {
   encryptionVersion?: number;
   protectedKey?: string;

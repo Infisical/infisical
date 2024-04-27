@@ -1,7 +1,6 @@
 import { BadRequestError } from "@app/lib/errors";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -9,14 +8,23 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { AuthMethod } from "../auth/auth-type";
 import { TUserDALFactory } from "./user-dal";
 
-// TODO: Pick all of these
 type TUserServiceFactoryDep = {
-  userDAL: TUserDALFactory;
-  userAliasDAL: TUserAliasDALFactory;
-  orgDAL: TOrgDALFactory;
-  orgMembershipDAL: TOrgMembershipDALFactory;
-  tokenService: TAuthTokenServiceFactory;
-  smtpService: TSmtpService;
+  userDAL: Pick<
+    TUserDALFactory,
+    | "find"
+    | "findOne"
+    | "findById"
+    | "transaction"
+    | "updateById"
+    | "deleteById"
+    | "findOneUserAction"
+    | "createUserAction"
+    | "findUserEncKeyByUserId"
+  >;
+  userAliasDAL: Pick<TUserAliasDALFactory, "find" | "insertMany">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -24,13 +32,11 @@ export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 export const userServiceFactory = ({
   userDAL,
   userAliasDAL,
-  // orgDAL,
   orgMembershipDAL,
   tokenService,
   smtpService
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (userId: string) => {
-    console.log("sendEmailVerificationCode userId: ", userId);
     const user = await userDAL.findById(userId);
     if (!user) throw new BadRequestError({ name: "Failed to find user" });
     if (!user.email)
@@ -38,13 +44,11 @@ export const userServiceFactory = ({
     if (user.isEmailVerified)
       throw new BadRequestError({ name: "Failed to send email verification code due to email already verified" });
 
-    console.log("sendEmailVerificationCode user: ", user);
     const token = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_VERIFICATION,
       userId: user.id
     });
 
-    console.log("sendEmailVerificationCode 2");
     await smtpService.sendMail({
       template: SmtpTemplates.EmailVerification,
       subjectLine: "Infisical confirmation code",
@@ -56,11 +60,6 @@ export const userServiceFactory = ({
   };
 
   const verifyEmailVerificationCode = async (userId: string, code: string) => {
-    console.log("verifyEmailVerificationCode args: ", {
-      userId,
-      code
-    });
-
     const user = await userDAL.findById(userId);
     if (!user) throw new BadRequestError({ name: "Failed to find user" });
     if (user.isEmailVerified)

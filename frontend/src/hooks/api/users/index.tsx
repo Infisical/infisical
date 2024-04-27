@@ -3,7 +3,8 @@ export {
   useAddUserToWsNonE2EE,
   useMergeUsers,
   useSendEmailVerificationCode,
-  useVerifyEmailVerificationCode} from "./mutation";
+  useVerifyEmailVerificationCode
+} from "./mutation";
 export {
   fetchOrgUsers,
   fetchUsersWithMyEmail,
@@ -26,4 +27,5 @@ export {
   useRevokeMySessions,
   useUpdateMfaEnabled,
   useUpdateOrgUserRole,
-  useUpdateUserAuthMethods} from "./queries";
+  useUpdateUserAuthMethods
+} from "./queries";
