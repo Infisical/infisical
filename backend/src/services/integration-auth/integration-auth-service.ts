@@ -572,14 +572,14 @@ export const integrationAuthServiceFactory = ({
     const response = keys
       .Keys!.map((key) => {
         const keyAlias = aliases.Aliases!.find((alias) => key.KeyId === alias.TargetKeyId);
-        if (!keyAlias?.AliasName?.includes("alias/aws/") || keyAlias?.AliasName?.includes("alias/aws/secretsmanager")) {
+        if (!keyAlias?.AliasName?.includes("alias/aws/")) {
           return { id: String(key.KeyId), alias: String(keyAlias?.AliasName || key.KeyId) };
         }
         return { id: "null", alias: "null" };
       })
       .filter((elem) => elem.id !== "null");
 
-    return response;
+    return [...response, { id: "null", alias: "default" }];
   };
 
   const getQoveryProjects = async ({

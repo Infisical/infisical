@@ -217,11 +217,12 @@ export const IntegrationsSection = ({
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure want to remove ${
           (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
-        } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || " "}?`}
+        } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || "this project"}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
         deleteKey={
           (popUp?.deleteConfirmation?.data as TIntegration)?.app ||
           (popUp?.deleteConfirmation?.data as TIntegration)?.owner ||
+          (popUp?.deleteConfirmation?.data as TIntegration)?.path ||
           ""
         }
         onDeleteApproved={async () =>
