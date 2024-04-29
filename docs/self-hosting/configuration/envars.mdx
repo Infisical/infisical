@@ -369,16 +369,6 @@ To login into Infisical with OAuth providers such as Google, configure the assoc
   information.
 </Accordion>
 
-<ParamField query="TRUST_SAML_EMAILS" type="boolean" default="false" optional>
-  Whether or not to trust emails from external SAML identity providers. If set
-  to `false` then users will be prompted to verify their email address upon
-  first login.
-</ParamField>
-<ParamField query="TRUST_LDAP_EMAILS" type="string" default="false" optional>
-  Whether or not to trust emails from external LDAP servers. If set to `false`
-  then users will be prompted to verify their email address upon first login.
-</ParamField>
-
 <ParamField query="NEXT_PUBLIC_SAML_ORG_SLUG" type="string">
   Configure SAML organization slug to automatically redirect all users of your
   Infisical instance to the identity provider.

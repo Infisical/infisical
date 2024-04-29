@@ -28,6 +28,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -392,6 +393,7 @@ export const ldapConfigServiceFactory = ({
     relayState
   }: TLdapLoginDTO) => {
     const appCfg = getConfig();
+    const serverCfg = await getServerCfg();
     let userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
@@ -437,7 +439,7 @@ export const ldapConfigServiceFactory = ({
           {
             username: uniqueUsername,
             email: emails[0],
-            isEmailVerified: appCfg.TRUST_LDAP_EMAILS,
+            isEmailVerified: serverCfg.trustLdapEmails,
             firstName,
             lastName,
             authMethods: [],

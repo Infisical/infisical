@@ -24,6 +24,7 @@ import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -323,6 +324,7 @@ export const samlConfigServiceFactory = ({
     relayState
   }: TSamlLoginDTO) => {
     const appCfg = getConfig();
+    const serverCfg = await getServerCfg();
     const userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
@@ -374,7 +376,7 @@ export const samlConfigServiceFactory = ({
           {
             username: uniqueUsername,
             email,
-            isEmailVerified: appCfg.TRUST_SAML_EMAILS,
+            isEmailVerified: serverCfg.trustSamlEmails,
             firstName,
             lastName,
             authMethods: [],
