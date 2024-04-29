@@ -1,29 +1,5 @@
 [
     {
-        "name": "Docker",
-        "slug": "docker",
-        "image": "Docker",
-        "docsLink": "https://infisical.com/docs/integrations/platforms/docker"
-    },
-    {
-        "name": "Docker Compose",
-        "slug": "docker-compose",
-        "image": "Docker Compose",
-        "docsLink": "https://infisical.com/docs/integrations/platforms/docker-compose"
-    },
-    {
-        "name": "Kubernetes",
-        "slug": "kubernetes",
-        "image": "Kubernetes",
-        "docsLink": "https://infisical.com/docs/integrations/platforms/kubernetes"
-    },
-    {
-        "name": "Terraform",
-        "slug": "terraform",
-        "image": "Terraform",
-        "docsLink": "https://infisical.com/docs/integrations/frameworks/terraform"
-    },
-    {
         "name": "React",
         "slug": "react",
         "image": "React",

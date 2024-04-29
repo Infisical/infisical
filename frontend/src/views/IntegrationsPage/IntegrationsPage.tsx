@@ -21,15 +21,17 @@ import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { CloudIntegrationSection } from "./components/CloudIntegrationSection";
 import { FrameworkIntegrationSection } from "./components/FrameworkIntegrationSection";
+import { InfrastructureIntegrationSection } from "./components/InfrastructureIntegrationSection/InfrastructureIntegrationSection";
 import { IntegrationsSection } from "./components/IntegrationsSection";
 import { generateBotKey, redirectForProviderAuth } from "./IntegrationPage.utils";
 
 type Props = {
   frameworkIntegrations: Array<{ name: string; slug: string; image: string; docsLink: string }>;
+  infrastructureIntegrations: Array<{ name: string; slug: string; image: string; docsLink: string }>;
 };
 
 export const IntegrationsPage = withProjectPermission(
-  ({ frameworkIntegrations }: Props) => {
+  ({ frameworkIntegrations, infrastructureIntegrations }: Props) => {
     const { t } = useTranslation();
     
 
@@ -228,6 +230,7 @@ export const IntegrationsPage = withProjectPermission(
           </ModalContent>
         </Modal>
         <FrameworkIntegrationSection frameworks={frameworkIntegrations} />
+        <InfrastructureIntegrationSection integrations={infrastructureIntegrations} />
       </div>
     );
   },
