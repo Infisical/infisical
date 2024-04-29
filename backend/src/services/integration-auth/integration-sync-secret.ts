@@ -442,99 +442,95 @@ const syncSecretsAWSParameterStore = async ({
   accessId: string | null;
   accessToken: string;
 }) => {
-  try {
-    if (!accessId) return;
+  if (!accessId) return;
 
-    const config = new AWS.Config({
-      region: integration.region as string,
-      credentials: {
-        accessKeyId: accessId,
-        secretAccessKey: accessToken
-      }
-    });
+  const config = new AWS.Config({
+    region: integration.region as string,
+    credentials: {
+      accessKeyId: accessId,
+      secretAccessKey: accessToken
+    }
+  });
 
-    const ssm = new AWS.SSM({
-      apiVersion: "2014-11-06",
-      region: integration.region as string
-    });
-    ssm.config.update(config);
+  const ssm = new AWS.SSM({
+    apiVersion: "2014-11-06",
+    region: integration.region as string
+  });
+  ssm.config.update(config);
 
-    const metadata = z.record(z.any()).parse(integration.metadata || {});
+  const metadata = z.record(z.any()).parse(integration.metadata || {});
 
-    const params = {
-      Path: integration.path as string,
-      Recursive: false,
-      WithDecryption: true
-    };
+  const params = {
+    Path: integration.path as string,
+    Recursive: false,
+    WithDecryption: true
+  };
 
-    const parameterList = (await ssm.getParametersByPath(params).promise()).Parameters;
+  const parameterList = (await ssm.getParametersByPath(params).promise()).Parameters;
 
-    const awsParameterStoreSecretsObj = (parameterList || [])
-      .filter(({ Name }) => Boolean(Name))
-      .reduce(
-        (obj, secret) => ({
-          ...obj,
-          [(secret.Name as string).substring((integration.path as string).length)]: secret
-        }),
-        {} as Record<string, AWS.SSM.Parameter>
-      );
-    // Identify secrets to create
-    await Promise.all(
-      Object.keys(secrets).map(async (key) => {
-        if (!(key in awsParameterStoreSecretsObj)) {
-          // case: secret does not exist in AWS parameter store
-          // -> create secret
-          if (secrets[key].value) {
-            await ssm
-              .putParameter({
-                Name: `${integration.path}${key}`,
-                Type: "SecureString",
-                Value: secrets[key].value,
-                ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
-                // Overwrite: true,
-                Tags: metadata.secretAWSTag
-                  ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
-                      Key: tag.key,
-                      Value: tag.value
-                    }))
-                  : []
-              })
-              .promise();
-          }
-          // case: secret exists in AWS parameter store
-        } else if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
-          // case: secret value doesn't match one in AWS parameter store
-          // -> update secret
+  const awsParameterStoreSecretsObj = (parameterList || [])
+    .filter(({ Name }) => Boolean(Name))
+    .reduce(
+      (obj, secret) => ({
+        ...obj,
+        [(secret.Name as string).substring((integration.path as string).length)]: secret
+      }),
+      {} as Record<string, AWS.SSM.Parameter>
+    );
+  // Identify secrets to create
+  await Promise.all(
+    Object.keys(secrets).map(async (key) => {
+      if (!(key in awsParameterStoreSecretsObj)) {
+        // case: secret does not exist in AWS parameter store
+        // -> create secret
+        if (secrets[key].value) {
           await ssm
             .putParameter({
               Name: `${integration.path}${key}`,
               Type: "SecureString",
               Value: secrets[key].value,
-              Overwrite: true
-              // Tags: metadata.secretAWSTag ? [{ Key: metadata.secretAWSTag.key, Value: metadata.secretAWSTag.value }] : []
+              ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
+              // Overwrite: true,
+              Tags: metadata.secretAWSTag
+                ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+                    Key: tag.key,
+                    Value: tag.value
+                  }))
+                : []
             })
             .promise();
         }
-      })
-    );
+        // case: secret exists in AWS parameter store
+      } else if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
+        // case: secret value doesn't match one in AWS parameter store
+        // -> update secret
+        await ssm
+          .putParameter({
+            Name: `${integration.path}${key}`,
+            Type: "SecureString",
+            Value: secrets[key].value,
+            Overwrite: true
+            // Tags: metadata.secretAWSTag ? [{ Key: metadata.secretAWSTag.key, Value: metadata.secretAWSTag.value }] : []
+          })
+          .promise();
+      }
+    })
+  );
 
-    // Identify secrets to delete
-    await Promise.all(
-      Object.keys(awsParameterStoreSecretsObj).map(async (key) => {
-        if (!(key in secrets)) {
-          // case:
-          // -> delete secret
-          await ssm
-            .deleteParameter({
-              Name: awsParameterStoreSecretsObj[key].Name as string
-            })
-            .promise();
-        }
-      })
-    );
-  } catch (err) {
-    console.error("syncSecretsAWSPS error: ", err);
-  }
+  // Identify secrets to delete
+  await Promise.all(
+    Object.keys(awsParameterStoreSecretsObj).map(async (key) => {
+      if (!(key in secrets)) {
+        // case:
+        // -> delete secret
+        await ssm
+          .deleteParameter({
+            Name: awsParameterStoreSecretsObj[key].Name as string
+          })
+          .promise();
+      }
+    })
+  );
 };
 
 /**
