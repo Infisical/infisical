@@ -31,7 +31,7 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
-import { TUserAliasType } from "@app/services/user-alias/user-alias-types";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -395,7 +395,7 @@ export const ldapConfigServiceFactory = ({
     let userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
-      aliasType: TUserAliasType.LDAP
+      aliasType: UserAliasType.LDAP
     });
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -449,7 +449,7 @@ export const ldapConfigServiceFactory = ({
           {
             userId: newUser.id,
             username,
-            aliasType: TUserAliasType.LDAP,
+            aliasType: UserAliasType.LDAP,
             externalId,
             emails,
             orgId
@@ -564,7 +564,7 @@ export const ldapConfigServiceFactory = ({
         organizationId: organization.id,
         organizationSlug: organization.slug,
         authMethod: AuthMethod.LDAP,
-        authType: TUserAliasType.LDAP,
+        authType: UserAliasType.LDAP,
         isUserCompleted,
         ...(relayState
           ? {

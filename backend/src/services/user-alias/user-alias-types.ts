@@ -1,4 +1,4 @@
-export enum TUserAliasType {
+export enum UserAliasType {
   LDAP = "ldap",
   SAML = "saml"
 }

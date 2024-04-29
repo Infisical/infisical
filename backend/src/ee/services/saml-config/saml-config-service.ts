@@ -27,7 +27,7 @@ import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membe
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
-import { TUserAliasType } from "@app/services/user-alias/user-alias-types";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -326,7 +326,7 @@ export const samlConfigServiceFactory = ({
     const userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
-      aliasType: TUserAliasType.SAML
+      aliasType: UserAliasType.SAML
     });
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -385,7 +385,7 @@ export const samlConfigServiceFactory = ({
         await userAliasDAL.create(
           {
             userId: newUser.id,
-            aliasType: TUserAliasType.SAML,
+            aliasType: UserAliasType.SAML,
             externalId,
             emails: email ? [email] : [],
             orgId
@@ -421,7 +421,7 @@ export const samlConfigServiceFactory = ({
         organizationId: organization.id,
         organizationSlug: organization.slug,
         authMethod: authProvider,
-        authType: TUserAliasType.SAML,
+        authType: UserAliasType.SAML,
         isUserCompleted,
         ...(relayState
           ? {

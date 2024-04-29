@@ -12,7 +12,7 @@ export type TDeleteScimTokenDTO = {
 // SCIM server endpoint types
 
 export type TListScimUsersDTO = {
-  offset: number;
+  startIndex: number;
   limit: number;
   filter?: string;
   orgId: string;
@@ -27,7 +27,7 @@ export type TListScimUsers = {
 };
 
 export type TGetScimUserDTO = {
-  userId: string;
+  orgMembershipId: string;
   orgId: string;
 };
 
@@ -54,13 +54,13 @@ export type TUpdateScimUserDTO = {
 };
 
 export type TReplaceScimUserDTO = {
-  userId: string;
+  orgMembershipId: string;
   active: boolean;
   orgId: string;
 };
 
 export type TDeleteScimUserDTO = {
-  userId: string;
+  orgMembershipId: string;
   orgId: string;
 };
 

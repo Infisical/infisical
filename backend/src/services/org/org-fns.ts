@@ -34,6 +34,8 @@ export const deleteOrgMembership = async ({
       tx
     );
 
+    // TODO: delete associated aliases
+
     return orgMembership;
   });
 
