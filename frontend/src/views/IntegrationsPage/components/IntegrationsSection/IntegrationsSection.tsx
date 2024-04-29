@@ -137,7 +137,7 @@ export const IntegrationsSection = ({
                       "App"
                     }
                   />
-                  <div className="min-w-[8rem] max-w-[12rem] overflow-clip text-ellipsis whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                  <div className="min-w-[8rem] max-w-[12rem] overflow-scroll no-scrollbar no-scrollbar::-webkit-scrollbar whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                     {(integration.integration === "hashicorp-vault" &&
                       `${integration.app} - path: ${integration.path}`) ||
                       (integration.scope === "github-org" && `${integration.owner}`) ||
@@ -217,11 +217,12 @@ export const IntegrationsSection = ({
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure want to remove ${
           (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
-        } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || " "}?`}
+        } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || "this project"}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
         deleteKey={
           (popUp?.deleteConfirmation?.data as TIntegration)?.app ||
           (popUp?.deleteConfirmation?.data as TIntegration)?.owner ||
+          (popUp?.deleteConfirmation?.data as TIntegration)?.path ||
           ""
         }
         onDeleteApproved={async () =>

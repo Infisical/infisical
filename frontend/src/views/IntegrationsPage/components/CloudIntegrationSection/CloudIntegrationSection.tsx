@@ -109,7 +109,7 @@ export const CloudIntegrationSection = ({
               </div>
               {cloudIntegration.isAvailable &&
                 Boolean(integrationAuths?.[cloudIntegration.slug]) && (
-                  <div className="absolute top-0 right-0 z-40 h-full">
+                  <div className="absolute top-0 right-0 z-30 h-full">
                     <div className="relative h-full">
                       <div className="absolute top-0 right-0 w-24 flex-row items-center overflow-hidden whitespace-nowrap rounded-tr-md rounded-bl-md bg-primary py-0.5 px-2 text-xs text-black opacity-80 transition-all duration-300 group-hover:w-0 group-hover:p-0">
                         <FontAwesomeIcon icon={faCheck} className="mr-2 text-xs" />

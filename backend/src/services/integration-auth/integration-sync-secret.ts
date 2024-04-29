@@ -477,24 +477,29 @@ const syncSecretsAWSParameterStore = async ({
       }),
       {} as Record<string, AWS.SSM.Parameter>
     );
-
   // Identify secrets to create
   await Promise.all(
     Object.keys(secrets).map(async (key) => {
       if (!(key in awsParameterStoreSecretsObj)) {
         // case: secret does not exist in AWS parameter store
         // -> create secret
-        await ssm
-          .putParameter({
-            Name: `${integration.path}${key}`,
-            Type: "SecureString",
-            Value: secrets[key].value,
-            // Overwrite: true,
-            Tags: metadata.secretAWSTag
-              ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
-              : []
-          })
-          .promise();
+        if (secrets[key].value) {
+          await ssm
+            .putParameter({
+              Name: `${integration.path}${key}`,
+              Type: "SecureString",
+              Value: secrets[key].value,
+              KeyId: metadata.kmsKeyId ? metadata.kmsKeyId : undefined,
+              // Overwrite: true,
+              Tags: metadata.secretAWSTag
+                ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+                    Key: tag.key,
+                    Value: tag.value
+                  }))
+                : []
+            })
+            .promise();
+        }
         // case: secret exists in AWS parameter store
       } else if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
         // case: secret value doesn't match one in AWS parameter store
