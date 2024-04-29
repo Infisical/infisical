@@ -369,13 +369,13 @@ export const SpecificPrivilegeSecretForm = ({
               }
               return (
                 <FormControl label="Secret Path">
-                <SecretPathInput
-                  {...field}
-                  isDisabled={isMemberEditDisabled}
-                  containerClassName="w-48"
-                  environment={selectedEnvironmentSlug}
-                />
-              </FormControl>
+                  <SecretPathInput
+                    {...field}
+                    isDisabled={isMemberEditDisabled}
+                    containerClassName="w-48"
+                    environment={selectedEnvironmentSlug}
+                  />
+                </FormControl>
               );
             }}
           />
