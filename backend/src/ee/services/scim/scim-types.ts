@@ -65,7 +65,7 @@ export type TDeleteScimUserDTO = {
 };
 
 export type TListScimGroupsDTO = {
-  offset: number;
+  startIndex: number;
   limit: number;
   orgId: string;
 };

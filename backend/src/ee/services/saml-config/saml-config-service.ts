@@ -369,7 +369,7 @@ export const samlConfigServiceFactory = ({
       });
     } else {
       user = await userDAL.transaction(async (tx) => {
-        const uniqueUsername = await normalizeUsername(externalId, userDAL);
+        const uniqueUsername = await normalizeUsername(`${firstName ?? ""}-${lastName ?? ""}`, userDAL);
         const newUser = await userDAL.create(
           {
             username: uniqueUsername,

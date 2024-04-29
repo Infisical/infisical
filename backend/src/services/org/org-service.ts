@@ -18,6 +18,7 @@ import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -30,6 +31,7 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgBotDALFactory } from "./org-bot-dal";
 import { TOrgDALFactory } from "./org-dal";
+import { deleteOrgMembershipFn } from "./org-fns";
 import { TOrgRoleDALFactory } from "./org-role-dal";
 import {
   TDeleteOrgMembershipDTO,
@@ -43,6 +45,7 @@ import {
 } from "./org-types";
 
 type TOrgServiceFactoryDep = {
+  userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   orgDAL: TOrgDALFactory;
   orgBotDAL: TOrgBotDALFactory;
   orgRoleDAL: TOrgRoleDALFactory;
@@ -65,6 +68,7 @@ type TOrgServiceFactoryDep = {
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
 
 export const orgServiceFactory = ({
+  userAliasDAL,
   orgDAL,
   userDAL,
   groupDAL,
@@ -572,47 +576,14 @@ export const orgServiceFactory = ({
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
 
-    const deletedMembership = await orgDAL.transaction(async (tx) => {
-      const orgMembership = await orgDAL.deleteMembershipById(membershipId, orgId, tx);
-
-      if (!orgMembership.userId) {
-        await licenseService.updateSubscriptionOrgMemberCount(orgId);
-        return orgMembership;
-      }
-
-      // Get all the project memberships of the user in the organization
-      const projectMemberships = await projectMembershipDAL.findProjectMembershipsByUserId(orgId, orgMembership.userId);
-
-      // Delete all the project memberships of the user in the organization
-      await projectMembershipDAL.delete(
-        {
-          $in: {
-            id: projectMemberships.map((membership) => membership.id)
-          }
-        },
-        tx
-      );
-
-      // Get all the project keys of the user in the organization
-      const projectKeys = await projectKeyDAL.find({
-        $in: {
-          projectId: projectMemberships.map((membership) => membership.projectId)
-        },
-        receiverId: orgMembership.userId
-      });
-
-      // Delete all the project keys of the user in the organization
-      await projectKeyDAL.delete(
-        {
-          $in: {
-            id: projectKeys.map((key) => key.id)
-          }
-        },
-        tx
-      );
-
-      await licenseService.updateSubscriptionOrgMemberCount(orgId);
-      return orgMembership;
+    const deletedMembership = await deleteOrgMembershipFn({
+      orgMembershipId: membershipId,
+      orgId,
+      orgDAL,
+      projectMembershipDAL,
+      projectKeyDAL,
+      userAliasDAL,
+      licenseService
     });
 
     return deletedMembership;

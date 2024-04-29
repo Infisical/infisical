@@ -349,6 +349,7 @@ export const registerRoutes = async (
     userDAL
   });
   const orgService = orgServiceFactory({
+    userAliasDAL,
     licenseService,
     samlConfigDAL,
     orgRoleDAL,
