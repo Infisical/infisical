@@ -257,7 +257,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
       createNotification({ text: "Workspace created", type: "success" });
       handlePopUpClose("addNewWs");
-      router.push(`/project/${newProjectId}/secrets/overview`);
+      router.push(`/project/${newProjectId}/overview`);
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create workspace", type: "error" });
@@ -437,7 +437,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         value={currentWorkspace?.id}
                         className="w-full bg-mineshaft-600 py-2.5 font-medium [&>*:first-child]:truncate"
                         onValueChange={(value) => {
-                          router.push(`/project/${value}/secrets/overview`);
+                          router.push(`/project/${value}/overview`);
                           localStorage.setItem("projectData.id", value);
                         }}
                         position="popper"
@@ -500,7 +500,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   {(router.asPath.includes("project") || router.asPath.includes("integrations")) &&
                   currentWorkspace ? (
                     <Menu>
-                      <Link href={`/project/${currentWorkspace?.id}/secrets/overview`} passHref>
+                      <Link href={`/project/${currentWorkspace?.id}/overview`} passHref>
                         <a>
                           <MenuItem
                             isSelected={router.asPath.includes(

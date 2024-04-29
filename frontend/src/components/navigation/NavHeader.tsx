@@ -83,7 +83,7 @@ export default function NavHeader({
         <Link
           passHref
           legacyBehavior
-          href={{ pathname: "/project/[id]/secrets/overview", query: { id: router.query.id } }}
+          href={{ pathname: "/project/[id]/overview", query: { id: router.query.id } }}
         >
           <a className="text-sm font-semibold text-primary/80 hover:text-primary">{pageName}</a>
         </Link>
