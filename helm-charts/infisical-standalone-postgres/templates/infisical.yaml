@@ -29,9 +29,9 @@ spec:
       affinity:
         {{- toYaml . | nindent 8 }}
     {{- end }}
-    {{- if $infisicalValues.imagePullSecrets }}
+    {{- if $infisicalValues.image.imagePullSecrets }}
       imagePullSecrets:
-        {{- toYaml $infisicalValues.imagePullSecrets | nindent 6 }}
+        {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}
     {{- end }}
     {{- if $infisicalValues.autoDatabaseSchemaMigration }}
       initContainers:

@@ -14,7 +14,7 @@ infisical:
     repository: infisical/infisical
     tag: "v0.46.3-postgres"
     pullPolicy: IfNotPresent
-  imagePullSecrets: []
+    imagePullSecrets: []
 
   affinity: {}
   kubeSecretRef: "infisical-secrets"
@@ -30,11 +30,11 @@ infisical:
       cpu: 350m
 
 ingress:
-  enabled: true
+  enabled: false
   hostName: ""
   ingressClassName: nginx
   nginx:
-    enabled: true
+    enabled: false
   annotations: {}
   tls:
     []
