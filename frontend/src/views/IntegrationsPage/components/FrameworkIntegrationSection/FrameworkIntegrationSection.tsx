@@ -1,4 +1,7 @@
 import { useTranslation } from "react-i18next";
+import { faKeyboard } from "@fortawesome/free-regular-svg-icons";
+import { faComputer } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 type Props = {
   frameworks: Array<{
@@ -50,6 +53,36 @@ export const FrameworkIntegrationSection = ({ frameworks }: Props) => {
             </div>
           </a>
         ))}
+        <a
+          key="framework-integration-more"
+          href="https://infisical.com/docs/cli/commands/run"
+          rel="noopener noreferrer"
+          target="_blank"
+          className="relative flex h-32 cursor-pointer flex-row items-center justify-center rounded-md p-0.5 duration-200"
+        >
+          <div
+            className="flex h-full w-full cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 font-semibold text-gray-300 duration-200 hover:bg-mineshaft-700 group-hover:text-gray-200 px-1 text-xl w-full max-w-xs text-center"
+          >
+            <FontAwesomeIcon className="text-5xl mb-2 text-white/90" icon={faKeyboard} />
+            <div className="h-2" />
+            CLI
+          </div>
+        </a>
+        <a
+          key="framework-integration-more"
+          href="https://infisical.com/docs/sdks/overview"
+          rel="noopener noreferrer"
+          target="_blank"
+          className="relative flex h-32 cursor-pointer flex-row items-center justify-center rounded-md p-0.5 duration-200"
+        >
+          <div
+            className="flex h-full w-full cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 font-semibold text-gray-300 duration-200 hover:bg-mineshaft-700 group-hover:text-gray-200 px-1 text-xl w-full max-w-xs text-center"
+          >
+            <FontAwesomeIcon className="text-5xl mb-1 text-white/90" icon={faComputer} />
+            <div className="h-2" />
+            SDKs
+          </div>
+        </a>
       </div>
     </>
   );

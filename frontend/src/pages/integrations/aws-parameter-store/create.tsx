@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import queryString from "query-string";
 
 import { useCreateIntegration } from "@app/hooks/api";
+import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
 
 import {
   Button,
@@ -90,6 +91,7 @@ export default function AWSParameterStoreCreateIntegrationPage() {
   const [shouldTag, setShouldTag] = useState(false);
   const [tagKey, setTagKey] = useState("");
   const [tagValue, setTagValue] = useState("");
+  const [kmsKeyId, setKmsKeyId] = useState("");
 
   useEffect(() => {
     if (workspace) {
@@ -97,6 +99,19 @@ export default function AWSParameterStoreCreateIntegrationPage() {
       setSelectedAWSRegion(awsRegions[0].slug);
     }
   }, [workspace]);
+
+
+  const { data: integrationAuthAwsKmsKeys, isLoading: isIntegrationAuthAwsKmsKeysLoading } =
+    useGetIntegrationAuthAwsKmsKeys({
+      integrationAuthId: String(integrationAuthId), 
+      region: selectedAWSRegion
+    });
+
+  useEffect(() => {
+    if (integrationAuthAwsKmsKeys) {
+      setKmsKeyId(String(integrationAuthAwsKmsKeys?.filter(key => key.alias === "default")[0]?.id))
+    }
+  }, [integrationAuthAwsKmsKeys])
 
   const isValidAWSParameterStorePath = (awsStorePath: string) => {
     const pattern = /^\/([\w-]+\/)*[\w-]+\/$/;
@@ -133,7 +148,11 @@ export default function AWSParameterStoreCreateIntegrationPage() {
                   value: tagValue
                 }]
               }
-            : {})
+            : {}),
+            ...((kmsKeyId && integrationAuthAwsKmsKeys?.filter(key => key.id === kmsKeyId)[0]?.alias !== "default") ? 
+                {
+                  kmsKeyId
+                }: {})
         }
       });
 
@@ -146,7 +165,7 @@ export default function AWSParameterStoreCreateIntegrationPage() {
     }
   };
 
-  return integrationAuth && workspace && selectedSourceEnvironment ? (
+  return (integrationAuth && workspace && selectedSourceEnvironment && !isIntegrationAuthAwsKmsKeysLoading) ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
       <Head>
         <title>Set Up AWS Parameter Integration</title>
@@ -286,6 +305,31 @@ export default function AWSParameterStoreCreateIntegrationPage() {
                   </FormControl>
                 </div>
               )}
+              <FormControl label="Encryption Key" className="mt-4">
+                <Select
+                  value={kmsKeyId}
+                  onValueChange={(e) => {
+                    setKmsKeyId(e)
+                  }}
+                  className="w-full border border-mineshaft-500"
+                >
+                  {integrationAuthAwsKmsKeys?.length ? (
+                    integrationAuthAwsKmsKeys.map((key) => {
+                      return (
+                        <SelectItem
+                          value={key.id as string}
+                          key={`repo-id-${key.id}`}
+                          className="w-[28.4rem] text-sm"
+                        >
+                          {key.alias}
+                        </SelectItem>
+                      );
+                    })
+                  ) : (
+                    <div />
+                  )}
+                </Select>
+              </FormControl>
             </motion.div>
           </TabPanel>
         </Tabs>
@@ -318,7 +362,7 @@ export default function AWSParameterStoreCreateIntegrationPage() {
         <title>Set Up AWS Parameter Store Integration</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      {isintegrationAuthLoading ? (
+      {(isintegrationAuthLoading || isIntegrationAuthAwsKmsKeysLoading) ? (
         <img
           src="/images/loading/loading.gif"
           height={70}

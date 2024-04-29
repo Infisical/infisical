@@ -120,7 +120,7 @@
     "available": "Platform & Cloud Integrations",
     "available-text1": "Click on the integration you want to connect. This will let your environment variables flow automatically into selected third-party services.",
     "available-text2": "Note: during an integration with Heroku, for security reasons, it is impossible to maintain end-to-end encryption. In theory, this lets Infisical decrypt yor environment variables. In practice, we can assure you that this will never be done, and it allows us to protect your secrets from bad actors online. The core Infisical service will always stay end-to-end encrypted. With any questions, reach out support@infisical.com.",
-    "cloud-integrations": "Cloud Integrations",
+    "cloud-integrations": "Native Integrations",
     "framework-integrations": "Framework Integrations",
     "click-to-start": "Click on an integration to begin syncing secrets to it.",
     "click-to-setup": "Click on a framework to get the setup instructions.",

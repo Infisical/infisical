@@ -4,16 +4,10 @@ import axios from "axios";
 import queryString from "query-string";
 
 import { createNotification } from "@app/components/notifications";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useCreateIntegration, useGetWorkspaceById } from "@app/hooks/api";
 
-import {
-  Button,
-  Card,
-  CardTitle,
-  FormControl,
-  Input,
-  Select,
-  SelectItem} from "../../../components/v2";
+import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
@@ -27,7 +21,6 @@ const cloudflareEnvironments = [
 export default function CloudflarePagesIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
-  
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
   const [secretPath, setSecretPath] = useState("/");
@@ -130,9 +123,10 @@ export default function CloudflarePagesIntegrationPage() {
           </Select>
         </FormControl>
         <FormControl label="Infisical Secret Path" className="mt-2 px-6">
-          <Input
+          <SecretPathInput
             value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
+            onChange={(value) => setSecretPath(value)}
+            environment={selectedSourceEnvironment}
             placeholder="Provide a path, default is /"
           />
         </FormControl>

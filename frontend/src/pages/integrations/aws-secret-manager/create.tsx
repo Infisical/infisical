@@ -148,7 +148,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                 }]
               }
             : {}),
-          ...((kmsKeyId && integrationAuthAwsKmsKeys?.filter(key => key.id === kmsKeyId)[0]?.alias !== "alias/aws/secretsmanager") ? 
+          ...((kmsKeyId && integrationAuthAwsKmsKeys?.filter(key => key.id === kmsKeyId)[0]?.alias !== "default") ? 
               {
                 kmsKeyId
               }: {})

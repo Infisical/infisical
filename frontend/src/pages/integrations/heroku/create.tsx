@@ -17,19 +17,12 @@ import queryString from "query-string";
 // import { App, Pipeline } from "@app/hooks/api/integrationAuth/types";
 import * as yup from "yup";
 
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 // import { RadioGroup } from "@app/components/v2/RadioGroup";
 import { useCreateIntegration } from "@app/hooks/api";
 import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
 
-import {
-  Button,
-  Card,
-  CardTitle,
-  FormControl,
-  Input,
-  Select,
-  SelectItem
-} from "../../../components/v2";
+import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
@@ -280,7 +273,11 @@ export default function HerokuCreateIntegrationPage() {
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Secrets Path" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="/" />
+                <SecretPathInput
+                  {...field}
+                  placeholder="/"
+                  environment={selectedSourceEnvironment}
+                />
               </FormControl>
             )}
           />
