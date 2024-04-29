@@ -332,7 +332,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			return nil, err
 		}
 
-		if loggedInUserDetails.LoginExpired {
+		if isConnected && loggedInUserDetails.LoginExpired {
 			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
 		}
 
