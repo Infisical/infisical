@@ -134,7 +134,6 @@ export const SpecificPrivilegeSecretForm = ({
   });
 
   const temporaryAccessField = privilegeForm.watch("temporaryAccess");
-  const selectedEnvironmentSlug = privilegeForm.watch("environmentSlug");
   const selectedEnvironment = privilegeForm.watch("environmentSlug");
   const secretPath = privilegeForm.watch("secretPath");
 
@@ -373,7 +372,7 @@ export const SpecificPrivilegeSecretForm = ({
                     {...field}
                     isDisabled={isMemberEditDisabled}
                     containerClassName="w-48"
-                    environment={selectedEnvironmentSlug}
+                    environment={selectedEnvironment}
                   />
                 </FormControl>
               );
