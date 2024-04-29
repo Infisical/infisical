@@ -55,12 +55,12 @@ type TScimServiceFactoryDep = {
     TUserDALFactory,
     "find" | "findOne" | "create" | "transaction" | "findUserEncKeyByUserIdsBatch" | "findById"
   >;
-  userAliasDAL: TUserAliasDALFactory; // TODO: pick
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "delete">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "findById" | "findMembership" | "deleteMembershipById" | "transaction" | "updateMembershipById"
   >;
-  orgMembershipDAL: TOrgMembershipDALFactory; // TODO: Pick
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "findOne" | "create" | "updateById">;
   projectDAL: Pick<TProjectDALFactory, "find" | "findProjectGhostUser">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete" | "findProjectMembershipsByUserId">;
   groupDAL: Pick<
@@ -68,7 +68,10 @@ type TScimServiceFactoryDep = {
     "create" | "findOne" | "findAllGroupMembers" | "update" | "delete" | "findGroups" | "transaction"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
-  userGroupMembershipDAL: TUserGroupMembershipDALFactory; // TODO: Pick
+  userGroupMembershipDAL: Pick<
+    TUserGroupMembershipDALFactory,
+    "find" | "transaction" | "insertMany" | "filterProjectsByUserMembership" | "delete"
+  >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
