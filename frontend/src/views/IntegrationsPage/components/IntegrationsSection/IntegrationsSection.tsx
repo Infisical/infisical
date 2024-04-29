@@ -137,7 +137,7 @@ export const IntegrationsSection = ({
                       "App"
                     }
                   />
-                  <div className="min-w-[8rem] max-w-[12rem] overflow-clip text-ellipsis whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                  <div className="min-w-[8rem] max-w-[12rem] overflow-scroll no-scrollbar no-scrollbar::-webkit-scrollbar whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                     {(integration.integration === "hashicorp-vault" &&
                       `${integration.app} - path: ${integration.path}`) ||
                       (integration.scope === "github-org" && `${integration.owner}`) ||
