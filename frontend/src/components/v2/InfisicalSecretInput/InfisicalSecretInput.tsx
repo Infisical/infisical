@@ -353,7 +353,7 @@ export const InfisicalSecretInput = ({
                     highlightedIndex === i ? "bg-gray-600" : ""
                   } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-2 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
                 >
-                  <div className="flex gap-2">
+                  <div className="flex w-full gap-2">
                     <div className="flex items-center text-yellow-700">
                       <FontAwesomeIcon
                         icon={entryIcon}
