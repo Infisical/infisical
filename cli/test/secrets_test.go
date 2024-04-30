@@ -3,8 +3,10 @@ package tests
 import (
 	"testing"
 
+	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/bradleyjkemp/cupaloy/v2"
 )
+
 
 func TestServiceToken_SecretsGetWithImportsAndRecursiveCmd(t *testing.T) {
 	SetupCli(t)
@@ -84,4 +86,46 @@ func TestUniversalAuth_SecretsGetWrongEnvironment(t *testing.T) {
 		t.Fatalf("snapshot failed: %v", err)
 	}
 
+}
+
+func TestUserAuth_SecretsGetAll(t *testing.T) {
+	SetupCli(t)
+	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--include-imports=false", "--silent")
+	if err != nil {
+		t.Fatalf("error running CLI command: %v", err)
+	}
+
+	// Use cupaloy to snapshot test the output
+	err = cupaloy.Snapshot(output)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
+	}
+}
+
+func TestUserAuth_SecretsGetAllWithoutConnection(t *testing.T) {
+	SetupCli(t)
+
+	originalConfigFile, err := util.GetConfigFile()
+	if err != nil {
+		t.Fatalf("error getting config file")
+	}
+	newConfigFile := originalConfigFile
+
+	// set it to a URL that will always be unreachable
+	newConfigFile.LoggedInUserDomain = "http://localhost:4999"
+	util.WriteConfigFile(&newConfigFile)
+	
+	// restore config file
+	defer util.WriteConfigFile(&originalConfigFile)
+
+	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--include-imports=false", "--silent")
+	if err != nil {
+		t.Fatalf("error running CLI command: %v", err)
+	}
+
+	// Use cupaloy to snapshot test the output
+	err = cupaloy.Snapshot(output)
+	if err != nil {
+		t.Fatalf("snapshot failed: %v", err)
+	}
 }
