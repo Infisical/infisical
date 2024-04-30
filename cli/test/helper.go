@@ -38,6 +38,7 @@ func ExecuteCliCommand(command string, args ...string) (string, error) {
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(fmt.Sprint(err) + ": " + string(output))
 		return strings.TrimSpace(string(output)), err
 	}
 	return strings.TrimSpace(string(output)), nil
