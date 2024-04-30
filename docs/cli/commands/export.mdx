@@ -16,44 +16,47 @@ Export environment variables from the platform into a file format.
 <Accordion title="infisical export" defaultOpen="true">
   Use this command to export environment variables from the platform into a raw file formats
 
-  ```bash
-  $ infisical export 
+```bash
+$ infisical export
 
-  # Export variables to a .env file
-  infisical export > .env
+# Export variables to a .env file
+infisical export > .env
 
-  # Export variables to a .env file (with export keyword)
-  infisical export --format=dotenv-export > .env
+# Export variables to a .env file (with export keyword)
+infisical export --format=dotenv-export > .env
 
-  # Export variables to a CSV file
-  infisical export --format=csv > secrets.csv
+# Export variables to a CSV file
+infisical export --format=csv > secrets.csv
 
-  # Export variables to a JSON file
-  infisical export --format=json > secrets.json
+# Export variables to a JSON file
+infisical export --format=json > secrets.json
 
-  # Export variables to a YAML file
-  infisical export --format=yaml > secrets.yaml
+# Export variables to a YAML file
+infisical export --format=yaml > secrets.yaml
 
-  # Render secrets using a custom template file
-  infisical export --template=<path to template>
-  ```
+# Render secrets using a custom template file
+infisical export --template=<path to template>
+```
 
-  ### Environment variables
+### Environment variables
+
   <Accordion title="INFISICAL_TOKEN">
     Used to fetch secrets via a [machine identities](/documentation/platform/identities/machine-identities) apposed to logged in credentials. Simply, export this variable in the terminal before running this command.
 
     ```bash
-    # Example 
+    # Example
     export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<identity-client-id> --client-secret=<identity-client-secret> --silent --plain) # --plain flag will output only the token, so it can be fed to an environment variable. --silent will disable any update messages.
     ```
 
-
   <Info>
-    Alternatively you may also use service tokens. **Service tokens are legacy tokens that are a precursor to machine identities, and will be removed in the future.**
+    Alternatively, you may use service tokens.
+
+    Please note, however, that service tokens are being deprecated. They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
     ```bash
     # Example
     export INFISICAL_TOKEN=<service-token>
     ```
+
   </Info>
   </Accordion>
 
@@ -63,16 +66,18 @@ Export environment variables from the platform into a file format.
     To use, simply export this variable in the terminal before running this command.
 
     ```bash
-    # Example 
+    # Example
     export INFISICAL_DISABLE_UPDATE_CHECK=true
     ```
+
   </Accordion>
 
-  ### flags 
+### flags
+
   <Accordion title="--template">
     The `--template` flag specifies the path to the template file used for rendering secrets. When using templates, you can omit the other format flags.
 
-		```text my-template-file
+    	```text my-template-file
     {{$secrets := secret "<infisical-project-id>" "<environment-slug>" "<folder-path>"}}
     {{$length := len $secrets}}
     {{- "{"}}
@@ -82,24 +87,26 @@ Export environment variables from the platform into a file format.
       {{- end }}
     {{- end }}
     {{ "}" -}}
-		```
+    	```
 
     ```bash
     # Example
     infisical export --template="/path/to/template/file"
     ```
+
   </Accordion>
   <Accordion title="--env">
-    Used to set the environment that secrets are pulled from. 
+    Used to set the environment that secrets are pulled from.
 
     ```bash
-    # Example 
-    infisical export --env=prod 
+    # Example
+    infisical export --env=prod
     ```
 
     Note: this flag only accepts environment slug names not the fully qualified name. To view the slug name of an environment, visit the project settings page.
 
     default value: `dev`
+
   </Accordion>
 
   <Accordion title="--projectId">
@@ -107,28 +114,32 @@ Export environment variables from the platform into a file format.
     This flag allows you to override this behavior by explicitly defining the project to fetch your secrets from.
 
     ```bash
-    # Example 
-    
+    # Example
+
     infisical export --projectId=XXXXXXXXXXXXXX
     ```
+
   </Accordion>
 
   <Accordion title="--expand">
     Parse shell parameter expansions in your secrets (e.g., `${DOMAIN}`)
 
     Default value: `true`
+
   </Accordion>
 
   <Accordion title="--format">
-    Format of the output file. Accepted values: `dotenv`, `dotenv-export`, `csv`, `json` and `yaml` 
+    Format of the output file. Accepted values: `dotenv`, `dotenv-export`, `csv`, `json` and `yaml`
 
     Default value: `dotenv`
+
   </Accordion>
 
   <Accordion title="--secret-overriding">
     Prioritizes personal secrets with the same name over shared secrets
 
     Default value: `true`
+
   </Accordion>
 
   <Accordion title="--path">
@@ -138,19 +149,21 @@ Export environment variables from the platform into a file format.
     # Example
     infisical export --path="/path/to/folder" --env=dev
     ```
+
   </Accordion>
 
   <Accordion title="--tags">
     When working with tags, you can use this flag to filter and retrieve only secrets that are associated with a specific tag(s).
 
     ```bash
-    # Example 
+    # Example
     infisical run --tags=tag1,tag2,tag3 -- npm run dev
     ```
 
     Note: you must reference the tag by its slug name not its fully qualified name. Go to project settings to view all tag slugs.
 
     By default, all secrets are fetched
+
   </Accordion>
 
 </Accordion>
