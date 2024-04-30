@@ -509,7 +509,7 @@ export const fnSecretBulkInsert = async ({
     }))
   );
   const secretVersions = await secretVersionDAL.insertMany(
-    inputSecrets.map(({ tags, references, ...el }) => ({
+    inputSecrets.map(({ tags, references, isReplicated, ...el }) => ({
       ...el,
       folderId,
       secretId: newSecretGroupByBlindIndex[el.secretBlindIndex as string][0].id

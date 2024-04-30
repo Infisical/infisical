@@ -60,6 +60,7 @@ export type TCreateSecretImportDTO = {
     environment: string;
     path: string;
   };
+  isReplication?: boolean;
 };
 
 export type TUpdateSecretImportDTO = {

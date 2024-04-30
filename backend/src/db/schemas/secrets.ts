@@ -30,7 +30,8 @@ export const SecretsSchema = z.object({
   userId: z.string().uuid().nullable().optional(),
   folderId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  isReplicated: z.boolean().nullable().optional()
 });
 
 export type TSecrets = z.infer<typeof SecretsSchema>;

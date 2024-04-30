@@ -4,7 +4,15 @@ import { AxiosError } from "axios";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  Checkbox,
+  FormControl,
+  Modal,
+  ModalContent,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useWorkspace } from "@app/context";
 import { useCreateSecretImport } from "@app/hooks/api";
@@ -16,7 +24,8 @@ const typeSchema = z.object({
     .trim()
     .transform((val) =>
       typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
-    )
+    ),
+  isReplication: z.boolean().default(false)
 });
 
 type TFormSchema = z.infer<typeof typeSchema>;
@@ -54,13 +63,15 @@ export const CreateSecretImportForm = ({
 
   const handleFormSubmit = async ({
     environment: importedEnv,
-    secretPath: importedSecPath
+    secretPath: importedSecPath,
+    isReplication
   }: TFormSchema) => {
     try {
       await createSecretImport({
         environment,
         projectId: workspaceId,
         path: secretPath,
+        isReplication,
         import: {
           environment: importedEnv,
           path: importedSecPath
@@ -127,7 +138,17 @@ export const CreateSecretImportForm = ({
               </FormControl>
             )}
           />
-
+          <Controller
+            name="isReplication"
+            control={control}
+            defaultValue={false}
+            render={({ field }) => (
+              <Checkbox isChecked={field.value} onCheckedChange={field.onChange} id="isReplication">
+                The replication mode retrieves secrets when changes occur in the specified
+                environment and secret path.
+              </Checkbox>
+            )}
+          />
           <div className="mt-7 flex items-center">
             <Button
               isDisabled={isSubmitting}

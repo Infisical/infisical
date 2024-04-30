@@ -50,6 +50,7 @@ export const secretImportServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     projectId,
+    isReplication,
     path
   }: TCreateSecretImportDTO) => {
     const { permission } = await permissionService.getProjectPermission(
@@ -100,7 +101,8 @@ export const secretImportServiceFactory = ({
           folderId: folder.id,
           position: lastPos + 1,
           importEnv: importEnv.id,
-          importPath: data.path
+          importPath: data.path,
+          isReplication
         },
         tx
       );

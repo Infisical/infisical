@@ -130,6 +130,8 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
+import { secretReplicationDALFactory } from "@app/services/secret-replication/secret-replication-dal";
+import { secretReplicationServiceFactory } from "@app/services/secret-replication/secret-replication-service";
 import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
 import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
@@ -193,6 +195,7 @@ export const registerRoutes = async (
   const projectBotDAL = projectBotDALFactory(db);
 
   const secretDAL = secretDALFactory(db);
+  const secretReplicationDAL = secretReplicationDALFactory(db);
   const secretTagDAL = secretTagDALFactory(db);
   const folderDAL = secretFolderDALFactory(db);
   const folderVersionDAL = secretFolderVersionDALFactory(db);
@@ -600,6 +603,17 @@ export const registerRoutes = async (
     secretDAL,
     secretBlindIndexDAL
   });
+  const secretReplicationService = secretReplicationServiceFactory({
+    secretTagDAL,
+    secretVersionTagDAL,
+    secretDAL,
+    secretVersionDAL,
+    secretImportDAL,
+    keyStore,
+    queueService,
+    secretReplicationDAL,
+    folderDAL
+  });
   const secretService = secretServiceFactory({
     folderDAL,
     secretVersionDAL,
@@ -611,6 +625,7 @@ export const registerRoutes = async (
     secretTagDAL,
     snapshotService,
     secretQueueService,
+    secretReplicationService,
     secretImportDAL,
     projectEnvDAL,
     projectBotService
@@ -826,6 +841,7 @@ export const registerRoutes = async (
     projectEnv: projectEnvService,
     projectRole: projectRoleService,
     secret: secretService,
+    secretReplication: secretReplicationService,
     secretTag: secretTagService,
     folder: folderService,
     secretImport: secretImportService,

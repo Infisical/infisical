@@ -9,12 +9,13 @@ export const useCreateSecretImport = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TCreateSecretImportDTO>({
-    mutationFn: async ({ import: secretImport, environment, projectId, path }) => {
+    mutationFn: async ({ import: secretImport, environment, isReplication, projectId, path }) => {
       const { data } = await apiRequest.post("/api/v1/secret-imports", {
         import: secretImport,
         environment,
         workspaceId: projectId,
-        path
+        path,
+        isReplication
       });
       return data;
     },

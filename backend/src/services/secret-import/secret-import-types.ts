@@ -7,6 +7,7 @@ export type TCreateSecretImportDTO = {
     environment: string;
     path: string;
   };
+  isReplication?: boolean;
 } & TProjectPermission;
 
 export type TUpdateSecretImportDTO = {

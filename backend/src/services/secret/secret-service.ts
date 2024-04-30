@@ -30,6 +30,8 @@ import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
+import { TSecretReplicationServiceFactory } from "../secret-replication/secret-replication-service";
+import { SecretReplicationOperations } from "../secret-replication/secret-replication-types";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
@@ -85,6 +87,7 @@ type TSecretServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
+  secretReplicationService: Pick<TSecretReplicationServiceFactory, "replicate">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -101,7 +104,8 @@ export const secretServiceFactory = ({
   projectDAL,
   projectBotService,
   secretImportDAL,
-  secretVersionTagDAL
+  secretVersionTagDAL,
+  secretReplicationService
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -285,6 +289,19 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
+    await secretReplicationService.replicate({
+      folderId,
+      projectId,
+      environmentId: folder.envId,
+      secretPath: path,
+      secrets: [
+        {
+          operation: SecretReplicationOperations.Create,
+          id: secret[0].id,
+          version: 1
+        }
+      ]
+    });
     return { ...secret[0], environment, workspace: projectId, tags, secretPath: path };
   };
 
@@ -414,7 +431,19 @@ export const secretServiceFactory = ({
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
-    // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
+    await secretReplicationService.replicate({
+      folderId,
+      projectId,
+      environmentId: folder.envId,
+      secretPath: path,
+      secrets: [
+        {
+          operation: SecretReplicationOperations.Update,
+          id: updatedSecret[0].id,
+          version: updatedSecret[0].version
+        }
+      ]
+    });
     return { ...updatedSecret[0], workspace: projectId, environment, secretPath: path };
   };
 
@@ -482,7 +511,19 @@ export const secretServiceFactory = ({
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
-
+    await secretReplicationService.replicate({
+      folderId,
+      projectId,
+      environmentId: folder.envId,
+      secretPath: path,
+      secrets: [
+        {
+          operation: SecretReplicationOperations.Delete,
+          id: deletedSecret[0].id,
+          version: deletedSecret[0].version
+        }
+      ]
+    });
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
     return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment, secretPath: path };
   };
@@ -768,6 +809,13 @@ export const secretServiceFactory = ({
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
+    await secretReplicationService.replicate({
+      folderId,
+      projectId,
+      environmentId: folder.envId,
+      secretPath: path,
+      secrets: newSecrets.map(({ id, version }) => ({ id, version, operation: SecretReplicationOperations.Create }))
+    });
 
     return newSecrets;
   };
@@ -868,6 +916,13 @@ export const secretServiceFactory = ({
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
+    await secretReplicationService.replicate({
+      folderId,
+      projectId,
+      environmentId: folder.envId,
+      secretPath: path,
+      secrets: secrets.map(({ id, version }) => ({ id, version, operation: SecretReplicationOperations.Update }))
+    });
 
     return secrets;
   };
@@ -930,6 +985,13 @@ export const secretServiceFactory = ({
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
+    await secretReplicationService.replicate({
+      folderId,
+      projectId,
+      environmentId: folder.envId,
+      secretPath: path,
+      secrets: secretsDeleted.map(({ id, version }) => ({ id, version, operation: SecretReplicationOperations.Delete }))
+    });
 
     return secretsDeleted;
   };

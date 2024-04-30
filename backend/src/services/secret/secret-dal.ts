@@ -75,7 +75,7 @@ export const secretDALFactory = (db: TDbClient) => {
   };
 
   const deleteMany = async (
-    data: Array<{ blindIndex: string; type: SecretType }>,
+    data: Array<{ blindIndex: string; type: SecretType; isReplicated?: boolean }>,
     folderId: string,
     userId: string,
     tx?: Knex

@@ -29,7 +29,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         import: z.object({
           environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.import.environment),
           path: z.string().trim().transform(removeTrailingSlash).describe(SECRET_IMPORTS.CREATE.import.path)
-        })
+        }),
+        isReplication: z.boolean().default(false)
       }),
       response: {
         200: z.object({
@@ -232,11 +233,9 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         200: z.object({
           message: z.string(),
           secretImports: SecretImportsSchema.omit({ importEnv: true })
-            .merge(
-              z.object({
-                importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() })
-              })
-            )
+            .extend({
+              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() })
+            })
             .array()
         })
       }
