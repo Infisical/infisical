@@ -48,10 +48,9 @@ const integrationAuthKeys = {
     integrationAuthId,
     region
   }: {
-    integrationAuthId: string, 
-    region: string
-  }) =>
-    [{ integrationAuthId, region }, "integrationAuthAwsKmsKeyIds"] as const,
+    integrationAuthId: string;
+    region: string;
+  }) => [{ integrationAuthId, region }, "integrationAuthAwsKmsKeyIds"] as const,
   getIntegrationAuthQoveryOrgs: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuthQoveryOrgs"] as const,
   getIntegrationAuthQoveryProjects: ({
@@ -224,27 +223,6 @@ const fetchIntegrationAuthQoveryOrgs = async (integrationAuthId: string) => {
   );
 
   return orgs;
-};
-
-const fetchIntegrationAuthAwsKmsKeys = async ({
-  integrationAuthId,
-  region
-}: {
-  integrationAuthId: string;
-  region: string;
-}) => {
-  const {
-    data: { kmsKeys }
-  } = await apiRequest.get<{ kmsKeys: KmsKey[] }>(
-    `/api/v1/integration-auth/${integrationAuthId}/aws-secrets-manager/kms-keys`,
-    {
-      params: {
-        region
-      }
-    }
-  );
-
-  return kmsKeys;
 };
 
 const fetchIntegrationAuthQoveryProjects = async ({
@@ -586,11 +564,22 @@ export const useGetIntegrationAuthAwsKmsKeys = ({
       integrationAuthId,
       region
     }),
-    queryFn: () =>
-      fetchIntegrationAuthAwsKmsKeys({
-        integrationAuthId,
-        region
-      }),
+    queryFn: async () => {
+      if (!region) return [];
+
+      const {
+        data: { kmsKeys }
+      } = await apiRequest.get<{ kmsKeys: KmsKey[] }>(
+        `/api/v1/integration-auth/${integrationAuthId}/aws-secrets-manager/kms-keys`,
+        {
+          params: {
+            region
+          }
+        }
+      );
+
+      return kmsKeys;
+    },
     enabled: true
   });
 };

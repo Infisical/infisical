@@ -489,7 +489,7 @@ const syncSecretsAWSParameterStore = async ({
               Name: `${integration.path}${key}`,
               Type: "SecureString",
               Value: secrets[key].value,
-              KeyId: metadata.kmsKeyId ? metadata.kmsKeyId : undefined,
+              ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
               // Overwrite: true,
               Tags: metadata.secretAWSTag
                 ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
@@ -572,7 +572,6 @@ const syncSecretsAWSSecretManager = async ({
     if (awsSecretManagerSecret?.SecretString) {
       awsSecretManagerSecretObj = JSON.parse(awsSecretManagerSecret.SecretString);
     }
-
     if (!isEqual(awsSecretManagerSecretObj, secKeyVal)) {
       await secretsManager.send(
         new UpdateSecretCommand({
@@ -587,7 +586,7 @@ const syncSecretsAWSSecretManager = async ({
         new CreateSecretCommand({
           Name: integration.app as string,
           SecretString: JSON.stringify(secKeyVal),
-          KmsKeyId: metadata.kmsKeyId ? metadata.kmsKeyId : null,
+          ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
           Tags: metadata.secretAWSTag
             ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
             : []
