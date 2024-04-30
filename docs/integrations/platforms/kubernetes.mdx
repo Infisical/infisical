@@ -1,12 +1,11 @@
 ---
-title: 'Kubernetes'
+title: "Kubernetes"
 description: "How to use Infisical to inject secrets into Kubernetes clusters."
 ---
 
 ![title](../../images/k8-diagram.png)
 
-
-The Infisical Secrets Operator is a Kubernetes controller that retrieves secrets from Infisical and stores them in a designated cluster. 
+The Infisical Secrets Operator is a Kubernetes controller that retrieves secrets from Infisical and stores them in a designated cluster.
 It uses an `InfisicalSecret` resource to specify authentication and storage methods.
 The operator continuously updates secrets and can also reload dependent deployments automatically.
 
@@ -26,8 +25,8 @@ The operator can be install via [Helm](https://helm.sh) or [kubectl](https://git
     **Install the Helm chart**
 
     For production deployments, it is highly recommended to set the chart version and the application version during installs and upgrades.
-    This will prevent the operator from being accidentally updated to the latest version and introduce unintended breaking changes. 
-    
+    This will prevent the operator from being accidentally updated to the latest version and introduce unintended breaking changes.
+
     View application versions [here](https://hub.docker.com/r/infisical/kubernetes-operator/tags) and chart versions [here](https://cloudsmith.io/~infisical/repos/helm-charts/packages/detail/helm/secrets-operator/#versions)
 
     ```bash
@@ -42,66 +41,69 @@ The operator can be install via [Helm](https://helm.sh) or [kubectl](https://git
    For production deployments, it is highly recommended to set the version of the Kubernetes operator manually instead of pointing to the latest version.
    Doing so will help you avoid accidental updates to the newest release which may introduce unintended breaking changes. View all application versions [here](https://hub.docker.com/r/infisical/kubernetes-operator/tags).
 
+The command below will install the most recent version of the Kubernetes operator.
+However, to set the version manually, download the manifest and set the image tag version of `infisical/kubernetes-operator` according to your desired version.
 
-  The command below will install the most recent version of the Kubernetes operator. 
-  However, to set the version manually, download the manifest and set the image tag version of `infisical/kubernetes-operator` according to your desired version.
-
-  Once you apply the manifest, the operator will be installed in `infisical-operator-system` namespace. 
+Once you apply the manifest, the operator will be installed in `infisical-operator-system` namespace.
 
     ```
     kubectl apply -f https://raw.githubusercontent.com/Infisical/infisical/main/k8-operator/kubectl-install/install-secrets-operator.yaml
-		```
+    	```
+
    </Tab>
 </Tabs>
 
 ## Sync Infisical Secrets to your cluster
-Once you have installed the operator to your cluster, you'll need to create a `InfisicalSecret` custom resource definition (CRD). 
+
+Once you have installed the operator to your cluster, you'll need to create a `InfisicalSecret` custom resource definition (CRD).
 
 ```yaml example-infisical-secret-crd.yaml
 apiVersion: secrets.infisical.com/v1alpha1
 kind: InfisicalSecret
 metadata:
-    name: infisicalsecret-sample
-    labels:
-        label-to-be-passed-to-managed-secret: sample-value
-    annotations:
-        example.com/annotation-to-be-passed-to-managed-secret: "sample-value"
+  name: infisicalsecret-sample
+  labels:
+    label-to-be-passed-to-managed-secret: sample-value
+  annotations:
+    example.com/annotation-to-be-passed-to-managed-secret: "sample-value"
 spec:
-    hostAPI: https://app.infisical.com/api
-    resyncInterval: 10
-    authentication:
-        # Make sure to only have 1 authentication method defined, serviceToken/universalAuth.
-        # If you have multiple authentication methods defined, it may cause issues.
-        universalAuth:
-            secretsScope:
-                projectSlug: <project-slug>
-                envSlug: <env-slug> # "dev", "staging", "prod", etc..
-                secretsPath: "<secrets-path>" # Root is "/"
-            credentialsRef:
-                secretName: universal-auth-credentials
-                secretNamespace: default
-
-        serviceToken:
-            serviceTokenSecretReference:
-                secretName: service-token
-                secretNamespace: default
-            secretsScope:
-                envSlug: <env-slug>
-                secretsPath: <secrets-path> # Root is "/"
-
-    managedSecretReference:
-        secretName: managed-secret
+  hostAPI: https://app.infisical.com/api
+  resyncInterval: 10
+  authentication:
+    # Make sure to only have 1 authentication method defined, serviceToken/universalAuth.
+    # If you have multiple authentication methods defined, it may cause issues.
+    universalAuth:
+      secretsScope:
+        projectSlug: <project-slug>
+        envSlug: <env-slug> # "dev", "staging", "prod", etc..
+        secretsPath: "<secrets-path>" # Root is "/"
+      credentialsRef:
+        secretName: universal-auth-credentials
         secretNamespace: default
-        creationPolicy: "Orphan" ## Owner | Orphan (default)
-        # secretType: kubernetes.io/dockerconfigjson
+
+      # Service tokens are deprecated and will be removed in the near future. Please use Machine Identities for authenticating with Infisical.
+    serviceToken:
+      serviceTokenSecretReference:
+        secretName: service-token
+        secretNamespace: default
+      secretsScope:
+        envSlug: <env-slug>
+        secretsPath: <secrets-path> # Root is "/"
+
+  managedSecretReference:
+    secretName: managed-secret
+    secretNamespace: default
+    creationPolicy: "Orphan" ## Owner | Orphan (default)
+    # secretType: kubernetes.io/dockerconfigjson
 ```
+
 ### InfisicalSecret CRD properties
 
 <Accordion title="hostAPI">
   If you are fetching secrets from a self hosted instance of Infisical set the value of `hostAPI` to 
   ` https://your-self-hosted-instace.com/api`
 
-  When `hostAPI` is not defined the operator fetches secrets from Infisical Cloud. 
+When `hostAPI` is not defined the operator fetches secrets from Infisical Cloud.
 
   <Accordion title="Advanced use case">
     If you have installed your Infisical instance within the same cluster as the Infisical operator, you can optionally access the Infisical backend's service directly without having to route through the public internet. 
@@ -112,16 +114,19 @@ spec:
     ```
 
     Make sure to replace `<backend-svc-name>` and `<namespace>` with the appropriate values for your backend service and namespace.
+
   </Accordion>
 </Accordion>
 
 <Accordion title="resyncInterval">
-This property defines the time in seconds between each secret re-sync from Infisical. Shorter time between re-syncs will require higher rate limits only available on paid plans.
-Default re-sync interval is every 1 minute.
+  This property defines the time in seconds between each secret re-sync from
+  Infisical. Shorter time between re-syncs will require higher rate limits only
+  available on paid plans. Default re-sync interval is every 1 minute.
 </Accordion>
 
 <Accordion title="authentication">
-  This block defines the method that will be used to authenticate with Infisical so that secrets can be fetched
+  This block defines the method that will be used to authenticate with Infisical
+  so that secrets can be fetched
 </Accordion>
 
 <Accordion title="authentication.universalAuth">
@@ -145,76 +150,95 @@ Default re-sync interval is every 1 minute.
     <Step title="Add reference for the Kubernetes secret containing the identity credentials">
       Once the secret is created, add the `secretName` and `secretNamespace` of the secret that was just created under `authentication.universalAuth.credentialsRef` field in the InfisicalSecret resource.
     </Step>
+
   </Steps>
 
+{" "}
 
+<Info>
+  Make sure to also populate the `secretsScope` field with the project slug
+  _`projectSlug`_, environment slug _`envSlug`_, and secrets path
+  _`secretsPath`_ that you want to fetch secrets from. Please see the example
+  below.
+</Info>
 
-  <Info>
-    Make sure to also populate the `secretsScope` field with the project slug _`projectSlug`_, environment slug _`envSlug`_, and secrets path _`secretsPath`_ that you want to fetch secrets from. Please see the example below.
-  </Info>
+## Example
 
-  ## Example
-  ```yaml
-  apiVersion: secrets.infisical.com/v1alpha1
-  kind: InfisicalSecret
-  metadata:
-    name: infisicalsecret-sample-crd
-  spec:
-    authentication:
-        universalAuth:
-            secretsScope:
-                projectSlug: <project-slug> # <-- project slug
-                envSlug: <env-slug> # "dev", "staging", "prod", etc..
-                secretsPath: "<secrets-path>" # Root is "/"
-            credentialsRef:
-                secretName: universal-auth-credentials # <-- name of the Kubernetes secret that stores our machine identity credentials
-                secretNamespace: default # <-- namespace of the Kubernetes secret that stores our machine identity credentials
-    ...
-  ```
+```yaml
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: infisicalsecret-sample-crd
+spec:
+  authentication:
+      universalAuth:
+          secretsScope:
+              projectSlug: <project-slug> # <-- project slug
+              envSlug: <env-slug> # "dev", "staging", "prod", etc..
+              secretsPath: "<secrets-path>" # Root is "/"
+          credentialsRef:
+              secretName: universal-auth-credentials # <-- name of the Kubernetes secret that stores our machine identity credentials
+              secretNamespace: default # <-- namespace of the Kubernetes secret that stores our machine identity credentials
+  ...
+```
+
 </Accordion>
 
 <Accordion title="authentication.serviceToken">
-  The service token required to authenticate with Infisical needs to be stored in a Kubernetes secret. This block defines the reference to the name and namespace of secret that stores this service token. 
-  Follow the instructions below to create and store the service token in a Kubernetes secrets and reference it in your CRD.
+  <Warning>
+  Service tokens are being deprecated in favor of [machine identities](/documentation/platform/identities/machine-identities).
 
-  #### 1. Generate service token 
+They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
 
-  You can generate a [service token](../../documentation/platform/token) for an Infisical project by heading over to the Infisical dashboard then to Project Settings.
+  </Warning>
 
-  #### 2. Create Kubernetes secret containing service token 
+The service token required to authenticate with Infisical needs to be stored in a Kubernetes secret. This block defines the reference to the name and namespace of secret that stores this service token.
+Follow the instructions below to create and store the service token in a Kubernetes secrets and reference it in your CRD.
 
-  Once you have generated the service token, you will need to create a Kubernetes secret containing the service token you generated. 
-  To quickly create a Kubernetes secret containing the generated service token, you can run the command below. Make sure you replace `<your-service-token-here>` with your service token.
+#### 1. Generate service token
 
-  ``` bash
-  kubectl create secret generic service-token --from-literal=infisicalToken="<your-service-token-here>"
-  ```
+You can generate a [service token](../../documentation/platform/token) for an Infisical project by heading over to the Infisical dashboard then to Project Settings.
 
-  #### 3. Add reference for the Kubernetes secret containing service token 
+#### 2. Create Kubernetes secret containing service token
 
-  Once the secret is created, add the name and namespace of the secret that was just created under `authentication.serviceToken.serviceTokenSecretReference` field in the InfisicalSecret resource.
+Once you have generated the service token, you will need to create a Kubernetes secret containing the service token you generated.
+To quickly create a Kubernetes secret containing the generated service token, you can run the command below. Make sure you replace `<your-service-token-here>` with your service token.
 
-  <Info>
-    Make sure to also populate the `secretsScope` field with the, environment slug _`envSlug`_, and secrets path _`secretsPath`_ that you want to fetch secrets from. Please see the example below.
-  </Info>
+```bash
+kubectl create secret generic service-token --from-literal=infisicalToken="<your-service-token-here>"
+```
 
-  ## Example
-  ```yaml
-  apiVersion: secrets.infisical.com/v1alpha1
-  kind: InfisicalSecret
-  metadata:
-    name: infisicalsecret-sample-crd
-  spec:
-    authentication:
-      serviceToken: 
-        serviceTokenSecretReference:
-          secretName: service-token # <-- name of the Kubernetes secret that stores our service token
-          secretNamespace: option # <-- namespace of the Kubernetes secret that stores our service token
-        secretsScope:
-          envSlug: <env-slug> # "dev", "staging", "prod", etc..
-          secretsPath: <secrets-path> # Root is "/"
-    ...
-  ```
+#### 3. Add reference for the Kubernetes secret containing service token
+
+Once the secret is created, add the name and namespace of the secret that was just created under `authentication.serviceToken.serviceTokenSecretReference` field in the InfisicalSecret resource.
+
+{" "}
+
+<Info>
+  Make sure to also populate the `secretsScope` field with the, environment slug
+  _`envSlug`_, and secrets path _`secretsPath`_ that you want to fetch secrets
+  from. Please see the example below.
+</Info>
+
+## Example
+
+```yaml
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: infisicalsecret-sample-crd
+spec:
+  authentication:
+    serviceToken:
+      serviceTokenSecretReference:
+        secretName: service-token # <-- name of the Kubernetes secret that stores our service token
+        secretNamespace: option # <-- namespace of the Kubernetes secret that stores our service token
+      secretsScope:
+        envSlug: <env-slug> # "dev", "staging", "prod", etc..
+        secretsPath: <secrets-path> # Root is "/"
+  ...
+```
+
 </Accordion>
 
 <Accordion title="managedSecretReference">
@@ -238,19 +262,21 @@ Override the default Opaque type for managed secrets with this field. Useful for
 Creation polices allow you to control whether or not owner references should be added to the managed Kubernetes secret that is generated by the Infisical operator. 
 This is useful for tools such as ArgoCD, where every resource requires an owner reference; otherwise, it will be pruned automatically.
 
-#### Available options 
+#### Available options
+
 - `Orphan` (default)
 - `Owner`
 
 <Tip>
-  When creation policy is set to `Owner`, the `InfisicalSecret` CRD must be in the same namespace as where the managed kubernetes secret. 
+  When creation policy is set to `Owner`, the `InfisicalSecret` CRD must be in
+  the same namespace as where the managed kubernetes secret.
 </Tip>
 
 </Accordion>
 
-### Propagating labels & annotations 
+### Propagating labels & annotations
 
-The operator will transfer all labels & annotations present on the `InfisicalSecret` CRD to the managed Kubernetes secret to be created. 
+The operator will transfer all labels & annotations present on the `InfisicalSecret` CRD to the managed Kubernetes secret to be created.
 Thus, if a specific label is required on the resulting secret, it can be applied as demonstrated in the following example:
 
 <Accordion title="Example propagation">
@@ -275,8 +301,7 @@ This would result in the following managed secret to be created:
 
 ```yaml
 apiVersion: v1
-data:
- ...
+data: ...
 kind: Secret
 metadata:
   annotations:
@@ -288,20 +313,21 @@ metadata:
   namespace: default
 type: Opaque
 ```
+
 </Accordion>
 
+### Apply the Infisical CRD to your cluster
 
-### Apply the Infisical CRD to your cluster 
-Once you have configured the Infisical CRD with the required fields, you can apply it to your cluster. 
+Once you have configured the Infisical CRD with the required fields, you can apply it to your cluster.
 After applying, you should notice that the managed secret has been created in the desired namespace your specified.
 
 ```
 kubectl apply -f example-infisical-secret-crd.yaml
 ```
 
-### Verify managed secret creation 
+### Verify managed secret creation
 
-To verify that the operator has successfully created the managed secret, you can check the secrets in the namespace that was specified. 
+To verify that the operator has successfully created the managed secret, you can check the secrets in the namespace that was specified.
 
 ```bash
 # Verify managed secret is created
@@ -313,48 +339,49 @@ kubectl get secrets -n <namespace of managed secret>
   1 minutes.
 </Info>
 
-### Using managed secret in your deployment 
-Incorporating the managed secret created by the operator into your deployment can be achieved through several methods. 
+### Using managed secret in your deployment
+
+Incorporating the managed secret created by the operator into your deployment can be achieved through several methods.
 Here, we will highlight three of the most common ways to utilize it. Learn more about Kubernetes secrets [here](https://kubernetes.io/docs/concepts/configuration/secret/)
 
 <Accordion title="envFrom">
-  This will take all the secrets from your managed secret and expose them to your container 
+  This will take all the secrets from your managed secret and expose them to your container
 
-  ```yaml
-    envFrom:
-      - secretRef:
-          name: managed-secret # managed secret name
-    ```
-
-    Example usage in a deployment
-    ```yaml 
-    apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    name: nginx-deployment
-    labels:
-      app: nginx
-  spec:
-    replicas: 1
-    selector:
-      matchLabels:
-        app: nginx
-    template:
-      metadata:
-        labels:
-          app: nginx
-      spec:
-        containers:
-        - name: nginx
-          image: nginx:1.14.2
-          envFrom:
-          - secretRef:
-              name: managed-secret # <- name of managed secret
-          ports:
-          - containerPort: 80
+````yaml
+  envFrom:
+    - secretRef:
+        name: managed-secret # managed secret name
   ```
-</Accordion>
 
+  Example usage in a deployment
+  ```yaml
+  apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        envFrom:
+        - secretRef:
+            name: managed-secret # <- name of managed secret
+        ports:
+        - containerPort: 80
+````
+
+</Accordion>
 
 <Accordion title="env"> 
   This will allow you to select individual secrets by key name from your managed secret and expose them to your container 
@@ -368,95 +395,101 @@ Here, we will highlight three of the most common ways to utilize it. Learn more 
           key: SOME_SECRET_KEY # The name of the key which  exists in the managed secret
   ```
 
-  Example usage in a deployment
-    ```yaml 
-  apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    name: nginx-deployment
-    labels:
-      app: nginx
-  spec:
-    replicas: 1
-    selector:
-      matchLabels:
-        app: nginx
-    template:
-      metadata:
-        labels:
-          app: nginx
-      spec:
-        containers:
-        - name: nginx
-          image: nginx:1.14.2
-          env:
-            - name: STRIPE_API_SECRET 
-              valueFrom:
-                secretKeyRef:
-                  name: managed-secret # <- name of managed secret
-                  key: STRIPE_API_SECRET
-          ports:
-          - containerPort: 80
-  ```
+Example usage in a deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+name: nginx-deployment
+labels:
+app: nginx
+spec:
+replicas: 1
+selector:
+matchLabels:
+app: nginx
+template:
+metadata:
+labels:
+app: nginx
+spec:
+containers: - name: nginx
+image: nginx:1.14.2
+env: - name: STRIPE_API_SECRET
+valueFrom:
+secretKeyRef:
+name: managed-secret # <- name of managed secret
+key: STRIPE_API_SECRET
+ports: - containerPort: 80
+
+```
+
 </Accordion>
 
 <Accordion title="volumes">
-  This will allow you to create a volume on your container which comprises of files holding the secrets in your managed kubernetes secret
-  ```yaml
-  volumes:
-    - name: secrets-volume-name # The name of the volume under which secrets will be stored
-      secret:
-        secretName: managed-secret # managed secret name
-  ```
+This will allow you to create a volume on your container which comprises of files holding the secrets in your managed kubernetes secret
+```yaml
+volumes:
+  - name: secrets-volume-name # The name of the volume under which secrets will be stored
+    secret:
+      secretName: managed-secret # managed secret name
+````
 
-  You can then mount this volume to the container's filesystem so that your deployment can access the files containing the managed secrets
-  ```yaml
-  volumeMounts:
-    - name: secrets-volume-name
-      mountPath: /etc/secrets
-      readOnly: true
-  ```
+You can then mount this volume to the container's filesystem so that your deployment can access the files containing the managed secrets
 
-  Example usage in a deployment
-  ```yaml 
-  apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    name: nginx-deployment
-    labels:
+```yaml
+volumeMounts:
+  - name: secrets-volume-name
+    mountPath: /etc/secrets
+    readOnly: true
+```
+
+Example usage in a deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
       app: nginx
-  spec:
-    replicas: 1
-    selector:
-      matchLabels:
+  template:
+    metadata:
+      labels:
         app: nginx
-    template:
-      metadata:
-        labels:
-          app: nginx
-      spec:
-        containers:
+    spec:
+      containers:
         - name: nginx
           image: nginx:1.14.2
           volumeMounts:
-          - name: secrets-volume-name
-            mountPath: /etc/secrets
-            readOnly: true
+            - name: secrets-volume-name
+              mountPath: /etc/secrets
+              readOnly: true
           ports:
-          - containerPort: 80
-        volumes:
+            - containerPort: 80
+      volumes:
         - name: secrets-volume-name
           secret:
             secretName: managed-secret # <- managed secrets
-  ```
+```
+
 </Accordion>
 
-## Auto redeployment 
-Deployments using managed secrets don't reload automatically on updates, so they may use outdated secrets unless manually redeployed. 
+## Auto redeployment
+
+Deployments using managed secrets don't reload automatically on updates, so they may use outdated secrets unless manually redeployed.
 To address this, we added functionality to automatically redeploy your deployment when its managed secret updates.
 
-### Enabling auto redeploy 
+### Enabling auto redeploy
+
 To enable auto redeployment you simply have to add the following annotation to the deployment that consumes a managed secret
+
 ```yaml
 secrets.infisical.com/auto-reload: "true"
 ```
@@ -492,18 +525,20 @@ spec:
 ```
 </Accordion>
 
-## Global configuration 
-To configure global settings that will apply to all instances of `InfisicalSecret`, you can define these configurations in a Kubernetes ConfigMap. 
+## Global configuration
+
+To configure global settings that will apply to all instances of `InfisicalSecret`, you can define these configurations in a Kubernetes ConfigMap.
 For example, you can configure all `InfisicalSecret` instances to fetch secrets from a single backend API without specifying the `hostAPI` parameter for each instance.
 
 ### Available global properties
-| Property | Description                           | Default value
-| -------- | ------------------------------------- |------------------------
-| hostAPI  | If `hostAPI` in `InfisicalSecret` instance is left empty, this value will be used                    | https://app.infisical.com/api
 
+| Property | Description                                                                       | Default value                 |
+| -------- | --------------------------------------------------------------------------------- | ----------------------------- |
+| hostAPI  | If `hostAPI` in `InfisicalSecret` instance is left empty, this value will be used | https://app.infisical.com/api |
 
 ### Applying global configurations
-All global configurations must reside in a Kubernetes ConfigMap named `infisical-config` in the namespace `infisical-operator-system`. 
+
+All global configurations must reside in a Kubernetes ConfigMap named `infisical-config` in the namespace `infisical-operator-system`.
 To apply global configuration to the operator, copy the following yaml into `infisical-config.yaml` file.
 
 ```yaml infisical-config.yaml
@@ -521,12 +556,11 @@ data:
   hostAPI: https://example.com/api # <-- global hostAPI
 ```
 
-Then apply this change via kubectl by running the following 
+Then apply this change via kubectl by running the following
 
-```bash 
-kubectl apply -f infisical-config.yaml 
+```bash
+kubectl apply -f infisical-config.yaml
 ```
-
 
 ## Troubleshoot operator
 
@@ -575,7 +609,6 @@ The managed secret created by the operator will not be deleted when the operator
 		```
    </Tab>
 </Tabs>
-
 
 ## Useful Articles
 

@@ -1,140 +1,124 @@
 ---
-title: "Quick usage"
+title: "Quickstart"
 description: "Manage secrets with Infisical CLI"
 ---
 
-The CLI is designed for a variety of applications, ranging from local secret management to CI/CD and production scenarios. 
-The distinguishing factor, however, is the authentication method used.
+The CLI is designed for a variety of secret management applications ranging from local development to CI/CD and production scenarios.
 
 <Tabs>
-  <Tab title="Local development only">
-    To use the Infisical CLI in your local development environment, simply run the command below and follow the interactive guide. 
+  <Tab title="Local development">
+    In the following steps, we explore how to use the Infisical CLI to fetch back environment variables from Infisical
+    and inject them into your local development process.
+  
+    <Steps>
+      <Step title="Log in with the CLI">
+        Start by running the `infisical login` command to authenticate with Infisical.
+        
+        ```bash
+        infisical login
+        ```
+        <Note>
+          If you are in a containerized environment such as WSL 2 or Codespaces, run `infisical login -i` to avoid browser based login
+        </Note>
+      </Step>
+      <Step title="Initialize Infisical for your project">
+        Next, navigate to your project and initialize Infisical.
+        
+        ```bash
+        # navigate to your project
+        cd /path/to/project
 
-    ```bash 
-    infisical login 
-    ```
+        # initialize infisical
+        infisical init
+        ```
 
-    <Note>
-      If you are in a containerized environment such as WSL 2 or Codespaces, run `infisical login -i` to avoid browser based login 
-    </Note>
+        The `infisical init` command creates a `.infisical.json` file, containing [local project settings](./project-config), at the location where the command is executed.
 
-    ## Initialize Infisical for your project
+        <Note>
+          The `.infisical.json` file does not contain any sensitive data, so you may commit it to your git repository.
+        </Note>
+      </Step>
+      <Step title="Inject environment variables">
+        Finally, pass environment variables from Infisical into your application.
 
-    ```bash
-    # navigate to your project
-    cd /path/to/project
+        <Tabs>
+          <Tab title="Feed secrets to your application">
+            ```bash
+            infisical run --env=dev --path=/apps/firefly -- [your application start command] # e.g. npm run dev
 
-    # initialize infisical
-    infisical init
-    ```
+            # example with node (nodemon)
+            infisical run --env=staging --path=/apps/spotify -- nodemon index.js
 
-    This will create `.infisical.json` file at the location the command was executed. This file contains your [local project settings](./project-config). It does not contain any sensitive data. 
-    
+            # example with flask
+            infisical run --env=prod --path=/apps/backend -- flask run
+
+            # example with spring boot - maven
+            infisical run --env=dev --path=/apps/ -- ./mvnw spring-boot:run --quiet
+            ```
+
+          </Tab>
+          <Tab title="Feed secrets via custom aliases (advanced)">
+            Custom aliases can utilize secrets from Infisical. Suppose there is a custom alias `yd` in `custom.sh` that runs `yarn dev` and needs the secrets provided by Infisical.
+            ```bash
+            #!/bin/sh
+
+            yd() {
+              yarn dev
+            }
+            ```
+
+            To make the secrets available from Infisical to `yd`, you can run the following command:
+
+            ```bash
+            infisical run --env=prod --path=/apps/reddit --command="source custom.sh && yd"
+            ```
+          </Tab>
+        </Tabs>
+
+        View all available options for `run` command [here](./commands/run)
+      </Step>
+    </Steps>
+
   </Tab>
 
-  <Tab title="Staging, production & all other use case">
-    To use Infisical for non local development scenarios, please create a [service token](../documentation/platform/token). The service token will allow you to authenticate and interact with Infisical. 
-    Once you have created a service token with the required permissions, you'll need to feed the token to the CLI. 
+  <Tab title="Staging, production & all other use cases">
+    In the following steps, we explore how to use the Infisical CLI in a non-local development scenario
+    to fetch back environment variables and export them to a file.
+    <Steps>
+      <Step title="Create a machine identity and obtain credentials for it">
+        Follow the steps listed [here](/documentation/platform/identities/universal-auth) to create a machine identity and obtain a **client ID** and **client secret** for it.
+      </Step>
+      <Step title="Obtain a machine identity access token">
+        Run the following command to authenticate with Infisical using the **client ID** and **client secret** credentials from step 1 and set the `INFISICAL_TOKEN` environment variable to the retrieved access token.
+        
+        ```bash
+        export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<identity-client-id> --client-secret=<identity-client-secret> --silent --plain) # --plain flag will output only the token, so it can be fed to an environment variable. --silent will disable any update messages.
+        ```
 
-    #### Pass as flag
-    You may use the --token flag to set the token 
+        The CLI is configured to look out for the `INFISICAL_TOKEN` environment variable, so going forward any command used will be authenticated.
 
-    ```
-    infisical export --token=<>
-    infisical secrets --token=<>
-    infisical run --token=<> -- npm run dev
-    ```
+        Alternatively, assuming you have an access token on hand, you can also pass it directly to the CLI using the `--token` flag in conjunction with other CLI commands.
 
-    #### Pass via shell environment variable
-    The CLI is configured to look for an environment variable named `INFISICAL_TOKEN`. If set, it'll attempt to use it for authentication.
+        <Info>
+        Keep in mind that the machine identity access token has a limited lifetime. It is recommended to use it only for the duration of the task at hand.
+        You can [refresh the token](./commands/token) if needed.
+        </Info>
+      </Step>
+      <Step title="Export environment variables back into a file">
+        Finally, export the environment variables from Infisical to a file of choice.
 
-    ```
-    export INFISICAL_TOKEN=<>
-    ```
-    
+        ```bash
+        # export variables to a .env file (with export keyword)
+        infisical export --format=dotenv-export > .env
+
+        # export variables to a YAML file
+        infisical export --format=yaml > secrets.yaml
+        ```
+      </Step>
+    </Steps>
 
   </Tab>
 </Tabs>
-
-
-## Inject environment variables
-<Tabs>
-  <Tab title="Feed secrets to your application">
-    ```bash
-    infisical run --env=dev --path=/apps/firefly -- [your application start command]
-
-    # example with node (nodemon)
-    infisical run --env=staging --path=/apps/spotify -- nodemon index.js
-
-    # example with flask
-    infisical run --env=prod --path=/apps/backend -- flask run
-
-    # example with spring boot - maven
-    infisical run --env=dev --path=/apps/ -- ./mvnw spring-boot:run --quiet
-    ```
-  </Tab>
-  <Tab title="Feed secrets via custom aliases (advanced)">
-    Custom aliases can utilize secrets from Infisical. Suppose there is a custom alias `yd` in `custom.sh` that runs `yarn dev` and needs the secrets provided by Infisical.
-    ```bash
-    #!/bin/sh
-
-    yd() {
-      yarn dev
-    }
-    ```
-
-    To make the secrets available from Infisical to `yd`, you can run the following command:
-
-    ```bash
-    infisical run --env=prod --path=/apps/reddit --command="source custom.sh && yd"
-    ```
-  </Tab>
-</Tabs>
-
-View all available options for `run` command [here](./commands/run)
-
-## Connect CLI to self hosted Infisical 
-
-<Accordion title="Optional: point CLI to self-hosted">
-The CLI is set to connect to Infisical Cloud by default, but if you're running your own instance of Infisical, you can direct the CLI to it using one of the methods provided below.
-
-#### Method 1: Use the updated CLI
-Beginning with CLI version V0.4.0, it is now possible to choose between logging in through the Infisical cloud or your own self-hosted instance. Simply execute the `infisical login` command and follow the on-screen instructions.
-
-#### Method 2: Export environment variable 
-You can point the CLI to the self hosted Infisical instance by exporting the environment variable `INFISICAL_API_URL` in your terminal.
-
-<Tabs>
-  <Tab title="Linux/MacOs">
-		```bash
-		# Set backend host 
-		export INFISICAL_API_URL="https://your-self-hosted-infisical.com/api"
-
-		# Remove backend host 
-		unset INFISICAL_API_URL
-		```
-  </Tab>
-  <Tab title="Windows Powershell">
-		```bash
-		# Set backend host 
-		setx INFISICAL_API_URL "https://your-self-hosted-infisical.com/api"
-
-		# Remove backend host 
-		setx INFISICAL_API_URL ""
-
-		# NOTE: Once set or removed, please restart powershell for the change to take effect
-		```
-  </Tab>
-</Tabs>
-
-#### Method 3: Set manually on every command
-Another option to point the CLI to your self hosted Infisical instance is to set it via a flag on every command you run.
-
-```bash 
-# Example
-infisical <any-command> --domain="https://your-self-hosted-infisical.com/api"
-```
-</Accordion>
 
 ## History
 
@@ -143,30 +127,101 @@ Your terminal keeps a history with the commands you run. When you create Infisic
 For security and privacy concerns, we recommend you to configure your terminal to ignore those specific Infisical commands.
 
 <Accordion title="Ignore commands">
+  <Tabs>
+    <Tab title="Unix/Linux">
+        <Tip>
+          `$HOME/.profile` is pretty common but, you could place it under `$HOME/.profile.d/infisical.sh` or any profile file run at login 
+        </Tip>
 
-<Tabs>
-   <Tab title="Unix/Linux">
-      <Tip>
-        `$HOME/.profile` is pretty common but, you could place it under `$HOME/.profile.d/infisical.sh` or any profile file run at login 
-      </Tip>
+        ```bash
+        cat <<EOF >> $HOME/.profile && source $HOME/.profile
 
+        # Ignoring specific Infisical CLI commands
+        DEFAULT_HISTIGNORE=$HISTIGNORE
+        export HISTIGNORE="*infisical secrets set*:$DEFAULT_HISTIGNORE"
+        EOF
+        ```
+
+    </Tab>
+    <Tab title="Windows">
+        If you're on WSL, then you can use the Unix/Linux method.
+
+        <Tip>
+          Here's some [documentation](https://superuser.com/a/1658331) about how to clear the terminal history, in PowerShell and CMD
+        </Tip>
+
+    </Tab>
+
+  </Tabs>
+</Accordion>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Can I connect the CLI to my self-hosted Infisical instance?">
+    Yes. The CLI is set to connect to Infisical Cloud by default, but if you're running your own instance of Infisical, you can direct the CLI to it using one of the methods provided below.
+
+    #### Method 1: Use the updated CLI
+
+    Beginning with CLI version V0.4.0, it is now possible to choose between logging in through the Infisical cloud or your own self-hosted instance. Simply execute the `infisical login` command and follow the on-screen instructions.
+
+    #### Method 2: Export environment variable
+
+    You can point the CLI to the self hosted Infisical instance by exporting the environment variable `INFISICAL_API_URL` in your terminal.
+
+    <Tabs>
+    <Tab title="Linux/MacOs">
       ```bash
-      cat <<EOF >> $HOME/.profile && source $HOME/.profile
+      # set backend host
+      export INFISICAL_API_URL="https://your-self-hosted-infisical.com/api"
 
-      # Ignoring specific Infisical CLI commands
-      DEFAULT_HISTIGNORE=$HISTIGNORE
-      export HISTIGNORE="*infisical secrets set*:$DEFAULT_HISTIGNORE"
-      EOF
+      # remove backend host
+      unset INFISICAL_API_URL
       ```
 
-   </Tab>
-   <Tab title="Windows">
-      If you're on WSL, then you can use the Unix/Linux method.
+    </Tab>
+    <Tab title="Windows Powershell">
+      ```bash
+      # set backend host
+      setx INFISICAL_API_URL "https://your-self-hosted-infisical.com/api"
 
-      <Tip>
-        Here's some [documentation](https://superuser.com/a/1658331) about how to clear the terminal history, in PowerShell and CMD
-      </Tip>
+      # remove backend host
+      setx INFISICAL_API_URL ""
 
-   </Tab>
-</Tabs>
-</Accordion>
+      # NOTE: Once set or removed, please restart powershell for the change to take effect
+      ```
+
+    </Tab>
+
+  </Tabs>
+
+#### Method 3: Set manually on every command
+
+Another option to point the CLI to your self hosted Infisical instance is to set it via a flag on every command you run.
+
+```bash
+# Example
+infisical <any-command> --domain="https://your-self-hosted-infisical.com/api"
+```
+
+  </Accordion>
+  <Accordion title="Can I use the CLI with service tokens?">
+    Yes. Please note, however, that service tokens are being deprecated in favor of [machine identities](/documentation/platform/identities/machine-identities). They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
+
+    To use Infisical for non local development scenarios, please create a service token. The service token will allow you to authenticate and interact with Infisical. Once you have created a service token with the required permissions, you’ll need to feed the token to the CLI.
+
+    ```bash
+      infisical export --token=<service-token>
+      infisical secrets --token=<service-token>
+      infisical run --token=<service-token> -- npm run dev
+    ```
+
+    #### Pass via shell environment variable
+    The CLI is configured to look for an environment variable named `INFISICAL_TOKEN`. If set, it’ll attempt to use it for authentication.
+
+    ```bash
+      export INFISICAL_TOKEN=<service-token>
+    ```
+
+  </Accordion>
+</AccordionGroup>
