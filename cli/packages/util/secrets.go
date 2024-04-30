@@ -307,27 +307,28 @@ func FilterSecretsByTag(plainTextSecrets []models.SingleEnvironmentVariable, tag
 }
 
 func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectConfigFilePath string) ([]models.SingleEnvironmentVariable, error) {
-	isConnected := CheckIsConnectedToInternet()
 	var secretsToReturn []models.SingleEnvironmentVariable
 	// var serviceTokenDetails api.GetServiceTokenDetailsResponse
 	var errorToReturn error
 
 	if params.InfisicalToken == "" && params.UniversalAuthAccessToken == "" {
-		if isConnected {
-			log.Debug().Msg("GetAllEnvironmentVariables: Connected to internet, checking logged in creds")
-
-			if projectConfigFilePath == "" {
-				RequireLocalWorkspaceFile()
-			} else {
-				ValidateWorkspaceFile(projectConfigFilePath)
-			}
-
-			RequireLogin()
+		if projectConfigFilePath == "" {
+			RequireLocalWorkspaceFile()
+		} else {
+			ValidateWorkspaceFile(projectConfigFilePath)
 		}
+
+		RequireLogin()
 
 		log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
 
 		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
+		isConnected := CheckIsConnectedToInfisicalAPI()
+
+		if isConnected {
+			log.Debug().Msg("GetAllEnvironmentVariables: Connected to Infisical instance, checking logged in creds")
+		}
+
 		if err != nil {
 			return nil, err
 		}
