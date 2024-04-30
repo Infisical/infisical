@@ -8,6 +8,7 @@ Prerequisites:
 - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
 ## Configure the Infisical CLI for each service
+
 Follow this [guide](./docker) to configure the Infisical CLI for each service that you wish to inject environment variables into; you'll have to update the Dockerfile of each service.
 
 <Tabs>
@@ -60,14 +61,18 @@ Follow this [guide](./docker) to configure the Infisical CLI for each service th
     # Then run your compose file in the same terminal.
     docker-compose ...
     ```
+
   </Tab>
   <Tab title="Service Token (Deprecated)">
 
   <Warning>
-    The service token approach is deprecated and will be removed in the future. Please use the machine identity approach instead.
+  Service tokens are being deprecated in favor of [machine identities](/documentation/platform/identities/machine-identities).
+
+They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
+
   </Warning>
 
-    ## Generate service token 
+    ## Generate service token
     Generate a unique [Service Token](/documentation/platform/token) for each service.
 
     ## Feed service token to your Docker Compose file
@@ -109,5 +114,6 @@ Follow this [guide](./docker) to configure the Infisical CLI for each service th
     # Then run your compose file in the same terminal.
     docker-compose ...
     ```
+
   </Tab>
 </Tabs>

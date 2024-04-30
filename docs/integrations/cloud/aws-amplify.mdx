@@ -4,14 +4,15 @@ description: "Learn how to sync secrets from Infisical to AWS Amplify."
 ---
 
 Prerequisites:
+
 - Infisical Cloud account
 - Add the secrets you wish to sync to Amplify to [Infisical Cloud](https://app.infisical.com)
 
-There are many approaches to sync secrets stored within Infisical to AWS Amplify. This guide describes two such approaches below. 
+There are many approaches to sync secrets stored within Infisical to AWS Amplify. This guide describes two such approaches below.
 
 ## Access Infisical secrets at Amplify build time
 
-This approach enables you to fetch secrets from Infisical during Amplify build time. 
+This approach enables you to fetch secrets from Infisical during Amplify build time.
 
 <Tabs>
 
@@ -19,7 +20,7 @@ This approach enables you to fetch secrets from Infisical during Amplify build t
     <Steps>
       <Step title="Create a machine identity">
           Create a machine identtiy and connect it to your Infisical project. You can read more about how to use machine identities [here](/documentation/platform/identities/machine-identities). The machine identity will allow you to authenticate and fetch secrets from Infisical.
-      </Step> 
+      </Step>
 
       <Step title="Set the machine identity client ID and client secret as Amplify environment variables">
         ![aws amplify env console](../../images/integrations/aws/integrations-amplify-env-console-identity.png)
@@ -63,9 +64,11 @@ This approach enables you to fetch secrets from Infisical during Amplify build t
   <Tab title="Service Token (Deprecated)">
     
     <Warning>
-      The service token approach is deprecated and will be removed in the future. Please use the machine identity approach instead.
+      Service tokens are being deprecated in favor of [machine identities](/documentation/platform/identities/machine-identities).
+
+      They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
     </Warning>
-    
+
     <Steps>
       <Step title="Generate a service token">
         Go to your project settings in the Infisical dashboard to generate a [service token](/documentation/platform/token). This service token will allow you to authenticate and fetch secrets from Infisical. Once you have created a service token with the required permissions, you’ll need to provide the token to the CLI installed in your Docker container.
@@ -104,14 +107,14 @@ This approach enables you to fetch secrets from Infisical during Amplify build t
       </Step>
     </Steps>
 
-    ## Sync Secrets Using AWS SSM Parameter Store 
+    ## Sync Secrets Using AWS SSM Parameter Store
 
-    Another approach to use secrets from Infisical in AWS Amplify is to utilize AWS Parameter Store. 
+    Another approach to use secrets from Infisical in AWS Amplify is to utilize AWS Parameter Store.
     At high level, you begin by using Infisical's AWS SSM Parameter Store integration to sync secrets from Infisical to AWS SSM Parameter Store. You then instruct AWS Amplify to consume those secrets from AWS SSM Parameter Store as [environment secrets](https://docs.aws.amazon.com/amplify/latest/userguide/environment-variables.html#environment-secrets).
 
     <Steps>
       <Step title="Follow the AWS SSM Parameter Store Integration guide">
-        Follow the [Infisical AWS SSM Parameter Store Integration Guide](./aws-parameter-store) to set up the integration. Pause once you reach the step where it asks you to select the path you would like to sync. 
+        Follow the [Infisical AWS SSM Parameter Store Integration Guide](./aws-parameter-store) to set up the integration. Pause once you reach the step where it asks you to select the path you would like to sync.
       </Step>
       <Step title="Find your Amplify App ID">
         ![amplify app id](../../images/integrations/aws/integrations-amplify-app-id.png)
@@ -123,11 +126,12 @@ This approach enables you to fetch secrets from Infisical during Amplify build t
         You need to set the path in the format `/amplify/[amplify_app_id]/[your-amplify-environment-name]` as the path option in AWS SSM Parameter Infisical Integration.
       </Step>
     </Steps>
+
   </Tab>
 </Tabs>
 
-
-
 <Info>
-  Accessing an environment secret during a build is similar to accessing environment variables, except that environment secrets are stored in `process.env.secrets` as a JSON string.
+  Accessing an environment secret during a build is similar to accessing
+  environment variables, except that environment secrets are stored in
+  `process.env.secrets` as a JSON string.
 </Info>

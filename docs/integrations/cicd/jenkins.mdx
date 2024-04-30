@@ -6,7 +6,7 @@ description: "How to effectively and securely manage secrets in Jenkins using In
 **Objective**: Fetch secrets from Infisical to Jenkins pipelines
 
 In this guide, we'll outline the steps to deliver secrets from Infisical to Jenkins via the Infisical CLI.
-At a high level, the Infisical CLI will be executed within your build environment and use a machine identity to authenticate with Infisical. 
+At a high level, the Infisical CLI will be executed within your build environment and use a machine identity to authenticate with Infisical.
 This token must be added as a Jenkins Credential and then passed to the Infisical CLI as an environment variable, enabling it to access and retrieve secrets within your workflows.
 
 Prerequisites:
@@ -16,8 +16,6 @@ Prerequisites:
 - You have a working Jenkins installation with the [credentials plugin](https://plugins.jenkins.io/credentials/) installed.
 - You have the [Infisical CLI](/cli/overview) installed on your Jenkins executor nodes or container images.
 
-
-
 <Tabs>
 
   <Tab title="Machine Identity (Recommended)">
@@ -25,7 +23,7 @@ Prerequisites:
 
       After setting up your project in Infisical and installing the Infisical CLI to the environment where your Jenkins builds will run, you will need to add the Infisical Machine Identity to Jenkins.
 
-      To generate a Infisical machine identity, follow the guide [here](/documentation/platform/identities/machine-identities). 
+      To generate a Infisical machine identity, follow the guide [here](/documentation/platform/identities/machine-identities).
       Once you have generated the token, navigate to **Manage Jenkins > Manage Credentials** in your Jenkins instance.
 
       ![Jenkins step 1](../../images/integrations/jenkins/jenkins_1.png)
@@ -58,7 +56,7 @@ Prerequisites:
 
       ## Use Infisical in a Freestyle Project
 
-      To fetch secrets with Infisical in a Freestyle Project job, you'll need to expose the credential you created above as an environment variable to the Infisical CLI. 
+      To fetch secrets with Infisical in a Freestyle Project job, you'll need to expose the credential you created above as an environment variable to the Infisical CLI.
       To do so, first click **New Item** from the dashboard navigation sidebar:
 
       ![Jenkins step 6](../../images/integrations/jenkins/jenkins_6.png)
@@ -71,7 +69,7 @@ Prerequisites:
 
       ![Jenkins step 8](../../images/integrations/jenkins/jenkins_8.png)
 
-      Enter `INFISICAL_MACHINE_IDENTITY_CLIENT_ID` in the **Variable** field for the client ID, and `INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET` for the client secret. Then click the **Specific credentials** option from the Credentials section and select the credentials you created earlier. 
+      Enter `INFISICAL_MACHINE_IDENTITY_CLIENT_ID` in the **Variable** field for the client ID, and `INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET` for the client secret. Then click the **Specific credentials** option from the Credentials section and select the credentials you created earlier.
       In this case, we saved it as `Infisical Machine Identity Client ID` and `Infisical Machine Identity Client Secret` so we'll choose those from the dropdown menu.
 
       Make sure to add bindings for both the client ID and the client secret.
@@ -82,7 +80,7 @@ Prerequisites:
 
       ![Jenkins step 10](../../images/integrations/jenkins/jenkins_10_identity.png)
 
-      In the command field, you can now use the Infisical CLI to fetch secrets. 
+      In the command field, you can now use the Infisical CLI to fetch secrets.
       The example command below will print the secrets using the service token passed as a credential. When done, click  **Save**.
 
       ```bash
@@ -145,19 +143,23 @@ Prerequisites:
           }
       }
       ```
+
   </Tab>
 
   <Tab title="Service Token (Deprecated)">
     ## Add Infisical Service Token to Jenkins
 
     <Warning>
-      Service tokens are deprecated and will be removed in the future.
-      Please use machine identity authentication instead.
-    </Warning>
+
+Service tokens are being deprecated in favor of [machine identities](/documentation/platform/identities/machine-identities).
+
+They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
+
+</Warning>
 
     After setting up your project in Infisical and installing the Infisical CLI to the environment where your Jenkins builds will run, you will need to add the Infisical Service Token to Jenkins.
 
-    To generate a Infisical service token, follow the guide [here](/documentation/platform/token). 
+    To generate a Infisical service token, follow the guide [here](/documentation/platform/token).
     Once you have generated the token, navigate to **Manage Jenkins > Manage Credentials** in your Jenkins instance.
 
     ![Jenkins step 1](../../images/integrations/jenkins/jenkins_1.png)
@@ -189,7 +191,7 @@ Prerequisites:
 
     ## Use Infisical in a Freestyle Project
 
-    To fetch secrets with Infisical in a Freestyle Project job, you'll need to expose the credential you created above as an environment variable to the Infisical CLI. 
+    To fetch secrets with Infisical in a Freestyle Project job, you'll need to expose the credential you created above as an environment variable to the Infisical CLI.
     To do so, first click **New Item** from the dashboard navigation sidebar:
 
     ![Jenkins step 6](../../images/integrations/jenkins/jenkins_6.png)
@@ -202,7 +204,7 @@ Prerequisites:
 
     ![Jenkins step 8](../../images/integrations/jenkins/jenkins_8.png)
 
-    Enter `INFISICAL_TOKEN` in the **Variable** field then click the **Specific credentials** option from the Credentials section and select the credential you created earlier. 
+    Enter `INFISICAL_TOKEN` in the **Variable** field then click the **Specific credentials** option from the Credentials section and select the credential you created earlier.
     In this case, we saved it as `Infisical service token` so we'll choose that from the dropdown menu.
 
     ![Jenkins step 9](../../images/integrations/jenkins/jenkins_9.png)
@@ -211,7 +213,7 @@ Prerequisites:
 
     ![Jenkins step 10](../../images/integrations/jenkins/jenkins_10.png)
 
-    In the command field, you can now use the Infisical CLI to fetch secrets. 
+    In the command field, you can now use the Infisical CLI to fetch secrets.
     The example command below will print the secrets using the service token passed as a credential. When done, click  **Save**.
 
     ```
@@ -270,11 +272,11 @@ Prerequisites:
         }
     }
     ```
+
   </Tab>
 
 </Tabs>
 
-
 The example provided above serves as an initial guide. It shows how Jenkins adds the `INFISICAL_TOKEN` environment variable, which is configured in the pipeline, into the shell for executing commands.
-There may be instances where this doesn't work as expected in the context of running Docker commands. 
+There may be instances where this doesn't work as expected in the context of running Docker commands.
 However, the list of working examples should provide some insight into how this can be handled properly.
