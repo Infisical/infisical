@@ -834,7 +834,7 @@ func SetPlainTextSecretsViaJWT(secretsToSet []string, JTWToken string, receivers
 	plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 	// pull current secrets
-	secrets, err := GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath})
+	secrets, err := GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath}, "")
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve secrets")
 	}
@@ -948,7 +948,6 @@ func SetPlainTextSecretsViaJWT(secretsToSet []string, JTWToken string, receivers
 		updateSecretRequest := api.UpdateSecretByNameV3Request{
 			WorkspaceID:           workspaceId,
 			Environment:           environmentName,
-			SecretName:            secret.PlainTextKey,
 			SecretValueCiphertext: secret.SecretValueCiphertext,
 			SecretValueIV:         secret.SecretValueIV,
 			SecretValueTag:        secret.SecretValueTag,
@@ -956,7 +955,7 @@ func SetPlainTextSecretsViaJWT(secretsToSet []string, JTWToken string, receivers
 			SecretPath:            secretsPath,
 		}
 
-		err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest)
+		err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest, secret.PlainTextKey)
 		if err != nil {
 			return nil, fmt.Errorf("Unable to process secret update request")
 		}
@@ -965,7 +964,7 @@ func SetPlainTextSecretsViaJWT(secretsToSet []string, JTWToken string, receivers
 	return secretOperations, err
 }
 
-func SetPlainTextSecretsViaServiceToken(secretsToSet []string, fullServiceToken string, environment string, secretsPath string) ([]models.SecretSetOperation, error){
+func SetPlainTextSecretsViaServiceToken(secretsToSet []string, fullServiceToken string, environment string, secretsPath string) ([]models.SecretSetOperation, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
 		return nil, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
@@ -1003,7 +1002,7 @@ func SetPlainTextSecretsViaServiceToken(secretsToSet []string, fullServiceToken 
 	}
 
 	// pull current secrets
-	secrets, err := GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environment, SecretsPath: secretsPath})
+	secrets, err := GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environment, SecretsPath: secretsPath}, "")
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve secrets")
 	}
@@ -1117,7 +1116,6 @@ func SetPlainTextSecretsViaServiceToken(secretsToSet []string, fullServiceToken 
 		updateSecretRequest := api.UpdateSecretByNameV3Request{
 			WorkspaceID:           serviceTokenDetails.Workspace,
 			Environment:           environment,
-			SecretName:            secret.PlainTextKey,
 			SecretValueCiphertext: secret.SecretValueCiphertext,
 			SecretValueIV:         secret.SecretValueIV,
 			SecretValueTag:        secret.SecretValueTag,
@@ -1125,7 +1123,7 @@ func SetPlainTextSecretsViaServiceToken(secretsToSet []string, fullServiceToken 
 			SecretPath:            secretsPath,
 		}
 
-		err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest)
+		err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest, secret.PlainTextKey)
 		if err != nil {
 			return nil, fmt.Errorf("Unable to process secret update request")
 		}
@@ -1169,13 +1167,13 @@ func SetAllEnvironmentVariables(params models.SetAllSecretsParameters) ([]models
 			return nil, fmt.Errorf("Your login session has expired, please run [infisical login] and try again")
 		}
 
-		secretOperations, errorToReturn = SetPlainTextSecretsViaJWT(params.SecretsToSet, loggedInUserDetails.UserCredentials.JTWToken, 
+		secretOperations, errorToReturn = SetPlainTextSecretsViaJWT(params.SecretsToSet, loggedInUserDetails.UserCredentials.JTWToken,
 			loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId,
 			params.Environment, params.SecretsPath)
 	} else {
 		log.Debug().Msg("Trying to fetch secrets using service token")
-		
-		secretOperations, errorToReturn = SetPlainTextSecretsViaServiceToken(params.SecretsToSet, infisicalToken, 
+
+		secretOperations, errorToReturn = SetPlainTextSecretsViaServiceToken(params.SecretsToSet, infisicalToken,
 			params.Environment, params.SecretsPath)
 	}
 
