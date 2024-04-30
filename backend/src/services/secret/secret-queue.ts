@@ -318,7 +318,7 @@ export const secretQueueFactory = ({
         });
 
         // add the imported secrets to the current folder secrets
-        content = { ...content, ...importedSecrets };
+        content = { ...importedSecrets, ...content };
       }
     }
 
