@@ -59,8 +59,8 @@ spec:
         - name: DB_CONNECTION_URI
           valueFrom:
             secretKeyRef:
-              name: {{ $infisicalValues.postgresql.preexistingPostgres.uriSecret.name }}
-              key: {{ $infisicalValues.postgresql.preexistingPostgres.uriSecret.uri }}
+              name: {{ .Values.postgresql.preexistingPostgres.uriSecret.name }}
+              key: {{ .Values.postgresql.preexistingPostgres.uriSecret.key }}
         {{- end }}
         {{- if .Values.postgresql.enabled }}
         - name: DB_CONNECTION_URI
