@@ -151,12 +151,10 @@ var secretsSetCmd = &cobra.Command{
 				environmentName = environmentFromWorkspace
 			}
 		}
-
 		infisicalToken, err := cmd.Flags().GetString("token")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
-
 		secretsPath, err := cmd.Flags().GetString("path")
 		if err != nil {
 			util.HandleError(err, "Unable to parse path flag")

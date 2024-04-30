@@ -136,7 +136,7 @@ type MachineIdentityCredentials struct {
 }
 
 type SetAllSecretsParameters struct {
-	SecretsToSet           []string
+	SecretsToSet             []string
 	Environment              string
 	EnvironmentPassedViaFlag bool
 	InfisicalToken           string
