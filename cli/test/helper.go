@@ -23,6 +23,8 @@ type Credentials struct {
 	ServiceToken  string
 	ProjectID     string
 	EnvSlug       string
+	UserEmail     string
+	UserPassword  string
 }
 
 var creds = Credentials{
@@ -32,6 +34,8 @@ var creds = Credentials{
 	ServiceToken:  os.Getenv("CLI_TESTS_SERVICE_TOKEN"),
 	ProjectID:     os.Getenv("CLI_TESTS_PROJECT_ID"),
 	EnvSlug:       os.Getenv("CLI_TESTS_ENV_SLUG"),
+	UserEmail:     os.Getenv("CLI_TESTS_USER_EMAIL"),
+	UserPassword:  os.Getenv("CLI_TESTS_USER_PASSWORD"),
 }
 
 func ExecuteCliCommand(command string, args ...string) (string, error) {

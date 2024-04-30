@@ -1,10 +1,88 @@
 package tests
 
 import (
+	"fmt"
+	"os/exec"
+	"strings"
 	"testing"
 
+	"github.com/creack/pty"
 	"github.com/stretchr/testify/assert"
 )
+
+func UserLoginCmd(t *testing.T) {
+	SetupCli(t)
+
+	// set vault to file because CI has no keyring
+	vaultCmd := exec.Command(FORMATTED_CLI_NAME, "vault", "set", "file")
+	_, err := vaultCmd.Output()
+	if err != nil {
+		t.Fatalf("error setting vault: %v", err)
+	}
+
+	// Start programmatic interaction with CLI
+	c := exec.Command(FORMATTED_CLI_NAME, "login", "--interactive")
+	ptmx, err := pty.Start(c)
+	if err != nil {
+		t.Fatalf("error running CLI command: %v", err)
+    }
+ 	defer func() { _ = ptmx.Close() }()
+
+	stepChan := make(chan int, 10)
+
+	go func() {
+		buf := make([]byte, 1024)
+		step := -1
+		for {
+			n, err := ptmx.Read(buf)
+			if n > 0 {
+				terminalOut := string(buf)
+				if strings.Contains(terminalOut, "Add a new account") && step < 0  {
+					step += 1
+					stepChan <- step
+				} else if strings.Contains(terminalOut, "Infisical Cloud") && step < 1 {
+					step += 1;
+					stepChan <- step
+				} else if strings.Contains(terminalOut, "Email") && step < 2 {
+					step += 1;
+					stepChan <- step
+				} else if strings.Contains(terminalOut, "Password") && step < 3 {
+					step += 1;
+					stepChan <- step
+				} else if strings.Contains(terminalOut, "Infisical organization") && step < 4 {
+					step += 1;
+					stepChan <- step
+				} else if strings.Contains(terminalOut, "Enter passphrase") && step < 5 {
+					step += 1;
+					stepChan <- step
+				}
+			}
+			if err != nil {
+				close(stepChan)
+				return
+			}
+			fmt.Print(string(buf[:n]))
+		}
+	}()
+
+	for i := range stepChan {
+		switch i {
+		case 0: 
+			ptmx.Write([]byte("\n"))
+		case 1:
+			ptmx.Write([]byte("\n"))
+		case 2:
+			ptmx.Write([]byte(creds.UserEmail))
+			ptmx.Write([]byte("\n"))
+		case 3:
+			ptmx.Write([]byte(creds.UserPassword))
+			ptmx.Write([]byte("\n"))
+		case 4:
+			ptmx.Write([]byte("\n"))
+		}
+	}
+
+}
 
 func MachineIdentityLoginCmd(t *testing.T) {
 	SetupCli(t)

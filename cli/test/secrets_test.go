@@ -90,6 +90,8 @@ func TestUniversalAuth_SecretsGetWrongEnvironment(t *testing.T) {
 
 func TestUserAuth_SecretsGetAll(t *testing.T) {
 	SetupCli(t)
+	UserLoginCmd(t);
+
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--include-imports=false", "--silent")
 	if err != nil {
 		t.Fatalf("error running CLI command: %v", err)
@@ -100,11 +102,12 @@ func TestUserAuth_SecretsGetAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("snapshot failed: %v", err)
 	}
+
+	// intentionally invoked this here because it should directly follow secretsGetAll
+	testUserAuth_SecretsGetAllWithoutConnection(t)
 }
 
-func TestUserAuth_SecretsGetAllWithoutConnection(t *testing.T) {
-	SetupCli(t)
-
+func testUserAuth_SecretsGetAllWithoutConnection(t *testing.T) {
 	originalConfigFile, err := util.GetConfigFile()
 	if err != nil {
 		t.Fatalf("error getting config file")
