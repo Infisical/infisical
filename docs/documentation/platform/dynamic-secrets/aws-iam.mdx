@@ -7,7 +7,7 @@ The Infisical AWS IAM dynamic secret allows you to generate AWS IAM Users on dem
 
 ## Prerequisite
 
-Infisical requires an AWS IAM user with the necessary permissions. This will be the managing user who will create new users, new access keys, attach policies and remove all on clean up.
+Infisical needs an initial AWS IAM user with the required permissions to create sub IAM users. This IAM user will be responsible for managing the lifecycle of new IAM users.
 
 <Accordion title="Managing AWS IAM User minimum permission policy">
 
@@ -40,7 +40,7 @@ Infisical requires an AWS IAM user with the necessary permissions. This will be 
 }
 ```
 
-To minimise managing user access you can attach a resource in format 
+To minimize managing user access you can attach a resource in format 
 
 > arn:aws:iam::\<account-id\>:user/\<aws-scope-path\>
 
@@ -51,8 +51,8 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
 ## Set up Dynamic Secrets with AWS IAM
 
 <Steps>
-  <Step title="Open Secret Overview Dashboard">
-	Open the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret.
+  <Step title="Secret Overview Dashboard">
+	Navigate to the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret to.
   </Step>
   <Step title="Click on the 'Add Dynamic Secret' button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
