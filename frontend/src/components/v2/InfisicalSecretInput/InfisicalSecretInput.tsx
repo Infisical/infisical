@@ -75,6 +75,7 @@ export const InfisicalSecretInput = ({
   const [listReference, setListReference] = useState<ReferenceItem[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isPopupOpen = isSuggestionsOpen && listReference.length > 0 && currentReference.length > 0;
 
   useEffect(() => {
     setInputValue(propValue ?? "");
@@ -274,7 +275,11 @@ export const InfisicalSecretInput = ({
     } else if (e.key === "Enter" && highlightedIndex >= 0) {
       handleSuggestionSelect();
     }
-    if (["ArrowDown", "ArrowUp", "Enter"].includes(e.key)) {
+
+    if (
+      (["ArrowDown", "ArrowUp"].includes(e.key) && isPopupOpen) ||
+      (e.key === "Enter" && highlightedIndex >= 0)
+    ) {
       e.preventDefault();
     }
   };
@@ -298,10 +303,7 @@ export const InfisicalSecretInput = ({
   };
 
   return (
-    <Popover.Root
-      open={isSuggestionsOpen && listReference.length > 0 && currentReference.length > 0}
-      onOpenChange={setIsOpen}
-    >
+    <Popover.Root open={isPopupOpen} onOpenChange={setIsOpen}>
       <Popover.Trigger asChild>
         <SecretInput
           {...props}

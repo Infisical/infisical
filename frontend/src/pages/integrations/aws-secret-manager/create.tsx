@@ -96,18 +96,11 @@ export default function AWSSecretManagerCreateIntegrationPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [shouldTag, setShouldTag] = useState(false);
 
-
   const { data: integrationAuthAwsKmsKeys, isLoading: isIntegrationAuthAwsKmsKeysLoading } =
     useGetIntegrationAuthAwsKmsKeys({
-      integrationAuthId: String(integrationAuthId), 
+      integrationAuthId: String(integrationAuthId),
       region: selectedAWSRegion
     });
-
-  useEffect(() => {
-    if (integrationAuthAwsKmsKeys) {
-      setKmsKeyId(String(integrationAuthAwsKmsKeys?.filter(key => key.alias === "alias/aws/secretsmanager")[0]?.id))
-    }
-  }, [integrationAuthAwsKmsKeys])
 
   useEffect(() => {
     if (workspace) {
@@ -142,16 +135,15 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         metadata: {
           ...(shouldTag
             ? {
-                secretAWSTag: [{
-                  key: tagKey,
-                  value: tagValue
-                }]
+                secretAWSTag: [
+                  {
+                    key: tagKey,
+                    value: tagValue
+                  }
+                ]
               }
             : {}),
-          ...((kmsKeyId && integrationAuthAwsKmsKeys?.filter(key => key.id === kmsKeyId)[0]?.alias !== "default") ? 
-              {
-                kmsKeyId
-              }: {})
+          ...(kmsKeyId && { kmsKeyId })
         }
       });
 
@@ -164,7 +156,10 @@ export default function AWSSecretManagerCreateIntegrationPage() {
     }
   };
 
-  return (integrationAuth && workspace && selectedSourceEnvironment && !isIntegrationAuthAwsKmsKeysLoading) ? (
+  return integrationAuth &&
+    workspace &&
+    selectedSourceEnvironment &&
+    !isIntegrationAuthAwsKmsKeysLoading ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
       <Head>
         <title>Set Up AWS Secrets Manager Integration</title>
@@ -240,7 +235,10 @@ export default function AWSSecretManagerCreateIntegrationPage() {
               <FormControl label="AWS Region">
                 <Select
                   value={selectedAWSRegion}
-                  onValueChange={(val) => setSelectedAWSRegion(val)}
+                  onValueChange={(val) => {
+                    setSelectedAWSRegion(val);
+                    setKmsKeyId("");
+                  }}
                   className="w-full border border-mineshaft-500"
                 >
                   {awsRegions.map((awsRegion) => (
@@ -284,20 +282,16 @@ export default function AWSSecretManagerCreateIntegrationPage() {
               </div>
               {shouldTag && (
                 <div className="mt-4">
-                  <FormControl
-                    label="Tag Key"
-                  >
-                    <Input 
-                      placeholder="managed-by" 
+                  <FormControl label="Tag Key">
+                    <Input
+                      placeholder="managed-by"
                       value={tagKey}
                       onChange={(e) => setTagKey(e.target.value)}
                     />
                   </FormControl>
-                  <FormControl
-                    label="Tag Value"
-                  >
-                    <Input 
-                      placeholder="infisical" 
+                  <FormControl label="Tag Value">
+                    <Input
+                      placeholder="infisical"
                       value={tagValue}
                       onChange={(e) => setTagValue(e.target.value)}
                     />
@@ -308,7 +302,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                 <Select
                   value={kmsKeyId}
                   onValueChange={(e) => {
-                    setKmsKeyId(e)
+                    setKmsKeyId(e);
                   }}
                   className="w-full border border-mineshaft-500"
                 >
@@ -361,7 +355,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         <title>Set Up AWS Secrets Manager Integration</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      {(isintegrationAuthLoading || isIntegrationAuthAwsKmsKeysLoading) ? (
+      {isintegrationAuthLoading || isIntegrationAuthAwsKmsKeysLoading ? (
         <img
           src="/images/loading/loading.gif"
           height={70}

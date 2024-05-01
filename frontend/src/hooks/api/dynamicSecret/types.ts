@@ -17,7 +17,8 @@ export type TDynamicSecret = {
 
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
-  Cassandra = "cassandra"
+  Cassandra = "cassandra",
+  AwsIam = "aws-iam"
 }
 
 export enum SqlProviders {
@@ -55,6 +56,18 @@ export type TDynamicSecretProvider =
       revocationStatement: string;
       renewStatement?: string;
       ca?: string | undefined;
+    };
+  }
+  | {
+    type: DynamicSecretProviders.AwsIam;
+    inputs: {
+      accessKey: string;
+      secretAccessKey: string;
+      region: string;
+      awsPath?: string;
+      policyDocument?: string;
+      userGroups?: string;
+      policyArns?: string;
     };
   };
 

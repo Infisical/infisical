@@ -16,6 +16,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     spec:
+    {{- if $infisicalValues.image.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}
+    {{- end }}
       restartPolicy: OnFailure
       containers:
         - name: infisical-schema-migration

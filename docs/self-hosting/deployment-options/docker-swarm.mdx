@@ -1,0 +1,571 @@
+---
+title: "Docker Swarm"
+description: "How to self Infisical with Docker Swarm (HA)."
+---
+
+# Self-Hosting Infisical with Docker Swarm
+
+This guide will provide step-by-step instructions on how to self-host Infisical using Docker Swarm. This is particularly helpful for those wanting to self host Infisical on premise while still maintaining high availability (HA) for the core Infisical components. 
+The guide will demonstrate a setup with three nodes, ensuring that the cluster can tolerate the failure of one node while remaining fully operational.
+
+## Docker Swarm
+
+[Docker Swarm](https://docs.docker.com/engine/swarm/) is a native clustering and orchestration solution for Docker containers. 
+It simplifies the deployment and management of containerized applications across multiple nodes, making it a great choice for self-hosting Infisical.
+
+Unlike Kubernetes, which requires a deep understanding of the Kubernetes ecosystem, if you're accustomed to Docker and Docker Compose, you're already familiar with most of Docker Swarm. 
+For this reason, we suggest teams use Docker Swarm to deploy Infisical in a highly available and fault tolerant manner.
+
+## Prerequisites
+- Understanding of Docker Swarm
+- Bare/Virtual Machines with Docker installed on each VM.
+- Docker Swarm initialized on the VMs.
+
+## Core Components for High Availability
+
+The provided Docker stack includes the following core components to achieve high availability:
+
+1. **Spilo**: [Spilo](https://github.com/zalando/spilo) is used to run PostgreSQL with [Patroni](https://github.com/zalando/patroni) for HA and automatic failover. It utilizes etcd for leader election of the PostgreSQL instances.
+
+2. **Redis**: Redis is used for caching and is set up with Redis Sentinel for HA. 
+The stack includes three Redis replicas and three Redis Sentinel instances for monitoring and failover.
+
+3. **Infisical**: Infisical is stateless, allowing for easy scaling and replication across multiple nodes.
+
+4. **HAProxy**: HAProxy is used as a load balancer to distribute traffic to the PostgreSQL and Redis instances. 
+It is configured to perform health checks and route requests to the appropriate backend services.
+
+## Node Failure Tolerance
+
+To ensure Infisical is highly available and fault tolerant, it's important to choose the number of nodes in the cluster. 
+The following table shows the relationship between the number of nodes and the maximum number of nodes that can be down while the cluster continues to function:
+
+| Total Nodes | Max Nodes Down | Min Nodes Required |
+|-------------|----------------|-------------------|
+| 1           | 0              | 1                 |
+| 2           | 0              | 2                 |
+| 3           | 1              | 2                 |
+| 4           | 1              | 3                 |
+| 5           | 2              | 3                 |
+| 6           | 2              | 4                 |
+| 7           | 3              | 4                 |
+
+The formula for calculating the minimum number of nodes required is: `floor(n/2) + 1`, where `n` is the total number of nodes.
+
+This guide will demonstrate a setup with three nodes, which allows for one node to be down while the cluster remains operational. This fault tolerance applies to the following components:
+
+- Redis Sentinel: With three Sentinel instances, one instance can be down, and the remaining two can still form a quorum to make decisions.
+- Redis: With three Redis instances (one master and two replicas), one instance can be down, and the remaining two can continue to provide caching services.
+- PostgreSQL: With three PostgreSQL instances managed by Patroni and etcd, one instance can be down, and the remaining two can maintain data consistency and availability.
+- Manager Nodes: In a Docker Swarm cluster with three manager nodes, one manager node can be down, and the remaining two can continue to manage the cluster. 
+For the sake of simplicity, the example in this guide only contains one manager node.   
+
+It's important to note that while the cluster can tolerate the failure of one node in a three-node setup, it's recommended to have a minimum of three nodes to ensure high availability. 
+With two nodes, the failure of a single node can result in a loss of quorum and potential downtime.
+
+## Docker Deployment Stack 
+
+<Tabs>
+  <Tab title="Docker Swarm stack">
+    ```yaml infisical-stack.yaml
+version: "3"
+
+services:
+  haproxy:
+    image: haproxy:latest
+    ports:
+      - '7001:7000'
+      - '5002:5433'
+      - '5003:5434'
+      - '6379:6379'
+      - '8080:8080'
+    networks:
+    - infisical
+    configs:
+      - source: haproxy-config
+        target: /usr/local/etc/haproxy/haproxy.cfg
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node1
+          
+  infisical:
+    container_name: infisical-backend
+    image: infisical/infisical:v0.60.0-postgres
+    env_file: .env
+    ports:
+      - 80:8080
+    environment:
+      - NODE_ENV=production
+    networks:
+      - infisical
+    secrets:
+      - env_file
+    
+  etcd1:
+    image: ghcr.io/zalando/spilo-16:3.2-p2
+    networks:
+      - infisical
+    environment:
+      ETCD_UNSUPPORTED_ARCH: arm64
+    container_name: demo-etcd1
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node1
+    hostname: etcd1
+    command: |
+      etcd --name etcd1 
+      --listen-client-urls http://0.0.0.0:2379 
+      --listen-peer-urls=http://0.0.0.0:2380 
+      --advertise-client-urls http://etcd1:2379 
+      --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380 
+      --initial-advertise-peer-urls=http://etcd1:2380 
+      --initial-cluster-state=new
+
+  etcd2:
+    image: ghcr.io/zalando/spilo-16:3.2-p2
+    networks:
+      - infisical
+    environment:
+      ETCD_UNSUPPORTED_ARCH: arm64
+    container_name: demo-etcd2
+    hostname: etcd2
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node2
+    command: |
+      etcd --name etcd2 
+      --listen-client-urls http://0.0.0.0:2379 
+      --listen-peer-urls=http://0.0.0.0:2380 
+      --advertise-client-urls http://etcd2:2379 
+      --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380 
+      --initial-advertise-peer-urls=http://etcd2:2380 
+      --initial-cluster-state=new
+
+  etcd3:
+    image: ghcr.io/zalando/spilo-16:3.2-p2
+    networks:
+      - infisical
+    environment:
+      ETCD_UNSUPPORTED_ARCH: arm64
+    container_name: demo-etcd3
+    hostname: etcd3
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node3
+    command: |
+      etcd --name etcd3 
+      --listen-client-urls http://0.0.0.0:2379 
+      --listen-peer-urls=http://0.0.0.0:2380 
+      --advertise-client-urls http://etcd3:2379 
+      --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380 
+      --initial-advertise-peer-urls=http://etcd3:2380 
+      --initial-cluster-state=new
+
+  spolo1:
+    image: ghcr.io/zalando/spilo-16:3.2-p2
+    container_name: postgres-1
+    networks:
+    - infisical
+    hostname: postgres-1
+    environment:
+        ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+        PGPASSWORD_SUPERUSER: "postgres"
+        PGUSER_SUPERUSER: "postgres"
+        SCOPE: infisical
+    volumes:
+      - postgres_data1:/home/postgres/pgdata
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node1
+
+  spolo2:
+    image: ghcr.io/zalando/spilo-16:3.2-p2
+    container_name: postgres-2
+    networks:
+    - infisical
+    hostname: postgres-2
+    environment:
+        ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+        PGPASSWORD_SUPERUSER: "postgres"
+        PGUSER_SUPERUSER: "postgres"
+        SCOPE: infisical
+    volumes:
+      - postgres_data2:/home/postgres/pgdata
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node2
+
+  spolo3:
+    image: ghcr.io/zalando/spilo-16:3.2-p2
+    container_name: postgres-3
+    networks:
+    - infisical
+    hostname: postgres-3
+    environment:
+        ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+        PGPASSWORD_SUPERUSER: "postgres"
+        PGUSER_SUPERUSER: "postgres"
+        SCOPE: infisical
+    volumes:
+      - postgres_data3:/home/postgres/pgdata
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node3
+
+
+  redis_replica0:
+    image: bitnami/redis:6.2.10
+    environment:
+      - REDIS_REPLICATION_MODE=master
+      - REDIS_PASSWORD=123456
+    networks:
+      - infisical
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node1
+
+  redis_replica1:
+    image: bitnami/redis:6.2.10
+    environment:
+      - REDIS_REPLICATION_MODE=slave
+      - REDIS_MASTER_HOST=redis_replica0
+      - REDIS_MASTER_PORT_NUMBER=6379
+      - REDIS_MASTER_PASSWORD=123456
+      - REDIS_PASSWORD=123456
+    networks:
+      - infisical
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node2
+
+  redis_replica2:
+    image: bitnami/redis:6.2.10
+    environment:
+      - REDIS_REPLICATION_MODE=slave
+      - REDIS_MASTER_HOST=redis_replica0
+      - REDIS_MASTER_PORT_NUMBER=6379
+      - REDIS_MASTER_PASSWORD=123456
+      - REDIS_PASSWORD=123456
+    networks:
+      - infisical
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node3
+
+  redis_sentinel1:
+    image: bitnami/redis-sentinel:6.2.10
+    environment:
+      - REDIS_SENTINEL_QUORUM=2
+      - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
+      - REDIS_SENTINEL_FAILOVER_TIMEOUT=60000
+      - REDIS_SENTINEL_PORT_NUMBER=26379
+      - REDIS_MASTER_HOST=redis_replica1
+      - REDIS_MASTER_PORT_NUMBER=6379
+      - REDIS_MASTER_PASSWORD=123456
+    networks:
+      - infisical
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node1
+
+  redis_sentinel2:
+    image: bitnami/redis-sentinel:6.2.10
+    environment:
+      - REDIS_SENTINEL_QUORUM=2
+      - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
+      - REDIS_SENTINEL_FAILOVER_TIMEOUT=60000
+      - REDIS_SENTINEL_PORT_NUMBER=26379
+      - REDIS_MASTER_HOST=redis_replica1
+      - REDIS_MASTER_PORT_NUMBER=6379
+      - REDIS_MASTER_PASSWORD=123456
+    networks:
+      - infisical
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node2
+
+  redis_sentinel3:
+    image: bitnami/redis-sentinel:6.2.10
+    environment:
+      - REDIS_SENTINEL_QUORUM=2
+      - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
+      - REDIS_SENTINEL_FAILOVER_TIMEOUT=60000
+      - REDIS_SENTINEL_PORT_NUMBER=26379
+      - REDIS_MASTER_HOST=redis_replica1
+      - REDIS_MASTER_PORT_NUMBER=6379
+      - REDIS_MASTER_PASSWORD=123456
+    networks:
+      - infisical
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node3
+
+networks:
+  infisical:
+
+
+volumes:
+  postgres_data1:
+  postgres_data2:
+  postgres_data3:
+  postgres_data4:
+  redis0:
+  redis1:
+  redis2:
+
+configs:
+  haproxy-config:
+    file: ./haproxy.cfg
+
+secrets:
+  env_file:
+    file: .env
+    ```
+  </Tab>
+  <Tab title="HA Proxy config">
+    ```text haproxy.cfg
+global
+    maxconn 10000
+    log stdout format raw local0
+
+defaults
+    log global
+    mode tcp
+    retries 3
+    timeout client 30m
+    timeout connect 10s
+    timeout server 30m
+    timeout check 5s
+
+listen stats
+    mode http
+    bind *:7000
+    stats enable
+    stats uri /
+
+resolvers hostdns
+    nameserver dns 127.0.0.11:53
+    resolve_retries 3
+    timeout resolve 1s
+    timeout retry 1s
+    hold valid 5s
+
+frontend master
+    bind *:5433
+    default_backend master_backend
+
+frontend replicas
+    bind *:5434
+    default_backend replica_backend
+
+
+backend master_backend
+    option httpchk GET /master
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    server postgres-1 postgres-1:5432 check port 8008 resolvers hostdns
+    server postgres-2 postgres-2:5432 check port 8008 resolvers hostdns
+    server postgres-3 postgres-3:5432 check port 8008 resolvers hostdns
+
+backend replica_backend
+    option httpchk GET /replica
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    server postgres-1 postgres-1:5432 check port 8008 resolvers hostdns
+    server postgres-2 postgres-2:5432 check port 8008 resolvers hostdns
+    server postgres-3 postgres-3:5432 check port 8008 resolvers hostdns
+
+
+frontend redis_frontend
+  bind *:6379
+  default_backend redis_backend
+
+backend redis_backend
+  option tcp-check
+  tcp-check send AUTH\ 123456\r\n
+  tcp-check expect string +OK
+  tcp-check send PING\r\n
+  tcp-check expect string +PONG
+  tcp-check send info\ replication\r\n
+  tcp-check expect string role:master
+  tcp-check send QUIT\r\n
+  tcp-check expect string +OK
+  server redis_master redis_replica0:6379 check inter 1s
+  server redis_replica1 redis_replica1:6379 check inter 1s
+  server redis_replica2 redis_replica2:6379 check inter 1s
+
+frontend infisical_frontend
+  bind *:8080
+  default_backend infisical_backend
+
+backend infisical_backend
+  option httpchk GET /api/status
+  http-check expect status 200
+  server infisical infisical:8080 check inter 1s
+    ```
+  </Tab>
+  <Tab title=".example-env">
+  ```env .env 
+  # Keys
+# Required key for platform encryption/decryption ops
+# THIS IS A SAMPLE ENCRYPTION KEY AND SHOULD NEVER BE USED FOR PRODUCTION
+ENCRYPTION_KEY=6c1fe4e407b8911c104518103505b218
+
+# JWT
+# Required secrets to sign JWT tokens
+# THIS IS A SAMPLE AUTH_SECRET KEY AND SHOULD NEVER BE USED FOR PRODUCTION
+AUTH_SECRET=5lrMXKKWCVocS/uerPsl7V+TX/aaUaI7iDkgl3tSmLE=
+
+DB_CONNECTION_URI=postgres://infisical:infisical@haproxy:5433/infisical?sslmode=no-verify
+# Redis
+REDIS_URL=redis://:123456@haproxy:6379
+
+
+# Website URL
+# Required
+SITE_URL=http://localhost:8080
+
+# Mail/SMTP 
+SMTP_HOST=
+SMTP_PORT=
+SMTP_NAME=
+SMTP_USERNAME=
+SMTP_PASSWORD=
+
+# Integration
+# Optional only if integration is used
+CLIENT_ID_HEROKU=
+CLIENT_ID_VERCEL=
+CLIENT_ID_NETLIFY=
+CLIENT_ID_GITHUB=
+CLIENT_ID_GITLAB=
+CLIENT_ID_BITBUCKET=
+CLIENT_SECRET_HEROKU=
+CLIENT_SECRET_VERCEL=
+CLIENT_SECRET_NETLIFY=
+CLIENT_SECRET_GITHUB=
+CLIENT_SECRET_GITLAB=
+CLIENT_SECRET_BITBUCKET=
+CLIENT_SLUG_VERCEL=
+
+# Sentry (optional) for monitoring errors
+SENTRY_DSN=
+
+# Infisical Cloud-specific configs
+# Ignore - Not applicable for self-hosted version
+POSTHOG_HOST=
+POSTHOG_PROJECT_API_KEY=
+
+# SSO-specific variables
+CLIENT_ID_GOOGLE_LOGIN=
+CLIENT_SECRET_GOOGLE_LOGIN=
+
+CLIENT_ID_GITHUB_LOGIN=
+CLIENT_SECRET_GITHUB_LOGIN=
+
+CLIENT_ID_GITLAB_LOGIN=
+CLIENT_SECRET_GITLAB_LOGIN=
+  ```
+  </Tab>
+</Tabs>
+
+The provided Docker stack YAML file defines the services and their configurations for deploying Infisical with high availability. The main components of this stack are as follows.
+
+1. **HAProxy**: The HAProxy service is configured to expose ports for accessing PostgreSQL (5433 for the master, 5434 for replicas), Redis master (6379), and the Infisical backend (8080). It uses a config file (`haproxy.cfg`) to define the load balancing and health check rules.
+
+2. **Infisical**: The Infisical backend service is deployed with the latest PostgreSQL-compatible image. It is connected to the `infisical` network and uses secrets for environment variables.
+
+3. **etcd**: Three etcd instances (etcd1, etcd2, etcd3) are deployed, one on each node, to provide distributed key-value storage for leader election and configuration management.
+
+4. **Spilo**: Three Spilo instances (spolo1, spolo2, spolo3) are deployed, one on each node, to run PostgreSQL with Patroni for high availability. They are connected to the `infisical` network and use persistent volumes for data storage.
+
+5. **Redis**: Three Redis instances (redis_replica0, redis_replica1, redis_replica2) are deployed, one on each node, with redis_replica0 acting as the master. They are connected to the `infisical` network.
+
+6. **Redis Sentinel**: Three Redis Sentinel instances (redis_sentinel1, redis_sentinel2, redis_sentinel3) are deployed, one on each node, to monitor and manage the Redis instances. They are connected to the `infisical` network.
+
+## HAProxy Configuration
+
+The HAProxy configuration file (`haproxy.cfg`) defines the load balancing and health check rules for the PostgreSQL and Redis instances.
+
+1. **Stats**: This section enables the HAProxy statistics dashboard, accessible at port 7000.
+
+2. **Resolvers**: This section defines the DNS resolver for service discovery, using the Docker embedded DNS server.
+
+3. **Frontend**: There are separate frontend sections for the PostgreSQL master (port 5433), PostgreSQL replicas (port 5434), Redis (port 6379), and the Infisical backend (port 8080). Each frontend binds to the respective port and defines the default backend.
+
+4. **Backend**: The backend sections define the servers and health check rules for each service.
+   - For PostgreSQL, there are separate backends for the master and replicas. The health check is performed using an HTTP request to the `/master` or `/replica` endpoint, expecting a 200 status code.
+   - For Redis, the backend uses a TCP health check with authentication and expects the role to be `master` for the Redis master instance.
+   - For the Infisical backend, the health check is performed using an HTTP request to the `/api/status` endpoint, expecting a 200 status code.
+
+## Setting Up Docker Nodes
+
+1. Initialize Docker Swarm on one of the VMs by running the following command:
+
+   ```
+   docker swarm init --advertise-addr <MANAGER_NODE_IP>
+   ```
+
+   Replace `<MANAGER_NODE_IP>` with the IP address of the VM that will serve as the manager node. Remember to copy the join token returned by the this init command.
+
+2. On the other VMs, join the Docker Swarm by running the command provided by the manager node:
+
+   ```
+   docker swarm join --token <JOIN_TOKEN> <MANAGER_NODE_IP>:2377
+   ```
+
+   Replace `<JOIN_TOKEN>` with the token provided by the manager node during initialization.
+
+3. Label the nodes with `node.labels.name` to specify their roles. For example:
+
+   ```
+   docker node update --label-add name=node1 <NODE1_ID>
+   docker node update --label-add name=node2 <NODE2_ID>
+   docker node update --label-add name=node3 <NODE3_ID>
+   ```
+
+   Replace `<NODE1_ID>`, `<NODE2_ID>`, and `<NODE3_ID>` with the respective node IDs. 
+   To view the list of nodes and their ids, run the following on the manager node `docker node ls`.
+
+## Deploying the Docker Stack
+
+1. Copy the provided Docker stack YAML file and the HAProxy configuration file to the manager node.
+
+2. Deploy the stack using the following command:
+
+   ```
+   docker stack deploy -c infisical-stack.yaml infisical
+   ```
+
+   This command deploys the stack with the specified configuration.
+3. Run the [schema migration](/self-hosting/configuration/schema-migrations) to initialize the database. 
+To connect to the Postgres database, use the following default credentials: username: `postgres` and password: `postgres`. 
+
+## Scaling and Resilience
+
+To further scale and make the system more resilient, you can add more nodes to the Docker Swarm and update the stack configuration accordingly:
+
+1. Add new VMs and join them to the Docker Swarm as worker nodes.
+
+2. Update the Docker stack YAML file to include the new nodes in the `deploy` section of the relevant services, specifying the appropriate `node.labels.name` constraints.
+
+3. Update the HAProxy configuration file (`haproxy.cfg`) to include the new nodes in the backend sections for PostgreSQL and Redis.
+
+4. Redeploy the updated stack using the `docker stack deploy` command.
+
+Note that the database containers (PostgreSQL) are stateful and cannot be simply replicated. Instead, one database instance is deployed per node to ensure data consistency and avoid conflicts.
+
+<Check>Once all services are running as expected, you may visit the IP address of the node where the HA Proxy was deployed. This should take you to the Infisical installation wizard.</Check>
