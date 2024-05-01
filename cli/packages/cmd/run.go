@@ -133,8 +133,6 @@ var runCmd = &cobra.Command{
 				util.HandleError(err)
 			}
 
-			isConnected := util.CheckIsConnectedToInfisicalAPI()
-
 			if projectConfigDir == "" {
 				projectConfig, err := util.GetWorkSpaceFromFile()
 				if err != nil {
@@ -152,16 +150,7 @@ var runCmd = &cobra.Command{
 			}
 
 			userBackupSecretsEncryptionKey = []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
-
-			if !isConnected {
-				secrets, err = util.ReadBackupSecrets(infisicalDotJson.WorkspaceId, environmentName, userBackupSecretsEncryptionKey)
-				if err != nil {
-					util.HandleError(err)
-				}
-				if len(secrets) > 0 {
-					util.PrintWarning("Unable to fetch latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
-				}
-			}
+			secrets = util.GetBackupSecretsIfDisconnected(infisicalDotJson.WorkspaceId, environmentName, userBackupSecretsEncryptionKey)
 		}
 
 		if len(secrets) == 0 {
