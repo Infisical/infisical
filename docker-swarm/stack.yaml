@@ -5,8 +5,8 @@ services:
     image: haproxy:latest
     ports:
       - '7001:7000'
-      - '5002:5433'
-      - '5003:5434'
+      - '5002:5433' # Postgres master 
+      - '5003:5434' # Postgres read 
       - '6379:6379'
       - '8080:8080'
     networks:
@@ -15,22 +15,18 @@ services:
       - source: haproxy-config
         target: /usr/local/etc/haproxy/haproxy.cfg
     deploy:
-      placement:
-        constraints:
-          - node.labels.name == node1
+      mode: global
           
   infisical:
     container_name: infisical-backend
-    image: infisical/infisical:latest-postgres
+    image: infisical/infisical:v0.60.1-postgres
     env_file: .env
-    ports:
-      - 80:8080
-    environment:
-      - NODE_ENV=production
     networks:
       - infisical
     secrets:
       - env_file
+    deploy:
+      replicas: 5
     
   etcd1:
     image: ghcr.io/zalando/spilo-16:3.2-p2
