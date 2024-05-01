@@ -93,7 +93,7 @@ func TestUserAuth_SecretsGetAll(t *testing.T) {
 		t.Fatalf("snapshot failed: %v", err)
 	}
 
-	// intentionally invoked this here because it should directly follow secretsGetAll
+	// explicitly called here because it should happen directly after successful secretsGetAll
 	testUserAuth_SecretsGetAllWithoutConnection(t)
 }
 
