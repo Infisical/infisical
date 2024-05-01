@@ -2,18 +2,19 @@
 // if same email exists, then trigger fn to merge automatically
 import { useState } from "react";
 import ReactCodeInput from "react-code-input";
+import { useRouter } from "next/router";
 
 import Error from "@app/components/basic/Error";
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
-import {
-  fetchUsersWithMyEmail,
-  useSendEmailVerificationCode,
-  useVerifyEmailVerificationCode
-} from "@app/hooks/api";
+import { useSendEmailVerificationCode, useVerifyEmailVerificationCode } from "@app/hooks/api";
+import { UserAliasType } from "@app/hooks/api/users/types";
 
 type Props = {
+  authType?: UserAliasType;
+  username: string;
   email: string;
+  organizationSlug: string;
   setStep: (step: number) => void;
 };
 
@@ -55,7 +56,14 @@ const propsPhone = {
   }
 } as const;
 
-export const EmailConfirmationStep = ({ email, setStep }: Props) => {
+export const EmailConfirmationStep = ({
+  authType,
+  username,
+  email,
+  organizationSlug,
+  setStep
+}: Props) => {
+  const router = useRouter();
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState(false);
   const [isResendingVerificationEmail] = useState(false);
@@ -66,19 +74,29 @@ export const EmailConfirmationStep = ({ email, setStep }: Props) => {
 
   const checkCode = async () => {
     try {
-      await verifyEmailVerificationCode({ code });
+      await verifyEmailVerificationCode({ username, code });
       setCodeError(false);
-
-      const usersWithSameEmail = await fetchUsersWithMyEmail();
-
-      if (usersWithSameEmail.length > 1) {
-        setStep(2);
-      }
 
       createNotification({
         text: "Successfully verified code",
         type: "success"
       });
+
+      switch (authType) {
+        case UserAliasType.SAML: {
+          window.open(`/api/v1/sso/redirect/saml2/organizations/${organizationSlug}`);
+          window.close();
+          break;
+        }
+        case UserAliasType.LDAP: {
+          router.push(`/login/ldap?organizationSlug=${organizationSlug}`);
+          break;
+        }
+        default: {
+          setStep(1);
+          break;
+        }
+      }
     } catch (err) {
       createNotification({
         text: "Failed to verify code",
@@ -91,7 +109,11 @@ export const EmailConfirmationStep = ({ email, setStep }: Props) => {
 
   const resendCode = async () => {
     try {
-      await sendEmailVerificationCode();
+      await sendEmailVerificationCode(username);
+      createNotification({
+        text: "Successfully resent code",
+        type: "success"
+      });
     } catch (err) {
       createNotification({
         text: "Failed to resend code",

@@ -26,8 +26,7 @@ export const userKeys = {
   myAPIKeys: ["api-keys"] as const,
   myAPIKeysV2: ["api-keys-v2"] as const,
   mySessions: ["sessions"] as const,
-  myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const,
-  usersWithMyEmail: ["users-with-my-email"] as const
+  myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
 };
 
 export const fetchUserDetails = async () => {
@@ -348,23 +347,6 @@ export const useGetMyOrganizationProjects = (orgId: string) => {
     queryKey: userKeys.myOrganizationProjects(orgId),
     queryFn: async () => {
       return fetchMyOrganizationProjects(orgId);
-    },
-    enabled: true
-  });
-};
-
-export const fetchUsersWithMyEmail = async () => {
-  const {
-    data: { users }
-  } = await apiRequest.get<{ users: User[] }>("/api/v2/users/me/users/same-email");
-  return users;
-};
-
-export const useListUsersWithMyEmail = () => {
-  return useQuery({
-    queryKey: userKeys.usersWithMyEmail,
-    queryFn: async () => {
-      return fetchUsersWithMyEmail();
     },
     enabled: true
   });

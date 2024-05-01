@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { AuthTokenSessionsSchema, OrganizationsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { ApiKeysSchema } from "@app/db/schemas/api-keys";
-import { getConfig } from "@app/lib/config/env";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode } from "@app/services/auth/auth-type";
@@ -15,13 +14,15 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      body: z.object({
+        username: z.string().trim()
+      }),
       response: {
         200: z.object({})
       }
     },
-    preHandler: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      await server.services.user.sendEmailVerificationCode(req.permission.id);
+      await server.services.user.sendEmailVerificationCode(req.body.username);
       return {};
     }
   });
@@ -34,70 +35,16 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
+        username: z.string().trim(),
         code: z.string().trim()
       }),
       response: {
         200: z.object({})
       }
     },
-    preHandler: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      await server.services.user.verifyEmailVerificationCode(req.permission.id, req.body.code);
+      await server.services.user.verifyEmailVerificationCode(req.body.username, req.body.code);
       return {};
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/me/users/same-email",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      response: {
-        200: z.object({
-          users: UsersSchema.array()
-        })
-      }
-    },
-    preHandler: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const users = await server.services.user.listUsersWithSameEmail(req.permission.id);
-      return {
-        users
-      };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/me/users/merge-user",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      body: z.object({
-        username: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          user: UsersSchema
-        })
-      }
-    },
-    preHandler: verifyAuth([AuthMode.JWT]),
-    handler: async (req, res) => {
-      const appCfg = getConfig();
-      const user = await server.services.user.mergeUsers(req.permission.id, req.body.username);
-      void res.cookie("jid", "", {
-        httpOnly: true,
-        path: "/",
-        sameSite: "strict",
-        secure: appCfg.HTTPS_ENABLED
-      });
-      return {
-        user
-      };
     }
   });
 

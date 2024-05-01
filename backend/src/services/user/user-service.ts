@@ -16,6 +16,7 @@ type TUserServiceFactoryDep = {
     | "findById"
     | "transaction"
     | "updateById"
+    | "update"
     | "deleteById"
     | "findOneUserAction"
     | "createUserAction"
@@ -36,8 +37,8 @@ export const userServiceFactory = ({
   tokenService,
   smtpService
 }: TUserServiceFactoryDep) => {
-  const sendEmailVerificationCode = async (userId: string) => {
-    const user = await userDAL.findById(userId);
+  const sendEmailVerificationCode = async (username: string) => {
+    const user = await userDAL.findOne({ username });
     if (!user) throw new BadRequestError({ name: "Failed to find user" });
     if (!user.email)
       throw new BadRequestError({ name: "Failed to send email verification code due to no email on user" });
@@ -59,8 +60,8 @@ export const userServiceFactory = ({
     });
   };
 
-  const verifyEmailVerificationCode = async (userId: string, code: string) => {
-    const user = await userDAL.findById(userId);
+  const verifyEmailVerificationCode = async (username: string, code: string) => {
+    const user = await userDAL.findOne({ username });
     if (!user) throw new BadRequestError({ name: "Failed to find user" });
     if (user.isEmailVerified)
       throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
@@ -71,86 +72,65 @@ export const userServiceFactory = ({
       code
     });
 
-    await userDAL.updateById(userId, { isEmailVerified: true });
-  };
-
-  // lists users with same verified email only
-  const listUsersWithSameEmail = async (userId: string) => {
-    const user = await userDAL.findById(userId);
-    if (!user) throw new BadRequestError({ name: "Failed to find user" });
-    if (!user.email)
-      throw new BadRequestError({ name: "Failed to list users with same email due to no email on user" });
-    if (!user.isEmailVerified)
-      throw new BadRequestError({ name: "Failed to list users with same email due to email not verified" });
-
-    const users = await userDAL.find({
-      email: user.email,
-      isEmailVerified: true
-    });
-
-    return users;
-  };
-
-  /**
-   * Merges two users with the same email. Specifically:
-   * - Deletes the current user with id [userId] and transfers any resources to the user with username [username]
-   * @param userId
-   * @param username
-   */
-  const mergeUsers = async (userId: string, username: string) => {
-    const targetUser = await userDAL.transaction(async (tx) => {
-      const myUser = await userDAL.findById(userId, tx);
-      if (!myUser || !myUser.isEmailVerified) throw new BadRequestError({});
-
-      const mergeUser = await userDAL.findOne(
+    await userDAL.transaction(async (tx) => {
+      await userDAL.updateById(
+        user.id,
         {
-          username
+          isEmailVerified: true
         },
         tx
       );
-      if (!mergeUser || !mergeUser.isEmailVerified) throw new BadRequestError({});
 
-      if (myUser.email !== mergeUser.email) throw new BadRequestError({});
-
-      const mergeUserOrgMembershipSet = new Set(
-        (await orgMembershipDAL.find({ userId: mergeUser.id }, { tx })).map((m) => m.orgId)
-      );
-      const myOrgMemberships = (await orgMembershipDAL.find({ userId: myUser.id }, { tx })).filter(
-        (m) => !mergeUserOrgMembershipSet.has(m.orgId)
-      );
-
-      const userAliases = await userAliasDAL.find(
+      // check if there are users with the same email.
+      const users = await userDAL.find(
         {
-          userId: myUser.id
+          email: user.email,
+          isEmailVerified: true
         },
         { tx }
       );
-      await userDAL.deleteById(myUser.id, tx);
 
-      if (myOrgMemberships.length) {
-        await orgMembershipDAL.insertMany(
-          myOrgMemberships.map((orgMembership) => ({
-            ...orgMembership,
-            userId: mergeUser.id
-          })),
-          tx
+      if (users.length > 1) {
+        // merge users
+        const mergeUser = users.find((u) => u.id !== user.id);
+        if (!mergeUser) throw new BadRequestError({ name: "Failed to find merge user" });
+
+        const mergeUserOrgMembershipSet = new Set(
+          (await orgMembershipDAL.find({ userId: mergeUser.id }, { tx })).map((m) => m.orgId)
         );
-      }
-
-      if (userAliases.length) {
-        await userAliasDAL.insertMany(
-          userAliases.map((userAlias) => ({
-            ...userAlias,
-            userId: mergeUser.id
-          })),
-          tx
+        const myOrgMemberships = (await orgMembershipDAL.find({ userId: user.id }, { tx })).filter(
+          (m) => !mergeUserOrgMembershipSet.has(m.orgId)
         );
-      }
 
-      return mergeUser;
+        const userAliases = await userAliasDAL.find(
+          {
+            userId: user.id
+          },
+          { tx }
+        );
+        await userDAL.deleteById(user.id, tx);
+
+        if (myOrgMemberships.length) {
+          await orgMembershipDAL.insertMany(
+            myOrgMemberships.map((orgMembership) => ({
+              ...orgMembership,
+              userId: mergeUser.id
+            })),
+            tx
+          );
+        }
+
+        if (userAliases.length) {
+          await userAliasDAL.insertMany(
+            userAliases.map((userAlias) => ({
+              ...userAlias,
+              userId: mergeUser.id
+            })),
+            tx
+          );
+        }
+      }
     });
-
-    return targetUser;
   };
 
   const toggleUserMfa = async (userId: string, isMfaEnabled: boolean) => {
@@ -217,8 +197,6 @@ export const userServiceFactory = ({
   return {
     sendEmailVerificationCode,
     verifyEmailVerificationCode,
-    listUsersWithSameEmail,
-    mergeUsers,
     toggleUserMfa,
     updateUserName,
     updateAuthMethods,

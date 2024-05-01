@@ -1,12 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import jwt_decode from "jwt-decode";
 
-import {
-  BackupPDFStep,
-  EmailConfirmationStep,
-  MergeUsersStep,
-  UserInfoSSOStep
-} from "./components";
+import { BackupPDFStep, EmailConfirmationStep, UserInfoSSOStep } from "./components";
 
 type Props = {
   providerAuthToken: string;
@@ -27,13 +22,30 @@ export const SignupSSO = ({ providerAuthToken }: Props) => {
     isEmailVerified
   } = jwt_decode(providerAuthToken) as any;
 
+  useEffect(() => {
+    if (!isEmailVerified) {
+      setStep(0);
+    } else {
+      setStep(1);
+    }
+  }, []);
+
   const renderView = () => {
     switch (step) {
       case 0:
         return (
+          <EmailConfirmationStep
+            authType={authType}
+            username={username}
+            email={email}
+            organizationSlug={organizationSlug}
+            setStep={setStep}
+          />
+        );
+      case 1:
+        return (
           <UserInfoSSOStep
             username={username}
-            isEmailVerified={isEmailVerified}
             name={`${firstName} ${lastName}`}
             providerOrganizationName={organizationName}
             password={password}
@@ -42,17 +54,15 @@ export const SignupSSO = ({ providerAuthToken }: Props) => {
             providerAuthToken={providerAuthToken}
           />
         );
-      case 1:
-        return <EmailConfirmationStep email={email} setStep={setStep} />;
+      // case 2:
+      //   return (
+      //     <MergeUsersStep
+      //       username={username}
+      //       authType={authType}
+      //       organizationSlug={organizationSlug}
+      //     />
+      //   );
       case 2:
-        return (
-          <MergeUsersStep
-            username={username}
-            authType={authType}
-            organizationSlug={organizationSlug}
-          />
-        );
-      case 3:
         return (
           <BackupPDFStep email={username} password={password} name={`${firstName} ${lastName}`} />
         );

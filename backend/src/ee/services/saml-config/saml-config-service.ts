@@ -21,9 +21,12 @@ import {
 } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { AuthTokenType } from "@app/services/auth/auth-type";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
@@ -48,6 +51,8 @@ type TSamlConfigServiceFactoryDep = {
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TSamlConfigServiceFactory = ReturnType<typeof samlConfigServiceFactory>;
@@ -60,7 +65,9 @@ export const samlConfigServiceFactory = ({
   userDAL,
   userAliasDAL,
   permissionService,
-  licenseService
+  licenseService,
+  tokenService,
+  smtpService
 }: TSamlConfigServiceFactoryDep) => {
   const createSamlCfg = async ({
     cert,
@@ -438,6 +445,22 @@ export const samlConfigServiceFactory = ({
     );
 
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
+
+    if (user.email && !user.isEmailVerified) {
+      const token = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_VERIFICATION,
+        userId: user.id
+      });
+
+      await smtpService.sendMail({
+        template: SmtpTemplates.EmailVerification,
+        subjectLine: "Infisical confirmation code",
+        recipients: [user.email],
+        substitutions: {
+          code: token
+        }
+      });
+    }
 
     return { isUserCompleted, providerAuthToken };
   };

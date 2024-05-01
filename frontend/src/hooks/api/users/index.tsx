@@ -1,13 +1,11 @@
 export {
   useAddUserToWsE2EE,
   useAddUserToWsNonE2EE,
-  useMergeUsers,
   useSendEmailVerificationCode,
   useVerifyEmailVerificationCode
 } from "./mutation";
 export {
   fetchOrgUsers,
-  fetchUsersWithMyEmail,
   useAddUserToOrg,
   useCreateAPIKey,
   useDeleteAPIKey,
@@ -21,7 +19,6 @@ export {
   useGetOrgUsers,
   useGetUser,
   useGetUserAction,
-  useListUsersWithMyEmail,
   useLogoutUser,
   useRegisterUserAction,
   useRevokeMySessions,

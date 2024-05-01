@@ -17,7 +17,6 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import { sendEmailVerificationCode } from "@app/hooks/api/users/mutation";
 import ProjectService from "@app/services/ProjectService";
 
 // eslint-disable-next-line new-cap
@@ -26,7 +25,6 @@ const client = new jsrp.client();
 type Props = {
   setStep: (step: number) => void;
   username: string;
-  isEmailVerified?: boolean;
   password: string;
   setPassword: (value: string) => void;
   name: string;
@@ -60,7 +58,6 @@ type Errors = {
  */
 export const UserInfoSSOStep = ({
   username,
-  isEmailVerified,
   name,
   providerOrganizationName,
   password,
@@ -204,14 +201,7 @@ export const UserInfoSSOStep = ({
               localStorage.setItem("orgData.id", orgId);
               localStorage.setItem("projectData.id", project.id);
 
-              if (isEmailVerified) {
-                // move to backup PDF step
-                setStep(3);
-              } else {
-                // move to verify email
-                await sendEmailVerificationCode();
-                setStep(1);
-              }
+              setStep(2);
             } catch (error) {
               setIsLoading(false);
               console.error(error);

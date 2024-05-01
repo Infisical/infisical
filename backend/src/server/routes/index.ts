@@ -255,6 +255,7 @@ export const registerRoutes = async (
     permissionService,
     secretApprovalPolicyDAL
   });
+  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
   const samlService = samlConfigServiceFactory({
     permissionService,
     orgBotDAL,
@@ -263,7 +264,9 @@ export const registerRoutes = async (
     userDAL,
     userAliasDAL,
     samlConfigDAL,
-    licenseService
+    licenseService,
+    tokenService,
+    smtpService
   });
   const groupService = groupServiceFactory({
     userDAL,
@@ -333,7 +336,6 @@ export const registerRoutes = async (
     queueService
   });
 
-  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
   const userService = userServiceFactory({
     userDAL,
     userAliasDAL,
