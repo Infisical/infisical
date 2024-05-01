@@ -2,10 +2,10 @@ package tests
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
-	"testing"
 )
 
 const (
@@ -48,7 +48,7 @@ func ExecuteCliCommand(command string, args ...string) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-func SetupCli(t *testing.T) {
+func SetupCli() {
 
 	if creds.ClientID == "" || creds.ClientSecret == "" || creds.ServiceToken == "" || creds.ProjectID == "" || creds.EnvSlug == "" {
 		panic("Missing required environment variables")
@@ -62,7 +62,7 @@ func SetupCli(t *testing.T) {
 
 	if !alreadyBuilt {
 		if err := exec.Command("go", "build", "../.").Run(); err != nil {
-			t.Fatal(err)
+			log.Fatal(err)
 		}
 	}
 

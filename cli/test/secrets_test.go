@@ -9,8 +9,6 @@ import (
 
 
 func TestServiceToken_SecretsGetWithImportsAndRecursiveCmd(t *testing.T) {
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent")
 
 	if err != nil {
@@ -25,8 +23,6 @@ func TestServiceToken_SecretsGetWithImportsAndRecursiveCmd(t *testing.T) {
 }
 
 func TestServiceToken_SecretsGetWithoutImportsAndWithoutRecursiveCmd(t *testing.T) {
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--include-imports=false", "--silent")
 
 	if err != nil {
@@ -41,7 +37,6 @@ func TestServiceToken_SecretsGetWithoutImportsAndWithoutRecursiveCmd(t *testing.
 }
 
 func TestUniversalAuth_SecretsGetWithImportsAndRecursiveCmd(t *testing.T) {
-	SetupCli(t)
 	MachineIdentityLoginCmd(t)
 
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent")
@@ -58,7 +53,6 @@ func TestUniversalAuth_SecretsGetWithImportsAndRecursiveCmd(t *testing.T) {
 }
 
 func TestUniversalAuth_SecretsGetWithoutImportsAndWithoutRecursiveCmd(t *testing.T) {
-	SetupCli(t)
 	MachineIdentityLoginCmd(t)
 
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--include-imports=false", "--silent")
@@ -75,7 +69,6 @@ func TestUniversalAuth_SecretsGetWithoutImportsAndWithoutRecursiveCmd(t *testing
 }
 
 func TestUniversalAuth_SecretsGetWrongEnvironment(t *testing.T) {
-	SetupCli(t)
 	MachineIdentityLoginCmd(t)
 
 	output, _ := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", "invalid-env", "--recursive", "--silent")
@@ -89,9 +82,6 @@ func TestUniversalAuth_SecretsGetWrongEnvironment(t *testing.T) {
 }
 
 func TestUserAuth_SecretsGetAll(t *testing.T) {
-	SetupCli(t)
-	UserLoginCmd(t);
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--include-imports=false", "--silent")
 	if err != nil {
 		t.Fatalf("error running CLI command: %v", err)

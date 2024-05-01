@@ -3,7 +3,9 @@ module github.com/Infisical/infisical-merge
 go 1.21
 
 require (
+	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/charmbracelet/lipgloss v0.5.0
+	github.com/creack/pty v1.1.21
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/fatih/semgroup v1.2.0
 	github.com/gitleaks/go-gitdiff v0.8.0
@@ -29,9 +31,7 @@ require (
 require (
 	github.com/alessio/shellescape v1.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
-	github.com/bradleyjkemp/cupaloy/v2 v2.8.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
-	github.com/creack/pty v1.1.21 // indirect
 	github.com/danieljoos/wincred v1.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect

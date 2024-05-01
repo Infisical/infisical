@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 	"testing"
@@ -9,21 +11,62 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func UserLoginCmd(t *testing.T) {
-	SetupCli(t)
+func UserInitCmd() {
+	c := exec.Command(FORMATTED_CLI_NAME, "init")
+	ptmx, err := pty.Start(c)
+	if err != nil {
+		log.Fatalf("error running CLI command: %v", err)
+    }
+ 	defer func() { _ = ptmx.Close() }()
 
+	stepChan := make(chan int, 10)
+
+	go func() {
+		buf := make([]byte, 1024)
+		step := -1
+		for {
+			n, err := ptmx.Read(buf)
+			if n > 0 {
+				terminalOut := string(buf)
+				fmt.Println("Terminal out is", terminalOut)
+				if strings.Contains(terminalOut, "Which Infisical organization would you like to select a project from?") && step < 0  {
+					step += 1
+					stepChan <- step
+				} else if strings.Contains(terminalOut, "Which of your Infisical projects would you like to connect this project to?") && step < 1 {
+					step += 1;
+					stepChan <- step
+				}
+			}
+			if err != nil {
+				close(stepChan)
+				return
+			}
+		}
+	}()
+
+	for i := range stepChan {
+		switch i {
+		case 0: 
+			ptmx.Write([]byte("\n"))
+		case 1:
+			ptmx.Write([]byte("\n"))
+		}
+	}
+}
+
+func UserLoginCmd() {
 	// set vault to file because CI has no keyring
 	vaultCmd := exec.Command(FORMATTED_CLI_NAME, "vault", "set", "file")
 	_, err := vaultCmd.Output()
 	if err != nil {
-		t.Fatalf("error setting vault: %v", err)
+		log.Fatalf("error setting vault: %v", err)
 	}
 
 	// Start programmatic interaction with CLI
 	c := exec.Command(FORMATTED_CLI_NAME, "login", "--interactive")
 	ptmx, err := pty.Start(c)
 	if err != nil {
-		t.Fatalf("error running CLI command: %v", err)
+		log.Fatalf("error running CLI command: %v", err)
     }
  	defer func() { _ = ptmx.Close() }()
 
@@ -83,8 +126,6 @@ func UserLoginCmd(t *testing.T) {
 }
 
 func MachineIdentityLoginCmd(t *testing.T) {
-	SetupCli(t)
-
 	if creds.UAAccessToken != "" {
 		return
 	}
