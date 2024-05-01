@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"fmt"
 	"os/exec"
 	"strings"
 	"testing"
@@ -61,7 +60,6 @@ func UserLoginCmd(t *testing.T) {
 				close(stepChan)
 				return
 			}
-			fmt.Print(string(buf[:n]))
 		}
 	}()
 
