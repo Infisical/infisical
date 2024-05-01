@@ -319,21 +319,16 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		}
 
 		RequireLogin()
-
 		log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
 
 		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
-		isConnected := CheckIsConnectedToInfisicalAPI()
-
-		if isConnected {
-			log.Debug().Msg("GetAllEnvironmentVariables: Connected to Infisical instance, checking logged in creds")
-		}
+		log.Debug().Msg("GetAllEnvironmentVariables: Connected to Infisical instance, checking logged in creds")
 
 		if err != nil {
 			return nil, err
 		}
 
-		if isConnected && loggedInUserDetails.LoginExpired {
+		if loggedInUserDetails.LoginExpired {
 			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
 		}
 
@@ -362,22 +357,6 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, infisicalDotJson.WorkspaceId,
 			params.Environment, params.TagSlugs, params.SecretsPath, params.IncludeImport, params.Recursive)
 		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
-
-		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
-		if errorToReturn == nil {
-			WriteBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, backupSecretsEncryptionKey, secretsToReturn)
-		}
-
-		// only attempt to serve cached secrets if no internet connection and if at least one secret cached
-		if !isConnected {
-			backedSecrets, err := ReadBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, backupSecretsEncryptionKey)
-			if len(backedSecrets) > 0 {
-				PrintWarning("Unable to fetch latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
-				secretsToReturn = backedSecrets
-				errorToReturn = err
-			}
-		}
-
 	} else {
 		if params.InfisicalToken != "" {
 			log.Debug().Msg("Trying to fetch secrets using service token")
