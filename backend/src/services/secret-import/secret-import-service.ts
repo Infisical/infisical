@@ -111,7 +111,8 @@ export const secretImportServiceFactory = ({
     await secretQueueService.syncSecrets({
       secretPath: secImport.importPath,
       projectId,
-      environment: importEnv.slug
+      environmentSlug: importEnv.slug,
+      excludeReplication: true
     });
 
     return { ...secImport, importEnv };
@@ -223,7 +224,8 @@ export const secretImportServiceFactory = ({
     await secretQueueService.syncSecrets({
       secretPath: path,
       projectId,
-      environment
+      environmentSlug: environment,
+      excludeReplication: true
     });
 
     return secImport;

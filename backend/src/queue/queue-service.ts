@@ -7,7 +7,7 @@ import {
   TScanFullRepoEventPayload,
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
-import { TSyncSecretReplicationDTO } from "@app/services/secret-replication/secret-replication-types";
+import { TSyncSecretsDTO } from "@app/services/secret/secret-types";
 
 export enum QueueName {
   SecretRotation = "secret-rotation",
@@ -23,7 +23,8 @@ export enum QueueName {
   SecretPushEventScan = "secret-push-event-scan",
   UpgradeProjectToGhost = "upgrade-project-to-ghost",
   DynamicSecretRevocation = "dynamic-secret-revocation",
-  SecretReplication = "secret-replication"
+  SecretReplication = "secret-replication",
+  SecretSync = "secret-sync" // parent queue to push integration sync, webhook, and secret replication
 }
 
 export enum QueueJobs {
@@ -40,7 +41,8 @@ export enum QueueJobs {
   UpgradeProjectToGhost = "upgrade-project-to-ghost-job",
   DynamicSecretRevocation = "dynamic-secret-revocation",
   DynamicSecretPruning = "dynamic-secret-pruning",
-  SecretReplication = "secret-replication"
+  SecretReplication = "secret-replication",
+  SecretSync = "secret-sync" // parent queue to push integration sync, webhook, and secret replication
 }
 
 export type TQueueJobTypes = {
@@ -121,7 +123,11 @@ export type TQueueJobTypes = {
       };
   [QueueName.SecretReplication]: {
     name: QueueJobs.SecretReplication;
-    payload: TSyncSecretReplicationDTO;
+    payload: Omit<TSyncSecretsDTO, "environmentSlug">;
+  };
+  [QueueName.SecretSync]: {
+    name: QueueJobs.SecretSync;
+    payload: TSyncSecretsDTO;
   };
 };
 

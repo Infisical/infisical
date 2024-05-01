@@ -30,13 +30,12 @@ import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
-import { TSecretReplicationServiceFactory } from "../secret-replication/secret-replication-service";
-import { SecretReplicationOperations } from "../secret-replication/secret-replication-types";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   decryptSecretRaw,
   fnSecretBlindIndexCheck,
+  fnSecretBulkDelete,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
   getAllNestedSecretReferences,
@@ -45,6 +44,7 @@ import {
 } from "./secret-fns";
 import { TSecretQueueFactory } from "./secret-queue";
 import {
+  SecretOperations,
   TAttachSecretTagsDTO,
   TBackFillSecretReferencesDTO,
   TCreateBulkSecretDTO,
@@ -55,8 +55,6 @@ import {
   TDeleteManySecretRawDTO,
   TDeleteSecretDTO,
   TDeleteSecretRawDTO,
-  TFnSecretBlindIndexCheckV2,
-  TFnSecretBulkDelete,
   TGetASecretDTO,
   TGetASecretRawDTO,
   TGetSecretsDTO,
@@ -87,7 +85,6 @@ type TSecretServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
-  secretReplicationService: Pick<TSecretReplicationServiceFactory, "replicate">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -104,8 +101,7 @@ export const secretServiceFactory = ({
   projectDAL,
   projectBotService,
   secretImportDAL,
-  secretVersionTagDAL,
-  secretReplicationService
+  secretVersionTagDAL
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -143,53 +139,6 @@ export const secretServiceFactory = ({
     return secretBlindIndex;
   };
 
-  const fnSecretBulkDelete = async ({ folderId, inputSecrets, tx, actorId }: TFnSecretBulkDelete) => {
-    const deletedSecrets = await secretDAL.deleteMany(
-      inputSecrets.map(({ type, secretBlindIndex }) => ({
-        blindIndex: secretBlindIndex,
-        type
-      })),
-      folderId,
-      actorId,
-      tx
-    );
-
-    for (const s of deletedSecrets) {
-      if (s.secretReminderRepeatDays) {
-        // eslint-disable-next-line no-await-in-loop
-        await secretQueueService
-          .removeSecretReminder({
-            secretId: s.id,
-            repeatDays: s.secretReminderRepeatDays
-          })
-          .catch((err) => {
-            logger.error(err, `Failed to delete secret reminder for secret with ID ${s?.id}`);
-          });
-      }
-    }
-
-    return deletedSecrets;
-  };
-
-  // this is used when secret blind index already exist
-  // mainly for secret approval
-  const fnSecretBlindIndexCheckV2 = async ({ inputSecrets, folderId, userId }: TFnSecretBlindIndexCheckV2) => {
-    if (inputSecrets.some(({ type }) => type === SecretType.Personal) && !userId) {
-      throw new BadRequestError({ message: "Missing user id for personal secret" });
-    }
-    const secrets = await secretDAL.findByBlindIndexes(
-      folderId,
-      inputSecrets.map(({ secretBlindIndex, type }) => ({
-        blindIndex: secretBlindIndex,
-        type: type || SecretType.Shared
-      })),
-      userId
-    );
-    const secsGroupedByBlindIndex = groupBy(secrets, (i) => i.secretBlindIndex as string);
-
-    return { secsGroupedByBlindIndex, secrets };
-  };
-
   const createSecret = async ({
     path,
     actor,
@@ -200,7 +149,7 @@ export const secretServiceFactory = ({
     projectId,
     ...inputSecret
   }: TCreateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, membership } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -287,16 +236,17 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
-    // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    await secretReplicationService.replicate({
-      folderId,
-      projectId,
-      environmentId: folder.envId,
+    await secretQueueService.syncSecrets({
       secretPath: path,
+      // if secret service reached means there was no secret policy
+      // TODO(akhilmhdh): The policy based replication will fail if machine identity is used.
+      membershipId: membership?.id as string,
+      projectId,
+      environmentSlug: folder.environment.slug,
+      environmentId: folder.envId,
       secrets: [
         {
-          operation: SecretReplicationOperations.Create,
+          operation: SecretOperations.Create,
           id: secret[0].id,
           version: 1
         }
@@ -315,7 +265,7 @@ export const secretServiceFactory = ({
     projectId,
     ...inputSecret
   }: TUpdateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, membership } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -430,15 +380,18 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
-    await secretReplicationService.replicate({
-      folderId,
-      projectId,
-      environmentId: folder.envId,
+    await secretQueueService.syncSecrets({
+      // if secret service reached means there was no secret policy
+      // TODO(akhilmhdh): The policy based replication will fail if machine identity is used.
+      membershipId: membership?.id as string,
       secretPath: path,
+      folderId: folder.id,
+      projectId,
+      environmentSlug: folder.environment.slug,
+      environmentId: folder.envId,
       secrets: [
         {
-          operation: SecretReplicationOperations.Update,
+          operation: SecretOperations.Update,
           id: updatedSecret[0].id,
           version: updatedSecret[0].version
         }
@@ -457,7 +410,7 @@ export const secretServiceFactory = ({
     projectId,
     ...inputSecret
   }: TDeleteSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, membership } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -499,6 +452,8 @@ export const secretServiceFactory = ({
         projectId,
         folderId,
         actorId,
+        secretDAL,
+        secretQueueService,
         inputSecrets: [
           {
             type: inputSecret.type as SecretType,
@@ -510,15 +465,18 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
-    await secretReplicationService.replicate({
-      folderId,
-      projectId,
-      environmentId: folder.envId,
+    await secretQueueService.syncSecrets({
+      // if secret service reached means there was no secret policy
+      // TODO(akhilmhdh): The policy based replication will fail if machine identity is used.
+      membershipId: membership?.id as string,
       secretPath: path,
+      folderId: folder.id,
+      projectId,
+      environmentSlug: folder.environment.slug,
+      environmentId: folder.envId,
       secrets: [
         {
-          operation: SecretReplicationOperations.Delete,
+          operation: SecretOperations.Delete,
           id: deletedSecret[0].id,
           version: deletedSecret[0].version
         }
@@ -744,7 +702,7 @@ export const secretServiceFactory = ({
     projectId,
     secrets: inputSecrets
   }: TCreateBulkSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, membership } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -808,13 +766,16 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
-    await secretReplicationService.replicate({
-      folderId,
-      projectId,
-      environmentId: folder.envId,
+    await secretQueueService.syncSecrets({
+      // if secret service reached means there was no secret policy
+      // TODO(akhilmhdh): The policy based replication will fail if machine identity is used.
+      membershipId: membership?.id as string,
       secretPath: path,
-      secrets: newSecrets.map(({ id, version }) => ({ id, version, operation: SecretReplicationOperations.Create }))
+      folderId: folder.id,
+      projectId,
+      environmentSlug: folder.environment.slug,
+      environmentId: folder.envId,
+      secrets: newSecrets.map(({ id, version }) => ({ id, version, operation: SecretOperations.Create }))
     });
 
     return newSecrets;
@@ -830,7 +791,7 @@ export const secretServiceFactory = ({
     projectId,
     secrets: inputSecrets
   }: TUpdateBulkSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, membership } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -915,13 +876,16 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
-    await secretReplicationService.replicate({
-      folderId,
-      projectId,
-      environmentId: folder.envId,
+    await secretQueueService.syncSecrets({
+      // if secret service reached means there was no secret policy
+      // TODO(akhilmhdh): The policy based replication will fail if machine identity is used.
+      membershipId: membership?.id as string,
       secretPath: path,
-      secrets: secrets.map(({ id, version }) => ({ id, version, operation: SecretReplicationOperations.Update }))
+      folderId: folder.id,
+      projectId,
+      environmentSlug: folder.environment.slug,
+      environmentId: folder.envId,
+      secrets: secrets.map(({ id, version }) => ({ id, version, operation: SecretOperations.Update }))
     });
 
     return secrets;
@@ -937,7 +901,7 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TDeleteBulkSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, membership } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -972,6 +936,8 @@ export const secretServiceFactory = ({
 
     const secretsDeleted = await secretDAL.transaction(async (tx) =>
       fnSecretBulkDelete({
+        secretDAL,
+        secretQueueService,
         inputSecrets: inputSecrets.map(({ type, secretName }) => ({
           secretBlindIndex: keyName2BlindIndex[secretName],
           type
@@ -984,13 +950,16 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
-    await secretReplicationService.replicate({
-      folderId,
-      projectId,
-      environmentId: folder.envId,
+    await secretQueueService.syncSecrets({
+      // if secret service reached means there was no secret policy
+      // TODO(akhilmhdh): The policy based replication will fail if machine identity is used.
+      membershipId: membership?.id as string,
       secretPath: path,
-      secrets: secretsDeleted.map(({ id, version }) => ({ id, version, operation: SecretReplicationOperations.Delete }))
+      folderId: folder.id,
+      projectId,
+      environmentSlug: folder.environment.slug,
+      environmentId: folder.envId,
+      secrets: secretsDeleted.map(({ id, version }) => ({ id, version, operation: SecretOperations.Delete }))
     });
 
     return secretsDeleted;
@@ -1171,9 +1140,6 @@ export const secretServiceFactory = ({
       skipMultilineEncoding
     });
 
-    await snapshotService.performSnapshot(secret.folderId);
-    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
-
     return decryptSecretRaw(secret, botKey);
   };
 
@@ -1212,8 +1178,6 @@ export const secretServiceFactory = ({
     });
 
     await snapshotService.performSnapshot(secret.folderId);
-    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
-
     return decryptSecretRaw(secret, botKey);
   };
 
@@ -1242,9 +1206,6 @@ export const secretServiceFactory = ({
       actorOrgId,
       actorAuthMethod
     });
-
-    await snapshotService.performSnapshot(secret.folderId);
-    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
 
     return decryptSecretRaw(secret, botKey);
   };
@@ -1294,12 +1255,7 @@ export const secretServiceFactory = ({
       })
     });
 
-    await snapshotService.performSnapshot(secrets[0].folderId);
-    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
-
-    return secrets.map((secret) =>
-      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
-    );
+    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
   };
 
   const updateManySecretsRaw = async ({
@@ -1348,12 +1304,7 @@ export const secretServiceFactory = ({
       })
     });
 
-    await snapshotService.performSnapshot(secrets[0].folderId);
-    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
-
-    return secrets.map((secret) =>
-      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
-    );
+    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
   };
 
   const deleteManySecretsRaw = async ({
@@ -1384,12 +1335,7 @@ export const secretServiceFactory = ({
       secrets: inputSecrets.map(({ secretKey }) => ({ secretName: secretKey, type: SecretType.Shared }))
     });
 
-    await snapshotService.performSnapshot(secrets[0].folderId);
-    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
-
-    return secrets.map((secret) =>
-      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
-    );
+    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
   };
 
   const getSecretVersions = async ({
@@ -1510,7 +1456,12 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folder.id);
-    await secretQueueService.syncSecrets({ secretPath, projectId: project.id, environment });
+    await secretQueueService.syncSecrets({
+      secretPath,
+      projectId: project.id,
+      environmentSlug: environment,
+      excludeReplication: true
+    });
 
     return {
       ...updatedSecret[0],
@@ -1612,7 +1563,12 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folder.id);
-    await secretQueueService.syncSecrets({ secretPath, projectId: project.id, environment });
+    await secretQueueService.syncSecrets({
+      secretPath,
+      projectId: project.id,
+      environmentSlug: environment,
+      excludeReplication: true
+    });
 
     return {
       ...updatedSecret[0],
@@ -1685,13 +1641,6 @@ export const secretServiceFactory = ({
     createManySecretsRaw,
     updateManySecretsRaw,
     deleteManySecretsRaw,
-    getSecretVersions,
-    backfillSecretReferences,
-    // external services function
-    fnSecretBulkDelete,
-    fnSecretBulkUpdate,
-    fnSecretBlindIndexCheck,
-    fnSecretBulkInsert,
-    fnSecretBlindIndexCheckV2
+    getSecretVersions
   };
 };

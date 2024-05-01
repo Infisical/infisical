@@ -264,6 +264,10 @@ export type TFnSecretBulkDelete = {
   inputSecrets: Array<{ type: SecretType; secretBlindIndex: string }>;
   actorId: string;
   tx?: Knex;
+  secretDAL: Pick<TSecretDALFactory, "deleteMany">;
+  secretQueueService: {
+    removeSecretReminder: (data: TRemoveSecretReminderDTO) => Promise<void>;
+  };
 };
 
 export type TFnSecretBlindIndexCheck = {
@@ -277,6 +281,7 @@ export type TFnSecretBlindIndexCheck = {
 
 // when blind index is already present
 export type TFnSecretBlindIndexCheckV2 = {
+  secretDAL: Pick<TSecretDALFactory, "findByBlindIndexes">;
   folderId: string;
   userId?: string;
   inputSecrets: Array<{ secretBlindIndex: string; type?: SecretType }>;
@@ -363,3 +368,30 @@ export type TUpdateManySecretsRawFn = {
   }[];
   userId?: string;
 };
+
+export enum SecretOperations {
+  Create = "create",
+  Update = "update",
+  Delete = "delete"
+}
+
+export type TSyncSecretsDTO<T extends boolean = false> = {
+  _depth?: number;
+  _deDupeQueue?: Record<string, boolean>;
+  secretPath: string;
+  projectId: string;
+  environmentSlug: string;
+  // cases for just doing sync integration and webhook
+  excludeReplication?: T;
+} & (T extends true
+  ? object
+  : {
+      environmentId: string;
+      folderId: string;
+      membershipId: string;
+      secrets: {
+        operation: SecretOperations;
+        id: string;
+        version: number;
+      }[];
+    });

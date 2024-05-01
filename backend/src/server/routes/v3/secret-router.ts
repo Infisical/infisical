@@ -9,7 +9,6 @@ import {
   ServiceTokenScopes
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { CommitType } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { RAW_SECRETS, SECRETS } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -19,6 +18,7 @@ import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { ProjectFilterType } from "@app/services/project/project-types";
+import { SecretOperations } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { secretRawSchema } from "../sanitizedSchemas";
@@ -902,7 +902,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             projectId,
             policy,
             data: {
-              [CommitType.Create]: [
+              [SecretOperations.Create]: [
                 {
                   secretName: req.params.secretName,
                   secretValueCiphertext,
@@ -1084,7 +1084,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             projectId,
             policy,
             data: {
-              [CommitType.Update]: [
+              [SecretOperations.Update]: [
                 {
                   secretName: req.params.secretName,
                   newSecretName,
@@ -1234,7 +1234,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             projectId,
             policy,
             data: {
-              [CommitType.Delete]: [
+              [SecretOperations.Delete]: [
                 {
                   secretName: req.params.secretName
                 }
@@ -1364,7 +1364,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             projectId,
             policy,
             data: {
-              [CommitType.Create]: inputSecrets
+              [SecretOperations.Create]: inputSecrets
             }
           });
 
@@ -1491,7 +1491,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             projectId,
             policy,
             data: {
-              [CommitType.Update]: inputSecrets.filter(({ type }) => type === "shared")
+              [SecretOperations.Update]: inputSecrets.filter(({ type }) => type === "shared")
             }
           });
 
@@ -1606,7 +1606,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             projectId,
             policy,
             data: {
-              [CommitType.Delete]: inputSecrets.filter(({ type }) => type === "shared")
+              [SecretOperations.Delete]: inputSecrets.filter(({ type }) => type === "shared")
             }
           });
           await server.services.auditLog.createAuditLog({
