@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"fmt"
 	"log"
 	"os/exec"
 	"strings"
@@ -28,7 +27,6 @@ func UserInitCmd() {
 			n, err := ptmx.Read(buf)
 			if n > 0 {
 				terminalOut := string(buf)
-				fmt.Println("Terminal out is", terminalOut)
 				if strings.Contains(terminalOut, "Which Infisical organization would you like to select a project from?") && step < 0  {
 					step += 1
 					stepChan <- step
