@@ -16,7 +16,7 @@ export type TSecretApprovalRequestDALFactory = ReturnType<typeof secretApprovalR
 
 type TFindQueryFilter = {
   projectId: string;
-  membershipId: string;
+  actorId: string;
   status?: RequestState;
   environment?: string;
   committer?: string;
@@ -49,7 +49,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
       )
       .select(selectAllTableCols(TableName.SecretApprovalRequest))
       .select(
-        tx.ref("member").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerMemberId"),
+        tx.ref("memberUserId").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerMemberId"),
         tx.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
         tx.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"),
         tx.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"),
@@ -57,14 +57,14 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("slug").withSchema(TableName.Environment).as("environment"),
         tx.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
         tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
-        tx.ref("approverId").withSchema(TableName.SecretApprovalPolicyApprover)
+        tx.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover)
       );
 
   const findById = async (id: string, tx?: Knex) => {
     try {
       const sql = findQuery({ [`${TableName.SecretApprovalRequest}.id` as "id"]: id }, tx || db);
       const docs = await sql;
-      const formatedDoc = sqlNestRelationships({
+      const formattedDoc = sqlNestRelationships({
         data: docs,
         key: "id",
         parentMapper: (el) => ({
@@ -84,20 +84,20 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             label: "reviewers" as const,
             mapper: ({ reviewerMemberId: member, reviewerStatus: status }) => (member ? { member, status } : undefined)
           },
-          { key: "approverId", label: "approvers" as const, mapper: ({ approverId }) => approverId }
+          { key: "approverUserId", label: "approvers" as const, mapper: ({ approverUserId }) => approverUserId }
         ]
       });
-      if (!formatedDoc?.[0]) return;
+      if (!formattedDoc?.[0]) return;
       return {
-        ...formatedDoc[0],
-        policy: { ...formatedDoc[0].policy, approvers: formatedDoc[0].approvers }
+        ...formattedDoc[0],
+        policy: { ...formattedDoc[0].policy, approvers: formattedDoc[0].approvers }
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByIdSAR" });
     }
   };
 
-  const findProjectRequestCount = async (projectId: string, membershipId: string, tx?: Knex) => {
+  const findProjectRequestCount = async (projectId: string, approverUserId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db)
         .with(
@@ -114,8 +114,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             .andWhere(
               (bd) =>
                 void bd
-                  .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
-                  .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
+                  .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, approverUserId)
+                  .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, approverUserId)
             )
             .select("status", `${TableName.SecretApprovalRequest}.id`)
             .groupBy(`${TableName.SecretApprovalRequest}.id`, "status")
@@ -142,7 +142,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
   };
 
   const findByProjectId = async (
-    { status, limit = 20, offset = 0, projectId, committer, environment, membershipId }: TFindQueryFilter,
+    { status, limit = 20, offset = 0, projectId, committer, environment, actorId }: TFindQueryFilter,
     tx?: Knex
   ) => {
     try {
@@ -176,14 +176,14 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             projectId,
             [`${TableName.Environment}.slug` as "slug"]: environment,
             [`${TableName.SecretApprovalRequest}.status`]: status,
-            committerId: committer
+            committerUserId: committer
           })
         )
         .andWhere(
           (bd) =>
             void bd
-              .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
-              .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
+              .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, actorId)
+              .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, actorId)
         )
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
@@ -201,7 +201,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
           db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
-          db.ref("approverId").withSchema(TableName.SecretApprovalPolicyApprover)
+          db.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover)
         )
         .orderBy("createdAt", "desc");
 
@@ -232,9 +232,9 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             mapper: ({ reviewerMemberId: member, reviewerStatus: s }) => (member ? { member, status: s } : undefined)
           },
           {
-            key: "approverId",
+            key: "approverUserId",
             label: "approvers" as const,
-            mapper: ({ approverId }) => approverId
+            mapper: ({ approverUserId }) => approverUserId
           },
           {
             key: "commitId",
