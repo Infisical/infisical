@@ -66,6 +66,25 @@ export const useDeleteAccessApprovalPolicy = () => {
   });
 };
 
+export const useDeleteAccessApprovalRequest = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, { requestId: string; projectSlug: string }>({
+    mutationFn: async ({ requestId, projectSlug }) => {
+      const { data } = await apiRequest.delete(`/api/v1/access-approvals/requests/${requestId}`, {
+        params: {
+          projectSlug
+        }
+      });
+      return data;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries(accessApprovalKeys.getAccessApprovalRequests(projectSlug));
+      queryClient.invalidateQueries(accessApprovalKeys.getAccessApprovalRequestCount(projectSlug));
+    }
+  });
+};
+
 export const useCreateAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation<{}, {}, TCreateAccessRequestDTO>({
