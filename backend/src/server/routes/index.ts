@@ -271,6 +271,7 @@ export const registerRoutes = async (
     projectMembershipDAL,
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
+    userDAL,
     permissionService,
     secretApprovalPolicyDAL
   });
@@ -419,6 +420,7 @@ export const registerRoutes = async (
     projectUserMembershipRoleDAL,
     projectDAL,
     permissionService,
+    groupProjectDAL,
     projectBotDAL,
     orgDAL,
     userDAL,
@@ -599,7 +601,7 @@ export const registerRoutes = async (
     accessApprovalPolicyApproverDAL,
     permissionService,
     projectEnvDAL,
-    projectMembershipDAL,
+    userDAL,
     projectDAL
   });
 
