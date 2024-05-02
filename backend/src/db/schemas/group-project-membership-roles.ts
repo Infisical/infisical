@@ -12,7 +12,6 @@ export const GroupProjectMembershipRolesSchema = z.object({
   role: z.string(),
   projectMembershipId: z.string().uuid(),
   customRoleId: z.string().uuid().nullable().optional(),
-  permissions: z.unknown(),
   isTemporary: z.boolean().default(false),
   temporaryMode: z.string().nullable().optional(),
   temporaryRange: z.string().nullable().optional(),
