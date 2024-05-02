@@ -14,8 +14,14 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("privilegeId").nullable();
       t.foreign("privilegeId").references("id").inTable(TableName.ProjectUserAdditionalPrivilege).onDelete("CASCADE");
 
-      t.uuid("requestedBy").notNullable();
-      t.foreign("requestedBy").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
+      t.uuid("requestedByUserId").notNullable();
+      t.foreign("requestedByUserId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+
+      t.uuid("projectMembershipId").nullable();
+      t.foreign("projectMembershipId").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
+
+      t.uuid("groupMembershipId").nullable();
+      t.foreign("groupMembershipId").references("id").inTable(TableName.UserGroupMembership).onDelete("CASCADE");
 
       // We use these values to create the actual privilege at a later point in time.
       t.boolean("isTemporary").notNullable();
@@ -31,12 +37,24 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.AccessApprovalRequestReviewer))) {
     await knex.schema.createTable(TableName.AccessApprovalRequestReviewer, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.uuid("member").notNullable();
-      t.foreign("member").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
+
+      t.uuid("memberUserId").notNullable();
+      t.foreign("memberUserId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+
       t.string("status").notNullable();
       t.uuid("requestId").notNullable();
       t.foreign("requestId").references("id").inTable(TableName.AccessApprovalRequest).onDelete("CASCADE");
       t.timestamps(true, true, true);
+    });
+  }
+
+  if (!(await knex.schema.hasColumn(TableName.ProjectUserAdditionalPrivilege, "groupMembershipId"))) {
+    await knex.schema.alterTable(TableName.ProjectUserAdditionalPrivilege, (t) => {
+      t.uuid("projectMembershipId").nullable().alter();
+
+      // add new "groupMembershipId" column
+      t.uuid("groupMembershipId").nullable();
+      t.foreign("groupMembershipId").references("id").inTable(TableName.UserGroupMembership).onDelete("CASCADE");
     });
   }
   await createOnUpdateTrigger(knex, TableName.AccessApprovalRequestReviewer);
@@ -45,6 +63,12 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.AccessApprovalRequestReviewer);
   await knex.schema.dropTableIfExists(TableName.AccessApprovalRequest);
+
+  if (await knex.schema.hasColumn(TableName.ProjectUserAdditionalPrivilege, "groupMembershipId")) {
+    await knex.schema.alterTable(TableName.ProjectUserAdditionalPrivilege, (t) => {
+      t.dropColumn("groupMembershipId"); // Warning: Dropping column in migration!
+    });
+  }
 
   await dropOnUpdateTrigger(knex, TableName.AccessApprovalRequestReviewer);
   await dropOnUpdateTrigger(knex, TableName.AccessApprovalRequest);
