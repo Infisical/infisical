@@ -197,7 +197,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
           type: isClosing ? EventType.SECRET_APPROVAL_CLOSED : EventType.SECRET_APPROVAL_REOPENED,
           // eslint-disable-next-line
           metadata: {
-            [isClosing ? ("closedBy" as const) : ("reopenedBy" as const)]: approval.statusChangeBy as string,
+            [isClosing ? ("closedBy" as const) : ("reopenedBy" as const)]: approval.statusChangeByUserId as string,
             secretApprovalRequestId: approval.id,
             secretApprovalRequestSlug: approval.slug
             // eslint-disable-next-line
