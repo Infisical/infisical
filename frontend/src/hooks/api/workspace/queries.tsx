@@ -307,14 +307,19 @@ export const useDeleteWsEnvironment = () => {
   });
 };
 
-export const useGetWorkspaceUsers = (workspaceId: string) => {
+export const useGetWorkspaceUsers = (workspaceId: string, includeGroupMembers?: boolean) => {
   return useQuery({
     queryKey: workspaceKeys.getWorkspaceUsers(workspaceId),
     queryFn: async () => {
       const {
         data: { users }
       } = await apiRequest.get<{ users: TWorkspaceUser[] }>(
-        `/api/v1/workspace/${workspaceId}/users`
+        `/api/v1/workspace/${workspaceId}/users`,
+        {
+          params: {
+            includeGroupMembers
+          }
+        }
       );
       return users;
     },
