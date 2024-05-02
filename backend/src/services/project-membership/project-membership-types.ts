@@ -1,6 +1,8 @@
 import { TProjectPermission } from "@app/lib/types";
 
-export type TGetProjectMembershipDTO = TProjectPermission;
+export type TGetProjectMembershipDTO = {
+  includeGroupMembers?: boolean;
+} & TProjectPermission;
 export enum ProjectUserMembershipTemporaryMode {
   Relative = "relative"
 }
