@@ -1,7 +1,9 @@
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { BadRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -9,6 +11,7 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { fnSecretBulkInsert, fnSecretBulkUpdate } from "../secret/secret-fns";
+import { TSecretQueueFactory } from "../secret/secret-queue";
 import { SecretOperations, TSyncSecretsDTO } from "../secret/secret-types";
 import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "../secret/secret-version-tag-dal";
@@ -25,9 +28,11 @@ type TSecretReplicationServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPath">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "find" | "insertMany">;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   queueService: Pick<TQueueServiceFactory, "start" | "listen" | "queue" | "stopJobById">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById" | "saveTagsToSecret" | "deleteTagsManySecret" | "find">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create" | "transaction">;
@@ -38,14 +43,8 @@ type TSecretReplicationServiceFactoryDep = {
 };
 
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
-
-// function getRandomError(): number {
-//   const minCeiled: number = Math.ceil(0);
-//   const maxFloored: number = Math.floor(20);
-//   const val = Math.floor(Math.random() * (maxFloored - minCeiled) + minCeiled); // The maximum is exclusive and the minimum is inclusive
-//   if (val >= 10) throw new Error("Random error point");
-//   return val;
-// }
+const SECRET_IMPORT_SUCCESS_LOCK = 10;
+const keystoreReplicationSuccessKey = (jobId: string, secretImportId: string) => `${jobId}-${secretImportId}`;
 
 export const secretReplicationServiceFactory = ({
   secretReplicationDAL,
@@ -59,7 +58,9 @@ export const secretReplicationServiceFactory = ({
   folderDAL,
   secretApprovalPolicyService,
   secretApprovalRequestSecretDAL,
-  secretApprovalRequestDAL
+  secretApprovalRequestDAL,
+  secretQueueService,
+  snapshotService
 }: TSecretReplicationServiceFactoryDep) => {
   queueService.start(QueueName.SecretReplication, async (job) => {
     logger.info(job.data, "Replication started");
@@ -69,11 +70,9 @@ export const secretReplicationServiceFactory = ({
       importEnv: environmentId,
       isReplication: true
     });
-    console.log(">>>> Secret Imports replics ", secretImports.length, secretPath, environmentId);
     if (!secretImports.length || !secrets.length) return;
 
     // unfiltered secrets to be replicated
-    console.log(secrets.length);
     const toBeReplicatedSecrets = await secretReplicationDAL.findSecrets({ folderId, secrets });
     const replicatedSecrets = toBeReplicatedSecrets.filter(
       ({ version, latestReplicatedVersion, secretBlindIndex }) =>
@@ -81,7 +80,6 @@ export const secretReplicationServiceFactory = ({
     );
 
     const replicatedSecretsGroupBySecretId = groupBy(replicatedSecrets, (i) => i.secretId);
-    console.log("replicated ", replicatedSecretsGroupBySecretId);
     const lock = await keyStore.acquireLock(
       replicatedSecrets.map(({ id }) => id),
       5000
@@ -90,13 +88,26 @@ export const secretReplicationServiceFactory = ({
     try {
       /*  eslint-disable no-await-in-loop */
       for (const secretImport of secretImports) {
+        const hasJobCompleted = await keyStore.getItem(
+          keystoreReplicationSuccessKey(job.id as string, secretImport.id),
+          KeyStorePrefixes.SecretReplication
+        );
+        if (hasJobCompleted) {
+          logger.info(
+            { jobId: job.id, importId: secretImport.id },
+            "Skipping this job as this has been successfully replicated."
+          );
+          // eslint-disable-next-line
+          continue;
+        }
+
         const [importedFolder] = await folderDAL.findSecretPathByFolderIds(projectId, [secretImport.folderId]);
+        if (!importedFolder) throw new BadRequestError({ message: "Imported folder not found" });
         const importFolderId = importedFolder.id;
 
         const localSecrets = await secretDAL.find({
           $in: { secretBlindIndex: replicatedSecrets.map(({ secretBlindIndex }) => secretBlindIndex) },
-          folderId: importFolderId,
-          isReplicated: true
+          folderId: importFolderId
         });
         const localSecretsGroupedByBlindIndex = groupBy(localSecrets, (i) => i.secretBlindIndex as string);
 
@@ -112,11 +123,6 @@ export const secretReplicationServiceFactory = ({
             (operation === SecretOperations.Create || operation === SecretOperations.Update) &&
             localSecretsGroupedByBlindIndex[replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string]?.[0]
         );
-
-        console.log(replicatedSecretsGroupBySecretId);
-        console.log(locallyCreatedSecrets);
-        console.log("update", locallyUpdatedSecrets);
-        console.log("local board", localSecrets);
 
         const locallyDeletedSecrets = secrets.filter(
           ({ operation, id }) =>
@@ -277,7 +283,7 @@ export const secretReplicationServiceFactory = ({
               );
             }
           });
-          console.log("Environment ID -> slug", importedFolder.envId, importedFolder.environmentSlug);
+
           await queueService.queue(QueueName.SecretReplication, QueueJobs.SecretReplication, {
             folderId: importedFolder.id,
             projectId,
@@ -286,7 +292,27 @@ export const secretReplicationServiceFactory = ({
             environmentId: importedFolder.envId,
             membershipId
           });
+          const folderLock = await keyStore
+            .acquireLock([`secret-replication-${importFolderId}`], 5000)
+            .catch(() => null);
+          if (folderLock) {
+            await snapshotService.performSnapshot(importFolderId);
+            await folderLock.release();
+            await secretQueueService.syncSecrets({
+              excludeReplication: true,
+              projectId,
+              secretPath: importedFolder.path,
+              environmentSlug: importedFolder.environmentSlug
+            });
+          }
         }
+
+        await keyStore.setItemWithExpiry(
+          keystoreReplicationSuccessKey(job.id as string, secretImport.id),
+          SECRET_IMPORT_SUCCESS_LOCK,
+          1,
+          KeyStorePrefixes.SecretReplication
+        );
       }
       await secretVersionDAL.update({ $in: { id: replicatedSecrets.map(({ id }) => id) } }, { isReplicated: true });
       /*  eslint-enable no-await-in-loop */
@@ -295,7 +321,7 @@ export const secretReplicationServiceFactory = ({
     }
   });
 
-  queueService.listen(QueueName.SecretReplication, "failed", async (job, err) => {
+  queueService.listen(QueueName.SecretReplication, "failed", (job, err) => {
     logger.error(err, "Failed to replicate secret", job?.data);
   });
 };
