@@ -617,12 +617,12 @@ export const INTEGRATION = {
 
 export const AUDIT_LOG_STREAMS = {
   CREATE: {
-    url: "The socket URL to push logs to.",
-    token: "Authentication token from the logging provider"
+    url: "The HTTP URL to push logs to.",
+    token: "Authentication token for the external provider used for identification."
   },
   UPDATE: {
     id: "The ID of the audit log stream to update.",
-    url: "The socket URL to push logs to.",
+    url: "The HTTP URL to push logs to.",
     token: "Authentication token for the external provider used for identification."
   },
   DELETE: {

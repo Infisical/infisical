@@ -24,7 +24,7 @@ export type TAuditLogQueueServiceFactory = ReturnType<typeof auditLogQueueServic
 
 // keep this timeout 5s it must be fast because else the queue will take time to finish
 // audit log is a crowded queue thus needs to be fast
-const AUDIT_LOG_STREAM_TIMEOUT = 5 * 1000;
+export const AUDIT_LOG_STREAM_TIMEOUT = 5 * 1000;
 export const auditLogQueueServiceFactory = ({
   auditLogDAL,
   queueService,

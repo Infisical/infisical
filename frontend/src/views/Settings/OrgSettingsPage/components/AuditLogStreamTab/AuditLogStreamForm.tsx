@@ -64,7 +64,7 @@ export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
 	const handleFormSubmit = async ({ token, url }: TForm) => {
 		if (isSubmitting) return;
 		if (isEdit) {
-			handleAuditLogStreamEdit({ token, url });
+			await handleAuditLogStreamEdit({ token, url });
 			return;
 		}
 		try {
@@ -102,7 +102,7 @@ export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
 					control={control}
 					name="url"
 					render={({ field, fieldState: { error } }) => (
-						<FormControl label="URL" isError={Boolean(error?.message)} errorText={error?.message} helperText="The endpoint where Infisical logs should be sent to">
+						<FormControl label="Endpoint URL" isError={Boolean(error?.message)} errorText={error?.message}>
 							<Input {...field} />
 						</FormControl>
 					)}
@@ -118,7 +118,7 @@ export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
 							errorText={error?.message}
 							helperText="The bearer token used to authenticate with the logging provider endpoint"
 						>
-							<Input {...field} />
+							<Input {...field} type="password" />
 						</FormControl>
 					)}
 				/>

@@ -1,10 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
+import { RawAxiosRequestHeaders } from "axios";
 
 import { SecretKeyEncoding } from "@app/db/schemas";
+import { request } from "@app/lib/config/request";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { validateLocalIps } from "@app/lib/validator";
 
+import { AUDIT_LOG_STREAM_TIMEOUT } from "../audit-log/audit-log-queue";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -57,6 +60,21 @@ export const auditLogStreamServiceFactory = ({
           "Failed to create audit log streams due to plan limit reached. Kindly contact Infisical to add more streams."
       });
     }
+
+    // testing connection first
+    const headers: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    await request.post(
+      url,
+      { ping: "ok" },
+      {
+        headers,
+        // request timeout
+        timeout: AUDIT_LOG_STREAM_TIMEOUT,
+        // connection timeout
+        signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+      }
+    );
     const encryptedToken = token ? infisicalSymmetricEncypt(token) : undefined;
     const logStream = await auditLogStreamDAL.create({
       orgId: actorOrgId,
@@ -99,6 +117,22 @@ export const auditLogStreamServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
     if (url) validateLocalIps(url);
+
+    // testing connection first
+    const headers: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    await request.post(
+      url || logStream.url,
+      { ping: "ok" },
+      {
+        headers,
+        // request timeout
+        timeout: AUDIT_LOG_STREAM_TIMEOUT,
+        // connection timeout
+        signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+      }
+    );
+
     const encryptedToken = token ? infisicalSymmetricEncypt(token) : undefined;
     const updatedLogStream = await auditLogStreamDAL.updateById(id, {
       url,
