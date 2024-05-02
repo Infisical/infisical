@@ -84,8 +84,11 @@ export const auditLogQueueServiceFactory = ({
                   ciphertext: encryptedTokenCiphertext
                 })
               : undefined;
+
           const headers: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
+
           if (token) headers.Authorization = `Bearer ${token}`;
+
           return request.post(url, auditLog, {
             headers,
             // request timeout
