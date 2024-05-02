@@ -53,7 +53,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema.extend({ approvers: z.string().array(), secretPath: z.string().optional() }).array()
+          approvals: sapPubSchema
+            .extend({ approvers: z.string().nullish().array(), secretPath: z.string().optional() })
+            .array()
         })
       }
     },
