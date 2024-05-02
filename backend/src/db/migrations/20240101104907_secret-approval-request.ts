@@ -16,9 +16,9 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("folderId").notNullable();
       t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
       t.uuid("statusChangeBy");
-      t.foreign("statusChangeBy").references("id").inTable(TableName.ProjectMembership).onDelete("SET NULL"); // done
+      t.foreign("statusChangeBy").references("id").inTable(TableName.ProjectMembership).onDelete("SET NULL");
       t.uuid("committerId").notNullable();
-      t.foreign("committerId").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE"); // done
+      t.foreign("committerId").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
   }
@@ -28,7 +28,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.SecretApprovalRequestReviewer, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("member").notNullable();
-      t.foreign("member").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE"); // done
+      t.foreign("member").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
       t.string("status").notNullable();
       t.uuid("requestId").notNullable();
       t.foreign("requestId").references("id").inTable(TableName.SecretApprovalRequest).onDelete("CASCADE");
