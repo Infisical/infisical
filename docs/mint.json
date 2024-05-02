@@ -190,7 +190,6 @@
       "group": "Self-host Infisical",
       "pages": [
         "self-hosting/overview",
-        "self-hosting/configuration/requirements",
         {
           "group": "Installation methods",
           "pages": [
@@ -201,6 +200,7 @@
           ]
         },
         "self-hosting/configuration/envars",
+        "self-hosting/configuration/requirements",
         {
           "group": "Guides",
           "pages": [
