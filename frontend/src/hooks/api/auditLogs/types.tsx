@@ -42,6 +42,16 @@ interface GetSecretsEvent {
   };
 }
 
+interface SecretApprovalRequestCreatedEvent {
+  type: EventType.SECRET_APPROVAL_REQUEST_CREATED;
+  metadata: {
+    secretApprovalRequestId: string;
+    secretApprovalRequestSlug: string;
+    committedByUser?: string;
+    committedBy?: undefined;
+  };
+}
+
 interface GetSecretEvent {
   type: EventType.GET_SECRET;
   metadata: {
@@ -465,6 +475,7 @@ interface UpdateUserDeniedPermissions {
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
+  | SecretApprovalRequestCreatedEvent
   | CreateSecretEvent
   | UpdateSecretEvent
   | DeleteSecretEvent

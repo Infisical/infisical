@@ -38,6 +38,13 @@ export const LogsTableRow = ({ auditLog }: Props) => {
 
   const renderMetadata = (event: Event) => {
     switch (event.type) {
+      case EventType.SECRET_APPROVAL_REQUEST_CREATED:
+        return (
+          <Td>
+            <p>{`Request ID: ${event.metadata.secretApprovalRequestId}`}</p>
+            <p>{`Request slug: ${event.metadata.secretApprovalRequestSlug}`}</p>
+          </Td>
+        );
       case EventType.GET_SECRETS:
         return (
           <Td>
