@@ -66,11 +66,11 @@ const fetchApprovalPolicies = async ({ projectSlug }: TGetAccessApprovalRequests
 const fetchApprovalRequests = async ({
   projectSlug,
   envSlug,
-  authorProjectMembershipId
+  authorUserId
 }: TGetAccessApprovalRequestsDTO) => {
   const { data } = await apiRequest.get<{ requests: TAccessApprovalRequest[] }>(
     "/api/v1/access-approvals/requests",
-    { params: { projectSlug, envSlug, authorProjectMembershipId } }
+    { params: { projectSlug, envSlug, authorUserId } }
   );
 
   return data.requests.map((request) => ({
@@ -117,7 +117,7 @@ export const useGetAccessRequestsCount = ({
 export const useGetAccessApprovalPolicies = ({
   projectSlug,
   envSlug,
-  authorProjectMembershipId,
+  authorUserId,
   options = {}
 }: TGetAccessApprovalRequestsDTO & {
   options?: UseQueryOptions<
@@ -129,7 +129,7 @@ export const useGetAccessApprovalPolicies = ({
 }) =>
   useQuery({
     queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug),
-    queryFn: () => fetchApprovalPolicies({ projectSlug, envSlug, authorProjectMembershipId }),
+    queryFn: () => fetchApprovalPolicies({ projectSlug, envSlug, authorUserId }),
     ...options,
     enabled: Boolean(projectSlug) && (options?.enabled ?? true)
   });
@@ -137,7 +137,7 @@ export const useGetAccessApprovalPolicies = ({
 export const useGetAccessApprovalRequests = ({
   projectSlug,
   envSlug,
-  authorProjectMembershipId,
+  authorUserId,
   options = {}
 }: TGetAccessApprovalRequestsDTO & {
   options?: UseQueryOptions<
@@ -148,12 +148,8 @@ export const useGetAccessApprovalRequests = ({
   >;
 }) =>
   useQuery({
-    queryKey: accessApprovalKeys.getAccessApprovalRequests(
-      projectSlug,
-      envSlug,
-      authorProjectMembershipId
-    ),
-    queryFn: () => fetchApprovalRequests({ projectSlug, envSlug, authorProjectMembershipId }),
+    queryKey: accessApprovalKeys.getAccessApprovalRequests(projectSlug, envSlug, authorUserId),
+    queryFn: () => fetchApprovalRequests({ projectSlug, envSlug, authorUserId }),
     ...options,
     enabled: Boolean(projectSlug) && (options?.enabled ?? true)
   });
