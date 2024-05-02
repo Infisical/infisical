@@ -625,10 +625,19 @@ interface SecretApprovalReopened {
 interface SecretApprovalRequest {
   type: EventType.SECRET_APPROVAL_REQUEST;
   metadata: {
-    committedBy: string;
+    // committedBy: string;
     secretApprovalRequestSlug: string;
     secretApprovalRequestId: string;
-  };
+  } & (
+    | {
+        committedBy: string;
+        committedByUser?: undefined;
+      }
+    | {
+        committedByUser: string;
+        committedBy?: undefined;
+      }
+  );
 }
 
 export type Event =
