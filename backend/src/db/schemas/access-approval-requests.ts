@@ -11,14 +11,14 @@ export const AccessApprovalRequestsSchema = z.object({
   id: z.string().uuid(),
   policyId: z.string().uuid(),
   privilegeId: z.string().uuid().nullable().optional(),
+  requestedByUserId: z.string().uuid(),
+  projectMembershipId: z.string().uuid().nullable().optional(),
+  groupMembershipId: z.string().uuid().nullable().optional(),
   isTemporary: z.boolean(),
   temporaryRange: z.string().nullable().optional(),
   permissions: z.unknown(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  projectMembershipId: z.string().uuid().nullable().optional(),
-  groupMembershipId: z.string().uuid().nullable().optional(),
-  requestedByUserId: z.string().uuid()
+  updatedAt: z.date()
 });
 
 export type TAccessApprovalRequests = z.infer<typeof AccessApprovalRequestsSchema>;

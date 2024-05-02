@@ -9,11 +9,12 @@ import { TImmutableDBKeys } from "./models";
 
 export const SecretApprovalRequestsReviewersSchema = z.object({
   id: z.string().uuid(),
+  member: z.string().uuid().nullable().optional(),
   status: z.string(),
   requestId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  memberUserId: z.string().uuid()
+  memberUserId: z.string().uuid().nullable().optional()
 });
 
 export type TSecretApprovalRequestsReviewers = z.infer<typeof SecretApprovalRequestsReviewersSchema>;
