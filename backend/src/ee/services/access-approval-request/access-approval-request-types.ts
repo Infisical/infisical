@@ -28,6 +28,11 @@ export type TCreateAccessApprovalRequestDTO = {
 
 export type TListApprovalRequestsDTO = {
   projectSlug: string;
-  authorProjectMembershipId?: string;
+  authorUserId?: string;
   envSlug?: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TDeleteApprovalRequestDTO = {
+  requestId: string;
+  projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
