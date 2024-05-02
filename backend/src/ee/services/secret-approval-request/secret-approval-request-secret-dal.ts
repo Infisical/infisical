@@ -113,7 +113,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           db.ref("secretCommentTag").withSchema(TableName.SecretVersion).as("secVerCommentTag"),
           db.ref("secretCommentCiphertext").withSchema(TableName.SecretVersion).as("secVerCommentCiphertext")
         );
-      const formatedDoc = sqlNestRelationships({
+      const formattedDoc = sqlNestRelationships({
         data: doc,
         key: "id",
         parentMapper: (data) => SecretApprovalRequestsSecretsSchema.omit({ secretVersion: true }).parse(data),
@@ -212,7 +212,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return formatedDoc?.map(({ secret, secretVersion, ...el }) => ({
+      return formattedDoc?.map(({ secret, secretVersion, ...el }) => ({
         ...el,
         secret: secret?.[0],
         secretVersion: secretVersion?.[0]
