@@ -63,6 +63,11 @@ export const permissionDALFactory = (db: TDbClient) => {
           `${TableName.GroupProjectMembership}.id`
         )
         .leftJoin(
+          TableName.ProjectUserAdditionalPrivilege,
+          `${TableName.ProjectUserAdditionalPrivilege}.groupMembershipId`,
+          `${TableName.UserGroupMembership}.id`
+        )
+        .leftJoin(
           TableName.ProjectRoles,
           `${TableName.GroupProjectMembershipRole}.customRoleId`,
           `${TableName.ProjectRoles}.id`
@@ -77,11 +82,30 @@ export const permissionDALFactory = (db: TDbClient) => {
           db.ref("projectId").withSchema(TableName.GroupProjectMembership),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
           db.ref("orgId").withSchema(TableName.Project),
-          db.ref("slug").withSchema(TableName.ProjectRoles).as("customRoleSlug")
+          db.ref("slug").withSchema(TableName.ProjectRoles).as("customRoleSlug"),
+          db.ref("permissions").withSchema(TableName.ProjectRoles)
         )
-        .select("permissions");
+        .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
+        .select(
+          db.ref("id").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApId"),
+          db.ref("permissions").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApPermissions"),
+          db.ref("temporaryMode").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApTemporaryMode"),
+          db.ref("isTemporary").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApIsTemporary"),
+          db.ref("temporaryRange").withSchema(TableName.ProjectUserAdditionalPrivilege).as("userApTemporaryRange"),
+          db.ref("groupProjectId").withSchema(TableName.ProjectUserAdditionalPrivilege),
+          db.ref("groupMembershipId").withSchema(TableName.ProjectUserAdditionalPrivilege),
 
-      const docs = await db(TableName.ProjectMembership)
+          db
+            .ref("temporaryAccessStartTime")
+            .withSchema(TableName.ProjectUserAdditionalPrivilege)
+            .as("userApTemporaryAccessStartTime"),
+          db
+            .ref("temporaryAccessEndTime")
+            .withSchema(TableName.ProjectUserAdditionalPrivilege)
+            .as("userApTemporaryAccessEndTime")
+        );
+
+      const projectMemberDocs = await db(TableName.ProjectMembership)
         .join(
           TableName.ProjectUserMembershipRole,
           `${TableName.ProjectUserMembershipRole}.projectMembershipId`,
@@ -127,7 +151,7 @@ export const permissionDALFactory = (db: TDbClient) => {
         );
 
       const permission = sqlNestRelationships({
-        data: docs,
+        data: projectMemberDocs,
         key: "projectId",
         parentMapper: ({ orgId, orgAuthEnforced, membershipId, membershipCreatedAt, membershipUpdatedAt }) => ({
           orgId,
@@ -194,6 +218,31 @@ export const permissionDALFactory = (db: TDbClient) => {
                     permissions: z.unknown(),
                     customRoleSlug: z.string().optional().nullable()
                   }).parse(data)
+              },
+              {
+                key: "userApId",
+                label: "additionalPrivileges" as const,
+                mapper: ({
+                  groupProjectId,
+                  groupMembershipId,
+                  userApId,
+                  userApPermissions,
+                  userApIsTemporary,
+                  userApTemporaryMode,
+                  userApTemporaryRange,
+                  userApTemporaryAccessEndTime,
+                  userApTemporaryAccessStartTime
+                }) => ({
+                  groupProjectId,
+                  groupMembershipId,
+                  id: userApId,
+                  permissions: userApPermissions,
+                  temporaryRange: userApTemporaryRange,
+                  temporaryMode: userApTemporaryMode,
+                  temporaryAccessEndTime: userApTemporaryAccessEndTime,
+                  temporaryAccessStartTime: userApTemporaryAccessStartTime,
+                  isTemporary: userApIsTemporary
+                })
               }
             ]
           })
@@ -214,15 +263,23 @@ export const permissionDALFactory = (db: TDbClient) => {
             !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
         ) ?? [];
 
-      const activeAdditionalPrivileges = permission?.[0]?.additionalPrivileges?.filter(
-        ({ isTemporary, temporaryAccessEndTime }) =>
-          !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-      );
+      const activeAdditionalPrivileges =
+        permission?.[0]?.additionalPrivileges?.filter(
+          ({ isTemporary, temporaryAccessEndTime }) =>
+            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
+        ) ?? [];
+      const activeGroupAdditionalPrivileges =
+        groupPermission?.[0]?.additionalPrivileges?.filter(
+          ({ isTemporary, temporaryAccessEndTime, groupProjectId, groupMembershipId }) =>
+            groupProjectId === projectId &&
+            !!groupMembershipId &&
+            (!isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime))
+        ) ?? [];
 
       return {
         ...(permission[0] || groupPermission[0]),
         roles: [...activeRoles, ...activeGroupRoles],
-        additionalPrivileges: activeAdditionalPrivileges
+        additionalPrivileges: [...activeAdditionalPrivileges, ...activeGroupAdditionalPrivileges]
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "GetProjectPermission" });
