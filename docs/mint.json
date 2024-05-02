@@ -479,6 +479,9 @@
             "api-reference/endpoints/secrets/read",
             "api-reference/endpoints/secrets/update",
             "api-reference/endpoints/secrets/delete",
+            "api-reference/endpoints/secrets/create-many",
+            "api-reference/endpoints/secrets/update-many",
+            "api-reference/endpoints/secrets/delete-many",
             "api-reference/endpoints/secrets/attach-tags",
             "api-reference/endpoints/secrets/detach-tags"
           ]
