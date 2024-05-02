@@ -6,7 +6,7 @@ export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;
 
 // all the key prefixes used must be set here to avoid conflict
 export enum KeyStorePrefixes {
-  SecretReplication = "secret-replication"
+  SecretReplication = "secret-replication-import-lock"
 }
 
 export const keyStoreFactory = (redisUrl: string) => {
@@ -16,7 +16,7 @@ export const keyStoreFactory = (redisUrl: string) => {
   const setItem = async (key: string, value: string | number | Buffer, prefix?: string) =>
     redis.set(prefix ? `${prefix}:${key}` : key, value);
 
-  const getItem = async (key: string) => redis.get(key);
+  const getItem = async (key: string, prefix?: string) => redis.get(prefix ? `${prefix}:${key}` : key);
 
   const setItemWithExpiry = async (
     key: string,
