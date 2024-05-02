@@ -118,9 +118,13 @@ export const accessApprovalRequestServiceFactory = ({
       policyId: policy.id
     });
 
+    if (approvers.some((approver) => !approver.approverUserId)) {
+      throw new BadRequestError({ message: "Policy approvers must be assigned to users" });
+    }
+
     const approverUsers = await userDAL.findUsersByProjectId(
       project.id,
-      approvers.map((approver) => approver.approverUserId)
+      approvers.map((approver) => approver.approverUserId!)
     );
 
     const requestedByUser = await userDAL.findUserByProjectId(project.id, actorId);
