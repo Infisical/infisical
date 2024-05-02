@@ -50,7 +50,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("envId").withSchema(TableName.AccessApprovalPolicy).as("policyEnvId")
         )
 
-        .select(db.ref("approverId").withSchema(TableName.AccessApprovalPolicyApprover))
+        .select(db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
 
         .select(
           db.ref("projectId").withSchema(TableName.Environment),
@@ -59,7 +59,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         )
 
         .select(
-          db.ref("member").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerMemberId"),
+          db.ref("memberUserId").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerUserId"),
           db.ref("status").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerStatus")
         )
 
@@ -67,7 +67,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           db
             .ref("projectMembershipId")
             .withSchema(TableName.ProjectUserAdditionalPrivilege)
-            .as("privilegeMembershipId"),
+            .as("privilegeProjectMembershipId"),
+          db
+            .ref("groupMembershipId")
+            .withSchema(TableName.ProjectUserAdditionalPrivilege)
+            .as("privilegeGroupMembershipId"),
           db.ref("isTemporary").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeIsTemporary"),
           db.ref("temporaryMode").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeTemporaryMode"),
           db.ref("temporaryRange").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeTemporaryRange"),
@@ -101,7 +105,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           },
           privilege: doc.privilegeId
             ? {
-                membershipId: doc.privilegeMembershipId,
+                projectMembershipId: doc.privilegeGroupMembershipId,
+                groupMembershipId: doc.privilegeGroupMembershipId,
                 isTemporary: doc.privilegeIsTemporary,
                 temporaryMode: doc.privilegeTemporaryMode,
                 temporaryRange: doc.privilegeTemporaryRange,
@@ -115,11 +120,12 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         }),
         childrenMapper: [
           {
-            key: "reviewerMemberId",
+            key: "reviewerUserId",
             label: "reviewers" as const,
-            mapper: ({ reviewerMemberId: member, reviewerStatus: status }) => (member ? { member, status } : undefined)
+            mapper: ({ reviewerUserId, reviewerStatus: status }) =>
+              reviewerUserId ? { member: reviewerUserId, status } : undefined
           },
-          { key: "approverId", label: "approvers" as const, mapper: ({ approverId }) => approverId }
+          { key: "approverUserId", label: "approvers" as const, mapper: ({ approverUserId }) => approverUserId }
         ]
       });
 
@@ -157,7 +163,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
       .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
       .select(selectAllTableCols(TableName.AccessApprovalRequest))
       .select(
-        tx.ref("member").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerMemberId"),
+        tx.ref("memberUserId").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerUserId"),
         tx.ref("status").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerStatus"),
         tx.ref("id").withSchema(TableName.AccessApprovalPolicy).as("policyId"),
         tx.ref("name").withSchema(TableName.AccessApprovalPolicy).as("policyName"),
@@ -165,7 +171,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("slug").withSchema(TableName.Environment).as("environment"),
         tx.ref("secretPath").withSchema(TableName.AccessApprovalPolicy).as("policySecretPath"),
         tx.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals"),
-        tx.ref("approverId").withSchema(TableName.AccessApprovalPolicyApprover)
+        tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover)
       );
 
   const findById = async (id: string, tx?: Knex) => {
@@ -188,11 +194,12 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         }),
         childrenMapper: [
           {
-            key: "reviewerMemberId",
+            key: "reviewerUserId",
             label: "reviewers" as const,
-            mapper: ({ reviewerMemberId: member, reviewerStatus: status }) => (member ? { member, status } : undefined)
+            mapper: ({ reviewerUserId, reviewerStatus: status }) =>
+              reviewerUserId ? { member: reviewerUserId, status } : undefined
           },
-          { key: "approverId", label: "approvers" as const, mapper: ({ approverId }) => approverId }
+          { key: "approverUserId", label: "approvers" as const, mapper: ({ approverUserId }) => approverUserId }
         ]
       });
       if (!formatedDoc?.[0]) return;
@@ -229,7 +236,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         .where(`${TableName.Environment}.projectId`, projectId)
         .select(selectAllTableCols(TableName.AccessApprovalRequest))
         .select(db.ref("status").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerStatus"))
-        .select(db.ref("member").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerMemberId"));
+        .select(db.ref("memberUserId").withSchema(TableName.AccessApprovalRequestReviewer).as("memberUserId"));
 
       const formattedRequests = sqlNestRelationships({
         data: accessRequests,
@@ -239,9 +246,10 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         }),
         childrenMapper: [
           {
-            key: "reviewerMemberId",
+            key: "memberUserId",
             label: "reviewers" as const,
-            mapper: ({ reviewerMemberId: member, reviewerStatus: status }) => (member ? { member, status } : undefined)
+            mapper: ({ memberUserId, reviewerStatus: status }) =>
+              memberUserId ? { member: memberUserId, status } : undefined
           }
         ]
       });
