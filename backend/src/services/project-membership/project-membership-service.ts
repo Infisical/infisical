@@ -19,6 +19,7 @@ import { groupBy } from "@app/lib/fn";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
 import { ActorType } from "../auth/auth-type";
+import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { assignWorkspaceKeysToMembers } from "../project/project-fns";
@@ -52,6 +53,7 @@ type TProjectMembershipServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  groupProjectDAL: TGroupProjectDALFactory;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -61,6 +63,7 @@ export const projectMembershipServiceFactory = ({
   projectMembershipDAL,
   projectUserMembershipRoleDAL,
   smtpService,
+  groupProjectDAL,
   projectRoleDAL,
   projectBotDAL,
   orgDAL,
@@ -74,6 +77,7 @@ export const projectMembershipServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
+    includeGroupMembers,
     actorAuthMethod,
     projectId
   }: TGetProjectMembershipDTO) => {
@@ -86,7 +90,20 @@ export const projectMembershipServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
-    return projectMembershipDAL.findAllProjectMembers(projectId);
+    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+
+    if (includeGroupMembers) {
+      const groupMembers = await groupProjectDAL.findAllProjectGroupMembers(projectId);
+      const allMembers = [...projectMembers, ...groupMembers];
+
+      // Ensure the userId is unique
+      const membersIds = new Set(allMembers.map((entity) => entity.user.id));
+      const uniqueMembers = allMembers.filter((entity) => membersIds.has(entity.user.id));
+
+      return uniqueMembers;
+    }
+
+    return projectMembers;
   };
 
   const addUsersToProject = async ({

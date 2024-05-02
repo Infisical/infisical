@@ -68,9 +68,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         workspaceId: z.string().trim()
       }),
+      querystring: z.object({
+        includeGroupMembers: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+      }),
       response: {
         200: z.object({
           users: ProjectMembershipsSchema.extend({
+            isGroupMember: z.boolean(),
             user: UsersSchema.pick({
               email: true,
               username: true,
@@ -104,6 +111,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
+        includeGroupMembers: req.query.includeGroupMembers,
         projectId: req.params.workspaceId,
         actorOrgId: req.permission.orgId
       });
