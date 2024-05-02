@@ -102,7 +102,7 @@ export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
 					control={control}
 					name="url"
 					render={({ field, fieldState: { error } }) => (
-						<FormControl label="URL" isError={Boolean(error?.message)} errorText={error?.message}>
+						<FormControl label="URL" isError={Boolean(error?.message)} errorText={error?.message} helperText="The endpoint where Infisical logs should be sent to">
 							<Input {...field} />
 						</FormControl>
 					)}
@@ -116,7 +116,7 @@ export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
 							isOptional
 							isError={Boolean(error?.message)}
 							errorText={error?.message}
-							helperText="A token serves for identification and is sent in Authorization Bearer format."
+							helperText="The bearer token used to authenticate with the logging provider endpoint"
 						>
 							<Input {...field} />
 						</FormControl>

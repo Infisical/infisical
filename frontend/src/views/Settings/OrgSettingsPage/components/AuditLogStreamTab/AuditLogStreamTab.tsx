@@ -91,7 +91,7 @@ export const AuditLogStreamsTab = withPermission(
 					</OrgPermissionCan>
 				</div>
 				<p className="mb-8 text-gray-400">
-					Manage audit log streams to send audit log to any logging providers with syslog support.
+					Send audit logs from Infisical to external logging providers via HTTP
 				</p>
 				<div>
 					<TableContainer>
@@ -169,7 +169,7 @@ export const AuditLogStreamsTab = withPermission(
 				>
 					<ModalContent
 						title={`${popUp?.auditLogStreamForm?.data ? "Update" : "Create"} Audit Log Stream `}
-						subTitle="Streams enable the transmission of audit logs to third-party providers."
+						subTitle="Continuously stream logs from Infisical to third-party logging providers."
 					>
 						<AuditLogStreamForm
 							id={popUp?.auditLogStreamForm?.data as string}
