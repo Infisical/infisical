@@ -10,7 +10,7 @@ import {
   TUserEncryptionKeysUpdate
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TUserDALFactory = ReturnType<typeof userDALFactory>;
 
@@ -60,6 +60,88 @@ export const userDALFactory = (db: TDbClient) => {
       return user;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find user enc by user id" });
+    }
+  };
+
+  const findUsersByProjectId = async (projectId: string, userIds: string[]) => {
+    try {
+      const projectMembershipQuery = await db(TableName.ProjectMembership)
+        .where({ projectId })
+        .whereIn("userId", userIds)
+        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .select(selectAllTableCols(TableName.Users))
+        .select(db.ref("id").withSchema(TableName.ProjectMembership).as("projectMembershipId"));
+
+      const groupMembershipQuery = await db(TableName.UserGroupMembership)
+        .whereIn("userId", userIds)
+        .join(
+          TableName.GroupProjectMembership,
+          `${TableName.UserGroupMembership}.groupId`,
+          `${TableName.GroupProjectMembership}.groupId` // this gives us access to the project id in the group membership
+        )
+        .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
+        .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
+        .select(selectAllTableCols(TableName.Users))
+        .select(db.ref("id").withSchema(TableName.UserGroupMembership).as("userGroupMembershipId"));
+
+      const projectMembershipUsers = projectMembershipQuery.map((user) => ({
+        ...user,
+        projectMembershipId: user.projectMembershipId,
+        userGroupMembershipId: null
+      }));
+
+      const groupMembershipUsers = groupMembershipQuery.map((user) => ({
+        ...user,
+        projectMembershipId: null,
+        userGroupMembershipId: user.userGroupMembershipId
+      }));
+
+      return [...projectMembershipUsers, ...groupMembershipUsers];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find users by project id" });
+    }
+  };
+
+  // if its a group membership, it should have a isGroupMembership flag
+  const findUserByProjectId = async (projectId: string, userId: string) => {
+    try {
+      const projectMembershipQuery = await db(TableName.ProjectMembership)
+        .where({ projectId, userId })
+        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .select(selectAllTableCols(TableName.Users))
+        .select(db.ref("id").withSchema(TableName.ProjectMembership).as("projectMembershipId"))
+        .first();
+
+      const groupMembershipQuery = await db(TableName.UserGroupMembership)
+        .where({ userId })
+        .join(
+          TableName.GroupProjectMembership,
+          `${TableName.UserGroupMembership}.groupId`,
+          `${TableName.GroupProjectMembership}.groupId` // this gives us access to the project id in the group membership
+        )
+        .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
+        .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
+        .select(selectAllTableCols(TableName.Users))
+        .select(db.ref("id").withSchema(TableName.UserGroupMembership).as("userGroupMembershipId"))
+        .first();
+
+      if (projectMembershipQuery) {
+        return {
+          ...projectMembershipQuery,
+          projectMembershipId: projectMembershipQuery.projectMembershipId,
+          userGroupMembershipId: null
+        };
+      }
+
+      if (groupMembershipQuery) {
+        return {
+          ...groupMembershipQuery,
+          projectMembershipId: null,
+          userGroupMembershipId: groupMembershipQuery.userGroupMembershipId
+        };
+      }
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find user by project id" });
     }
   };
 
@@ -146,6 +228,8 @@ export const userDALFactory = (db: TDbClient) => {
   return {
     ...userOrm,
     findUserByUsername,
+    findUsersByProjectId,
+    findUserByProjectId,
     findUserEncKeyByUsername,
     findUserEncKeyByUserIdsBatch,
     findUserEncKeyByUserId,
