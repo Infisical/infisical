@@ -7,6 +7,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { containsGlobPatterns } from "@app/lib/picomatch";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TSecretApprovalPolicyApproverDALFactory } from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
@@ -29,6 +30,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
+  userDAL: TUserDALFactory;
 };
 
 export type TSecretApprovalPolicyServiceFactory = ReturnType<typeof secretApprovalPolicyServiceFactory>;
@@ -38,7 +40,7 @@ export const secretApprovalPolicyServiceFactory = ({
   permissionService,
   secretApprovalPolicyApproverDAL,
   projectEnvDAL,
-  projectMembershipDAL
+  userDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const createSecretApprovalPolicy = async ({
     name,
@@ -69,11 +71,12 @@ export const secretApprovalPolicyServiceFactory = ({
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     if (!env) throw new BadRequestError({ message: "Environment not found" });
 
-    const secretApprovers = await projectMembershipDAL.find({
+    const secretApproverUsers = await userDAL.findUsersByProjectId(
       projectId,
-      $in: { id: approvers }
-    });
-    if (secretApprovers.length !== approvers.length)
+      approvers.map((approverUserId) => approverUserId)
+    );
+
+    if (secretApproverUsers.length !== approvers.length)
       throw new BadRequestError({ message: "Approver not found in project" });
 
     const secretApproval = await secretApprovalPolicyDAL.transaction(async (tx) => {
@@ -87,8 +90,8 @@ export const secretApprovalPolicyServiceFactory = ({
         tx
       );
       await secretApprovalPolicyApproverDAL.insertMany(
-        secretApprovers.map(({ id }) => ({
-          approverId: id,
+        secretApproverUsers.map(({ id }) => ({
+          approverUserId: id,
           policyId: doc.id
         })),
         tx
@@ -132,21 +135,19 @@ export const secretApprovalPolicyServiceFactory = ({
         tx
       );
       if (approvers) {
-        const secretApprovers = await projectMembershipDAL.find(
-          {
-            projectId: secretApprovalPolicy.projectId,
-            $in: { id: approvers }
-          },
-          { tx }
+        const secretApproverUsers = await userDAL.findUsersByProjectId(
+          secretApprovalPolicy.projectId,
+          approvers.map((approverUserId) => approverUserId)
         );
-        if (secretApprovers.length !== approvers.length)
+
+        if (secretApproverUsers.length !== approvers.length)
           throw new BadRequestError({ message: "Approver not found in project" });
-        if (doc.approvals > secretApprovers.length)
+        if (doc.approvals > secretApproverUsers.length)
           throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
         await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
         await secretApprovalPolicyApproverDAL.insertMany(
-          secretApprovers.map(({ id }) => ({
-            approverId: id,
+          secretApproverUsers.map((user) => ({
+            approverUserId: user.id,
             policyId: doc.id
           })),
           tx
