@@ -156,7 +156,7 @@ export const SecretImportItem = ({
           </ProjectPermissionCan>
         </div>
       </div>
-      {isExpanded && !isDragging && (
+      {!isReplication && isExpanded && !isDragging && (
         <td
           colSpan={3}
           className={`bg-bunker-800 ${isExpanded && "border-b-2 border-mineshaft-500"}`}

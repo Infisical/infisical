@@ -185,7 +185,9 @@ export const SecretApprovalRequestChanges = ({
           <div className="flex flex-grow flex-col">
             <div className="mb-1 text-lg">
               {generateCommitText(secretApprovalRequestDetails.commits)}
-              {secretApprovalRequestDetails.isReplication && <span className="text-sm text-bunker-300"> (replication)</span>}
+              {secretApprovalRequestDetails.isReplicated && (
+                <span className="text-sm text-bunker-300"> (replication)</span>
+              )}
             </div>
             <div className="flex items-center text-sm text-bunker-300">
               {committer?.user?.firstName}

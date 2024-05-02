@@ -26,6 +26,12 @@ export async function up(knex: Knex): Promise<void> {
       t.boolean("isReplicated");
     });
   }
+
+  if (await knex.schema.hasTable(TableName.SecretApprovalRequest)) {
+    await knex.schema.alterTable(TableName.SecretApprovalRequest, (t) => {
+      t.boolean("isReplicated");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -50,6 +56,12 @@ export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.SecretApprovalRequestSecret)) {
     await knex.schema.alterTable(TableName.SecretApprovalRequestSecret, (t) => {
       t.dropColumns("isReplicated");
+    });
+  }
+
+  if (await knex.schema.hasTable(TableName.SecretApprovalRequest)) {
+    await knex.schema.alterTable(TableName.SecretApprovalRequest, (t) => {
+      t.dropColumn("isReplicated");
     });
   }
 }

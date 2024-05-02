@@ -154,7 +154,8 @@ export const secretReplicationServiceFactory = ({
                 policyId: policy.id,
                 status: "open",
                 hasMerged: false,
-                committerId: membershipId
+                committerId: membershipId,
+                isReplicated: true
               },
               tx
             );

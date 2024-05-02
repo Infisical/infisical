@@ -213,7 +213,7 @@ export const SecretApprovalRequest = () => {
                     policy,
                     reviewers,
                     status,
-                    isReplication
+                    isReplicated: isReplication
                   } = secretApproval;
                   const isApprover = policy?.approvers?.indexOf(myMembershipId || "") !== -1;
                   const isReviewed =
@@ -242,7 +242,7 @@ export const SecretApprovalRequest = () => {
                         {membersGroupById?.[committerId]?.user?.firstName}{" "}
                         {membersGroupById?.[committerId]?.user?.lastName} (
                         {membersGroupById?.[committerId]?.user?.email})
-                        {isReplication && "via replication"}
+                        {isReplication && " via replication"}
                         {isApprover && !isReviewed && status === "open" && " - Review required"}
                       </span>
                     </div>

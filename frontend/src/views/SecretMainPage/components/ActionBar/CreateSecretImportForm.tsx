@@ -144,8 +144,7 @@ export const CreateSecretImportForm = ({
             defaultValue={false}
             render={({ field }) => (
               <Checkbox isChecked={field.value} onCheckedChange={field.onChange} id="isReplication">
-                The replication mode retrieves secrets when changes occur in the specified
-                environment and secret path.
+                Enable replication mode to synchronize changes across boards.
               </Checkbox>
             )}
           />
