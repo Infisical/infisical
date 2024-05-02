@@ -915,7 +915,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             event: {
               type: EventType.SECRET_APPROVAL_REQUEST,
               metadata: {
-                committedBy: approval.committerId,
+                committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
                 secretApprovalRequestSlug: approval.slug
               }
@@ -1099,7 +1099,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             event: {
               type: EventType.SECRET_APPROVAL_REQUEST,
               metadata: {
-                committedBy: approval.committerId,
+                committedByUser: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
                 secretApprovalRequestSlug: approval.slug
               }
@@ -1230,14 +1230,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               ]
             }
           });
-
           await server.services.auditLog.createAuditLog({
             projectId: req.body.workspaceId,
             ...req.auditLogInfo,
             event: {
               type: EventType.SECRET_APPROVAL_REQUEST,
               metadata: {
-                committedBy: approval.committerId,
+                committedByUser: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
                 secretApprovalRequestSlug: approval.slug
               }
@@ -1363,7 +1362,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             event: {
               type: EventType.SECRET_APPROVAL_REQUEST,
               metadata: {
-                committedBy: approval.committerId,
+                committedByUser: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
                 secretApprovalRequestSlug: approval.slug
               }
@@ -1490,7 +1489,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             event: {
               type: EventType.SECRET_APPROVAL_REQUEST,
               metadata: {
-                committedBy: approval.committerId,
+                committedByUser: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
                 secretApprovalRequestSlug: approval.slug
               }
@@ -1604,7 +1603,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             event: {
               type: EventType.SECRET_APPROVAL_REQUEST,
               metadata: {
-                committedBy: approval.committerId,
+                committedByUser: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
                 secretApprovalRequestSlug: approval.slug
               }
