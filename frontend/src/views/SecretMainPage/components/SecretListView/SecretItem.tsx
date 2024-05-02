@@ -420,9 +420,8 @@ export const SecretItem = memo(
                       <Tooltip
                         content={
                           secretReminderRepeatDays && secretReminderRepeatDays > 0
-                            ? `Every ${secretReminderRepeatDays} day${
-                                Number(secretReminderRepeatDays) > 1 ? "s" : ""
-                              }
+                            ? `Every ${secretReminderRepeatDays} day${Number(secretReminderRepeatDays) > 1 ? "s" : ""
+                            }
                           `
                             : "Reminder"
                         }

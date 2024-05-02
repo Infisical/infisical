@@ -90,7 +90,7 @@ export const SecretImportListView = ({
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteSecretImport"
   ] as const);
-  
+
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
     useSensor(TouchSensor, {}),
@@ -159,12 +159,13 @@ export const SecretImportListView = ({
       >
         <SortableContext items={items} strategy={verticalListSortingStrategy}>
           {items?.map((item) => {
-            const { importPath, importEnv, id } = item;
+            const { importPath, importEnv, id, isReplication } = item;
             return (
               <SecretImportItem
                 searchTerm={searchTerm}
                 key={`imported-env-${id}`}
                 id={id}
+                isReplication={isReplication}
                 importEnvPath={importPath}
                 importEnvName={importEnv.name}
                 importedSecrets={computeImportedSecretRows(
@@ -185,9 +186,8 @@ export const SecretImportListView = ({
         isOpen={popUp.deleteSecretImport.isOpen}
         deleteKey="unlink"
         title="Do you want to remove this secret import?"
-        subTitle={`This will unlink secrets from environment ${
-          (popUp.deleteSecretImport?.data as TSecretImport)?.importEnv
-        } of path ${(popUp.deleteSecretImport?.data as TSecretImport)?.importPath}?`}
+        subTitle={`This will unlink secrets from environment ${(popUp.deleteSecretImport?.data as TSecretImport)?.importEnv
+          } of path ${(popUp.deleteSecretImport?.data as TSecretImport)?.importPath}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteSecretImport", isOpen)}
         onDeleteApproved={handleSecretImportDelete}
       />

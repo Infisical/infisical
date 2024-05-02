@@ -64,12 +64,15 @@ export const secretReplicationServiceFactory = ({
 }: TSecretReplicationServiceFactoryDep) => {
   queueService.start(QueueName.SecretReplication, async (job) => {
     logger.info(job.data, "Replication started");
-    const { secrets, folderId, secretPath, environmentId, projectId, membershipId } = job.data;
-    const secretImports = await secretImportDAL.find({
+    const { secrets, folderId, secretPath, environmentId, projectId, membershipId, pickOnlyImportIds } = job.data;
+    let secretImports = await secretImportDAL.find({
       importPath: secretPath,
       importEnv: environmentId,
       isReplication: true
     });
+    secretImports = pickOnlyImportIds
+      ? secretImports.filter(({ id }) => pickOnlyImportIds?.includes(id))
+      : secretImports;
     if (!secretImports.length || !secrets.length) return;
 
     // unfiltered secrets to be replicated

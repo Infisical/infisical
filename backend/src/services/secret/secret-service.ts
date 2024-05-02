@@ -550,7 +550,8 @@ export const secretServiceFactory = ({
 
     if (includeImports) {
       const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
-      const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
+      const allowedImports = secretImports.filter(({ importEnv, importPath, isReplication }) =>
+        !isReplication &&
         // if its service token allow full access over imported one
         actor === ActorType.SERVICE
           ? true
@@ -655,7 +656,7 @@ export const secretServiceFactory = ({
     // then search for imported secrets
     // here we consider the import order also thus starting from bottom
     if (!secret && includeImports) {
-      const secretImports = await secretImportDAL.find({ folderId });
+      const secretImports = await secretImportDAL.find({ folderId, isReplication: false });
       const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
         // if its service token allow full access over imported one
         actor === ActorType.SERVICE

@@ -8,6 +8,7 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
+import { SecretOperations } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { fnSecretsFromImports } from "./secret-import-fns";
@@ -26,7 +27,7 @@ type TSecretImportServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   projectEnvDAL: TProjectEnvDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
@@ -53,7 +54,7 @@ export const secretImportServiceFactory = ({
     isReplication,
     path
   }: TCreateSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, membership } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -108,12 +109,27 @@ export const secretImportServiceFactory = ({
       );
     });
 
-    await secretQueueService.syncSecrets({
-      secretPath: secImport.importPath,
-      projectId,
-      environmentSlug: importEnv.slug,
-      excludeReplication: true
-    });
+    if (secImport.isReplication) {
+      const importedSecrets = await secretDAL.find({ folderId: sourceFolder?.id });
+      await secretQueueService.replicateSecrets({
+        secretPath: secImport.importPath,
+        projectId,
+        environmentSlug: importEnv.slug,
+        pickOnlyImportIds: [secImport.id],
+        folderId: sourceFolder?.id as string,
+        secrets: importedSecrets.map(({ id, version }) => ({ operation: SecretOperations.Create, version, id })),
+        // TODO(akhilmhdh): approval based replication this will fail for identity
+        membershipId: membership?.id as string,
+        environmentId: importEnv.id
+      });
+    } else {
+      await secretQueueService.syncSecrets({
+        secretPath: secImport.importPath,
+        projectId,
+        environmentSlug: importEnv.slug,
+        excludeReplication: true
+      });
+    }
 
     return { ...secImport, importEnv };
   };
@@ -283,7 +299,7 @@ export const secretImportServiceFactory = ({
     if (!folder) return [];
     // this will already order by position
     // so anything based on this order will also be in right position
-    const secretImports = await secretImportDAL.find({ folderId: folder.id });
+    const secretImports = await secretImportDAL.find({ folderId: folder.id, isReplication: false });
 
     const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
       permission.can(

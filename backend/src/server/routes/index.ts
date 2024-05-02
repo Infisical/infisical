@@ -677,7 +677,9 @@ export const registerRoutes = async (
     secretApprovalPolicyService,
     secretBlindIndexDAL,
     secretApprovalRequestDAL,
-    secretApprovalRequestSecretDAL
+    secretApprovalRequestSecretDAL,
+    secretQueueService,
+    snapshotService
   });
   const secretRotationQueue = secretRotationQueueFactory({
     telemetryService,

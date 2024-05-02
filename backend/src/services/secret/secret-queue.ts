@@ -143,6 +143,18 @@ export const secretQueueFactory = ({
     });
   };
 
+  const replicateSecrets = async (dto: TSyncSecretsDTO) => {
+    await queueService.queue(QueueName.SecretReplication, QueueJobs.SecretReplication, dto, {
+      attempts: 3,
+      backoff: {
+        type: "exponential",
+        delay: 2000
+      },
+      removeOnComplete: true,
+      removeOnFail: true
+    });
+  };
+
   const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
     const appCfg = getConfig();
     await queueService.stopRepeatableJob(
@@ -361,22 +373,17 @@ export const secretQueueFactory = ({
       }
     );
     await syncIntegrations({ secretPath, projectId, environment });
-    if (!excludeReplication) {
-      await queueService.queue(
-        QueueName.SecretReplication,
-        QueueJobs.SecretReplication,
-        { environmentId, projectId, secretPath, folderId, secrets, membershipId },
-        {
-          attempts: 3,
-          backoff: {
-            type: "exponential",
-            delay: 2000
-          },
-          removeOnComplete: true,
-          removeOnFail: true
-        }
-      );
-    }
+    if (!excludeReplication)
+      await replicateSecrets({
+        environmentId,
+        projectId,
+        secretPath,
+        folderId,
+        secrets,
+        membershipId,
+        excludeReplication,
+        environmentSlug: environment
+      });
   });
 
   queueService.start(QueueName.IntegrationSync, async (job) => {
@@ -394,7 +401,8 @@ export const secretQueueFactory = ({
       const linkSourceDto = {
         projectId,
         importEnv: folder.environment.id,
-        importPath: secretPath
+        importPath: secretPath,
+        isReplication: false
       };
       const imports = await secretImportDAL.find(linkSourceDto);
 
@@ -598,6 +606,7 @@ export const secretQueueFactory = ({
     syncIntegrations,
     addSecretReminder,
     removeSecretReminder,
-    handleSecretReminder
+    handleSecretReminder,
+    replicateSecrets
   };
 };

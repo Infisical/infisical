@@ -389,6 +389,8 @@ export type TSyncSecretsDTO<T extends boolean = false> = {
       environmentId: string;
       folderId: string;
       membershipId: string;
+      // used for import creation to trigger replication
+      pickOnlyImportIds?: string[];
       secrets: {
         operation: SecretOperations;
         id: string;

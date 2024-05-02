@@ -44,6 +44,7 @@ export type TSecretApprovalSecChange = {
 
 export type TSecretApprovalRequest<J extends unknown = EncryptedSecret> = {
   id: string;
+  isReplication?: boolean;
   slug: string;
   createdAt: string;
   committerId: string;

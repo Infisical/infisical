@@ -14,6 +14,7 @@ export type EncryptedSecret = {
   secretValueIV: string;
   secretValueTag: string;
   __v: number;
+  isReplicated?: boolean;
   createdAt: string;
   updatedAt: string;
   skipMultilineEncoding?: boolean;
@@ -31,6 +32,7 @@ export type DecryptedSecret = {
   key: string;
   value: string;
   comment: string;
+  isReplicated?: boolean;
   reminderRepeatDays?: number | null;
   reminderNote?: string | null;
   tags: WsTag[];

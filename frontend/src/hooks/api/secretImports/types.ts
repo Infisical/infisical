@@ -10,6 +10,7 @@ export type TSecretImport = {
   position: string;
   createdAt: string;
   updatedAt: string;
+  isReplication?: boolean;
 };
 
 export type TGetImportedFoldersByEnvDTO = {

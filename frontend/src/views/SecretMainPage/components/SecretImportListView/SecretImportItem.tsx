@@ -11,7 +11,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { EmptyState, IconButton, SecretInput, TableContainer } from "@app/components/v2";
+import { EmptyState, IconButton, SecretInput, TableContainer, Tag } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
@@ -19,6 +19,7 @@ type Props = {
   onDelete: () => void;
   environment: string;
   secretPath?: string;
+  isReplication?: boolean;
   importEnvName: string;
   importEnvPath: string;
   importedSecrets: { key: string; value: string; overriden: { env: string; secretPath: string } }[];
@@ -27,11 +28,20 @@ type Props = {
 };
 
 // to show the environment and folder icon
-export const EnvFolderIcon = ({ env, secretPath }: { env: string; secretPath: string }) => (
+export const EnvFolderIcon = ({
+  env,
+  secretPath,
+  isReplication
+}: {
+  env: string;
+  secretPath: string;
+  isReplication?: boolean;
+}) => (
   <div className="inline-flex items-center space-x-2">
     <div style={{ minWidth: "96px" }}>{env || "-"}</div>
     {secretPath && (
       <div className="inline-flex items-center space-x-2 border-l border-mineshaft-600 pl-2">
+        {isReplication && <Tag size="xs">Replication Mode</Tag>}
         <FontAwesomeIcon icon={faFolder} className="text-md text-green-700" />
         <span>{secretPath}</span>
       </div>
@@ -44,6 +54,7 @@ export const SecretImportItem = ({
   id,
   importEnvName,
   importEnvPath,
+  isReplication,
   importedSecrets = [],
   searchTerm = "",
   secretPath,
@@ -92,7 +103,11 @@ export const SecretImportItem = ({
           <FontAwesomeIcon icon={faFileImport} />
         </div>
         <div className="flex flex-grow items-center px-4 py-2">
-          <EnvFolderIcon env={importEnvName || ""} secretPath={importEnvPath} />
+          <EnvFolderIcon
+            env={importEnvName || ""}
+            secretPath={importEnvPath}
+            isReplication={isReplication}
+          />
         </div>
         <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-4 py-2">
           <ProjectPermissionCan
