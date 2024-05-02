@@ -75,6 +75,7 @@ export type TWorkspaceUser = {
     id: string;
     publicKey: string;
   };
+  isGroupMember?: boolean;
   inviteEmail: string;
   organization: string;
   roles: (
