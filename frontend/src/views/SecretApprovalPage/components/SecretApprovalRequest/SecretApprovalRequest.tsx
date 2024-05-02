@@ -65,9 +65,9 @@ export const SecretApprovalRequest = () => {
     useGetSecretApprovalRequestCount({ workspaceId });
   const { user: presentUser } = useUser();
   const { permission } = useProjectPermission();
-  const { data: members } = useGetWorkspaceUsers(workspaceId);
+  const { data: members } = useGetWorkspaceUsers(workspaceId, true);
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
-    (prev, curr) => ({ ...prev, [curr.id]: curr }),
+    (prev, curr) => ({ ...prev, [curr.user.id]: curr }),
     {}
   );
   const myMembershipId = members?.find(({ user }) => user.id === presentUser?.id)?.id;
@@ -96,7 +96,7 @@ export const SecretApprovalRequest = () => {
             members={membersGroupById}
             approvalRequestId={selectedApproval?.id || ""}
             onGoBack={handleGoBackSecretRequestDetail}
-            committer={membersGroupById?.[selectedApproval?.committerId || ""]}
+            committer={membersGroupById?.[selectedApproval?.committerUserId || ""]}
           />
         </motion.div>
       ) : (
@@ -179,13 +179,15 @@ export const SecretApprovalRequest = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Select an author</DropdownMenuLabel>
-                    {members?.map(({ user, id }) => (
+                    {members?.map(({ user }) => (
                       <DropdownMenuItem
                         onClick={() =>
-                          setCommitterFilter((state) => (state === id ? undefined : id))
+                          setCommitterFilter((state) => (state === user.id ? undefined : user.id))
                         }
-                        key={`request-filter-member-${id}`}
-                        icon={committerFilter === id && <FontAwesomeIcon icon={faCheckCircle} />}
+                        key={`request-filter-member-${user.id}`}
+                        icon={
+                          committerFilter === user.id && <FontAwesomeIcon icon={faCheckCircle} />
+                        }
                         iconPos="right"
                       >
                         {user.username}
@@ -208,7 +210,7 @@ export const SecretApprovalRequest = () => {
                   const {
                     id: reqId,
                     commits,
-                    committerId,
+                    committerUserId,
                     createdAt,
                     policy,
                     reviewers,
@@ -238,9 +240,9 @@ export const SecretApprovalRequest = () => {
                       </div>
                       <span className="text-xs text-gray-500">
                         Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
-                        {membersGroupById?.[committerId]?.user?.firstName}{" "}
-                        {membersGroupById?.[committerId]?.user?.lastName} (
-                        {membersGroupById?.[committerId]?.user?.email}){" "}
+                        {membersGroupById?.[committerUserId]?.user?.firstName}{" "}
+                        {membersGroupById?.[committerUserId]?.user?.lastName} (
+                        {membersGroupById?.[committerUserId]?.user?.email}){" "}
                         {isApprover && !isReviewed && status === "open" && "- Review required"}
                       </span>
                     </div>

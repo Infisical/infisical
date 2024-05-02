@@ -6,14 +6,17 @@ import {
   faCheckCircle,
   faChevronDown,
   faLock,
-  faPlus
+  faPlus,
+  faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistance } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,10 +32,11 @@ import {
   ProjectPermissionSub,
   useProjectPermission,
   useSubscription,
+  useUser,
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useGetWorkspaceUsers } from "@app/hooks/api";
+import { useDeleteAccessApprovalRequest, useGetWorkspaceUsers } from "@app/hooks/api";
 import {
   accessApprovalKeys,
   useGetAccessApprovalPolicies,
@@ -62,7 +66,7 @@ const generateRequestText = (request: TAccessApprovalRequest, membershipId: stri
         </code>
       </div>
       <div>
-        {request.requestedBy === membershipId && (
+        {request.requestedByUserId === membershipId && (
           <span className="text-xs text-gray-500">
             <Badge className="ml-1">Requested By You</Badge>
           </span>
@@ -83,18 +87,22 @@ export const AccessApprovalRequest = ({
     (TAccessApprovalRequest & { user: TWorkspaceUser["user"] | null }) | null
   >(null);
 
-  const { handlePopUpOpen, popUp, handlePopUpClose } = usePopUp([
+  const { handlePopUpOpen, popUp, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "requestAccess",
+    "deleteRequest",
     "reviewRequest",
     "upgradePlan"
   ] as const);
-  const { membership, permission } = useProjectPermission();
+  const { permission } = useProjectPermission();
+  const { user: currentUser } = useUser();
+
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
 
-  const { data: members } = useGetWorkspaceUsers(projectId);
+  const { data: members } = useGetWorkspaceUsers(projectId, true);
+
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
-    (prev, curr) => ({ ...prev, [curr.id]: curr }),
+    (prev, curr) => ({ ...prev, [curr.user.id]: curr }),
     {}
   );
 
@@ -112,38 +120,44 @@ export const AccessApprovalRequest = ({
 
   const { data: requests } = useGetAccessApprovalRequests({
     projectSlug,
-    authorProjectMembershipId: requestedByFilter,
+    authorUserId: requestedByFilter,
     envSlug: envFilter
   });
 
+  const { mutateAsync: deleteAccess, isLoading: deleteAccessIsLoading } =
+    useDeleteAccessApprovalRequest();
+
   const filteredRequests = useMemo(() => {
-    if (statusFilter === "open")
+    if (statusFilter === "open") {
       return requests?.filter(
         (request) =>
           !request.isApproved &&
           !request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED)
       );
-    if (statusFilter === "close")
+    }
+    if (statusFilter === "close") {
+      console.log(requests);
       return requests?.filter(
         (request) =>
           request.isApproved ||
           request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED)
       );
+    }
 
     return requests;
   }, [requests, statusFilter, requestedByFilter, envFilter]);
 
   const generateRequestDetails = (request: TAccessApprovalRequest) => {
     const isReviewedByUser =
-      request.reviewers.findIndex(({ member }) => member === membership.id) !== -1;
+      request.reviewers.findIndex(({ member }) => member === currentUser.id) !== -1;
     const isRejectedByAnyone = request.reviewers.some(
       ({ status }) => status === ApprovalStatus.REJECTED
     );
-    const isApprover = request.policy.approvers.indexOf(membership.id || "") !== -1;
+    const isApprover = request.policy.approvers.indexOf(currentUser.id || "") !== -1;
     const isAccepted = request.isApproved;
 
     const userReviewStatus = request.reviewers.find(
-      ({ member }) => member === membership.id
+      ({ member }) => member === currentUser.id
     )?.status;
 
     let displayData: { label: string; type: "primary" | "danger" | "success" } = {
@@ -293,13 +307,15 @@ export const AccessApprovalRequest = ({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Select an author</DropdownMenuLabel>
-                    {members?.map(({ user, id }) => (
+                    {members?.map(({ user }) => (
                       <DropdownMenuItem
                         onClick={() =>
-                          setRequestedByFilter((state) => (state === id ? undefined : id))
+                          setRequestedByFilter((state) => (state === user.id ? undefined : user.id))
                         }
-                        key={`request-filter-member-${id}`}
-                        icon={requestedByFilter === id && <FontAwesomeIcon icon={faCheckCircle} />}
+                        key={`request-filter-member-${user.id}`}
+                        icon={
+                          requestedByFilter === user.id && <FontAwesomeIcon icon={faCheckCircle} />
+                        }
                         iconPos="right"
                       >
                         {user.username}
@@ -340,7 +356,7 @@ export const AccessApprovalRequest = ({
 
                       setSelectedRequest({
                         ...request,
-                        user: membersGroupById?.[request.requestedBy].user!
+                        user: membersGroupById?.[request.requestedByUserId].user!
                       });
                       handlePopUpOpen("reviewRequest");
                     }}
@@ -355,7 +371,7 @@ export const AccessApprovalRequest = ({
                       if (evt.key === "Enter") {
                         setSelectedRequest({
                           ...request,
-                          user: membersGroupById?.[request.requestedBy].user!
+                          user: membersGroupById?.[request.requestedByUserId].user!
                         });
                         handlePopUpOpen("reviewRequest");
                       }
@@ -365,24 +381,36 @@ export const AccessApprovalRequest = ({
                       <div className="flex w-full flex-col justify-between">
                         <div className="mb-1 flex w-full items-center">
                           <FontAwesomeIcon icon={faLock} className="mr-2" />
-                          {generateRequestText(request, membership.id)}
+                          {generateRequestText(request, currentUser.id)}
                         </div>
                         <div className="flex items-center justify-between">
                           <div className="text-xs text-gray-500">
-                            {membersGroupById?.[request.requestedBy]?.user && (
+                            {membersGroupById?.[request.requestedByUserId]?.user && (
                               <>
                                 Requested {formatDistance(new Date(request.createdAt), new Date())}{" "}
-                                ago by {membersGroupById?.[request.requestedBy]?.user?.firstName}{" "}
-                                {membersGroupById?.[request.requestedBy]?.user?.lastName} (
-                                {membersGroupById?.[request.requestedBy]?.user?.email}){" "}
+                                ago by{" "}
+                                {membersGroupById?.[request.requestedByUserId]?.user?.firstName}{" "}
+                                {membersGroupById?.[request.requestedByUserId]?.user?.lastName} (
+                                {membersGroupById?.[request.requestedByUserId]?.user?.email}){" "}
                               </>
                             )}
                           </div>
-                          <div>
+                          <div className="flex items-center">
                             {details.isApprover && (
                               <Badge variant={details.displayData.type}>
                                 {details.displayData.label}
                               </Badge>
+                            )}
+                            {details.isApprover && details.isAccepted && (
+                              <FontAwesomeIcon
+                                onClick={async () => {
+                                  if (deleteAccessIsLoading) return;
+
+                                  handlePopUpOpen("deleteRequest", request.id);
+                                }}
+                                icon={faXmark}
+                                className="ml-2 cursor-pointer opacity-70 hover:opacity-100"
+                              />
                             )}
                           </div>
                         </div>
@@ -425,6 +453,26 @@ export const AccessApprovalRequest = ({
           }}
         />
       )}
+
+      <DeleteActionModal
+        isOpen={popUp.deleteRequest.isOpen}
+        title="Are you sure you want to delete the access request?"
+        onChange={(isOpen) => handlePopUpToggle("deleteRequest", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={async () => {
+          await deleteAccess({
+            requestId: popUp.deleteRequest.data as string,
+            projectSlug
+          });
+
+          createNotification({
+            type: "success",
+            text: "Access request deleted successfully"
+          });
+
+          handlePopUpClose("deleteRequest");
+        }}
+      />
 
       <UpgradePlanModal
         text="You need to upgrade your plan to access this feature"

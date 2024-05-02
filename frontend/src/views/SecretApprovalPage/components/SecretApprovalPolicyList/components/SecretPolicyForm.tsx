@@ -208,17 +208,19 @@ export const SecretPolicyForm = ({
                     <DropdownMenuLabel>
                       Select members that are allowed to approve changes
                     </DropdownMenuLabel>
-                    {members.map(({ id, user }) => {
-                      const isChecked = value?.includes(id);
+                    {members.map(({ user }) => {
+                      const isChecked = value?.includes(user.id);
                       return (
                         <DropdownMenuItem
                           onClick={(evt) => {
                             evt.preventDefault();
                             onChange(
-                              isChecked ? value?.filter((el) => el !== id) : [...(value || []), id]
+                              isChecked
+                                ? value?.filter((el) => el !== user.id)
+                                : [...(value || []), user.id]
                             );
                           }}
-                          key={`create-policy-members-${id}`}
+                          key={`create-policy-members-${user.id}`}
                           iconPos="right"
                           icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
                         >

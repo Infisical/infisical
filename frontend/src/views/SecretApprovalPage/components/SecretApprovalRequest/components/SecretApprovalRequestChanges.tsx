@@ -104,11 +104,12 @@ export const SecretApprovalRequestChanges = ({
   const isRejecting = variables?.status === ApprovalStatus.REJECTED && isUpdatingRequestStatus;
 
   // membership of present user
-  const myMembership = Object.values(members).find(
+  const myUser = Object.values(members).find(
     ({ user: membershipUser }) => membershipUser.email === user.email
-  );
-  const myMembershipId = myMembership?.id || "";
-  const canApprove = secretApprovalRequestDetails?.policy?.approvers?.includes(myMembershipId);
+  )?.user;
+
+  const myUserId = myUser?.id || "";
+  const canApprove = secretApprovalRequestDetails?.policy?.approvers?.includes(myUserId);
   const reviewedMembers = secretApprovalRequestDetails?.reviewers?.reduce<
     Record<string, ApprovalStatus>
   >(
@@ -118,8 +119,8 @@ export const SecretApprovalRequestChanges = ({
     }),
     {}
   );
-  const hasApproved = reviewedMembers?.[myMembershipId] === ApprovalStatus.APPROVED;
-  const hasRejected = reviewedMembers?.[myMembershipId] === ApprovalStatus.REJECTED;
+  const hasApproved = reviewedMembers?.[myUserId] === ApprovalStatus.APPROVED;
+  const hasRejected = reviewedMembers?.[myUserId] === ApprovalStatus.REJECTED;
 
   const handleSecretApprovalStatusUpdate = async (status: ApprovalStatus) => {
     try {
@@ -249,7 +250,7 @@ export const SecretApprovalRequestChanges = ({
             status={secretApprovalRequestDetails.status}
             isMergable={isMergable}
             statusChangeByEmail={
-              members[secretApprovalRequestDetails?.statusChangeBy || ""]?.user?.email || ""
+              members[secretApprovalRequestDetails?.statusChangeByUserId || ""]?.user?.email || ""
             }
             workspaceId={workspaceId}
           />
