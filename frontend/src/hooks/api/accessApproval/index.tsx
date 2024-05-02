@@ -2,6 +2,7 @@ export {
   useCreateAccessApprovalPolicy,
   useCreateAccessRequest,
   useDeleteAccessApprovalPolicy,
+  useDeleteAccessApprovalRequest,
   useReviewAccessRequest,
   useUpdateAccessApprovalPolicy
 } from "./mutation";
