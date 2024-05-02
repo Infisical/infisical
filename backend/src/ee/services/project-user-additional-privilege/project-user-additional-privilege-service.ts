@@ -59,6 +59,8 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     if (!dto.isTemporary) {
       const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.create({
         projectMembershipId,
+        groupMembershipId: null,
+        groupProjectId: null,
         slug,
         permissions: customPermission
       });
@@ -68,6 +70,8 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     const relativeTempAllocatedTimeInMs = ms(dto.temporaryRange);
     const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.create({
       projectMembershipId,
+      groupMembershipId: null,
+      groupProjectId: null,
       slug,
       permissions: customPermission,
       isTemporary: true,
@@ -89,6 +93,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
   }: TUpdateUserPrivilegeDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege) throw new BadRequestError({ message: "User additional privilege not found" });
+
+    // This is fine. This service is only used for direct user privileges, not group-based privileges
+    if (!userPrivilege.projectMembershipId)
+      throw new BadRequestError({ message: "Operation not supported for groups" });
 
     const projectMembership = await projectMembershipDAL.findById(userPrivilege.projectMembershipId);
     if (!projectMembership) throw new BadRequestError({ message: "Project membership not found" });
@@ -138,6 +146,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege) throw new BadRequestError({ message: "User additional privilege not found" });
 
+    // This is fine. This service is only used for direct user privileges, not group-based privileges
+    if (!userPrivilege.projectMembershipId)
+      throw new BadRequestError({ message: "Operation not supported for groups" });
+
     const projectMembership = await projectMembershipDAL.findById(userPrivilege.projectMembershipId);
     if (!projectMembership) throw new BadRequestError({ message: "Project membership not found" });
 
@@ -163,6 +175,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
   }: TGetUserPrivilegeDetailsDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege) throw new BadRequestError({ message: "User additional privilege not found" });
+
+    // This is fine. This service is only used for direct user privileges, not group-based privileges
+    if (!userPrivilege.projectMembershipId)
+      throw new BadRequestError({ message: "Operation not supported for groups" });
 
     const projectMembership = await projectMembershipDAL.findById(userPrivilege.projectMembershipId);
     if (!projectMembership) throw new BadRequestError({ message: "Project membership not found" });
