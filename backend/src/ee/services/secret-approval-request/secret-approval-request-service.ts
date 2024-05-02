@@ -85,7 +85,7 @@ export const secretApprovalRequestServiceFactory = ({
   const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { membership } = await permissionService.getProjectPermission(
+    await permissionService.getProjectPermission(
       actor as ActorType.USER,
       actorId,
       projectId,
@@ -93,7 +93,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorOrgId
     );
 
-    const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, membership.id);
+    const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, actorId);
     return count;
   };
 
@@ -111,19 +111,14 @@ export const secretApprovalRequestServiceFactory = ({
   }: TListApprovalsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { membership } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+
     const approvals = await secretApprovalRequestDAL.findByProjectId({
       projectId,
       committer,
       environment,
       status,
-      membershipId: membership.id,
+      actorId,
       limit,
       offset
     });
@@ -143,7 +138,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
 
     const { policy } = secretApprovalRequest;
-    const { membership, hasRole } = await permissionService.getProjectPermission(
+    const { hasRole } = await permissionService.getProjectPermission(
       actor,
       actorId,
       secretApprovalRequest.projectId,
@@ -152,8 +147,8 @@ export const secretApprovalRequestServiceFactory = ({
     );
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
-      secretApprovalRequest.committerId !== membership.id &&
-      !policy.approvers.find((approverId) => approverId === membership.id)
+      secretApprovalRequest.committerUserId !== actorId &&
+      !policy.approvers.find((approverUserId) => approverUserId === actorId)
     ) {
       throw new UnauthorizedError({ message: "User has no access" });
     }
@@ -178,7 +173,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const { policy } = secretApprovalRequest;
-    const { membership, hasRole } = await permissionService.getProjectPermission(
+    const { hasRole } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
       secretApprovalRequest.projectId,
@@ -187,8 +182,8 @@ export const secretApprovalRequestServiceFactory = ({
     );
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
-      secretApprovalRequest.committerId !== membership.id &&
-      !policy.approvers.find((approverId) => approverId === membership.id)
+      secretApprovalRequest.committerUserId !== actorId &&
+      !policy.approvers.find((approverUserId) => approverUserId === actorId)
     ) {
       throw new UnauthorizedError({ message: "User has no access" });
     }
@@ -196,7 +191,7 @@ export const secretApprovalRequestServiceFactory = ({
       const review = await secretApprovalRequestReviewerDAL.findOne(
         {
           requestId: secretApprovalRequest.id,
-          member: membership.id
+          memberUserId: actorId
         },
         tx
       );
@@ -205,7 +200,7 @@ export const secretApprovalRequestServiceFactory = ({
           {
             status,
             requestId: secretApprovalRequest.id,
-            member: membership.id
+            memberUserId: actorId
           },
           tx
         );
@@ -228,7 +223,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const { policy } = secretApprovalRequest;
-    const { membership, hasRole } = await permissionService.getProjectPermission(
+    const { hasRole } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
       secretApprovalRequest.projectId,
@@ -237,8 +232,8 @@ export const secretApprovalRequestServiceFactory = ({
     );
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
-      secretApprovalRequest.committerId !== membership.id &&
-      !policy.approvers.find((approverId) => approverId === membership.id)
+      secretApprovalRequest.committerUserId !== actorId &&
+      !policy.approvers.find((approverUserId) => approverUserId === actorId)
     ) {
       throw new UnauthorizedError({ message: "User has no access" });
     }
@@ -251,7 +246,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     const updatedRequest = await secretApprovalRequestDAL.updateById(secretApprovalRequest.id, {
       status,
-      statusChangeBy: membership.id
+      statusChangeByUserId: actorId
     });
     return { ...secretApprovalRequest, ...updatedRequest };
   };
@@ -268,7 +263,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const { policy, folderId, projectId } = secretApprovalRequest;
-    const { membership, hasRole } = await permissionService.getProjectPermission(
+    const { hasRole } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
       projectId,
@@ -278,8 +273,8 @@ export const secretApprovalRequestServiceFactory = ({
 
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
-      secretApprovalRequest.committerId !== membership.id &&
-      !policy.approvers.find((approverId) => approverId === membership.id)
+      secretApprovalRequest.committerUserId !== actorId &&
+      !policy.approvers.find((approverUserId) => approverUserId === actorId)
     ) {
       throw new UnauthorizedError({ message: "User has no access" });
     }
@@ -290,7 +285,7 @@ export const secretApprovalRequestServiceFactory = ({
     const hasMinApproval =
       secretApprovalRequest.policy.approvals <=
       secretApprovalRequest.policy.approvers.filter(
-        (approverId) => reviewers[approverId.toString()] === ApprovalStatus.APPROVED
+        (approverUserId) => reviewers[approverUserId.toString()] === ApprovalStatus.APPROVED
       ).length;
 
     if (!hasMinApproval) throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
@@ -445,7 +440,7 @@ export const secretApprovalRequestServiceFactory = ({
           conflicts: JSON.stringify(conflicts),
           hasMerged: true,
           status: RequestState.Closed,
-          statusChangeBy: membership.id
+          statusChangeByUserId: actorId
         },
         tx
       );
@@ -480,7 +475,7 @@ export const secretApprovalRequestServiceFactory = ({
   }: TGenerateSecretApprovalRequestDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { permission, membership } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -634,7 +629,7 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          committerId: membership.id
+          committerUserId: actorId
         },
         tx
       );
