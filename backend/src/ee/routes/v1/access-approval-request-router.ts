@@ -84,8 +84,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
             isApproved: z.boolean(),
             privilege: z
               .object({
-                projectMembershipId: z.string().nullable(),
-                groupMembershipId: z.string().nullable(),
+                projectMembershipId: z.string().nullish(),
+                groupMembershipId: z.string().nullish(),
                 isTemporary: z.boolean(),
                 temporaryMode: z.string().nullish(),
                 temporaryRange: z.string().nullish(),
