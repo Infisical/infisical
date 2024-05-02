@@ -105,14 +105,14 @@ export const userDALFactory = (db: TDbClient) => {
   // if its a group membership, it should have a isGroupMembership flag
   const findUserByProjectId = async (projectId: string, userId: string) => {
     try {
-      const projectMembershipQuery = await db(TableName.ProjectMembership)
+      const projectMembership = await db(TableName.ProjectMembership)
         .where({ projectId, userId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.Users))
         .select(db.ref("id").withSchema(TableName.ProjectMembership).as("projectMembershipId"))
         .first();
 
-      const groupMembershipQuery = await db(TableName.UserGroupMembership)
+      const groupProjectMembership = await db(TableName.UserGroupMembership)
         .where({ userId })
         .join(
           TableName.GroupProjectMembership,
@@ -125,19 +125,19 @@ export const userDALFactory = (db: TDbClient) => {
         .select(db.ref("id").withSchema(TableName.UserGroupMembership).as("userGroupMembershipId"))
         .first();
 
-      if (projectMembershipQuery) {
+      if (projectMembership) {
         return {
-          ...projectMembershipQuery,
-          projectMembershipId: projectMembershipQuery.projectMembershipId,
+          ...projectMembership,
+          projectMembershipId: projectMembership.projectMembershipId,
           userGroupMembershipId: null
         };
       }
 
-      if (groupMembershipQuery) {
+      if (groupProjectMembership) {
         return {
-          ...groupMembershipQuery,
+          ...groupProjectMembership,
           projectMembershipId: null,
-          userGroupMembershipId: groupMembershipQuery.userGroupMembershipId
+          userGroupMembershipId: groupProjectMembership.userGroupMembershipId
         };
       }
     } catch (error) {
