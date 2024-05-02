@@ -74,7 +74,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     schema: {
       querystring: z.object({
         projectSlug: z.string().trim(),
-        authorProjectMembershipId: z.string().trim().optional(),
+        authorUserId: z.string().trim().optional(),
         envSlug: z.string().trim().optional()
       }),
       response: {
@@ -84,7 +84,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
             isApproved: z.boolean(),
             privilege: z
               .object({
-                membershipId: z.string(),
+                projectMembershipId: z.string().nullable(),
+                groupMembershipId: z.string().nullable(),
                 isTemporary: z.boolean(),
                 temporaryMode: z.string().nullish(),
                 temporaryRange: z.string().nullish(),
@@ -115,8 +116,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     handler: async (req) => {
       const { requests } = await server.services.accessApprovalRequest.listApprovalRequests({
         projectSlug: req.query.projectSlug,
-        authorProjectMembershipId: req.query.authorProjectMembershipId,
         envSlug: req.query.envSlug,
+        authorUserId: req.query.authorUserId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
@@ -124,6 +125,37 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       });
 
       return { requests };
+    }
+  });
+
+  server.route({
+    url: "/:requestId",
+    method: "DELETE",
+    schema: {
+      params: z.object({
+        requestId: z.string().trim()
+      }),
+      querystring: z.object({
+        projectSlug: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          request: AccessApprovalRequestsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { request } = await server.services.accessApprovalRequest.deleteAccessApprovalRequest({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        requestId: req.params.requestId,
+        projectSlug: req.query.projectSlug
+      });
+
+      return { request };
     }
   });
 
