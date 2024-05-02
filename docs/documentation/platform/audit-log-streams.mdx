@@ -1,0 +1,56 @@
+---
+title: "Audit Log Streams"
+description: "Learn how to stream Infisical Audit Logs to external logging providers."
+---
+
+<Info>
+    Audit log streams is a paid feature.
+   
+    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
+    then you should contact team@infisical.com to purchase an enterprise license to use it.
+</Info>
+
+Infisical Audit Log Streaming enables you to transmit your organization's Audit Logs to external logging providers for monitoring and analysis. 
+
+The logs are formatted in JSON, requiring your logging provider to support JSON-based log parsing.
+
+
+## Overview
+
+<Steps>
+    <Step title="Navigate to Organization Settings in your sidebar." />
+    <Step title="Select Audit Log Streams Tab.">
+				![stream create](../../images/platform/audit-log-streams/stream-create.png)
+		</Step>
+		<Step title="Click on Create">
+		 ![stream create](../../images/platform/audit-log-streams/stream-inputs.png)
+
+		 Provide the following values
+		 <ParamField path="Endpoint URL" type="string" required>
+				The HTTPS endpoint URL of the logging provider that collects the JSON stream.
+     </ParamField>
+		 <ParamField path="Token" type="string" >
+				Bearer token used by the logging providers for identification and authentication.
+     </ParamField>
+		</Step>
+</Steps>
+
+![stream listt](../../images/platform/audit-log-streams/stream-list.png)
+Your Audit Logs are now ready to be streamed.
+
+## Example Providers
+
+### Better Stack
+
+<Steps>
+    <Step title="Select Connect Source">
+				![better stack connect source](../../images/platform/audit-log-streams/betterstack-create-source.png)
+		</Step>
+    <Step title="Provide a name and select platform"/>
+   <Step title="Provide audit log stream inputs">
+				![better stack connect](../../images/platform/audit-log-streams/betterstack-source-details.png)
+
+				1. Copy the **Source token** field from Better Stack to the **Token** field.
+				2. Copy the **endpoint** from Better Stack to the **Endpoint URL** field.
+		</Step>
+</Steps>
