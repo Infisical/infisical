@@ -212,6 +212,49 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
+    method: "POST",
+    url: "/:secretImportId/replication-resync",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      description: "Resync secret replication of secret imports",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        secretImportId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.secretImportId)
+      }),
+      body: z.object({
+        workspaceId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.workspaceId),
+        environment: z.string().trim().describe(SECRET_IMPORTS.UPDATE.environment),
+        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.UPDATE.path)
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { message } = await server.services.secretImport.resyncSecretImportReplication({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.secretImportId,
+        ...req.body,
+        projectId: req.body.workspaceId
+      });
+
+      return { message };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/",
     config: {

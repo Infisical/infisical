@@ -17,6 +17,12 @@ export type TUpdateSecretImportDTO = {
   data: Partial<{ environment: string; path: string; position: number }>;
 } & TProjectPermission;
 
+export type TResyncSecretImportReplicationDTO = {
+  environment: string;
+  path: string;
+  id: string;
+} & TProjectPermission;
+
 export type TDeleteSecretImportDTO = {
   environment: string;
   path: string;

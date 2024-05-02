@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
+import { TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
@@ -17,6 +18,7 @@ import {
   TDeleteSecretImportDTO,
   TGetSecretImportsDTO,
   TGetSecretsFromImportDTO,
+  TResyncSecretImportReplicationDTO,
   TUpdateSecretImportDTO
 } from "./secret-import-types";
 
@@ -109,17 +111,17 @@ export const secretImportServiceFactory = ({
       );
     });
 
-    if (secImport.isReplication) {
+    if (secImport.isReplication && sourceFolder && membership) {
       const importedSecrets = await secretDAL.find({ folderId: sourceFolder?.id });
       await secretQueueService.replicateSecrets({
         secretPath: secImport.importPath,
         projectId,
         environmentSlug: importEnv.slug,
         pickOnlyImportIds: [secImport.id],
-        folderId: sourceFolder?.id as string,
+        folderId: sourceFolder.id,
         secrets: importedSecrets.map(({ id, version }) => ({ operation: SecretOperations.Create, version, id })),
         // TODO(akhilmhdh): approval based replication this will fail for identity
-        membershipId: membership?.id as string,
+        membershipId: membership.id,
         environmentId: importEnv.id
       });
     } else {
@@ -247,6 +249,76 @@ export const secretImportServiceFactory = ({
     return secImport;
   };
 
+  const resyncSecretImportReplication = async ({
+    environment,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    path,
+    id: secretImportDocId
+  }: TResyncSecretImportReplicationDTO) => {
+    const { permission, membership } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    // check if user has permission to import into destination  path
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+    );
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+    if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Update import" });
+
+    const [secretImportDoc] = await secretImportDAL.find({
+      folderId: folder.id,
+      [`${TableName.SecretImport}.id` as "id"]: secretImportDocId
+    });
+    if (!secretImportDoc) throw new BadRequestError({ message: "Failed to find secret import" });
+
+    if (!secretImportDoc.isReplication) throw new BadRequestError({ message: "Import is not in replication mode" });
+
+    // check if user has permission to import from target path
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Secrets, {
+        environment: secretImportDoc.importEnv.slug,
+        secretPath: secretImportDoc.importPath
+      })
+    );
+
+    await projectDAL.checkProjectUpgradeStatus(projectId);
+
+    const sourceFolder = await folderDAL.findBySecretPath(
+      projectId,
+      secretImportDoc.importEnv.slug,
+      secretImportDoc.importPath
+    );
+
+    const importedSecrets = await secretDAL.find({ folderId: sourceFolder?.id });
+    if (membership && sourceFolder) {
+      await secretQueueService.replicateSecrets({
+        secretPath: secretImportDoc.importPath,
+        projectId,
+        environmentSlug: secretImportDoc.importEnv.slug,
+        pickOnlyImportIds: [secretImportDoc.id],
+        folderId: sourceFolder.id,
+        secrets: importedSecrets.map(({ id, version }) => ({ operation: SecretOperations.Create, version, id })),
+        // TODO(akhilmhdh): approval based replication this will fail for identity
+        membershipId: membership.id,
+        environmentId: secretImportDoc.importEnv.id
+      });
+    }
+
+    return { message: "replication started" };
+  };
+
   const getImports = async ({
     path,
     environment,
@@ -319,6 +391,7 @@ export const secretImportServiceFactory = ({
     deleteImport,
     getImports,
     getSecretsFromImports,
+    resyncSecretImportReplication,
     fnSecretsFromImports
   };
 };

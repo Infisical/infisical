@@ -3,7 +3,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { secretImportKeys } from "./queries";
-import { TCreateSecretImportDTO, TDeleteSecretImportDTO, TUpdateSecretImportDTO } from "./types";
+import {
+  TCreateSecretImportDTO,
+  TDeleteSecretImportDTO,
+  TResyncSecretReplicationDTO,
+  TUpdateSecretImportDTO
+} from "./types";
 
 export const useCreateSecretImport = () => {
   const queryClient = useQueryClient();
@@ -50,6 +55,19 @@ export const useUpdateSecretImport = () => {
       queryClient.invalidateQueries(
         secretImportKeys.getSecretImportSecrets({ environment, path, projectId })
       );
+    }
+  });
+};
+
+export const useResyncSecretReplication = () => {
+  return useMutation<{}, {}, TResyncSecretReplicationDTO>({
+    mutationFn: async ({ environment, projectId, path, id }) => {
+      const { data } = await apiRequest.post(`/api/v1/secret-imports/${id}/replication-resync`, {
+        environment,
+        path,
+        workspaceId: projectId
+      });
+      return data;
     }
   });
 };

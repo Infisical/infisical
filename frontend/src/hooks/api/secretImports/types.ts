@@ -76,6 +76,13 @@ export type TUpdateSecretImportDTO = {
   }>;
 };
 
+export type TResyncSecretReplicationDTO = {
+  id: string;
+  projectId: string;
+  environment: string;
+  path?: string;
+};
+
 export type TDeleteSecretImportDTO = {
   id: string;
   projectId: string;

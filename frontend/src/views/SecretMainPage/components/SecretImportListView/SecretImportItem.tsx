@@ -6,14 +6,18 @@ import {
   faFileImport,
   faFolder,
   faKey,
+  faRotate,
   faUpDown
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EmptyState, IconButton, SecretInput, TableContainer, Tag } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
+import { useResyncSecretReplication } from "@app/hooks/api";
 
 type Props = {
   onDelete: () => void;
@@ -60,10 +64,12 @@ export const SecretImportItem = ({
   secretPath,
   environment
 }: Props) => {
+  const { currentWorkspace } = useWorkspace();
   const [isExpanded, setIsExpanded] = useToggle();
   const { attributes, listeners, transform, transition, setNodeRef, isDragging } = useSortable({
     id
   });
+  const resyncSecretReplication = useResyncSecretReplication();
 
   useEffect(() => {
     const filteredSecrets = importedSecrets.filter((secret) =>
@@ -88,6 +94,28 @@ export const SecretImportItem = ({
     transition
   };
 
+  const handleResyncSecretReplication = async () => {
+    if (resyncSecretReplication.isLoading) return;
+    try {
+      await resyncSecretReplication.mutateAsync({
+        id,
+        environment,
+        path: secretPath,
+        projectId: currentWorkspace?.id || ""
+      });
+      createNotification({
+        text: "Kindly refresh the board to see changes.",
+        type: "success"
+      });
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: "Failed to resync replication",
+        type: "error"
+      });
+    }
+  };
+
   return (
     <>
       <div
@@ -108,6 +136,31 @@ export const SecretImportItem = ({
             secretPath={importEnvPath}
             isReplication={isReplication}
           />
+        </div>
+        <div className="flex items-center space-x-2 px-4 py-2">
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Edit}
+            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            renderTooltip
+            allowedLabel="Resync replicated secrets"
+          >
+            {(isAllowed) => (
+              <IconButton
+                size="md"
+                colorSchema="primary"
+                variant="plain"
+                ariaLabel="expand"
+                className={twMerge(
+                  "p-0 opacity-0 group-hover:opacity-100",
+                  resyncSecretReplication.isLoading && "animate-spin opacity-100"
+                )}
+                isDisabled={!isAllowed}
+                onClick={handleResyncSecretReplication}
+              >
+                <FontAwesomeIcon icon={faRotate} />
+              </IconButton>
+            )}
+          </ProjectPermissionCan>
         </div>
         <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-4 py-2">
           <ProjectPermissionCan
