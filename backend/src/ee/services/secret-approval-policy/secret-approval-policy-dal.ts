@@ -20,7 +20,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalPolicy}.id`,
         `${TableName.SecretApprovalPolicyApprover}.policyId`
       )
-      .select(tx.ref("approverId").withSchema(TableName.SecretApprovalPolicyApprover))
+      .select(tx.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover))
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
       .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
       .select(tx.ref("id").withSchema(TableName.Environment).as("envId"))
@@ -33,18 +33,18 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
       const doc = await sapFindQuery(tx || db, {
         [`${TableName.SecretApprovalPolicy}.id` as "id"]: id
       });
-      const formatedDoc = mergeOneToManyRelation(
+      const formattedDoc = mergeOneToManyRelation(
         doc,
         "id",
-        ({ approverId, envId, envName: name, envSlug: slug, ...el }) => ({
+        ({ approverUserId, envId, envName: name, envSlug: slug, ...el }) => ({
           ...el,
           envId,
           environment: { id: envId, name, slug }
         }),
-        ({ approverId }) => approverId,
+        ({ approverUserId }) => approverUserId,
         "approvers"
       );
-      return formatedDoc?.[0];
+      return formattedDoc?.[0];
     } catch (error) {
       throw new DatabaseError({ error, name: "FindById" });
     }
@@ -53,18 +53,18 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
   const find = async (filter: TFindFilter<TSecretApprovalPolicies & { projectId: string }>, tx?: Knex) => {
     try {
       const docs = await sapFindQuery(tx || db, filter);
-      const formatedDoc = mergeOneToManyRelation(
+      const formattedDoc = mergeOneToManyRelation(
         docs,
         "id",
-        ({ approverId, envId, envName: name, envSlug: slug, ...el }) => ({
+        ({ approverUserId, envId, envName: name, envSlug: slug, ...el }) => ({
           ...el,
           envId,
           environment: { id: envId, name, slug }
         }),
-        ({ approverId }) => approverId,
+        ({ approverUserId }) => approverUserId,
         "approvers"
       );
-      return formatedDoc;
+      return formattedDoc;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find" });
     }
