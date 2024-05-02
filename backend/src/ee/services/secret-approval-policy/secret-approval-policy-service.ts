@@ -30,7 +30,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
-  userDAL: TUserDALFactory;
+  userDAL: Pick<TUserDALFactory, "findUsersByProjectId" | "findUserByProjectId">;
 };
 
 export type TSecretApprovalPolicyServiceFactory = ReturnType<typeof secretApprovalPolicyServiceFactory>;
