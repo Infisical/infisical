@@ -46,7 +46,7 @@ export type TSecretApprovalRequest<J extends unknown = EncryptedSecret> = {
   id: string;
   slug: string;
   createdAt: string;
-  committerId: string;
+  committerUserId: string;
   reviewers: {
     member: string;
     status: ApprovalStatus;
@@ -58,7 +58,7 @@ export type TSecretApprovalRequest<J extends unknown = EncryptedSecret> = {
   hasMerged: boolean;
   status: "open" | "close";
   policy: TSecretApprovalPolicy;
-  statusChangeBy: string;
+  statusChangeByUserId: string;
   conflicts: Array<{ secretId: string; op: CommitType.UPDATE }>;
   commits: ({
     // if there is no secret means it was creation
