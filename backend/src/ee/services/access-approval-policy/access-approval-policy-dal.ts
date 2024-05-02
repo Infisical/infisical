@@ -20,7 +20,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
         `${TableName.AccessApprovalPolicy}.id`,
         `${TableName.AccessApprovalPolicyApprover}.policyId`
       )
-      .select(tx.ref("approverId").withSchema(TableName.AccessApprovalPolicyApprover))
+      .select(tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
       .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
       .select(tx.ref("id").withSchema(TableName.Environment).as("envId"))
@@ -38,12 +38,12 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
       const formatedDoc = mergeOneToManyRelation(
         doc,
         "id",
-        ({ approverId, envId, envName: name, envSlug: slug, ...el }) => ({
+        ({ approverUserId, envId, envName: name, envSlug: slug, ...el }) => ({
           ...el,
           envId,
           environment: { id: envId, name, slug }
         }),
-        ({ approverId }) => approverId,
+        ({ approverUserId }) => approverUserId,
         "approvers"
       );
       return formatedDoc?.[0];
@@ -58,12 +58,12 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
       const formatedDoc = mergeOneToManyRelation(
         docs,
         "id",
-        ({ approverId, envId, envName: name, envSlug: slug, ...el }) => ({
+        ({ approverUserId, envId, envName: name, envSlug: slug, ...el }) => ({
           ...el,
           envId,
           environment: { id: envId, name, slug }
         }),
-        ({ approverId }) => approverId,
+        ({ approverUserId }) => approverUserId,
         "approvers"
       );
       return formatedDoc.map((policy) => ({ ...policy, secretPath: policy.secretPath || undefined }));
