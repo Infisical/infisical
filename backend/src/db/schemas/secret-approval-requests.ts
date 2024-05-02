@@ -15,10 +15,10 @@ export const SecretApprovalRequestsSchema = z.object({
   conflicts: z.unknown().nullable().optional(),
   slug: z.string(),
   folderId: z.string().uuid(),
-  statusChangeBy: z.string().uuid().nullable().optional(),
-  committerId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  statusChangeByUserId: z.string().uuid().nullable().optional(),
+  committerUserId: z.string().uuid()
 });
 
 export type TSecretApprovalRequests = z.infer<typeof SecretApprovalRequestsSchema>;
