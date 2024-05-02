@@ -17,7 +17,9 @@ export type TAccessApprovalRequest = {
   id: string;
   policyId: string;
   privilegeId: string | null;
-  requestedBy: string;
+  requestedByUserId: string;
+  groupMembershipId: string | null;
+  projectMembershipId: string | null;
   createdAt: Date;
   updatedAt: Date;
   isTemporary: boolean;
@@ -30,7 +32,8 @@ export type TAccessApprovalRequest = {
   isApproved: boolean;
 
   privilege: {
-    membershipId: string;
+    groupMembershipId: string | null;
+    projectMembershipId: string | null;
     isTemporary: boolean;
     temporaryMode?: string | null;
     temporaryRange?: string | null;
@@ -98,7 +101,7 @@ export type TCreateAccessRequestDTO = {
 export type TGetAccessApprovalRequestsDTO = {
   projectSlug: string;
   envSlug?: string;
-  authorProjectMembershipId?: string;
+  authorUserId?: string;
 };
 
 export type TGetAccessPolicyApprovalCountDTO = {
