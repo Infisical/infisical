@@ -47,28 +47,35 @@ Your Audit Logs are now ready to be streamed.
 				![better stack connect source](../../images/platform/audit-log-streams/betterstack-create-source.png)
 		</Step>
     <Step title="Provide a name and select platform"/>
-   <Step title="Provide audit log stream inputs">
+   <Step title="Provide Audit Log Stream inputs">
 				![better stack connect](../../images/platform/audit-log-streams/betterstack-source-details.png)
 
 				1. Copy the **endpoint** from Better Stack to the **Endpoint URL** field.
-				3. Create a new header with key **Authorization** and set the value as **Bearer <source token from betterstack>**.
+				3. Create a new header with key **Authorization** and set the value as **Bearer \<source token from betterstack\>**.
 		</Step>
 </Steps>
 
 ### Datadog
 
 <Steps>
-    <Step title="Navigate to API Keys section by clicking on sidebar in Datadog">
+    <Step title="Navigate to API Keys section">
 				![api key create](../../images/platform/audit-log-streams/datadog-api-sidebar.png)
-				![api new key](../../images/platform/audit-log-streams/data-create-api-key.png)
 		</Step>
     <Step title="Select New Key and provide a key name">
 				![api key form](../../images/platform/audit-log-streams/data-create-api-key.png)
+				![api key form](../../images/platform/audit-log-streams/data-dog-api-key.png)
 		</Step>
+   <Step title="Find your Datadog region specific logging endpoint.">
+				![datadog url](../../images/platform/audit-log-streams/datadog-logging-endpoint.png)
+
+				1. Navigate to the [Datadog Send Logs API documentation](https://docs.datadoghq.com/api/latest/logs/?code-lang=curl&site=us5#send-logs).
+				2. Pick your Datadog account region.
+				3. Obtain your Datadog logging endpoint URL.
+	 </Step>
    <Step title="Provide audit log stream inputs">
 				![datadog api key details](../../images/platform/audit-log-streams/datadog-source-details.png)
 
-				1. Add **https://http-intake.logs.datadoghq.com/api/v2/logs** to the **Endpoint URL** field.
+				1. Copy the **logging endpoint** from Datadog to the **Endpoint URL** field.
 				2. Copy the **API Key** from previous step
 				3. Create a new header with key **DD-API-KEY** and set the value as **API Key**.
 		</Step>
