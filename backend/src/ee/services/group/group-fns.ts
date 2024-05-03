@@ -266,6 +266,8 @@ export const removeUsersFromGroupByUserIds = async ({
   userIds,
   userDAL,
   userGroupMembershipDAL,
+  accessApprovalRequestDAL,
+  secretApprovalRequestDAL,
   groupProjectDAL,
   projectKeyDAL,
   tx: outerTx
@@ -322,19 +324,15 @@ export const removeUsersFromGroupByUserIds = async ({
     });
 
     if (membersToRemoveFromGroupNonPending.length) {
-      // check which projects the group is part of
-      const projectIds = Array.from(
-        new Set(
-          (
-            await groupProjectDAL.find(
-              {
-                groupId: group.id
-              },
-              { tx }
-            )
-          ).map((gp) => gp.projectId)
-        )
+      const groupProjectMemberships = await groupProjectDAL.find(
+        {
+          groupId: group.id
+        },
+        { tx }
       );
+
+      // check which projects the group is part of
+      const projectIds = Array.from(new Set(groupProjectMemberships.map((gp) => gp.projectId)));
 
       // TODO: this part can be optimized
       for await (const userId of userIds) {
@@ -353,10 +351,34 @@ export const removeUsersFromGroupByUserIds = async ({
           );
         }
 
+        await accessApprovalRequestDAL.delete(
+          {
+            $in: {
+              groupMembershipId: groupProjectMemberships
+                .filter((gp) => projectsToDeleteKeyFor.includes(gp.projectId))
+                .map((gp) => gp.id)
+            },
+            requestedByUserId: userId
+          },
+          tx
+        );
+
+        await secretApprovalRequestDAL.delete(
+          {
+            committerUserId: userId,
+            $in: {
+              projectId: projectIds
+            }
+          },
+          tx
+        );
+
         await userGroupMembershipDAL.delete(
           {
             groupId: group.id,
-            userId
+            $in: {
+              userId: membersToRemoveFromGroupNonPending.map((member) => member.id)
+            }
           },
           tx
         );
@@ -364,12 +386,15 @@ export const removeUsersFromGroupByUserIds = async ({
     }
 
     if (membersToRemoveFromGroupPending.length) {
-      await userGroupMembershipDAL.delete({
-        groupId: group.id,
-        $in: {
-          userId: membersToRemoveFromGroupPending.map((member) => member.id)
-        }
-      });
+      await userGroupMembershipDAL.delete(
+        {
+          groupId: group.id,
+          $in: {
+            userId: membersToRemoveFromGroupPending.map((member) => member.id)
+          }
+        },
+        tx
+      );
     }
 
     return membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending);
