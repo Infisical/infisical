@@ -82,7 +82,7 @@ export const userDALFactory = (db: TDbClient) => {
         .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.Users))
-        .select(db.ref("id").withSchema(TableName.UserGroupMembership).as("userGroupMembershipId"));
+        .select(db.ref("id").withSchema(TableName.GroupProjectMembership).as("groupProjectMembershipId"));
 
       const projectMembershipUsers = projectMembershipQuery.map((user) => ({
         ...user,
@@ -93,10 +93,21 @@ export const userDALFactory = (db: TDbClient) => {
       const groupMembershipUsers = groupMembershipQuery.map((user) => ({
         ...user,
         projectMembershipId: null,
-        userGroupMembershipId: user.userGroupMembershipId
+        groupProjectMembershipId: user.groupProjectMembershipId
       }));
 
-      return [...projectMembershipUsers, ...groupMembershipUsers];
+      // return [...projectMembershipUsers, ...groupMembershipUsers];
+
+      // There may be duplicates in the results since a user can have both a project membership, and access through a group, so we need to filter out potential duplicates.
+      // We should prioritize project memberships over group memberships.
+      const memberships = [...projectMembershipUsers, ...groupMembershipUsers];
+
+      const uniqueMemberships = memberships.filter((user, index) => {
+        const firstIndex = memberships.findIndex((u) => u.id === user.id);
+        return firstIndex === index;
+      });
+
+      return uniqueMemberships;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find users by project id" });
     }
@@ -122,14 +133,14 @@ export const userDALFactory = (db: TDbClient) => {
         .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.Users))
-        .select(db.ref("id").withSchema(TableName.UserGroupMembership).as("userGroupMembershipId"))
+        .select(db.ref("id").withSchema(TableName.GroupProjectMembership).as("groupProjectMembershipId"))
         .first();
 
       if (projectMembership) {
         return {
           ...projectMembership,
           projectMembershipId: projectMembership.projectMembershipId,
-          userGroupMembershipId: null
+          groupProjectMembershipId: null
         };
       }
 
@@ -137,7 +148,7 @@ export const userDALFactory = (db: TDbClient) => {
         return {
           ...groupProjectMembership,
           projectMembershipId: null,
-          userGroupMembershipId: groupProjectMembership.userGroupMembershipId
+          groupProjectMembershipId: groupProjectMembership.groupProjectMembershipId
         };
       }
     } catch (error) {
