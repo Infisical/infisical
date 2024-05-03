@@ -1,12 +1,61 @@
+import { Knex } from "knex";
+import { Tables } from "knex/types/tables";
+
 import { TDbClient } from "@app/db";
 import { TableName, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships, TFindFilter } from "@app/lib/knex";
 
 export type TProjectMembershipDALFactory = ReturnType<typeof projectMembershipDALFactory>;
 
 export const projectMembershipDALFactory = (db: TDbClient) => {
-  const projectMemberOrm = ormify(db, TableName.ProjectMembership);
+  const projectMembershipOrm = ormify(db, TableName.ProjectMembership);
+  const accessApprovalRequestOrm = ormify(db, TableName.AccessApprovalRequest);
+  const secretApprovalRequestOrm = ormify(db, TableName.SecretApprovalRequest);
+
+  const deleteMany = async (filter: TFindFilter<Tables[TableName.ProjectMembership]["base"]>, tx?: Knex) => {
+    const handleDeletion = async (processedTx: Knex) => {
+      // Find all memberships
+      const memberships = await projectMembershipOrm.find(filter, {
+        tx: processedTx
+      });
+
+      // Delete all access approvals in this project from the users attached to these memberships
+      await accessApprovalRequestOrm.delete(
+        {
+          $in: {
+            projectMembershipId: memberships.map((membership) => membership.id)
+          }
+        },
+        processedTx
+      );
+
+      for await (const membership of memberships) {
+        // Delete all secret approvals in this project from the users attached to these memberships
+        await secretApprovalRequestOrm.delete(
+          {
+            projectId: membership.projectId,
+            committerUserId: membership.userId
+          },
+          processedTx
+        );
+        // Delete the actual project memberships
+        await projectMembershipOrm.delete(
+          {
+            id: membership.id
+          },
+          processedTx
+        );
+      }
+
+      return memberships;
+    };
+
+    if (tx) {
+      return handleDeletion(tx);
+    }
+    return db.transaction(handleDeletion);
+  };
 
   // special query
   const findAllProjectMembers = async (projectId: string) => {
@@ -153,8 +202,9 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
   };
 
   return {
-    ...projectMemberOrm,
+    ...projectMembershipOrm,
     findAllProjectMembers,
+    delete: deleteMany,
     findProjectGhostUser,
     findMembershipsByUsername,
     findProjectMembershipsByUserId
