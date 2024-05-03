@@ -96,7 +96,7 @@ export const auditLogQueueServiceFactory = ({
 
           const headers: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
 
-          if (headers.length)
+          if (streamHeaders.length)
             streamHeaders.forEach(({ key, value }) => {
               headers[key] = value;
             });
