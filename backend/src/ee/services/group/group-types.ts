@@ -10,6 +10,9 @@ import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
+import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
+
 export type TCreateGroupDTO = {
   name: string;
   slug?: string;
@@ -77,6 +80,8 @@ export type TRemoveUsersFromGroupByUserIds = {
   group: TGroups;
   userIds: string[];
   userDAL: Pick<TUserDALFactory, "find" | "transaction">;
+  accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "delete">;
+  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "delete">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership" | "delete">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;

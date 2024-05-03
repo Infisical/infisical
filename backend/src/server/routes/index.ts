@@ -230,10 +230,10 @@ export const registerRoutes = async (
 
   const gitAppInstallSessionDAL = gitAppInstallSessionDALFactory(db);
   const gitAppOrgDAL = gitAppDALFactory(db);
-  const groupDAL = groupDALFactory(db);
+  const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
+  const groupDAL = groupDALFactory(db, userGroupMembershipDAL);
   const groupProjectDAL = groupProjectDALFactory(db);
   const groupProjectMembershipRoleDAL = groupProjectMembershipRoleDALFactory(db);
-  const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
@@ -293,6 +293,8 @@ export const registerRoutes = async (
     projectDAL,
     projectBotDAL,
     projectKeyDAL,
+    secretApprovalRequestDAL,
+    accessApprovalRequestDAL,
     permissionService,
     licenseService
   });
@@ -300,7 +302,6 @@ export const registerRoutes = async (
     groupDAL,
     groupProjectDAL,
     groupProjectMembershipRoleDAL,
-    projectUserAdditionalPrivilegeDAL,
     secretApprovalRequestDAL,
     userGroupMembershipDAL,
     accessApprovalRequestDAL,
@@ -319,6 +320,8 @@ export const registerRoutes = async (
     projectMembershipDAL,
     groupDAL,
     groupProjectDAL,
+    secretApprovalRequestDAL,
+    accessApprovalRequestDAL,
     userGroupMembershipDAL,
     projectKeyDAL,
     projectBotDAL,
@@ -332,6 +335,8 @@ export const registerRoutes = async (
     orgDAL,
     orgBotDAL,
     groupDAL,
+    secretApprovalRequestDAL,
+    accessApprovalRequestDAL,
     groupProjectDAL,
     projectKeyDAL,
     projectDAL,
@@ -428,8 +433,6 @@ export const registerRoutes = async (
     orgDAL,
     userDAL,
     userGroupMembershipDAL,
-    accessApprovalRequestDAL,
-    secretApprovalRequestDAL,
     smtpService,
     projectKeyDAL,
     projectRoleDAL,
@@ -618,6 +621,8 @@ export const registerRoutes = async (
     projectMembershipDAL,
     accessApprovalPolicyDAL,
     accessApprovalRequestDAL,
+    groupProjectDAL,
+    userGroupMembershipDAL,
     projectEnvDAL,
     userDAL,
     smtpService,
