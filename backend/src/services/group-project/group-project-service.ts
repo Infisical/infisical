@@ -5,7 +5,6 @@ import { ProjectMembershipRole, SecretKeyEncoding } from "@app/db/schemas";
 import { TAccessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
@@ -42,7 +41,6 @@ type TGroupProjectServiceFactoryDep = {
   projectBotDAL: TProjectBotDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
-  projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "delete">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "delete">;
 };
@@ -57,7 +55,6 @@ export const groupProjectServiceFactory = ({
   secretApprovalRequestDAL,
   accessApprovalRequestDAL,
   projectDAL,
-  projectUserAdditionalPrivilegeDAL,
   projectKeyDAL,
   projectBotDAL,
   projectRoleDAL,
@@ -303,22 +300,12 @@ export const groupProjectServiceFactory = ({
       const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group.id, project.id, tx);
 
       // Delete all access approvals by the group members
-      const accessApprovals = await accessApprovalRequestDAL.delete(
+
+      await accessApprovalRequestDAL.delete(
         {
+          groupMembershipId: groupProjectMembership.id,
           $in: {
             requestedByUserId: groupMembers.map((member) => member.user.id)
-          }
-        },
-        tx
-      );
-
-      // Delete all potential additional privileges by the group members
-      await projectUserAdditionalPrivilegeDAL.delete(
-        {
-          $in: {
-            id: accessApprovals
-              .filter((accessApprovalRequest) => !!accessApprovalRequest.privilegeId)
-              .map(({ privilegeId }) => privilegeId!)
           }
         },
         tx
@@ -327,6 +314,7 @@ export const groupProjectServiceFactory = ({
       // Delete any secret approvals by the group members
       await secretApprovalRequestDAL.delete(
         {
+          projectId: project.id,
           $in: {
             committerUserId: groupMembers.map((member) => member.user.id)
           }
