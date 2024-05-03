@@ -26,6 +26,9 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("statusChangeBy").nullable().alter();
       t.uuid("committerId").nullable().alter();
 
+      t.string("projectId").nullable();
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+
       // add new "statusChangeByUserId" column
       t.uuid("statusChangeByUserId").nullable();
       t.foreign("statusChangeByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
@@ -64,6 +67,7 @@ export async function down(knex: Knex): Promise<void> {
       // t.uuid("committerId").notNullable().alter();
       t.dropColumn("statusChangeByUserId");
       t.dropColumn("committerUserId");
+      t.dropColumn("projectId");
     });
 
     await knex.schema.alterTable(TableName.SecretApprovalRequestReviewer, (t) => {
