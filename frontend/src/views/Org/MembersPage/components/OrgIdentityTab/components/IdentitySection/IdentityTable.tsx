@@ -23,8 +23,6 @@ import { useGetIdentityMembershipOrgs, useGetOrgRoles, useUpdateIdentity } from 
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-// TODO: some kind of map
-
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
@@ -44,7 +42,6 @@ type Props = {
 };
 
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
-  
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 

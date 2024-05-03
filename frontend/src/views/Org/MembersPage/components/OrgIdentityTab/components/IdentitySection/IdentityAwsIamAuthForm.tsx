@@ -9,9 +9,9 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import {
-  useAddIdentityUniversalAuth,
-  useGetIdentityUniversalAuth,
-  useUpdateIdentityUniversalAuth
+  useAddIdentityAwsIamAuth,
+  useGetIdentityAwsIamAuth,
+  useUpdateIdentityAwsIamAuth
 } from "@app/hooks/api";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
@@ -19,18 +19,12 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup
   .object({
+    stsEndpoint: yup.string(),
+    allowedPrincipalArns: yup.string(),
+    allowedAccountIds: yup.string(),
     accessTokenTTL: yup.string().required("Access Token TTL is required"),
     accessTokenMaxTTL: yup.string().required("Access Max Token TTL is required"),
     accessTokenNumUsesLimit: yup.string().required("Access Token Max Number of Uses is required"),
-    clientSecretTrustedIps: yup
-      .array(
-        yup.object({
-          ipAddress: yup.string().max(50).required().label("IP Address")
-        })
-      )
-      .min(1)
-      .required()
-      .label("Client Secret Trusted IP"),
     accessTokenTrustedIps: yup
       .array(
         yup.object({
@@ -58,7 +52,7 @@ type Props = {
   };
 };
 
-export const IdentityUniversalAuthForm = ({
+export const IdentityAwsIamAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
   identityAuthMethodData
@@ -66,9 +60,11 @@ export const IdentityUniversalAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-  const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
-  const { mutateAsync: updateMutateAsync } = useUpdateIdentityUniversalAuth();
-  const { data } = useGetIdentityUniversalAuth(identityAuthMethodData?.identityId ?? "");
+
+  const { mutateAsync: addMutateAsync } = useAddIdentityAwsIamAuth();
+  const { mutateAsync: updateMutateAsync } = useUpdateIdentityAwsIamAuth();
+
+  const { data } = useGetIdentityAwsIamAuth(identityAuthMethodData?.identityId ?? "");
 
   const {
     control,
@@ -78,19 +74,16 @@ export const IdentityUniversalAuthForm = ({
   } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
+      stsEndpoint: "https://sts.amazonaws.com/",
+      allowedPrincipalArns: "",
+      allowedAccountIds: "",
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "0",
-      clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
       accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
     }
   });
 
-  const {
-    fields: clientSecretTrustedIpsFields,
-    append: appendClientSecretTrustedIp,
-    remove: removeClientSecretTrustedIp
-  } = useFieldArray({ control, name: "clientSecretTrustedIps" });
   const {
     fields: accessTokenTrustedIpsFields,
     append: appendAccessTokenTrustedIp,
@@ -100,16 +93,12 @@ export const IdentityUniversalAuthForm = ({
   useEffect(() => {
     if (data) {
       reset({
+        stsEndpoint: data.stsEndpoint,
+        allowedPrincipalArns: data.allowedPrincipalArns,
+        allowedAccountIds: data.allowedAccountIds,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
-        clientSecretTrustedIps: data.clientSecretTrustedIps.map(
-          ({ ipAddress, prefix }: IdentityTrustedIp) => {
-            return {
-              ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
-            };
-          }
-        ),
         accessTokenTrustedIps: data.accessTokenTrustedIps.map(
           ({ ipAddress, prefix }: IdentityTrustedIp) => {
             return {
@@ -120,43 +109,48 @@ export const IdentityUniversalAuthForm = ({
       });
     } else {
       reset({
+        stsEndpoint: "https://sts.amazonaws.com/",
+        allowedPrincipalArns: "",
+        allowedAccountIds: "",
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "0",
-        clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
         accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
       });
     }
   }, [data]);
 
   const onFormSubmit = async ({
+    allowedPrincipalArns,
+    allowedAccountIds,
+    stsEndpoint,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
-    clientSecretTrustedIps,
     accessTokenTrustedIps
   }: FormData) => {
     try {
       if (!identityAuthMethodData) return;
 
       if (data) {
-        // update universal auth configuration
         await updateMutateAsync({
           organizationId: orgId,
+          stsEndpoint,
+          allowedPrincipalArns,
+          allowedAccountIds,
           identityId: identityAuthMethodData.identityId,
-          clientSecretTrustedIps,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
           accessTokenTrustedIps
         });
       } else {
-        // create new universal auth configuration
-
         await addMutateAsync({
           organizationId: orgId,
           identityId: identityAuthMethodData.identityId,
-          clientSecretTrustedIps,
+          stsEndpoint: stsEndpoint || "",
+          allowedPrincipalArns: allowedPrincipalArns || "",
+          allowedAccountIds: allowedAccountIds || "",
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
@@ -175,14 +169,8 @@ export const IdentityUniversalAuthForm = ({
 
       reset();
     } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text =
-        error?.response?.data?.message ??
-        `Failed to ${identityAuthMethodData?.authMethod ? "update" : "configure"} identity`;
-
       createNotification({
-        text,
+        text: `Failed to ${identityAuthMethodData?.authMethod ? "update" : "configure"} identity`,
         type: "error"
       });
     }
@@ -190,6 +178,43 @@ export const IdentityUniversalAuthForm = ({
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
+      <Controller
+        control={control}
+        defaultValue="2592000"
+        name="allowedPrincipalArns"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl label="Allowed ARNs" isError={Boolean(error)} errorText={error?.message}>
+            <Input
+              {...field}
+              placeholder="arn:aws:iam::123456789012:role/MyRoleName, arn:aws:iam::123456789012:user/MyUserName..."
+              type="text"
+            />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        name="allowedAccountIds"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl
+            label="Allowed Account IDs"
+            isError={Boolean(error)}
+            errorText={error?.message}
+          >
+            <Input {...field} placeholder="123456789012, ..." />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        defaultValue="https://sts.amazonaws.com/"
+        name="stsEndpoint"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl label="STS Endpoint" isError={Boolean(error)} errorText={error?.message}>
+            <Input {...field} placeholder="https://sts.amazonaws.com/" type="text" />
+          </FormControl>
+        )}
+      />
       <Controller
         control={control}
         defaultValue="2592000"
@@ -232,74 +257,6 @@ export const IdentityUniversalAuthForm = ({
           </FormControl>
         )}
       />
-      {clientSecretTrustedIpsFields.map(({ id }, index) => (
-        <div className="mb-3 flex items-end space-x-2" key={id}>
-          <Controller
-            control={control}
-            name={`clientSecretTrustedIps.${index}.ipAddress`}
-            defaultValue="0.0.0.0/0"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl
-                  className="mb-0 flex-grow"
-                  label={index === 0 ? "Client Secret Trusted IPs" : undefined}
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input
-                    value={field.value}
-                    onChange={(e) => {
-                      if (subscription?.ipAllowlisting) {
-                        field.onChange(e);
-                        return;
-                      }
-
-                      handlePopUpOpen("upgradePlan");
-                    }}
-                    placeholder="123.456.789.0"
-                  />
-                </FormControl>
-              );
-            }}
-          />
-          <IconButton
-            onClick={() => {
-              if (subscription?.ipAllowlisting) {
-                removeClientSecretTrustedIp(index);
-                return;
-              }
-
-              handlePopUpOpen("upgradePlan");
-            }}
-            size="lg"
-            colorSchema="danger"
-            variant="plain"
-            ariaLabel="update"
-            className="p-3"
-          >
-            <FontAwesomeIcon icon={faXmark} />
-          </IconButton>
-        </div>
-      ))}
-      <div className="my-4 ml-1">
-        <Button
-          variant="outline_bg"
-          onClick={() => {
-            if (subscription?.ipAllowlisting) {
-              appendClientSecretTrustedIp({
-                ipAddress: "0.0.0.0/0"
-              });
-              return;
-            }
-
-            handlePopUpOpen("upgradePlan");
-          }}
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          size="xs"
-        >
-          Add IP Address
-        </Button>
-      </div>
       {accessTokenTrustedIpsFields.map(({ id }, index) => (
         <div className="mb-3 flex items-end space-x-2" key={id}>
           <Controller
