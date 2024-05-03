@@ -624,6 +624,7 @@ export const secretApprovalRequestServiceFactory = ({
     const secretApprovalRequest = await secretApprovalRequestDAL.transaction(async (tx) => {
       const doc = await secretApprovalRequestDAL.create(
         {
+          projectId,
           folderId,
           slug: alphaNumericNanoId(),
           policyId: policy.id,
