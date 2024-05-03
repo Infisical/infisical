@@ -110,7 +110,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               `${TableName.SecretApprovalRequest}.policyId`,
               `${TableName.SecretApprovalPolicyApprover}.policyId`
             )
-            .where({ projectId })
+            .where({ [`${TableName.Environment}.projectId` as "projectId"]: projectId })
             .andWhere(
               (bd) =>
                 void bd
@@ -173,7 +173,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         )
         .where(
           stripUndefinedInWhere({
-            projectId,
+            [`${TableName.Environment}.projectId`]: projectId,
             [`${TableName.Environment}.slug` as "slug"]: environment,
             [`${TableName.SecretApprovalRequest}.status`]: status,
             committerUserId: committer
@@ -187,7 +187,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         )
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
-          db.ref("projectId").withSchema(TableName.Environment),
+          db.ref("projectId").withSchema(TableName.Environment).as("envProjectId"),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerMemberId"),
           db.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
@@ -217,7 +217,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
           environment: el.environment,
-          projectId: el.projectId,
+          projectId: el.envProjectId,
           policy: {
             id: el.policyId,
             name: el.policyName,
