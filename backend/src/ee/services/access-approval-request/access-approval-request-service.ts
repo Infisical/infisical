@@ -6,6 +6,7 @@ import { ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -15,6 +16,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { verifyApprovers } from "../access-approval-policy/access-approval-policy-fns";
+import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -37,6 +39,8 @@ type TSecretApprovalRequestServiceFactoryDep = {
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findOne">;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "findOne">;
   accessApprovalRequestDAL: Pick<
     TAccessApprovalRequestDALFactory,
     | "create"
@@ -70,6 +74,8 @@ export const accessApprovalRequestServiceFactory = ({
   permissionService,
   accessApprovalRequestDAL,
   accessApprovalRequestReviewerDAL,
+  userGroupMembershipDAL,
+  groupProjectDAL,
   projectMembershipDAL,
   accessApprovalPolicyDAL,
   accessApprovalPolicyApproverDAL,
@@ -133,7 +139,7 @@ export const accessApprovalRequestServiceFactory = ({
 
     const duplicateRequests = await accessApprovalRequestDAL.find({
       policyId: policy.id,
-      requestedByUserId: membership.id,
+      requestedByUserId: actorId,
       permissions: JSON.stringify(requestedPermissions),
       isTemporary
     });
@@ -165,14 +171,14 @@ export const accessApprovalRequestServiceFactory = ({
     const approval = await accessApprovalRequestDAL.transaction(async (tx) => {
       const requesterUser = await userDAL.findUserByProjectId(project.id, actorId);
 
-      if (!requesterUser?.projectMembershipId && !requesterUser?.userGroupMembershipId) {
+      if (!requesterUser?.projectMembershipId && !requesterUser?.groupProjectMembershipId) {
         throw new BadRequestError({ message: "You don't have a membership for this project" });
       }
 
       const approvalRequest = await accessApprovalRequestDAL.create(
         {
           projectMembershipId: requesterUser.projectMembershipId || null,
-          groupMembershipId: requesterUser.userGroupMembershipId || null,
+          groupMembershipId: requesterUser.groupProjectMembershipId || null,
           policyId: policy.id,
           requestedByUserId: actorId, // This is the user ID of the person who made the request
           temporaryRange: temporaryRange || null,
@@ -370,9 +376,25 @@ export const accessApprovalRequestServiceFactory = ({
 
           // Permanent access
           if (!accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
+            let groupUserMembershipId: string | null = null;
+
+            if (accessApprovalRequest.groupMembershipId) {
+              const groupProjectMembership = await groupProjectDAL.findOne({
+                id: accessApprovalRequest.groupMembershipId
+              });
+              if (!groupProjectMembership) throw new BadRequestError({ message: "Group not found" });
+
+              const userGroupMembershipId = await userGroupMembershipDAL.findOne({
+                groupId: groupProjectMembership.groupId
+              });
+              if (!userGroupMembershipId) throw new BadRequestError({ message: "User group membership not found" });
+
+              groupUserMembershipId = userGroupMembershipId.id;
+            }
+
             const privilege = await additionalPrivilegeDAL.create(
               {
-                groupMembershipId: accessApprovalRequest.groupMembershipId || null,
+                groupMembershipId: groupUserMembershipId || null,
                 projectMembershipId: accessApprovalRequest.projectMembershipId || null,
                 groupProjectId: accessApprovalRequest.groupMembershipId ? accessApprovalRequest.projectId : null,
                 slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
