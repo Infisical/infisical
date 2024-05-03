@@ -9,11 +9,9 @@ import {
   TableName,
   TProjectMemberships
 } from "@app/db/schemas";
-import { TAccessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
@@ -47,8 +45,6 @@ type TProjectMembershipServiceFactoryDep = {
   smtpService: TSmtpService;
   projectBotDAL: TProjectBotDALFactory;
   projectMembershipDAL: TProjectMembershipDALFactory;
-  secretApprovalRequestDAL: TSecretApprovalRequestDALFactory;
-  accessApprovalRequestDAL: TAccessApprovalRequestDALFactory;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany" | "find" | "delete">;
   userDAL: Pick<TUserDALFactory, "findById" | "findOne" | "findUserByProjectMembershipId" | "find">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
@@ -71,8 +67,6 @@ export const projectMembershipServiceFactory = ({
   projectRoleDAL,
   projectBotDAL,
   orgDAL,
-  accessApprovalRequestDAL,
-  secretApprovalRequestDAL,
   userDAL,
   userGroupMembershipDAL,
   projectDAL,
@@ -507,24 +501,6 @@ export const projectMembershipServiceFactory = ({
           projectId,
           $in: {
             id: projectMembers.map(({ id }) => id)
-          }
-        },
-        tx
-      );
-
-      await secretApprovalRequestDAL.delete(
-        {
-          $in: {
-            committerUserId: deletedMemberships.map((membership) => membership.userId)
-          }
-        },
-        tx
-      );
-
-      await accessApprovalRequestDAL.delete(
-        {
-          $in: {
-            requestedByUserId: deletedMemberships.map((membership) => membership.userId)
           }
         },
         tx
