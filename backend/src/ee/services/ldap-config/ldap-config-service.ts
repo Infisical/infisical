@@ -26,9 +26,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
+import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
 import { TLdapConfigDALFactory } from "./ldap-config-dal";
 import {
   TCreateLdapCfgDTO,
@@ -67,6 +69,8 @@ type TLdapConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "delete">;
+  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "delete">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -78,6 +82,8 @@ export const ldapConfigServiceFactory = ({
   orgBotDAL,
   groupDAL,
   groupProjectDAL,
+  accessApprovalRequestDAL,
+  secretApprovalRequestDAL,
   projectKeyDAL,
   projectDAL,
   projectBotDAL,
@@ -524,6 +530,8 @@ export const ldapConfigServiceFactory = ({
               group,
               userIds: [newUser.id],
               userDAL,
+              secretApprovalRequestDAL,
+              accessApprovalRequestDAL,
               userGroupMembershipDAL,
               groupProjectDAL,
               projectKeyDAL,
