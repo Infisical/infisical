@@ -1,4 +1,5 @@
 export * from "./api-keys";
+export * from "./audit-log-streams";
 export * from "./audit-logs";
 export * from "./auth-token-sessions";
 export * from "./auth-tokens";
