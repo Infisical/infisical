@@ -50,8 +50,8 @@ Your Audit Logs are now ready to be streamed.
    <Step title="Provide audit log stream inputs">
 				![better stack connect](../../images/platform/audit-log-streams/betterstack-source-details.png)
 
-				1. Copy the **Source token** field from Better Stack to the **Token** field.
-				2. Copy the **endpoint** from Better Stack to the **Endpoint URL** field.
+				1. Copy the **endpoint** from Better Stack to the **Endpoint URL** field.
+				3. Create a new header with key **Authorization** and set the value as **Bearer <source token from betterstack>**.
 		</Step>
 </Steps>
 
@@ -70,6 +70,6 @@ Your Audit Logs are now ready to be streamed.
 
 				1. Add **https://http-intake.logs.datadoghq.com/api/v2/logs** to the **Endpoint URL** field.
 				2. Copy the **API Key** from previous step
-				3. Create a new header with key **DD-API-KEY** and use the **API Key** as the value.
+				3. Create a new header with key **DD-API-KEY** and set the value as **API Key**.
 		</Step>
 </Steps>
