@@ -5,10 +5,75 @@ import { TableName, TGroups } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
+import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
+
 export type TGroupDALFactory = ReturnType<typeof groupDALFactory>;
 
-export const groupDALFactory = (db: TDbClient) => {
+export const groupDALFactory = (db: TDbClient, userGroupMembershipDAL: TUserGroupMembershipDALFactory) => {
   const groupOrm = ormify(db, TableName.Groups);
+  const groupMembershipOrm = ormify(db, TableName.GroupProjectMembership);
+  const accessApprovalRequestOrm = ormify(db, TableName.AccessApprovalRequest);
+  const secretApprovalRequestOrm = ormify(db, TableName.SecretApprovalRequest);
+
+  const deleteMany = async (filterQuery: TFindFilter<TGroups>, tx?: Knex) => {
+    const handleDeletion = async (processedTx: Knex) => {
+      // Find all memberships
+      const groups = await groupOrm.find(filterQuery, { tx: processedTx });
+
+      for await (const group of groups) {
+        const groupProjectMemberships = await groupMembershipOrm.find(
+          { groupId: group.id },
+          {
+            tx: processedTx
+          }
+        );
+
+        for await (const membership of groupProjectMemberships) {
+          const members = await userGroupMembershipDAL.findGroupMembersNotInProject(
+            group.id,
+            membership.projectId,
+            processedTx
+          );
+
+          await accessApprovalRequestOrm.delete(
+            {
+              projectMembershipId: membership.id,
+              $in: {
+                requestedByUserId: members.map(({ user }) => user.id)
+              }
+            },
+            processedTx
+          );
+
+          await secretApprovalRequestOrm.delete(
+            {
+              projectId: membership.projectId,
+              $in: {
+                committerUserId: members.map(({ user }) => user.id)
+              }
+            },
+            processedTx
+          );
+        }
+      }
+
+      await groupOrm.delete(
+        {
+          $in: {
+            id: groups.map((group) => group.id)
+          }
+        },
+        processedTx
+      );
+
+      return groups;
+    };
+
+    if (tx) {
+      return handleDeletion(tx);
+    }
+    return db.transaction(handleDeletion);
+  };
 
   const findGroups = async (filter: TFindFilter<TGroups>, { offset, limit, sort, tx }: TFindOpt<TGroups> = {}) => {
     try {
@@ -122,9 +187,10 @@ export const groupDALFactory = (db: TDbClient) => {
   };
 
   return {
+    ...groupOrm,
     findGroups,
     findByOrgId,
     findAllGroupMembers,
-    ...groupOrm
+    delete: deleteMany
   };
 };
