@@ -1,12 +1,14 @@
 import { Fragment } from "react";
 import { Tab } from "@headlessui/react";
 
+import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { OrgAuthTab } from "../OrgAuthTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
 
 const tabs = [
   { name: "General", key: "tab-org-general" },
-  { name: "Security", key: "tab-org-security" }
+  { name: "Security", key: "tab-org-security" },
+  { name: "Audit Log Streams", key: "tag-audit-log-streams" }
 ];
 export const OrgTabGroup = () => {
   return (
@@ -17,9 +19,8 @@ export const OrgTabGroup = () => {
             {({ selected }) => (
               <button
                 type="button"
-                className={`w-30 mx-2 mr-4 py-2 text-sm font-medium outline-none ${
-                  selected ? "border-b border-white text-white" : "text-mineshaft-400"
-                }`}
+                className={`w-30 mx-2 mr-4 py-2 text-sm font-medium outline-none ${selected ? "border-b border-white text-white" : "text-mineshaft-400"
+                  }`}
               >
                 {tab.name}
               </button>
@@ -33,6 +34,9 @@ export const OrgTabGroup = () => {
         </Tab.Panel>
         <Tab.Panel>
           <OrgAuthTab />
+        </Tab.Panel>
+        <Tab.Panel>
+          <AuditLogStreamsTab />
         </Tab.Panel>
       </Tab.Panels>
     </Tab.Group>
