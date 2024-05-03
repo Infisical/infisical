@@ -21,7 +21,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("projectMembershipId").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
 
       t.uuid("groupMembershipId").nullable();
-      t.foreign("groupMembershipId").references("id").inTable(TableName.UserGroupMembership).onDelete("CASCADE");
+      t.foreign("groupMembershipId").references("id").inTable(TableName.GroupProjectMembership).onDelete("CASCADE");
 
       // We use these values to create the actual privilege at a later point in time.
       t.boolean("isTemporary").notNullable();
