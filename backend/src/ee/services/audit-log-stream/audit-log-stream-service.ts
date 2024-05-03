@@ -140,17 +140,21 @@ export const auditLogStreamServiceFactory = ({
         streamHeaders[key] = value;
       });
 
-    await request.post(
-      url || logStream.url,
-      { ping: "ok" },
-      {
-        headers: streamHeaders,
-        // request timeout
-        timeout: AUDIT_LOG_STREAM_TIMEOUT,
-        // connection timeout
-        signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
-      }
-    );
+    await request
+      .post(
+        url || logStream.url,
+        { ping: "ok" },
+        {
+          headers: streamHeaders,
+          // request timeout
+          timeout: AUDIT_LOG_STREAM_TIMEOUT,
+          // connection timeout
+          signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+        }
+      )
+      .catch((err) => {
+        throw new Error(`Failed to connect with the source ${(err as Error)?.message}`);
+      });
 
     const encryptedHeaders = headers ? infisicalSymmetricEncypt(JSON.stringify(headers)) : undefined;
     const updatedLogStream = await auditLogStreamDAL.updateById(id, {
