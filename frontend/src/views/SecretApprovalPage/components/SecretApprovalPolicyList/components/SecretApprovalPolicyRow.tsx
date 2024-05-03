@@ -84,17 +84,17 @@ export const SecretApprovalPolicyRow = ({
             <DropdownMenuLabel>
               Select members that are allowed to approve changes
             </DropdownMenuLabel>
-            {members?.map(({ id, user }) => {
-              const isChecked = selectedApprovers.includes(id);
+            {members?.map(({ user }) => {
+              const isChecked = selectedApprovers.includes(user.id);
               return (
                 <DropdownMenuItem
                   onClick={(evt) => {
                     evt.preventDefault();
                     setSelectedApprovers((state) =>
-                      isChecked ? state.filter((el) => el !== id) : [...state, id]
+                      isChecked ? state.filter((el) => el !== user.id) : [...state, user.id]
                     );
                   }}
-                  key={`create-policy-members-${id}`}
+                  key={`create-policy-members-${user.id}`}
                   iconPos="right"
                   icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
                 >
