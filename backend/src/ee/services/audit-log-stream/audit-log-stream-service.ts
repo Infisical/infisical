@@ -13,6 +13,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-p
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
 import {
+  LogStreamHeaders,
   TCreateAuditLogStreamDTO,
   TDeleteAuditLogStreamDTO,
   TGetDetailsAuditLogStreamDTO,
@@ -33,7 +34,14 @@ export const auditLogStreamServiceFactory = ({
   permissionService,
   licenseService
 }: TAuditLogStreamServiceFactoryDep) => {
-  const create = async ({ url, actor, token, actorId, actorOrgId, actorAuthMethod }: TCreateAuditLogStreamDTO) => {
+  const create = async ({
+    url,
+    actor,
+    headers = [],
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: TCreateAuditLogStreamDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Missing org id from token" });
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -62,30 +70,37 @@ export const auditLogStreamServiceFactory = ({
     }
 
     // testing connection first
-    const headers: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
-    if (token) headers.Authorization = `Bearer ${token}`;
-    await request.post(
-      url,
-      { ping: "ok" },
-      {
-        headers,
-        // request timeout
-        timeout: AUDIT_LOG_STREAM_TIMEOUT,
-        // connection timeout
-        signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
-      }
-    );
-    const encryptedToken = token ? infisicalSymmetricEncypt(token) : undefined;
+    const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
+    if (headers.length)
+      headers.forEach(({ key, value }) => {
+        streamHeaders[key] = value;
+      });
+    await request
+      .post(
+        url,
+        { ping: "ok" },
+        {
+          headers: streamHeaders,
+          // request timeout
+          timeout: AUDIT_LOG_STREAM_TIMEOUT,
+          // connection timeout
+          signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+        }
+      )
+      .catch((err) => {
+        throw new Error(`Failed to connect with the source ${(err as Error)?.message}`);
+      });
+    const encryptedHeaders = headers ? infisicalSymmetricEncypt(JSON.stringify(headers)) : undefined;
     const logStream = await auditLogStreamDAL.create({
       orgId: actorOrgId,
       url,
-      ...(encryptedToken
+      ...(encryptedHeaders
         ? {
-            encryptedTokenCiphertext: encryptedToken.ciphertext,
-            encryptedTokenIV: encryptedToken.iv,
-            encryptedTokenTag: encryptedToken.tag,
-            encryptedTokenAlgorithm: encryptedToken.algorithm,
-            encryptedTokenKeyEncoding: encryptedToken.encoding
+            encryptedHeadersCiphertext: encryptedHeaders.ciphertext,
+            encryptedHeadersIV: encryptedHeaders.iv,
+            encryptedHeadersTag: encryptedHeaders.tag,
+            encryptedHeadersAlgorithm: encryptedHeaders.algorithm,
+            encryptedHeadersKeyEncoding: encryptedHeaders.encoding
           }
         : {})
     });
@@ -96,7 +111,7 @@ export const auditLogStreamServiceFactory = ({
     id,
     url,
     actor,
-    token,
+    headers = [],
     actorId,
     actorOrgId,
     actorAuthMethod
@@ -119,13 +134,17 @@ export const auditLogStreamServiceFactory = ({
     if (url) validateLocalIps(url);
 
     // testing connection first
-    const headers: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
-    if (token) headers.Authorization = `Bearer ${token}`;
+    const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
+    if (headers.length)
+      headers.forEach(({ key, value }) => {
+        streamHeaders[key] = value;
+      });
+
     await request.post(
       url || logStream.url,
       { ping: "ok" },
       {
-        headers,
+        headers: streamHeaders,
         // request timeout
         timeout: AUDIT_LOG_STREAM_TIMEOUT,
         // connection timeout
@@ -133,16 +152,16 @@ export const auditLogStreamServiceFactory = ({
       }
     );
 
-    const encryptedToken = token ? infisicalSymmetricEncypt(token) : undefined;
+    const encryptedHeaders = headers ? infisicalSymmetricEncypt(JSON.stringify(headers)) : undefined;
     const updatedLogStream = await auditLogStreamDAL.updateById(id, {
       url,
-      ...(encryptedToken
+      ...(encryptedHeaders
         ? {
-            encryptedTokenCiphertext: encryptedToken.ciphertext,
-            encryptedTokenIV: encryptedToken.iv,
-            encryptedTokenTag: encryptedToken.tag,
-            encryptedTokenAlgorithm: encryptedToken.algorithm,
-            encryptedTokenKeyEncoding: encryptedToken.encoding
+            encryptedHeadersCiphertext: encryptedHeaders.ciphertext,
+            encryptedHeadersIV: encryptedHeaders.iv,
+            encryptedHeadersTag: encryptedHeaders.tag,
+            encryptedHeadersAlgorithm: encryptedHeaders.algorithm,
+            encryptedHeadersKeyEncoding: encryptedHeaders.encoding
           }
         : {})
     });
@@ -171,17 +190,19 @@ export const auditLogStreamServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 
-    const token =
-      logStream?.encryptedTokenCiphertext && logStream?.encryptedTokenIV && logStream?.encryptedTokenTag
-        ? infisicalSymmetricDecrypt({
-            tag: logStream.encryptedTokenTag,
-            iv: logStream.encryptedTokenIV,
-            ciphertext: logStream.encryptedTokenCiphertext,
-            keyEncoding: logStream.encryptedTokenKeyEncoding as SecretKeyEncoding
-          })
+    const headers =
+      logStream?.encryptedHeadersCiphertext && logStream?.encryptedHeadersIV && logStream?.encryptedHeadersTag
+        ? (JSON.parse(
+            infisicalSymmetricDecrypt({
+              tag: logStream.encryptedHeadersTag,
+              iv: logStream.encryptedHeadersIV,
+              ciphertext: logStream.encryptedHeadersCiphertext,
+              keyEncoding: logStream.encryptedHeadersKeyEncoding as SecretKeyEncoding
+            })
+          ) as LogStreamHeaders[])
         : undefined;
 
-    return { ...logStream, token };
+    return { ...logStream, headers };
   };
 
   const list = async ({ actor, actorId, actorOrgId, actorAuthMethod }: TListAuditLogStreamDTO) => {

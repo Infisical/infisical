@@ -618,12 +618,20 @@ export const INTEGRATION = {
 export const AUDIT_LOG_STREAMS = {
   CREATE: {
     url: "The HTTP URL to push logs to.",
-    token: "Authentication token for the external provider used for identification."
+    headers: {
+      desc: "The HTTP headers attached for the external prrovider requests.",
+      key: "The HTTP header key name.",
+      value: "The HTTP header value."
+    }
   },
   UPDATE: {
     id: "The ID of the audit log stream to update.",
     url: "The HTTP URL to push logs to.",
-    token: "Authentication token for the external provider used for identification."
+    headers: {
+      desc: "The HTTP headers attached for the external prrovider requests.",
+      key: "The HTTP header key name.",
+      value: "The HTTP header value."
+    }
   },
   DELETE: {
     id: "The ID of the audit log stream to delete."

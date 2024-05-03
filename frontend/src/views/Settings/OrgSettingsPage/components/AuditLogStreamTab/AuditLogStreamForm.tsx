@@ -1,8 +1,10 @@
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Spinner } from "@app/components/v2";
+import { Button, FormControl, FormLabel, IconButton, Input, Spinner } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import {
 	useCreateAuditLogStream,
@@ -17,7 +19,13 @@ type Props = {
 
 const formSchema = z.object({
 	url: z.string().url().min(1),
-	token: z.string().optional()
+	headers: z
+		.object({
+			key: z.string(),
+			value: z.string()
+		})
+		.array()
+		.optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -33,18 +41,28 @@ export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
 	const {
 		handleSubmit,
 		control,
+		setValue,
+		getValues,
 		formState: { isSubmitting }
 	} = useForm<TForm>({
-		values: auditLogStream?.data
+		values: auditLogStream?.data,
+		defaultValues: {
+			headers: [{ key: "", value: "" }]
+		}
 	});
 
-	const handleAuditLogStreamEdit = async ({ token, url }: TForm) => {
+	const headerFields = useFieldArray({
+		control,
+		name: "headers"
+	});
+
+	const handleAuditLogStreamEdit = async ({ headers, url }: TForm) => {
 		if (!id) return;
 		try {
 			await updateAuditLogStream.mutateAsync({
 				id,
 				orgId,
-				token,
+				headers,
 				url
 			});
 			createNotification({
@@ -61,16 +79,18 @@ export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
 		}
 	};
 
-	const handleFormSubmit = async ({ token, url }: TForm) => {
+	const handleFormSubmit = async ({ headers = [], url }: TForm) => {
 		if (isSubmitting) return;
+		const sanitizedHeaders = headers.filter(({ key, value }) => Boolean(key) && Boolean(value));
+		const streamHeaders = sanitizedHeaders.length ? sanitizedHeaders : undefined;
 		if (isEdit) {
-			await handleAuditLogStreamEdit({ token, url });
+			await handleAuditLogStreamEdit({ headers: streamHeaders, url });
 			return;
 		}
 		try {
 			await createAuditLogStream.mutateAsync({
 				orgId,
-				token,
+				headers: streamHeaders,
 				url
 			});
 			createNotification({
@@ -96,32 +116,82 @@ export const AuditLogStreamForm = ({ id = "", onClose }: Props) => {
 	}
 
 	return (
-		<form onSubmit={handleSubmit(handleFormSubmit)}>
+		<form onSubmit={handleSubmit(handleFormSubmit)} autoComplete="off">
 			<div>
 				<Controller
 					control={control}
 					name="url"
 					render={({ field, fieldState: { error } }) => (
-						<FormControl label="Endpoint URL" isError={Boolean(error?.message)} errorText={error?.message}>
+						<FormControl
+							label="Endpoint URL"
+							isError={Boolean(error?.message)}
+							errorText={error?.message}
+						>
 							<Input {...field} />
 						</FormControl>
 					)}
 				/>
-				<Controller
-					control={control}
-					name="token"
-					render={({ field, fieldState: { error } }) => (
-						<FormControl
-							label="Token"
-							isOptional
-							isError={Boolean(error?.message)}
-							errorText={error?.message}
-							helperText="The bearer token used to authenticate with the logging provider endpoint"
+				<FormLabel label="Headers" isOptional />
+				{headerFields.fields.map(({ id: headerFieldId }, i) => (
+					<div key={headerFieldId} className="flex space-x-2">
+						<Controller
+							control={control}
+							name={`headers.${i}.key`}
+							render={({ field, fieldState: { error } }) => (
+								<FormControl
+									isError={Boolean(error?.message)}
+									errorText={error?.message}
+									className="w-1/3"
+								>
+									<Input {...field} placeholder="Authorization" />
+								</FormControl>
+							)}
+						/>
+						<Controller
+							control={control}
+							name={`headers.${i}.value`}
+							render={({ field, fieldState: { error } }) => (
+								<FormControl
+									isError={Boolean(error?.message)}
+									errorText={error?.message}
+									className="flex-grow"
+								>
+									<Input
+										{...field}
+										type="password"
+										placeholder="Bearer <token>"
+										autoComplete="new-password"
+									/>
+								</FormControl>
+							)}
+						/>
+						<IconButton
+							ariaLabel="delete key"
+							className="h-9"
+							variant="outline_bg"
+							onClick={() => {
+								const header = getValues("headers");
+								if (header && header?.length > 1) {
+									headerFields.remove(i);
+								} else {
+									setValue("headers", [{ key: "", value: "" }]);
+								}
+							}}
 						>
-							<Input {...field} type="password" />
-						</FormControl>
-					)}
-				/>
+							<FontAwesomeIcon icon={faTrash} />
+						</IconButton>
+					</div>
+				))}
+				<div>
+					<Button
+						leftIcon={<FontAwesomeIcon icon={faPlus} />}
+						size="xs"
+						variant="outline_bg"
+						onClick={() => headerFields.append({ value: "", key: "" })}
+					>
+						Add Key
+					</Button>
+				</div>
 			</div>
 			<div className="mt-8 flex items-center">
 				<Button className="mr-4" type="submit" isLoading={isSubmitting}>

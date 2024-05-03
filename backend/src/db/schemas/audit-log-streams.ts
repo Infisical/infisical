@@ -10,11 +10,11 @@ import { TImmutableDBKeys } from "./models";
 export const AuditLogStreamsSchema = z.object({
   id: z.string().uuid(),
   url: z.string(),
-  encryptedTokenCiphertext: z.string().nullable().optional(),
-  encryptedTokenIV: z.string().nullable().optional(),
-  encryptedTokenTag: z.string().nullable().optional(),
-  encryptedTokenAlgorithm: z.string().nullable().optional(),
-  encryptedTokenKeyEncoding: z.string().nullable().optional(),
+  encryptedHeadersCiphertext: z.string().nullable().optional(),
+  encryptedHeadersIV: z.string().nullable().optional(),
+  encryptedHeadersTag: z.string().nullable().optional(),
+  encryptedHeadersAlgorithm: z.string().nullable().optional(),
+  encryptedHeadersKeyEncoding: z.string().nullable().optional(),
   orgId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date()

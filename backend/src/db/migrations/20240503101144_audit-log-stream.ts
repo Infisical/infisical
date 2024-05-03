@@ -8,11 +8,11 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.AuditLogStream, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("url").notNullable();
-      t.text("encryptedTokenCiphertext");
-      t.text("encryptedTokenIV");
-      t.text("encryptedTokenTag");
-      t.string("encryptedTokenAlgorithm");
-      t.string("encryptedTokenKeyEncoding");
+      t.text("encryptedHeadersCiphertext");
+      t.text("encryptedHeadersIV");
+      t.text("encryptedHeadersTag");
+      t.string("encryptedHeadersAlgorithm");
+      t.string("encryptedHeadersKeyEncoding");
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.timestamps(true, true, true);

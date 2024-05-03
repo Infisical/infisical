@@ -22,7 +22,14 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
       ],
       body: z.object({
         url: z.string().min(1).describe(AUDIT_LOG_STREAMS.CREATE.url),
-        token: z.string().optional().describe(AUDIT_LOG_STREAMS.CREATE.token)
+        headers: z
+          .object({
+            key: z.string().min(1).trim().describe(AUDIT_LOG_STREAMS.CREATE.headers.key),
+            value: z.string().min(1).trim().describe(AUDIT_LOG_STREAMS.CREATE.headers.value)
+          })
+          .describe(AUDIT_LOG_STREAMS.CREATE.headers.desc)
+          .array()
+          .optional()
       }),
       response: {
         200: z.object({
@@ -38,7 +45,7 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         url: req.body.url,
-        token: req.body.token
+        headers: req.body.headers
       });
 
       return { auditLogStream };
@@ -63,7 +70,14 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
       }),
       body: z.object({
         url: z.string().optional().describe(AUDIT_LOG_STREAMS.UPDATE.url),
-        token: z.string().optional().describe(AUDIT_LOG_STREAMS.UPDATE.token)
+        headers: z
+          .object({
+            key: z.string().min(1).trim().describe(AUDIT_LOG_STREAMS.UPDATE.headers.key),
+            value: z.string().min(1).trim().describe(AUDIT_LOG_STREAMS.UPDATE.headers.value)
+          })
+          .describe(AUDIT_LOG_STREAMS.UPDATE.headers.desc)
+          .array()
+          .optional()
       }),
       response: {
         200: z.object({
@@ -80,7 +94,7 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
         actorAuthMethod: req.permission.authMethod,
         id: req.params.id,
         url: req.body.url,
-        token: req.body.token
+        headers: req.body.headers
       });
 
       return { auditLogStream };
@@ -141,7 +155,15 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
       }),
       response: {
         200: z.object({
-          auditLogStream: SanitizedAuditLogStreamSchema.extend({ token: z.string().optional() })
+          auditLogStream: SanitizedAuditLogStreamSchema.extend({
+            headers: z
+              .object({
+                key: z.string(),
+                value: z.string()
+              })
+              .array()
+              .optional()
+          })
         })
       }
     },

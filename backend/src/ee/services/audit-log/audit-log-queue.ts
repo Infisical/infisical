@@ -8,6 +8,7 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TAuditLogStreamDALFactory } from "../audit-log-stream/audit-log-stream-dal";
+import { LogStreamHeaders } from "../audit-log-stream/audit-log-stream-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TCreateAuditLogDTO } from "./audit-log-types";
@@ -74,20 +75,31 @@ export const auditLogQueueServiceFactory = ({
     const logStreams = orgId ? await auditLogStreamDAL.find({ orgId }) : [];
     await Promise.allSettled(
       logStreams.map(
-        async ({ url, encryptedTokenTag, encryptedTokenIV, encryptedTokenKeyEncoding, encryptedTokenCiphertext }) => {
-          const token =
-            encryptedTokenIV && encryptedTokenCiphertext && encryptedTokenTag
-              ? infisicalSymmetricDecrypt({
-                  keyEncoding: encryptedTokenKeyEncoding as SecretKeyEncoding,
-                  iv: encryptedTokenIV,
-                  tag: encryptedTokenTag,
-                  ciphertext: encryptedTokenCiphertext
-                })
-              : undefined;
+        async ({
+          url,
+          encryptedHeadersTag,
+          encryptedHeadersIV,
+          encryptedHeadersKeyEncoding,
+          encryptedHeadersCiphertext
+        }) => {
+          const streamHeaders =
+            encryptedHeadersIV && encryptedHeadersCiphertext && encryptedHeadersTag
+              ? (JSON.parse(
+                  infisicalSymmetricDecrypt({
+                    keyEncoding: encryptedHeadersKeyEncoding as SecretKeyEncoding,
+                    iv: encryptedHeadersIV,
+                    tag: encryptedHeadersTag,
+                    ciphertext: encryptedHeadersCiphertext
+                  })
+                ) as LogStreamHeaders[])
+              : [];
 
           const headers: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
 
-          if (token) headers.Authorization = `Bearer ${token}`;
+          if (headers.length)
+            streamHeaders.forEach(({ key, value }) => {
+              headers[key] = value;
+            });
 
           return request.post(url, auditLog, {
             headers,
