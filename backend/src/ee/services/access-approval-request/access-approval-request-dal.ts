@@ -11,6 +11,32 @@ export type TAccessApprovalRequestDALFactory = ReturnType<typeof accessApprovalR
 
 export const accessApprovalRequestDALFactory = (db: TDbClient) => {
   const accessApprovalRequestOrm = ormify(db, TableName.AccessApprovalRequest);
+  const projectUserAdditionalPrivilegeOrm = ormify(db, TableName.ProjectUserAdditionalPrivilege);
+
+  const deleteMany = async (filter: TFindFilter<TAccessApprovalRequests>, tx?: Knex) => {
+    try {
+      const handleDeletion = async (processedTx: Knex) => {
+        const accessApprovalRequests = await accessApprovalRequestOrm.find(filter, { tx: processedTx });
+
+        await projectUserAdditionalPrivilegeOrm.delete(
+          {
+            $in: {
+              id: accessApprovalRequests.filter((req) => !!req.privilegeId).map((req) => req.privilegeId!)
+            }
+          },
+          processedTx
+        );
+
+        return accessApprovalRequestOrm.delete(filter, processedTx);
+      };
+
+      if (tx) return await handleDeletion(tx);
+
+      return await db.transaction(handleDeletion);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DeleteManyAccessApprovalRequest" });
+    }
+  };
 
   const findRequestsWithPrivilegeByPolicyIds = async (policyIds: string[]) => {
     try {
@@ -270,5 +296,5 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...accessApprovalRequestOrm, findById, findRequestsWithPrivilegeByPolicyIds, getCount };
+  return { ...accessApprovalRequestOrm, findById, findRequestsWithPrivilegeByPolicyIds, getCount, delete: deleteMany };
 };
