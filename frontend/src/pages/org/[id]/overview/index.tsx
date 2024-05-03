@@ -602,7 +602,7 @@ const OrganizationPage = withPermission(
           >
             <FontAwesomeIcon icon={faWarning} className="p-6 text-4xl text-primary" />
             <div className="text-sm">
-              <span className="text-lg font-semibold">Scheduled maintenance on April 13th 2024 </span>{" "}
+              <span className="text-lg font-semibold">Scheduled maintenance on May 11th 2024 </span>{" "}
               <br />
               Infisical will undergo scheduled maintenance for approximately 2 hour on Saturday, May 11th, 11am EST. During these hours, read
               operations to Infisical will continue to function normally but no resources will be editable. 
