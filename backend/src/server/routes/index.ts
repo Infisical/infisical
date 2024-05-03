@@ -70,6 +70,8 @@ import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
 import { identityAccessTokenDALFactory } from "@app/services/identity-access-token/identity-access-token-dal";
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
+import { identityAwsIamAuthDALFactory } from "@app/services/identity-aws-iam-auth/identity-aws-iam-auth-dal";
+import { identityAwsIamAuthServiceFactory } from "@app/services/identity-aws-iam-auth/identity-aws-iam-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectMembershipRoleDALFactory } from "@app/services/identity-project/identity-project-membership-role-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
@@ -191,6 +193,7 @@ export const registerRoutes = async (
 
   const identityUaDAL = identityUaDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
+  const identityAwsIamAuthDAL = identityAwsIamAuthDALFactory(db);
 
   const auditLogDAL = auditLogDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
@@ -637,6 +640,14 @@ export const registerRoutes = async (
     identityUaDAL,
     licenseService
   });
+  const identityAWSIAMAuthService = identityAwsIamAuthServiceFactory({
+    identityAccessTokenDAL,
+    identityAwsIamAuthDAL,
+    identityOrgMembershipDAL,
+    identityDAL,
+    licenseService,
+    permissionService
+  });
 
   const dynamicSecretProviders = buildDynamicSecretProviders();
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
@@ -706,6 +717,7 @@ export const registerRoutes = async (
     identityAccessToken: identityAccessTokenService,
     identityProject: identityProjectService,
     identityUa: identityUaService,
+    identityAwsIamAuth: identityAWSIAMAuthService,
     secretApprovalPolicy: sapService,
     secretApprovalRequest: sarService,
     secretRotation: secretRotationService,

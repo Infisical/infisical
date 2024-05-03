@@ -12,6 +12,7 @@ export * from "./group-project-memberships";
 export * from "./groups";
 export * from "./identities";
 export * from "./identity-access-tokens";
+export * from "./identity-aws-iam-auths";
 export * from "./identity-org-memberships";
 export * from "./identity-project-additional-privilege";
 export * from "./identity-project-membership-role";
