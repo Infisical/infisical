@@ -29,8 +29,8 @@ The logs are formatted in JSON, requiring your logging provider to support JSON-
 		 <ParamField path="Endpoint URL" type="string" required>
 				The HTTPS endpoint URL of the logging provider that collects the JSON stream.
      </ParamField>
-		 <ParamField path="Token" type="string" >
-				Bearer token used by the logging providers for identification and authentication.
+		 <ParamField path="Headers" type="string" >
+				The HTTP headers for the logging provider for identification and authentication.
      </ParamField>
 		</Step>
 </Steps>
@@ -52,5 +52,24 @@ Your Audit Logs are now ready to be streamed.
 
 				1. Copy the **Source token** field from Better Stack to the **Token** field.
 				2. Copy the **endpoint** from Better Stack to the **Endpoint URL** field.
+		</Step>
+</Steps>
+
+### Datadog
+
+<Steps>
+    <Step title="Navigate to API Keys section by clicking on sidebar in Datadog">
+				![api key create](../../images/platform/audit-log-streams/datadog-api-sidebar.png)
+				![api new key](../../images/platform/audit-log-streams/data-create-api-key.png)
+		</Step>
+    <Step title="Select New Key and provide a key name">
+				![api key form](../../images/platform/audit-log-streams/data-create-api-key.png)
+		</Step>
+   <Step title="Provide audit log stream inputs">
+				![datadog api key details](../../images/platform/audit-log-streams/datadog-source-details.png)
+
+				1. Add **https://http-intake.logs.datadoghq.com/api/v2/logs** to the **Endpoint URL** field.
+				2. Copy the **API Key** from previous step
+				3. Create a new header with key **DD-API-KEY** and use the **API Key** as the value.
 		</Step>
 </Steps>
