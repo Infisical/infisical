@@ -25,6 +25,7 @@ export enum TableName {
   ProjectMembership = "project_memberships",
   ProjectRoles = "project_roles",
   ProjectUserAdditionalPrivilege = "project_user_additional_privilege",
+  GroupProjectUserAdditionalPrivilege = "group_project_user_additional_privilege",
   ProjectUserMembershipRole = "project_user_membership_roles",
   ProjectKeys = "project_keys",
   Secret = "secrets",

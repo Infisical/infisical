@@ -10,7 +10,8 @@ import { TImmutableDBKeys } from "./models";
 export const AccessApprovalRequestsSchema = z.object({
   id: z.string().uuid(),
   policyId: z.string().uuid(),
-  privilegeId: z.string().uuid().nullable().optional(),
+  projectUserPrivilegeId: z.string().uuid().nullable().optional(),
+  groupProjectUserPrivilegeId: z.string().uuid().nullable().optional(),
   requestedByUserId: z.string().uuid(),
   projectMembershipId: z.string().uuid().nullable().optional(),
   groupMembershipId: z.string().uuid().nullable().optional(),
