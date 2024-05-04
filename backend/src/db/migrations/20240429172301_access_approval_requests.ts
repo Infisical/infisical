@@ -11,8 +11,17 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("policyId").notNullable();
       t.foreign("policyId").references("id").inTable(TableName.AccessApprovalPolicy).onDelete("CASCADE");
 
-      t.uuid("privilegeId").nullable();
-      t.foreign("privilegeId").references("id").inTable(TableName.ProjectUserAdditionalPrivilege).onDelete("CASCADE");
+      t.uuid("projectUserPrivilegeId").nullable();
+      t.foreign("projectUserPrivilegeId")
+        .references("id")
+        .inTable(TableName.ProjectUserAdditionalPrivilege)
+        .onDelete("CASCADE");
+
+      t.uuid("groupProjectUserPrivilegeId").nullable();
+      t.foreign("groupProjectUserPrivilegeId")
+        .references("id")
+        .inTable(TableName.GroupProjectUserAdditionalPrivilege)
+        .onDelete("CASCADE");
 
       t.uuid("requestedByUserId").notNullable();
       t.foreign("requestedByUserId").references("id").inTable(TableName.Users).onDelete("CASCADE");
@@ -48,27 +57,12 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasColumn(TableName.ProjectUserAdditionalPrivilege, "groupMembershipId"))) {
-    await knex.schema.alterTable(TableName.ProjectUserAdditionalPrivilege, (t) => {
-      t.uuid("projectMembershipId").nullable().alter();
-
-      // add new "groupMembershipId" column
-      t.uuid("groupMembershipId").nullable();
-      t.foreign("groupMembershipId").references("id").inTable(TableName.UserGroupMembership).onDelete("CASCADE");
-    });
-  }
   await createOnUpdateTrigger(knex, TableName.AccessApprovalRequestReviewer);
 }
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.AccessApprovalRequestReviewer);
   await knex.schema.dropTableIfExists(TableName.AccessApprovalRequest);
-
-  if (await knex.schema.hasColumn(TableName.ProjectUserAdditionalPrivilege, "groupMembershipId")) {
-    await knex.schema.alterTable(TableName.ProjectUserAdditionalPrivilege, (t) => {
-      t.dropColumn("groupMembershipId"); // Warning: Dropping column in migration!
-    });
-  }
 
   await dropOnUpdateTrigger(knex, TableName.AccessApprovalRequestReviewer);
   await dropOnUpdateTrigger(knex, TableName.AccessApprovalRequest);
