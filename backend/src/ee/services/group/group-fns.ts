@@ -268,6 +268,7 @@ export const removeUsersFromGroupByUserIds = async ({
   userGroupMembershipDAL,
   accessApprovalRequestDAL,
   secretApprovalRequestDAL,
+  secretApprovalPolicyDAL,
   groupProjectDAL,
   projectKeyDAL,
   tx: outerTx
@@ -363,11 +364,12 @@ export const removeUsersFromGroupByUserIds = async ({
           tx
         );
 
+        const projectSecretApprovalPolicies = await secretApprovalPolicyDAL.findByProjectIds(projectIds);
         await secretApprovalRequestDAL.delete(
           {
             committerUserId: userId,
             $in: {
-              projectId: projectIds
+              policyId: projectSecretApprovalPolicies.map((p) => p.id)
             }
           },
           tx

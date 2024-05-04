@@ -220,7 +220,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
                 }
               : null,
 
-          isApproved: !!doc.projectUserPrivilegeId
+          isApproved: Boolean(doc.projectUserPrivilegeId || doc.groupProjectUserPrivilegeId)
         }),
         childrenMapper: [
           {

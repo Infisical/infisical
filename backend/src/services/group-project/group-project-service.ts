@@ -5,6 +5,7 @@ import { ProjectMembershipRole, SecretKeyEncoding } from "@app/db/schemas";
 import { TAccessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TSecretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
@@ -42,6 +43,7 @@ type TGroupProjectServiceFactoryDep = {
   groupDAL: Pick<TGroupDALFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "delete">;
+  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findByProjectIds">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "delete">;
 };
 
@@ -53,6 +55,7 @@ export const groupProjectServiceFactory = ({
   groupProjectMembershipRoleDAL,
   userGroupMembershipDAL,
   secretApprovalRequestDAL,
+  secretApprovalPolicyDAL,
   accessApprovalRequestDAL,
   projectDAL,
   projectKeyDAL,
@@ -311,11 +314,13 @@ export const groupProjectServiceFactory = ({
         tx
       );
 
+      const secretApprovalPolicies = await secretApprovalPolicyDAL.findByProjectIds([project.id], tx);
+
       // Delete any secret approvals by the group members
       await secretApprovalRequestDAL.delete(
         {
-          projectId: project.id,
           $in: {
+            policyId: secretApprovalPolicies.map((policy) => policy.id),
             committerUserId: groupMembers.map((member) => member.user.id)
           }
         },

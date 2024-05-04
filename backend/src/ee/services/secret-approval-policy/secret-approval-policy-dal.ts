@@ -70,5 +70,14 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...secretApprovalPolicyOrm, findById, find };
+  const findByProjectIds = async (projectIds: string[], tx?: Knex) => {
+    const policies = await (tx || db)(TableName.SecretApprovalPolicy)
+      .join(TableName.Environment, `${TableName.SecretApprovalPolicy}.envId`, `${TableName.Environment}.id`)
+      .whereIn(`${TableName.Environment}.projectId`, projectIds)
+      .select(selectAllTableCols(TableName.SecretApprovalPolicy));
+
+    return policies;
+  };
+
+  return { ...secretApprovalPolicyOrm, findById, find, findByProjectIds };
 };
