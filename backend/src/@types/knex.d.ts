@@ -50,6 +50,9 @@ import {
   TGroupProjectMemberships,
   TGroupProjectMembershipsInsert,
   TGroupProjectMembershipsUpdate,
+  TGroupProjectUserAdditionalPrivilege,
+  TGroupProjectUserAdditionalPrivilegeInsert,
+  TGroupProjectUserAdditionalPrivilegeUpdate,
   TGroups,
   TGroupsInsert,
   TGroupsUpdate,
@@ -289,6 +292,11 @@ declare module "knex/types/tables" {
       TProjectUserMembershipRoles,
       TProjectUserMembershipRolesInsert,
       TProjectUserMembershipRolesUpdate
+    >;
+    [TableName.GroupProjectUserAdditionalPrivilege]: Knex.CompositeTableType<
+      TGroupProjectUserAdditionalPrivilege,
+      TGroupProjectUserAdditionalPrivilegeInsert,
+      TGroupProjectUserAdditionalPrivilegeUpdate
     >;
     [TableName.ProjectRoles]: Knex.CompositeTableType<TProjectRoles, TProjectRolesInsert, TProjectRolesUpdate>;
     [TableName.ProjectUserAdditionalPrivilege]: Knex.CompositeTableType<
