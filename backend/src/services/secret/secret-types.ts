@@ -138,6 +138,7 @@ export type TDeleteBulkSecretDTO = {
 } & TProjectPermission;
 
 export type TGetSecretsRawDTO = {
+  expand?: boolean;
   path: string;
   environment: string;
   includeImports?: boolean;

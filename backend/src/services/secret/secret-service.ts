@@ -27,6 +27,7 @@ import {
   fnSecretBlindIndexCheck,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
+  interpolateSecrets,
   recursivelyGetSecretPaths
 } from "./secret-fns";
 import { TSecretQueueFactory } from "./secret-queue";
@@ -885,6 +886,7 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     environment,
     includeImports,
+    expand,
     recursive
   }: TGetSecretsRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
@@ -902,17 +904,66 @@ export const secretServiceFactory = ({
       recursive
     });
 
-    return {
-      secrets: secrets.map((el) => decryptSecretRaw(el, botKey)),
-      imports: (imports || [])?.map(({ secrets: importedSecrets, ...el }) => ({
-        ...el,
-        secrets: importedSecrets.map((sec) =>
-          decryptSecretRaw(
-            { ...sec, environment: el.environment, workspace: projectId, secretPath: el.secretPath },
-            botKey
-          )
+    const decryptedSecrets = secrets.map((el) => decryptSecretRaw(el, botKey));
+    const decryptedImports = (imports || [])?.map(({ secrets: importedSecrets, ...el }) => ({
+      ...el,
+      secrets: importedSecrets.map((sec) =>
+        decryptSecretRaw(
+          { ...sec, environment: el.environment, workspace: projectId, secretPath: el.secretPath },
+          botKey
         )
-      }))
+      )
+    }));
+
+    if (expand) {
+      const expandSecrets = interpolateSecrets({
+        folderDAL,
+        projectId,
+        secretDAL,
+        secretEncKey: botKey
+      });
+
+      const batchSecretsExpand = async (
+        secretBatch: {
+          secretKey: string;
+          secretValue: string;
+          secretComment?: string;
+        }[]
+      ) => {
+        const secretRecord: Record<
+          string,
+          {
+            value: string;
+            comment?: string;
+            skipMultilineEncoding?: boolean;
+          }
+        > = {};
+
+        secretBatch.forEach((decryptedSecret) => {
+          secretRecord[decryptedSecret.secretKey] = {
+            value: decryptedSecret.secretValue,
+            comment: decryptedSecret.secretComment
+          };
+        });
+
+        await expandSecrets(secretRecord);
+
+        secretBatch.forEach((decryptedSecret, index) => {
+          // eslint-disable-next-line no-param-reassign
+          secretBatch[index].secretValue = secretRecord[decryptedSecret.secretKey].value;
+        });
+      };
+
+      // expand secrets
+      await batchSecretsExpand(decryptedSecrets);
+
+      // expand imports by batch
+      await Promise.all(decryptedImports.map((decryptedImport) => batchSecretsExpand(decryptedImport.secrets)));
+    }
+
+    return {
+      secrets: decryptedSecrets,
+      imports: decryptedImports
     };
   };
 
