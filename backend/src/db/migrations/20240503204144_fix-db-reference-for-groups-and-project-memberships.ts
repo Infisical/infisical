@@ -3,37 +3,41 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasNewColumn = await knex.schema.hasColumn(TableName.SecretApprovalRequestReviewer, "memberUserId");
-
-  if (!hasNewColumn) {
+  // SecretApprovalPolicyApprover, approverUserId
+  if (!(await knex.schema.hasColumn(TableName.SecretApprovalPolicyApprover, "approverUserId"))) {
     await knex.schema.alterTable(TableName.SecretApprovalPolicyApprover, (t) => {
       t.uuid("approverId").nullable().alter();
 
-      // add new "approverUserId" column
       t.uuid("approverUserId").nullable();
       t.foreign("approverUserId").references("id").inTable(TableName.Users).onDelete("CASCADE");
     });
+  }
 
+  // SecretApprovalRequest, statusChangeByUserId
+  if (!(await knex.schema.hasColumn(TableName.SecretApprovalRequest, "statusChangeByUserId"))) {
     await knex.schema.alterTable(TableName.SecretApprovalRequest, (t) => {
       t.uuid("statusChangeBy").nullable().alter();
-      t.uuid("committerId").nullable().alter();
 
-      // could be removed and we can fetch the approval projectId from the policy, which contains a reference to the environment, which contains a reference to the project.
-      t.string("projectId").nullable();
-      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
-
-      // add new "statusChangeByUserId" column
       t.uuid("statusChangeByUserId").nullable();
       t.foreign("statusChangeByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
+    });
+  }
 
-      // add new "committerUserId" column
+  // SecretApprovalRequest, committerUserId
+  if (!(await knex.schema.hasColumn(TableName.SecretApprovalRequest, "committerUserId"))) {
+    await knex.schema.alterTable(TableName.SecretApprovalRequest, (t) => {
+      t.uuid("committerId").nullable().alter();
+
       t.uuid("committerUserId").nullable();
       t.foreign("committerUserId").references("id").inTable(TableName.Users).onDelete("CASCADE");
     });
+  }
+
+  // SecretApprovalRequestReviewer, memberUserId
+  if (!(await knex.schema.hasColumn(TableName.SecretApprovalRequestReviewer, "memberUserId"))) {
     await knex.schema.alterTable(TableName.SecretApprovalRequestReviewer, (t) => {
       t.uuid("member").nullable().alter();
 
-      // add new "memberUserId" column
       t.uuid("memberUserId").nullable();
       t.foreign("memberUserId").references("id").inTable(TableName.Users).onDelete("CASCADE");
     });
@@ -41,25 +45,26 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasNewColumn = await knex.schema.hasColumn(TableName.SecretApprovalRequestReviewer, "memberUserId");
-
-  // Warning: Dropping multiple columns in migration!
-  if (hasNewColumn) {
+  if (await knex.schema.hasColumn(TableName.SecretApprovalPolicyApprover, "approverUserId")) {
     await knex.schema.alterTable(TableName.SecretApprovalPolicyApprover, (t) => {
-      // t.uuid("approverId").notNullable().alter();
       t.dropColumn("approverUserId");
     });
+  }
 
+  if (await knex.schema.hasColumn(TableName.SecretApprovalRequest, "statusChangeByUserId")) {
     await knex.schema.alterTable(TableName.SecretApprovalRequest, (t) => {
-      // t.uuid("statusChangeBy").notNullable().alter();
-      // t.uuid("committerId").notNullable().alter();
       t.dropColumn("statusChangeByUserId");
-      t.dropColumn("committerUserId");
-      t.dropColumn("projectId");
     });
+  }
 
+  if (await knex.schema.hasColumn(TableName.SecretApprovalRequest, "committerUserId")) {
+    await knex.schema.alterTable(TableName.SecretApprovalRequest, (t) => {
+      t.dropColumn("committerUserId");
+    });
+  }
+
+  if (await knex.schema.hasColumn(TableName.SecretApprovalRequestReviewer, "memberUserId")) {
     await knex.schema.alterTable(TableName.SecretApprovalRequestReviewer, (t) => {
-      // t.uuid("member").notNullable().alter();
       t.dropColumn("memberUserId");
     });
   }
