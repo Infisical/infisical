@@ -14,6 +14,7 @@ export * from "./git-app-install-sessions";
 export * from "./git-app-org";
 export * from "./group-project-membership-roles";
 export * from "./group-project-memberships";
+export * from "./group-project-user-additional-privilege";
 export * from "./groups";
 export * from "./identities";
 export * from "./identity-access-tokens";

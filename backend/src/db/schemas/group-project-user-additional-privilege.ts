@@ -7,10 +7,11 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const ProjectUserAdditionalPrivilegeSchema = z.object({
+export const GroupProjectUserAdditionalPrivilegeSchema = z.object({
   id: z.string().uuid(),
   slug: z.string(),
-  projectMembershipId: z.string().uuid(),
+  groupProjectMembershipId: z.string().uuid(),
+  requestedByUserId: z.string().uuid(),
   isTemporary: z.boolean().default(false),
   temporaryMode: z.string().nullable().optional(),
   temporaryRange: z.string().nullable().optional(),
@@ -21,11 +22,11 @@ export const ProjectUserAdditionalPrivilegeSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TProjectUserAdditionalPrivilege = z.infer<typeof ProjectUserAdditionalPrivilegeSchema>;
-export type TProjectUserAdditionalPrivilegeInsert = Omit<
-  z.input<typeof ProjectUserAdditionalPrivilegeSchema>,
+export type TGroupProjectUserAdditionalPrivilege = z.infer<typeof GroupProjectUserAdditionalPrivilegeSchema>;
+export type TGroupProjectUserAdditionalPrivilegeInsert = Omit<
+  z.input<typeof GroupProjectUserAdditionalPrivilegeSchema>,
   TImmutableDBKeys
 >;
-export type TProjectUserAdditionalPrivilegeUpdate = Partial<
-  Omit<z.input<typeof ProjectUserAdditionalPrivilegeSchema>, TImmutableDBKeys>
+export type TGroupProjectUserAdditionalPrivilegeUpdate = Partial<
+  Omit<z.input<typeof GroupProjectUserAdditionalPrivilegeSchema>, TImmutableDBKeys>
 >;
