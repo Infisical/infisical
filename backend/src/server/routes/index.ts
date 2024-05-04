@@ -22,6 +22,7 @@ import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secre
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { groupProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/group-project-user-additional-privilege/group-project-user-additional-privilege-dal";
 import { identityProjectAdditionalPrivilegeDALFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-dal";
 import { identityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
@@ -216,6 +217,8 @@ export const registerRoutes = async (
   const accessApprovalRequestDAL = accessApprovalRequestDALFactory(db);
   const accessApprovalPolicyApproverDAL = accessApprovalPolicyApproverDALFactory(db);
   const accessApprovalRequestReviewerDAL = accessApprovalRequestReviewerDALFactory(db);
+
+  const groupProjectUserAdditionalPrivilegeDAL = groupProjectUserAdditionalPrivilegeDALFactory(db);
 
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
   const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
@@ -618,11 +621,10 @@ export const registerRoutes = async (
     permissionService,
     accessApprovalRequestReviewerDAL,
     additionalPrivilegeDAL: projectUserAdditionalPrivilegeDAL,
+    groupAdditionalPrivilegeDAL: groupProjectUserAdditionalPrivilegeDAL,
     projectMembershipDAL,
     accessApprovalPolicyDAL,
     accessApprovalRequestDAL,
-    groupProjectDAL,
-    userGroupMembershipDAL,
     projectEnvDAL,
     userDAL,
     smtpService,

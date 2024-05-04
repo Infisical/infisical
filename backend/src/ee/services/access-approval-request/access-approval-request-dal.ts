@@ -12,27 +12,37 @@ export type TAccessApprovalRequestDALFactory = ReturnType<typeof accessApprovalR
 export const accessApprovalRequestDALFactory = (db: TDbClient) => {
   const accessApprovalRequestOrm = ormify(db, TableName.AccessApprovalRequest);
   const projectUserAdditionalPrivilegeOrm = ormify(db, TableName.ProjectUserAdditionalPrivilege);
+  const groupProjectUserAdditionalPrivilegeOrm = ormify(db, TableName.GroupProjectUserAdditionalPrivilege);
 
   const deleteMany = async (filter: TFindFilter<TAccessApprovalRequests>, tx?: Knex) => {
+    const transaction = tx || (await db.transaction());
+
     try {
-      const handleDeletion = async (processedTx: Knex) => {
-        const accessApprovalRequests = await accessApprovalRequestOrm.find(filter, { tx: processedTx });
+      const accessApprovalRequests = await accessApprovalRequestOrm.find(filter, { tx: transaction });
 
-        await projectUserAdditionalPrivilegeOrm.delete(
-          {
-            $in: {
-              id: accessApprovalRequests.filter((req) => !!req.privilegeId).map((req) => req.privilegeId!)
-            }
-          },
-          processedTx
-        );
+      await projectUserAdditionalPrivilegeOrm.delete(
+        {
+          $in: {
+            id: accessApprovalRequests
+              .filter((req) => Boolean(req.projectUserPrivilegeId))
+              .map((req) => req.projectUserPrivilegeId!)
+          }
+        },
+        transaction
+      );
 
-        return accessApprovalRequestOrm.delete(filter, processedTx);
-      };
+      await groupProjectUserAdditionalPrivilegeOrm.delete(
+        {
+          $in: {
+            id: accessApprovalRequests
+              .filter((req) => Boolean(req.groupProjectUserPrivilegeId))
+              .map((req) => req.groupProjectUserPrivilegeId!)
+          }
+        },
+        transaction
+      );
 
-      if (tx) return await handleDeletion(tx);
-
-      return await db.transaction(handleDeletion);
+      return await accessApprovalRequestOrm.delete(filter, transaction);
     } catch (error) {
       throw new DatabaseError({ error, name: "DeleteManyAccessApprovalRequest" });
     }
@@ -45,8 +55,13 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
 
         .leftJoin(
           TableName.ProjectUserAdditionalPrivilege,
-          `${TableName.AccessApprovalRequest}.privilegeId`,
+          `${TableName.AccessApprovalRequest}.projectUserPrivilegeId`,
           `${TableName.ProjectUserAdditionalPrivilege}.id`
+        )
+        .leftJoin(
+          TableName.GroupProjectUserAdditionalPrivilege,
+          `${TableName.AccessApprovalRequest}.groupProjectUserPrivilegeId`,
+          `${TableName.GroupProjectUserAdditionalPrivilege}.id`
         )
         .leftJoin(
           TableName.AccessApprovalPolicy,
@@ -89,32 +104,81 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("status").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerStatus")
         )
 
+        // Project user additional privilege
         .select(
           db
             .ref("projectMembershipId")
             .withSchema(TableName.ProjectUserAdditionalPrivilege)
-            .as("privilegeProjectMembershipId"),
+            .as("projectPrivilegeProjectMembershipId"),
+
+          db.ref("isTemporary").withSchema(TableName.ProjectUserAdditionalPrivilege).as("projectPrivilegeIsTemporary"),
+
           db
-            .ref("groupMembershipId")
+            .ref("temporaryMode")
             .withSchema(TableName.ProjectUserAdditionalPrivilege)
-            .as("privilegeGroupMembershipId"),
-          db.ref("isTemporary").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeIsTemporary"),
-          db.ref("temporaryMode").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeTemporaryMode"),
-          db.ref("temporaryRange").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeTemporaryRange"),
+            .as("projectPrivilegeTemporaryMode"),
+
+          db
+            .ref("temporaryRange")
+            .withSchema(TableName.ProjectUserAdditionalPrivilege)
+            .as("projectPrivilegeTemporaryRange"),
+
           db
             .ref("temporaryAccessStartTime")
             .withSchema(TableName.ProjectUserAdditionalPrivilege)
-            .as("privilegeTemporaryAccessStartTime"),
+            .as("projectPrivilegeTemporaryAccessStartTime"),
+
           db
             .ref("temporaryAccessEndTime")
             .withSchema(TableName.ProjectUserAdditionalPrivilege)
-            .as("privilegeTemporaryAccessEndTime"),
+            .as("projectPrivilegeTemporaryAccessEndTime"),
 
-          db.ref("permissions").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegePermissions")
+          db.ref("permissions").withSchema(TableName.ProjectUserAdditionalPrivilege).as("projectPrivilegePermissions")
+        )
+        // Group project user additional privilege
+        .select(
+          db
+            .ref("groupProjectMembershipId")
+            .withSchema(TableName.GroupProjectUserAdditionalPrivilege)
+            .as("groupPrivilegeGroupProjectMembershipId"),
+
+          db
+            .ref("requestedByUserId")
+            .withSchema(TableName.GroupProjectUserAdditionalPrivilege)
+            .as("groupPrivilegeRequestedByUserId"),
+
+          db
+            .ref("isTemporary")
+            .withSchema(TableName.GroupProjectUserAdditionalPrivilege)
+            .as("groupPrivilegeIsTemporary"),
+
+          db
+            .ref("temporaryMode")
+            .withSchema(TableName.GroupProjectUserAdditionalPrivilege)
+            .as("groupPrivilegeTemporaryMode"),
+
+          db
+            .ref("temporaryRange")
+            .withSchema(TableName.GroupProjectUserAdditionalPrivilege)
+            .as("groupPrivilegeTemporaryRange"),
+
+          db
+            .ref("temporaryAccessStartTime")
+            .withSchema(TableName.GroupProjectUserAdditionalPrivilege)
+            .as("groupPrivilegeTemporaryAccessStartTime"),
+
+          db
+            .ref("temporaryAccessEndTime")
+            .withSchema(TableName.GroupProjectUserAdditionalPrivilege)
+            .as("groupPrivilegeTemporaryAccessEndTime"),
+          db
+            .ref("permissions")
+            .withSchema(TableName.GroupProjectUserAdditionalPrivilege)
+            .as("groupPrivilegePermissions")
         )
         .orderBy(`${TableName.AccessApprovalRequest}.createdAt`, "desc");
 
-      const formattedDocs = sqlNestRelationships({
+      const projectUserFormattedDocs = sqlNestRelationships({
         data: docs,
         key: "id",
         parentMapper: (doc) => ({
@@ -129,20 +193,34 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             secretPath: doc.policySecretPath,
             envId: doc.policyEnvId
           },
-          privilege: doc.privilegeId
+          // eslint-disable-next-line no-nested-ternary
+          privilege: doc.projectUserPrivilegeId
             ? {
-                projectMembershipId: doc.privilegeGroupMembershipId,
-                groupMembershipId: doc.privilegeGroupMembershipId,
-                isTemporary: doc.privilegeIsTemporary,
-                temporaryMode: doc.privilegeTemporaryMode,
-                temporaryRange: doc.privilegeTemporaryRange,
-                temporaryAccessStartTime: doc.privilegeTemporaryAccessStartTime,
-                temporaryAccessEndTime: doc.privilegeTemporaryAccessEndTime,
-                permissions: doc.privilegePermissions
+                projectMembershipId: doc.projectMembershipId,
+                groupMembershipId: null,
+                requestedByUserId: null,
+                isTemporary: doc.projectPrivilegeIsTemporary,
+                temporaryMode: doc.projectPrivilegeTemporaryMode,
+                temporaryRange: doc.projectPrivilegeTemporaryRange,
+                temporaryAccessStartTime: doc.projectPrivilegeTemporaryAccessStartTime,
+                temporaryAccessEndTime: doc.projectPrivilegeTemporaryAccessEndTime,
+                permissions: doc.projectPrivilegePermissions
               }
-            : null,
+            : doc.groupProjectUserPrivilegeId
+              ? {
+                  groupMembershipId: doc.groupPrivilegeGroupProjectMembershipId,
+                  requestedByUserId: doc.groupPrivilegeRequestedByUserId,
+                  projectMembershipId: null,
+                  isTemporary: doc.groupPrivilegeIsTemporary,
+                  temporaryMode: doc.groupPrivilegeTemporaryMode,
+                  temporaryRange: doc.groupPrivilegeTemporaryRange,
+                  temporaryAccessStartTime: doc.groupPrivilegeTemporaryAccessStartTime,
+                  temporaryAccessEndTime: doc.groupPrivilegeTemporaryAccessEndTime,
+                  permissions: doc.groupPrivilegePermissions
+                }
+              : null,
 
-          isApproved: !!doc.privilegeId
+          isApproved: !!doc.projectUserPrivilegeId
         }),
         childrenMapper: [
           {
@@ -155,9 +233,9 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         ]
       });
 
-      if (!formattedDocs) return [];
+      if (!projectUserFormattedDocs) return [];
 
-      return formattedDocs.map((doc) => ({
+      return projectUserFormattedDocs.map((doc) => ({
         ...doc,
         policy: { ...doc.policy, approvers: doc.approvers }
       }));
@@ -248,12 +326,6 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         )
         .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
         .leftJoin(
-          TableName.ProjectUserAdditionalPrivilege,
-          `${TableName.AccessApprovalRequest}.privilegeId`,
-          `${TableName.ProjectUserAdditionalPrivilege}.id`
-        )
-
-        .leftJoin(
           TableName.AccessApprovalRequestReviewer,
           `${TableName.AccessApprovalRequest}.id`,
           `${TableName.AccessApprovalRequestReviewer}.requestId`
@@ -282,12 +354,18 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
 
       // an approval is pending if there is no reviewer rejections and no privilege ID is set
       const pendingApprovals = formattedRequests.filter(
-        (req) => !req.privilegeId && !req.reviewers.some((r) => r.status === ApprovalStatus.REJECTED)
+        (req) =>
+          !req.projectUserPrivilegeId &&
+          !req.groupProjectUserPrivilegeId &&
+          !req.reviewers.some((r) => r.status === ApprovalStatus.REJECTED)
       );
 
       // an approval is finalized if there are any rejections or a privilege ID is set
       const finalizedApprovals = formattedRequests.filter(
-        (req) => req.privilegeId || req.reviewers.some((r) => r.status === ApprovalStatus.REJECTED)
+        (req) =>
+          req.projectUserPrivilegeId ||
+          req.groupProjectUserPrivilegeId ||
+          req.reviewers.some((r) => r.status === ApprovalStatus.REJECTED)
       );
 
       return { pendingCount: pendingApprovals.length, finalizedCount: finalizedApprovals.length };
