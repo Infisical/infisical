@@ -16,6 +16,7 @@ import { TAccessApprovalRequestDALFactory } from "../access-approval-request/acc
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
 import { TGroupDALFactory } from "./group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "./group-fns";
@@ -45,6 +46,7 @@ type TGroupServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "delete">;
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "delete">;
+  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findByProjectIds">;
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -55,6 +57,7 @@ export const groupServiceFactory = ({
   groupProjectDAL,
   orgDAL,
   secretApprovalRequestDAL,
+  secretApprovalPolicyDAL,
   accessApprovalRequestDAL,
   userGroupMembershipDAL,
   projectDAL,
@@ -335,6 +338,7 @@ export const groupServiceFactory = ({
       userIds: [user.id],
       userDAL,
       accessApprovalRequestDAL,
+      secretApprovalPolicyDAL,
       secretApprovalRequestDAL,
       userGroupMembershipDAL,
       groupProjectDAL,

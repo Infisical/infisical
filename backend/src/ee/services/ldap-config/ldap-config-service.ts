@@ -30,6 +30,7 @@ import { TAccessApprovalRequestDALFactory } from "../access-approval-request/acc
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
 import { TLdapConfigDALFactory } from "./ldap-config-dal";
 import {
@@ -71,6 +72,7 @@ type TLdapConfigServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "delete">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "delete">;
+  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findByProjectIds">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -83,6 +85,7 @@ export const ldapConfigServiceFactory = ({
   groupDAL,
   groupProjectDAL,
   accessApprovalRequestDAL,
+  secretApprovalPolicyDAL,
   secretApprovalRequestDAL,
   projectKeyDAL,
   projectDAL,
@@ -533,6 +536,7 @@ export const ldapConfigServiceFactory = ({
               secretApprovalRequestDAL,
               accessApprovalRequestDAL,
               userGroupMembershipDAL,
+              secretApprovalPolicyDAL,
               groupProjectDAL,
               projectKeyDAL,
               tx

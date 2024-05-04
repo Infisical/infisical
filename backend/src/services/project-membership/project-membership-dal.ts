@@ -31,10 +31,23 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
       );
 
       for await (const membership of memberships) {
-        // Delete all secret approvals in this project from the users attached to these memberships
+        const allPoliciesInProject = await (tx || db)(TableName.SecretApprovalRequest)
+          .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
+          .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+          .join(
+            TableName.SecretApprovalPolicy,
+            `${TableName.SecretApprovalRequest}.policyId`,
+            `${TableName.SecretApprovalPolicy}.id`
+          )
+          .where({ [`${TableName.Environment}.projectId` as "projectId"]: membership.projectId })
+          .where({ [`${TableName.SecretApprovalRequest}.committerUserId` as "committerUserId"]: membership.userId })
+          .select(db.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"));
+
         await secretApprovalRequestOrm.delete(
           {
-            projectId: membership.projectId,
+            $in: {
+              policyId: allPoliciesInProject.map((policy) => policy.policyId)
+            },
             committerUserId: membership.userId
           },
           processedTx

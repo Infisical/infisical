@@ -19,7 +19,6 @@ export const SecretApprovalRequestsSchema = z.object({
   committerId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  projectId: z.string().nullable().optional(),
   statusChangeByUserId: z.string().uuid().nullable().optional(),
   committerUserId: z.string().uuid().nullable().optional()
 });
