@@ -3,17 +3,9 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  // --- SECRET APPROVALS START ----
-
   const hasNewColumn = await knex.schema.hasColumn(TableName.SecretApprovalRequestReviewer, "memberUserId");
 
   if (!hasNewColumn) {
-    await knex.schema.alterTable(TableName.ProjectUserAdditionalPrivilege, (t) => {
-      // add new "groupProjectId" column
-      t.string("groupProjectId").nullable();
-      t.foreign("groupProjectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
-    });
-
     await knex.schema.alterTable(TableName.SecretApprovalPolicyApprover, (t) => {
       t.uuid("approverId").nullable().alter();
 
@@ -26,6 +18,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("statusChangeBy").nullable().alter();
       t.uuid("committerId").nullable().alter();
 
+      // could be removed and we can fetch the approval projectId from the policy, which contains a reference to the environment, which contains a reference to the project.
       t.string("projectId").nullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
 
@@ -52,11 +45,6 @@ export async function down(knex: Knex): Promise<void> {
 
   // Warning: Dropping multiple columns in migration!
   if (hasNewColumn) {
-    await knex.schema.alterTable(TableName.ProjectUserAdditionalPrivilege, (t) => {
-      // t.uuid("groupProjectId").notNullable().alter();
-      t.dropColumn("groupProjectId");
-    });
-
     await knex.schema.alterTable(TableName.SecretApprovalPolicyApprover, (t) => {
       // t.uuid("approverId").notNullable().alter();
       t.dropColumn("approverUserId");
