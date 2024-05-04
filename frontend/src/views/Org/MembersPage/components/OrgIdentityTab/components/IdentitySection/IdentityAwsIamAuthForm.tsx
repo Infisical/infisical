@@ -183,7 +183,11 @@ export const IdentityAwsIamAuthForm = ({
         defaultValue="2592000"
         name="allowedPrincipalArns"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Allowed ARNs" isError={Boolean(error)} errorText={error?.message}>
+          <FormControl
+            label="Allowed Principal ARNs"
+            isError={Boolean(error)}
+            errorText={error?.message}
+          >
             <Input
               {...field}
               placeholder="arn:aws:iam::123456789012:role/MyRoleName, arn:aws:iam::123456789012:user/MyUserName..."

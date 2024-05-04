@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const twelveDigitRegex = /^\d{12}$/;
-const arnRegex = /^arn:aws:iam::\d{12}:(user\/[A-Za-z0-9]+|role\/[A-Za-z0-9]+|\*)$/;
+const arnRegex = /^arn:aws:iam::\d{12}:(user\/[\w-]+|role\/[\w-]+|\*)$/;
 
 export const validateAccountIds = z
   .string()

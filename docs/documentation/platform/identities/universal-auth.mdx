@@ -3,17 +3,14 @@ title: Universal Auth
 description: "Learn how to authenticate to Infisical from any platform or environment."
 ---
 
-**Universal Auth** is the most versatile authentication method that can be configured for a [machine identity](/documentation/platform/identities/machine-identities) to access Infisical from any platform or environment.
+**Universal Auth** is a platform-agnostic authentication method that can be configured for a [machine identity](/documentation/platform/identities/machine-identities) suitable to authenticate from any platform/environment.
 
-In this method, each identity is given a **Client ID** for which you can generate one or more **Client Secret(s)**. Together, a **Client ID** and **Client Secret** can be exchanged for an access token to authenticate with the Infisical API.
+## Concept
 
-## Properties
+In this method, Infisical authenticates an identity by verifying the credentials issued for it at the `/api/v1/auth/universal-auth/login` endpoint. If successful,
+then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
-Universal Auth supports many settings that can be beneficial for tightening your workflow security configuration:
-
-- Support for restrictions on the number of times that the **Client Secret(s)** and access token(s) can be used.
-- Support for expiration, so, if specified, the **Client Secret** of the identity will automatically be defunct after a period of time.
-- Support for IP allowlisting; this means you can restrict the usage of **Client Secret(s)** and access token to a specific IP or CIDR range.
+In Universal Auth, an identity is given a **Client ID** and one or more **Client Secret(s)**. Together, a **Client ID** and **Client Secret** can be exchanged for a short-lived access token to authenticate with the Infisical API.
 
 ## Workflow
 
@@ -89,16 +86,16 @@ using the Universal Auth authentication method.
     
     #### Sample request
 
-    ```
+    ```bash Request
     curl --location --request POST 'https://app.infisical.com/api/v1/auth/universal-auth/login' \
       --header 'Content-Type: application/x-www-form-urlencoded' \
-      --data-urlencode 'clientSecret=...' \
-      --data-urlencode 'clientId=...'
+      --data-urlencode 'clientId=...' \
+      --data-urlencode 'clientSecret=...'
     ```
 
     #### Sample response
 
-    ```
+    ```bash Response
     {
       "accessToken": "...",
       "expiresIn": 7200,
