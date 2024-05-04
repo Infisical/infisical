@@ -59,8 +59,6 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     if (!dto.isTemporary) {
       const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.create({
         projectMembershipId,
-        groupMembershipId: null,
-        groupProjectId: null,
         slug,
         permissions: customPermission
       });
@@ -70,8 +68,6 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     const relativeTempAllocatedTimeInMs = ms(dto.temporaryRange);
     const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.create({
       projectMembershipId,
-      groupMembershipId: null,
-      groupProjectId: null,
       slug,
       permissions: customPermission,
       isTemporary: true,

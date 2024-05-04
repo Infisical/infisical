@@ -2,11 +2,10 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole, TProjectUserAdditionalPrivilege } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -16,7 +15,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { verifyApprovers } from "../access-approval-policy/access-approval-policy-fns";
-import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
+import { TGroupProjectUserAdditionalPrivilegeDALFactory } from "../group-project-user-additional-privilege/group-project-user-additional-privilege-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -33,14 +32,13 @@ import {
   TReviewAccessRequestDTO
 } from "./access-approval-request-types";
 
-type TSecretApprovalRequestServiceFactoryDep = {
+type TAccessApprovalRequestServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "create" | "findById" | "deleteById">;
+  groupAdditionalPrivilegeDAL: TGroupProjectUserAdditionalPrivilegeDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findOne">;
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "findOne">;
   accessApprovalRequestDAL: Pick<
     TAccessApprovalRequestDALFactory,
     | "create"
@@ -73,16 +71,15 @@ export const accessApprovalRequestServiceFactory = ({
   projectEnvDAL,
   permissionService,
   accessApprovalRequestDAL,
+  groupAdditionalPrivilegeDAL,
   accessApprovalRequestReviewerDAL,
-  userGroupMembershipDAL,
-  groupProjectDAL,
   projectMembershipDAL,
   accessApprovalPolicyDAL,
   accessApprovalPolicyApproverDAL,
   additionalPrivilegeDAL,
   smtpService,
   userDAL
-}: TSecretApprovalRequestServiceFactoryDep) => {
+}: TAccessApprovalRequestServiceFactoryDep) => {
   const createAccessApprovalRequest = async ({
     isTemporary,
     temporaryRange,
@@ -146,12 +143,21 @@ export const accessApprovalRequestServiceFactory = ({
 
     if (duplicateRequests?.length > 0) {
       for await (const duplicateRequest of duplicateRequests) {
-        if (duplicateRequest.privilegeId) {
-          const privilege = await additionalPrivilegeDAL.findById(duplicateRequest.privilegeId);
+        let foundPrivilege: Pick<
+          TProjectUserAdditionalPrivilege,
+          "temporaryAccessEndTime" | "isTemporary" | "id"
+        > | null = null;
 
-          const isExpired = new Date() > new Date(privilege.temporaryAccessEndTime || ("" as string));
+        if (duplicateRequest.projectUserPrivilegeId) {
+          foundPrivilege = await additionalPrivilegeDAL.findById(duplicateRequest.projectUserPrivilegeId);
+        } else if (duplicateRequest.groupProjectUserPrivilegeId) {
+          foundPrivilege = await groupAdditionalPrivilegeDAL.findById(duplicateRequest.groupProjectUserPrivilegeId);
+        }
 
-          if (!isExpired || !privilege.isTemporary) {
+        if (foundPrivilege) {
+          const isExpired = new Date() > new Date(foundPrivilege.temporaryAccessEndTime || ("" as string));
+
+          if (!isExpired || !foundPrivilege.isTemporary) {
             throw new BadRequestError({ message: "You already have an active privilege with the same criteria" });
           }
         } else {
@@ -241,7 +247,7 @@ export const accessApprovalRequestServiceFactory = ({
 
     const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId);
 
-    if (!accessApprovalRequest?.privilegeId) {
+    if (!accessApprovalRequest?.projectUserPrivilegeId && !accessApprovalRequest?.groupProjectUserPrivilegeId) {
       throw new BadRequestError({ message: "Access request must be approved to be deleted" });
     }
 
@@ -258,7 +264,11 @@ export const accessApprovalRequestServiceFactory = ({
       throw new UnauthorizedError({ message: "Only policy approvers can delete access requests" });
     }
 
-    await additionalPrivilegeDAL.deleteById(accessApprovalRequest.privilegeId);
+    if (accessApprovalRequest.projectUserPrivilegeId) {
+      await additionalPrivilegeDAL.deleteById(accessApprovalRequest.projectUserPrivilegeId);
+    } else if (accessApprovalRequest.groupProjectUserPrivilegeId) {
+      await groupAdditionalPrivilegeDAL.deleteById(accessApprovalRequest.groupProjectUserPrivilegeId);
+    }
 
     return { request: accessApprovalRequest };
   };
@@ -368,7 +378,8 @@ export const accessApprovalRequestServiceFactory = ({
             throw new BadRequestError({ message: "Temporary range is required for temporary access" });
           }
 
-          let privilegeId: string | null = null;
+          let projectUserPrivilegeId: string | null = null;
+          let groupProjectMembershipId: string | null = null;
 
           if (!accessApprovalRequest.groupMembershipId && !accessApprovalRequest.projectMembershipId) {
             throw new BadRequestError({ message: "Project membership or group membership is required" });
@@ -376,57 +387,83 @@ export const accessApprovalRequestServiceFactory = ({
 
           // Permanent access
           if (!accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
-            let groupUserMembershipId: string | null = null;
-
             if (accessApprovalRequest.groupMembershipId) {
-              const groupProjectMembership = await groupProjectDAL.findOne({
-                id: accessApprovalRequest.groupMembershipId
-              });
-              if (!groupProjectMembership) throw new BadRequestError({ message: "Group not found" });
+              // Group user privilege
+              const groupProjectUserAdditionalPrivilege = await groupAdditionalPrivilegeDAL.create(
+                {
+                  groupProjectMembershipId: accessApprovalRequest.groupMembershipId,
+                  requestedByUserId: accessApprovalRequest.requestedByUserId,
+                  slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+                  permissions: JSON.stringify(accessApprovalRequest.permissions)
+                },
+                tx
+              );
 
-              const userGroupMembershipId = await userGroupMembershipDAL.findOne({
-                groupId: groupProjectMembership.groupId
-              });
-              if (!userGroupMembershipId) throw new BadRequestError({ message: "User group membership not found" });
-
-              groupUserMembershipId = userGroupMembershipId.id;
+              groupProjectMembershipId = groupProjectUserAdditionalPrivilege.id;
+            } else {
+              // Project user privilege
+              const privilege = await additionalPrivilegeDAL.create(
+                {
+                  projectMembershipId: accessApprovalRequest.projectMembershipId!,
+                  slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+                  permissions: JSON.stringify(accessApprovalRequest.permissions)
+                },
+                tx
+              );
+              projectUserPrivilegeId = privilege.id;
             }
-
-            const privilege = await additionalPrivilegeDAL.create(
-              {
-                groupMembershipId: groupUserMembershipId || null,
-                projectMembershipId: accessApprovalRequest.projectMembershipId || null,
-                groupProjectId: accessApprovalRequest.groupMembershipId ? accessApprovalRequest.projectId : null,
-                slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
-                permissions: JSON.stringify(accessApprovalRequest.permissions)
-              },
-              tx
-            );
-            privilegeId = privilege.id;
           } else {
             // Temporary access
             const relativeTempAllocatedTimeInMs = ms(accessApprovalRequest.temporaryRange!);
             const startTime = new Date();
 
-            const privilege = await additionalPrivilegeDAL.create(
-              {
-                projectMembershipId: accessApprovalRequest.projectMembershipId || null,
-                groupMembershipId: accessApprovalRequest.groupMembershipId || null,
-                groupProjectId: accessApprovalRequest.groupMembershipId ? accessApprovalRequest.projectId : null,
-                slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
-                permissions: JSON.stringify(accessApprovalRequest.permissions),
-                isTemporary: true,
-                temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
-                temporaryRange: accessApprovalRequest.temporaryRange!,
-                temporaryAccessStartTime: startTime,
-                temporaryAccessEndTime: new Date(new Date(startTime).getTime() + relativeTempAllocatedTimeInMs)
-              },
-              tx
-            );
-            privilegeId = privilege.id;
+            if (accessApprovalRequest.groupMembershipId) {
+              //  Group user privilege
+              const groupProjectUserAdditionalPrivilege = await groupAdditionalPrivilegeDAL.create(
+                {
+                  groupProjectMembershipId: accessApprovalRequest.groupMembershipId,
+                  requestedByUserId: accessApprovalRequest.requestedByUserId,
+                  slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+                  permissions: JSON.stringify(accessApprovalRequest.permissions),
+                  isTemporary: true,
+                  temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
+                  temporaryRange: accessApprovalRequest.temporaryRange!,
+                  temporaryAccessStartTime: startTime,
+                  temporaryAccessEndTime: new Date(new Date(startTime).getTime() + relativeTempAllocatedTimeInMs)
+                },
+                tx
+              );
+
+              groupProjectMembershipId = groupProjectUserAdditionalPrivilege.id;
+            } else {
+              const privilege = await additionalPrivilegeDAL.create(
+                {
+                  projectMembershipId: accessApprovalRequest.projectMembershipId!,
+                  slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+                  permissions: JSON.stringify(accessApprovalRequest.permissions),
+                  isTemporary: true,
+                  temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
+                  temporaryRange: accessApprovalRequest.temporaryRange!,
+                  temporaryAccessStartTime: startTime,
+                  temporaryAccessEndTime: new Date(new Date(startTime).getTime() + relativeTempAllocatedTimeInMs)
+                },
+                tx
+              );
+              projectUserPrivilegeId = privilege.id;
+            }
           }
 
-          await accessApprovalRequestDAL.updateById(accessApprovalRequest.id, { privilegeId }, tx);
+          if (projectUserPrivilegeId) {
+            await accessApprovalRequestDAL.updateById(accessApprovalRequest.id, { projectUserPrivilegeId }, tx);
+          } else if (groupProjectMembershipId) {
+            await accessApprovalRequestDAL.updateById(
+              accessApprovalRequest.id,
+              { groupProjectUserPrivilegeId: groupProjectMembershipId },
+              tx
+            );
+          } else {
+            throw new BadRequestError({ message: "No privilege was created" });
+          }
         }
 
         return newReview;
