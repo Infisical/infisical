@@ -886,7 +886,7 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     environment,
     includeImports,
-    expand,
+    expandSecretReferences,
     recursive
   }: TGetSecretsRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
@@ -915,7 +915,7 @@ export const secretServiceFactory = ({
       )
     }));
 
-    if (expand) {
+    if (expandSecretReferences) {
       const expandSecrets = interpolateSecrets({
         folderDAL,
         projectId,
