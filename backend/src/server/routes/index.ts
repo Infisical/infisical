@@ -72,6 +72,8 @@ import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
 import { identityAccessTokenDALFactory } from "@app/services/identity-access-token/identity-access-token-dal";
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
+import { identityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
+import { identityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectMembershipRoleDALFactory } from "@app/services/identity-project/identity-project-membership-role-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
@@ -192,6 +194,7 @@ export const registerRoutes = async (
   const identityProjectAdditionalPrivilegeDAL = identityProjectAdditionalPrivilegeDALFactory(db);
 
   const identityUaDAL = identityUaDALFactory(db);
+  const identityKubernetesAuthDAL = identityKubernetesAuthDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
 
   const auditLogDAL = auditLogDALFactory(db);
@@ -646,6 +649,15 @@ export const registerRoutes = async (
     identityUaDAL,
     licenseService
   });
+  const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({
+    identityKubernetesAuthDAL,
+    identityOrgMembershipDAL,
+    identityAccessTokenDAL,
+    identityDAL,
+    orgBotDAL,
+    permissionService,
+    licenseService
+  });
 
   const dynamicSecretProviders = buildDynamicSecretProviders();
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
@@ -715,6 +727,7 @@ export const registerRoutes = async (
     identityAccessToken: identityAccessTokenService,
     identityProject: identityProjectService,
     identityUa: identityUaService,
+    identityKubernetesAuth: identityKubernetesAuthService,
     secretApprovalPolicy: sapService,
     secretApprovalRequest: sarService,
     secretRotation: secretRotationService,
