@@ -47,14 +47,6 @@ export const SecretPathInput = ({
   }, [propValue]);
 
   useEffect(() => {
-    if (environment) {
-      setInputValue("/");
-      setSecretPath("/");
-      onChange?.("/");
-    }
-  }, [environment]);
-
-  useEffect(() => {
     // update secret path if input is valid
     if (
       (debouncedInputValue.length > 0 &&
@@ -158,9 +150,8 @@ export const SecretPathInput = ({
               key={`secret-reference-secret-${i + 1}`}
             >
               <div
-                className={`${
-                  highlightedIndex === i ? "bg-gray-600" : ""
-                } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-1 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
+                className={`${highlightedIndex === i ? "bg-gray-600" : ""
+                  } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-1 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
               >
                 <div className="flex gap-2">
                   <div className="flex items-center text-yellow-700">

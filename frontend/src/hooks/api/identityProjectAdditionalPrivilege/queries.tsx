@@ -1,9 +1,7 @@
-import { PackRule, unpackRules } from "@casl/ability/extra";
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TProjectPermission } from "../roles/types";
 import {
   TGetIdentityProejctPrivilegeDetails as TGetIdentityProjectPrivilegeDetails,
   TIdentityProjectPrivilege,
@@ -36,17 +34,14 @@ export const useGetIdentityProjectPrivilegeDetails = ({
       const {
         data: { privilege }
       } = await apiRequest.get<{
-        privilege: Omit<TIdentityProjectPrivilege, "permissions"> & { permissions: unknown };
+        privilege: TIdentityProjectPrivilege;
       }>(`/api/v1/additional-privilege/identity/${privilegeSlug}`, {
         params: {
           identityId,
           projectSlug
         }
       });
-      return {
-        ...privilege,
-        permissions: unpackRules(privilege.permissions as PackRule<TProjectPermission>[])
-      };
+      return privilege;
     }
   });
 };
@@ -62,16 +57,11 @@ export const useListIdentityProjectPrivileges = ({
       const {
         data: { privileges }
       } = await apiRequest.get<{
-        privileges: Array<
-          Omit<TIdentityProjectPrivilege, "permissions"> & { permissions: unknown }
-        >;
+        privileges: Array<TIdentityProjectPrivilege>;
       }>("/api/v1/additional-privilege/identity", {
-        params: { identityId, projectSlug, unpacked: false }
+        params: { identityId, projectSlug }
       });
-      return privileges.map((el) => ({
-        ...el,
-        permissions: unpackRules(el.permissions as PackRule<TProjectPermission>[])
-      }));
+      return privileges;
     }
   });
 };
