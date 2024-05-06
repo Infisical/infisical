@@ -48,6 +48,11 @@ export const UnpackedPermissionSchema = z.object({
     .optional()
 });
 
+const unpackPermissions = (permissions: unknown) =>
+  UnpackedPermissionSchema.array().parse(
+    unpackRules((permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
+  );
+
 export const identityProjectAdditionalPrivilegeServiceFactory = ({
   identityProjectAdditionalPrivilegeDAL,
   identityProjectDAL,
@@ -106,11 +111,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       });
       return {
         ...additionalPrivilege,
-        permissions: UnpackedPermissionSchema.array().parse(
-          unpackRules(
-            (additionalPrivilege.permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
-          )
-        )
+        permissions: unpackPermissions(additionalPrivilege.permissions)
       };
     }
 
@@ -127,11 +128,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     });
     return {
       ...additionalPrivilege,
-      permissions: UnpackedPermissionSchema.array().parse(
-        unpackRules(
-          (additionalPrivilege.permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
-        )
-      )
+      permissions: unpackPermissions(additionalPrivilege.permissions)
     };
   };
 
@@ -197,11 +194,8 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       });
       return {
         ...additionalPrivilege,
-        permissions: UnpackedPermissionSchema.array().parse(
-          unpackRules(
-            (additionalPrivilege.permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
-          )
-        )
+
+        permissions: unpackPermissions(additionalPrivilege.permissions)
       };
     }
 
@@ -215,11 +209,8 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     });
     return {
       ...additionalPrivilege,
-      permissions: UnpackedPermissionSchema.array().parse(
-        unpackRules(
-          (additionalPrivilege.permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
-        )
-      )
+
+      permissions: unpackPermissions(additionalPrivilege.permissions)
     };
   };
 
@@ -268,9 +259,8 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     const deletedPrivilege = await identityProjectAdditionalPrivilegeDAL.deleteById(identityPrivilege.id);
     return {
       ...deletedPrivilege,
-      permissions: UnpackedPermissionSchema.array().parse(
-        unpackRules((deletedPrivilege.permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
-      )
+
+      permissions: unpackPermissions(deletedPrivilege.permissions)
     };
   };
 
@@ -307,9 +297,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
 
     return {
       ...identityPrivilege,
-      permissions: UnpackedPermissionSchema.array().parse(
-        unpackRules((identityPrivilege.permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
-      )
+      permissions: unpackPermissions(identityPrivilege.permissions)
     };
   };
 
@@ -342,9 +330,8 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     });
     return identityPrivileges.map((el) => ({
       ...el,
-      permissions: UnpackedPermissionSchema.array().parse(
-        unpackRules((el.permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
-      )
+
+      permissions: unpackPermissions(el.permissions)
     }));
   };
 
