@@ -2,10 +2,12 @@ import { z } from "zod";
 
 import {
   DynamicSecretsSchema,
+  IdentityProjectAdditionalPrivilegeSchema,
   IntegrationAuthsSchema,
   SecretApprovalPoliciesSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { UnpackedPermissionSchema } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 
 // sometimes the return data must be santizied to avoid leaking important values
 // always prefer pick over omit in zod
@@ -60,6 +62,26 @@ export const secretRawSchema = z.object({
   secretKey: z.string(),
   secretValue: z.string(),
   secretComment: z.string().optional()
+});
+
+export const PermissionSchema = z.object({
+  action: z.string().min(1).describe("Describe what user can actually do. Ex: create, edit, delete, read"),
+  subject: z.string().min(1).describe("The entity to check action on. Ex: secrets, environments"),
+  conditions: z
+    .object({
+      environment: z.string().describe("To scope the permission to an environment.").optional(),
+      secretPath: z
+        .object({
+          $glob: z.string().min(1).describe("To scope the permission to a secret path. Supports glob patterns.")
+        })
+        .optional()
+    })
+    .describe("Criteria which restricts user action only to matched subjects")
+    .optional()
+});
+
+export const SanitizedIdentityPrivilegeSchema = IdentityProjectAdditionalPrivilegeSchema.extend({
+  permissions: UnpackedPermissionSchema.array()
 });
 
 export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({

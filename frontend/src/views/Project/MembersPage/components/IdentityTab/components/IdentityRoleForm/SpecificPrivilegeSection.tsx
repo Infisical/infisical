@@ -142,7 +142,7 @@ const SpecificPrivilegeSecretForm = ({
             .filter(({ allowed }) => allowed)
             .map(({ action }) => ({
               action,
-              subject: [ProjectPermissionSub.Secrets],
+              subject: ProjectPermissionSub.Secrets,
               conditions
             }))
         },
@@ -477,7 +477,7 @@ export const SpecificPrivilegeSection = ({ identityId }: Props) => {
         permissions: [
           {
             action: ProjectPermissionActions.Read,
-            subject: [ProjectPermissionSub.Secrets],
+            subject: ProjectPermissionSub.Secrets,
             conditions: {
               environment: currentWorkspace?.environments?.[0].slug
             }

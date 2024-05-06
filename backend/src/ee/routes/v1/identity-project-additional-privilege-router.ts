@@ -1,16 +1,14 @@
-import { MongoAbility, RawRuleOf } from "@casl/ability";
-import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
+import { packRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 import { z } from "zod";
 
-import { IdentityProjectAdditionalPrivilegeSchema } from "@app/db/schemas";
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-types";
-import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { PermissionSchema, SanitizedIdentityPrivilegeSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
@@ -41,11 +39,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           })
           .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
-        permissions: z.any().array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions)
+        permissions: PermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions)
       }),
       response: {
         200: z.object({
-          privilege: IdentityProjectAdditionalPrivilegeSchema
+          privilege: SanitizedIdentityPrivilegeSchema
         })
       }
     },
@@ -92,7 +90,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           })
           .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
-        permissions: z.any().array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions),
+        permissions: PermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions),
         temporaryMode: z
           .nativeEnum(IdentityProjectAdditionalPrivilegeTemporaryMode)
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.temporaryMode),
@@ -107,7 +105,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       }),
       response: {
         200: z.object({
-          privilege: IdentityProjectAdditionalPrivilegeSchema
+          privilege: SanitizedIdentityPrivilegeSchema
         })
       }
     },
@@ -157,7 +155,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
                 message: "Slug must be a valid slug"
               })
               .describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.newSlug),
-            permissions: z.any().array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.permissions),
+            permissions: PermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.permissions),
             isTemporary: z.boolean().describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.isTemporary),
             temporaryMode: z
               .nativeEnum(IdentityProjectAdditionalPrivilegeTemporaryMode)
@@ -175,7 +173,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       }),
       response: {
         200: z.object({
-          privilege: IdentityProjectAdditionalPrivilegeSchema
+          privilege: SanitizedIdentityPrivilegeSchema
         })
       }
     },
@@ -219,7 +217,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       }),
       response: {
         200: z.object({
-          privilege: IdentityProjectAdditionalPrivilegeSchema
+          privilege: SanitizedIdentityPrivilegeSchema
         })
       }
     },
@@ -260,7 +258,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       }),
       response: {
         200: z.object({
-          privilege: IdentityProjectAdditionalPrivilegeSchema
+          privilege: SanitizedIdentityPrivilegeSchema
         })
       }
     },
@@ -293,16 +291,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       ],
       querystring: z.object({
         identityId: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.LIST.identityId),
-        projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.LIST.projectSlug),
-        unpacked: z
-          .enum(["false", "true"])
-          .transform((el) => el === "true")
-          .default("true")
-          .describe(IDENTITY_ADDITIONAL_PRIVILEGE.LIST.unpacked)
+        projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.LIST.projectSlug)
       }),
       response: {
         200: z.object({
-          privileges: IdentityProjectAdditionalPrivilegeSchema.array()
+          privileges: SanitizedIdentityPrivilegeSchema.array()
         })
       }
     },
@@ -315,15 +308,9 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         actorOrgId: req.permission.orgId,
         ...req.query
       });
-      if (req.query.unpacked) {
-        return {
-          privileges: privileges.map(({ permissions, ...el }) => ({
-            ...el,
-            permissions: unpackRules(permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
-          }))
-        };
-      }
-      return { privileges };
+      return {
+        privileges
+      };
     }
   });
 };
