@@ -65,18 +65,27 @@ export const secretRawSchema = z.object({
 });
 
 export const PermissionSchema = z.object({
-  action: z.string().min(1).describe("Describe what user can actually do. Ex: create, edit, delete, read"),
-  subject: z.string().min(1).describe("The entity to check action on. Ex: secrets, environments"),
+  action: z
+    .string()
+    .min(1)
+    .describe("Describe what action an entity can take. Possible actions: create, edit, delete, and read"),
+  subject: z
+    .string()
+    .min(1)
+    .describe("The entity this permission pertains to. Possible options: secrets, environments"),
   conditions: z
     .object({
-      environment: z.string().describe("To scope the permission to an environment.").optional(),
+      environment: z.string().describe("The environment slug this permission should allow.").optional(),
       secretPath: z
         .object({
-          $glob: z.string().min(1).describe("To scope the permission to a secret path. Supports glob patterns.")
+          $glob: z
+            .string()
+            .min(1)
+            .describe("The secret path this permission should allow. Can be a glob pattern such as /folder-name/*/** ")
         })
         .optional()
     })
-    .describe("Criteria which restricts user action only to matched subjects")
+    .describe("When specified, only matching conditions will be allowed to access given resource.")
     .optional()
 });
 
