@@ -12,7 +12,6 @@ export async function up(knex: Knex): Promise<void> {
       t.string("secretPath");
 
       t.uuid("envId").notNullable();
-      t.string("secretPath");
       t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
@@ -24,6 +23,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("approverId").notNullable();
       t.foreign("approverId").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
+
       t.uuid("policyId").notNullable();
       t.foreign("policyId").references("id").inTable(TableName.AccessApprovalPolicy).onDelete("CASCADE");
       t.timestamps(true, true, true);
