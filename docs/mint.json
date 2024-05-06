@@ -143,7 +143,8 @@
             "documentation/platform/dynamic-secrets/aws-iam"
           ]
         },
-        "documentation/platform/groups"
+        "documentation/platform/groups",
+        "documentation/platform/audit-log-streams"
       ]
     },
     {
@@ -190,7 +191,6 @@
       "group": "Self-host Infisical",
       "pages": [
         "self-hosting/overview",
-        "self-hosting/configuration/requirements",
         {
           "group": "Installation methods",
           "pages": [
@@ -201,6 +201,7 @@
           ]
         },
         "self-hosting/configuration/envars",
+        "self-hosting/configuration/requirements",
         {
           "group": "Guides",
           "pages": [
@@ -479,6 +480,9 @@
             "api-reference/endpoints/secrets/read",
             "api-reference/endpoints/secrets/update",
             "api-reference/endpoints/secrets/delete",
+            "api-reference/endpoints/secrets/create-many",
+            "api-reference/endpoints/secrets/update-many",
+            "api-reference/endpoints/secrets/delete-many",
             "api-reference/endpoints/secrets/attach-tags",
             "api-reference/endpoints/secrets/detach-tags"
           ]

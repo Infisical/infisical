@@ -166,6 +166,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.LIST.secretPath),
+        expandSecretReferences: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+          .describe(RAW_SECRETS.LIST.expand),
         recursive: z
           .enum(["true", "false"])
           .default("false")
@@ -233,6 +238,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         environment,
+        expandSecretReferences: req.query.expandSecretReferences,
         actorAuthMethod: req.permission.authMethod,
         projectId: workspaceId,
         path: secretPath,

@@ -594,7 +594,7 @@ const OrganizationPage = withPermission(
           </div>
         )}
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
-        {window.location.origin.includes("https://app.infisical.com") || window.location.origin.includes("http://localhost:8080") && (
+        {(window.location.origin.includes("https://app.infisical.com") || window.location.origin.includes("http://localhost:8080")) && (
         <div
             className={`${
               !updateClosed ? "block" : "hidden"
@@ -602,10 +602,10 @@ const OrganizationPage = withPermission(
           >
             <FontAwesomeIcon icon={faWarning} className="p-6 text-4xl text-primary" />
             <div className="text-sm">
-              <span className="text-lg font-semibold">Scheduled maintenance on April 13th 2024 </span>{" "}
+              <span className="text-lg font-semibold">Scheduled maintenance on May 11th 2024 </span>{" "}
               <br />
-              Infisical will undergo scheduled maintenance for approximately 1 hour on Saturday, April 13th, 11am EST. During these hours, read
-              operations will continue to function normally but no resources will be editable. 
+              Infisical will undergo scheduled maintenance for approximately 2 hour on Saturday, May 11th, 11am EST. During these hours, read
+              operations to Infisical will continue to function normally but no resources will be editable. 
               No action is required on your end — your applications will continue to fetch secrets.
               <br />
             </div>

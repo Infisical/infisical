@@ -38,12 +38,7 @@ type ReferenceItem = {
 
 export const InfisicalSecretInput = ({
   value: propValue,
-  isVisible,
   containerClassName,
-  onBlur,
-  isDisabled,
-  isImport,
-  isReadOnly,
   secretPath: propSecretPath,
   environment: propEnvironment,
   onChange,
@@ -276,10 +271,7 @@ export const InfisicalSecretInput = ({
       handleSuggestionSelect();
     }
 
-    if (
-      (["ArrowDown", "ArrowUp"].includes(e.key) && isPopupOpen) ||
-      (e.key === "Enter" && highlightedIndex >= 0)
-    ) {
+    if (["ArrowDown", "ArrowUp", "Enter"].includes(e.key) && isPopupOpen) {
       e.preventDefault();
     }
   };

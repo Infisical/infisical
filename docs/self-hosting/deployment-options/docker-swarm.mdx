@@ -63,426 +63,9 @@ For the sake of simplicity, the example in this guide only contains one manager 
 It's important to note that while the cluster can tolerate the failure of one node in a three-node setup, it's recommended to have a minimum of three nodes to ensure high availability. 
 With two nodes, the failure of a single node can result in a loss of quorum and potential downtime.
 
-## Docker Deployment Stack 
+## Docker Deployment Stack Overview
 
-<Tabs>
-  <Tab title="Docker Swarm stack">
-    ```yaml infisical-stack.yaml
-version: "3"
-
-services:
-  haproxy:
-    image: haproxy:latest
-    ports:
-      - '7001:7000'
-      - '5002:5433'
-      - '5003:5434'
-      - '6379:6379'
-      - '8080:8080'
-    networks:
-    - infisical
-    configs:
-      - source: haproxy-config
-        target: /usr/local/etc/haproxy/haproxy.cfg
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node1
-          
-  infisical:
-    container_name: infisical-backend
-    image: infisical/infisical:v0.60.0-postgres
-    env_file: .env
-    ports:
-      - 80:8080
-    environment:
-      - NODE_ENV=production
-    networks:
-      - infisical
-    secrets:
-      - env_file
-    
-  etcd1:
-    image: ghcr.io/zalando/spilo-16:3.2-p2
-    networks:
-      - infisical
-    environment:
-      ETCD_UNSUPPORTED_ARCH: arm64
-    container_name: demo-etcd1
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node1
-    hostname: etcd1
-    command: |
-      etcd --name etcd1 
-      --listen-client-urls http://0.0.0.0:2379 
-      --listen-peer-urls=http://0.0.0.0:2380 
-      --advertise-client-urls http://etcd1:2379 
-      --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380 
-      --initial-advertise-peer-urls=http://etcd1:2380 
-      --initial-cluster-state=new
-
-  etcd2:
-    image: ghcr.io/zalando/spilo-16:3.2-p2
-    networks:
-      - infisical
-    environment:
-      ETCD_UNSUPPORTED_ARCH: arm64
-    container_name: demo-etcd2
-    hostname: etcd2
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node2
-    command: |
-      etcd --name etcd2 
-      --listen-client-urls http://0.0.0.0:2379 
-      --listen-peer-urls=http://0.0.0.0:2380 
-      --advertise-client-urls http://etcd2:2379 
-      --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380 
-      --initial-advertise-peer-urls=http://etcd2:2380 
-      --initial-cluster-state=new
-
-  etcd3:
-    image: ghcr.io/zalando/spilo-16:3.2-p2
-    networks:
-      - infisical
-    environment:
-      ETCD_UNSUPPORTED_ARCH: arm64
-    container_name: demo-etcd3
-    hostname: etcd3
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node3
-    command: |
-      etcd --name etcd3 
-      --listen-client-urls http://0.0.0.0:2379 
-      --listen-peer-urls=http://0.0.0.0:2380 
-      --advertise-client-urls http://etcd3:2379 
-      --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380 
-      --initial-advertise-peer-urls=http://etcd3:2380 
-      --initial-cluster-state=new
-
-  spolo1:
-    image: ghcr.io/zalando/spilo-16:3.2-p2
-    container_name: postgres-1
-    networks:
-    - infisical
-    hostname: postgres-1
-    environment:
-        ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
-        PGPASSWORD_SUPERUSER: "postgres"
-        PGUSER_SUPERUSER: "postgres"
-        SCOPE: infisical
-    volumes:
-      - postgres_data1:/home/postgres/pgdata
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node1
-
-  spolo2:
-    image: ghcr.io/zalando/spilo-16:3.2-p2
-    container_name: postgres-2
-    networks:
-    - infisical
-    hostname: postgres-2
-    environment:
-        ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
-        PGPASSWORD_SUPERUSER: "postgres"
-        PGUSER_SUPERUSER: "postgres"
-        SCOPE: infisical
-    volumes:
-      - postgres_data2:/home/postgres/pgdata
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node2
-
-  spolo3:
-    image: ghcr.io/zalando/spilo-16:3.2-p2
-    container_name: postgres-3
-    networks:
-    - infisical
-    hostname: postgres-3
-    environment:
-        ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
-        PGPASSWORD_SUPERUSER: "postgres"
-        PGUSER_SUPERUSER: "postgres"
-        SCOPE: infisical
-    volumes:
-      - postgres_data3:/home/postgres/pgdata
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node3
-
-
-  redis_replica0:
-    image: bitnami/redis:6.2.10
-    environment:
-      - REDIS_REPLICATION_MODE=master
-      - REDIS_PASSWORD=123456
-    networks:
-      - infisical
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node1
-
-  redis_replica1:
-    image: bitnami/redis:6.2.10
-    environment:
-      - REDIS_REPLICATION_MODE=slave
-      - REDIS_MASTER_HOST=redis_replica0
-      - REDIS_MASTER_PORT_NUMBER=6379
-      - REDIS_MASTER_PASSWORD=123456
-      - REDIS_PASSWORD=123456
-    networks:
-      - infisical
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node2
-
-  redis_replica2:
-    image: bitnami/redis:6.2.10
-    environment:
-      - REDIS_REPLICATION_MODE=slave
-      - REDIS_MASTER_HOST=redis_replica0
-      - REDIS_MASTER_PORT_NUMBER=6379
-      - REDIS_MASTER_PASSWORD=123456
-      - REDIS_PASSWORD=123456
-    networks:
-      - infisical
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node3
-
-  redis_sentinel1:
-    image: bitnami/redis-sentinel:6.2.10
-    environment:
-      - REDIS_SENTINEL_QUORUM=2
-      - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
-      - REDIS_SENTINEL_FAILOVER_TIMEOUT=60000
-      - REDIS_SENTINEL_PORT_NUMBER=26379
-      - REDIS_MASTER_HOST=redis_replica1
-      - REDIS_MASTER_PORT_NUMBER=6379
-      - REDIS_MASTER_PASSWORD=123456
-    networks:
-      - infisical
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node1
-
-  redis_sentinel2:
-    image: bitnami/redis-sentinel:6.2.10
-    environment:
-      - REDIS_SENTINEL_QUORUM=2
-      - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
-      - REDIS_SENTINEL_FAILOVER_TIMEOUT=60000
-      - REDIS_SENTINEL_PORT_NUMBER=26379
-      - REDIS_MASTER_HOST=redis_replica1
-      - REDIS_MASTER_PORT_NUMBER=6379
-      - REDIS_MASTER_PASSWORD=123456
-    networks:
-      - infisical
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node2
-
-  redis_sentinel3:
-    image: bitnami/redis-sentinel:6.2.10
-    environment:
-      - REDIS_SENTINEL_QUORUM=2
-      - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
-      - REDIS_SENTINEL_FAILOVER_TIMEOUT=60000
-      - REDIS_SENTINEL_PORT_NUMBER=26379
-      - REDIS_MASTER_HOST=redis_replica1
-      - REDIS_MASTER_PORT_NUMBER=6379
-      - REDIS_MASTER_PASSWORD=123456
-    networks:
-      - infisical
-    deploy:
-      placement:
-        constraints:
-          - node.labels.name == node3
-
-networks:
-  infisical:
-
-
-volumes:
-  postgres_data1:
-  postgres_data2:
-  postgres_data3:
-  postgres_data4:
-  redis0:
-  redis1:
-  redis2:
-
-configs:
-  haproxy-config:
-    file: ./haproxy.cfg
-
-secrets:
-  env_file:
-    file: .env
-    ```
-  </Tab>
-  <Tab title="HA Proxy config">
-    ```text haproxy.cfg
-global
-    maxconn 10000
-    log stdout format raw local0
-
-defaults
-    log global
-    mode tcp
-    retries 3
-    timeout client 30m
-    timeout connect 10s
-    timeout server 30m
-    timeout check 5s
-
-listen stats
-    mode http
-    bind *:7000
-    stats enable
-    stats uri /
-
-resolvers hostdns
-    nameserver dns 127.0.0.11:53
-    resolve_retries 3
-    timeout resolve 1s
-    timeout retry 1s
-    hold valid 5s
-
-frontend master
-    bind *:5433
-    default_backend master_backend
-
-frontend replicas
-    bind *:5434
-    default_backend replica_backend
-
-
-backend master_backend
-    option httpchk GET /master
-    http-check expect status 200
-    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
-    server postgres-1 postgres-1:5432 check port 8008 resolvers hostdns
-    server postgres-2 postgres-2:5432 check port 8008 resolvers hostdns
-    server postgres-3 postgres-3:5432 check port 8008 resolvers hostdns
-
-backend replica_backend
-    option httpchk GET /replica
-    http-check expect status 200
-    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
-    server postgres-1 postgres-1:5432 check port 8008 resolvers hostdns
-    server postgres-2 postgres-2:5432 check port 8008 resolvers hostdns
-    server postgres-3 postgres-3:5432 check port 8008 resolvers hostdns
-
-
-frontend redis_frontend
-  bind *:6379
-  default_backend redis_backend
-
-backend redis_backend
-  option tcp-check
-  tcp-check send AUTH\ 123456\r\n
-  tcp-check expect string +OK
-  tcp-check send PING\r\n
-  tcp-check expect string +PONG
-  tcp-check send info\ replication\r\n
-  tcp-check expect string role:master
-  tcp-check send QUIT\r\n
-  tcp-check expect string +OK
-  server redis_master redis_replica0:6379 check inter 1s
-  server redis_replica1 redis_replica1:6379 check inter 1s
-  server redis_replica2 redis_replica2:6379 check inter 1s
-
-frontend infisical_frontend
-  bind *:8080
-  default_backend infisical_backend
-
-backend infisical_backend
-  option httpchk GET /api/status
-  http-check expect status 200
-  server infisical infisical:8080 check inter 1s
-    ```
-  </Tab>
-  <Tab title=".example-env">
-  ```env .env 
-  # Keys
-# Required key for platform encryption/decryption ops
-# THIS IS A SAMPLE ENCRYPTION KEY AND SHOULD NEVER BE USED FOR PRODUCTION
-ENCRYPTION_KEY=6c1fe4e407b8911c104518103505b218
-
-# JWT
-# Required secrets to sign JWT tokens
-# THIS IS A SAMPLE AUTH_SECRET KEY AND SHOULD NEVER BE USED FOR PRODUCTION
-AUTH_SECRET=5lrMXKKWCVocS/uerPsl7V+TX/aaUaI7iDkgl3tSmLE=
-
-DB_CONNECTION_URI=postgres://infisical:infisical@haproxy:5433/infisical?sslmode=no-verify
-# Redis
-REDIS_URL=redis://:123456@haproxy:6379
-
-
-# Website URL
-# Required
-SITE_URL=http://localhost:8080
-
-# Mail/SMTP 
-SMTP_HOST=
-SMTP_PORT=
-SMTP_NAME=
-SMTP_USERNAME=
-SMTP_PASSWORD=
-
-# Integration
-# Optional only if integration is used
-CLIENT_ID_HEROKU=
-CLIENT_ID_VERCEL=
-CLIENT_ID_NETLIFY=
-CLIENT_ID_GITHUB=
-CLIENT_ID_GITLAB=
-CLIENT_ID_BITBUCKET=
-CLIENT_SECRET_HEROKU=
-CLIENT_SECRET_VERCEL=
-CLIENT_SECRET_NETLIFY=
-CLIENT_SECRET_GITHUB=
-CLIENT_SECRET_GITLAB=
-CLIENT_SECRET_BITBUCKET=
-CLIENT_SLUG_VERCEL=
-
-# Sentry (optional) for monitoring errors
-SENTRY_DSN=
-
-# Infisical Cloud-specific configs
-# Ignore - Not applicable for self-hosted version
-POSTHOG_HOST=
-POSTHOG_PROJECT_API_KEY=
-
-# SSO-specific variables
-CLIENT_ID_GOOGLE_LOGIN=
-CLIENT_SECRET_GOOGLE_LOGIN=
-
-CLIENT_ID_GITHUB_LOGIN=
-CLIENT_SECRET_GITHUB_LOGIN=
-
-CLIENT_ID_GITLAB_LOGIN=
-CLIENT_SECRET_GITLAB_LOGIN=
-  ```
-  </Tab>
-</Tabs>
-
-The provided Docker stack YAML file defines the services and their configurations for deploying Infisical with high availability. The main components of this stack are as follows.
+The [Docker stack file](https://github.com/Infisical/infisical/tree/main/docker-swarm) used in this guide defines the services and their configurations for deploying Infisical in a highly available manner. The main components of this stack are as follows.
 
 1. **HAProxy**: The HAProxy service is configured to expose ports for accessing PostgreSQL (5433 for the master, 5434 for replicas), Redis master (6379), and the Infisical backend (8080). It uses a config file (`haproxy.cfg`) to define the load balancing and health check rules.
 
@@ -496,42 +79,34 @@ The provided Docker stack YAML file defines the services and their configuration
 
 6. **Redis Sentinel**: Three Redis Sentinel instances (redis_sentinel1, redis_sentinel2, redis_sentinel3) are deployed, one on each node, to monitor and manage the Redis instances. They are connected to the `infisical` network.
 
-## HAProxy Configuration
+## Deployment instructions
 
-The HAProxy configuration file (`haproxy.cfg`) defines the load balancing and health check rules for the PostgreSQL and Redis instances.
-
-1. **Stats**: This section enables the HAProxy statistics dashboard, accessible at port 7000.
-
-2. **Resolvers**: This section defines the DNS resolver for service discovery, using the Docker embedded DNS server.
-
-3. **Frontend**: There are separate frontend sections for the PostgreSQL master (port 5433), PostgreSQL replicas (port 5434), Redis (port 6379), and the Infisical backend (port 8080). Each frontend binds to the respective port and defines the default backend.
-
-4. **Backend**: The backend sections define the servers and health check rules for each service.
-   - For PostgreSQL, there are separate backends for the master and replicas. The health check is performed using an HTTP request to the `/master` or `/replica` endpoint, expecting a 200 status code.
-   - For Redis, the backend uses a TCP health check with authentication and expects the role to be `master` for the Redis master instance.
-   - For the Infisical backend, the health check is performed using an HTTP request to the `/api/status` endpoint, expecting a 200 status code.
-
-## Setting Up Docker Nodes
-
-1. Initialize Docker Swarm on one of the VMs by running the following command:
-
-   ```
-   docker swarm init --advertise-addr <MANAGER_NODE_IP>
+<Steps>
+  <Step title="Initialize Docker Swarm on one of the VMs by running the following command">
+    ```
+   docker swarm init 
    ```
 
    Replace `<MANAGER_NODE_IP>` with the IP address of the VM that will serve as the manager node. Remember to copy the join token returned by the this init command.
+   
+   <Tip>
+    For the sake of simplicity, we only use one manager node in this example deployment. However, in production settings, we recommended you have at least 3 manager nodes.
+   </Tip>
+  </Step>
 
-2. On the other VMs, join the Docker Swarm by running the command provided by the manager node:
-
-   ```
+  <Step title="On the other VMs, join the Docker Swarm by running the command provided by the manager node">
+    ```
    docker swarm join --token <JOIN_TOKEN> <MANAGER_NODE_IP>:2377
    ```
 
    Replace `<JOIN_TOKEN>` with the token provided by the manager node during initialization.
 
-3. Label the nodes with `node.labels.name` to specify their roles. For example:
+  </Step>
 
-   ```
+  <Step title="Label the nodes with `node.labels.name` to specify their roles.">
+    Labels on nodes will help us select where stateful components such as Postgres and Redis are deployed on. To label nodes, follow the steps below. 
+
+     ```
    docker node update --label-add name=node1 <NODE1_ID>
    docker node update --label-add name=node2 <NODE2_ID>
    docker node update --label-add name=node3 <NODE3_ID>
@@ -540,32 +115,102 @@ The HAProxy configuration file (`haproxy.cfg`) defines the load balancing and he
    Replace `<NODE1_ID>`, `<NODE2_ID>`, and `<NODE3_ID>` with the respective node IDs. 
    To view the list of nodes and their ids, run the following on the manager node `docker node ls`.
 
-## Deploying the Docker Stack
+  </Step>
 
-1. Copy the provided Docker stack YAML file and the HAProxy configuration file to the manager node.
+  <Step title="Copy deployment assets to manager node">
+  Copy the Docker stack YAML file, HAProxy configuration file and example `.env` file to the manager node. Ensure that all 3 files are placed in the same file directory.
+  - [Docker stack file](https://github.com/Infisical/infisical/blob/main/docker-swarm/stack.yaml) (rename to infisical-stack.yaml)
+  - [HA configuration file](https://github.com/Infisical/infisical/blob/main/docker-swarm/haproxy.cfg) (rename to haproxy.cfg)
+  - [Example .env file](https://github.com/Infisical/infisical/blob/main/docker-swarm/.env-example) (rename to .env)
+  </Step>
 
-2. Deploy the stack using the following command:
+  <Step title="Deploy stack">
 
    ```
    docker stack deploy -c infisical-stack.yaml infisical
    ```
+  </Step>
 
-   This command deploys the stack with the specified configuration.
-3. Run the [schema migration](/self-hosting/configuration/schema-migrations) to initialize the database. 
-To connect to the Postgres database, use the following default credentials: username: `postgres` and password: `postgres`. 
+  <Step title="Check service status">
+    ```plain
+    $ docker service ls 
+    ID             NAME                        MODE         REPLICAS   IMAGE                                  PORTS
+    4kzq3ub8qgn9   infisical_etcd1             replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
+    tqx9t82bn8d9   infisical_etcd2             replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
+    t8vbkrasy8fz   infisical_etcd3             replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
+    77iei42fcf6q   infisical_haproxy           global       4/4        haproxy:latest                         *:5002-5003->5433-5434/tcp, *:6379->6379/tcp, *:7001->7000/tcp, *:8080->8080/tcp
+    jaewzqy8md56   infisical_infisical         replicated   5/5        infisical/infisical:v0.60.1-postgres   
+    58w4zablfbtb   infisical_redis_replica0    replicated   1/1        bitnami/redis:6.2.10                   
+    w4yag2whq0un   infisical_redis_replica1    replicated   1/1        bitnami/redis:6.2.10                   
+    w03mriy0jave   infisical_redis_replica2    replicated   1/1        bitnami/redis:6.2.10                   
+    ppo6rk47hc9t   infisical_redis_sentinel1   replicated   1/1        bitnami/redis-sentinel:6.2.10          
+    ub29vd0lnq7f   infisical_redis_sentinel2   replicated   1/1        bitnami/redis-sentinel:6.2.10          
+    szg3yky7yji2   infisical_redis_sentinel3   replicated   1/1        bitnami/redis-sentinel:6.2.10          
+    eqtocpf5tiy0   infisical_spolo1            replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
+    3lznscvk7k5t   infisical_spolo2            replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
+    v04ml7rz2j5q   infisical_spolo3            replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2
+    ```
 
-## Scaling and Resilience
+    <Note>
+      You'll notice that service `infisical_infisical` will not be in running state. 
+      This is expected as the database does not yet have the desired schemas. 
+      Once the database schema migrations have been successfully applied, this issue should be resolved.
+    </Note>
+  </Step>
 
-To further scale and make the system more resilient, you can add more nodes to the Docker Swarm and update the stack configuration accordingly:
+  <Step title="Run schema migrations">
+    Run the schema migration to initialize the database. Follow the [guide here](/self-hosting/configuration/schema-migrations) to learn how. 
 
-1. Add new VMs and join them to the Docker Swarm as worker nodes.
+    To connect to the Postgres database, use the following default credentials defined in the Docker swarm: username: `postgres`,  password: `postgres` and database: `postgres`. 
+  </Step>
 
-2. Update the Docker stack YAML file to include the new nodes in the `deploy` section of the relevant services, specifying the appropriate `node.labels.name` constraints.
+  <Step title="View service status">
+    ![HA Proxy stats](/images/self-hosting/deployment-options/docker-swarm/ha-proxy-ha.png)
+    To view the health of services in your Infisical cluster, visit port `<NODE-IP>:7001` of any node in your Docker swarm. 
+    This port will expose the HA Proxy stats. 
 
-3. Update the HAProxy configuration file (`haproxy.cfg`) to include the new nodes in the backend sections for PostgreSQL and Redis.
+    Run the following command to view the IPs of the nodes in your docker swarm.
 
-4. Redeploy the updated stack using the `docker stack deploy` command.
+    ```plain
+    $ docker node ls
+    ID                            HOSTNAME    STATUS    AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+    0jnegl4gpo235l66nglcwc07t     localhost   Ready     Active                          26.0.2
+    no1a7zwj88057k73m196ulkq6 *   localhost   Ready     Active         Leader           26.0.2
+    wcb2x27w3tq7ht4v1h7ke49qk     localhost   Ready     Active                          26.0.2
+    zov5q7uop7wpxc2ndz712v9oa     localhost   Ready     Active                          26.0.2
+    ```
 
-Note that the database containers (PostgreSQL) are stateful and cannot be simply replicated. Instead, one database instance is deployed per node to ensure data consistency and avoid conflicts.
+    <Info>
+      The stats page may take 1-2 minutes to become accessible.
+    </Info>
+  </Step>
 
-<Check>Once all services are running as expected, you may visit the IP address of the node where the HA Proxy was deployed. This should take you to the Infisical installation wizard.</Check>
+  <Step title="Initialize Infisical">
+    ![self host sign up](/images/self-hosting/applicable-to-all/selfhost-signup.png)
+    Once all expected services are up and running, visit `<NODE-IP>:8080` of any node in the swarm. This will take you to the Infisical configuration page.
+  </Step>
+
+  </Steps>
+
+## FAQ
+<Accordion title="How do I scale Infisical cluster further?" defaultOpen="true">
+  To further scale and make the system more resilient, you can add more nodes to the Docker Swarm and update the stack configuration accordingly:
+
+  1. Add new VMs and join them to the Docker Swarm as worker nodes.
+
+  2. Update the Docker stack YAML file to include the new nodes in the `deploy` section of the relevant services, specifying the appropriate `node.labels.name` constraints.
+
+  3. Update the HAProxy configuration file (`haproxy.cfg`) to include the new nodes in the backend sections for PostgreSQL and Redis.
+
+  4. Redeploy the updated stack using the `docker stack deploy` command.
+
+  Note that the database containers (PostgreSQL) are stateful and cannot be simply replicated. Instead, one database instance is deployed per node to ensure data consistency and avoid conflicts.
+
+</Accordion>
+
+<Accordion title="How do I configure backups for Postgres and Redis?">
+Native tooling for scheduled backups of Postgres and Redis is currently in development. 
+In the meantime, we recommend using a variety of open-source tools available for this purpose. 
+For Postgres, [Spilo](https://github.com/zalando/spilo) provides built-in support for scheduled data dumps. 
+You can explore other third party tools for managing db backups, one such tool is [docker-db-backup](https://github.com/tiredofit/docker-db-backup).
+</Accordion>

@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import Link from "next/link";
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Tab } from "@headlessui/react";
@@ -47,18 +46,29 @@ export const PersonalTabGroup = () => {
               <div className="flex w-full flex-col text-sm">
                 <span className="mb-4 text-lg font-semibold">Deprecation Notice</span>
                 <p>
-                  API Keys are deprecated and will be removed in the future.
-                  <br /> Please use Machine Identity authentication for your applications and
-                  services.
-                </p>
-                <Link href="https://infisical.com/docs/documentation/platform/identities/overview">
-                  <a target="_blank" className="font-semibold text-primary-400">
+                  API Keys are being deprecated in favor of Machine Identities.
+                  <br />
+                  They will be removed in the future in accordance with the deprecation notice and
+                  timeline stated{" "}
+                  <a
+                    href="https://infisical.com/blog/deprecating-api-keys"
+                    target="_blank"
+                    className="font-semibold text-primary-400" rel="noreferrer"
+                  >
+                    here
+                  </a>
+                  .
+                  <br />
+                  <a
+                    href="https://infisical.com/docs/documentation/platform/identities/overview"
+                    target="_blank"
+                    className="font-semibold text-primary-400" rel="noreferrer"
+                  >
                     Learn more about Machine Identities
                   </a>
-                </Link>
+                </p>
               </div>
             </div>
-
             <PersonalAPIKeyTab />
           </div>
         </Tab.Panel>

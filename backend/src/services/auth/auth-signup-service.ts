@@ -82,7 +82,7 @@ export const authSignupServiceFactory = ({
     await smtpService.sendMail({
       template: SmtpTemplates.SignupEmailVerification,
       subjectLine: "Infisical confirmation code",
-      recipients: [email],
+      recipients: [user.email as string],
       substitutions: {
         code: token
       }

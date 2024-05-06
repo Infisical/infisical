@@ -1,6 +1,7 @@
 export * from "./admin";
 export * from "./apiKeys";
 export * from "./auditLogs";
+export * from "./auditLogStreams";
 export * from "./auth";
 export * from "./bots";
 export * from "./dynamicSecret";

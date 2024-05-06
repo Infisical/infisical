@@ -69,3 +69,10 @@ export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
   keyEncoding: true,
   algorithm: true
 });
+
+export const SanitizedAuditLogStreamSchema = z.object({
+  id: z.string(),
+  url: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
