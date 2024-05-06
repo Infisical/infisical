@@ -31,17 +31,17 @@ export const groupDALFactory = (db: TDbClient, userGroupMembershipDAL: TUserGrou
       );
 
       // For each of those group memberships, we need to find all the members of the group that don't have a regular membership in the project
-      for await (const membership of groupProjectMemberships) {
+      for await (const groupMembership of groupProjectMemberships) {
         const members = await userGroupMembershipDAL.findGroupMembersNotInProject(
           group.id,
-          membership.projectId,
+          groupMembership.projectId,
           transaction
         );
 
         // We then delete all the access approval requests and secret approval requests associated with these members
         await accessApprovalRequestOrm.delete(
           {
-            projectMembershipId: membership.id,
+            groupMembershipId: groupMembership.id,
             $in: {
               requestedByUserId: members.map(({ user }) => user.id)
             }
@@ -51,7 +51,7 @@ export const groupDALFactory = (db: TDbClient, userGroupMembershipDAL: TUserGrou
 
         const policies = await (tx || db)(TableName.SecretApprovalPolicy)
           .join(TableName.Environment, `${TableName.SecretApprovalPolicy}.envId`, `${TableName.Environment}.id`)
-          .where(`${TableName.Environment}.projectId`, membership.projectId)
+          .where(`${TableName.Environment}.projectId`, groupMembership.projectId)
           .select(selectAllTableCols(TableName.SecretApprovalPolicy));
 
         await secretApprovalRequestOrm.delete(
