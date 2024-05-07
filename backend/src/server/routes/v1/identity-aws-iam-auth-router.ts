@@ -20,7 +20,7 @@ export const registerIdentityAwsIamAuthRouter = async (server: FastifyZodProvide
       rateLimit: writeLimit
     },
     schema: {
-      description: "Login with Universal Auth",
+      description: "Login with AWS IAM Auth",
       body: z.object({
         identityId: z.string().describe(AWS_IAM_AUTH.LOGIN.identityId),
         iamHttpRequestMethod: z.string().default("POST").describe(AWS_IAM_AUTH.LOGIN.iamHttpRequestMethod),
