@@ -31,6 +31,7 @@ type GetEncryptedWorkspaceKeyResponse struct {
 type GetEncryptedSecretsV3Request struct {
 	Environment   string `json:"environment"`
 	WorkspaceId   string `json:"workspaceId"`
+	Recursive     bool   `json:"recursive"`
 	SecretPath    string `json:"secretPath"`
 	IncludeImport bool   `json:"include_imports"`
 	ETag          string `json:"etag,omitempty"`
@@ -100,6 +101,7 @@ type GetDecryptedSecretsV3Request struct {
 	ProjectSlug string `json:"workspaceSlug"`
 	Environment string `json:"environment"`
 	SecretPath  string `json:"secretPath"`
+	Recursive   bool   `json:"recursive"`
 	ETag        string `json:"etag,omitempty"`
 }
 
