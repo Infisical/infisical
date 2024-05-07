@@ -3,6 +3,13 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
+  const isUsersTablePresent = await knex.schema.hasTable(TableName.Users);
+  if (isUsersTablePresent) {
+    await knex.schema.alterTable(TableName.Users, (t) => {
+      t.boolean("isEmailVerified");
+    });
+  }
+
   const isUserAliasTablePresent = await knex.schema.hasTable(TableName.UserAliases);
   if (isUserAliasTablePresent) {
     await knex.schema.alterTable(TableName.UserAliases, (t) => {
@@ -20,6 +27,12 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
+  if (await knex.schema.hasColumn(TableName.Users, "isEmailVerified")) {
+    await knex.schema.alterTable(TableName.Users, (t) => {
+      t.dropColumn("isEmailVerified");
+    });
+  }
+
   if (await knex.schema.hasColumn(TableName.SuperAdmin, "trustSamlEmails")) {
     await knex.schema.alterTable(TableName.SuperAdmin, (t) => {
       t.dropColumn("trustSamlEmails");
