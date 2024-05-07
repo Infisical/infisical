@@ -15,7 +15,10 @@ import {
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useCreateIdentity, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
-import { IdentityAuthMethod, useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
+import {
+  IdentityAuthMethod
+  // useAddIdentityUniversalAuth
+} from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup
@@ -40,9 +43,7 @@ type Props = {
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["identity"]>, state?: boolean) => void;
 };
 
-export const IdentityModal = ({ popUp, /* handlePopUpOpen, */ handlePopUpToggle }: Props) => {
-  
-
+export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -50,7 +51,7 @@ export const IdentityModal = ({ popUp, /* handlePopUpOpen, */ handlePopUpToggle 
 
   const { mutateAsync: createMutateAsync } = useCreateIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
-  const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
+  // const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
 
   const {
     control,
@@ -113,31 +114,31 @@ export const IdentityModal = ({ popUp, /* handlePopUpOpen, */ handlePopUpToggle 
         // create
 
         const {
-          id: createdId
-          // name: createdName,
-          // authMethod
+          id: createdId,
+          name: createdName,
+          authMethod
         } = await createMutateAsync({
           name,
           role: role || undefined,
           organizationId: orgId
         });
 
-        await addMutateAsync({
-          organizationId: orgId,
-          identityId: createdId,
-          clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-          accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-          accessTokenTTL: 2592000,
-          accessTokenMaxTTL: 2592000,
-          accessTokenNumUsesLimit: 0
-        });
+        // await addMutateAsync({
+        //   organizationId: orgId,
+        //   identityId: createdId,
+        //   clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+        //   accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+        //   accessTokenTTL: 2592000,
+        //   accessTokenMaxTTL: 2592000,
+        //   accessTokenNumUsesLimit: 0
+        // });
 
         handlePopUpToggle("identity", false);
-        // handlePopUpOpen("identityAuthMethod", {
-        //   identityId: createdId,
-        //   name: createdName,
-        //   authMethod
-        // });
+        handlePopUpOpen("identityAuthMethod", {
+          identityId: createdId,
+          name: createdName,
+          authMethod
+        });
       }
 
       createNotification({

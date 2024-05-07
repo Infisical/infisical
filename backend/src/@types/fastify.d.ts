@@ -32,6 +32,7 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
+import { TIdentityAwsIamAuthServiceFactory } from "@app/services/identity-aws-iam-auth/identity-aws-iam-auth-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
@@ -115,6 +116,7 @@ declare module "fastify" {
       identityAccessToken: TIdentityAccessTokenServiceFactory;
       identityProject: TIdentityProjectServiceFactory;
       identityUa: TIdentityUaServiceFactory;
+      identityAwsIamAuth: TIdentityAwsIamAuthServiceFactory;
       accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
       accessApprovalRequest: TAccessApprovalRequestServiceFactory;
       secretApprovalPolicy: TSecretApprovalPolicyServiceFactory;
