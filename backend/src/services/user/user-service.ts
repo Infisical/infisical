@@ -63,6 +63,8 @@ export const userServiceFactory = ({
   const verifyEmailVerificationCode = async (username: string, code: string) => {
     const user = await userDAL.findOne({ username });
     if (!user) throw new BadRequestError({ name: "Failed to find user" });
+    if (!user.email)
+      throw new BadRequestError({ name: "Failed to verify email verification code due to no email on user" });
     if (user.isEmailVerified)
       throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
 
@@ -71,6 +73,8 @@ export const userServiceFactory = ({
       userId: user.id,
       code
     });
+
+    const { email } = user;
 
     await userDAL.transaction(async (tx) => {
       await userDAL.updateById(
@@ -84,7 +88,7 @@ export const userServiceFactory = ({
       // check if there are users with the same email.
       const users = await userDAL.find(
         {
-          email: user.email,
+          email,
           isEmailVerified: true
         },
         { tx }
@@ -129,6 +133,15 @@ export const userServiceFactory = ({
             tx
           );
         }
+      } else {
+        // update current user's username to [email]
+        await userDAL.updateById(
+          user.id,
+          {
+            username: email
+          },
+          tx
+        );
       }
     });
   };

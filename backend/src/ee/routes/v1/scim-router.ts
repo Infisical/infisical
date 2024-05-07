@@ -249,7 +249,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       const primaryEmail = req.body.emails?.find((email) => email.primary)?.value;
 
       const user = await req.server.services.scim.createScimUser({
-        username: req.body.userName,
+        externalId: req.body.userName,
         email: primaryEmail,
         firstName: req.body.name.givenName,
         lastName: req.body.name.familyName,

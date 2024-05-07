@@ -32,7 +32,7 @@ export type TGetScimUserDTO = {
 };
 
 export type TCreateScimUserDTO = {
-  username: string;
+  externalId: string;
   email?: string;
   firstName: string;
   lastName: string;
@@ -40,7 +40,7 @@ export type TCreateScimUserDTO = {
 };
 
 export type TUpdateScimUserDTO = {
-  userId: string;
+  orgMembershipId: string;
   orgId: string;
   operations: {
     op: string;

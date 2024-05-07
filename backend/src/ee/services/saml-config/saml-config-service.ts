@@ -347,7 +347,7 @@ export const samlConfigServiceFactory = ({
         const foundUser = await userDAL.findById(userAlias.userId, tx);
         const [orgMembership] = await orgDAL.findMembership(
           {
-            userId: foundUser.id,
+            [`${TableName.OrgMembership}.userId` as "userId"]: foundUser.id,
             [`${TableName.OrgMembership}.orgId` as "id"]: orgId
           },
           { tx }
@@ -378,19 +378,33 @@ export const samlConfigServiceFactory = ({
       });
     } else {
       user = await userDAL.transaction(async (tx) => {
-        const uniqueUsername = await normalizeUsername(`${firstName ?? ""}-${lastName ?? ""}`, userDAL);
-        const newUser = await userDAL.create(
-          {
-            username: uniqueUsername,
-            email,
-            isEmailVerified: serverCfg.trustSamlEmails,
-            firstName,
-            lastName,
-            authMethods: [],
-            isGhost: false
-          },
-          tx
-        );
+        let newUser: TUsers | undefined;
+        if (serverCfg.trustSamlEmails) {
+          newUser = await userDAL.findOne(
+            {
+              email,
+              isEmailVerified: true
+            },
+            tx
+          );
+        }
+
+        if (!newUser) {
+          const uniqueUsername = await normalizeUsername(`${firstName ?? ""}-${lastName ?? ""}`, userDAL);
+          newUser = await userDAL.create(
+            {
+              username: serverCfg.trustSamlEmails ? email : uniqueUsername,
+              email,
+              isEmailVerified: serverCfg.trustSamlEmails,
+              firstName,
+              lastName,
+              authMethods: [],
+              isGhost: false
+            },
+            tx
+          );
+        }
+
         await userAliasDAL.create(
           {
             userId: newUser.id,
@@ -402,16 +416,35 @@ export const samlConfigServiceFactory = ({
           tx
         );
 
-        await orgMembershipDAL.create(
+        const [orgMembership] = await orgDAL.findMembership(
           {
-            userId: newUser.id,
-            inviteEmail: email,
-            orgId,
-            role: OrgMembershipRole.Member,
-            status: OrgMembershipStatus.Invited
+            [`${TableName.OrgMembership}.userId` as "userId"]: newUser.id,
+            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
           },
-          tx
+          { tx }
         );
+
+        if (!orgMembership) {
+          await orgMembershipDAL.create(
+            {
+              userId: newUser.id,
+              inviteEmail: email,
+              orgId,
+              role: OrgMembershipRole.Member,
+              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+            },
+            tx
+          );
+          // Only update the membership to Accepted if the user account is already completed.
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && newUser.isAccepted) {
+          await orgDAL.updateMembershipById(
+            orgMembership.id,
+            {
+              status: OrgMembershipStatus.Accepted
+            },
+            tx
+          );
+        }
 
         return newUser;
       });

@@ -4,7 +4,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { TProjects } from "@app/db/schemas/projects";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -431,7 +431,13 @@ export const orgServiceFactory = ({
       if (inviteeUser) {
         // if user already exist means its already part of infisical
         // Thus the signup flow is not needed anymore
-        const [inviteeMembership] = await orgDAL.findMembership({ orgId, userId: inviteeUser.id }, { tx });
+        const [inviteeMembership] = await orgDAL.findMembership(
+          {
+            [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
+            [`${TableName.OrgMembership}.userId` as "userId"]: inviteeUser.id
+          },
+          { tx }
+        );
         if (inviteeMembership && inviteeMembership.status === OrgMembershipStatus.Accepted) {
           throw new BadRequestError({
             message: "Failed to invite an existing member of org",
@@ -523,9 +529,9 @@ export const orgServiceFactory = ({
       throw new BadRequestError({ message: "Invalid request", name: "Verify user to org" });
     }
     const [orgMembership] = await orgDAL.findMembership({
-      userId: user.id,
+      [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
       status: OrgMembershipStatus.Invited,
-      orgId
+      [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId
     });
     if (!orgMembership)
       throw new BadRequestError({

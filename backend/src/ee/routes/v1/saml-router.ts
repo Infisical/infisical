@@ -102,7 +102,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
           const email = profile?.email ?? (profile?.emailAddress as string); // emailRippling is added because in Rippling the field `email` reserved
 
-          if (!profile.email || !profile.firstName) {
+          if (!email || !profile.firstName) {
             throw new BadRequestError({ message: "Invalid request. Missing email or first name" });
           }
 

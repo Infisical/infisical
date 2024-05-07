@@ -6,7 +6,8 @@ import {
   OrgMembershipStatus,
   SecretKeyEncoding,
   TableName,
-  TLdapConfigsUpdate
+  TLdapConfigsUpdate,
+  TUsers
 } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
@@ -25,6 +26,7 @@ import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
@@ -54,6 +56,7 @@ import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 type TLdapConfigServiceFactoryDep = {
   ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne">;
   ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete" | "findLdapGroupMapsByLdapConfigId">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
@@ -83,6 +86,7 @@ export const ldapConfigServiceFactory = ({
   ldapConfigDAL,
   ldapGroupMapDAL,
   orgDAL,
+  orgMembershipDAL,
   orgBotDAL,
   groupDAL,
   groupProjectDAL,
@@ -387,7 +391,7 @@ export const ldapConfigServiceFactory = ({
     username,
     firstName,
     lastName,
-    emails,
+    email,
     groups,
     orgId,
     relayState
@@ -407,7 +411,7 @@ export const ldapConfigServiceFactory = ({
       await userDAL.transaction(async (tx) => {
         const [orgMembership] = await orgDAL.findMembership(
           {
-            userId: userAlias.userId,
+            [`${TableName.OrgMembership}.userId` as "userId"]: userAlias.userId,
             [`${TableName.OrgMembership}.orgId` as "id"]: orgId
           },
           { tx }
@@ -434,40 +438,74 @@ export const ldapConfigServiceFactory = ({
       });
     } else {
       userAlias = await userDAL.transaction(async (tx) => {
-        const uniqueUsername = await normalizeUsername(username, userDAL);
-        const newUser = await userDAL.create(
-          {
-            username: uniqueUsername,
-            email: emails[0],
-            isEmailVerified: serverCfg.trustLdapEmails,
-            firstName,
-            lastName,
-            authMethods: [],
-            isGhost: false
-          },
-          tx
-        );
+        let newUser: TUsers | undefined;
+        if (serverCfg.trustSamlEmails) {
+          newUser = await userDAL.findOne(
+            {
+              email,
+              isEmailVerified: true
+            },
+            tx
+          );
+        }
+
+        if (!newUser) {
+          const uniqueUsername = await normalizeUsername(username, userDAL);
+          newUser = await userDAL.create(
+            {
+              username: serverCfg.trustLdapEmails ? email : uniqueUsername,
+              email,
+              isEmailVerified: serverCfg.trustLdapEmails,
+              firstName,
+              lastName,
+              authMethods: [],
+              isGhost: false
+            },
+            tx
+          );
+        }
+
         const newUserAlias = await userAliasDAL.create(
           {
             userId: newUser.id,
             username,
             aliasType: UserAliasType.LDAP,
             externalId,
-            emails,
+            emails: [email],
             orgId
           },
           tx
         );
 
-        await orgDAL.createMembership(
+        const [orgMembership] = await orgDAL.findMembership(
           {
-            userId: newUser.id,
-            orgId,
-            role: OrgMembershipRole.Member,
-            status: OrgMembershipStatus.Invited
+            [`${TableName.OrgMembership}.userId` as "userId"]: newUser.id,
+            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
           },
-          tx
+          { tx }
         );
+
+        if (!orgMembership) {
+          await orgMembershipDAL.create(
+            {
+              userId: userAlias.userId,
+              inviteEmail: email,
+              orgId,
+              role: OrgMembershipRole.Member,
+              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+            },
+            tx
+          );
+          // Only update the membership to Accepted if the user account is already completed.
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && newUser.isAccepted) {
+          await orgDAL.updateMembershipById(
+            orgMembership.id,
+            {
+              status: OrgMembershipStatus.Accepted
+            },
+            tx
+          );
+        }
 
         return newUserAlias;
       });

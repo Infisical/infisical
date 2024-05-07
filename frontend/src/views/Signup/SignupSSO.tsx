@@ -54,14 +54,6 @@ export const SignupSSO = ({ providerAuthToken }: Props) => {
             providerAuthToken={providerAuthToken}
           />
         );
-      // case 2:
-      //   return (
-      //     <MergeUsersStep
-      //       username={username}
-      //       authType={authType}
-      //       organizationSlug={organizationSlug}
-      //     />
-      //   );
       case 2:
         return (
           <BackupPDFStep email={username} password={password} name={`${firstName} ${lastName}`} />

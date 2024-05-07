@@ -209,10 +209,10 @@ export const scimServiceFactory = ({
       findOpts
     );
 
-    const scimUsers = users.map(({ id, username, firstName, lastName, email }) =>
+    const scimUsers = users.map(({ id, externalId, username, firstName, lastName, email }) =>
       buildScimUser({
         orgMembershipId: id ?? "",
-        username,
+        username: externalId ?? username,
         firstName: firstName ?? "",
         lastName: lastName ?? "",
         email,
@@ -254,7 +254,7 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       orgMembershipId: membership.id,
-      username: membership.username,
+      username: membership.externalId ?? membership.username,
       email: membership.email ?? "",
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
@@ -262,7 +262,9 @@ export const scimServiceFactory = ({
     });
   };
 
-  const createScimUser = async ({ username, email, firstName, lastName, orgId }: TCreateScimUserDTO) => {
+  const createScimUser = async ({ externalId, email, firstName, lastName, orgId }: TCreateScimUserDTO) => {
+    if (!email) throw new ScimRequestError({ detail: "Invalid request. Missing email.", status: 400 });
+
     const org = await orgDAL.findById(orgId);
 
     if (!org)
@@ -281,13 +283,13 @@ export const scimServiceFactory = ({
     const serverCfg = await getServerCfg();
 
     const userAlias = await userAliasDAL.findOne({
-      externalId: username,
+      externalId,
       orgId,
       aliasType: UserAliasType.SAML
     });
 
     const { user: createdUser, orgMembership: createdOrgMembership } = await userDAL.transaction(async (tx) => {
-      let user: TUsers;
+      let user: TUsers | undefined;
       let orgMembership: TOrgMemberships;
       if (userAlias) {
         user = await userDAL.findById(userAlias.userId, tx);
@@ -320,39 +322,74 @@ export const scimServiceFactory = ({
           );
         }
       } else {
-        const uniqueUsername = await normalizeUsername(`${firstName}-${lastName}`, userDAL);
-        user = await userDAL.create(
-          {
-            username: uniqueUsername,
-            email,
-            isEmailVerified: serverCfg.trustSamlEmails,
-            firstName,
-            lastName,
-            authMethods: [],
-            isGhost: false
-          },
-          tx
-        );
+        if (serverCfg.trustSamlEmails) {
+          user = await userDAL.findOne(
+            {
+              email,
+              isEmailVerified: true
+            },
+            tx
+          );
+        }
+
+        if (!user) {
+          const uniqueUsername = await normalizeUsername(`${firstName}-${lastName}`, userDAL);
+          user = await userDAL.create(
+            {
+              username: serverCfg.trustSamlEmails ? email : uniqueUsername,
+              email,
+              isEmailVerified: serverCfg.trustSamlEmails,
+              firstName,
+              lastName,
+              authMethods: [],
+              isGhost: false
+            },
+            tx
+          );
+        }
+
         await userAliasDAL.create(
           {
             userId: user.id,
             aliasType: UserAliasType.SAML,
-            externalId: username,
+            externalId,
             emails: email ? [email] : [],
             orgId
           },
           tx
         );
-        orgMembership = await orgMembershipDAL.create(
+
+        const [foundOrgMembership] = await orgDAL.findMembership(
           {
-            userId: user.id,
-            inviteEmail: email,
-            orgId,
-            role: OrgMembershipRole.Member,
-            status: OrgMembershipStatus.Invited
+            [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
+            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
           },
-          tx
+          { tx }
         );
+
+        orgMembership = foundOrgMembership;
+
+        if (!orgMembership) {
+          orgMembership = await orgMembershipDAL.create(
+            {
+              userId: user.id,
+              inviteEmail: email,
+              orgId,
+              role: OrgMembershipRole.Member,
+              status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+            },
+            tx
+          );
+          // Only update the membership to Accepted if the user account is already completed.
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
+          orgMembership = await orgDAL.updateMembershipById(
+            orgMembership.id,
+            {
+              status: OrgMembershipStatus.Accepted
+            },
+            tx
+          );
+        }
       }
 
       return { user, orgMembership };
@@ -372,7 +409,7 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       orgMembershipId: createdOrgMembership.id,
-      username: createdUser.username,
+      username: externalId,
       firstName: createdUser.firstName as string,
       lastName: createdUser.lastName as string,
       email: createdUser.email ?? "",
@@ -380,11 +417,11 @@ export const scimServiceFactory = ({
     });
   };
 
-  const updateScimUser = async ({ userId, orgId, operations }: TUpdateScimUserDTO) => {
+  const updateScimUser = async ({ orgMembershipId, orgId, operations }: TUpdateScimUserDTO) => {
     const [membership] = await orgDAL
       .findMembership({
-        userId,
-        [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+        [`${TableName.OrgMembership}.id` as "id"]: orgMembershipId,
+        [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId
       })
       .catch(() => {
         throw new ScimRequestError({
@@ -433,7 +470,7 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       orgMembershipId: membership.id,
-      username: membership.username,
+      username: membership.externalId ?? membership.username,
       email: membership.email,
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
@@ -467,7 +504,6 @@ export const scimServiceFactory = ({
       });
 
     if (!active) {
-      // tx
       await deleteOrgMembershipFn({
         orgMembershipId: membership.id,
         orgId: membership.orgId,
@@ -481,7 +517,7 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       orgMembershipId: membership.id,
-      username: membership.username,
+      username: membership.externalId ?? membership.username,
       email: membership.email,
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
@@ -627,9 +663,9 @@ export const scimServiceFactory = ({
     });
 
     const orgMemberships = await orgDAL.findMembership({
-      orgId,
+      [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
       $in: {
-        userId: newGroup.newMembers.map((member) => member.id)
+        [`${TableName.OrgMembership}.userId` as "userId"]: newGroup.newMembers.map((member) => member.id)
       }
     });
 
@@ -668,9 +704,11 @@ export const scimServiceFactory = ({
     });
 
     const orgMemberships = await orgDAL.findMembership({
-      orgId,
+      [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
       $in: {
-        userId: users.filter((user) => user.isPartOfGroup).map((user) => user.id)
+        [`${TableName.OrgMembership}.userId` as "userId"]: users
+          .filter((user) => user.isPartOfGroup)
+          .map((user) => user.id)
       }
     });
 

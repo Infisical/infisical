@@ -322,6 +322,7 @@ export const registerRoutes = async (
     ldapConfigDAL,
     ldapGroupMapDAL,
     orgDAL,
+    orgMembershipDAL,
     orgBotDAL,
     groupDAL,
     groupProjectDAL,
