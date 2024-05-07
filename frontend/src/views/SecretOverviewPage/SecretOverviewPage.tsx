@@ -134,7 +134,8 @@ export const SecretOverviewPage = () => {
     secretPath,
     decryptFileKey: latestFileKey!
   });
-  const { folders, folderNames, isFolderPresentInEnv } = useGetFoldersByEnv({
+
+  const { folders, folderNames, isFolderPresentInEnv, getFolderByNameAndEnv } = useGetFoldersByEnv({
     projectId: workspaceId,
     path: secretPath,
     environments: userAvailableEnvs.map(({ slug }) => slug)
@@ -548,7 +549,11 @@ export const SecretOverviewPage = () => {
             </div>
           </div>
         </div>
-        <SelectionPanel secretPath={secretPath} />
+        <SelectionPanel
+          secretPath={secretPath}
+          getSecretByKey={getSecretByKey}
+          getFolderByNameAndEnv={getFolderByNameAndEnv}
+        />
         <div className="thin-scrollbar mt-4" ref={parentTableRef}>
           <TableContainer className="max-h-[calc(100vh-250px)] overflow-y-auto">
             <Table>

@@ -3,17 +3,27 @@ import { faMinusSquare, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal, IconButton, Tooltip } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useWorkspace
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
+import { useDeleteFolder, useDeleteSecretBatch } from "@app/hooks/api";
+import { DecryptedSecret, TDeleteSecretBatchDTO, TSecretFolder } from "@app/hooks/api/types";
 
 import { useSelectedEntries, useSelectedEntryActions } from "../../SecretOverviewPage.store";
 
 type Props = {
   secretPath: string;
+  getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
+  getFolderByNameAndEnv: (name: string, env: string) => TSecretFolder | undefined;
 };
 
-export const SelectionPanel = ({ secretPath }: Props) => {
+export const SelectionPanel = ({ getFolderByNameAndEnv, getSecretByKey, secretPath }: Props) => {
   const { permission } = useProjectPermission();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
@@ -25,6 +35,12 @@ export const SelectionPanel = ({ secretPath }: Props) => {
   const selectedCount =
     Object.keys(selectedEntries.folder).length + Object.keys(selectedEntries.secret).length;
 
+  const { currentWorkspace } = useWorkspace();
+  const workspaceId = currentWorkspace?.id || "";
+  const userAvailableEnvs = currentWorkspace?.environments || [];
+  const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
+  const { mutateAsync: deleteFolder } = useDeleteFolder();
+
   const isMultiSelectActive = selectedCount > 0;
 
   // TODO: REVISIT RBAC
@@ -34,7 +50,63 @@ export const SelectionPanel = ({ secretPath }: Props) => {
   );
 
   const handleBulkDelete = async () => {
-    handlePopUpClose("bulkDeleteEntries");
+    const promises = userAvailableEnvs.map(async (env) => {
+      await Promise.all(
+        Object.keys(selectedEntries.folder).map(async (folderName) => {
+          const folder = getFolderByNameAndEnv(folderName, env.slug);
+          if (folder) {
+            await deleteFolder({
+              folderId: folder?.id,
+              path: secretPath,
+              environment: env.slug,
+              projectId: workspaceId
+            });
+          }
+        })
+      );
+
+      const secretsToDelete = Object.keys(selectedEntries.secret).reduce(
+        (accum: TDeleteSecretBatchDTO["secrets"], secretName) => {
+          const entry = getSecretByKey(env.slug, secretName);
+          if (entry) {
+            return [
+              ...accum,
+              {
+                secretName: entry.key,
+                type: "shared" as "shared"
+              }
+            ];
+          }
+          return accum;
+        },
+        []
+      );
+
+      if (secretsToDelete.length > 0) {
+        await deleteBatchSecretV3({
+          secretPath,
+          workspaceId,
+          environment: env.slug,
+          secrets: secretsToDelete
+        });
+      }
+    });
+
+    const results = await Promise.allSettled(promises);
+    const areEntriesDeleted = results.some((result) => result.status === "fulfilled");
+    if (areEntriesDeleted) {
+      handlePopUpClose("bulkDeleteEntries");
+      resetSelectedEntries();
+      createNotification({
+        type: "success",
+        text: "Successfully deleted selected secrets and folders"
+      });
+    } else {
+      createNotification({
+        type: "error",
+        text: "Failed to delete selected secrets and folders"
+      });
+    }
   };
 
   return (
