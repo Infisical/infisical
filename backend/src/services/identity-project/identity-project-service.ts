@@ -93,9 +93,7 @@ export const identityProjectServiceFactory = ({
       const identityProjectMembership = await identityProjectDAL.create(
         {
           identityId,
-          projectId: project.id,
-          role: isCustomRole ? ProjectMembershipRole.Custom : role,
-          roleId: customRole?.id
+          projectId: project.id
         },
         tx
       );
@@ -163,7 +161,7 @@ export const identityProjectServiceFactory = ({
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
-    const santiziedProjectMembershipRoles = roles.map((inputRole) => {
+    const sanitizedProjectMembershipRoles = roles.map((inputRole) => {
       const isCustomRole = Boolean(customRolesGroupBySlug?.[inputRole.role]?.[0]);
       if (!inputRole.isTemporary) {
         return {
@@ -189,7 +187,7 @@ export const identityProjectServiceFactory = ({
 
     const updatedRoles = await identityProjectMembershipRoleDAL.transaction(async (tx) => {
       await identityProjectMembershipRoleDAL.delete({ projectMembershipId: projectIdentity.id }, tx);
-      return identityProjectMembershipRoleDAL.insertMany(santiziedProjectMembershipRoles, tx);
+      return identityProjectMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });
 
     return updatedRoles;
@@ -246,8 +244,8 @@ export const identityProjectServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
 
-    const identityMemberhips = await identityProjectDAL.findByProjectId(projectId);
-    return identityMemberhips;
+    const identityMemberships = await identityProjectDAL.findByProjectId(projectId);
+    return identityMemberships;
   };
 
   return {

@@ -26,8 +26,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       description: "Return project user memberships",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -35,31 +34,28 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          memberships: ProjectMembershipsSchema.omit({ role: true })
-            .merge(
+          memberships: ProjectMembershipsSchema.extend({
+            user: UsersSchema.pick({
+              email: true,
+              firstName: true,
+              lastName: true,
+              id: true
+            }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            roles: z.array(
               z.object({
-                user: UsersSchema.pick({
-                  email: true,
-                  firstName: true,
-                  lastName: true,
-                  id: true
-                }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
-                roles: z.array(
-                  z.object({
-                    id: z.string(),
-                    role: z.string(),
-                    customRoleId: z.string().optional().nullable(),
-                    customRoleName: z.string().optional().nullable(),
-                    customRoleSlug: z.string().optional().nullable(),
-                    isTemporary: z.boolean(),
-                    temporaryMode: z.string().optional().nullable(),
-                    temporaryRange: z.string().nullable().optional(),
-                    temporaryAccessStartTime: z.date().nullable().optional(),
-                    temporaryAccessEndTime: z.date().nullable().optional()
-                  })
-                )
+                id: z.string(),
+                role: z.string(),
+                customRoleId: z.string().optional().nullable(),
+                customRoleName: z.string().optional().nullable(),
+                customRoleSlug: z.string().optional().nullable(),
+                isTemporary: z.boolean(),
+                temporaryMode: z.string().optional().nullable(),
+                temporaryRange: z.string().nullable().optional(),
+                temporaryAccessStartTime: z.date().nullable().optional(),
+                temporaryAccessEndTime: z.date().nullable().optional()
               })
             )
+          })
             .omit({ createdAt: true, updatedAt: true })
             .array()
         })
@@ -142,8 +138,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       description: "Update project user membership",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -216,8 +211,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       description: "Delete project user membership",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({

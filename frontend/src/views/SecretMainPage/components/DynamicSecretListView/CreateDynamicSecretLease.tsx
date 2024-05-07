@@ -54,14 +54,36 @@ const OutputDisplay = ({
 };
 
 const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
-  const { DB_PASSWORD, DB_USERNAME } = data as { DB_USERNAME: string; DB_PASSWORD: string };
-  if (provider === DynamicSecretProviders.SqlDatabase) {
+  if (
+    provider === DynamicSecretProviders.SqlDatabase ||
+    provider === DynamicSecretProviders.Cassandra
+  ) {
+    const { DB_PASSWORD, DB_USERNAME } = data as { DB_USERNAME: string; DB_PASSWORD: string };
     return (
       <div>
         <OutputDisplay label="Database User" value={DB_USERNAME} />
         <OutputDisplay
           label="Database Password"
           value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.AwsIam) {
+    const { USERNAME, ACCESS_KEY, SECRET_ACCESS_KEY } = data as {
+      ACCESS_KEY: string;
+      SECRET_ACCESS_KEY: string;
+      USERNAME: string;
+    };
+    return (
+      <div>
+        <OutputDisplay label="AWS Username" value={USERNAME} />
+        <OutputDisplay label="AWS IAM Access Key" value={ACCESS_KEY} />
+        <OutputDisplay
+          label="AWS IAM Secret Key"
+          value={SECRET_ACCESS_KEY}
           helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
         />
       </div>
@@ -102,7 +124,6 @@ export const CreateDynamicSecretLease = ({
       ttl: "1h"
     }
   });
-  
 
   const createDynamicSecretLease = useCreateDynamicSecretLease();
 

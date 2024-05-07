@@ -119,6 +119,7 @@ const envSchema = z
   })
   .transform((data) => ({
     ...data,
+    isCloud: Boolean(data.LICENSE_SERVER_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL),
     isDevelopmentMode: data.NODE_ENV === "development",

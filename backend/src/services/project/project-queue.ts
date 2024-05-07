@@ -8,6 +8,7 @@ import {
   SecretKeyEncoding,
   SecretsSchema,
   SecretVersionsSchema,
+  TableName,
   TIntegrationAuths,
   TSecretApprovalRequestsSecrets,
   TSecrets,
@@ -232,8 +233,7 @@ export const projectQueueFactory = ({
         const projectMembership = await projectMembershipDAL.create(
           {
             projectId: project.id,
-            userId: ghostUser.user.id,
-            role: ProjectMembershipRole.Admin
+            userId: ghostUser.user.id
           },
           tx
         );
@@ -274,7 +274,10 @@ export const projectQueueFactory = ({
 
         for (const key of existingProjectKeys) {
           const user = await userDAL.findUserEncKeyByUserId(key.receiverId);
-          const [orgMembership] = await orgDAL.findMembership({ userId: key.receiverId, orgId: project.orgId });
+          const [orgMembership] = await orgDAL.findMembership({
+            [`${TableName.OrgMembership}.userId` as "userId"]: key.receiverId,
+            [`${TableName.OrgMembership}.orgId` as "orgId"]: project.orgId
+          });
 
           if (!user) {
             throw new Error(`User with ID ${key.receiverId} was not found during upgrade.`);

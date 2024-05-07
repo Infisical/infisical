@@ -1,3 +1,34 @@
+export const GROUPS = {
+  CREATE: {
+    name: "The name of the group to create.",
+    slug: "The slug of the group to create.",
+    role: "The role of the group to create."
+  },
+  UPDATE: {
+    currentSlug: "The current slug of the group to update.",
+    name: "The new name of the group to update to.",
+    slug: "The new slug of the group to update to.",
+    role: "The new role of the group to update to."
+  },
+  DELETE: {
+    slug: "The slug of the group to delete"
+  },
+  LIST_USERS: {
+    slug: "The slug of the group to list users for",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
+    limit: "The number of users to return.",
+    username: "The username to search for."
+  },
+  ADD_USER: {
+    slug: "The slug of the group to add the user to.",
+    username: "The username of the user to add to the group."
+  },
+  DELETE_USER: {
+    slug: "The slug of the group to remove the user from.",
+    username: "The username of the user to remove from the group."
+  }
+} as const;
+
 export const IDENTITIES = {
   CREATE: {
     name: "The name of the identity to create.",
@@ -79,6 +110,9 @@ export const ORGANIZATIONS = {
   },
   GET_PROJECTS: {
     organizationId: "The ID of the organization to get projects from."
+  },
+  LIST_GROUPS: {
+    organizationId: "The ID of the organization to list groups for."
   }
 } as const;
 
@@ -141,6 +175,29 @@ export const PROJECTS = {
   },
   ROLLBACK_TO_SNAPSHOT: {
     secretSnapshotId: "The ID of the snapshot to rollback to."
+  },
+  ADD_GROUP_TO_PROJECT: {
+    projectSlug: "The slug of the project to add the group to.",
+    groupSlug: "The slug of the group to add to the project.",
+    role: "The role for the group to assume in the project."
+  },
+  UPDATE_GROUP_IN_PROJECT: {
+    projectSlug: "The slug of the project to update the group in.",
+    groupSlug: "The slug of the group to update in the project.",
+    roles: "A list of roles to update the group to."
+  },
+  REMOVE_GROUP_FROM_PROJECT: {
+    projectSlug: "The slug of the project to delete the group from.",
+    groupSlug: "The slug of the group to delete from the project."
+  },
+  LIST_GROUPS_IN_PROJECT: {
+    projectSlug: "The slug of the project to list groups for."
+  },
+  LIST_INTEGRATION: {
+    workspaceId: "The ID of the project to list integrations for."
+  },
+  LIST_INTEGRATION_AUTHORIZATION: {
+    workspaceId: "The ID of the project to list integration auths for."
   }
 } as const;
 
@@ -215,7 +272,9 @@ export const SECRETS = {
 
 export const RAW_SECRETS = {
   LIST: {
-    recursive: "Whether or not to fetch all secrets from the specified base path, and all of its subdirectories.",
+    expand: "Whether or not to expand secret references",
+    recursive:
+      "Whether or not to fetch all secrets from the specified base path, and all of its subdirectories. Note, the max depth is 20 deep.",
     workspaceId: "The ID of the project to list secrets from.",
     workspaceSlug: "The slug of the project to list secrets from. This parameter is only usable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
@@ -224,6 +283,7 @@ export const RAW_SECRETS = {
   },
   CREATE: {
     secretName: "The name of the secret to create.",
+    projectSlug: "The slug of the project to create the secret in.",
     environment: "The slug of the environment to create the secret in.",
     secretComment: "Attach a comment to the secret.",
     secretPath: "The path to create the secret in.",
@@ -243,11 +303,13 @@ export const RAW_SECRETS = {
   },
   UPDATE: {
     secretName: "The name of the secret to update.",
+    secretComment: "Update comment to the secret.",
     environment: "The slug of the environment where the secret is located.",
     secretPath: "The path of the secret to update",
     secretValue: "The new value of the secret.",
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to update.",
+    projectSlug: "The slug of the project to update the secret in.",
     workspaceId: "The ID of the project to update the secret in."
   },
   DELETE: {
@@ -255,6 +317,7 @@ export const RAW_SECRETS = {
     environment: "The slug of the environment where the secret is located.",
     secretPath: "The path of the secret.",
     type: "The type of the secret to delete.",
+    projectSlug: "The slug of the project to delete the secret in.",
     workspaceId: "The ID of the project where the secret is located."
   }
 } as const;
@@ -405,9 +468,18 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     identityId: "The ID of the identity to delete.",
     slug: "The slug of the privilege to create.",
     permissions: `The permission object for the privilege.
-1. [["read", "secrets", {environment: "dev", secretPath: {$glob: "/"}}]]
-2. [["read", "secrets", {environment: "dev"}], ["create", "secrets", {environment: "dev"}]]
-2. [["read", "secrets", {environment: "dev"}]]
+- Read secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"]}
+\`\`\`
+- Read and Write secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"], {"action": "write", "subject": "secrets"]}
+\`\`\`
+- Read secrets scoped to an environment and secret path
+\`\`\`
+- { "permissions": [{"action": "read", "subject": "secrets", "conditions": { "environment": "dev", "secretPath": { "$glob": "/" } }}] }
+\`\`\`
 `,
     isPackPermission: "Whether the server should pack(compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
@@ -421,11 +493,19 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     slug: "The slug of the privilege to update.",
     newSlug: "The new slug of the privilege to update.",
     permissions: `The permission object for the privilege.
-1. [["read", "secrets", {environment: "dev", secretPath: {$glob: "/"}}]]
-2. [["read", "secrets", {environment: "dev"}], ["create", "secrets", {environment: "dev"}]]
-2. [["read", "secrets", {environment: "dev"}]]
+- Read secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"]}
+\`\`\`
+- Read and Write secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"], {"action": "write", "subject": "secrets"]}
+\`\`\`
+- Read secrets scoped to an environment and secret path
+\`\`\`
+- { "permissions": [{"action": "read", "subject": "secrets", "conditions": { "environment": "dev", "secretPath": { "$glob": "/" } }}] }
+\`\`\`
 `,
-    isPackPermission: "Whether the server should pack(compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
     temporaryMode: "Type of temporary access given. Types: relative",
     temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
@@ -502,11 +582,8 @@ export const INTEGRATION_AUTH = {
     url: "",
     namespace: "",
     refreshToken: "The refresh token for integration authorization."
-  },
-  LIST_AUTHORIZATION: {
-    workspaceId: "The ID of the project to list integration auths for."
   }
-};
+} as const;
 
 export const INTEGRATION = {
   CREATE: {
@@ -530,11 +607,13 @@ export const INTEGRATION = {
     region: "AWS region to sync secrets to.",
     scope: "Scope of the provider. Used by Github, Qovery",
     metadata: {
-      secretPrefix: "The prefix for the saved secret. Used by GCP",
-      secretSuffix: "The suffix for the saved secret. Used by GCP",
-      initialSyncBehavoir: "Type of syncing behavoir with the integration",
-      shouldAutoRedeploy: "Used by Render to trigger auto deploy",
-      secretGCPLabel: "The label for the GCP secrets"
+      secretPrefix: "The prefix for the saved secret. Used by GCP.",
+      secretSuffix: "The suffix for the saved secret. Used by GCP.",
+      initialSyncBehavoir: "Type of syncing behavoir with the integration.",
+      shouldAutoRedeploy: "Used by Render to trigger auto deploy.",
+      secretGCPLabel: "The label for GCP secrets.",
+      secretAWSTag: "The tags for AWS secrets.",
+      kmsKeyId: "The ID of the encryption key from AWS KMS."
     }
   },
   UPDATE: {
@@ -551,5 +630,31 @@ export const INTEGRATION = {
   },
   DELETE: {
     integrationId: "The ID of the integration object."
+  }
+};
+
+export const AUDIT_LOG_STREAMS = {
+  CREATE: {
+    url: "The HTTP URL to push logs to.",
+    headers: {
+      desc: "The HTTP headers attached for the external prrovider requests.",
+      key: "The HTTP header key name.",
+      value: "The HTTP header value."
+    }
+  },
+  UPDATE: {
+    id: "The ID of the audit log stream to update.",
+    url: "The HTTP URL to push logs to.",
+    headers: {
+      desc: "The HTTP headers attached for the external prrovider requests.",
+      key: "The HTTP header key name.",
+      value: "The HTTP header value."
+    }
+  },
+  DELETE: {
+    id: "The ID of the audit log stream to delete."
+  },
+  GET_BY_ID: {
+    id: "The ID of the audit log stream to get details."
   }
 };

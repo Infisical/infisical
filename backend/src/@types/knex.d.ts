@@ -2,11 +2,26 @@ import { Knex } from "knex";
 
 import {
   TableName,
+  TAccessApprovalPolicies,
+  TAccessApprovalPoliciesApprovers,
+  TAccessApprovalPoliciesApproversInsert,
+  TAccessApprovalPoliciesApproversUpdate,
+  TAccessApprovalPoliciesInsert,
+  TAccessApprovalPoliciesUpdate,
+  TAccessApprovalRequests,
+  TAccessApprovalRequestsInsert,
+  TAccessApprovalRequestsReviewers,
+  TAccessApprovalRequestsReviewersInsert,
+  TAccessApprovalRequestsReviewersUpdate,
+  TAccessApprovalRequestsUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
   TAuditLogs,
   TAuditLogsInsert,
+  TAuditLogStreams,
+  TAuditLogStreamsInsert,
+  TAuditLogStreamsUpdate,
   TAuditLogsUpdate,
   TAuthTokens,
   TAuthTokenSessions,
@@ -29,6 +44,15 @@ import {
   TGitAppOrg,
   TGitAppOrgInsert,
   TGitAppOrgUpdate,
+  TGroupProjectMembershipRoles,
+  TGroupProjectMembershipRolesInsert,
+  TGroupProjectMembershipRolesUpdate,
+  TGroupProjectMemberships,
+  TGroupProjectMembershipsInsert,
+  TGroupProjectMembershipsUpdate,
+  TGroups,
+  TGroupsInsert,
+  TGroupsUpdate,
   TIdentities,
   TIdentitiesInsert,
   TIdentitiesUpdate,
@@ -65,6 +89,9 @@ import {
   TLdapConfigs,
   TLdapConfigsInsert,
   TLdapConfigsUpdate,
+  TLdapGroupMaps,
+  TLdapGroupMapsInsert,
+  TLdapGroupMapsUpdate,
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
@@ -188,6 +215,9 @@ import {
   TUserEncryptionKeys,
   TUserEncryptionKeysInsert,
   TUserEncryptionKeysUpdate,
+  TUserGroupMembership,
+  TUserGroupMembershipInsert,
+  TUserGroupMembershipUpdate,
   TUsers,
   TUsersInsert,
   TUsersUpdate,
@@ -199,6 +229,22 @@ import {
 declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
+    [TableName.Groups]: Knex.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.UserGroupMembership]: Knex.CompositeTableType<
+      TUserGroupMembership,
+      TUserGroupMembershipInsert,
+      TUserGroupMembershipUpdate
+    >;
+    [TableName.GroupProjectMembership]: Knex.CompositeTableType<
+      TGroupProjectMemberships,
+      TGroupProjectMembershipsInsert,
+      TGroupProjectMembershipsUpdate
+    >;
+    [TableName.GroupProjectMembershipRole]: Knex.CompositeTableType<
+      TGroupProjectMembershipRoles,
+      TGroupProjectMembershipRolesInsert,
+      TGroupProjectMembershipRolesUpdate
+    >;
     [TableName.UserAliases]: Knex.CompositeTableType<TUserAliases, TUserAliasesInsert, TUserAliasesUpdate>;
     [TableName.UserEncryptionKey]: Knex.CompositeTableType<
       TUserEncryptionKeys,
@@ -310,6 +356,31 @@ declare module "knex/types/tables" {
       TIdentityProjectAdditionalPrivilegeInsert,
       TIdentityProjectAdditionalPrivilegeUpdate
     >;
+
+    [TableName.AccessApprovalPolicy]: Knex.CompositeTableType<
+      TAccessApprovalPolicies,
+      TAccessApprovalPoliciesInsert,
+      TAccessApprovalPoliciesUpdate
+    >;
+
+    [TableName.AccessApprovalPolicyApprover]: Knex.CompositeTableType<
+      TAccessApprovalPoliciesApprovers,
+      TAccessApprovalPoliciesApproversInsert,
+      TAccessApprovalPoliciesApproversUpdate
+    >;
+
+    [TableName.AccessApprovalRequest]: Knex.CompositeTableType<
+      TAccessApprovalRequests,
+      TAccessApprovalRequestsInsert,
+      TAccessApprovalRequestsUpdate
+    >;
+
+    [TableName.AccessApprovalRequestReviewer]: Knex.CompositeTableType<
+      TAccessApprovalRequestsReviewers,
+      TAccessApprovalRequestsReviewersInsert,
+      TAccessApprovalRequestsReviewersUpdate
+    >;
+
     [TableName.ScimToken]: Knex.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
     [TableName.SecretApprovalPolicy]: Knex.CompositeTableType<
       TSecretApprovalPolicies,
@@ -370,8 +441,14 @@ declare module "knex/types/tables" {
     >;
     [TableName.SamlConfig]: Knex.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
     [TableName.LdapConfig]: Knex.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
+    [TableName.LdapGroupMap]: Knex.CompositeTableType<TLdapGroupMaps, TLdapGroupMapsInsert, TLdapGroupMapsUpdate>;
     [TableName.OrgBot]: Knex.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;
     [TableName.AuditLog]: Knex.CompositeTableType<TAuditLogs, TAuditLogsInsert, TAuditLogsUpdate>;
+    [TableName.AuditLogStream]: Knex.CompositeTableType<
+      TAuditLogStreams,
+      TAuditLogStreamsInsert,
+      TAuditLogStreamsUpdate
+    >;
     [TableName.GitAppInstallSession]: Knex.CompositeTableType<
       TGitAppInstallSessions,
       TGitAppInstallSessionsInsert,

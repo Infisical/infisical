@@ -12,7 +12,7 @@ export type TDeleteScimTokenDTO = {
 // SCIM server endpoint types
 
 export type TListScimUsersDTO = {
-  offset: number;
+  startIndex: number;
   limit: number;
   filter?: string;
   orgId: string;
@@ -27,12 +27,12 @@ export type TListScimUsers = {
 };
 
 export type TGetScimUserDTO = {
-  userId: string;
+  orgMembershipId: string;
   orgId: string;
 };
 
 export type TCreateScimUserDTO = {
-  username: string;
+  externalId: string;
   email?: string;
   firstName: string;
   lastName: string;
@@ -40,7 +40,7 @@ export type TCreateScimUserDTO = {
 };
 
 export type TUpdateScimUserDTO = {
-  userId: string;
+  orgMembershipId: string;
   orgId: string;
   operations: {
     op: string;
@@ -54,8 +54,84 @@ export type TUpdateScimUserDTO = {
 };
 
 export type TReplaceScimUserDTO = {
-  userId: string;
+  orgMembershipId: string;
   active: boolean;
+  orgId: string;
+};
+
+export type TDeleteScimUserDTO = {
+  orgMembershipId: string;
+  orgId: string;
+};
+
+export type TListScimGroupsDTO = {
+  startIndex: number;
+  limit: number;
+  orgId: string;
+};
+
+export type TListScimGroups = {
+  schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"];
+  totalResults: number;
+  Resources: TScimGroup[];
+  itemsPerPage: number;
+  startIndex: number;
+};
+
+export type TCreateScimGroupDTO = {
+  displayName: string;
+  orgId: string;
+  members?: {
+    // TODO: account for members with value and display (is this optional?)
+    value: string;
+    display: string;
+  }[];
+};
+
+export type TGetScimGroupDTO = {
+  groupId: string;
+  orgId: string;
+};
+
+export type TUpdateScimGroupNamePutDTO = {
+  groupId: string;
+  orgId: string;
+  displayName: string;
+  members: {
+    value: string;
+    display: string;
+  }[];
+};
+
+export type TUpdateScimGroupNamePatchDTO = {
+  groupId: string;
+  orgId: string;
+  operations: (TRemoveOp | TReplaceOp | TAddOp)[];
+};
+
+type TReplaceOp = {
+  op: "replace";
+  value: {
+    id: string;
+    displayName: string;
+  };
+};
+
+type TRemoveOp = {
+  op: "remove";
+  path: string;
+};
+
+type TAddOp = {
+  op: "add";
+  value: {
+    value: string;
+    display?: string;
+  };
+};
+
+export type TDeleteScimGroupDTO = {
+  groupId: string;
   orgId: string;
 };
 
@@ -81,6 +157,20 @@ export type TScimUser = {
   }[];
   active: boolean;
   groups: string[];
+  meta: {
+    resourceType: string;
+    location: null;
+  };
+};
+
+export type TScimGroup = {
+  schemas: string[];
+  id: string;
+  displayName: string;
+  members: {
+    value: string;
+    display: string;
+  }[];
   meta: {
     resourceType: string;
     location: null;

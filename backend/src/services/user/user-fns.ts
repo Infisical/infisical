@@ -4,7 +4,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 export const normalizeUsername = async (username: string, userDAL: Pick<TUserDALFactory, "findOne">) => {
-  let attempt = slugify(username);
+  let attempt = slugify(`${username}-${alphaNumericNanoId(4)}`);
 
   let user = await userDAL.findOne({ username: attempt });
   if (!user) return attempt;

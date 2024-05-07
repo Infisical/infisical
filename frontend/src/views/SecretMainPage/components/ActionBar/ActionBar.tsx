@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { subject } from "@casl/ability";
 import {
   faAngleDown,
@@ -45,6 +46,7 @@ import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from 
 import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch } from "@app/hooks/api";
 import { DecryptedSecret, TImportedSecrets, WsTag } from "@app/hooks/api/types";
+import { debounce } from "@app/lib/fn/debounce";
 
 import {
   PopUpNames,
@@ -106,6 +108,7 @@ export const ActionBar = ({
   ] as const);
   const { subscription } = useSubscription();
   const { openPopUp } = usePopUpAction();
+  const [search, setSearch] = useState(filter.searchFilter);
 
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
@@ -113,6 +116,8 @@ export const ActionBar = ({
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
+
+  const debouncedOnSearch = debounce(onSearchChange, 500);
 
   const handleFolderCreate = async (folderName: string) => {
     try {
@@ -199,8 +204,11 @@ export const ActionBar = ({
             className="bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
             placeholder="Search by folder name, key name, comment..."
             leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-            value={filter.searchFilter}
-            onChange={(evt) => onSearchChange(evt.target.value)}
+            value={search}
+            onChange={(evt) => {
+              setSearch(evt.target.value);
+              debouncedOnSearch(evt.target.value);
+            }}
           />
         </div>
         <div>

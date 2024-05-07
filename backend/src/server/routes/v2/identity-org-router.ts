@@ -18,8 +18,7 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
       description: "Return organization identity memberships",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -50,6 +49,7 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         orgId: req.params.orgId
       });
+
       return { identityMemberships };
     }
   });

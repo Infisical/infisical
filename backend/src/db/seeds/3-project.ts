@@ -33,8 +33,7 @@ export async function seed(knex: Knex): Promise<void> {
   const projectMembership = await knex(TableName.ProjectMembership)
     .insert({
       projectId: project.id,
-      userId: seedData1.id,
-      role: ProjectMembershipRole.Admin
+      userId: seedData1.id
     })
     .returning("*");
   await knex(TableName.ProjectUserMembershipRole).insert({

@@ -89,6 +89,25 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countAllOrgMembers = async (orgId: string) => {
+    try {
+      interface CountResult {
+        count: string;
+      }
+
+      const count = await db(TableName.OrgMembership)
+        .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .count("*")
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .where({ isGhost: false })
+        .first();
+
+      return parseInt((count as unknown as CountResult).count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count all org members" });
+    }
+  };
+
   const findOrgMembersByUsername = async (orgId: string, usernames: string[]) => {
     try {
       const members = await db(TableName.OrgMembership)
@@ -243,13 +262,19 @@ export const orgDALFactory = (db: TDbClient) => {
         .where(buildFindFilter(filter))
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
         .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
+        .leftJoin(TableName.UserAliases, function joinUserAlias() {
+          this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.OrgMembership}.userId`)
+            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.OrgMembership}.orgId`)
+            .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
+        })
         .select(
           selectAllTableCols(TableName.OrgMembership),
           db.ref("email").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
-          db.ref("scimEnabled").withSchema(TableName.Organization)
+          db.ref("scimEnabled").withSchema(TableName.Organization),
+          db.ref("externalId").withSchema(TableName.UserAliases)
         )
         .where({ isGhost: false });
 
@@ -269,6 +294,7 @@ export const orgDALFactory = (db: TDbClient) => {
     ...orgOrm,
     findOrgByProjectId,
     findAllOrgMembers,
+    countAllOrgMembers,
     findOrgById,
     findAllOrgsByUserId,
     ghostUserExists,

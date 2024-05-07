@@ -129,26 +129,55 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
  * Return list of names of apps for Vercel integration
  */
 const getAppsVercel = async ({ accessToken, teamId }: { teamId?: string | null; accessToken: string }) => {
-  const res = (
-    await request.get<{ projects: { name: string; id: string }[] }>(`${IntegrationUrls.VERCEL_API_URL}/v9/projects`, {
+  const apps: Array<{ name: string; appId: string }> = [];
+
+  const limit = "20";
+  let hasMorePages = true;
+  let next: number | null = null;
+
+  interface Response {
+    projects: { name: string; id: string }[];
+    pagination: {
+      count: number;
+      next: number | null;
+      prev: number;
+    };
+  }
+
+  while (hasMorePages) {
+    const params: { [key: string]: string } = {
+      limit
+    };
+
+    if (teamId) {
+      params.teamId = teamId;
+    }
+
+    if (next) {
+      params.until = String(next);
+    }
+
+    const { data } = await request.get<Response>(`${IntegrationUrls.VERCEL_API_URL}/v9/projects`, {
+      params: new URLSearchParams(params),
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Accept-Encoding": "application/json"
-      },
-      ...(teamId
-        ? {
-            params: {
-              teamId
-            }
-          }
-        : {})
-    })
-  ).data;
+      }
+    });
 
-  const apps = res.projects.map((a) => ({
-    name: a.name,
-    appId: a.id
-  }));
+    data.projects.forEach((a) => {
+      apps.push({
+        name: a.name,
+        appId: a.id
+      });
+    });
+
+    next = data.pagination.next;
+
+    if (data.pagination.next === null) {
+      hasMorePages = false;
+    }
+  }
 
   return apps;
 };

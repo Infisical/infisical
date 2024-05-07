@@ -29,13 +29,19 @@ Prerequisites:
             "ssm:PutParameter",
             "ssm:DeleteParameter",
             "ssm:GetParametersByPath",
-            "ssm:DeleteParameters"
+            "ssm:DeleteParameters",
+            "ssm:AddTagsToResource", // if you need to add tags to secrets
+            "kms:ListKeys", // if you need to specify the KMS key
+            "kms:ListAliases", // if you need to specify the KMS key
+            "kms:Encrypt", // if you need to specify the KMS key
+            "kms:Decrypt" // if you need to specify the KMS key
           ],
           "Resource": "*"
         }
       ]
     }
     ```
+
   </Step>
   <Step title="Authorize Infisical for AWS Parameter store">
     Obtain a AWS access key ID and secret access key for your IAM user in IAM > Users > User > Security credentials > Access keys
@@ -43,7 +49,7 @@ Prerequisites:
       ![access key 1](../../images/integrations/aws/integrations-aws-access-key-1.png)
       ![access key 2](../../images/integrations/aws/integrations-aws-access-key-2.png)
       ![access key 3](../../images/integrations/aws/integrations-aws-access-key-3.png)
-      
+
       Navigate to your project's integrations tab in Infisical.
 
       ![integrations](../../images/integrations.png)
@@ -58,6 +64,7 @@ Prerequisites:
         breaks E2EE, it's necessary for Infisical to sync the environment variables to
         the cloud platform.
     </Info>
+
   </Step>
   <Step title="Start integration">
     Select which Infisical environment secrets you want to sync to which AWS Parameter Store region and indicate the path for your secrets. Then, press create integration to start syncing secrets to AWS Parameter Store.
@@ -71,6 +78,6 @@ Prerequisites:
       secret like `TEST` to be stored as `/[project_name]/[environment]/TEST` in AWS
       Parameter Store.
     </Tip>
+
   </Step>
 </Steps>
-

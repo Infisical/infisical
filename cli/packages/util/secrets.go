@@ -159,7 +159,7 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
 
-	getSecretsRequest := api.GetEncryptedSecretsV3Request{
+	getSecretsRequest := api.GetRawSecretsV3Request{
 		WorkspaceId:   workspaceId,
 		Environment:   environmentName,
 		IncludeImport: includeImports,
@@ -171,7 +171,8 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 		getSecretsRequest.SecretPath = secretsPath
 	}
 
-	rawSecrets, err := api.CallGetRawSecretsV3(httpClient, api.GetRawSecretsV3Request{WorkspaceId: workspaceId, SecretPath: secretsPath, Environment: environmentName})
+	rawSecrets, err := api.CallGetRawSecretsV3(httpClient, getSecretsRequest)
+
 	if err != nil {
 		return models.PlaintextSecretResult{}, err
 	}
@@ -182,15 +183,15 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 	}
 
 	for _, secret := range rawSecrets.Secrets {
-		plainTextSecrets = append(plainTextSecrets, models.SingleEnvironmentVariable{Key: secret.SecretKey, Value: secret.SecretValue, WorkspaceId: secret.Workspace})
+		plainTextSecrets = append(plainTextSecrets, models.SingleEnvironmentVariable{Key: secret.SecretKey, Value: secret.SecretValue, Type: secret.Type, WorkspaceId: secret.Workspace})
 	}
 
-	// if includeImports {
-	// 	plainTextSecrets, err = InjectImportedSecret(plainTextWorkspaceKey, plainTextSecrets, encryptedSecrets.ImportedSecrets)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
+	if includeImports {
+		plainTextSecrets, err = InjectRawImportedSecret(plainTextSecrets, rawSecrets.Imports)
+		if err != nil {
+			return models.PlaintextSecretResult{}, err
+		}
+	}
 
 	return models.PlaintextSecretResult{
 		Secrets: plainTextSecrets,
@@ -251,6 +252,36 @@ func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleE
 	return secrets, nil
 }
 
+func InjectRawImportedSecret(secrets []models.SingleEnvironmentVariable, importedSecrets []api.ImportedRawSecretV3) ([]models.SingleEnvironmentVariable, error) {
+	if importedSecrets == nil {
+		return secrets, nil
+	}
+
+	hasOverriden := make(map[string]bool)
+	for _, sec := range secrets {
+		hasOverriden[sec.Key] = true
+	}
+
+	for i := len(importedSecrets) - 1; i >= 0; i-- {
+		importSec := importedSecrets[i]
+		plainTextImportedSecrets := importSec.Secrets
+
+		for _, sec := range plainTextImportedSecrets {
+			if _, ok := hasOverriden[sec.SecretKey]; !ok {
+				secrets = append(secrets, models.SingleEnvironmentVariable{
+					Key:         sec.SecretKey,
+					WorkspaceId: sec.Workspace,
+					Value:       sec.SecretValue,
+					Type:        sec.Type,
+					ID:          sec.ID,
+				})
+				hasOverriden[sec.SecretKey] = true
+			}
+		}
+	}
+	return secrets, nil
+}
+
 func FilterSecretsByTag(plainTextSecrets []models.SingleEnvironmentVariable, tagSlugs string) []models.SingleEnvironmentVariable {
 	if tagSlugs == "" {
 		return plainTextSecrets
@@ -276,10 +307,6 @@ func FilterSecretsByTag(plainTextSecrets []models.SingleEnvironmentVariable, tag
 }
 
 func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectConfigFilePath string) ([]models.SingleEnvironmentVariable, error) {
-	if params.InfisicalToken == "" {
-		params.InfisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
-	}
-
 	isConnected := CheckIsConnectedToInternet()
 	var secretsToReturn []models.SingleEnvironmentVariable
 	// var serviceTokenDetails api.GetServiceTokenDetailsResponse
@@ -355,6 +382,11 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			log.Debug().Msg("Trying to fetch secrets using service token")
 			secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
 		} else if params.UniversalAuthAccessToken != "" {
+
+			if params.WorkspaceId == "" {
+				PrintErrorMessageAndExit("Project ID is required when using machine identity")
+			}
+
 			log.Debug().Msg("Trying to fetch secrets using universal auth")
 			res, err := GetPlainTextSecretsViaMachineIdentity(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
 

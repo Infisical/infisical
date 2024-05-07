@@ -1,10 +1,17 @@
 import jwt from "jsonwebtoken";
 
-import { OrgMembershipStatus } from "@app/db/schemas";
+import { OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -20,6 +27,14 @@ import { AuthMethod, AuthTokenType } from "./auth-type";
 type TAuthSignupDep = {
   authDAL: TAuthDALFactory;
   userDAL: TUserDALFactory;
+  userGroupMembershipDAL: Pick<
+    TUserGroupMembershipDALFactory,
+    "find" | "transaction" | "insertMany" | "deletePendingUserGroupMembershipsByUserIds"
+  >;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
@@ -31,6 +46,11 @@ export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
   authDAL,
   userDAL,
+  userGroupMembershipDAL,
+  projectKeyDAL,
+  projectDAL,
+  projectBotDAL,
+  groupProjectDAL,
   tokenService,
   smtpService,
   orgService,
@@ -60,9 +80,9 @@ export const authSignupServiceFactory = ({
     });
 
     await smtpService.sendMail({
-      template: SmtpTemplates.EmailVerification,
+      template: SmtpTemplates.SignupEmailVerification,
       subjectLine: "Infisical confirmation code",
-      recipients: [email],
+      recipients: [user.email as string],
       substitutions: {
         code: token
       }
@@ -81,6 +101,8 @@ export const authSignupServiceFactory = ({
       userId: user.id,
       code
     });
+
+    await userDAL.updateById(user.id, { isEmailVerified: true });
 
     // generate jwt token this is a temporary token
     const jwtToken = jwt.sign(
@@ -120,9 +142,11 @@ export const authSignupServiceFactory = ({
       throw new Error("Failed to complete account for complete user");
     }
 
-    let organizationId;
+    let organizationId: string | null = null;
+    let authMethod: AuthMethod | null = null;
     if (providerAuthToken) {
-      const { orgId } = validateProviderAuthToken(providerAuthToken, user.username);
+      const { orgId, authMethod: userAuthMethod } = validateProviderAuthToken(providerAuthToken, user.username);
+      authMethod = userAuthMethod;
       organizationId = orgId;
     } else {
       validateSignUpAuthorization(authorization, user.id);
@@ -146,6 +170,25 @@ export const authSignupServiceFactory = ({
         },
         tx
       );
+      // If it's SAML Auth and the organization ID is present, we should check if the user has a pending invite for this org, and accept it
+      if ((isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && organizationId) {
+        const [pendingOrgMembership] = await orgDAL.findMembership({
+          [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
+          status: OrgMembershipStatus.Invited,
+          [`${TableName.OrgMembership}.orgId` as "orgId"]: organizationId
+        });
+
+        if (pendingOrgMembership) {
+          await orgDAL.updateMembershipById(
+            pendingOrgMembership.id,
+            {
+              status: OrgMembershipStatus.Accepted
+            },
+            tx
+          );
+        }
+      }
+
       return { info: us, key: userEncKey };
     });
 
@@ -167,6 +210,16 @@ export const authSignupServiceFactory = ({
     );
     const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
     await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
+
+    await convertPendingGroupAdditionsToGroupMemberships({
+      userIds: [user.id],
+      userDAL,
+      userGroupMembershipDAL,
+      groupProjectDAL,
+      projectKeyDAL,
+      projectDAL,
+      projectBotDAL
+    });
 
     const tokenSession = await tokenService.getUserTokenSession({
       userAgent,
@@ -269,6 +322,17 @@ export const authSignupServiceFactory = ({
       );
       const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
       await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
+
+      await convertPendingGroupAdditionsToGroupMemberships({
+        userIds: [user.id],
+        userDAL,
+        userGroupMembershipDAL,
+        groupProjectDAL,
+        projectKeyDAL,
+        projectDAL,
+        projectBotDAL,
+        tx
+      });
 
       return { info: us, key: userEncKey };
     });

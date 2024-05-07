@@ -27,6 +27,11 @@ export type User = {
   id: string;
 };
 
+export enum UserAliasType {
+  LDAP = "ldap",
+  SAML = "saml"
+}
+
 export type UserEnc = {
   encryptionVersion?: number;
   protectedKey?: string;
@@ -62,7 +67,7 @@ export type TProjectMembership = {
   createdAt: string;
   updatedAt: string;
   projectId: string;
-  roleId: string;
+  roles: string[];
 };
 
 export type TWorkspaceUser = {
@@ -79,29 +84,29 @@ export type TWorkspaceUser = {
   organization: string;
   roles: (
     | {
-      id: string;
-      role: "owner" | "admin" | "member" | "no-access" | "custom";
-      customRoleId: string;
-      customRoleName: string;
-      customRoleSlug: string;
-      isTemporary: false;
-      temporaryRange: null;
-      temporaryMode: null;
-      temporaryAccessEndTime: null;
-      temporaryAccessStartTime: null;
-    }
+        id: string;
+        role: "owner" | "admin" | "member" | "no-access" | "custom";
+        customRoleId: string;
+        customRoleName: string;
+        customRoleSlug: string;
+        isTemporary: false;
+        temporaryRange: null;
+        temporaryMode: null;
+        temporaryAccessEndTime: null;
+        temporaryAccessStartTime: null;
+      }
     | {
-      id: string;
-      role: "owner" | "admin" | "member" | "no-access" | "custom";
-      customRoleId: string;
-      customRoleName: string;
-      customRoleSlug: string;
-      isTemporary: true;
-      temporaryRange: string;
-      temporaryMode: string;
-      temporaryAccessEndTime: string;
-      temporaryAccessStartTime: string;
-    }
+        id: string;
+        role: "owner" | "admin" | "member" | "no-access" | "custom";
+        customRoleId: string;
+        customRoleName: string;
+        customRoleSlug: string;
+        isTemporary: true;
+        temporaryRange: string;
+        temporaryMode: string;
+        temporaryAccessEndTime: string;
+        temporaryAccessStartTime: string;
+      }
   )[];
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];

@@ -30,8 +30,33 @@ export const projectDALFactory = (db: TDbClient) => {
           { column: `${TableName.Environment}.position`, order: "asc" }
         ]);
 
+      const groups: string[] = await db(TableName.UserGroupMembership)
+        .where({ userId })
+        .select(selectAllTableCols(TableName.UserGroupMembership))
+        .pluck("groupId");
+
+      const groupWorkspaces = await db(TableName.GroupProjectMembership)
+        .whereIn("groupId", groups)
+        .join(TableName.Project, `${TableName.GroupProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .whereNotIn(
+          `${TableName.Project}.id`,
+          workspaces.map(({ id }) => id)
+        )
+        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .select(
+          selectAllTableCols(TableName.Project),
+          db.ref("id").withSchema(TableName.Project).as("_id"),
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("name").withSchema(TableName.Environment).as("envName")
+        )
+        .orderBy([
+          { column: `${TableName.Project}.name`, order: "asc" },
+          { column: `${TableName.Environment}.position`, order: "asc" }
+        ]);
+
       const nestedWorkspaces = sqlNestRelationships({
-        data: workspaces,
+        data: workspaces.concat(groupWorkspaces),
         key: "id",
         parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
         childrenMapper: [
@@ -56,9 +81,9 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectGhostUser = async (projectId: string) => {
+  const findProjectGhostUser = async (projectId: string, tx?: Knex) => {
     try {
-      const ghostUser = await db(TableName.ProjectMembership)
+      const ghostUser = await (tx || db)(TableName.ProjectMembership)
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.Users))
@@ -126,13 +151,11 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findProjectById = async (id: string) => {
     try {
-      const workspaces = await db(TableName.ProjectMembership)
+      const workspaces = await db(TableName.Project)
         .where(`${TableName.Project}.id`, id)
-        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
-        .join(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
-          db.ref("id").withSchema(TableName.Project).as("_id"),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName")
@@ -141,10 +164,11 @@ export const projectDALFactory = (db: TDbClient) => {
           { column: `${TableName.Project}.name`, order: "asc" },
           { column: `${TableName.Environment}.position`, order: "asc" }
         ]);
+
       const project = sqlNestRelationships({
         data: workspaces,
         key: "id",
-        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
+        parentMapper: ({ ...el }) => ({ _id: el.id, ...ProjectsSchema.parse(el) }),
         childrenMapper: [
           {
             key: "envId",
@@ -174,14 +198,12 @@ export const projectDALFactory = (db: TDbClient) => {
         throw new BadRequestError({ message: "Organization ID is required when querying with slugs" });
       }
 
-      const projects = await db(TableName.ProjectMembership)
+      const projects = await db(TableName.Project)
         .where(`${TableName.Project}.slug`, slug)
         .where(`${TableName.Project}.orgId`, orgId)
-        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
-        .join(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
-          db.ref("id").withSchema(TableName.Project).as("_id"),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName")
@@ -194,7 +216,7 @@ export const projectDALFactory = (db: TDbClient) => {
       const project = sqlNestRelationships({
         data: projects,
         key: "id",
-        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
+        parentMapper: ({ ...el }) => ({ _id: el.id, ...ProjectsSchema.parse(el) }),
         childrenMapper: [
           {
             key: "envId",

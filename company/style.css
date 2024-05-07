@@ -1,0 +1,142 @@
+#navbar .max-w-8xl {
+  max-width: 100%;
+  border-bottom: 1px solid #ebebeb;
+  background-color: #fcfcfc;
+}
+
+.max-w-8xl {
+  /* background-color: #f5f5f5; */
+}
+
+#sidebar {
+  left: 0;
+  padding-left: 48px;
+  padding-right: 30px;
+  border-right: 1px;
+  border-color: #cdd64b;
+  background-color: #fcfcfc;
+  border-right: 1px solid #ebebeb;
+}
+
+#sidebar .relative .sticky {
+  opacity: 0;
+}
+
+#sidebar li > div.mt-2 {
+  border-radius: 0;
+  padding: 5px;
+}
+
+#sidebar li > a.mt-2 {
+  border-radius: 0;
+  padding: 5px;
+}
+
+#sidebar li > a.leading-6 {
+  border-radius: 0;
+  padding: 0px;
+}
+
+/* #sidebar ul > div.mt-12 {
+  padding-top: 30px;
+  position: relative;
+}
+
+#sidebar ul > div.mt-12 h5 {
+  position: absolute;
+  left: -12px;
+  top: -0px;
+} */
+
+#header {
+  border-left: 1px solid #26272b;
+  padding-left: 16px;
+  padding-right: 16px;
+  background-color: #f5f5f5;
+  padding-bottom: 10px;
+  padding-top: 10px;
+}
+
+#content-area .mt-8 .block{
+  border-radius: 0;
+  border-width: 1px;
+  border-color: #ebebeb;
+}
+
+#content-area .mt-8 .rounded-xl{
+  border-radius: 0;
+}
+
+#content-area .mt-8 .rounded-lg{
+  border-radius: 0;
+}
+
+#content-area .mt-6 .rounded-xl{
+  border-radius: 0;
+}
+
+#content-area .mt-6 .rounded-lg{
+  border-radius: 0;
+}
+
+#content-area .mt-6 .rounded-md{
+  border-radius: 0;
+}
+
+#content-area .mt-8 .rounded-md{
+  border-radius: 0;
+}
+
+#content-area div.my-4{
+  border-radius: 0;
+  border-width: 1px;
+}
+
+#content-area div.flex-1 {
+  /* text-transform: uppercase; */
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+#content-area button {
+  border-radius: 0;
+}
+
+#content-area a {
+  border-radius: 0;
+}
+
+#content-area .not-prose {
+  border-radius: 0;
+}
+
+/* .eyebrow {
+  text-transform: uppercase;
+  font-weight: 400;
+  color: red;
+} */
+
+#content-container {
+  /* background-color: #f5f5f5; */
+  margin-top: 2rem;
+}
+
+#topbar-cta-button .group .absolute {
+  background-color: black;
+  border-radius: 0px;
+}
+
+/* #topbar-cta-button .group .absolute:hover {
+  background-color: white;
+  border-radius: 0px;
+} */
+
+#topbar-cta-button .group .flex {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  font-size: medium;
+}
+
+.flex-1 .flex .items-center {
+  /* background-color: #f5f5f5; */
+}

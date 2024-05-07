@@ -34,6 +34,7 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -115,6 +116,7 @@ const SpecificPrivilegeSecretForm = ({
   });
 
   const temporaryAccessField = privilegeForm.watch("temporaryAccess");
+  const selectedEnvironmentSlug = privilegeForm.watch("environmentSlug");
   const isTemporary = temporaryAccessField?.isTemporary;
   const isExpired =
     temporaryAccessField.isTemporary &&
@@ -140,7 +142,7 @@ const SpecificPrivilegeSecretForm = ({
             .filter(({ allowed }) => allowed)
             .map(({ action }) => ({
               action,
-              subject: [ProjectPermissionSub.Secrets],
+              subject: ProjectPermissionSub.Secrets,
               conditions
             }))
         },
@@ -220,7 +222,12 @@ const SpecificPrivilegeSecretForm = ({
             name="secretPath"
             render={({ field }) => (
               <FormControl label="Secret Path">
-                <Input {...field} isDisabled={isMemberEditDisabled} className="w-48" />
+                <SecretPathInput
+                  {...field}
+                  isDisabled={isMemberEditDisabled}
+                  environment={selectedEnvironmentSlug}
+                  containerClassName="w-48"
+                />
               </FormControl>
             )}
           />
@@ -470,7 +477,7 @@ export const SpecificPrivilegeSection = ({ identityId }: Props) => {
         permissions: [
           {
             action: ProjectPermissionActions.Read,
-            subject: [ProjectPermissionSub.Secrets],
+            subject: ProjectPermissionSub.Secrets,
             conditions: {
               environment: currentWorkspace?.environments?.[0].slug
             }
@@ -505,6 +512,7 @@ export const SpecificPrivilegeSection = ({ identityId }: Props) => {
           ?.filter(({ permissions }) =>
             permissions?.[0]?.subject?.includes(ProjectPermissionSub.Secrets)
           )
+          .sort((a, b) => a.id.localeCompare(b.id))
           ?.map((privilege) => (
             <SpecificPrivilegeSecretForm
               privilege={privilege as TProjectUserPrivilege}

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { AuditLogsSchema, SecretSnapshotsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOGS, PROJECTS } from "@app/lib/api-docs";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -19,7 +19,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       description: "Return project secret snapshots ids",
       security: [
         {
-          apiKeyAuth: [],
           bearerAuth: []
         }
       ],
@@ -97,8 +96,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       description: "Return audit logs",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -145,6 +143,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         projectId: req.params.workspaceId,
         ...req.query,
+        startDate: req.query.endDate || getLastMidnightDateISO(),
         auditLogActor: req.query.actor,
         actor: req.permission.type
       });

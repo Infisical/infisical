@@ -191,7 +191,7 @@ export const authLoginServiceFactory = ({
       const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
 
       authMethod = decodedProviderToken.authMethod;
-      if (isAuthMethodSaml(authMethod) && decodedProviderToken.orgId) {
+      if ((isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && decodedProviderToken.orgId) {
         organizationId = decodedProviderToken.orgId;
       }
     }
@@ -361,6 +361,7 @@ export const authLoginServiceFactory = ({
       user = await userDAL.create({
         username: email,
         email,
+        isEmailVerified: true,
         firstName,
         lastName,
         authMethods: [authMethod],
@@ -374,6 +375,8 @@ export const authLoginServiceFactory = ({
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
+        email: user.email,
+        isEmailVerified: user.isEmailVerified,
         firstName: user.firstName,
         lastName: user.lastName,
         authMethod,

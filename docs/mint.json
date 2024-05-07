@@ -32,10 +32,7 @@
     "thumbsRating": true
   },
   "api": {
-    "baseUrl": [
-      "https://app.infisical.com",
-      "http://localhost:8080"
-    ]
+    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
   },
   "topbarLinks": [
     {
@@ -76,11 +73,7 @@
         "documentation/getting-started/introduction",
         {
           "group": "Quickstart",
-          "pages": [
-            "documentation/guides/local-development",
-            "documentation/guides/staging",
-            "documentation/guides/production"
-          ]
+          "pages": ["documentation/guides/local-development"]
         },
         {
           "group": "Guides",
@@ -88,7 +81,8 @@
             "documentation/guides/introduction",
             "documentation/guides/node",
             "documentation/guides/python",
-            "documentation/guides/nextjs-vercel"
+            "documentation/guides/nextjs-vercel",
+            "documentation/guides/microsoft-power-apps"
           ]
         }
       ]
@@ -142,9 +136,15 @@
           "group": "Dynamic Secrets",
           "pages": [
             "documentation/platform/dynamic-secrets/overview",
-            "documentation/platform/dynamic-secrets/postgresql"
+            "documentation/platform/dynamic-secrets/postgresql",
+            "documentation/platform/dynamic-secrets/mysql",
+            "documentation/platform/dynamic-secrets/oracle",
+            "documentation/platform/dynamic-secrets/cassandra",
+            "documentation/platform/dynamic-secrets/aws-iam"
           ]
-        }
+        },
+        "documentation/platform/groups",
+        "documentation/platform/audit-log-streams"
       ]
     },
     {
@@ -191,21 +191,28 @@
       "group": "Self-host Infisical",
       "pages": [
         "self-hosting/overview",
-        "self-hosting/configuration/requirements",
         {
           "group": "Installation methods",
           "pages": [
             "self-hosting/deployment-options/standalone-infisical",
+            "self-hosting/deployment-options/docker-swarm",
             "self-hosting/deployment-options/docker-compose",
             "self-hosting/deployment-options/kubernetes-helm"
           ]
         },
         "self-hosting/configuration/envars",
+        "self-hosting/configuration/requirements",
         {
           "group": "Guides",
           "pages": [
             "self-hosting/configuration/schema-migrations",
             "self-hosting/guides/mongo-to-postgres"
+          ]
+        },
+        {
+          "group": "Reference architectures",
+          "pages": [
+            "self-hosting/reference-architectures/aws-ecs"
           ]
         },
         "self-hosting/ee",
@@ -225,6 +232,7 @@
             "cli/commands/run",
             "cli/commands/secrets",
             "cli/commands/export",
+            "cli/commands/token",
             "cli/commands/service-token",
             "cli/commands/vault",
             "cli/commands/user",
@@ -276,7 +284,8 @@
           "group": "AWS",
           "pages": [
             "integrations/cloud/aws-parameter-store",
-            "integrations/cloud/aws-secret-manager"
+            "integrations/cloud/aws-secret-manager",
+            "integrations/cloud/aws-amplify"
           ]
         },
         "integrations/cloud/vercel",
@@ -360,15 +369,11 @@
     },
     {
       "group": "Build Tool Integrations",
-      "pages": [
-        "integrations/build-tools/gradle"
-      ]
+      "pages": ["integrations/build-tools/gradle"]
     },
     {
       "group": "",
-      "pages": [
-        "sdks/overview"
-      ]
+      "pages": ["sdks/overview"]
     },
     {
       "group": "SDK's",
@@ -386,23 +391,13 @@
         "api-reference/overview/authentication",
         {
           "group": "Examples",
-          "pages": [
-            "api-reference/overview/examples/note",
-            "api-reference/overview/examples/integration"
-          ]
+          "pages": ["api-reference/overview/examples/integration"]
         }
       ]
     },
     {
       "group": "Endpoints",
       "pages": [
-        {
-          "group": "Users",
-          "pages": [
-            "api-reference/endpoints/users/me",
-            "api-reference/endpoints/users/my-organizations"
-          ]
-        },
         {
           "group": "Identities",
           "pages": [
@@ -448,7 +443,6 @@
             "api-reference/endpoints/workspaces/list-identity-memberships",
             "api-reference/endpoints/workspaces/update-identity-membership",
             "api-reference/endpoints/workspaces/delete-identity-membership",
-            "api-reference/endpoints/workspaces/workspace-key",
             "api-reference/endpoints/workspaces/secret-snapshots",
             "api-reference/endpoints/workspaces/rollback-snapshot"
           ]
@@ -486,6 +480,9 @@
             "api-reference/endpoints/secrets/read",
             "api-reference/endpoints/secrets/update",
             "api-reference/endpoints/secrets/delete",
+            "api-reference/endpoints/secrets/create-many",
+            "api-reference/endpoints/secrets/update-many",
+            "api-reference/endpoints/secrets/delete-many",
             "api-reference/endpoints/secrets/attach-tags",
             "api-reference/endpoints/secrets/detach-tags"
           ]
@@ -520,20 +517,17 @@
             "api-reference/endpoints/integrations/delete-auth-by-id",
             "api-reference/endpoints/integrations/create",
             "api-reference/endpoints/integrations/update",
-            "api-reference/endpoints/integrations/delete"
+            "api-reference/endpoints/integrations/delete",
+            "api-reference/endpoints/integrations/list-project-integrations"
           ]
         },
         {
           "group": "Service Tokens",
-          "pages": [
-            "api-reference/endpoints/service-tokens/get"
-          ]
+          "pages": ["api-reference/endpoints/service-tokens/get"]
         },
         {
           "group": "Audit Logs",
-          "pages": [
-            "api-reference/endpoints/audit-logs/export-audit-log"
-          ]
+          "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
         }
       ]
     },
@@ -549,9 +543,7 @@
     },
     {
       "group": "",
-      "pages": [
-        "changelog/overview"
-      ]
+      "pages": ["changelog/overview"]
     },
     {
       "group": "Contributing",
@@ -575,9 +567,7 @@
         },
         {
           "group": "Contributing to SDK",
-          "pages": [
-            "contributing/sdk/developing"
-          ]
+          "pages": ["contributing/sdk/developing"]
         }
       ]
     }

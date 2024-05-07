@@ -21,6 +21,7 @@ import {
 } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
@@ -92,7 +93,8 @@ const buildHierarchy = (folders: TSecretFolders[]): FolderMap => {
 const generatePaths = (
   map: FolderMap,
   parentId: string = "null",
-  basePath: string = ""
+  basePath: string = "",
+  currentDepth: number = 0
 ): { path: string; folderId: string }[] => {
   const children = map[parentId || "null"] || [];
   let paths: { path: string; folderId: string }[] = [];
@@ -105,13 +107,20 @@ const generatePaths = (
     // eslint-disable-next-line no-nested-ternary
     const currPath = basePath === "" ? (isRootFolder ? "/" : `/${child.name}`) : `${basePath}/${child.name}`;
 
+    // Add the current path
     paths.push({
       path: currPath,
       folderId: child.id
-    }); // Add the current path
+    });
 
-    // Recursively generate paths for children, passing down the formatted pathh
-    const childPaths = generatePaths(map, child.id, currPath);
+    // We make sure that the recursion depth doesn't exceed 20.
+    // We do this to create "circuit break", basically to ensure that we can't encounter any potential memory leaks.
+    if (currentDepth >= 20) {
+      logger.info(`generatePaths: Recursion depth exceeded 20, breaking out of recursion [map=${JSON.stringify(map)}]`);
+      return;
+    }
+    // Recursively generate paths for children, passing down the formatted path
+    const childPaths = generatePaths(map, child.id, currPath, currentDepth + 1);
     paths = paths.concat(
       childPaths.map((p) => ({
         path: p.path,
@@ -566,7 +575,11 @@ export const createManySecretsRawFnFactory = ({
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
+    if (!folder)
+      throw new BadRequestError({
+        message: "Folder not found for the given environment slug & secret path",
+        name: "Create secret"
+      });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
@@ -671,7 +684,11 @@ export const updateManySecretsRawFnFactory = ({
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Update secret" });
+    if (!folder)
+      throw new BadRequestError({
+        message: "Folder not found for the given environment slug & secret path",
+        name: "Update secret"
+      });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });

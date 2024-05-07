@@ -1,32 +1,32 @@
-import { TListScimUsers, TScimUser } from "./scim-types";
+import { TListScimGroups, TListScimUsers, TScimGroup, TScimUser } from "./scim-types";
 
 export const buildScimUserList = ({
   scimUsers,
-  offset,
+  startIndex,
   limit
 }: {
   scimUsers: TScimUser[];
-  offset: number;
+  startIndex: number;
   limit: number;
 }): TListScimUsers => {
   return {
     Resources: scimUsers,
     itemsPerPage: limit,
     schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-    startIndex: offset,
+    startIndex,
     totalResults: scimUsers.length
   };
 };
 
 export const buildScimUser = ({
-  userId,
+  orgMembershipId,
   username,
   email,
   firstName,
   lastName,
   active
 }: {
-  userId: string;
+  orgMembershipId: string;
   username: string;
   email?: string | null;
   firstName: string;
@@ -35,7 +35,7 @@ export const buildScimUser = ({
 }): TScimUser => {
   const scimUser = {
     schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
-    id: userId,
+    id: orgMembershipId,
     userName: username,
     displayName: `${firstName} ${lastName}`,
     name: {
@@ -61,4 +61,48 @@ export const buildScimUser = ({
   };
 
   return scimUser;
+};
+
+export const buildScimGroupList = ({
+  scimGroups,
+  startIndex,
+  limit
+}: {
+  scimGroups: TScimGroup[];
+  startIndex: number;
+  limit: number;
+}): TListScimGroups => {
+  return {
+    Resources: scimGroups,
+    itemsPerPage: limit,
+    schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+    startIndex,
+    totalResults: scimGroups.length
+  };
+};
+
+export const buildScimGroup = ({
+  groupId,
+  name,
+  members
+}: {
+  groupId: string;
+  name: string;
+  members: {
+    value: string;
+    display: string;
+  }[];
+}): TScimGroup => {
+  const scimGroup = {
+    schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+    id: groupId,
+    displayName: name,
+    members,
+    meta: {
+      resourceType: "Group",
+      location: null
+    }
+  };
+
+  return scimGroup;
 };

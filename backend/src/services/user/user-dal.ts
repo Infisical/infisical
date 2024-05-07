@@ -34,6 +34,19 @@ export const userDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findUserEncKeyByUserIdsBatch = async ({ userIds }: { userIds: string[] }, tx?: Knex) => {
+    try {
+      return await (tx || db)(TableName.Users)
+        .where({
+          isGhost: false
+        })
+        .whereIn(`${TableName.Users}.id`, userIds)
+        .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find user enc by user ids batch" });
+    }
+  };
+
   const findUserEncKeyByUserId = async (userId: string) => {
     try {
       const user = await db(TableName.Users)
@@ -58,6 +71,17 @@ export const userDALFactory = (db: TDbClient) => {
         .first();
     } catch (error) {
       throw new DatabaseError({ error, name: "Find user by project membership id" });
+    }
+  };
+
+  const findUsersByProjectMembershipIds = async (projectMembershipIds: string[]) => {
+    try {
+      return await db(TableName.ProjectMembership)
+        .whereIn(`${TableName.ProjectMembership}.id`, projectMembershipIds)
+        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .select("*");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find users by project membership ids" });
     }
   };
 
@@ -123,9 +147,11 @@ export const userDALFactory = (db: TDbClient) => {
     ...userOrm,
     findUserByUsername,
     findUserEncKeyByUsername,
+    findUserEncKeyByUserIdsBatch,
     findUserEncKeyByUserId,
     updateUserEncryptionByUserId,
     findUserByProjectMembershipId,
+    findUsersByProjectMembershipIds,
     upsertUserEncryptionKey,
     createUserEncryption,
     findOneUserAction,

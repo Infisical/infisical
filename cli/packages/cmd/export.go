@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/Infisical/infisical-merge/packages/models"
@@ -44,6 +45,11 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		includeImports, err := cmd.Flags().GetBool("include-imports")
+		if err != nil {
+			util.HandleError(err)
+		}
+
 		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err)
@@ -54,13 +60,17 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		templatePath, err := cmd.Flags().GetString("template")
+		if err != nil {
+			util.HandleError(err)
+		}
+
 		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		infisicalToken, err := util.GetInfisicalServiceToken(cmd)
-
+		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -75,7 +85,46 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, WorkspaceId: projectId, SecretsPath: secretsPath}, "")
+		request := models.GetAllSecretsParameters{
+			Environment:   environmentName,
+			TagSlugs:      tagSlugs,
+			WorkspaceId:   projectId,
+			SecretsPath:   secretsPath,
+			IncludeImport: includeImports,
+		}
+
+		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+			request.InfisicalToken = token.Token
+		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+			request.UniversalAuthAccessToken = token.Token
+		}
+
+		if templatePath != "" {
+			sigChan := make(chan os.Signal, 1)
+			dynamicSecretLeases := NewDynamicSecretLeaseManager(sigChan)
+			newEtag := ""
+
+			accessToken := ""
+			if token != nil {
+				accessToken = token.Token
+			} else {
+				log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
+				loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+				if err != nil {
+					util.HandleError(err)
+				}
+				accessToken = loggedInUserDetails.UserCredentials.JTWToken
+			}
+
+			processedTemplate, err := ProcessTemplate(1, templatePath, nil, accessToken, "", &newEtag, dynamicSecretLeases)
+			if err != nil {
+				util.HandleError(err)
+			}
+			fmt.Print(processedTemplate.String())
+			return
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables(request, "")
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
 		}
@@ -88,11 +137,20 @@ var exportCmd = &cobra.Command{
 
 		var output string
 		if shouldExpandSecrets {
-			secrets = util.ExpandSecrets(secrets, models.ExpandSecretsAuthentication{
-				InfisicalToken: infisicalToken,
-			}, "")
+
+			authParams := models.ExpandSecretsAuthentication{}
+
+			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+				authParams.InfisicalToken = token.Token
+			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+				authParams.UniversalAuthAccessToken = token.Token
+			}
+
+			secrets = util.ExpandSecrets(secrets, authParams, "")
 		}
 		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
+		secrets = util.SortSecretsByKeys(secrets)
+
 		output, err = formatEnvs(secrets, format)
 		if err != nil {
 			util.HandleError(err)
@@ -110,10 +168,12 @@ func init() {
 	exportCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
+	exportCmd.Flags().Bool("include-imports", true, "Imported linked secrets")
 	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
 	exportCmd.Flags().String("path", "/", "get secrets within a folder path")
+	exportCmd.Flags().String("template", "", "The path to the template file used to render secrets")
 }
 
 // Format according to the format flag

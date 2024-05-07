@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 
 import { isLoggedIn } from "@app/reactQuery";
 
-import { InitialStep, LDAPStep, MFAStep, SAMLSSOStep } from "./components";
+import { InitialStep, MFAStep, SAMLSSOStep } from "./components";
 import { navigateUserToSelectOrg } from "./Login.utils";
 
 export const Login = () => {
@@ -58,8 +58,6 @@ export const Login = () => {
         );
       case 2:
         return <SAMLSSOStep setStep={setStep} />;
-      case 3:
-        return <LDAPStep setStep={setStep} />;
       default:
         return <div />;
     }

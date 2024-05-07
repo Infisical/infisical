@@ -17,8 +17,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       description: "Return organization user memberships",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -45,7 +44,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
-
       const users = await server.services.org.findAllOrgMembers(
         req.permission.id,
         req.params.organizationId,
@@ -66,8 +64,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       description: "Return projects in organization that user is part of",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -79,6 +76,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             .object({
               id: z.string(),
               name: z.string(),
+              slug: z.string(),
               organization: z.string(),
               environments: z
                 .object({
@@ -115,8 +113,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       description: "Update organization user memberships",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({
@@ -158,8 +155,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       description: "Delete organization user memberships",
       security: [
         {
-          bearerAuth: [],
-          apiKeyAuth: []
+          bearerAuth: []
         }
       ],
       params: z.object({

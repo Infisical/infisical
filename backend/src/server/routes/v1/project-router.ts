@@ -7,7 +7,7 @@ import {
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { INTEGRATION_AUTH, PROJECTS } from "@app/lib/api-docs";
+import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -70,32 +70,29 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          users: ProjectMembershipsSchema.omit({ role: true })
-            .merge(
+          users: ProjectMembershipsSchema.extend({
+            user: UsersSchema.pick({
+              email: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+              id: true
+            }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            roles: z.array(
               z.object({
-                user: UsersSchema.pick({
-                  username: true,
-                  email: true,
-                  firstName: true,
-                  lastName: true,
-                  id: true
-                }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
-                roles: z.array(
-                  z.object({
-                    id: z.string(),
-                    role: z.string(),
-                    customRoleId: z.string().optional().nullable(),
-                    customRoleName: z.string().optional().nullable(),
-                    customRoleSlug: z.string().optional().nullable(),
-                    isTemporary: z.boolean(),
-                    temporaryMode: z.string().optional().nullable(),
-                    temporaryRange: z.string().nullable().optional(),
-                    temporaryAccessStartTime: z.date().nullable().optional(),
-                    temporaryAccessEndTime: z.date().nullable().optional()
-                  })
-                )
+                id: z.string(),
+                role: z.string(),
+                customRoleId: z.string().optional().nullable(),
+                customRoleName: z.string().optional().nullable(),
+                customRoleSlug: z.string().optional().nullable(),
+                isTemporary: z.boolean(),
+                temporaryMode: z.string().optional().nullable(),
+                temporaryRange: z.string().nullable().optional(),
+                temporaryAccessStartTime: z.date().nullable().optional(),
+                temporaryAccessEndTime: z.date().nullable().optional()
               })
             )
+          })
             .omit({ createdAt: true, updatedAt: true })
             .array()
         })
@@ -141,6 +138,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      description: "Get project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim().describe(PROJECTS.GET.workspaceId)
       }),
@@ -173,6 +176,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      description: "Delete project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim().describe(PROJECTS.DELETE.workspaceId)
       }),
@@ -242,6 +251,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      description: "Update project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         workspaceId: z.string().trim().describe(PROJECTS.UPDATE.workspaceId)
       }),
@@ -326,8 +341,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      description: "List integrations for a project.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION.workspaceId)
       }),
       response: {
         200: z.object({
@@ -343,7 +364,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const integrations = await server.services.integration.listIntegrationByProject({
         actorId: req.permission.id,
@@ -370,7 +391,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(INTEGRATION_AUTH.LIST_AUTHORIZATION.workspaceId)
+        workspaceId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION_AUTHORIZATION.workspaceId)
       }),
       response: {
         200: z.object({

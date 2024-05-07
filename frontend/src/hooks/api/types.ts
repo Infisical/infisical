@@ -1,5 +1,7 @@
 import { ZodIssue } from "zod";
 
+export type { TAccessApprovalPolicy } from "./accessApproval/types";
+export type { TAuditLogStream } from "./auditLogStreams/types";
 export type { GetAuthTokenAPI } from "./auth/types";
 export type { IncidentContact } from "./incidentContacts/types";
 export type { IntegrationAuth } from "./integrationAuth/types";

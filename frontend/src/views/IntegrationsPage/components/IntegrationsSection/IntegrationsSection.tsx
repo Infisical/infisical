@@ -74,7 +74,7 @@ export const IntegrationsSection = ({
         </div>
       )}
       {!isLoading && isBotActive && (
-        <div className="flex flex-col space-y-4 p-6 pt-0">
+        <div className="flex flex-col min-w-max space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
             <div
               className="max-w-8xl flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3"
@@ -128,16 +128,20 @@ export const IntegrationsSection = ({
                   <FormLabel
                     label={
                       (integration.integration === "qovery" && integration?.scope) ||
+                      (integration.integration === "aws-secret-manager" && "Secret") ||
+                      (integration.integration === "aws-parameter-store" && "Path") ||
+                      (integration?.integration === "terraform-cloud" && "Project") ||
                       (integration?.scope === "github-org" && "Organization") ||
                       (["github-repo", "github-env"].includes(integration?.scope as string) &&
                         "Repository") ||
                       "App"
                     }
                   />
-                  <div className="min-w-[8rem] max-w-[12rem] overflow-clip text-ellipsis whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                  <div className="min-w-[8rem] max-w-[12rem] overflow-scroll no-scrollbar no-scrollbar::-webkit-scrollbar whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                     {(integration.integration === "hashicorp-vault" &&
                       `${integration.app} - path: ${integration.path}`) ||
                       (integration.scope === "github-org" && `${integration.owner}`) ||
+                      (integration.integration === "aws-parameter-store" && `${integration.path}`) ||
                       (integration.scope?.startsWith("github-") &&
                         `${integration.owner}/${integration.app}`) ||
                       integration.app}
@@ -160,6 +164,14 @@ export const IntegrationsSection = ({
                 {integration.integration === "checkly" && integration.targetService && (
                   <div className="ml-2">
                     <FormLabel label="Group" />
+                    <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                      {integration.targetService}
+                    </div>
+                  </div>
+                )}
+                {integration.integration === "terraform-cloud" && integration.targetService && (
+                  <div className="ml-2">
+                    <FormLabel label="Category" />
                     <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                       {integration.targetService}
                     </div>
@@ -205,11 +217,12 @@ export const IntegrationsSection = ({
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure want to remove ${
           (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
-        } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || " "}?`}
+        } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || "this project"}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
         deleteKey={
           (popUp?.deleteConfirmation?.data as TIntegration)?.app ||
           (popUp?.deleteConfirmation?.data as TIntegration)?.owner ||
+          (popUp?.deleteConfirmation?.data as TIntegration)?.path ||
           ""
         }
         onDeleteApproved={async () =>

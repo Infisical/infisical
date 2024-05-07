@@ -16,28 +16,60 @@ export type TDynamicSecret = {
 };
 
 export enum DynamicSecretProviders {
-  SqlDatabase = "sql-database"
+  SqlDatabase = "sql-database",
+  Cassandra = "cassandra",
+  AwsIam = "aws-iam"
 }
 
 export enum SqlProviders {
-  Postgres = "postgres"
+  Postgres = "postgres",
+  MySql = "mysql2",
+  Oracle = "oracledb"
 }
 
-export type TDynamicSecretProvider = {
-  type: DynamicSecretProviders;
-  inputs: {
-    client: SqlProviders;
-    host: string;
-    port: number;
-    database: string;
-    username: string;
-    password: string;
-    creationStatement: string;
-    revocationStatement: string;
-    renewStatement: string;
-    ca?: string | undefined;
+export type TDynamicSecretProvider =
+  | {
+    type: DynamicSecretProviders.SqlDatabase;
+    inputs: {
+      client: SqlProviders;
+      host: string;
+      port: number;
+      database: string;
+      username: string;
+      password: string;
+      creationStatement: string;
+      revocationStatement: string;
+      renewStatement?: string;
+      ca?: string | undefined;
+    };
+  }
+  | {
+    type: DynamicSecretProviders.Cassandra;
+    inputs: {
+      host: string;
+      port: number;
+      keyspace?: string;
+      localDataCenter: string;
+      username: string;
+      password: string;
+      creationStatement: string;
+      revocationStatement: string;
+      renewStatement?: string;
+      ca?: string | undefined;
+    };
+  }
+  | {
+    type: DynamicSecretProviders.AwsIam;
+    inputs: {
+      accessKey: string;
+      secretAccessKey: string;
+      region: string;
+      awsPath?: string;
+      policyDocument?: string;
+      userGroups?: string;
+      policyArns?: string;
+    };
   };
-};
 
 export type TCreateDynamicSecretDTO = {
   projectSlug: string;

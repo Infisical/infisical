@@ -5,6 +5,8 @@ export type SubscriptionPlan = {
   auditLogs: boolean;
   dynamicSecret: boolean;
   auditLogsRetentionDays: number;
+  auditLogStreamLimit: number;
+  auditLogStreams: boolean;
   customAlerts: boolean;
   customRateLimits: boolean;
   pitRecovery: boolean;
@@ -21,6 +23,7 @@ export type SubscriptionPlan = {
   samlSSO: boolean;
   scim: boolean;
   ldap: boolean;
+  groups: boolean;
   status:
   | "incomplete"
   | "incomplete_expired"
