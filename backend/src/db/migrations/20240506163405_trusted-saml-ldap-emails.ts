@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const isUserAliasTablePresent = await knex.schema.hasTable(TableName.SuperAdmin);
+  const isUserAliasTablePresent = await knex.schema.hasTable(TableName.UserAliases);
   if (isUserAliasTablePresent) {
     await knex.schema.alterTable(TableName.UserAliases, (t) => {
       t.string("username").nullable().alter();
