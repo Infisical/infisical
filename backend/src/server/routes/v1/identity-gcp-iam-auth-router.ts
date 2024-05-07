@@ -6,6 +6,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import { validateGcpIamAuthField } from "@app/services/identity-gcp-iam-auth/identity-gcp-iam-auth-validators";
 
 export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -73,8 +74,8 @@ export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvide
         identityId: z.string().trim()
       }),
       body: z.object({
-        allowedServiceAccounts: z.string(), // TODO: better validation
-        allowedProjects: z.string(), // TODO: better validation
+        allowedServiceAccounts: validateGcpIamAuthField,
+        allowedProjects: validateGcpIamAuthField,
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()

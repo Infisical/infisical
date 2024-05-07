@@ -51,7 +51,7 @@ type Props = {
   };
 };
 
-export const IdentityAwsIamAuthForm = ({
+export const IdentityGcpIamAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
   identityAuthMethodData
@@ -194,7 +194,7 @@ export const IdentityAwsIamAuthForm = ({
         name="allowedProjects"
         render={({ field, fieldState: { error } }) => (
           <FormControl label="Allowed Projects" isError={Boolean(error)} errorText={error?.message}>
-            <Input {...field} placeholder="123456789012, ..." />
+            <Input {...field} placeholder="my-gcp-project, ..." />
           </FormControl>
         )}
       />
