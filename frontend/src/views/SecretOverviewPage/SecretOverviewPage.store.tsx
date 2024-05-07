@@ -70,7 +70,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
 const useStoreContext = <T extends unknown>(selector: (state: SelectedEntriesState) => T): T => {
   const ctx = useContext(StoreContext);
-  if (!ctx) throw new Error("Missing ");
+  if (!ctx) throw new Error("Missing context provider");
   return useStore(ctx, selector);
 };
 
