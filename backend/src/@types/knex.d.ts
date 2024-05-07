@@ -2,6 +2,18 @@ import { Knex } from "knex";
 
 import {
   TableName,
+  TAccessApprovalPolicies,
+  TAccessApprovalPoliciesApprovers,
+  TAccessApprovalPoliciesApproversInsert,
+  TAccessApprovalPoliciesApproversUpdate,
+  TAccessApprovalPoliciesInsert,
+  TAccessApprovalPoliciesUpdate,
+  TAccessApprovalRequests,
+  TAccessApprovalRequestsInsert,
+  TAccessApprovalRequestsReviewers,
+  TAccessApprovalRequestsReviewersInsert,
+  TAccessApprovalRequestsReviewersUpdate,
+  TAccessApprovalRequestsUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -352,6 +364,31 @@ declare module "knex/types/tables" {
       TIdentityProjectAdditionalPrivilegeInsert,
       TIdentityProjectAdditionalPrivilegeUpdate
     >;
+
+    [TableName.AccessApprovalPolicy]: Knex.CompositeTableType<
+      TAccessApprovalPolicies,
+      TAccessApprovalPoliciesInsert,
+      TAccessApprovalPoliciesUpdate
+    >;
+
+    [TableName.AccessApprovalPolicyApprover]: Knex.CompositeTableType<
+      TAccessApprovalPoliciesApprovers,
+      TAccessApprovalPoliciesApproversInsert,
+      TAccessApprovalPoliciesApproversUpdate
+    >;
+
+    [TableName.AccessApprovalRequest]: Knex.CompositeTableType<
+      TAccessApprovalRequests,
+      TAccessApprovalRequestsInsert,
+      TAccessApprovalRequestsUpdate
+    >;
+
+    [TableName.AccessApprovalRequestReviewer]: Knex.CompositeTableType<
+      TAccessApprovalRequestsReviewers,
+      TAccessApprovalRequestsReviewersInsert,
+      TAccessApprovalRequestsReviewersUpdate
+    >;
+
     [TableName.ScimToken]: Knex.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
     [TableName.SecretApprovalPolicy]: Knex.CompositeTableType<
       TSecretApprovalPolicies,

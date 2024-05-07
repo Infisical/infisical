@@ -121,8 +121,8 @@ export const licenseServiceFactory = ({
 
         if (isValidOfflineLicense) {
           onPremFeatures = contents.license.features;
-          instanceType = InstanceType.EnterpriseOnPrem;
-          logger.info(`Instance type: ${InstanceType.EnterpriseOnPrem}`);
+          instanceType = InstanceType.EnterpriseOnPremOffline;
+          logger.info(`Instance type: ${InstanceType.EnterpriseOnPremOffline}`);
           isValidLicense = true;
           return;
         }

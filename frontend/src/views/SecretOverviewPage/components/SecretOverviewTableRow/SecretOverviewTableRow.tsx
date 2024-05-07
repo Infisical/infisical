@@ -11,7 +11,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Button, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
+import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 
@@ -23,6 +23,8 @@ type Props = {
   secretPath: string;
   environments: { name: string; slug: string }[];
   expandableColWidth: number;
+  isSelected: boolean;
+  onToggleSecretSelect: (key: string) => void;
   getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
   onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
@@ -39,7 +41,9 @@ export const SecretOverviewTableRow = ({
   onSecretCreate,
   onSecretDelete,
   isImportedSecretPresentInEnv,
-  expandableColWidth
+  expandableColWidth,
+  onToggleSecretSelect,
+  isSelected
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 1; // secret key row
@@ -56,7 +60,21 @@ export const SecretOverviewTableRow = ({
           <div className="h-full w-full border-r border-mineshaft-600 py-2.5 px-5">
             <div className="flex items-center space-x-5">
               <div className="text-blue-300/70">
-                <FontAwesomeIcon icon={isFormExpanded ? faAngleDown : faKey} />
+                <Checkbox
+                  id={`checkbox-${secretKey}`}
+                  isChecked={isSelected}
+                  onCheckedChange={() => {
+                    onToggleSecretSelect(secretKey);
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  className={twMerge("hidden group-hover:flex", isSelected && "flex")}
+                />
+                <FontAwesomeIcon
+                  className={twMerge("block group-hover:hidden", isSelected && "hidden")}
+                  icon={isFormExpanded ? faAngleDown : faKey}
+                />
               </div>
               <div title={secretKey}>{secretKey}</div>
             </div>

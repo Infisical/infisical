@@ -477,7 +477,7 @@ export const SECRET_TAGS = {
 export const IDENTITY_ADDITIONAL_PRIVILEGE = {
   CREATE: {
     projectSlug: "The slug of the project of the identity in.",
-    identityId: "The ID of the identity to delete.",
+    identityId: "The ID of the identity to create.",
     slug: "The slug of the privilege to create.",
     permissions: `The permission object for the privilege.
 - Read secrets
