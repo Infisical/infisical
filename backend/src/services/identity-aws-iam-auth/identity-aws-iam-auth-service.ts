@@ -16,8 +16,8 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
-import { extractPrincipalArn } from "./identity-aws-iam-auth.fns";
 import { TIdentityAwsIamAuthDALFactory } from "./identity-aws-iam-auth-dal";
+import { extractPrincipalArn } from "./identity-aws-iam-auth-fns";
 import {
   TAttachAWSIAMAuthDTO,
   TAWSGetCallerIdentityHeaders,
