@@ -70,6 +70,8 @@ import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSect
 import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
+import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
+import { EntryType, useSelectedEntries, useSelectedEntryActions } from "./SecretOverviewPage.store";
 
 export const SecretOverviewPage = () => {
   const { t } = useTranslation();
@@ -104,6 +106,9 @@ export const SecretOverviewPage = () => {
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
+
+  const selectedEntries = useSelectedEntries();
+  const { toggle: toggleSelectedEntry } = useSelectedEntryActions();
 
   useEffect(() => {
     if (!isWorkspaceLoading && !workspaceId && router.isReady) {
@@ -543,6 +548,7 @@ export const SecretOverviewPage = () => {
             </div>
           </div>
         </div>
+        <SelectionPanel secretPath={secretPath} />
         <div className="thin-scrollbar mt-4" ref={parentTableRef}>
           <TableContainer className="max-h-[calc(100vh-250px)] overflow-y-auto">
             <Table>
@@ -666,6 +672,8 @@ export const SecretOverviewPage = () => {
                     <SecretOverviewFolderRow
                       folderName={folderName}
                       isFolderPresentInEnv={isFolderPresentInEnv}
+                      isSelected={selectedEntries.folder[folderName]}
+                      onToggleFolderSelect={() => toggleSelectedEntry(EntryType.FOLDER, folderName)}
                       environments={visibleEnvs}
                       key={`overview-${folderName}-${index + 1}`}
                       onClick={handleFolderClick}
@@ -684,6 +692,8 @@ export const SecretOverviewPage = () => {
                   visibleEnvs?.length > 0 &&
                   filteredSecretNames.map((key, index) => (
                     <SecretOverviewTableRow
+                      isSelected={selectedEntries.secret[key]}
+                      onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
                       secretPath={secretPath}
                       isImportedSecretPresentInEnv={isImportedSecretPresentInEnv}
                       onSecretCreate={handleSecretCreate}

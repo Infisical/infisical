@@ -2,20 +2,23 @@ import { faCheck, faFolder, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Td, Tr } from "@app/components/v2";
+import { Checkbox, Td, Tr } from "@app/components/v2";
 
 type Props = {
   folderName: string;
   environments: { name: string; slug: string }[];
   isFolderPresentInEnv: (name: string, env: string) => boolean;
   onClick: (path: string) => void;
+  isSelected: boolean;
+  onToggleFolderSelect: (folderName: string) => void;
 };
 
 export const SecretOverviewFolderRow = ({
   folderName,
   environments = [],
   isFolderPresentInEnv,
-
+  isSelected,
+  onToggleFolderSelect,
   onClick
 }: Props) => {
   return (
@@ -23,7 +26,21 @@ export const SecretOverviewFolderRow = ({
       <Td className="sticky left-0 z-10 border-0 bg-mineshaft-800 bg-clip-padding p-0 group-hover:bg-mineshaft-700">
         <div className="flex items-center space-x-5 border-r border-mineshaft-600 px-5 py-2.5">
           <div className="text-yellow-700">
-            <FontAwesomeIcon icon={faFolder} />
+            <Checkbox
+              id={`checkbox-${folderName}`}
+              isChecked={isSelected}
+              onCheckedChange={() => {
+                onToggleFolderSelect(folderName);
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              className={twMerge("hidden group-hover:flex", isSelected && "flex")}
+            />
+            <FontAwesomeIcon
+              className={twMerge("block group-hover:hidden", isSelected && "hidden")}
+              icon={faFolder}
+            />
           </div>
           <div>{folderName}</div>
         </div>
