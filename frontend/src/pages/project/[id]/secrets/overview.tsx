@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import Head from "next/head";
 
 import { SecretOverviewPage } from "@app/views/SecretOverviewPage";
-import { StoreProvider } from "@app/views/SecretOverviewPage/SecretOverviewPage.store";
 
 const Dashboard = () => {
   const { t } = useTranslation();
@@ -17,9 +16,7 @@ const Dashboard = () => {
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Head>
       <div className="h-full">
-        <StoreProvider>
-          <SecretOverviewPage />
-        </StoreProvider>
+        <SecretOverviewPage />
       </div>
     </>
   );

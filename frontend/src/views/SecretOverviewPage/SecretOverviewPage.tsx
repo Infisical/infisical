@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -71,7 +71,11 @@ import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynam
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
-import { EntryType, useSelectedEntries, useSelectedEntryActions } from "./SecretOverviewPage.store";
+
+export enum EntryType {
+  FOLDER = "folder",
+  SECRET = "secret"
+}
 
 export const SecretOverviewPage = () => {
   const { t } = useTranslation();
@@ -83,15 +87,6 @@ export const SecretOverviewPage = () => {
   const parentTableRef = useRef<HTMLTableElement>(null);
   const [expandableTableWidth, setExpandableTableWidth] = useState(0);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-
-  useEffect(() => {
-    const handleParentTableWidthResize = () => {
-      setExpandableTableWidth(parentTableRef.current?.clientWidth || 0);
-    };
-
-    window.addEventListener("resize", handleParentTableWidthResize);
-    return () => window.removeEventListener("resize", handleParentTableWidthResize);
-  }, []);
 
   useEffect(() => {
     if (parentTableRef.current) {
@@ -107,8 +102,55 @@ export const SecretOverviewPage = () => {
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
 
-  const selectedEntries = useSelectedEntries();
-  const { toggle: toggleSelectedEntry } = useSelectedEntryActions();
+  const [selectedEntries, setSelectedEntries] = useState<{
+    [EntryType.FOLDER]: Record<string, boolean>;
+    [EntryType.SECRET]: Record<string, boolean>;
+  }>({
+    [EntryType.FOLDER]: {},
+    [EntryType.SECRET]: {}
+  });
+
+  const toggleSelectedEntry = useCallback(
+    (type: EntryType, key: string) => {
+      const isChecked = Boolean(selectedEntries[type]?.[key]);
+      const newChecks = { ...selectedEntries };
+
+      // remove selection if its present else add it
+      if (isChecked) {
+        delete newChecks[type][key];
+      } else {
+        newChecks[type][key] = true;
+      }
+
+      setSelectedEntries(newChecks);
+    },
+    [selectedEntries]
+  );
+
+  const resetSelectedEntries = useCallback(() => {
+    setSelectedEntries({
+      [EntryType.FOLDER]: {},
+      [EntryType.SECRET]: {}
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleParentTableWidthResize = () => {
+      setExpandableTableWidth(parentTableRef.current?.clientWidth || 0);
+    };
+
+    const onRouteChangeStart = () => {
+      resetSelectedEntries();
+    };
+
+    router.events.on("routeChangeStart", onRouteChangeStart);
+
+    window.addEventListener("resize", handleParentTableWidthResize);
+    return () => {
+      window.removeEventListener("resize", handleParentTableWidthResize);
+      router.events.off("routeChangeStart", onRouteChangeStart);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isWorkspaceLoading && !workspaceId && router.isReady) {
@@ -553,6 +595,8 @@ export const SecretOverviewPage = () => {
           secretPath={secretPath}
           getSecretByKey={getSecretByKey}
           getFolderByNameAndEnv={getFolderByNameAndEnv}
+          selectedEntries={selectedEntries}
+          resetSelectedEntries={resetSelectedEntries}
         />
         <div className="thin-scrollbar mt-4" ref={parentTableRef}>
           <TableContainer className="max-h-[calc(100vh-250px)] overflow-y-auto">

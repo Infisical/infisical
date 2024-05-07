@@ -15,23 +15,35 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useDeleteSecretBatch } from "@app/hooks/api";
 import { DecryptedSecret, TDeleteSecretBatchDTO, TSecretFolder } from "@app/hooks/api/types";
 
-import { useSelectedEntries, useSelectedEntryActions } from "../../SecretOverviewPage.store";
+export enum EntryType {
+  FOLDER = "folder",
+  SECRET = "secret"
+}
 
 type Props = {
   secretPath: string;
   getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
   getFolderByNameAndEnv: (name: string, env: string) => TSecretFolder | undefined;
+  resetSelectedEntries: () => void;
+  selectedEntries: {
+    [EntryType.FOLDER]: Record<string, boolean>;
+    [EntryType.SECRET]: Record<string, boolean>;
+  };
 };
 
-export const SelectionPanel = ({ getFolderByNameAndEnv, getSecretByKey, secretPath }: Props) => {
+export const SelectionPanel = ({
+  getFolderByNameAndEnv,
+  getSecretByKey,
+  secretPath,
+  resetSelectedEntries,
+  selectedEntries
+}: Props) => {
   const { permission } = useProjectPermission();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "bulkDeleteEntries"
   ] as const);
 
-  const selectedEntries = useSelectedEntries();
-  const { reset: resetSelectedEntries } = useSelectedEntryActions();
   const selectedCount =
     Object.keys(selectedEntries.folder).length + Object.keys(selectedEntries.secret).length;
 
