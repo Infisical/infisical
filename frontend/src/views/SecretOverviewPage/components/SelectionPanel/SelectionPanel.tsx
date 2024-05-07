@@ -52,6 +52,8 @@ export const SelectionPanel = ({ getFolderByNameAndEnv, getSecretByKey, secretPa
   );
 
   const handleBulkDelete = async () => {
+    let processedEntries = 0;
+
     const promises = userAvailableEnvs.map(async (env) => {
       // additional check: ensure that bulk delete is only executed on envs that user has access to
       if (
@@ -67,6 +69,7 @@ export const SelectionPanel = ({ getFolderByNameAndEnv, getSecretByKey, secretPa
         Object.keys(selectedEntries.folder).map(async (folderName) => {
           const folder = getFolderByNameAndEnv(folderName, env.slug);
           if (folder) {
+            processedEntries += 1;
             await deleteFolder({
               folderId: folder?.id,
               path: secretPath,
@@ -95,6 +98,7 @@ export const SelectionPanel = ({ getFolderByNameAndEnv, getSecretByKey, secretPa
       );
 
       if (secretsToDelete.length > 0) {
+        processedEntries += secretsToDelete.length;
         await deleteBatchSecretV3({
           secretPath,
           workspaceId,
@@ -106,7 +110,13 @@ export const SelectionPanel = ({ getFolderByNameAndEnv, getSecretByKey, secretPa
 
     const results = await Promise.allSettled(promises);
     const areEntriesDeleted = results.some((result) => result.status === "fulfilled");
-    if (areEntriesDeleted) {
+    if (processedEntries === 0) {
+      handlePopUpClose("bulkDeleteEntries");
+      createNotification({
+        type: "info",
+        text: "No changes have been made. Ensure that you have sufficient access."
+      });
+    } else if (areEntriesDeleted) {
       handlePopUpClose("bulkDeleteEntries");
       resetSelectedEntries();
       createNotification({
