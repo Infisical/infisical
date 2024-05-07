@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { organizationKeys } from "../organization/queries";
 import { identitiesKeys } from "./queries";
 import {
+  AddIdentityGcpIamAuthDTO,
   AddIdentityUniversalAuthDTO,
   ClientSecretData,
   CreateIdentityDTO,
@@ -13,10 +14,11 @@ import {
   DeleteIdentityDTO,
   DeleteIdentityUniversalAuthClientSecretDTO,
   Identity,
+  IdentityGcpIamAuth,
   IdentityUniversalAuth,
   UpdateIdentityDTO,
-  UpdateIdentityUniversalAuthDTO
-} from "./types";
+  UpdateIdentityGcpIamAuthDTO,
+  UpdateIdentityUniversalAuthDTO} from "./types";
 
 export const useCreateIdentity = () => {
   const queryClient = useQueryClient();
@@ -166,6 +168,73 @@ export const useRevokeIdentityUniversalAuthClientSecret = () => {
       queryClient.invalidateQueries(
         identitiesKeys.getIdentityUniversalAuthClientSecrets(identityId)
       );
+    }
+  });
+};
+
+export const useAddIdentityGcpIamAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityGcpIamAuth, {}, AddIdentityGcpIamAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      allowedServiceAccounts,
+      allowedProjects,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityGcpIamAuth }
+      } = await apiRequest.post<{ identityGcpIamAuth: IdentityGcpIamAuth }>(
+        `/api/v1/auth/gcp-iam-auth/identities/${identityId}`,
+        {
+          allowedServiceAccounts,
+          allowedProjects,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityGcpIamAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
+export const useUpdateIdentityGcpIamAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityGcpIamAuth, {}, UpdateIdentityGcpIamAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      allowedServiceAccounts,
+      allowedProjects,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityGcpIamAuth }
+      } = await apiRequest.patch<{ identityGcpIamAuth: IdentityGcpIamAuth }>(
+        `/api/v1/auth/gcp-iam-auth/identities/${identityId}`,
+        {
+          allowedServiceAccounts,
+          allowedProjects,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+      return identityGcpIamAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
     }
   });
 };

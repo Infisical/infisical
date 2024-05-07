@@ -38,19 +38,19 @@ export type IdentityMembership = {
       customRoleSlug: string;
     } & (
       | {
-        isTemporary: false;
-        temporaryRange: null;
-        temporaryMode: null;
-        temporaryAccessEndTime: null;
-        temporaryAccessStartTime: null;
-      }
+          isTemporary: false;
+          temporaryRange: null;
+          temporaryMode: null;
+          temporaryAccessEndTime: null;
+          temporaryAccessStartTime: null;
+        }
       | {
-        isTemporary: true;
-        temporaryRange: string;
-        temporaryMode: string;
-        temporaryAccessEndTime: string;
-        temporaryAccessStartTime: string;
-      }
+          isTemporary: true;
+          temporaryRange: string;
+          temporaryMode: string;
+          temporaryAccessEndTime: string;
+          temporaryAccessStartTime: string;
+        }
     )
   >;
   createdAt: string;
@@ -105,6 +105,42 @@ export type UpdateIdentityUniversalAuthDTO = {
   clientSecretTrustedIps?: {
     ipAddress: string;
   }[];
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type IdentityGcpIamAuth = {
+  identityId: string;
+  allowedServiceAccounts: string;
+  allowedProjects: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityGcpIamAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  allowedServiceAccounts: string;
+  allowedProjects: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityGcpIamAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  allowedServiceAccounts?: string;
+  allowedProjects?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;

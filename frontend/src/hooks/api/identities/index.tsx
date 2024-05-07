@@ -1,12 +1,16 @@
 export { identityAuthToNameMap } from "./constants";
 export { IdentityAuthMethod } from "./enums";
 export {
+  useAddIdentityGcpIamAuth,
   useAddIdentityUniversalAuth,
   useCreateIdentity,
   useCreateIdentityUniversalAuthClientSecret,
   useDeleteIdentity,
   useRevokeIdentityUniversalAuthClientSecret,
   useUpdateIdentity,
-  useUpdateIdentityUniversalAuth
-} from "./mutations";
-export { useGetIdentityUniversalAuth, useGetIdentityUniversalAuthClientSecrets } from "./queries";
+  useUpdateIdentityGcpIamAuth,
+  useUpdateIdentityUniversalAuth} from "./mutations";
+export {
+  useGetIdentityGcpIamAuth,
+  useGetIdentityUniversalAuth,
+  useGetIdentityUniversalAuthClientSecrets} from "./queries";
