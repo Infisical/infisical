@@ -66,6 +66,10 @@ export enum EventType {
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
+  LOGIN_IDENTITY_GCP_IAM_AUTH = "login-identity-gcp-iam-auth",
+  ADD_IDENTITY_GCP_IAM_AUTH = "add-identity-gcp-iam -auth",
+  UPDATE_IDENTITY_GCP_IAM_AUTH = "update-identity-gcp-iam-auth",
+  GET_IDENTITY_GCP_IAM_AUTH = "get-identity-gcp-iam-auth",
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
@@ -406,6 +410,48 @@ interface RevokeIdentityUniversalAuthClientSecretEvent {
   };
 }
 
+interface LoginIdentityGcpIamAuthEvent {
+  type: EventType.LOGIN_IDENTITY_GCP_IAM_AUTH;
+  metadata: {
+    identityId: string;
+    identityGcpIamAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityGcpIamAuthEvent {
+  type: EventType.ADD_IDENTITY_GCP_IAM_AUTH;
+  metadata: {
+    identityId: string;
+    allowedServiceAccounts: string;
+    allowedProjects: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityGcpIamAuthEvent {
+  type: EventType.UPDATE_IDENTITY_GCP_IAM_AUTH;
+  metadata: {
+    identityId: string;
+    allowedServiceAccounts?: string;
+    allowedProjects?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityGcpIamAuthEvent {
+  type: EventType.GET_IDENTITY_GCP_IAM_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface CreateEnvironmentEvent {
   type: EventType.CREATE_ENVIRONMENT;
   metadata: {
@@ -660,6 +706,10 @@ export type Event =
   | CreateIdentityUniversalAuthClientSecretEvent
   | GetIdentityUniversalAuthClientSecretsEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
+  | LoginIdentityGcpIamAuthEvent
+  | AddIdentityGcpIamAuthEvent
+  | UpdateIdentityGcpIamAuthEvent
+  | GetIdentityGcpIamAuthEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

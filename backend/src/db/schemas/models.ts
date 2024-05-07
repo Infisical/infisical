@@ -44,6 +44,7 @@ export enum TableName {
   Identity = "identities",
   IdentityAccessToken = "identity_access_tokens",
   IdentityUniversalAuth = "identity_universal_auths",
+  IdentityGcpIamAuth = "identity_gcp_iam_auths",
   IdentityUaClientSecret = "identity_ua_client_secrets",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
@@ -138,5 +139,6 @@ export enum ProjectUpgradeStatus {
 }
 
 export enum IdentityAuthMethod {
-  Univeral = "universal-auth"
+  Univeral = "universal-auth",
+  GCP_IAM_AUTH = "gcp-iam-auth"
 }

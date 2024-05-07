@@ -72,6 +72,8 @@ import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
 import { identityAccessTokenDALFactory } from "@app/services/identity-access-token/identity-access-token-dal";
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
+import { identityGcpIamAuthDALFactory } from "@app/services/identity-gcp-iam-auth/identity-gcp-iam-auth-dal";
+import { identityGcpIamAuthServiceFactory } from "@app/services/identity-gcp-iam-auth/identity-gcp-iam-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectMembershipRoleDALFactory } from "@app/services/identity-project/identity-project-membership-role-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
@@ -195,6 +197,8 @@ export const registerRoutes = async (
 
   const identityUaDAL = identityUaDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
+
+  const identityGcpIamAuthDAL = identityGcpIamAuthDALFactory(db);
 
   const auditLogDAL = auditLogDALFactory(db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
@@ -662,6 +666,14 @@ export const registerRoutes = async (
     identityUaDAL,
     licenseService
   });
+  const identityGcpIamAuthService = identityGcpIamAuthServiceFactory({
+    identityGcpIamAuthDAL,
+    identityOrgMembershipDAL,
+    identityAccessTokenDAL,
+    identityDAL,
+    permissionService,
+    licenseService
+  });
 
   const dynamicSecretProviders = buildDynamicSecretProviders();
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
@@ -731,6 +743,7 @@ export const registerRoutes = async (
     identityAccessToken: identityAccessTokenService,
     identityProject: identityProjectService,
     identityUa: identityUaService,
+    identityGcpIamAuth: identityGcpIamAuthService,
     secretApprovalPolicy: sapService,
     secretApprovalRequest: sarService,
     secretRotation: secretRotationService,
