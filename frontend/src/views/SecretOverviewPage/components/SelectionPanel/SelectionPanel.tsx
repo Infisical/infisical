@@ -114,7 +114,7 @@ export const SelectionPanel = ({ getFolderByNameAndEnv, getSecretByKey, secretPa
       handlePopUpClose("bulkDeleteEntries");
       createNotification({
         type: "info",
-        text: "No changes have been made. Ensure that you have sufficient access."
+        text: "You don't have access to delete selected items"
       });
     } else if (areEntriesDeleted) {
       handlePopUpClose("bulkDeleteEntries");
