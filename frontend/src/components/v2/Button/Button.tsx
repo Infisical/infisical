@@ -29,7 +29,7 @@ const buttonVariants = cva(
       colorSchema: {
         primary: ["bg-primary", "text-black", "border-primary bg-opacity-90 hover:bg-opacity-100"],
         secondary: ["bg-mineshaft", "text-gray-300", "border-mineshaft hover:bg-opacity-80"],
-        danger: ["bg-red", "text-white", "border-red hover:bg-opacity-90"],
+        danger: ["!bg-red", "!text-white", "!border-red hover:!bg-opacity-90"],
         gray: ["bg-bunker-500", "text-bunker-200"]
       },
       variant: {
