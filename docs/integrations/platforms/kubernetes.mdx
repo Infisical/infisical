@@ -77,6 +77,8 @@ spec:
         projectSlug: <project-slug>
         envSlug: <env-slug> # "dev", "staging", "prod", etc..
         secretsPath: "<secrets-path>" # Root is "/"
+        recursive: true # Fetch all secrets from the specified path and all sub-directories. Default is false.
+      
       credentialsRef:
         secretName: universal-auth-credentials
         secretNamespace: default
@@ -89,6 +91,7 @@ spec:
       secretsScope:
         envSlug: <env-slug>
         secretsPath: <secrets-path> # Root is "/"
+        recursive: true # Fetch all secrets from the specified path and all sub-directories. Default is false.
 
   managedSecretReference:
     secretName: managed-secret
