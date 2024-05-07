@@ -43,14 +43,26 @@ export const SelectionPanel = ({ getFolderByNameAndEnv, getSecretByKey, secretPa
 
   const isMultiSelectActive = selectedCount > 0;
 
-  // TODO: REVISIT RBAC
-  const shouldShowDelete = permission.can(
-    ProjectPermissionActions.Delete,
-    subject(ProjectPermissionSub.Secrets, { environment: "", secretPath })
+  // user should have the ability to delete secrets/folders in at least one of the envs
+  const shouldShowDelete = userAvailableEnvs.some((env) =>
+    permission.can(
+      ProjectPermissionActions.Delete,
+      subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
+    )
   );
 
   const handleBulkDelete = async () => {
     const promises = userAvailableEnvs.map(async (env) => {
+      // additional check: ensure that bulk delete is only executed on envs that user has access to
+      if (
+        permission.cannot(
+          ProjectPermissionActions.Delete,
+          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
+        )
+      ) {
+        return;
+      }
+
       await Promise.all(
         Object.keys(selectedEntries.folder).map(async (folderName) => {
           const folder = getFolderByNameAndEnv(folderName, env.slug);
