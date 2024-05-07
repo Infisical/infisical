@@ -39,22 +39,13 @@ jobs:
           git commit -m "chore: renamed new migration files to latest timestamp (gh-action)"
 
       - name: Get the username of the person who closed the PR
-        run: |
+        run: |       
           PR_NUMBER=${{ github.event.pull_request.number }}
-          REPO_NAME=${{ github.repository }}
-          GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-          
-          # Use GitHub API to fetch PR data
-          PR_DATA=$(curl \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/$REPO_NAME/pulls/$PR_NUMBER)
+          PR_CLOSER=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" | jq -r '.closed_by.login')
+          echo "PR Number: $PR_NUMBER"
+          echo "PR Closer: $PR_CLOSER"
+          echo "pr_closer=$PR_CLOSER" >> $GITHUB_OUTPUT
 
-          # Extract the username of the person who closed the PR
-          CLOSED_BY=$(echo $PR_DATA | jq -r .closed_by.login)
-
-          echo "Pull Request #$PR_NUMBER was closed by $CLOSED_BY"
-          
       - name: Create Pull Request
         if: env.SKIP_RENAME != 'true'
         uses: peter-evans/create-pull-request@v6
