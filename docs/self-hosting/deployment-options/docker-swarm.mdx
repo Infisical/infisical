@@ -84,7 +84,7 @@ The [Docker stack file](https://github.com/Infisical/infisical/tree/main/docker-
 <Steps>
   <Step title="Initialize Docker Swarm on one of the VMs by running the following command">
     ```
-   docker swarm init --advertise-addr <MANAGER_NODE_IP>
+   docker swarm init 
    ```
 
    Replace `<MANAGER_NODE_IP>` with the IP address of the VM that will serve as the manager node. Remember to copy the join token returned by the this init command.

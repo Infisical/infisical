@@ -3,6 +3,7 @@ import "fastify";
 import { TUsers } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
@@ -122,6 +123,7 @@ declare module "fastify" {
       scim: TScimServiceFactory;
       ldap: TLdapConfigServiceFactory;
       auditLog: TAuditLogServiceFactory;
+      auditLogStream: TAuditLogStreamServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;

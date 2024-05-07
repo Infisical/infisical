@@ -1,5 +1,6 @@
 export enum TokenType {
   TOKEN_EMAIL_CONFIRMATION = "emailConfirmation",
+  TOKEN_EMAIL_VERIFICATION = "emailVerification", // unverified -> verified
   TOKEN_EMAIL_MFA = "emailMfa",
   TOKEN_EMAIL_ORG_INVITATION = "organizationInvitation",
   TOKEN_EMAIL_PASSWORD_RESET = "passwordReset"

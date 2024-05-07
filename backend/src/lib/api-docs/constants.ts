@@ -284,6 +284,7 @@ export const SECRETS = {
 
 export const RAW_SECRETS = {
   LIST: {
+    expand: "Whether or not to expand secret references",
     recursive:
       "Whether or not to fetch all secrets from the specified base path, and all of its subdirectories. Note, the max depth is 20 deep.",
     workspaceId: "The ID of the project to list secrets from.",
@@ -479,9 +480,18 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     identityId: "The ID of the identity to delete.",
     slug: "The slug of the privilege to create.",
     permissions: `The permission object for the privilege.
-1. [["read", "secrets", {environment: "dev", secretPath: {$glob: "/"}}]]
-2. [["read", "secrets", {environment: "dev"}], ["create", "secrets", {environment: "dev"}]]
-2. [["read", "secrets", {environment: "dev"}]]
+- Read secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"]}
+\`\`\`
+- Read and Write secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"], {"action": "write", "subject": "secrets"]}
+\`\`\`
+- Read secrets scoped to an environment and secret path
+\`\`\`
+- { "permissions": [{"action": "read", "subject": "secrets", "conditions": { "environment": "dev", "secretPath": { "$glob": "/" } }}] }
+\`\`\`
 `,
     isPackPermission: "Whether the server should pack(compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
@@ -495,11 +505,19 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     slug: "The slug of the privilege to update.",
     newSlug: "The new slug of the privilege to update.",
     permissions: `The permission object for the privilege.
-1. [["read", "secrets", {environment: "dev", secretPath: {$glob: "/"}}]]
-2. [["read", "secrets", {environment: "dev"}], ["create", "secrets", {environment: "dev"}]]
-2. [["read", "secrets", {environment: "dev"}]]
+- Read secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"]}
+\`\`\`
+- Read and Write secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"], {"action": "write", "subject": "secrets"]}
+\`\`\`
+- Read secrets scoped to an environment and secret path
+\`\`\`
+- { "permissions": [{"action": "read", "subject": "secrets", "conditions": { "environment": "dev", "secretPath": { "$glob": "/" } }}] }
+\`\`\`
 `,
-    isPackPermission: "Whether the server should pack(compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
     temporaryMode: "Type of temporary access given. Types: relative",
     temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
@@ -624,5 +642,31 @@ export const INTEGRATION = {
   },
   DELETE: {
     integrationId: "The ID of the integration object."
+  }
+};
+
+export const AUDIT_LOG_STREAMS = {
+  CREATE: {
+    url: "The HTTP URL to push logs to.",
+    headers: {
+      desc: "The HTTP headers attached for the external prrovider requests.",
+      key: "The HTTP header key name.",
+      value: "The HTTP header value."
+    }
+  },
+  UPDATE: {
+    id: "The ID of the audit log stream to update.",
+    url: "The HTTP URL to push logs to.",
+    headers: {
+      desc: "The HTTP headers attached for the external prrovider requests.",
+      key: "The HTTP header key name.",
+      value: "The HTTP header value."
+    }
+  },
+  DELETE: {
+    id: "The ID of the audit log stream to delete."
+  },
+  GET_BY_ID: {
+    id: "The ID of the audit log stream to get details."
   }
 };

@@ -17,7 +17,7 @@ export type TOrgPermission = {
   actorId: string;
   orgId: string;
   actorAuthMethod: ActorAuthMethod;
-  actorOrgId: string | undefined;
+  actorOrgId: string;
 };
 
 export type TProjectPermission = {

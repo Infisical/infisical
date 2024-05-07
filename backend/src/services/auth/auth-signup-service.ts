@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-import { OrgMembershipStatus } from "@app/db/schemas";
+import { OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -80,9 +80,9 @@ export const authSignupServiceFactory = ({
     });
 
     await smtpService.sendMail({
-      template: SmtpTemplates.EmailVerification,
+      template: SmtpTemplates.SignupEmailVerification,
       subjectLine: "Infisical confirmation code",
-      recipients: [email],
+      recipients: [user.email as string],
       substitutions: {
         code: token
       }
@@ -101,6 +101,8 @@ export const authSignupServiceFactory = ({
       userId: user.id,
       code
     });
+
+    await userDAL.updateById(user.id, { isEmailVerified: true });
 
     // generate jwt token this is a temporary token
     const jwtToken = jwt.sign(
@@ -169,12 +171,11 @@ export const authSignupServiceFactory = ({
         tx
       );
       // If it's SAML Auth and the organization ID is present, we should check if the user has a pending invite for this org, and accept it
-      if (isAuthMethodSaml(authMethod) && organizationId) {
+      if ((isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && organizationId) {
         const [pendingOrgMembership] = await orgDAL.findMembership({
-          inviteEmail: email,
-          userId: user.id,
+          [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
           status: OrgMembershipStatus.Invited,
-          orgId: organizationId
+          [`${TableName.OrgMembership}.orgId` as "orgId"]: organizationId
         });
 
         if (pendingOrgMembership) {

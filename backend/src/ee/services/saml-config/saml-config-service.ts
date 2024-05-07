@@ -7,7 +7,8 @@ import {
   SecretKeyEncoding,
   TableName,
   TSamlConfigs,
-  TSamlConfigsUpdate
+  TSamlConfigsUpdate,
+  TUsers
 } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import {
@@ -19,10 +20,18 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthTokenType } from "@app/services/auth/auth-type";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { normalizeUsername } from "@app/services/user/user-fns";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -31,15 +40,19 @@ import { TSamlConfigDALFactory } from "./saml-config-dal";
 import { TCreateSamlCfgDTO, TGetSamlCfgDTO, TSamlLoginDTO, TUpdateSamlCfgDTO } from "./saml-config-types";
 
 type TSamlConfigServiceFactoryDep = {
-  samlConfigDAL: TSamlConfigDALFactory;
-  userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById">;
+  samlConfigDAL: Pick<TSamlConfigDALFactory, "create" | "findOne" | "update" | "findById">;
+  userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById" | "findById">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TSamlConfigServiceFactory = ReturnType<typeof samlConfigServiceFactory>;
@@ -48,9 +61,13 @@ export const samlConfigServiceFactory = ({
   samlConfigDAL,
   orgBotDAL,
   orgDAL,
+  orgMembershipDAL,
   userDAL,
+  userAliasDAL,
   permissionService,
-  licenseService
+  licenseService,
+  tokenService,
+  smtpService
 }: TSamlConfigServiceFactoryDep) => {
   const createSamlCfg = async ({
     cert,
@@ -305,7 +322,7 @@ export const samlConfigServiceFactory = ({
   };
 
   const samlLogin = async ({
-    username,
+    externalId,
     email,
     firstName,
     lastName,
@@ -314,38 +331,40 @@ export const samlConfigServiceFactory = ({
     relayState
   }: TSamlLoginDTO) => {
     const appCfg = getConfig();
-    let user = await userDAL.findOne({ username });
+    const serverCfg = await getServerCfg();
+    const userAlias = await userAliasDAL.findOne({
+      externalId,
+      orgId,
+      aliasType: UserAliasType.SAML
+    });
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new BadRequestError({ message: "Org not found" });
 
-    // TODO(dangtony98): remove this after aliases update
-    if (authProvider === AuthMethod.KEYCLOAK_SAML && appCfg.LICENSE_SERVER_KEY) {
-      throw new BadRequestError({ message: "Keycloak SAML is not yet available on Infisical Cloud" });
-    }
-
-    if (user) {
-      await userDAL.transaction(async (tx) => {
+    let user: TUsers;
+    if (userAlias) {
+      user = await userDAL.transaction(async (tx) => {
+        const foundUser = await userDAL.findById(userAlias.userId, tx);
         const [orgMembership] = await orgDAL.findMembership(
           {
-            userId: user.id,
+            [`${TableName.OrgMembership}.userId` as "userId"]: foundUser.id,
             [`${TableName.OrgMembership}.orgId` as "id"]: orgId
           },
           { tx }
         );
         if (!orgMembership) {
-          await orgDAL.createMembership(
+          await orgMembershipDAL.create(
             {
-              userId: user.id,
-              orgId,
+              userId: userAlias.userId,
               inviteEmail: email,
+              orgId,
               role: OrgMembershipRole.Member,
-              status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
             },
             tx
           );
           // Only update the membership to Accepted if the user account is already completed.
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && foundUser.isAccepted) {
           await orgDAL.updateMembershipById(
             orgMembership.id,
             {
@@ -354,40 +373,97 @@ export const samlConfigServiceFactory = ({
             tx
           );
         }
+
+        return foundUser;
       });
     } else {
       user = await userDAL.transaction(async (tx) => {
-        const newUser = await userDAL.create(
+        let newUser: TUsers | undefined;
+        if (serverCfg.trustSamlEmails) {
+          newUser = await userDAL.findOne(
+            {
+              email,
+              isEmailVerified: true
+            },
+            tx
+          );
+        }
+
+        if (!newUser) {
+          const uniqueUsername = await normalizeUsername(`${firstName ?? ""}-${lastName ?? ""}`, userDAL);
+          newUser = await userDAL.create(
+            {
+              username: serverCfg.trustSamlEmails ? email : uniqueUsername,
+              email,
+              isEmailVerified: serverCfg.trustSamlEmails,
+              firstName,
+              lastName,
+              authMethods: [],
+              isGhost: false
+            },
+            tx
+          );
+        }
+
+        await userAliasDAL.create(
           {
-            username,
-            email,
-            firstName,
-            lastName,
-            authMethods: [AuthMethod.EMAIL],
-            isGhost: false
+            userId: newUser.id,
+            aliasType: UserAliasType.SAML,
+            externalId,
+            emails: email ? [email] : [],
+            orgId
           },
           tx
         );
-        await orgDAL.createMembership({
-          inviteEmail: email,
-          orgId,
-          role: OrgMembershipRole.Member,
-          status: OrgMembershipStatus.Invited
-        });
+
+        const [orgMembership] = await orgDAL.findMembership(
+          {
+            [`${TableName.OrgMembership}.userId` as "userId"]: newUser.id,
+            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+          },
+          { tx }
+        );
+
+        if (!orgMembership) {
+          await orgMembershipDAL.create(
+            {
+              userId: newUser.id,
+              inviteEmail: email,
+              orgId,
+              role: OrgMembershipRole.Member,
+              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+            },
+            tx
+          );
+          // Only update the membership to Accepted if the user account is already completed.
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && newUser.isAccepted) {
+          await orgDAL.updateMembershipById(
+            orgMembership.id,
+            {
+              status: OrgMembershipStatus.Accepted
+            },
+            tx
+          );
+        }
+
         return newUser;
       });
     }
+
     const isUserCompleted = Boolean(user.isAccepted);
     const providerAuthToken = jwt.sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
+        ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
         firstName,
         lastName,
         organizationName: organization.name,
         organizationId: organization.id,
+        organizationSlug: organization.slug,
         authMethod: authProvider,
+        authType: UserAliasType.SAML,
         isUserCompleted,
         ...(relayState
           ? {
@@ -402,6 +478,22 @@ export const samlConfigServiceFactory = ({
     );
 
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
+
+    if (user.email && !user.isEmailVerified) {
+      const token = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_VERIFICATION,
+        userId: user.id
+      });
+
+      await smtpService.sendMail({
+        template: SmtpTemplates.EmailVerification,
+        subjectLine: "Infisical confirmation code",
+        recipients: [user.email],
+        substitutions: {
+          code: token
+        }
+      });
+    }
 
     return { isUserCompleted, providerAuthToken };
   };

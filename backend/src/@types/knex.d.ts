@@ -7,6 +7,9 @@ import {
   TApiKeysUpdate,
   TAuditLogs,
   TAuditLogsInsert,
+  TAuditLogStreams,
+  TAuditLogStreamsInsert,
+  TAuditLogStreamsUpdate,
   TAuditLogsUpdate,
   TAuthTokens,
   TAuthTokenSessions,
@@ -412,6 +415,11 @@ declare module "knex/types/tables" {
     [TableName.LdapGroupMap]: Knex.CompositeTableType<TLdapGroupMaps, TLdapGroupMapsInsert, TLdapGroupMapsUpdate>;
     [TableName.OrgBot]: Knex.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;
     [TableName.AuditLog]: Knex.CompositeTableType<TAuditLogs, TAuditLogsInsert, TAuditLogsUpdate>;
+    [TableName.AuditLogStream]: Knex.CompositeTableType<
+      TAuditLogStreams,
+      TAuditLogStreamsInsert,
+      TAuditLogStreamsUpdate
+    >;
     [TableName.GitAppInstallSession]: Knex.CompositeTableType<
       TGitAppInstallSessions,
       TGitAppInstallSessionsInsert,

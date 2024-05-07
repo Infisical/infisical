@@ -495,6 +495,7 @@ export const SpecificPrivilegeSection = ({ membershipId }: Props) => {
           ?.filter(({ permissions }) =>
             permissions?.[0]?.subject?.includes(ProjectPermissionSub.Secrets)
           )
+          .sort((a, b) => a.id.localeCompare(b.id))
           ?.map((privilege) => (
             <SpecificPrivilegeSecretForm
               privilege={privilege as TProjectUserPrivilege}

@@ -3,6 +3,8 @@ export type TServerConfig = {
   allowSignUp: boolean;
   allowedSignUpDomain?: string | null;
   isMigrationModeOn?: boolean;
+  trustSamlEmails: boolean;
+  trustLdapEmails: boolean;
 };
 
 export type TCreateAdminUserDTO = {

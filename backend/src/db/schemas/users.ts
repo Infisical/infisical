@@ -21,7 +21,8 @@ export const UsersSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   isGhost: z.boolean().default(false),
-  username: z.string()
+  username: z.string(),
+  isEmailVerified: z.boolean().nullable().optional()
 });
 
 export type TUsers = z.infer<typeof UsersSchema>;

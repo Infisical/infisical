@@ -14,7 +14,9 @@ export const SuperAdminSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   allowedSignUpDomain: z.string().nullable().optional(),
-  instanceId: z.string().uuid().default("00000000-0000-0000-0000-000000000000")
+  instanceId: z.string().uuid().default("00000000-0000-0000-0000-000000000000"),
+  trustSamlEmails: z.boolean().default(false).nullable().optional(),
+  trustLdapEmails: z.boolean().default(false).nullable().optional()
 });
 
 export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;

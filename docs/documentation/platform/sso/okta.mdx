@@ -4,10 +4,10 @@ description: "Learn how to configure Okta SAML 2.0 for Infisical SSO."
 ---
 
 <Info>
-   Okta SAML SSO is a paid feature.
-   
-   If you're using Infisical Cloud, then it is available under the **Pro Tier**. If you're self-hosting Infisical,
-   then you should contact sales@infisical.com to purchase an enterprise license to use it.
+  Okta SAML SSO is a paid feature. If you're using Infisical Cloud, then it is
+  available under the **Pro Tier**. If you're self-hosting Infisical, then you
+  should contact sales@infisical.com to purchase an enterprise license to use
+  it.
 </Info>
 
 <Steps>
@@ -22,24 +22,24 @@ description: "Learn how to configure Okta SAML 2.0 for Infisical SSO."
       button.
 
       ![SAML Okta create app integration](../../../images/sso/okta/create-app-integration.png)
-      
+
       In the Create a New Application Integration dialog, select the **SAML 2.0** radio button:
 
       ![SAML Okta create SAML 2.0 integration](../../../images/sso/okta/create-saml-app.png)
-      
+
       On the General Settings screen, give the application a unique name like Infisical and select **Next**.
-      
+
       ![SAML Okta create SAML 2.0 integration](../../../images/sso/okta/general-settings.png)
-      
+
       On the Configure SAML screen, set the **Single sign-on URL** and **Audience URI (SP Entity ID)** from step 1.
 
       ![SAML Okta configure IdP fields](../../../images/sso/okta/configure-saml.png)
-      
+
       <Note>
          If you're self-hosting Infisical, then you will want to replace
          `https://app.infisical.com` with your own domain.
       </Note>
-      
+
       Also on the Configure SAML screen, configure the **Attribute Statements** to map:
 
       - `id -> user.id`,
@@ -50,6 +50,7 @@ description: "Learn how to configure Okta SAML 2.0 for Infisical SSO."
       ![SAML Okta attribute statements](../../../images/sso/okta/attribute-statements.png)
 
       Once configured, select **Next** to proceed to the Feedback screen and select **Finish**.
+
    </Step>
    <Step title="Retrieve Identity Provider (IdP) Information from Okta">
       Once your application is created, select the **Sign On** tab for the app and select the **View Setup Instructions** button located on the right side of the screen:
@@ -59,12 +60,14 @@ description: "Learn how to configure Okta SAML 2.0 for Infisical SSO."
       Copy the **Identity Provider Single Sign-On URL**, the **Identity Provider Issuer**, and the **X.509 Certificate** to use when finishing configuring Okta SAML in Infisical.
 
       ![SAML Okta IdP values](../../../images/sso/okta/idp-values.png)
+
    </Step>
    <Step title="Finish configuring SAML in Infisical">
       Back in Infisical, set **Identity Provider Single Sign-On URL**, **Identity Provider Issuer**,
       and **Certificate** to **X.509 Certificate** from step 3. Once you've done that, press **Update** to complete the required configuration.
 
       ![SAML Okta paste values into Infisical](../../../images/sso/okta/idp-values-2.png)
+
    </Step>
    <Step title="Assign users in Okta to the application">
       Back in Okta, navigate to the **Assignments** tab and select **Assign**. You can assign access to the application on a user-by-user basis using the Assign to People option, or in-bulk using the Assign to Groups option.
@@ -72,11 +75,13 @@ description: "Learn how to configure Okta SAML 2.0 for Infisical SSO."
       ![SAML Okta assignment](../../../images/sso/okta/assignment.png)
 
       At this point, you have configured everything you need within the context of the Okta Admin Portal.
+
    </Step>
    <Step title="Enable SAML SSO in Infisical">
       Enabling SAML SSO allows members in your organization to log into Infisical via Okta.
 
       ![SAML Okta enable SAML](../../../images/sso/okta/enable-saml.png)
+
    </Step>
    <Step title="Enforce SAML SSO in Infisical">
       Enforcing SAML SSO ensures that members in your organization can only access Infisical
@@ -89,13 +94,15 @@ description: "Learn how to configure Okta SAML 2.0 for Infisical SSO."
          We recommend ensuring that your account is provisioned the application in Okta
          prior to enforcing SAML SSO to prevent any unintended issues.
       </Warning>
+
    </Step>
 </Steps>
 
 <Note>
-   If you're configuring SAML SSO on a self-hosted instance of Infisical, make sure to
-   set the `AUTH_SECRET` and `SITE_URL` environment variable for it to work:
-   
-   - `AUTH_SECRET`: A secret key used for signing and verifying JWT. This can be a random 32-byte base64 string generated with `openssl rand -base64 32`.
-   - `SITE_URL`: The URL of your self-hosted instance of Infisical - should be an absolute URL including the protocol (e.g. https://app.infisical.com)
+  If you're configuring SAML SSO on a self-hosted instance of Infisical, make
+  sure to set the `AUTH_SECRET` and `SITE_URL` environment variable for it to
+  work: - `AUTH_SECRET`: A secret key used for signing and verifying JWT. This
+  can be a random 32-byte base64 string generated with `openssl rand -base64
+  32`. - `SITE_URL`: The URL of your self-hosted instance of Infisical - should
+  be an absolute URL including the protocol (e.g. https://app.infisical.com)
 </Note>
