@@ -46,11 +46,16 @@ export enum TableName {
   IdentityUniversalAuth = "identity_universal_auths",
   IdentityGcpIamAuth = "identity_gcp_iam_auths",
   IdentityUaClientSecret = "identity_ua_client_secrets",
+  IdentityAwsIamAuth = "identity_aws_iam_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
   IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
   ScimToken = "scim_tokens",
+  AccessApprovalPolicy = "access_approval_policies",
+  AccessApprovalPolicyApprover = "access_approval_policies_approvers",
+  AccessApprovalRequest = "access_approval_requests",
+  AccessApprovalRequestReviewer = "access_approval_requests_reviewers",
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
   SecretApprovalRequest = "secret_approval_requests",
@@ -140,5 +145,6 @@ export enum ProjectUpgradeStatus {
 
 export enum IdentityAuthMethod {
   Univeral = "universal-auth",
-  GCP_IAM_AUTH = "gcp-iam-auth"
+  GCP_IAM_AUTH = "gcp-iam-auth",
+  AWS_IAM_AUTH = "aws-iam-auth"
 }

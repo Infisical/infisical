@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { organizationKeys } from "../organization/queries";
 import { identitiesKeys } from "./queries";
 import {
+  AddIdentityAwsIamAuthDTO,
   AddIdentityGcpIamAuthDTO,
   AddIdentityUniversalAuthDTO,
   ClientSecretData,
@@ -14,11 +15,14 @@ import {
   DeleteIdentityDTO,
   DeleteIdentityUniversalAuthClientSecretDTO,
   Identity,
+  IdentityAwsIamAuth,
   IdentityGcpIamAuth,
   IdentityUniversalAuth,
+  UpdateIdentityAwsIamAuthDTO,
   UpdateIdentityDTO,
   UpdateIdentityGcpIamAuthDTO,
-  UpdateIdentityUniversalAuthDTO} from "./types";
+  UpdateIdentityUniversalAuthDTO
+} from "./types";
 
 export const useCreateIdentity = () => {
   const queryClient = useQueryClient();
@@ -206,6 +210,42 @@ export const useAddIdentityGcpIamAuth = () => {
   });
 };
 
+export const useAddIdentityAwsIamAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityAwsIamAuth, {}, AddIdentityAwsIamAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      stsEndpoint,
+      allowedPrincipalArns,
+      allowedAccountIds,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityAwsIamAuth }
+      } = await apiRequest.post<{ identityAwsIamAuth: IdentityAwsIamAuth }>(
+        `/api/v1/auth/aws-iam-auth/identities/${identityId}`,
+        {
+          stsEndpoint,
+          allowedPrincipalArns,
+          allowedAccountIds,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityAwsIamAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
 export const useUpdateIdentityGcpIamAuth = () => {
   const queryClient = useQueryClient();
   return useMutation<IdentityGcpIamAuth, {}, UpdateIdentityGcpIamAuthDTO>({
@@ -231,7 +271,44 @@ export const useUpdateIdentityGcpIamAuth = () => {
           accessTokenTrustedIps
         }
       );
+
       return identityGcpIamAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
+export const useUpdateIdentityAwsIamAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityAwsIamAuth, {}, UpdateIdentityAwsIamAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      stsEndpoint,
+      allowedPrincipalArns,
+      allowedAccountIds,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityAwsIamAuth }
+      } = await apiRequest.patch<{ identityAwsIamAuth: IdentityAwsIamAuth }>(
+        `/api/v1/auth/aws-iam-auth/identities/${identityId}`,
+        {
+          stsEndpoint,
+          allowedPrincipalArns,
+          allowedAccountIds,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityAwsIamAuth;
     },
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));

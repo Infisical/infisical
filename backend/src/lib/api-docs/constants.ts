@@ -92,6 +92,18 @@ export const UNIVERSAL_AUTH = {
   }
 } as const;
 
+export const AWS_IAM_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login.",
+    iamHttpRequestMethod: "The HTTP request method used in the signed request.",
+    iamRequestUrl:
+      "The base64-encoded HTTP URL used in the signed request. Most likely, the base64-encoding of https://sts.amazonaws.com/",
+    iamRequestBody:
+      "The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.",
+    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request."
+  }
+} as const;
+
 export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
@@ -465,7 +477,7 @@ export const SECRET_TAGS = {
 export const IDENTITY_ADDITIONAL_PRIVILEGE = {
   CREATE: {
     projectSlug: "The slug of the project of the identity in.",
-    identityId: "The ID of the identity to delete.",
+    identityId: "The ID of the identity to create.",
     slug: "The slug of the privilege to create.",
     permissions: `The permission object for the privilege.
 - Read secrets

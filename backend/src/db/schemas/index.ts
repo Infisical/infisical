@@ -1,3 +1,7 @@
+export * from "./access-approval-policies";
+export * from "./access-approval-policies-approvers";
+export * from "./access-approval-requests";
+export * from "./access-approval-requests-reviewers";
 export * from "./api-keys";
 export * from "./audit-log-streams";
 export * from "./audit-logs";
@@ -13,6 +17,7 @@ export * from "./group-project-memberships";
 export * from "./groups";
 export * from "./identities";
 export * from "./identity-access-tokens";
+export * from "./identity-aws-iam-auths";
 export * from "./identity-gcp-iam-auths";
 export * from "./identity-org-memberships";
 export * from "./identity-project-additional-privilege";

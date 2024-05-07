@@ -149,6 +149,45 @@ export type UpdateIdentityGcpIamAuthDTO = {
   }[];
 };
 
+export type IdentityAwsIamAuth = {
+  identityId: string;
+  stsEndpoint: string;
+  allowedPrincipalArns: string;
+  allowedAccountIds: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityAwsIamAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  stsEndpoint: string;
+  allowedPrincipalArns: string;
+  allowedAccountIds: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityAwsIamAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  stsEndpoint?: string;
+  allowedPrincipalArns?: string;
+  allowedAccountIds?: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
 export type CreateIdentityUniversalAuthClientSecretDTO = {
   identityId: string;
   description?: string;

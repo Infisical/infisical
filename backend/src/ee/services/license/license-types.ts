@@ -3,6 +3,7 @@ import { TOrgPermission } from "@app/lib/types";
 export enum InstanceType {
   OnPrem = "self-hosted",
   EnterpriseOnPrem = "enterprise-self-hosted",
+  EnterpriseOnPremOffline = "enterprise-self-hosted-offline",
   Cloud = "cloud"
 }
 

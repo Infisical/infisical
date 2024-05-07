@@ -2,6 +2,12 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { registerV1EERoutes } from "@app/ee/routes/v1";
+import { accessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
+import { accessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
+import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
+import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
+import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
+import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
@@ -72,6 +78,8 @@ import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
 import { identityAccessTokenDALFactory } from "@app/services/identity-access-token/identity-access-token-dal";
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
+import { identityAwsIamAuthDALFactory } from "@app/services/identity-aws-iam-auth/identity-aws-iam-auth-dal";
+import { identityAwsIamAuthServiceFactory } from "@app/services/identity-aws-iam-auth/identity-aws-iam-auth-service";
 import { identityGcpIamAuthDALFactory } from "@app/services/identity-gcp-iam-auth/identity-gcp-iam-auth-dal";
 import { identityGcpIamAuthServiceFactory } from "@app/services/identity-gcp-iam-auth/identity-gcp-iam-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
@@ -197,6 +205,7 @@ export const registerRoutes = async (
 
   const identityUaDAL = identityUaDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
+  const identityAwsIamAuthDAL = identityAwsIamAuthDALFactory(db);
 
   const identityGcpIamAuthDAL = identityGcpIamAuthDALFactory(db);
 
@@ -211,6 +220,12 @@ export const registerRoutes = async (
   const scimDAL = scimDALFactory(db);
   const ldapConfigDAL = ldapConfigDALFactory(db);
   const ldapGroupMapDAL = ldapGroupMapDALFactory(db);
+
+  const accessApprovalPolicyDAL = accessApprovalPolicyDALFactory(db);
+  const accessApprovalRequestDAL = accessApprovalRequestDALFactory(db);
+  const accessApprovalPolicyApproverDAL = accessApprovalPolicyApproverDALFactory(db);
+  const accessApprovalRequestReviewerDAL = accessApprovalRequestReviewerDALFactory(db);
+
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
   const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
   const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
@@ -269,6 +284,7 @@ export const registerRoutes = async (
     secretApprovalPolicyDAL
   });
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
+
   const samlService = samlConfigServiceFactory({
     permissionService,
     orgBotDAL,
@@ -600,6 +616,30 @@ export const registerRoutes = async (
     secretVersionTagDAL,
     secretQueueService
   });
+
+  const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
+    accessApprovalPolicyDAL,
+    accessApprovalPolicyApproverDAL,
+    permissionService,
+    projectEnvDAL,
+    projectMembershipDAL,
+    projectDAL
+  });
+
+  const accessApprovalRequestService = accessApprovalRequestServiceFactory({
+    projectDAL,
+    permissionService,
+    accessApprovalRequestReviewerDAL,
+    additionalPrivilegeDAL: projectUserAdditionalPrivilegeDAL,
+    projectMembershipDAL,
+    accessApprovalPolicyDAL,
+    accessApprovalRequestDAL,
+    projectEnvDAL,
+    userDAL,
+    smtpService,
+    accessApprovalPolicyApproverDAL
+  });
+
   const secretRotationQueue = secretRotationQueueFactory({
     telemetryService,
     secretRotationDAL,
@@ -675,6 +715,15 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const identityAWSIAMAuthService = identityAwsIamAuthServiceFactory({
+    identityAccessTokenDAL,
+    identityAwsIamAuthDAL,
+    identityOrgMembershipDAL,
+    identityDAL,
+    licenseService,
+    permissionService
+  });
+
   const dynamicSecretProviders = buildDynamicSecretProviders();
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
     queueService,
@@ -744,7 +793,10 @@ export const registerRoutes = async (
     identityProject: identityProjectService,
     identityUa: identityUaService,
     identityGcpIamAuth: identityGcpIamAuthService,
+    identityAwsIamAuth: identityAWSIAMAuthService,
     secretApprovalPolicy: sapService,
+    accessApprovalPolicy: accessApprovalPolicyService,
+    accessApprovalRequest: accessApprovalRequestService,
     secretApprovalRequest: sarService,
     secretRotation: secretRotationService,
     dynamicSecret: dynamicSecretService,

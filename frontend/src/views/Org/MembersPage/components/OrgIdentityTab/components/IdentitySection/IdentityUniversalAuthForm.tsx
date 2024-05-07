@@ -63,7 +63,6 @@ export const IdentityUniversalAuthForm = ({
   handlePopUpToggle,
   identityAuthMethodData
 }: Props) => {
-  
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
@@ -384,7 +383,7 @@ export const IdentityUniversalAuthForm = ({
           variant="plain"
           onClick={() => handlePopUpToggle("identityAuthMethod", false)}
         >
-          Cancel
+          {identityAuthMethodData?.authMethod ? "Cancel" : "Skip"}
         </Button>
       </div>
     </form>

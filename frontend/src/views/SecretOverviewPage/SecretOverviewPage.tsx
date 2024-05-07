@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -70,6 +70,12 @@ import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSect
 import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
+import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
+
+export enum EntryType {
+  FOLDER = "folder",
+  SECRET = "secret"
+}
 
 export const SecretOverviewPage = () => {
   const { t } = useTranslation();
@@ -81,15 +87,6 @@ export const SecretOverviewPage = () => {
   const parentTableRef = useRef<HTMLTableElement>(null);
   const [expandableTableWidth, setExpandableTableWidth] = useState(0);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-
-  useEffect(() => {
-    const handleParentTableWidthResize = () => {
-      setExpandableTableWidth(parentTableRef.current?.clientWidth || 0);
-    };
-
-    window.addEventListener("resize", handleParentTableWidthResize);
-    return () => window.removeEventListener("resize", handleParentTableWidthResize);
-  }, []);
 
   useEffect(() => {
     if (parentTableRef.current) {
@@ -104,6 +101,56 @@ export const SecretOverviewPage = () => {
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
+
+  const [selectedEntries, setSelectedEntries] = useState<{
+    [EntryType.FOLDER]: Record<string, boolean>;
+    [EntryType.SECRET]: Record<string, boolean>;
+  }>({
+    [EntryType.FOLDER]: {},
+    [EntryType.SECRET]: {}
+  });
+
+  const toggleSelectedEntry = useCallback(
+    (type: EntryType, key: string) => {
+      const isChecked = Boolean(selectedEntries[type]?.[key]);
+      const newChecks = { ...selectedEntries };
+
+      // remove selection if its present else add it
+      if (isChecked) {
+        delete newChecks[type][key];
+      } else {
+        newChecks[type][key] = true;
+      }
+
+      setSelectedEntries(newChecks);
+    },
+    [selectedEntries]
+  );
+
+  const resetSelectedEntries = useCallback(() => {
+    setSelectedEntries({
+      [EntryType.FOLDER]: {},
+      [EntryType.SECRET]: {}
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleParentTableWidthResize = () => {
+      setExpandableTableWidth(parentTableRef.current?.clientWidth || 0);
+    };
+
+    const onRouteChangeStart = () => {
+      resetSelectedEntries();
+    };
+
+    router.events.on("routeChangeStart", onRouteChangeStart);
+
+    window.addEventListener("resize", handleParentTableWidthResize);
+    return () => {
+      window.removeEventListener("resize", handleParentTableWidthResize);
+      router.events.off("routeChangeStart", onRouteChangeStart);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isWorkspaceLoading && !workspaceId && router.isReady) {
@@ -129,7 +176,8 @@ export const SecretOverviewPage = () => {
     secretPath,
     decryptFileKey: latestFileKey!
   });
-  const { folders, folderNames, isFolderPresentInEnv } = useGetFoldersByEnv({
+
+  const { folders, folderNames, isFolderPresentInEnv, getFolderByNameAndEnv } = useGetFoldersByEnv({
     projectId: workspaceId,
     path: secretPath,
     environments: userAvailableEnvs.map(({ slug }) => slug)
@@ -543,6 +591,13 @@ export const SecretOverviewPage = () => {
             </div>
           </div>
         </div>
+        <SelectionPanel
+          secretPath={secretPath}
+          getSecretByKey={getSecretByKey}
+          getFolderByNameAndEnv={getFolderByNameAndEnv}
+          selectedEntries={selectedEntries}
+          resetSelectedEntries={resetSelectedEntries}
+        />
         <div className="thin-scrollbar mt-4" ref={parentTableRef}>
           <TableContainer className="max-h-[calc(100vh-250px)] overflow-y-auto">
             <Table>
@@ -666,6 +721,8 @@ export const SecretOverviewPage = () => {
                     <SecretOverviewFolderRow
                       folderName={folderName}
                       isFolderPresentInEnv={isFolderPresentInEnv}
+                      isSelected={selectedEntries.folder[folderName]}
+                      onToggleFolderSelect={() => toggleSelectedEntry(EntryType.FOLDER, folderName)}
                       environments={visibleEnvs}
                       key={`overview-${folderName}-${index + 1}`}
                       onClick={handleFolderClick}
@@ -684,6 +741,8 @@ export const SecretOverviewPage = () => {
                   visibleEnvs?.length > 0 &&
                   filteredSecretNames.map((key, index) => (
                     <SecretOverviewTableRow
+                      isSelected={selectedEntries.secret[key]}
+                      onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
                       secretPath={secretPath}
                       isImportedSecretPresentInEnv={isImportedSecretPresentInEnv}
                       onSecretCreate={handleSecretCreate}

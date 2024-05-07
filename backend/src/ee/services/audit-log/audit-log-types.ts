@@ -70,6 +70,10 @@ export enum EventType {
   ADD_IDENTITY_GCP_IAM_AUTH = "add-identity-gcp-iam -auth",
   UPDATE_IDENTITY_GCP_IAM_AUTH = "update-identity-gcp-iam-auth",
   GET_IDENTITY_GCP_IAM_AUTH = "get-identity-gcp-iam-auth",
+  LOGIN_IDENTITY_AWS_IAM_AUTH = "login-identity-aws-iam-auth",
+  ADD_IDENTITY_AWS_IAM_AUTH = "add-identity-aws-iam-auth",
+  UPDATE_IDENTITY_AWS_IAM_AUTH = "update-identity-aws-iam-auth",
+  GET_IDENTITY_AWS_IAM_AUTH = "get-identity-aws-iam-auth",
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
@@ -452,6 +456,50 @@ interface GetIdentityGcpIamAuthEvent {
   };
 }
 
+interface LoginIdentityAwsIamAuthEvent {
+  type: EventType.LOGIN_IDENTITY_AWS_IAM_AUTH;
+  metadata: {
+    identityId: string;
+    identityAwsIamAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityAwsIamAuthEvent {
+  type: EventType.ADD_IDENTITY_AWS_IAM_AUTH;
+  metadata: {
+    identityId: string;
+    stsEndpoint: string;
+    allowedPrincipalArns: string;
+    allowedAccountIds: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityAwsIamAuthEvent {
+  type: EventType.UPDATE_IDENTITY_AWS_IAM_AUTH;
+  metadata: {
+    identityId: string;
+    stsEndpoint?: string;
+    allowedPrincipalArns?: string;
+    allowedAccountIds?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityAwsIamAuthEvent {
+  type: EventType.GET_IDENTITY_AWS_IAM_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface CreateEnvironmentEvent {
   type: EventType.CREATE_ENVIRONMENT;
   metadata: {
@@ -710,6 +758,10 @@ export type Event =
   | AddIdentityGcpIamAuthEvent
   | UpdateIdentityGcpIamAuthEvent
   | GetIdentityGcpIamAuthEvent
+  | LoginIdentityAwsIamAuthEvent
+  | AddIdentityAwsIamAuthEvent
+  | UpdateIdentityAwsIamAuthEvent
+  | GetIdentityAwsIamAuthEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

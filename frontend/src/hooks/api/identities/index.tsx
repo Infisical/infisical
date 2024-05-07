@@ -1,6 +1,7 @@
 export { identityAuthToNameMap } from "./constants";
 export { IdentityAuthMethod } from "./enums";
 export {
+  useAddIdentityAwsIamAuth,
   useAddIdentityGcpIamAuth,
   useAddIdentityUniversalAuth,
   useCreateIdentity,
@@ -8,9 +9,13 @@ export {
   useDeleteIdentity,
   useRevokeIdentityUniversalAuthClientSecret,
   useUpdateIdentity,
+  useUpdateIdentityAwsIamAuth,
   useUpdateIdentityGcpIamAuth,
-  useUpdateIdentityUniversalAuth} from "./mutations";
+  useUpdateIdentityUniversalAuth
+} from "./mutations";
 export {
+  useGetIdentityAwsIamAuth,
   useGetIdentityGcpIamAuth,
   useGetIdentityUniversalAuth,
-  useGetIdentityUniversalAuthClientSecrets} from "./queries";
+  useGetIdentityUniversalAuthClientSecrets
+} from "./queries";
