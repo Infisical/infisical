@@ -1,23 +1,22 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useRouter } from "next/router";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Input } from "@app/components/v2";
 import { loginLDAPRedirect } from "@app/hooks/api/auth/queries";
 
-type Props = {
-  setStep: (step: number) => void;
-};
+export const LoginLDAP = () => {
+  const router = useRouter();
+  const queryParams = new URLSearchParams(window.location.search);
+  const passedOrgSlug = queryParams.get("organizationSlug");
+  const passedUsername = queryParams.get("username");
 
-export const LDAPStep = ({ setStep }: Props) => {
-  
-  const [organizationSlug, setOrganizationSlug] = useState("");
-  const [username, setUsername] = useState("");
+  const [organizationSlug, setOrganizationSlug] = useState(passedOrgSlug || "");
+  const [username, setUsername] = useState(passedUsername || "");
   const [password, setPassword] = useState("");
 
   const { t } = useTranslation();
-
-  // const queryParams = new URLSearchParams(window.location.search);
 
   const handleSubmission = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +41,6 @@ export const LDAPStep = ({ setStep }: Props) => {
         type: "success"
       });
 
-      // redirects either to /login/sso or /signup/sso
       window.open(nextUrl);
       window.close();
     } catch (err) {
@@ -76,6 +74,7 @@ export const LDAPStep = ({ setStep }: Props) => {
               autoComplete="email"
               id="email"
               className="h-12"
+              isDisabled={passedOrgSlug !== null}
             />
           </div>
         </div>
@@ -90,6 +89,7 @@ export const LDAPStep = ({ setStep }: Props) => {
               autoComplete="email"
               id="email"
               className="h-12"
+              isDisabled={passedUsername !== null}
             />
           </div>
         </div>
@@ -122,7 +122,7 @@ export const LDAPStep = ({ setStep }: Props) => {
       <div className="mt-4 flex flex-row items-center justify-center">
         <button
           onClick={() => {
-            setStep(0);
+            router.push("/login");
           }}
           type="button"
           className="mt-2 cursor-pointer text-sm text-bunker-300 duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"

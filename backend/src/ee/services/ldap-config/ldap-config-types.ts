@@ -51,7 +51,7 @@ export type TLdapLoginDTO = {
   username: string;
   firstName: string;
   lastName: string;
-  emails: string[];
+  email: string;
   orgId: string;
   groups?: {
     dn: string;

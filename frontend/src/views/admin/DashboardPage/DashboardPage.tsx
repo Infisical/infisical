@@ -14,11 +14,11 @@ import {
   Input,
   Select,
   SelectItem,
+  Switch,
   Tab,
   TabList,
   TabPanel,
-  Tabs
-} from "@app/components/v2";
+  Tabs} from "@app/components/v2";
 import { useOrganization, useServerConfig, useUser } from "@app/context";
 import { useUpdateServerConfig } from "@app/hooks/api";
 
@@ -33,7 +33,9 @@ enum SignUpModes {
 
 const formSchema = z.object({
   signUpMode: z.nativeEnum(SignUpModes),
-  allowedSignUpDomain: z.string().optional().nullable()
+  allowedSignUpDomain: z.string().optional().nullable(),
+  trustSamlEmails: z.boolean(),
+  trustLdapEmails: z.boolean()
 });
 
 type TDashboardForm = z.infer<typeof formSchema>;
@@ -52,7 +54,9 @@ export const AdminDashboardPage = () => {
     values: {
       // eslint-disable-next-line
       signUpMode: config.allowSignUp ? SignUpModes.Anyone : SignUpModes.Disabled,
-      allowedSignUpDomain: config.allowedSignUpDomain
+      allowedSignUpDomain: config.allowedSignUpDomain,
+      trustSamlEmails: config.trustSamlEmails,
+      trustLdapEmails: config.trustLdapEmails
     }
   });
 
@@ -61,8 +65,6 @@ export const AdminDashboardPage = () => {
   const { user, isLoading: isUserLoading } = useUser();
   const { orgs } = useOrganization();
   const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
-
-  
 
   const isNotAllowed = !user?.superAdmin;
 
@@ -78,10 +80,13 @@ export const AdminDashboardPage = () => {
 
   const onFormSubmit = async (formData: TDashboardForm) => {
     try {
-      const { signUpMode, allowedSignUpDomain } = formData;
+      const { signUpMode, allowedSignUpDomain, trustSamlEmails, trustLdapEmails } = formData;
+
       await updateServerConfig({
         allowSignUp: signUpMode !== SignUpModes.Disabled,
-        allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : null
+        allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : null,
+        trustSamlEmails,
+        trustLdapEmails
       });
       createNotification({
         text: "Successfully changed sign up setting.",
@@ -123,8 +128,9 @@ export const AdminDashboardPage = () => {
                   <div className="mb-2 text-xl font-semibold text-mineshaft-100">
                     Allow user signups
                   </div>
-                  <div className="mb-4 text-sm max-w-sm text-mineshaft-400">
-                    Select if you want users to be able to signup freely into your Infisical instance.
+                  <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
+                    Select if you want users to be able to signup freely into your Infisical
+                    instance.
                   </div>
                   <Controller
                     control={control}
@@ -176,6 +182,48 @@ export const AdminDashboardPage = () => {
                     />
                   </div>
                 )}
+                <div className="mt-8 mb-8 flex flex-col justify-start">
+                  <div className="mb-2 text-xl font-semibold text-mineshaft-100">Trust emails</div>
+                  <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
+                    Select if you want Infisical to trust external emails from SAML/LDAP identity
+                    providers. If set to false, then Infisical will prompt SAML/LDAP provisioned
+                    users to verify their email upon their first login.
+                  </div>
+                  <Controller
+                    control={control}
+                    name="trustSamlEmails"
+                    render={({ field, fieldState: { error } }) => {
+                      return (
+                        <FormControl isError={Boolean(error)} errorText={error?.message}>
+                          <Switch
+                            id="trust-saml-emails"
+                            onCheckedChange={(value) => field.onChange(value)}
+                            isChecked={field.value}
+                          >
+                            <p className="w-full">Trust SAML emails</p>
+                          </Switch>
+                        </FormControl>
+                      );
+                    }}
+                  />
+                  <Controller
+                    control={control}
+                    name="trustLdapEmails"
+                    render={({ field, fieldState: { error } }) => {
+                      return (
+                        <FormControl isError={Boolean(error)} errorText={error?.message}>
+                          <Switch
+                            id="trust-ldap-emails"
+                            onCheckedChange={(value) => field.onChange(value)}
+                            isChecked={field.value}
+                          >
+                            <p className="w-full">Trust LDAP emails</p>
+                          </Switch>
+                        </FormControl>
+                      );
+                    }}
+                  />
+                </div>
                 <Button
                   type="submit"
                   isLoading={isSubmitting}

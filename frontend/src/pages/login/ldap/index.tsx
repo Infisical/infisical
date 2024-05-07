@@ -3,12 +3,12 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 
-import { Login } from "@app/views/Login";
+import { LoginLDAP } from "@app/views/Login";
 
-export default function LoginPage() {
+export default function LoginLDAPPage() {
   const { t } = useTranslation();
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6">
+    <div className="flex h-screen flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28 ">
       <Head>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -21,8 +21,7 @@ export default function LoginPage() {
           <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
         </div>
       </Link>
-      <Login />
-      <div className="pb-28" />
+      <LoginLDAP />
     </div>
   );
 }

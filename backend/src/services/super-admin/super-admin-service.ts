@@ -102,7 +102,8 @@ export const superAdminServiceFactory = ({
           superAdmin: true,
           isGhost: false,
           isAccepted: true,
-          authMethods: [AuthMethod.EMAIL]
+          authMethods: [AuthMethod.EMAIL],
+          isEmailVerified: true
         },
         tx
       );

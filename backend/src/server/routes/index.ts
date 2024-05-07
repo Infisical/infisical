@@ -88,6 +88,7 @@ import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
+import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
@@ -155,6 +156,7 @@ export const registerRoutes = async (
   const authDAL = authDALFactory(db);
   const authTokenDAL = tokenDALFactory(db);
   const orgDAL = orgDALFactory(db);
+  const orgMembershipDAL = orgMembershipDALFactory(db);
   const orgBotDAL = orgBotDALFactory(db);
   const incidentContactDAL = incidentContactDALFactory(db);
   const orgRoleDAL = orgRoleDALFactory(db);
@@ -262,13 +264,18 @@ export const registerRoutes = async (
     permissionService,
     secretApprovalPolicyDAL
   });
+  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
   const samlService = samlConfigServiceFactory({
     permissionService,
     orgBotDAL,
     orgDAL,
+    orgMembershipDAL,
     userDAL,
+    userAliasDAL,
     samlConfigDAL,
-    licenseService
+    licenseService,
+    tokenService,
+    smtpService
   });
   const groupService = groupServiceFactory({
     userDAL,
@@ -297,7 +304,9 @@ export const registerRoutes = async (
     licenseService,
     scimDAL,
     userDAL,
+    userAliasDAL,
     orgDAL,
+    orgMembershipDAL,
     projectDAL,
     projectMembershipDAL,
     groupDAL,
@@ -313,6 +322,7 @@ export const registerRoutes = async (
     ldapConfigDAL,
     ldapGroupMapDAL,
     orgDAL,
+    orgMembershipDAL,
     orgBotDAL,
     groupDAL,
     groupProjectDAL,
@@ -336,8 +346,13 @@ export const registerRoutes = async (
     queueService
   });
 
-  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
-  const userService = userServiceFactory({ userDAL });
+  const userService = userServiceFactory({
+    userDAL,
+    userAliasDAL,
+    orgMembershipDAL,
+    tokenService,
+    smtpService
+  });
   const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, tokenDAL: authTokenDAL });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -346,6 +361,7 @@ export const registerRoutes = async (
     userDAL
   });
   const orgService = orgServiceFactory({
+    userAliasDAL,
     licenseService,
     samlConfigDAL,
     orgRoleDAL,
