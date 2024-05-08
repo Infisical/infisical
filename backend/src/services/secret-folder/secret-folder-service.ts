@@ -151,6 +151,21 @@ export const secretFolderServiceFactory = ({
       .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }));
 
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
+    if (name !== folder.name) {
+      // ensure that new folder name is unique
+      const folderToCheck = await folderDAL.findOne({
+        name,
+        envId: env.id,
+        parentId: parentFolder.id
+      });
+
+      if (folderToCheck) {
+        throw new BadRequestError({
+          message: "Folder with specified name already exists",
+          name: "Update folder"
+        });
+      }
+    }
 
     const newFolder = await folderDAL.transaction(async (tx) => {
       const [doc] = await folderDAL.update({ envId: env.id, id: folder.id, parentId: parentFolder.id }, { name }, tx);
