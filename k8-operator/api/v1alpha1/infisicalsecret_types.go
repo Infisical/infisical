@@ -38,6 +38,8 @@ type SecretScopeInWorkspace struct {
 	SecretsPath string `json:"secretsPath"`
 	// +kubebuilder:validation:Required
 	EnvSlug string `json:"envSlug"`
+	// +kubebuilder:validation:Optional
+	Recursive bool `json:"recursive"`
 }
 
 type MachineIdentityScopeInWorkspace struct {
@@ -47,6 +49,8 @@ type MachineIdentityScopeInWorkspace struct {
 	EnvSlug string `json:"envSlug"`
 	// +kubebuilder:validation:Required
 	ProjectSlug string `json:"projectSlug"`
+	// +kubebuilder:validation:Optional
+	Recursive bool `json:"recursive"`
 }
 
 type KubeSecretReference struct {

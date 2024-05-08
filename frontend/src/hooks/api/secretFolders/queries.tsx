@@ -94,7 +94,21 @@ export const useGetFoldersByEnv = ({
     [...(folders || []).map((folder) => folder.data)]
   );
 
-  return { folders, folderNames, isFolderPresentInEnv };
+  const getFolderByNameAndEnv = useCallback(
+    (name: string, env: string) => {
+      const selectedEnvIndex = environments.indexOf(env);
+      if (selectedEnvIndex !== -1) {
+        return folders?.[selectedEnvIndex]?.data?.find(
+          ({ name: folderName }) => folderName === name
+        );
+      }
+
+      return undefined;
+    },
+    [(folders || []).map((folder) => folder.data)]
+  );
+
+  return { folders, folderNames, isFolderPresentInEnv, getFolderByNameAndEnv };
 };
 
 export const useCreateFolder = () => {

@@ -38,19 +38,19 @@ export type IdentityMembership = {
       customRoleSlug: string;
     } & (
       | {
-        isTemporary: false;
-        temporaryRange: null;
-        temporaryMode: null;
-        temporaryAccessEndTime: null;
-        temporaryAccessStartTime: null;
-      }
+          isTemporary: false;
+          temporaryRange: null;
+          temporaryMode: null;
+          temporaryAccessEndTime: null;
+          temporaryAccessStartTime: null;
+        }
       | {
-        isTemporary: true;
-        temporaryRange: string;
-        temporaryMode: string;
-        temporaryAccessEndTime: string;
-        temporaryAccessStartTime: string;
-      }
+          isTemporary: true;
+          temporaryRange: string;
+          temporaryMode: string;
+          temporaryAccessEndTime: string;
+          temporaryAccessStartTime: string;
+        }
     )
   >;
   createdAt: string;
@@ -105,6 +105,45 @@ export type UpdateIdentityUniversalAuthDTO = {
   clientSecretTrustedIps?: {
     ipAddress: string;
   }[];
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type IdentityAwsIamAuth = {
+  identityId: string;
+  stsEndpoint: string;
+  allowedPrincipalArns: string;
+  allowedAccountIds: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityAwsIamAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  stsEndpoint: string;
+  allowedPrincipalArns: string;
+  allowedAccountIds: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityAwsIamAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  stsEndpoint?: string;
+  allowedPrincipalArns?: string;
+  allowedAccountIds?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
