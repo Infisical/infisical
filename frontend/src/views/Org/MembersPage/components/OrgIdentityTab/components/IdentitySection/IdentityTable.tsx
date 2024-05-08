@@ -252,7 +252,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                             }}
                             icon={<FontAwesomeIcon icon={faCopy} />}
                           >
-                            Copy internal ID
+                            Copy Identity ID
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
