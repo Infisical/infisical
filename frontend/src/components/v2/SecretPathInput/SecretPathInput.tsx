@@ -56,7 +56,9 @@ export const SecretPathInput = ({
     ) {
       setSecretPath(debouncedInputValue);
     }
+  }, [debouncedInputValue]);
 
+  useEffect(() => {
     // filter suggestions based on matching
     const searchFragment = debouncedInputValue.split("/").pop() || "";
     const filteredSuggestions = folders
@@ -66,7 +68,7 @@ export const SecretPathInput = ({
       .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 
     setSuggestions(filteredSuggestions);
-  }, [debouncedInputValue]);
+  }, [debouncedInputValue, folders]);
 
   const handleSuggestionSelect = (selectedIndex: number) => {
     if (!suggestions[selectedIndex]) {
@@ -76,7 +78,7 @@ export const SecretPathInput = ({
     const validPaths = inputValue.split("/");
     validPaths.pop();
 
-    const newValue = `${validPaths.join("/")}/${suggestions[selectedIndex]}`;
+    const newValue = `${validPaths.join("/")}/${suggestions[selectedIndex]}/`;
     onChange?.(newValue);
     setInputValue(newValue);
     setSecretPath(newValue);
