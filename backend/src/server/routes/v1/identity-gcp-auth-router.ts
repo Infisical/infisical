@@ -1,22 +1,24 @@
 import { z } from "zod";
 
-import { IdentityGcpIamAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
-import { validateGcpIamAuthField } from "@app/services/identity-gcp-iam-auth/identity-gcp-iam-auth-validators";
+import {
+  ModifiedIdentityGcpAuthsSchema,
+  validateGcpAuthField
+} from "@app/services/identity-gcp-auth/identity-gcp-auth-validators";
 
-export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvider) => {
+export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/gcp-iam-auth/login",
+    url: "/gcp-auth/login",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      description: "Login with GCP IAM Auth",
+      description: "Login with GCP Auth",
       body: z.object({
         identityId: z.string(),
         jwt: z.string()
@@ -31,18 +33,18 @@ export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvide
       }
     },
     handler: async (req) => {
-      const { identityGcpIamAuth, accessToken, identityAccessToken, identityMembershipOrg } =
-        await server.services.identityGcpIamAuth.login(req.body);
+      const { identityGcpAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+        await server.services.identityGcpAuth.login(req.body);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: identityMembershipOrg?.orgId,
         event: {
-          type: EventType.LOGIN_IDENTITY_GCP_IAM_AUTH,
+          type: EventType.LOGIN_IDENTITY_GCP_AUTH,
           metadata: {
-            identityId: identityGcpIamAuth.identityId,
+            identityId: identityGcpAuth.identityId,
             identityAccessTokenId: identityAccessToken.id,
-            identityGcpIamAuthId: identityGcpIamAuth.id
+            identityGcpAuthId: identityGcpAuth.id
           }
         }
       });
@@ -50,21 +52,21 @@ export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvide
       return {
         accessToken,
         tokenType: "Bearer" as const,
-        expiresIn: identityGcpIamAuth.accessTokenTTL,
-        accessTokenMaxTTL: identityGcpIamAuth.accessTokenMaxTTL
+        expiresIn: identityGcpAuth.accessTokenTTL,
+        accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL
       };
     }
   });
 
   server.route({
     method: "POST",
-    url: "/gcp-iam-auth/identities/:identityId",
+    url: "/gcp-auth/identities/:identityId",
     config: {
       rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Attach GCP IAM Auth configuration onto identity",
+      description: "Attach GCP Auth configuration onto identity",
       security: [
         {
           bearerAuth: []
@@ -74,8 +76,11 @@ export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvide
         identityId: z.string().trim()
       }),
       body: z.object({
-        allowedServiceAccounts: validateGcpIamAuthField,
-        allowedProjects: validateGcpIamAuthField,
+        credentials: z.string().trim(),
+        type: z.enum(["iam", "gce"]),
+        allowedServiceAccounts: validateGcpAuthField,
+        allowedProjects: validateGcpAuthField,
+        allowedZones: validateGcpAuthField,
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
@@ -102,12 +107,12 @@ export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvide
       }),
       response: {
         200: z.object({
-          identityGcpIamAuth: IdentityGcpIamAuthsSchema
+          identityGcpAuth: ModifiedIdentityGcpAuthsSchema
         })
       }
     },
     handler: async (req) => {
-      const identityGcpIamAuth = await server.services.identityGcpIamAuth.attachGcpIamAuth({
+      const identityGcpAuth = await server.services.identityGcpAuth.attachGcpAuth({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -118,34 +123,36 @@ export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityGcpIamAuth.orgId,
+        orgId: identityGcpAuth.orgId,
         event: {
-          type: EventType.ADD_IDENTITY_GCP_IAM_AUTH,
+          type: EventType.ADD_IDENTITY_GCP_AUTH,
           metadata: {
-            identityId: identityGcpIamAuth.identityId,
-            allowedServiceAccounts: identityGcpIamAuth.allowedServiceAccounts,
-            allowedProjects: identityGcpIamAuth.allowedProjects,
-            accessTokenTTL: identityGcpIamAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityGcpIamAuth.accessTokenMaxTTL,
-            accessTokenTrustedIps: identityGcpIamAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
-            accessTokenNumUsesLimit: identityGcpIamAuth.accessTokenNumUsesLimit
+            identityId: identityGcpAuth.identityId,
+            type: identityGcpAuth.type,
+            allowedServiceAccounts: identityGcpAuth.allowedServiceAccounts,
+            allowedProjects: identityGcpAuth.allowedProjects,
+            allowedZones: identityGcpAuth.allowedZones,
+            accessTokenTTL: identityGcpAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL,
+            accessTokenTrustedIps: identityGcpAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
+            accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit
           }
         }
       });
 
-      return { identityGcpIamAuth };
+      return { identityGcpAuth };
     }
   });
 
   server.route({
     method: "PATCH",
-    url: "/gcp-iam-auth/identities/:identityId",
+    url: "/gcp-auth/identities/:identityId",
     config: {
       rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Update GCP IAM Auth configuration on identity",
+      description: "Update GCP Auth configuration on identity",
       security: [
         {
           bearerAuth: []
@@ -155,8 +162,11 @@ export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvide
         identityId: z.string().trim()
       }),
       body: z.object({
-        allowedServiceAccounts: z.string().trim().optional(),
-        allowedProjects: z.string().trim().optional(),
+        credentials: z.string().trim().optional(),
+        type: z.enum(["iam", "gce"]).optional(),
+        allowedServiceAccounts: validateGcpAuthField,
+        allowedProjects: validateGcpAuthField,
+        allowedZones: validateGcpAuthField,
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
@@ -176,12 +186,12 @@ export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvide
       }),
       response: {
         200: z.object({
-          identityGcpIamAuth: IdentityGcpIamAuthsSchema
+          identityGcpAuth: ModifiedIdentityGcpAuthsSchema
         })
       }
     },
     handler: async (req) => {
-      const identityGcpIamAuth = await server.services.identityGcpIamAuth.updateGcpIamAuth({
+      const identityGcpAuth = await server.services.identityGcpAuth.updateGcpAuth({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
@@ -192,34 +202,36 @@ export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityGcpIamAuth.orgId,
+        orgId: identityGcpAuth.orgId,
         event: {
-          type: EventType.UPDATE_IDENTITY_GCP_IAM_AUTH,
+          type: EventType.UPDATE_IDENTITY_GCP_AUTH,
           metadata: {
-            identityId: identityGcpIamAuth.identityId,
-            allowedServiceAccounts: identityGcpIamAuth.allowedServiceAccounts,
-            allowedProjects: identityGcpIamAuth.allowedProjects,
-            accessTokenTTL: identityGcpIamAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityGcpIamAuth.accessTokenMaxTTL,
-            accessTokenTrustedIps: identityGcpIamAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
-            accessTokenNumUsesLimit: identityGcpIamAuth.accessTokenNumUsesLimit
+            identityId: identityGcpAuth.identityId,
+            type: identityGcpAuth.type,
+            allowedServiceAccounts: identityGcpAuth.allowedServiceAccounts,
+            allowedProjects: identityGcpAuth.allowedProjects,
+            allowedZones: identityGcpAuth.allowedZones,
+            accessTokenTTL: identityGcpAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL,
+            accessTokenTrustedIps: identityGcpAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
+            accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit
           }
         }
       });
 
-      return { identityGcpIamAuth };
+      return { identityGcpAuth };
     }
   });
 
   server.route({
     method: "GET",
-    url: "/gcp-iam-auth/identities/:identityId",
+    url: "/gcp-auth/identities/:identityId",
     config: {
       rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Retrieve GCP IAM Auth configuration on identity",
+      description: "Retrieve GCP Auth configuration on identity",
       security: [
         {
           bearerAuth: []
@@ -230,12 +242,12 @@ export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvide
       }),
       response: {
         200: z.object({
-          identityGcpIamAuth: IdentityGcpIamAuthsSchema
+          identityGcpAuth: ModifiedIdentityGcpAuthsSchema
         })
       }
     },
     handler: async (req) => {
-      const identityGcpIamAuth = await server.services.identityGcpIamAuth.getGcpIamAuth({
+      const identityGcpAuth = await server.services.identityGcpAuth.getGcpAuth({
         identityId: req.params.identityId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -245,16 +257,16 @@ export const registerIdentityGcpIamAuthRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityGcpIamAuth.orgId,
+        orgId: identityGcpAuth.orgId,
         event: {
-          type: EventType.GET_IDENTITY_GCP_IAM_AUTH,
+          type: EventType.GET_IDENTITY_GCP_AUTH,
           metadata: {
-            identityId: identityGcpIamAuth.identityId
+            identityId: identityGcpAuth.identityId
           }
         }
       });
 
-      return { identityGcpIamAuth };
+      return { identityGcpAuth };
     }
   });
 };

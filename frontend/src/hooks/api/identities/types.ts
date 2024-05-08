@@ -113,21 +113,27 @@ export type UpdateIdentityUniversalAuthDTO = {
   }[];
 };
 
-export type IdentityGcpIamAuth = {
+export type IdentityGcpAuth = {
   identityId: string;
+  credentials: string;
+  type: "iam" | "gce";
   allowedServiceAccounts: string;
   allowedProjects: string;
+  allowedZones: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: IdentityTrustedIp[];
 };
 
-export type AddIdentityGcpIamAuthDTO = {
+export type AddIdentityGcpAuthDTO = {
   organizationId: string;
   identityId: string;
+  credentials: string;
+  type: "iam" | "gce";
   allowedServiceAccounts: string;
   allowedProjects: string;
+  allowedZones: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -136,11 +142,14 @@ export type AddIdentityGcpIamAuthDTO = {
   }[];
 };
 
-export type UpdateIdentityGcpIamAuthDTO = {
+export type UpdateIdentityGcpAuthDTO = {
   organizationId: string;
   identityId: string;
+  credentials?: string;
+  type?: "iam" | "gce";
   allowedServiceAccounts?: string;
   allowedProjects?: string;
+  allowedZones?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;

@@ -1,6 +1,6 @@
 ---
-title: GCP IAM Auth
-description: "Learn how to authenticate with Infisical Google Cloud Platform via IAM service accounts"
+title: GCP Auth
+description: "Learn how to authenticate with Infisical Google Cloud Platform"
 ---
 
 **GCP IAM Auth** is a GCP-native authentication method for IAM service accounts.
@@ -69,6 +69,19 @@ access the Infisical API using the GCP IAM authentication method.
     </Step>
     <Step title="Accessing the Infisical API with the identity">
         To access the Infisical API as the identity, you need to generate a signed JWT token using the `projects.serviceAccounts.signJwt` [API method](https://cloud.google.com/iam/docs/reference/credentials/rest/v1/projects.serviceAccounts/signJwt) and make a request to the `/api/v1/auth/gcp-iam-auth/login` endpoint containing the signed JWT token in exchange for an access token.
+
+        <Info>
+            Enable the [IAM Service Account Credentials API](https://console.developers.google.com/apis/api/iamcredentials.googleapis.com/overview) in your project
+            Cloud Resource Manager API
+            Identity and Access Management (IAM) API has not been used in project 512461120021 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/iam.googleapis.com/overview?project=512461120021 then retry.
+
+            Add the role `roles/iam.serviceAccountTokenCreator` to the service account. This role includes the required `iam.serviceAccounts.signJwt` permission.
+
+            Must have: `resourcemanager.projects.get` (for the Infisical service account)
+
+o Infisical uses scope:https://www.googleapis.com/auth/cloud-platform.read-only
+
+</Info>
 
         We provide a few code examples below of how you can authenticate with Infisical to access the [Infisical API](/api-reference/overview/introduction).
 

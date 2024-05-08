@@ -33,7 +33,7 @@ import { TGroupProjectServiceFactory } from "@app/services/group-project/group-p
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityAwsIamAuthServiceFactory } from "@app/services/identity-aws-iam-auth/identity-aws-iam-auth-service";
-import { TIdentityGcpIamAuthServiceFactory } from "@app/services/identity-gcp-iam-auth/identity-gcp-iam-auth-service";
+import { TIdentityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
@@ -117,7 +117,7 @@ declare module "fastify" {
       identityAccessToken: TIdentityAccessTokenServiceFactory;
       identityProject: TIdentityProjectServiceFactory;
       identityUa: TIdentityUaServiceFactory;
-      identityGcpIamAuth: TIdentityGcpIamAuthServiceFactory;
+      identityGcpAuth: TIdentityGcpAuthServiceFactory;
       identityAwsIamAuth: TIdentityAwsIamAuthServiceFactory;
       accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
       accessApprovalRequest: TAccessApprovalRequestServiceFactory;

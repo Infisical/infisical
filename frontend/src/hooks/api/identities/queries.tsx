@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import {
   ClientSecretData,
   IdentityAwsIamAuth,
-  IdentityGcpIamAuth,
+  IdentityGcpAuth,
   IdentityUniversalAuth
 } from "./types";
 
@@ -14,7 +14,7 @@ export const identitiesKeys = {
     [{ identityId }, "identity-universal-auth"] as const,
   getIdentityUniversalAuthClientSecrets: (identityId: string) =>
     [{ identityId }, "identity-universal-auth-client-secrets"] as const,
-  getIdentityGcpIamAuth: (identityId: string) => [{ identityId }, "identity-gcp-iam-auth"] as const,
+  getIdentityGcpAuth: (identityId: string) => [{ identityId }, "identity-gcp-auth"] as const,
   getIdentityAwsIamAuth: (identityId: string) => [{ identityId }, "identity-aws-iam-auth"] as const
 };
 
@@ -48,17 +48,17 @@ export const useGetIdentityUniversalAuthClientSecrets = (identityId: string) => 
   });
 };
 
-export const useGetIdentityGcpIamAuth = (identityId: string) => {
+export const useGetIdentityGcpAuth = (identityId: string) => {
   return useQuery({
     enabled: Boolean(identityId),
-    queryKey: identitiesKeys.getIdentityGcpIamAuth(identityId),
+    queryKey: identitiesKeys.getIdentityGcpAuth(identityId),
     queryFn: async () => {
       const {
-        data: { identityGcpIamAuth }
-      } = await apiRequest.get<{ identityGcpIamAuth: IdentityGcpIamAuth }>(
-        `/api/v1/auth/gcp-iam-auth/identities/${identityId}`
+        data: { identityGcpAuth }
+      } = await apiRequest.get<{ identityGcpAuth: IdentityGcpAuth }>(
+        `/api/v1/auth/gcp-auth/identities/${identityId}`
       );
-      return identityGcpIamAuth;
+      return identityGcpAuth;
     }
   });
 };

@@ -80,8 +80,8 @@ import { identityAccessTokenDALFactory } from "@app/services/identity-access-tok
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { identityAwsIamAuthDALFactory } from "@app/services/identity-aws-iam-auth/identity-aws-iam-auth-dal";
 import { identityAwsIamAuthServiceFactory } from "@app/services/identity-aws-iam-auth/identity-aws-iam-auth-service";
-import { identityGcpIamAuthDALFactory } from "@app/services/identity-gcp-iam-auth/identity-gcp-iam-auth-dal";
-import { identityGcpIamAuthServiceFactory } from "@app/services/identity-gcp-iam-auth/identity-gcp-iam-auth-service";
+import { identityGcpAuthDALFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-dal";
+import { identityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectMembershipRoleDALFactory } from "@app/services/identity-project/identity-project-membership-role-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
@@ -207,7 +207,7 @@ export const registerRoutes = async (
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
   const identityAwsIamAuthDAL = identityAwsIamAuthDALFactory(db);
 
-  const identityGcpIamAuthDAL = identityGcpIamAuthDALFactory(db);
+  const identityGcpAuthDAL = identityGcpAuthDALFactory(db);
 
   const auditLogDAL = auditLogDALFactory(db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
@@ -706,11 +706,12 @@ export const registerRoutes = async (
     identityUaDAL,
     licenseService
   });
-  const identityGcpIamAuthService = identityGcpIamAuthServiceFactory({
-    identityGcpIamAuthDAL,
+  const identityGcpAuthService = identityGcpAuthServiceFactory({
+    identityGcpAuthDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
     identityDAL,
+    orgBotDAL,
     permissionService,
     licenseService
   });
@@ -792,7 +793,7 @@ export const registerRoutes = async (
     identityAccessToken: identityAccessTokenService,
     identityProject: identityProjectService,
     identityUa: identityUaService,
-    identityGcpIamAuth: identityGcpIamAuthService,
+    identityGcpAuth: identityGcpAuthService,
     identityAwsIamAuth: identityAWSIAMAuthService,
     secretApprovalPolicy: sapService,
     accessApprovalPolicy: accessApprovalPolicyService,

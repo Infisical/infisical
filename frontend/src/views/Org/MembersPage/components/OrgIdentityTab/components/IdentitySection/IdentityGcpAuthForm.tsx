@@ -2,41 +2,50 @@ import { useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, IconButton, Input } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  IconButton,
+  Input,
+  Select,
+  SelectItem,
+  TextArea
+} from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import {
-  useAddIdentityGcpIamAuth,
-  useGetIdentityGcpIamAuth,
-  useUpdateIdentityGcpIamAuth
+  useAddIdentityGcpAuth,
+  useGetIdentityGcpAuth,
+  useUpdateIdentityGcpAuth
 } from "@app/hooks/api";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const schema = yup
+const schema = z
   .object({
-    allowedServiceAccounts: yup.string(),
-    allowedProjects: yup.string(),
-    accessTokenTTL: yup.string().required("Access Token TTL is required"),
-    accessTokenMaxTTL: yup.string().required("Access Max Token TTL is required"),
-    accessTokenNumUsesLimit: yup.string().required("Access Token Max Number of Uses is required"),
-    accessTokenTrustedIps: yup
+    credentials: z.string(),
+    type: z.enum(["iam", "gce"]),
+    allowedServiceAccounts: z.string(),
+    allowedProjects: z.string(),
+    allowedZones: z.string(),
+    accessTokenTTL: z.string(),
+    accessTokenMaxTTL: z.string(),
+    accessTokenNumUsesLimit: z.string(),
+    accessTokenTrustedIps: z
       .array(
-        yup.object({
-          ipAddress: yup.string().max(50).required().label("IP Address")
+        z.object({
+          ipAddress: z.string().max(50)
         })
       )
       .min(1)
-      .required()
-      .label("Access Token Trusted IP")
   })
   .required();
 
-export type FormData = yup.InferType<typeof schema>;
+export type FormData = z.infer<typeof schema>;
 
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
@@ -51,7 +60,7 @@ type Props = {
   };
 };
 
-export const IdentityGcpIamAuthForm = ({
+export const IdentityGcpAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
   identityAuthMethodData
@@ -60,27 +69,33 @@ export const IdentityGcpIamAuthForm = ({
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
 
-  const { mutateAsync: addMutateAsync } = useAddIdentityGcpIamAuth();
-  const { mutateAsync: updateMutateAsync } = useUpdateIdentityGcpIamAuth();
+  const { mutateAsync: addMutateAsync } = useAddIdentityGcpAuth();
+  const { mutateAsync: updateMutateAsync } = useUpdateIdentityGcpAuth();
 
-  const { data } = useGetIdentityGcpIamAuth(identityAuthMethodData?.identityId ?? "");
+  const { data } = useGetIdentityGcpAuth(identityAuthMethodData?.identityId ?? "");
 
   const {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting }
+    formState: { isSubmitting },
+    watch
   } = useForm<FormData>({
-    resolver: yupResolver(schema),
+    resolver: zodResolver(schema),
     defaultValues: {
+      credentials: "",
+      type: "iam",
       allowedServiceAccounts: "",
       allowedProjects: "",
+      allowedZones: "",
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "0",
       accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
     }
   });
+
+  const watchedType = watch("type");
 
   const {
     fields: accessTokenTrustedIpsFields,
@@ -91,8 +106,11 @@ export const IdentityGcpIamAuthForm = ({
   useEffect(() => {
     if (data) {
       reset({
+        credentials: data.credentials,
+        type: data.type,
         allowedServiceAccounts: data.allowedServiceAccounts,
         allowedProjects: data.allowedProjects,
+        allowedZones: data.allowedZones,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
@@ -106,8 +124,10 @@ export const IdentityGcpIamAuthForm = ({
       });
     } else {
       reset({
+        type: "iam",
         allowedServiceAccounts: "",
         allowedProjects: "",
+        allowedZones: "",
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "0",
@@ -117,8 +137,11 @@ export const IdentityGcpIamAuthForm = ({
   }, [data]);
 
   const onFormSubmit = async ({
+    credentials,
+    type,
     allowedServiceAccounts,
     allowedProjects,
+    allowedZones,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -129,10 +152,13 @@ export const IdentityGcpIamAuthForm = ({
 
       if (data) {
         await updateMutateAsync({
+          identityId: identityAuthMethodData.identityId,
           organizationId: orgId,
+          credentials,
+          type,
           allowedServiceAccounts,
           allowedProjects,
-          identityId: identityAuthMethodData.identityId,
+          allowedZones,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
@@ -140,10 +166,13 @@ export const IdentityGcpIamAuthForm = ({
         });
       } else {
         await addMutateAsync({
-          organizationId: orgId,
           identityId: identityAuthMethodData.identityId,
+          organizationId: orgId,
+          credentials,
+          type,
           allowedServiceAccounts: allowedServiceAccounts || "",
           allowedProjects: allowedProjects || "",
+          allowedZones: allowedZones || "",
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
@@ -173,6 +202,41 @@ export const IdentityGcpIamAuthForm = ({
     <form onSubmit={handleSubmit(onFormSubmit)}>
       <Controller
         control={control}
+        name="credentials"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl
+            label="Service Account JSON"
+            errorText={error?.message}
+            isError={Boolean(error)}
+          >
+            <TextArea {...field} placeholder="" />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        name="type"
+        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+          <FormControl label="Type" isError={Boolean(error)} errorText={error?.message}>
+            <Select
+              defaultValue={field.value}
+              {...field}
+              onValueChange={(e) => onChange(e)}
+              className="w-full"
+            >
+              <SelectItem value="iam" key="gcpiam">
+                IAM
+              </SelectItem>
+              <SelectItem value="gce" key="gcp-type-gce">
+                GCE
+              </SelectItem>
+            </Select>
+          </FormControl>
+        )}
+      />
+
+      <Controller
+        control={control}
         defaultValue="2592000"
         name="allowedServiceAccounts"
         render={({ field, fieldState: { error } }) => (
@@ -198,6 +262,17 @@ export const IdentityGcpIamAuthForm = ({
           </FormControl>
         )}
       />
+      {watchedType === "gce" && (
+        <Controller
+          control={control}
+          name="allowedZones"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl label="Allowed Zones" isError={Boolean(error)} errorText={error?.message}>
+              <Input {...field} placeholder="us-west2-a, us-central1-a, ..." />
+            </FormControl>
+          )}
+        />
+      )}
       <Controller
         control={control}
         defaultValue="2592000"

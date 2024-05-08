@@ -66,10 +66,10 @@ export enum EventType {
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
-  LOGIN_IDENTITY_GCP_IAM_AUTH = "login-identity-gcp-iam-auth",
-  ADD_IDENTITY_GCP_IAM_AUTH = "add-identity-gcp-iam -auth",
-  UPDATE_IDENTITY_GCP_IAM_AUTH = "update-identity-gcp-iam-auth",
-  GET_IDENTITY_GCP_IAM_AUTH = "get-identity-gcp-iam-auth",
+  LOGIN_IDENTITY_GCP_AUTH = "login-identity-gcp-auth",
+  ADD_IDENTITY_GCP_AUTH = "add-identity-gcp -auth",
+  UPDATE_IDENTITY_GCP_AUTH = "update-identity-gcp-auth",
+  GET_IDENTITY_GCP_AUTH = "get-identity-gcp-auth",
   LOGIN_IDENTITY_AWS_IAM_AUTH = "login-identity-aws-iam-auth",
   ADD_IDENTITY_AWS_IAM_AUTH = "add-identity-aws-iam-auth",
   UPDATE_IDENTITY_AWS_IAM_AUTH = "update-identity-aws-iam-auth",
@@ -414,21 +414,23 @@ interface RevokeIdentityUniversalAuthClientSecretEvent {
   };
 }
 
-interface LoginIdentityGcpIamAuthEvent {
-  type: EventType.LOGIN_IDENTITY_GCP_IAM_AUTH;
+interface LoginIdentityGcpAuthEvent {
+  type: EventType.LOGIN_IDENTITY_GCP_AUTH;
   metadata: {
     identityId: string;
-    identityGcpIamAuthId: string;
+    identityGcpAuthId: string;
     identityAccessTokenId: string;
   };
 }
 
-interface AddIdentityGcpIamAuthEvent {
-  type: EventType.ADD_IDENTITY_GCP_IAM_AUTH;
+interface AddIdentityGcpAuthEvent {
+  type: EventType.ADD_IDENTITY_GCP_AUTH;
   metadata: {
     identityId: string;
+    type: string;
     allowedServiceAccounts: string;
     allowedProjects: string;
+    allowedZones: string;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -436,12 +438,14 @@ interface AddIdentityGcpIamAuthEvent {
   };
 }
 
-interface UpdateIdentityGcpIamAuthEvent {
-  type: EventType.UPDATE_IDENTITY_GCP_IAM_AUTH;
+interface UpdateIdentityGcpAuthEvent {
+  type: EventType.UPDATE_IDENTITY_GCP_AUTH;
   metadata: {
     identityId: string;
+    type?: string;
     allowedServiceAccounts?: string;
     allowedProjects?: string;
+    allowedZones?: string;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
@@ -449,8 +453,8 @@ interface UpdateIdentityGcpIamAuthEvent {
   };
 }
 
-interface GetIdentityGcpIamAuthEvent {
-  type: EventType.GET_IDENTITY_GCP_IAM_AUTH;
+interface GetIdentityGcpAuthEvent {
+  type: EventType.GET_IDENTITY_GCP_AUTH;
   metadata: {
     identityId: string;
   };
@@ -754,10 +758,10 @@ export type Event =
   | CreateIdentityUniversalAuthClientSecretEvent
   | GetIdentityUniversalAuthClientSecretsEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
-  | LoginIdentityGcpIamAuthEvent
-  | AddIdentityGcpIamAuthEvent
-  | UpdateIdentityGcpIamAuthEvent
-  | GetIdentityGcpIamAuthEvent
+  | LoginIdentityGcpAuthEvent
+  | AddIdentityGcpAuthEvent
+  | UpdateIdentityGcpAuthEvent
+  | GetIdentityGcpAuthEvent
   | LoginIdentityAwsIamAuthEvent
   | AddIdentityAwsIamAuthEvent
   | UpdateIdentityAwsIamAuthEvent

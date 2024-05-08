@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const IdentityGcpIamAuthsSchema = z.object({
+export const IdentityGcpAuthsSchema = z.object({
   id: z.string().uuid(),
   accessTokenTTL: z.coerce.number().default(7200),
   accessTokenMaxTTL: z.coerce.number().default(7200),
@@ -16,10 +16,15 @@ export const IdentityGcpIamAuthsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   identityId: z.string().uuid(),
+  encryptedCredentials: z.string(),
+  credentialsIV: z.string(),
+  credentialsTag: z.string(),
+  type: z.string(),
   allowedServiceAccounts: z.string(),
-  allowedProjects: z.string()
+  allowedProjects: z.string(),
+  allowedZones: z.string()
 });
 
-export type TIdentityGcpIamAuths = z.infer<typeof IdentityGcpIamAuthsSchema>;
-export type TIdentityGcpIamAuthsInsert = Omit<z.input<typeof IdentityGcpIamAuthsSchema>, TImmutableDBKeys>;
-export type TIdentityGcpIamAuthsUpdate = Partial<Omit<z.input<typeof IdentityGcpIamAuthsSchema>, TImmutableDBKeys>>;
+export type TIdentityGcpAuths = z.infer<typeof IdentityGcpAuthsSchema>;
+export type TIdentityGcpAuthsInsert = Omit<z.input<typeof IdentityGcpAuthsSchema>, TImmutableDBKeys>;
+export type TIdentityGcpAuthsUpdate = Partial<Omit<z.input<typeof IdentityGcpAuthsSchema>, TImmutableDBKeys>>;
