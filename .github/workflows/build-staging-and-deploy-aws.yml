@@ -135,6 +135,6 @@ jobs:
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.render-web-container.outputs.task-definition }}
-          service: infisical-prod-platform
-          cluster: infisical-prod-platform
+          service: infisical-core-platform
+          cluster: infisical-core-platform
           wait-for-service-stability: true
