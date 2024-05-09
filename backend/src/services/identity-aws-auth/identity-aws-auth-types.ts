@@ -1,13 +1,13 @@
 import { TProjectPermission } from "@app/lib/types";
 
-export type TLoginAWSIAMAuthDTO = {
+export type TLoginAwsAuthDTO = {
   identityId: string;
   iamHttpRequestMethod: string;
   iamRequestBody: string;
   iamRequestHeaders: string;
 };
 
-export type TAttachAWSIAMAuthDTO = {
+export type TAttachAwsAuthDTO = {
   identityId: string;
   stsEndpoint: string;
   allowedPrincipalArns: string;
@@ -18,7 +18,7 @@ export type TAttachAWSIAMAuthDTO = {
   accessTokenTrustedIps: { ipAddress: string }[];
 } & Omit<TProjectPermission, "projectId">;
 
-export type TUpdateAWSIAMAuthDTO = {
+export type TUpdateAwsAuthDTO = {
   identityId: string;
   stsEndpoint?: string;
   allowedPrincipalArns?: string;
@@ -29,11 +29,11 @@ export type TUpdateAWSIAMAuthDTO = {
   accessTokenTrustedIps?: { ipAddress: string }[];
 } & Omit<TProjectPermission, "projectId">;
 
-export type TGetAWSIAMAuthDTO = {
+export type TGetAwsAuthDTO = {
   identityId: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TAWSGetCallerIdentityHeaders = {
+export type TAwsGetCallerIdentityHeaders = {
   "Content-Type": string;
   Host: string;
   "X-Amz-Date": string;

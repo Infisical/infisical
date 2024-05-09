@@ -16,48 +16,43 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
-import { TIdentityAwsIamAuthDALFactory } from "./identity-aws-iam-auth-dal";
-import { extractPrincipalArn } from "./identity-aws-iam-auth-fns";
+import { TIdentityAwsAuthDALFactory } from "./identity-aws-auth-dal";
+import { extractPrincipalArn } from "./identity-aws-auth-fns";
 import {
-  TAttachAWSIAMAuthDTO,
-  TAWSGetCallerIdentityHeaders,
-  TGetAWSIAMAuthDTO,
+  TAttachAwsAuthDTO,
+  TAwsGetCallerIdentityHeaders,
+  TGetAwsAuthDTO,
   TGetCallerIdentityResponse,
-  TLoginAWSIAMAuthDTO,
-  TUpdateAWSIAMAuthDTO
-} from "./identity-aws-iam-auth-types";
+  TLoginAwsAuthDTO,
+  TUpdateAwsAuthDTO
+} from "./identity-aws-auth-types";
 
-type TIdentityAwsIamAuthServiceFactoryDep = {
+type TIdentityAwsAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
-  identityAwsIamAuthDAL: Pick<TIdentityAwsIamAuthDALFactory, "findOne" | "transaction" | "create" | "updateById">;
+  identityAwsAuthDAL: Pick<TIdentityAwsAuthDALFactory, "findOne" | "transaction" | "create" | "updateById">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   identityDAL: Pick<TIdentityDALFactory, "updateById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
-export type TIdentityAwsIamAuthServiceFactory = ReturnType<typeof identityAwsIamAuthServiceFactory>;
+export type TIdentityAwsAuthServiceFactory = ReturnType<typeof identityAwsAuthServiceFactory>;
 
-export const identityAwsIamAuthServiceFactory = ({
+export const identityAwsAuthServiceFactory = ({
   identityAccessTokenDAL,
-  identityAwsIamAuthDAL,
+  identityAwsAuthDAL,
   identityOrgMembershipDAL,
   identityDAL,
   licenseService,
   permissionService
-}: TIdentityAwsIamAuthServiceFactoryDep) => {
-  const login = async ({
-    identityId,
-    iamHttpRequestMethod,
-    iamRequestBody,
-    iamRequestHeaders
-  }: TLoginAWSIAMAuthDTO) => {
-    const identityAwsIamAuth = await identityAwsIamAuthDAL.findOne({ identityId });
-    if (!identityAwsIamAuth) throw new UnauthorizedError();
+}: TIdentityAwsAuthServiceFactoryDep) => {
+  const login = async ({ identityId, iamHttpRequestMethod, iamRequestBody, iamRequestHeaders }: TLoginAwsAuthDTO) => {
+    const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId });
+    if (!identityAwsAuth) throw new UnauthorizedError();
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityAwsIamAuth.identityId });
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityAwsAuth.identityId });
 
-    const headers: TAWSGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
+    const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
     const body: string = Buffer.from(iamRequestBody, "base64").toString();
 
     const {
@@ -68,15 +63,15 @@ export const identityAwsIamAuthServiceFactory = ({
       }
     }: { data: TGetCallerIdentityResponse } = await axios({
       method: iamHttpRequestMethod,
-      url: identityAwsIamAuth.stsEndpoint,
+      url: identityAwsAuth.stsEndpoint,
       headers,
       data: body
     });
 
-    if (identityAwsIamAuth.allowedAccountIds) {
+    if (identityAwsAuth.allowedAccountIds) {
       // validate if Account is in the list of allowed Account IDs
 
-      const isAccountAllowed = identityAwsIamAuth.allowedAccountIds
+      const isAccountAllowed = identityAwsAuth.allowedAccountIds
         .split(",")
         .map((accountId) => accountId.trim())
         .some((accountId) => accountId === Account);
@@ -84,10 +79,10 @@ export const identityAwsIamAuthServiceFactory = ({
       if (!isAccountAllowed) throw new UnauthorizedError();
     }
 
-    if (identityAwsIamAuth.allowedPrincipalArns) {
+    if (identityAwsAuth.allowedPrincipalArns) {
       // validate if Arn is in the list of allowed Principal ARNs
 
-      const isArnAllowed = identityAwsIamAuth.allowedPrincipalArns
+      const isArnAllowed = identityAwsAuth.allowedPrincipalArns
         .split(",")
         .map((principalArn) => principalArn.trim())
         .some((principalArn) => {
@@ -100,15 +95,15 @@ export const identityAwsIamAuthServiceFactory = ({
       if (!isArnAllowed) throw new UnauthorizedError();
     }
 
-    const identityAccessToken = await identityAwsIamAuthDAL.transaction(async (tx) => {
+    const identityAccessToken = await identityAwsAuthDAL.transaction(async (tx) => {
       const newToken = await identityAccessTokenDAL.create(
         {
-          identityId: identityAwsIamAuth.identityId,
+          identityId: identityAwsAuth.identityId,
           isAccessTokenRevoked: false,
-          accessTokenTTL: identityAwsIamAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityAwsIamAuth.accessTokenMaxTTL,
+          accessTokenTTL: identityAwsAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityAwsAuth.accessTokenMaxTTL,
           accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityAwsIamAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identityAwsAuth.accessTokenNumUsesLimit
         },
         tx
       );
@@ -118,7 +113,7 @@ export const identityAwsIamAuthServiceFactory = ({
     const appCfg = getConfig();
     const accessToken = jwt.sign(
       {
-        identityId: identityAwsIamAuth.identityId,
+        identityId: identityAwsAuth.identityId,
         identityAccessTokenId: identityAccessToken.id,
         authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
       } as TIdentityAccessTokenJwtPayload,
@@ -131,10 +126,10 @@ export const identityAwsIamAuthServiceFactory = ({
       }
     );
 
-    return { accessToken, identityAwsIamAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityAwsAuth, identityAccessToken, identityMembershipOrg };
   };
 
-  const attachAwsIamAuth = async ({
+  const attachAwsAuth = async ({
     identityId,
     stsEndpoint,
     allowedPrincipalArns,
@@ -147,12 +142,12 @@ export const identityAwsIamAuthServiceFactory = ({
     actorAuthMethod,
     actor,
     actorOrgId
-  }: TAttachAWSIAMAuthDTO) => {
+  }: TAttachAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
-        message: "Failed to add AWS IAM Auth to already configured identity"
+        message: "Failed to add AWS Auth to already configured identity"
       });
 
     if (accessTokenMaxTTL > 0 && accessTokenTTL > accessTokenMaxTTL) {
@@ -186,10 +181,11 @@ export const identityAwsIamAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const identityAwsIamAuth = await identityAwsIamAuthDAL.transaction(async (tx) => {
-      const doc = await identityAwsIamAuthDAL.create(
+    const identityAwsAuth = await identityAwsAuthDAL.transaction(async (tx) => {
+      const doc = await identityAwsAuthDAL.create(
         {
           identityId: identityMembershipOrg.identityId,
+          type: "iam",
           stsEndpoint,
           allowedPrincipalArns,
           allowedAccountIds,
@@ -203,16 +199,16 @@ export const identityAwsIamAuthServiceFactory = ({
       await identityDAL.updateById(
         identityMembershipOrg.identityId,
         {
-          authMethod: IdentityAuthMethod.AWS_IAM_AUTH
+          authMethod: IdentityAuthMethod.AWS_AUTH
         },
         tx
       );
       return doc;
     });
-    return { ...identityAwsIamAuth, orgId: identityMembershipOrg.orgId };
+    return { ...identityAwsAuth, orgId: identityMembershipOrg.orgId };
   };
 
-  const updateAwsIamAuth = async ({
+  const updateAwsAuth = async ({
     identityId,
     stsEndpoint,
     allowedPrincipalArns,
@@ -225,20 +221,19 @@ export const identityAwsIamAuthServiceFactory = ({
     actorAuthMethod,
     actor,
     actorOrgId
-  }: TUpdateAWSIAMAuthDTO) => {
+  }: TUpdateAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_IAM_AUTH)
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
       throw new BadRequestError({
-        message: "Failed to update AWS IAM Auth"
+        message: "Failed to update AWS Auth"
       });
 
-    const identityAwsIamAuth = await identityAwsIamAuthDAL.findOne({ identityId });
+    const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId });
 
     if (
-      (accessTokenMaxTTL || identityAwsIamAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identityAwsIamAuth.accessTokenMaxTTL) >
-        (accessTokenMaxTTL || identityAwsIamAuth.accessTokenMaxTTL)
+      (accessTokenMaxTTL || identityAwsAuth.accessTokenMaxTTL) > 0 &&
+      (accessTokenTTL || identityAwsAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || identityAwsAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
@@ -270,7 +265,7 @@ export const identityAwsIamAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updatedAwsIamAuth = await identityAwsIamAuthDAL.updateById(identityAwsIamAuth.id, {
+    const updatedAwsAuth = await identityAwsAuthDAL.updateById(identityAwsAuth.id, {
       stsEndpoint,
       allowedPrincipalArns,
       allowedAccountIds,
@@ -282,18 +277,18 @@ export const identityAwsIamAuthServiceFactory = ({
         : undefined
     });
 
-    return { ...updatedAwsIamAuth, orgId: identityMembershipOrg.orgId };
+    return { ...updatedAwsAuth, orgId: identityMembershipOrg.orgId };
   };
 
-  const getAwsIamAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetAWSIAMAuthDTO) => {
+  const getAwsAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_IAM_AUTH)
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
       throw new BadRequestError({
-        message: "The identity does not have AWS IAM Auth attached"
+        message: "The identity does not have AWS Auth attached"
       });
 
-    const awsIamIdentityAuth = await identityAwsIamAuthDAL.findOne({ identityId });
+    const awsIdentityAuth = await identityAwsAuthDAL.findOne({ identityId });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -303,13 +298,13 @@ export const identityAwsIamAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
-    return { ...awsIamIdentityAuth, orgId: identityMembershipOrg.orgId };
+    return { ...awsIdentityAuth, orgId: identityMembershipOrg.orgId };
   };
 
   return {
     login,
-    attachAwsIamAuth,
-    updateAwsIamAuth,
-    getAwsIamAuth
+    attachAwsAuth,
+    updateAwsAuth,
+    getAwsAuth
   };
 };

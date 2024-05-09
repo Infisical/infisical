@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import { IdentityAwsIamAuthsSchema } from "@app/db/schemas";
+import { IdentityAwsAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { AWS_IAM_AUTH } from "@app/lib/api-docs";
+import { AWS_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -10,22 +10,22 @@ import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   validateAccountIds,
   validatePrincipalArns
-} from "@app/services/identity-aws-iam-auth/identity-aws-iam-auth-validators";
+} from "@app/services/identity-aws-auth/identity-aws-auth-validators";
 
-export const registerIdentityAwsIamAuthRouter = async (server: FastifyZodProvider) => {
+export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/aws-iam-auth/login",
+    url: "/aws-auth/login",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      description: "Login with AWS IAM Auth",
+      description: "Login with AWS Auth",
       body: z.object({
-        identityId: z.string().describe(AWS_IAM_AUTH.LOGIN.identityId),
-        iamHttpRequestMethod: z.string().default("POST").describe(AWS_IAM_AUTH.LOGIN.iamHttpRequestMethod),
-        iamRequestBody: z.string().describe(AWS_IAM_AUTH.LOGIN.iamRequestBody),
-        iamRequestHeaders: z.string().describe(AWS_IAM_AUTH.LOGIN.iamRequestHeaders)
+        identityId: z.string().describe(AWS_AUTH.LOGIN.identityId),
+        iamHttpRequestMethod: z.string().default("POST").describe(AWS_AUTH.LOGIN.iamHttpRequestMethod),
+        iamRequestBody: z.string().describe(AWS_AUTH.LOGIN.iamRequestBody),
+        iamRequestHeaders: z.string().describe(AWS_AUTH.LOGIN.iamRequestHeaders)
       }),
       response: {
         200: z.object({
@@ -37,18 +37,18 @@ export const registerIdentityAwsIamAuthRouter = async (server: FastifyZodProvide
       }
     },
     handler: async (req) => {
-      const { identityAwsIamAuth, accessToken, identityAccessToken, identityMembershipOrg } =
-        await server.services.identityAwsIamAuth.login(req.body);
+      const { identityAwsAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+        await server.services.identityAwsAuth.login(req.body);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: identityMembershipOrg?.orgId,
         event: {
-          type: EventType.LOGIN_IDENTITY_AWS_IAM_AUTH,
+          type: EventType.LOGIN_IDENTITY_AWS_AUTH,
           metadata: {
-            identityId: identityAwsIamAuth.identityId,
+            identityId: identityAwsAuth.identityId,
             identityAccessTokenId: identityAccessToken.id,
-            identityAwsIamAuthId: identityAwsIamAuth.id
+            identityAwsAuthId: identityAwsAuth.id
           }
         }
       });
@@ -56,21 +56,21 @@ export const registerIdentityAwsIamAuthRouter = async (server: FastifyZodProvide
       return {
         accessToken,
         tokenType: "Bearer" as const,
-        expiresIn: identityAwsIamAuth.accessTokenTTL,
-        accessTokenMaxTTL: identityAwsIamAuth.accessTokenMaxTTL
+        expiresIn: identityAwsAuth.accessTokenTTL,
+        accessTokenMaxTTL: identityAwsAuth.accessTokenMaxTTL
       };
     }
   });
 
   server.route({
     method: "POST",
-    url: "/aws-iam-auth/identities/:identityId",
+    url: "/aws-auth/identities/:identityId",
     config: {
       rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Attach AWS IAM Auth configuration onto identity",
+      description: "Attach AWS Auth configuration onto identity",
       security: [
         {
           bearerAuth: []
@@ -109,12 +109,12 @@ export const registerIdentityAwsIamAuthRouter = async (server: FastifyZodProvide
       }),
       response: {
         200: z.object({
-          identityAwsIamAuth: IdentityAwsIamAuthsSchema
+          identityAwsAuth: IdentityAwsAuthsSchema
         })
       }
     },
     handler: async (req) => {
-      const identityAwsIamAuth = await server.services.identityAwsIamAuth.attachAwsIamAuth({
+      const identityAwsAuth = await server.services.identityAwsAuth.attachAwsAuth({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -125,35 +125,35 @@ export const registerIdentityAwsIamAuthRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityAwsIamAuth.orgId,
+        orgId: identityAwsAuth.orgId,
         event: {
-          type: EventType.ADD_IDENTITY_AWS_IAM_AUTH,
+          type: EventType.ADD_IDENTITY_AWS_AUTH,
           metadata: {
-            identityId: identityAwsIamAuth.identityId,
-            stsEndpoint: identityAwsIamAuth.stsEndpoint,
-            allowedPrincipalArns: identityAwsIamAuth.allowedPrincipalArns,
-            allowedAccountIds: identityAwsIamAuth.allowedAccountIds,
-            accessTokenTTL: identityAwsIamAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityAwsIamAuth.accessTokenMaxTTL,
-            accessTokenTrustedIps: identityAwsIamAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
-            accessTokenNumUsesLimit: identityAwsIamAuth.accessTokenNumUsesLimit
+            identityId: identityAwsAuth.identityId,
+            stsEndpoint: identityAwsAuth.stsEndpoint,
+            allowedPrincipalArns: identityAwsAuth.allowedPrincipalArns,
+            allowedAccountIds: identityAwsAuth.allowedAccountIds,
+            accessTokenTTL: identityAwsAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityAwsAuth.accessTokenMaxTTL,
+            accessTokenTrustedIps: identityAwsAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
+            accessTokenNumUsesLimit: identityAwsAuth.accessTokenNumUsesLimit
           }
         }
       });
 
-      return { identityAwsIamAuth };
+      return { identityAwsAuth };
     }
   });
 
   server.route({
     method: "PATCH",
-    url: "/aws-iam-auth/identities/:identityId",
+    url: "/aws-auth/identities/:identityId",
     config: {
       rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Update AWS IAM Auth configuration on identity",
+      description: "Update AWS Auth configuration on identity",
       security: [
         {
           bearerAuth: []
@@ -185,12 +185,12 @@ export const registerIdentityAwsIamAuthRouter = async (server: FastifyZodProvide
       }),
       response: {
         200: z.object({
-          identityAwsIamAuth: IdentityAwsIamAuthsSchema
+          identityAwsAuth: IdentityAwsAuthsSchema
         })
       }
     },
     handler: async (req) => {
-      const identityAwsIamAuth = await server.services.identityAwsIamAuth.updateAwsIamAuth({
+      const identityAwsAuth = await server.services.identityAwsAuth.updateAwsAuth({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -201,35 +201,35 @@ export const registerIdentityAwsIamAuthRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityAwsIamAuth.orgId,
+        orgId: identityAwsAuth.orgId,
         event: {
-          type: EventType.UPDATE_IDENTITY_AWS_IAM_AUTH,
+          type: EventType.UPDATE_IDENTITY_AWS_AUTH,
           metadata: {
-            identityId: identityAwsIamAuth.identityId,
-            stsEndpoint: identityAwsIamAuth.stsEndpoint,
-            allowedPrincipalArns: identityAwsIamAuth.allowedPrincipalArns,
-            allowedAccountIds: identityAwsIamAuth.allowedAccountIds,
-            accessTokenTTL: identityAwsIamAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityAwsIamAuth.accessTokenMaxTTL,
-            accessTokenTrustedIps: identityAwsIamAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
-            accessTokenNumUsesLimit: identityAwsIamAuth.accessTokenNumUsesLimit
+            identityId: identityAwsAuth.identityId,
+            stsEndpoint: identityAwsAuth.stsEndpoint,
+            allowedPrincipalArns: identityAwsAuth.allowedPrincipalArns,
+            allowedAccountIds: identityAwsAuth.allowedAccountIds,
+            accessTokenTTL: identityAwsAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityAwsAuth.accessTokenMaxTTL,
+            accessTokenTrustedIps: identityAwsAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
+            accessTokenNumUsesLimit: identityAwsAuth.accessTokenNumUsesLimit
           }
         }
       });
 
-      return { identityAwsIamAuth };
+      return { identityAwsAuth };
     }
   });
 
   server.route({
     method: "GET",
-    url: "/aws-iam-auth/identities/:identityId",
+    url: "/aws-auth/identities/:identityId",
     config: {
       rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Retrieve AWS IAM Auth configuration on identity",
+      description: "Retrieve AWS Auth configuration on identity",
       security: [
         {
           bearerAuth: []
@@ -240,12 +240,12 @@ export const registerIdentityAwsIamAuthRouter = async (server: FastifyZodProvide
       }),
       response: {
         200: z.object({
-          identityAwsIamAuth: IdentityAwsIamAuthsSchema
+          identityAwsAuth: IdentityAwsAuthsSchema
         })
       }
     },
     handler: async (req) => {
-      const identityAwsIamAuth = await server.services.identityAwsIamAuth.getAwsIamAuth({
+      const identityAwsAuth = await server.services.identityAwsAuth.getAwsAuth({
         identityId: req.params.identityId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -255,15 +255,15 @@ export const registerIdentityAwsIamAuthRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityAwsIamAuth.orgId,
+        orgId: identityAwsAuth.orgId,
         event: {
-          type: EventType.GET_IDENTITY_AWS_IAM_AUTH,
+          type: EventType.GET_IDENTITY_AWS_AUTH,
           metadata: {
-            identityId: identityAwsIamAuth.identityId
+            identityId: identityAwsAuth.identityId
           }
         }
       });
-      return { identityAwsIamAuth };
+      return { identityAwsAuth };
     }
   });
 };

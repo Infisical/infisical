@@ -78,8 +78,8 @@ import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
 import { identityAccessTokenDALFactory } from "@app/services/identity-access-token/identity-access-token-dal";
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
-import { identityAwsIamAuthDALFactory } from "@app/services/identity-aws-iam-auth/identity-aws-iam-auth-dal";
-import { identityAwsIamAuthServiceFactory } from "@app/services/identity-aws-iam-auth/identity-aws-iam-auth-service";
+import { identityAwsAuthDALFactory } from "@app/services/identity-aws-auth/identity-aws-auth-dal";
+import { identityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectMembershipRoleDALFactory } from "@app/services/identity-project/identity-project-membership-role-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
@@ -203,7 +203,7 @@ export const registerRoutes = async (
 
   const identityUaDAL = identityUaDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
-  const identityAwsIamAuthDAL = identityAwsIamAuthDALFactory(db);
+  const identityAwsAuthDAL = identityAwsAuthDALFactory(db);
 
   const auditLogDAL = auditLogDALFactory(db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
@@ -702,9 +702,9 @@ export const registerRoutes = async (
     identityUaDAL,
     licenseService
   });
-  const identityAWSIAMAuthService = identityAwsIamAuthServiceFactory({
+  const identityAwsAuthService = identityAwsAuthServiceFactory({
     identityAccessTokenDAL,
-    identityAwsIamAuthDAL,
+    identityAwsAuthDAL,
     identityOrgMembershipDAL,
     identityDAL,
     licenseService,
@@ -779,7 +779,7 @@ export const registerRoutes = async (
     identityAccessToken: identityAccessTokenService,
     identityProject: identityProjectService,
     identityUa: identityUaService,
-    identityAwsIamAuth: identityAWSIAMAuthService,
+    identityAwsAuth: identityAwsAuthService,
     secretApprovalPolicy: sapService,
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,

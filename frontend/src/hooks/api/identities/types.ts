@@ -113,8 +113,9 @@ export type UpdateIdentityUniversalAuthDTO = {
   }[];
 };
 
-export type IdentityAwsIamAuth = {
+export type IdentityAwsAuth = {
   identityId: string;
+  type: "iam";
   stsEndpoint: string;
   allowedPrincipalArns: string;
   allowedAccountIds: string;
@@ -124,7 +125,7 @@ export type IdentityAwsIamAuth = {
   accessTokenTrustedIps: IdentityTrustedIp[];
 };
 
-export type AddIdentityAwsIamAuthDTO = {
+export type AddIdentityAwsAuthDTO = {
   organizationId: string;
   identityId: string;
   stsEndpoint: string;
@@ -138,7 +139,7 @@ export type AddIdentityAwsIamAuthDTO = {
   }[];
 };
 
-export type UpdateIdentityAwsIamAuthDTO = {
+export type UpdateIdentityAwsAuthDTO = {
   organizationId: string;
   identityId: string;
   stsEndpoint?: string;

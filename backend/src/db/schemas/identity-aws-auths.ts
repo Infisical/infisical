@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const IdentityAwsIamAuthsSchema = z.object({
+export const IdentityAwsAuthsSchema = z.object({
   id: z.string().uuid(),
   accessTokenTTL: z.coerce.number().default(7200),
   accessTokenMaxTTL: z.coerce.number().default(7200),
@@ -16,11 +16,12 @@ export const IdentityAwsIamAuthsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   identityId: z.string().uuid(),
+  type: z.string(),
   stsEndpoint: z.string(),
   allowedPrincipalArns: z.string(),
   allowedAccountIds: z.string()
 });
 
-export type TIdentityAwsIamAuths = z.infer<typeof IdentityAwsIamAuthsSchema>;
-export type TIdentityAwsIamAuthsInsert = Omit<z.input<typeof IdentityAwsIamAuthsSchema>, TImmutableDBKeys>;
-export type TIdentityAwsIamAuthsUpdate = Partial<Omit<z.input<typeof IdentityAwsIamAuthsSchema>, TImmutableDBKeys>>;
+export type TIdentityAwsAuths = z.infer<typeof IdentityAwsAuthsSchema>;
+export type TIdentityAwsAuthsInsert = Omit<z.input<typeof IdentityAwsAuthsSchema>, TImmutableDBKeys>;
+export type TIdentityAwsAuthsUpdate = Partial<Omit<z.input<typeof IdentityAwsAuthsSchema>, TImmutableDBKeys>>;
