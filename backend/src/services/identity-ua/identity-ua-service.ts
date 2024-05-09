@@ -52,7 +52,7 @@ export const identityUaServiceFactory = ({
 }: TIdentityUaServiceFactoryDep) => {
   const login = async (clientId: string, clientSecret: string, ip: string) => {
     const identityUa = await identityUaDAL.findOne({ clientId });
-    if (!identityUa) throw new UnauthorizedError();
+    if (!identityUa) throw new UnauthorizedError({ message: "Invalid credentials" });
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityUa.identityId });
 
@@ -68,7 +68,7 @@ export const identityUaServiceFactory = ({
     const validClientSecretInfo = clientSecrtInfo.find(({ clientSecretHash }) =>
       bcrypt.compareSync(clientSecret, clientSecretHash)
     );
-    if (!validClientSecretInfo) throw new UnauthorizedError();
+    if (!validClientSecretInfo) throw new UnauthorizedError({ message: "Invalid credentials" });
 
     const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
     if (Number(clientSecretTTL) > 0) {
