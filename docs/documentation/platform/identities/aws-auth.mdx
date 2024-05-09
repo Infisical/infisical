@@ -5,6 +5,32 @@ description: "Learn how to authenticate with Infisical for EC2 instances, Lambda
 
 **AWS Auth** is an AWS-native authentication method for IAM principals like EC2 instances or Lambda functions to access Infisical.
 
+## Diagram
+
+The following sequence digram illustrates the AWS Auth workflow for authenticating AWS IAM principals with Infisical.
+
+```mermaid
+sequenceDiagram
+  participant Client as Client
+  participant Infis as Infisical
+  participant AWS as AWS STS
+
+  Note over Client,Client: Step 1: Sign GetCallerIdentityQuery
+
+  Note over Client,Infis: Step 2: Login Operation
+  Client->>Infis: Send signed query details /api/v1/auth/aws-auth/login
+
+  Note over Infis,AWS: Step 3: Query verification
+  Infis->>AWS: Forward signed GetCallerIdentity query
+  AWS-->>Infis: Return IAM user/role details
+
+  Note over Infis: Step 4: Identity Property Validation
+  Infis->>Client: Return short-lived access token
+
+  Note over Client,Infis: Step 4: Access Infisical API with Token
+  Client->>Infis: Make authenticated requests using the short-lived access token
+```
+
 ## Concept
 
 At a high-level, Infisical authenticates an IAM principal by verifying its identity and checking that it meets specific requirements (e.g. it is an allowed IAM principal ARN) at the `/api/v1/auth/aws-auth/login` endpoint. If successful,
