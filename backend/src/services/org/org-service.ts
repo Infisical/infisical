@@ -546,6 +546,10 @@ export const orgServiceFactory = ({
       code
     });
 
+    await userDAL.updateById(user.id, {
+      isEmailVerified: true
+    });
+
     if (user.isAccepted) {
       // this means user has already completed signup process
       // isAccepted is set true when keys are exchanged
