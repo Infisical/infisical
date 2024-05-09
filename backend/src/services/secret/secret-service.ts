@@ -972,7 +972,8 @@ export const secretServiceFactory = ({
     path,
     actor,
     environment,
-    projectId,
+    projectId: workspaceId,
+    projectSlug,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -980,6 +981,8 @@ export const secretServiceFactory = ({
     includeImports,
     version
   }: TGetASecretRawDTO) => {
+    const projectId = workspaceId || (await projectDAL.findProjectBySlug(projectSlug as string, actorOrgId)).id;
+
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
