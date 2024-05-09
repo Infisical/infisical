@@ -276,7 +276,7 @@ export const RAW_SECRETS = {
     recursive:
       "Whether or not to fetch all secrets from the specified base path, and all of its subdirectories. Note, the max depth is 20 deep.",
     workspaceId: "The ID of the project to list secrets from.",
-    workspaceslug: "the slug of the project to list secrets from. this parameter is only usable by machine identities.",
+    workspaceSlug: "the slug of the project to list secrets from. this parameter is only usable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
     includeImports: "Weather to include imported secrets or not."
