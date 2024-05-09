@@ -31,6 +31,7 @@ export const SecretPathInput = ({
   const [inputValue, setInputValue] = useState(propValue ?? "");
   const [secretPath, setSecretPath] = useState("/");
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isInputFocused, setIsInputFocus] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const debouncedInputValue = useDebounce(inputValue, 200);
 
@@ -55,7 +56,9 @@ export const SecretPathInput = ({
     ) {
       setSecretPath(debouncedInputValue);
     }
+  }, [debouncedInputValue]);
 
+  useEffect(() => {
     // filter suggestions based on matching
     const searchFragment = debouncedInputValue.split("/").pop() || "";
     const filteredSuggestions = folders
@@ -65,7 +68,7 @@ export const SecretPathInput = ({
       .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 
     setSuggestions(filteredSuggestions);
-  }, [debouncedInputValue]);
+  }, [debouncedInputValue, folders]);
 
   const handleSuggestionSelect = (selectedIndex: number) => {
     if (!suggestions[selectedIndex]) {
@@ -75,7 +78,7 @@ export const SecretPathInput = ({
     const validPaths = inputValue.split("/");
     validPaths.pop();
 
-    const newValue = `${validPaths.join("/")}/${suggestions[selectedIndex]}`;
+    const newValue = `${validPaths.join("/")}/${suggestions[selectedIndex]}/`;
     onChange?.(newValue);
     setInputValue(newValue);
     setSecretPath(newValue);
@@ -108,7 +111,7 @@ export const SecretPathInput = ({
 
   return (
     <Popover.Root
-      open={suggestions.length > 0 && inputValue.length > 1}
+      open={suggestions.length > 0 && isInputFocused}
       onOpenChange={() => {
         setHighlightedIndex(-1);
       }}
@@ -119,6 +122,8 @@ export const SecretPathInput = ({
           type="text"
           autoComplete="off"
           onKeyDown={handleKeyDown}
+          onFocus={() => setIsInputFocus(true)}
+          onBlur={() => setIsInputFocus(false)}
           value={inputValue}
           onChange={handleInputChange}
           className={containerClassName}
@@ -150,8 +155,9 @@ export const SecretPathInput = ({
               key={`secret-reference-secret-${i + 1}`}
             >
               <div
-                className={`${highlightedIndex === i ? "bg-gray-600" : ""
-                  } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-1 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
+                className={`${
+                  highlightedIndex === i ? "bg-gray-600" : ""
+                } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-1 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
               >
                 <div className="flex gap-2">
                   <div className="flex items-center text-yellow-700">

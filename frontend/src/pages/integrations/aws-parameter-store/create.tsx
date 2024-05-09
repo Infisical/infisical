@@ -89,6 +89,7 @@ export default function AWSParameterStoreCreateIntegrationPage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [shouldTag, setShouldTag] = useState(false);
+  const [shouldDisableDelete, setShouldDisableDelete] = useState(false);
   const [tagKey, setTagKey] = useState("");
   const [tagValue, setTagValue] = useState("");
   const [kmsKeyId, setKmsKeyId] = useState("");
@@ -144,7 +145,8 @@ export default function AWSParameterStoreCreateIntegrationPage() {
                 ]
               }
             : {}),
-          ...(kmsKeyId && { kmsKeyId })
+          ...(kmsKeyId && { kmsKeyId }),
+          ...(shouldDisableDelete && { shouldDisableDelete })
         }
       });
 
@@ -273,6 +275,15 @@ export default function AWSParameterStoreCreateIntegrationPage() {
               exit={{ opacity: 0, translateX: 30 }}
             >
               <div className="mt-2 ml-1">
+                <Switch
+                  id="delete-aws"
+                  onCheckedChange={() => setShouldDisableDelete(!shouldDisableDelete)}
+                  isChecked={shouldDisableDelete}
+                >
+                  Disable deleting secrets in AWS Parameter Store
+                </Switch>
+              </div>
+              <div className="mt-4 ml-1">
                 <Switch
                   id="tag-aws"
                   onCheckedChange={() => setShouldTag(!shouldTag)}

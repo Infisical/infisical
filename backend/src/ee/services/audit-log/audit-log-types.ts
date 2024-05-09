@@ -70,10 +70,10 @@ export enum EventType {
   ADD_IDENTITY_GCP_AUTH = "add-identity-gcp -auth",
   UPDATE_IDENTITY_GCP_AUTH = "update-identity-gcp-auth",
   GET_IDENTITY_GCP_AUTH = "get-identity-gcp-auth",
-  LOGIN_IDENTITY_AWS_IAM_AUTH = "login-identity-aws-iam-auth",
-  ADD_IDENTITY_AWS_IAM_AUTH = "add-identity-aws-iam-auth",
-  UPDATE_IDENTITY_AWS_IAM_AUTH = "update-identity-aws-iam-auth",
-  GET_IDENTITY_AWS_IAM_AUTH = "get-identity-aws-iam-auth",
+  LOGIN_IDENTITY_AWS_AUTH = "login-identity-aws-auth",
+  ADD_IDENTITY_AWS_AUTH = "add-identity-aws-auth",
+  UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
+  GET_IDENTITY_AWS_AUTH = "get-identity-aws-auth",
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
@@ -460,17 +460,17 @@ interface GetIdentityGcpAuthEvent {
   };
 }
 
-interface LoginIdentityAwsIamAuthEvent {
-  type: EventType.LOGIN_IDENTITY_AWS_IAM_AUTH;
+interface LoginIdentityAwsAuthEvent {
+  type: EventType.LOGIN_IDENTITY_AWS_AUTH;
   metadata: {
     identityId: string;
-    identityAwsIamAuthId: string;
+    identityAwsAuthId: string;
     identityAccessTokenId: string;
   };
 }
 
-interface AddIdentityAwsIamAuthEvent {
-  type: EventType.ADD_IDENTITY_AWS_IAM_AUTH;
+interface AddIdentityAwsAuthEvent {
+  type: EventType.ADD_IDENTITY_AWS_AUTH;
   metadata: {
     identityId: string;
     stsEndpoint: string;
@@ -483,8 +483,8 @@ interface AddIdentityAwsIamAuthEvent {
   };
 }
 
-interface UpdateIdentityAwsIamAuthEvent {
-  type: EventType.UPDATE_IDENTITY_AWS_IAM_AUTH;
+interface UpdateIdentityAwsAuthEvent {
+  type: EventType.UPDATE_IDENTITY_AWS_AUTH;
   metadata: {
     identityId: string;
     stsEndpoint?: string;
@@ -497,8 +497,8 @@ interface UpdateIdentityAwsIamAuthEvent {
   };
 }
 
-interface GetIdentityAwsIamAuthEvent {
-  type: EventType.GET_IDENTITY_AWS_IAM_AUTH;
+interface GetIdentityAwsAuthEvent {
+  type: EventType.GET_IDENTITY_AWS_AUTH;
   metadata: {
     identityId: string;
   };
@@ -762,10 +762,10 @@ export type Event =
   | AddIdentityGcpAuthEvent
   | UpdateIdentityGcpAuthEvent
   | GetIdentityGcpAuthEvent
-  | LoginIdentityAwsIamAuthEvent
-  | AddIdentityAwsIamAuthEvent
-  | UpdateIdentityAwsIamAuthEvent
-  | GetIdentityAwsIamAuthEvent
+  | LoginIdentityAwsAuthEvent
+  | AddIdentityAwsAuthEvent
+  | UpdateIdentityAwsAuthEvent
+  | GetIdentityAwsAuthEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

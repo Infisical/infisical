@@ -269,7 +269,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	} else if infisicalMachineIdentityCreds.ClientId != "" && infisicalMachineIdentityCreds.ClientSecret != "" {
 		authStrategy = AuthStrategy.UNIVERSAL_MACHINE_IDENTITY
 	} else {
-		return fmt.Errorf("no authentication method provided. You must provide either a valid service token or a service account details to fetch secrets")
+		return fmt.Errorf("no authentication method provided. You must provide either a valid service token or a service account details to fetch secrets\n")
 	}
 
 	r.SetInfisicalTokenLoadCondition(ctx, &infisicalSecret, err)
@@ -312,8 +312,9 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	} else if authStrategy == AuthStrategy.SERVICE_TOKEN { // Service Tokens (deprecated)
 		envSlug := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.EnvSlug
 		secretsPath := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.SecretsPath
+		recursive := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.Recursive
 
-		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaServiceToken(infisicalToken, secretVersionBasedOnETag, envSlug, secretsPath)
+		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaServiceToken(infisicalToken, secretVersionBasedOnETag, envSlug, secretsPath, recursive)
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
