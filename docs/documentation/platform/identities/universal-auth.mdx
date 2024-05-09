@@ -5,6 +5,25 @@ description: "Learn how to authenticate to Infisical from any platform or enviro
 
 **Universal Auth** is a platform-agnostic authentication method that can be configured for a [machine identity](/documentation/platform/identities/machine-identities) suitable to authenticate from any platform/environment.
 
+## Diagram
+
+The following sequence digram illustrates the Universal Auth workflow for authenticating clients with Infisical.
+
+```mermaid
+sequenceDiagram
+  participant Client as Client
+  participant Infis as Infisical
+
+  Note over Client,Infis: Step 1: Login Operation
+  Client->>Infis: Send Client ID and Client Secret
+
+  Note over Infis: Step 2: Client ID and Client Secret validation
+  Infis->>Client: Return short-lived access token
+
+  Note over Client,Infis: Step 3: Access Infisical API with Token
+  Client->>Infis: Make authenticated requests using the short-lived access token
+```
+
 ## Concept
 
 In this method, Infisical authenticates an identity by verifying the credentials issued for it at the `/api/v1/auth/universal-auth/login` endpoint. If successful,
@@ -12,7 +31,7 @@ then Infisical returns a short-lived access token that can be used to make authe
 
 In Universal Auth, an identity is given a **Client ID** and one or more **Client Secret(s)**. Together, a **Client ID** and **Client Secret** can be exchanged for a short-lived access token to authenticate with the Infisical API.
 
-## Workflow
+## Guide
 
 In the following steps, we explore how to create and use identities for your workloads and applications to access the Infisical API
 using the Universal Auth authentication method.
