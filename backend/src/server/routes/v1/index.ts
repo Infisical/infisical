@@ -31,7 +31,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await authRouter.register(registerIdentityUaRouter);
       await authRouter.register(registerIdentityGcpAuthRouter);
       await authRouter.register(registerIdentityAccessTokenRouter);
-      await authRouter.register(registerIdentityAccessTokenRouter);
       await authRouter.register(registerIdentityAwsAuthRouter);
     },
     { prefix: "/auth" }

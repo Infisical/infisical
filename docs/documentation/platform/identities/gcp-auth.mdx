@@ -1,12 +1,12 @@
 ---
 title: GCP Auth
-description: "Learn how to authenticate with Infisical for GCE instances and other resources on Google Cloud Platform"
+description: "Learn how to authenticate with Infisical for services on Google Cloud Platform"
 ---
 
 **GCP Auth** is a GCP-native authentication method for GCP resources to access Infisical.
 
 - GCP IAM Auth: For Google Cloud Platform (GCP) service accounts to authenticate with Infisical.
-- GCP GCE Auth: For Google Compute Engine (GCE) instances to authenticate with Infisical.
+- GCP GCE Auth: For GCP services including [Compute Engine](https://cloud.google.com/compute/docs/instances/verifying-instance-identity#request_signature), [App Engine standard environment](https://cloud.google.com/appengine/docs/standard/python3/runtime#metadata_server), [App Engine flexible environment](https://cloud.google.com/appengine/docs/flexible/python/runtime#metadata_server), [Cloud Functions](https://cloud.google.com/functions/docs/securing/function-identity#using_the_metadata_server_to_acquire_tokens), [Cloud Run](https://cloud.google.com/run/docs/container-contract#metadata-server), [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity#instance_metadata), and [Cloud Build](https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity#instance_metadata) to authenticate with Infisical.
 
 <Tabs>
 <Tab title="GCP IAM Auth">
@@ -34,7 +34,7 @@ sequenceDiagram
   Note over Infis: Step 4: JWT Property Validation
   Infis->>GCE: Return short-lived access token
 
-  Note over GCE,Infis: Step 4: Access Infisical API with Token
+  Note over GCE,Infis: Step 5: Access Infisical API with Token
   GCE->>Infis: Make authenticated requests using the short-lived access token
 ```
 
@@ -43,8 +43,13 @@ sequenceDiagram
 At a high-level, Infisical authenticates an IAM service account by verifying its identity and checking that it meets specific requirements (e.g. it is an allowed service account) at the `/api/v1/auth/gcp-auth/login` endpoint. If successful,
 then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
-In GCP IAM Auth, the client generates a signed JWT using the `projects.serviceAccounts.signJwt` [API method](https://cloud.google.com/iam/docs/reference/credentials/rest/v1/projects.serviceAccounts/signJwt); this is done using the service account credentials from the GCP environment where the client is running.
-The signed JWT is sent to Infisical after which Infisical verifies the JWT and checks if the associated service account is allowed to authenticate with Infisical. If all is well, Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
+To be more specific:
+
+1. The client generates a signed JWT token using the `projects.serviceAccounts.signJwt` [API method](https://cloud.google.com/iam/docs/reference/credentials/rest/v1/projects.serviceAccounts/signJwt); this is done using the service account credentials associated with the client.
+2. The client sends the signed JWT token to Infisical.
+3. Infisical verifies the signed JWT token.
+4. Infisical fetches more details about the identity behind the token and checks if it is allowed to authenticate with Infisical based on set criteria.
+5. If all is well, Infisical returns a short-lived access token that the client can use to make authenticated requests to the Infisical API.
 
 <Note>
 We recommend using one of Infisical's clients like SDKs or the Infisical Agent
@@ -56,7 +61,7 @@ as part of the GCP Auth workflow.
 
 </Note>
 
-## Workflow
+## Guide
 
 In the following steps, we explore how to create and use identities for your workloads and applications on GCP to
 access the Infisical API using the GCP IAM authentication method.
@@ -194,7 +199,7 @@ access the Infisical API using the GCP IAM authentication method.
 
 ```mermaid
 sequenceDiagram
-  participant GCE as GCE Instance
+  participant GCE as GCP Service
   participant Infis as Infisical
   participant Google as OAuth2 API
 
@@ -220,13 +225,18 @@ sequenceDiagram
 At a high-level, Infisical authenticates a GCE instance by verifying its identity and checking that it meets specific requirements (e.g. it is an allowed GCE instance) at the `/api/v1/auth/gcp-auth/login` endpoint. If successful,
 then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
-In GCP GCE Auth, the client obtains an [instance identity metadata token](https://cloud.google.com/compute/docs/instances/verifying-instance-identity) constituting the identity for a GCE instance; this is a unique JWT token that includes details about the instance as well as Google's [RS256 signature](https://datatracker.ietf.org/doc/html/rfc7518#section-3.3).
-The token is sent to Infisical after which Infisical verifies the token against Google's [public OAuth2 certificates](https://www.googleapis.com/oauth2/v3/certs) and checks if the associated instance is allowed to authenticate with Infisical. If all is well, Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
+To be more specific:
+
+1. The client running on a GCP service obtains an [ID token](https://cloud.google.com/compute/docs/instances/verifying-instance-identity) constituting the identity for a GCE instance; this is a unique JWT token that includes details about the instance as well as Google's [RS256 signature](https://datatracker.ietf.org/doc/html/rfc7518#section-3.3).
+2. The client sends the ID token to Infisical.
+3. Infisical verifies the token against Google's [public OAuth2 certificates](https://www.googleapis.com/oauth2/v3/certs).
+4. Infisical fetches more details about the identity behind the token and checks if it is allowed to authenticate with Infisical based on set criteria.
+5. If all is well, Infisical returns a short-lived access token that the client can use to make authenticated requests to the Infisical API.
 
 <Note>
 We recommend using one of Infisical's clients like SDKs or the Infisical Agent
 to authenticate with Infisical using GCP GCE Auth as they handle the
-authentication process including generating the signed JWT token.
+authentication process including generating the instance ID token for you.
 
 Also, note that Infisical needs network-level access to send requests to the Google Cloud API
 as part of the GCP Auth workflow.
@@ -285,21 +295,28 @@ access the Infisical API using the GCP GCE authentication method.
     ![identities project create](/images/platform/identities/identities-project-create.png)
     </Step>
     <Step title="Accessing the Infisical API with the identity">
-        To access the Infisical API as the identity, you need to generate an [instance identity metadata token](https://cloud.google.com/compute/docs/instances/verifying-instance-identity) constituting the identity of the present GCE instance and make a request to the `/api/v1/auth/gcp-auth/login` endpoint containing the token in exchange for an access token.
+        To access the Infisical API as the identity, you need to generate an [ID token](https://cloud.google.com/compute/docs/instances/verifying-instance-identity) constituting the identity of the present GCE instance and make a request to the `/api/v1/auth/gcp-auth/login` endpoint containing the token in exchange for an access token.
 
         We provide a few code examples below of how you can authenticate with Infisical to access the [Infisical API](/api-reference/overview/introduction).
 
         <AccordionGroup>
             <Accordion
-                title="Sample code for generating the instance identity metadata token"
+                title="Sample code for generating the ID token"
             >
-                Start by making a request from the GCE instance to obtain the instance identity metadata token.
+                Start by making a request from the GCE instance to obtain the ID token.
+                For more examples of how to obtain the token in Java, Go, Node.js, etc. refer to the [official documentation](https://cloud.google.com/docs/authentication/get-id-token#curl).
 
                 #### Sample request
-                ```bash Request
+                <CodeGroup>
+                ```bash curl
                 curl -H "Metadata-Flavor: Google" \
-                'http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=${identityId}&format=full'
+                'http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=<identityId>'
                 ```
+                </CodeGroup>
+
+                <Note>
+                    Note that you should replace `<identityId>` with the ID of the identity you created in step 1.
+                </Note>
 
                 Next use send the obtained JWT token along to authenticate with Infisical and obtain an access token.
 
