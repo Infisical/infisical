@@ -1,6 +1,6 @@
 ---
 title: GCP Auth
-description: "Learn how to authenticate with Infisical Google Cloud Platform"
+description: "Learn how to authenticate with Infisical for GCE instances and other resources on Google Cloud Platform"
 ---
 
 **GCP Auth** is a GCP-native authentication method for GCP resources to access Infisical.
@@ -10,6 +10,34 @@ description: "Learn how to authenticate with Infisical Google Cloud Platform"
 
 <Tabs>
   <Tab title="Google GCE Auth">
+
+    ## Diagram
+
+    The following sequence digram illustrates the GCP GCE Auth workflow for authenticating a GCE instance with Infisical.
+
+```mermaid
+sequenceDiagram
+  participant GCE as GCE Instance
+  participant Infis as Infisical
+  participant Google as OAuth2 API
+
+  Note over GCE,Google: Step 1: Instance Identity Token Retrieval
+  GCE->>Google: Request instance identity metadata token
+  Google-->>GCE: Return JWT token with RS256 signature
+
+  Note over GCE,Infis: Step 2: Identity Token Login Operation
+  GCE->>Infis: Send JWT token to /api/v1/auth/gcp-auth/login
+  Infis->>Google: Request OAuth2 certificates
+  Google-->>Infis: Return certificates
+
+  Note over Infis: Step 3: Identity Token Verification
+  Note over Infis: Step 4: Identity Property Validation
+  Infis->>GCE: Return short-lived access token
+
+  Note over GCE,Infis: Step 4: Access Infisical API with Token
+  GCE->>Infis: Make authenticated requests using the short-lived access token
+```
+
     ## Concept
 
 At a high-level, Infisical authenticates a GCE instance by verifying its identity and checking that it meets specific requirements (e.g. it is an allowed GCE instance) at the `/api/v1/auth/gcp-auth/login` endpoint. If successful,
@@ -28,7 +56,7 @@ as part of the GCP Auth workflow.
 
 </Note>
 
-## Workflow
+## Guide
 
 In the following steps, we explore how to create and use identities for your workloads and applications on GCP to
 access the Infisical API using the GCP GCE authentication method.
@@ -137,7 +165,35 @@ access the Infisical API using the GCP GCE authentication method.
 
   </Tab>
   <Tab title="GCP IAM Auth">
-  ## Concept
+  
+    ## Diagram
+
+    The following sequence digram illustrates the GCP IAM Auth workflow for authenticating GCP IAM service accounts with Infisical.
+
+```mermaid
+sequenceDiagram
+  participant GCE as Client
+  participant Infis as Infisical
+  participant Google as Cloud IAM
+
+  Note over GCE,Google: Step 1: Signed JWT Token Generation
+  GCE->>Google: Request to generate signed JWT token
+  Google-->>GCE: Return signed JWT token
+
+  Note over GCE,Infis: Step 2: JWT Token Login Operation
+  GCE->>Infis: Send signed JWT token to /api/v1/auth/gcp-auth/login
+  Infis->>Google: Request public key
+  Google-->>Infis: Return public key
+
+  Note over Infis: Step 3: JWT Token Verification
+  Note over Infis: Step 4: JWT Property Validation
+  Infis->>GCE: Return short-lived access token
+
+  Note over GCE,Infis: Step 4: Access Infisical API with Token
+  GCE->>Infis: Make authenticated requests using the short-lived access token
+```
+
+## Concept
 
 At a high-level, Infisical authenticates an IAM service account by verifying its identity and checking that it meets specific requirements (e.g. it is an allowed service account) at the `/api/v1/auth/gcp-auth/login` endpoint. If successful,
 then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
