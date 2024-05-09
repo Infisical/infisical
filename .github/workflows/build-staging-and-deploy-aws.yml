@@ -74,7 +74,7 @@ jobs:
         uses: pr-mpt/actions-commit-hash@v2
       - name: Download task definition
         run: |
-          aws ecs describe-task-definition --task-definition infisical-prod-platform --query taskDefinition > task-definition.json
+          aws ecs describe-task-definition --task-definition infisical-core-platform --query taskDefinition > task-definition.json
       - name: Render Amazon ECS task definition
         id: render-web-container
         uses: aws-actions/amazon-ecs-render-task-definition@v1
