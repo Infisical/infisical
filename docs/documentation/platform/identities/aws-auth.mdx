@@ -1,34 +1,60 @@
 ---
-title: AWS IAM Auth
+title: AWS Auth
 description: "Learn how to authenticate with Infisical for EC2 instances, Lambda functions, and other IAM principals."
 ---
 
-**AWS IAM Auth** is an AWS-native authentication method for IAM principals like EC2 instances or Lambda functions to access Infisical.
+**AWS Auth** is an AWS-native authentication method for IAM principals like EC2 instances or Lambda functions to access Infisical.
+
+## Diagram
+
+The following sequence digram illustrates the AWS Auth workflow for authenticating AWS IAM principals with Infisical.
+
+```mermaid
+sequenceDiagram
+  participant Client as Client
+  participant Infis as Infisical
+  participant AWS as AWS STS
+
+  Note over Client,Client: Step 1: Sign GetCallerIdentityQuery
+
+  Note over Client,Infis: Step 2: Login Operation
+  Client->>Infis: Send signed query details /api/v1/auth/aws-auth/login
+
+  Note over Infis,AWS: Step 3: Query verification
+  Infis->>AWS: Forward signed GetCallerIdentity query
+  AWS-->>Infis: Return IAM user/role details
+
+  Note over Infis: Step 4: Identity Property Validation
+  Infis->>Client: Return short-lived access token
+
+  Note over Client,Infis: Step 4: Access Infisical API with Token
+  Client->>Infis: Make authenticated requests using the short-lived access token
+```
 
 ## Concept
 
-At a high-level, Infisical authenticates an IAM principal by verifying its identity and checking that it meets specific requirements (e.g. it is an allowed IAM principal ARN) at the `/api/v1/auth/aws-iam-auth/login` endpoint. If successful,
+At a high-level, Infisical authenticates an IAM principal by verifying its identity and checking that it meets specific requirements (e.g. it is an allowed IAM principal ARN) at the `/api/v1/auth/aws-auth/login` endpoint. If successful,
 then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
-In AWS IAM Auth, an IAM principal signs a `GetCallerIdentity` query using the [AWS Signature v4 algorithm](https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html); this is done using the credentials from the AWS environment where the IAM principal is running.
+In AWS Auth, an IAM principal signs a `GetCallerIdentity` query using the [AWS Signature v4 algorithm](https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html); this is done using the credentials from the AWS environment where the IAM principal is running.
 The query data including the request method, request body, and request headers are sent to Infisical afterwhich Infisical forwards the signed query to AWS STS API via the [sts:GetCallerIdentity](https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html) method to verify and obtain the identity of the IAM principal.
 Once obtained, the identity information is verified against specified requirements such as if the associated IAM principal ARN is allowed to authenticate with Infisical. If all is well, Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
 <Note>
 We recommend using one of Infisical's clients like SDKs or the Infisical Agent
-to authenticate with Infisical using AWS IAM Auth as they handle the
+to authenticate with Infisical using AWS Auth as they handle the
 authentication process including the signed `GetCallerIdentity` query
 construction for you.
 
 Also, note that Infisical needs network-level access to send requests to the AWS STS API
-as part of the AWS IAM Auth workflow.
+as part of the AWS Auth workflow.
 
 </Note>
 
 ## Workflow
 
 In the following steps, we explore how to create and use identities for your workloads and applications on AWS to
-access the Infisical API using the AWS IAM authentication method.
+access the Infisical API using the AWS Auth authentication method.
 
 <Steps>
     <Step title="Creating an identity">
@@ -45,9 +71,9 @@ access the Infisical API using the AWS IAM authentication method.
     - Name (required): A friendly name for the identity.
     - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
 
-    Once you've created an identity, you'll be prompted to configure the authentication method for it. Here, select **AWS IAM Auth**.
+    Once you've created an identity, you'll be prompted to configure the authentication method for it. Here, select **AWS Auth**.
 
-    ![identities create iam auth method](/images/platform/identities/identities-org-create-aws-iam-auth-method.png)
+    ![identities create aws auth method](/images/platform/identities/identities-org-create-aws-auth-method.png)
 
     Here's some more guidance on each field:
 
@@ -71,7 +97,7 @@ access the Infisical API using the AWS IAM authentication method.
     ![identities project create](/images/platform/identities/identities-project-create.png)
     </Step>
     <Step title="Accessing the Infisical API with the identity">
-        To access the Infisical API as the identity, you need to construct a signed `GetCallerIdentity` query using the [AWS Signature v4 algorithm](https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html) and make a request to the `/api/v1/auth/aws-iam-auth/login` endpoint containing the query data
+        To access the Infisical API as the identity, you need to construct a signed `GetCallerIdentity` query using the [AWS Signature v4 algorithm](https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html) and make a request to the `/api/v1/auth/aws-auth/login` endpoint containing the query data
         in exchange for an access token.
 
         We provide a few code examples below of how you can authenticate with Infisical from inside a Lambda function, EC2 instance, etc. and obtain an access token to access the [Infisical API](/api-reference/overview/introduction).
@@ -119,7 +145,7 @@ access the Infisical API using the AWS IAM authentication method.
                         const identityId = "<your-identity-id>";
 
                         const { data } = await axios.post(
-                            `${infisicalUrl}/api/v1/auth/aws-iam-auth/login`,
+                            `${infisicalUrl}/api/v1/auth/aws-auth/login`,
                             {
                                 identityId,
                                 iamHttpRequestMethod: "POST",
@@ -191,7 +217,7 @@ access the Infisical API using the AWS IAM authentication method.
                         const infisicalUrl = "https://app.infisical.com"; // or your self-hosted Infisical URL
                         const identityId = "<your-identity-id>";
 
-                        const { data } = await axios.post(`${infisicalUrl}/api/v1/auth/aws-iam-auth/login`, {
+                        const { data } = await axios.post(`${infisicalUrl}/api/v1/auth/aws-auth/login`, {
                             identityId,
                             iamHttpRequestMethod: "POST",
                             iamRequestUrl: Buffer.from(iamRequestURL).toString("base64"),
@@ -239,7 +265,7 @@ access the Infisical API using the AWS IAM authentication method.
                 #### Sample request
 
                 ```bash Request
-                curl --location --request POST 'https://app.infisical.com/api/v1/auth/aws-iam-auth/login' \
+                curl --location --request POST 'https://app.infisical.com/api/v1/auth/aws-auth/login' \
                     --header 'Content-Type: application/x-www-form-urlencoded' \
                     --data-urlencode 'identityId=...' \
                     --data-urlencode 'iamHttpRequestMethod=...' \
@@ -263,7 +289,7 @@ access the Infisical API using the AWS IAM authentication method.
         </AccordionGroup>
 
         <Tip>
-            We recommend using one of Infisical's clients like SDKs or the Infisical Agent to authenticate with Infisical using AWS IAM Auth as they handle the authentication process including the signed `GetCallerIdentity` query construction for you.
+            We recommend using one of Infisical's clients like SDKs or the Infisical Agent to authenticate with Infisical using AWS Auth as they handle the authentication process including the signed `GetCallerIdentity` query construction for you.
         </Tip>
 
         <Note>

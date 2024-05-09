@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { organizationKeys } from "../organization/queries";
 import { identitiesKeys } from "./queries";
 import {
-  AddIdentityAwsIamAuthDTO,
+  AddIdentityAwsAuthDTO,
   AddIdentityUniversalAuthDTO,
   ClientSecretData,
   CreateIdentityDTO,
@@ -14,11 +14,12 @@ import {
   DeleteIdentityDTO,
   DeleteIdentityUniversalAuthClientSecretDTO,
   Identity,
-  IdentityAwsIamAuth,
+  IdentityAwsAuth,
   IdentityUniversalAuth,
-  UpdateIdentityAwsIamAuthDTO,
+  UpdateIdentityAwsAuthDTO,
   UpdateIdentityDTO,
-  UpdateIdentityUniversalAuthDTO} from "./types";
+  UpdateIdentityUniversalAuthDTO
+} from "./types";
 
 export const useCreateIdentity = () => {
   const queryClient = useQueryClient();
@@ -172,9 +173,9 @@ export const useRevokeIdentityUniversalAuthClientSecret = () => {
   });
 };
 
-export const useAddIdentityAwsIamAuth = () => {
+export const useAddIdentityAwsAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityAwsIamAuth, {}, AddIdentityAwsIamAuthDTO>({
+  return useMutation<IdentityAwsAuth, {}, AddIdentityAwsAuthDTO>({
     mutationFn: async ({
       identityId,
       stsEndpoint,
@@ -186,9 +187,9 @@ export const useAddIdentityAwsIamAuth = () => {
       accessTokenTrustedIps
     }) => {
       const {
-        data: { identityAwsIamAuth }
-      } = await apiRequest.post<{ identityAwsIamAuth: IdentityAwsIamAuth }>(
-        `/api/v1/auth/aws-iam-auth/identities/${identityId}`,
+        data: { identityAwsAuth }
+      } = await apiRequest.post<{ identityAwsAuth: IdentityAwsAuth }>(
+        `/api/v1/auth/aws-auth/identities/${identityId}`,
         {
           stsEndpoint,
           allowedPrincipalArns,
@@ -200,7 +201,7 @@ export const useAddIdentityAwsIamAuth = () => {
         }
       );
 
-      return identityAwsIamAuth;
+      return identityAwsAuth;
     },
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
@@ -208,9 +209,9 @@ export const useAddIdentityAwsIamAuth = () => {
   });
 };
 
-export const useUpdateIdentityAwsIamAuth = () => {
+export const useUpdateIdentityAwsAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityAwsIamAuth, {}, UpdateIdentityAwsIamAuthDTO>({
+  return useMutation<IdentityAwsAuth, {}, UpdateIdentityAwsAuthDTO>({
     mutationFn: async ({
       identityId,
       stsEndpoint,
@@ -222,9 +223,9 @@ export const useUpdateIdentityAwsIamAuth = () => {
       accessTokenTrustedIps
     }) => {
       const {
-        data: { identityAwsIamAuth }
-      } = await apiRequest.patch<{ identityAwsIamAuth: IdentityAwsIamAuth }>(
-        `/api/v1/auth/aws-iam-auth/identities/${identityId}`,
+        data: { identityAwsAuth }
+      } = await apiRequest.patch<{ identityAwsAuth: IdentityAwsAuth }>(
+        `/api/v1/auth/aws-auth/identities/${identityId}`,
         {
           stsEndpoint,
           allowedPrincipalArns,
@@ -235,7 +236,7 @@ export const useUpdateIdentityAwsIamAuth = () => {
           accessTokenTrustedIps
         }
       );
-      return identityAwsIamAuth;
+      return identityAwsAuth;
     },
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));

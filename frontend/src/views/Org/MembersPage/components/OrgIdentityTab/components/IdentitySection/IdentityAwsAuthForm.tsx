@@ -9,9 +9,9 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import {
-  useAddIdentityAwsIamAuth,
-  useGetIdentityAwsIamAuth,
-  useUpdateIdentityAwsIamAuth
+  useAddIdentityAwsAuth,
+  useGetIdentityAwsAuth,
+  useUpdateIdentityAwsAuth
 } from "@app/hooks/api";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
@@ -52,7 +52,7 @@ type Props = {
   };
 };
 
-export const IdentityAwsIamAuthForm = ({
+export const IdentityAwsAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
   identityAuthMethodData
@@ -61,10 +61,10 @@ export const IdentityAwsIamAuthForm = ({
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
 
-  const { mutateAsync: addMutateAsync } = useAddIdentityAwsIamAuth();
-  const { mutateAsync: updateMutateAsync } = useUpdateIdentityAwsIamAuth();
+  const { mutateAsync: addMutateAsync } = useAddIdentityAwsAuth();
+  const { mutateAsync: updateMutateAsync } = useUpdateIdentityAwsAuth();
 
-  const { data } = useGetIdentityAwsIamAuth(identityAuthMethodData?.identityId ?? "");
+  const { data } = useGetIdentityAwsAuth(identityAuthMethodData?.identityId ?? "");
 
   const {
     control,

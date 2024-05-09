@@ -92,7 +92,7 @@ export const UNIVERSAL_AUTH = {
   }
 } as const;
 
-export const AWS_IAM_AUTH = {
+export const AWS_AUTH = {
   LOGIN: {
     identityId: "The ID of the identity to login.",
     iamHttpRequestMethod: "The HTTP request method used in the signed request.",
