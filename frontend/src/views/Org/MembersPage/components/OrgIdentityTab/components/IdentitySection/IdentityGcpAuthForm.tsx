@@ -202,6 +202,27 @@ export const IdentityGcpAuthForm = ({
     <form onSubmit={handleSubmit(onFormSubmit)}>
       <Controller
         control={control}
+        name="type"
+        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+          <FormControl label="Type" isError={Boolean(error)} errorText={error?.message}>
+            <Select
+              defaultValue={field.value}
+              {...field}
+              onValueChange={(e) => onChange(e)}
+              className="w-full"
+            >
+              <SelectItem value="iam" key="gcpiam">
+                GCP IAM Auth
+              </SelectItem>
+              <SelectItem value="gce" key="gcp-type-gce">
+                GCP GCE Auth
+              </SelectItem>
+            </Select>
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
         name="credentials"
         render={({ field, fieldState: { error } }) => (
           <FormControl
@@ -213,28 +234,6 @@ export const IdentityGcpAuthForm = ({
           </FormControl>
         )}
       />
-      <Controller
-        control={control}
-        name="type"
-        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl label="Type" isError={Boolean(error)} errorText={error?.message}>
-            <Select
-              defaultValue={field.value}
-              {...field}
-              onValueChange={(e) => onChange(e)}
-              className="w-full"
-            >
-              <SelectItem value="iam" key="gcpiam">
-                IAM
-              </SelectItem>
-              <SelectItem value="gce" key="gcp-type-gce">
-                GCE
-              </SelectItem>
-            </Select>
-          </FormControl>
-        )}
-      />
-
       <Controller
         control={control}
         defaultValue="2592000"

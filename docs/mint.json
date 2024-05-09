@@ -154,7 +154,7 @@
         "documentation/platform/token",
         "documentation/platform/identities/universal-auth",
         "documentation/platform/identities/aws-iam-auth",
-        "documentation/platform/identities/gcp-iam-auth",
+        "documentation/platform/identities/gcp-auth",
         "documentation/platform/mfa",
         {
           "group": "SSO",
