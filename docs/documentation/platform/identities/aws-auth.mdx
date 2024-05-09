@@ -37,7 +37,7 @@ At a high-level, Infisical authenticates an IAM principal by verifying its ident
 then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
 In AWS Auth, an IAM principal signs a `GetCallerIdentity` query using the [AWS Signature v4 algorithm](https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html); this is done using the credentials from the AWS environment where the IAM principal is running.
-The query data including the request method, request body, and request headers are sent to Infisical afterwhich Infisical forwards the signed query to AWS STS API via the [sts:GetCallerIdentity](https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html) method to verify and obtain the identity of the IAM principal.
+The query data including the request method, request body, and request headers are sent to Infisical after which Infisical forwards the signed query to AWS STS API via the [sts:GetCallerIdentity](https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html) method to verify and obtain the identity of the IAM principal.
 Once obtained, the identity information is verified against specified requirements such as if the associated IAM principal ARN is allowed to authenticate with Infisical. If all is well, Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
 <Note>
