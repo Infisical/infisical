@@ -10,4 +10,5 @@ export type Metadata = {
         value: string;
     }[]
     kmsKeyId?: string;
+    shouldDisableDelete?: boolean;
 }
