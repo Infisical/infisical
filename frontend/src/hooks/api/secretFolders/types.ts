@@ -36,3 +36,13 @@ export type TDeleteFolderDTO = {
   folderId: string;
   path?: string;
 };
+
+export type TUpdateFolderBatchDTO = {
+  projectId: string;
+  folders: {
+    name: string;
+    environment: string;
+    id: string;
+    path?: string;
+  }[];
+};

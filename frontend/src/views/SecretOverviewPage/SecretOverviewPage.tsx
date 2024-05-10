@@ -60,9 +60,10 @@ import {
   useGetImportedSecretsAllEnvs,
   useGetProjectSecretsAllEnv,
   useGetUserWsKey,
-  useUpdateFolder,
   useUpdateSecretV3
 } from "@app/hooks/api";
+import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
+import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretFolder } from "@app/hooks/api/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
@@ -205,7 +206,7 @@ export const SecretOverviewPage = () => {
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
-  const { mutateAsync: updateFolder } = useUpdateFolder();
+  const { mutateAsync: updateFolderBatch } = useUpdateFolderBatch();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addSecretsInAllEnvs",
@@ -244,60 +245,54 @@ export const SecretOverviewPage = () => {
 
   const handleFolderUpdate = async (newFolderName: string) => {
     const { name: oldFolderName } = popUp.updateFolder.data as TSecretFolder;
-    let processedUpdates = 0;
-    let totalFolderMatchCount = 0;
 
-    await Promise.allSettled(
-      userAvailableEnvs.map(async (env) => {
-        if (
-          permission.cannot(
-            ProjectPermissionActions.Edit,
-            subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
-          )
-        ) {
-          return;
-        }
-
+    const updatedFolders: TUpdateFolderBatchDTO["folders"] = [];
+    userAvailableEnvs.forEach((env) => {
+      if (
+        permission.can(
+          ProjectPermissionActions.Edit,
+          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
+        )
+      ) {
         const folder = getFolderByNameAndEnv(oldFolderName, env.slug);
         if (folder) {
-          totalFolderMatchCount += 1;
-
-          await updateFolder({
-            folderId: folder.id,
-            name: newFolderName,
-            path: secretPath,
+          updatedFolders.push({
             environment: env.slug,
-            projectId: workspaceId
+            name: newFolderName,
+            id: folder.id,
+            path: secretPath
           });
-
-          processedUpdates += 1;
         }
-      })
-    );
+      }
+    });
 
-    if (totalFolderMatchCount === 0) {
+    if (updatedFolders.length === 0) {
       createNotification({
         type: "info",
         text: "You don't have access to rename selected folder"
       });
-    } else if (processedUpdates === totalFolderMatchCount) {
+
+      handlePopUpClose("updateFolder");
+      return;
+    }
+
+    try {
+      await updateFolderBatch({
+        projectId: workspaceId,
+        folders: updatedFolders
+      });
       createNotification({
         type: "success",
         text: "Successfully renamed folder across environments"
       });
-    } else if (processedUpdates > 0) {
-      createNotification({
-        type: "warning",
-        text: "Partially renamed folder across environments"
-      });
-    } else {
+    } catch (err) {
       createNotification({
         type: "error",
         text: "Failed to rename folder across environments"
       });
+    } finally {
+      handlePopUpClose("updateFolder");
     }
-
-    handlePopUpClose("updateFolder");
   };
 
   const handleSecretCreate = async (env: string, key: string, value: string) => {
