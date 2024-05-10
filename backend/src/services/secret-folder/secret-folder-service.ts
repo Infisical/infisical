@@ -151,10 +151,14 @@ export const secretFolderServiceFactory = ({
           const { environment, path: secretPath, id, name } = newFolder;
 
           const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-          if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
+          if (!parentFolder) {
+            throw new BadRequestError({ message: "Secret path not found", name: "Batch update folder" });
+          }
 
           const env = await projectEnvDAL.findOne({ projectId, slug: environment });
-          if (!env) throw new BadRequestError({ message: "Environment not found", name: "Update folder" });
+          if (!env) {
+            throw new BadRequestError({ message: "Environment not found", name: "Batch update folder" });
+          }
           const folder = await folderDAL
             .findOne({ envId: env.id, id, parentId: parentFolder.id })
             // now folder api accepts id based change
