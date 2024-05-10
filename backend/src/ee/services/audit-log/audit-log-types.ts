@@ -67,7 +67,7 @@ export enum EventType {
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
   LOGIN_IDENTITY_GCP_AUTH = "login-identity-gcp-auth",
-  ADD_IDENTITY_GCP_AUTH = "add-identity-gcp -auth",
+  ADD_IDENTITY_GCP_AUTH = "add-identity-gcp-auth",
   UPDATE_IDENTITY_GCP_AUTH = "update-identity-gcp-auth",
   GET_IDENTITY_GCP_AUTH = "get-identity-gcp-auth",
   LOGIN_IDENTITY_AWS_AUTH = "login-identity-aws-auth",
