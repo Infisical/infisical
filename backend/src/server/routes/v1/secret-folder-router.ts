@@ -141,7 +141,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         }
       ],
       body: z.object({
-        workspaceId: z.string().trim().describe(FOLDERS.UPDATE.workspaceId),
+        projectSlug: z.string().trim().describe(FOLDERS.UPDATE.projectSlug),
         folders: z
           .object({
             id: z.string().describe(FOLDERS.UPDATE.folderId),
@@ -160,20 +160,19 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { newFolders, oldFolders } = await server.services.folder.updateManyFolders({
-        folders: req.body.folders,
+      const { newFolders, oldFolders, projectId } = await server.services.folder.updateManyFolders({
+        ...req.body,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.body.workspaceId
+        actorOrgId: req.permission.orgId
       });
 
       await Promise.all(
         req.body.folders.map(async (folder, ind) => {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            projectId: req.body.workspaceId,
+            projectId,
             event: {
               type: EventType.UPDATE_FOLDER,
               metadata: {

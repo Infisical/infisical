@@ -278,8 +278,9 @@ export const SecretOverviewPage = () => {
 
     try {
       await updateFolderBatch({
-        projectId: workspaceId,
-        folders: updatedFolders
+        projectSlug,
+        folders: updatedFolders,
+        projectId: workspaceId
       });
       createNotification({
         type: "success",

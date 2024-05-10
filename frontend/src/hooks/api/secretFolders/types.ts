@@ -39,6 +39,7 @@ export type TDeleteFolderDTO = {
 
 export type TUpdateFolderBatchDTO = {
   projectId: string;
+  projectSlug: string;
   folders: {
     name: string;
     environment: string;

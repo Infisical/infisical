@@ -8,6 +8,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { BadRequestError } from "@app/lib/errors";
 
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import {
@@ -25,6 +26,7 @@ type TSecretFolderServiceFactoryDep = {
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   folderVersionDAL: TSecretFolderVersionDALFactory;
+  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
@@ -34,7 +36,8 @@ export const secretFolderServiceFactory = ({
   snapshotService,
   permissionService,
   projectEnvDAL,
-  folderVersionDAL
+  folderVersionDAL,
+  projectDAL
 }: TSecretFolderServiceFactoryDep) => {
   const createFolder = async ({
     projectId,
@@ -125,11 +128,18 @@ export const secretFolderServiceFactory = ({
   const updateManyFolders = async ({
     actor,
     actorId,
-    projectId,
+    projectSlug,
     actorAuthMethod,
     actorOrgId,
     folders
   }: TUpdateManyFoldersDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) {
+      throw new BadRequestError({ message: "Project not found" });
+    }
+
+    const projectId = project.id;
+
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -210,6 +220,7 @@ export const secretFolderServiceFactory = ({
     await Promise.all(result.map(async (res) => snapshotService.performSnapshot(res.newFolder.parentId as string)));
 
     return {
+      projectId,
       newFolders: result.map((res) => res.newFolder),
       oldFolders: result.map((res) => res.oldFolder)
     };

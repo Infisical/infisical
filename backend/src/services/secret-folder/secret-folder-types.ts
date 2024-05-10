@@ -14,13 +14,14 @@ export type TUpdateFolderDTO = {
 } & TProjectPermission;
 
 export type TUpdateManyFoldersDTO = {
+  projectSlug: string;
   folders: {
     environment: string;
     path: string;
     id: string;
     name: string;
   }[];
-} & TProjectPermission;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteFolderDTO = {
   environment: string;
