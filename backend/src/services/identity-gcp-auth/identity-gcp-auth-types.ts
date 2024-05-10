@@ -47,7 +47,7 @@ export type TGcpIdentityDetails = {
   computeEngineDetails?: TComputeEngineDetails;
 };
 
-export type TGcpGceIdTokenPayload = {
+export type TGcpIdTokenPayload = {
   aud: string;
   azp: string;
   email: string;

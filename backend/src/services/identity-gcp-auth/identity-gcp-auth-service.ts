@@ -15,7 +15,7 @@ import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TIdentityGcpAuthDALFactory } from "./identity-gcp-auth-dal";
-import { validateGceIdentity, validateIamIdentity } from "./identity-gcp-auth-fns";
+import { validateIamIdentity, validateIdTokenIdentity } from "./identity-gcp-auth-fns";
 import {
   TAttachGcpAuthDTO,
   TGcpIdentityDetails,
@@ -43,7 +43,7 @@ export const identityGcpAuthServiceFactory = ({
   permissionService,
   licenseService
 }: TIdentityGcpAuthServiceFactoryDep) => {
-  const login = async ({ identityId, jwt: serviceAccountJwt }: TLoginGcpAuthDTO) => {
+  const login = async ({ identityId, jwt: gcpJwt }: TLoginGcpAuthDTO) => {
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
     if (!identityGcpAuth) throw new UnauthorizedError();
 
@@ -53,16 +53,16 @@ export const identityGcpAuthServiceFactory = ({
     let gcpIdentityDetails: TGcpIdentityDetails;
     switch (identityGcpAuth.type) {
       case "gce": {
-        gcpIdentityDetails = await validateGceIdentity({
+        gcpIdentityDetails = await validateIdTokenIdentity({
           identityId,
-          jwt: serviceAccountJwt
+          jwt: gcpJwt
         });
         break;
       }
       case "iam": {
         gcpIdentityDetails = await validateIamIdentity({
           identityId,
-          jwt: serviceAccountJwt
+          jwt: gcpJwt
         });
         break;
       }

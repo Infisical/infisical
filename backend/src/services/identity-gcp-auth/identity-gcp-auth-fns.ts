@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 import { UnauthorizedError } from "@app/lib/errors";
 
-import { TDecodedGcpIamAuthJwt, TGcpGceIdTokenPayload } from "./identity-gcp-auth-types";
+import { TDecodedGcpIamAuthJwt, TGcpIdTokenPayload } from "./identity-gcp-auth-types";
 
 /**
  * Validates that the identity token [jwt] sent in from a client GCE instance as part of GCP ID Token authentication
@@ -13,7 +13,13 @@ import { TDecodedGcpIamAuthJwt, TGcpGceIdTokenPayload } from "./identity-gcp-aut
  * @param {string} jwt - The identity token to validate.
  * @param {string} credentials - The credentials in the GCP Auth configuration for Infisical.
  */
-export const validateGceIdentity = async ({ identityId, jwt: identityToken }: { identityId: string; jwt: string }) => {
+export const validateIdTokenIdentity = async ({
+  identityId,
+  jwt: identityToken
+}: {
+  identityId: string;
+  jwt: string;
+}) => {
   const oAuth2Client = new OAuth2Client();
   const response = await oAuth2Client.getFederatedSignonCerts();
   const ticket = await oAuth2Client.verifySignedJwtWithCertsAsync(
@@ -22,7 +28,7 @@ export const validateGceIdentity = async ({ identityId, jwt: identityToken }: { 
     identityId, // audience
     ["https://accounts.google.com"]
   );
-  const payload = ticket.getPayload() as TGcpGceIdTokenPayload;
+  const payload = ticket.getPayload() as TGcpIdTokenPayload;
   if (!payload || !payload.email) throw new UnauthorizedError();
 
   return { email: payload.email, computeEngineDetails: payload.google?.compute_engine };
