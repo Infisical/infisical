@@ -82,8 +82,6 @@ export const identityGcpAuthServiceFactory = ({
       if (!isServiceAccountAllowed) throw new UnauthorizedError();
     }
 
-    // note that only possible to apply allowed projects/zones filters for GCE instances
-
     if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedProjects && gcpIdentityDetails.computeEngineDetails) {
       // validate if the project that the service account belongs to is in the list of allowed projects
 
