@@ -127,6 +127,71 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     }
   });
 
+  server.route({
+    url: "/batch",
+    method: "PATCH",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      description: "Update folders by batch",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        workspaceId: z.string().trim().describe(FOLDERS.UPDATE.workspaceId),
+        folders: z
+          .object({
+            id: z.string().describe(FOLDERS.UPDATE.folderId),
+            environment: z.string().trim().describe(FOLDERS.UPDATE.environment),
+            name: z.string().trim().describe(FOLDERS.UPDATE.name),
+            path: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.UPDATE.path)
+          })
+          .array()
+          .min(1)
+      }),
+      response: {
+        200: z.object({
+          folders: SecretFoldersSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { newFolders, oldFolders } = await server.services.folder.updateManyFolders({
+        folders: req.body.folders,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.body.workspaceId
+      });
+
+      await Promise.all(
+        req.body.folders.map(async (folder, ind) => {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            projectId: req.body.workspaceId,
+            event: {
+              type: EventType.UPDATE_FOLDER,
+              metadata: {
+                environment: oldFolders[ind].envId,
+                folderId: oldFolders[ind].id,
+                folderPath: folder.path,
+                newFolderName: newFolders[ind].name,
+                oldFolderName: oldFolders[ind].name
+              }
+            }
+          });
+        })
+      );
+
+      return { folders: newFolders };
+    }
+  });
+
   // TODO(daniel): Expose this route in api reference and write docs for it.
   server.route({
     method: "DELETE",

@@ -10,7 +10,13 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
-import { TCreateFolderDTO, TDeleteFolderDTO, TGetFolderDTO, TUpdateFolderDTO } from "./secret-folder-types";
+import {
+  TCreateFolderDTO,
+  TDeleteFolderDTO,
+  TGetFolderDTO,
+  TUpdateFolderDTO,
+  TUpdateManyFoldersDTO
+} from "./secret-folder-types";
 import { TSecretFolderVersionDALFactory } from "./secret-folder-version-dal";
 
 type TSecretFolderServiceFactoryDep = {
@@ -114,6 +120,93 @@ export const secretFolderServiceFactory = ({
 
     await snapshotService.performSnapshot(folder.parentId as string);
     return folder;
+  };
+
+  const updateManyFolders = async ({
+    actor,
+    actorId,
+    projectId,
+    actorAuthMethod,
+    actorOrgId,
+    folders
+  }: TUpdateManyFoldersDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    folders.forEach(({ environment, path: secretPath }) => {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+    });
+
+    const result = await folderDAL.transaction(async (tx) =>
+      Promise.all(
+        folders.map(async (newFolder) => {
+          const { environment, path: secretPath, id, name } = newFolder;
+
+          const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+          if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
+
+          const env = await projectEnvDAL.findOne({ projectId, slug: environment });
+          if (!env) throw new BadRequestError({ message: "Environment not found", name: "Update folder" });
+          const folder = await folderDAL
+            .findOne({ envId: env.id, id, parentId: parentFolder.id })
+            // now folder api accepts id based change
+            // this is for cli backward compatiability and when cli removes this, we will remove this logic
+            .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }));
+
+          if (!folder) {
+            throw new BadRequestError({ message: "Folder not found" });
+          }
+          if (name !== folder.name) {
+            // ensure that new folder name is unique
+            const folderToCheck = await folderDAL.findOne({
+              name,
+              envId: env.id,
+              parentId: parentFolder.id
+            });
+
+            if (folderToCheck) {
+              throw new BadRequestError({
+                message: "Folder with specified name already exists",
+                name: "Batch update folder"
+              });
+            }
+          }
+
+          const [doc] = await folderDAL.update(
+            { envId: env.id, id: folder.id, parentId: parentFolder.id },
+            { name },
+            tx
+          );
+          await folderVersionDAL.create(
+            {
+              name: doc.name,
+              envId: doc.envId,
+              version: doc.version,
+              folderId: doc.id
+            },
+            tx
+          );
+          if (!doc) {
+            throw new BadRequestError({ message: "Folder not found", name: "Batch update folder" });
+          }
+
+          return { oldFolder: folder, newFolder: doc };
+        })
+      )
+    );
+
+    return {
+      newFolders: result.map((res) => res.newFolder),
+      oldFolders: result.map((res) => res.oldFolder)
+    };
   };
 
   const updateFolder = async ({
@@ -254,6 +347,7 @@ export const secretFolderServiceFactory = ({
   return {
     createFolder,
     updateFolder,
+    updateManyFolders,
     deleteFolder,
     getFolders
   };
