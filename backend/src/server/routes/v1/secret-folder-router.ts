@@ -169,18 +169,18 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       });
 
       await Promise.all(
-        req.body.folders.map(async (folder, ind) => {
+        req.body.folders.map(async (folder, index) => {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
             projectId,
             event: {
               type: EventType.UPDATE_FOLDER,
               metadata: {
-                environment: oldFolders[ind].envId,
-                folderId: oldFolders[ind].id,
+                environment: oldFolders[index].envId,
+                folderId: oldFolders[index].id,
                 folderPath: folder.path,
-                newFolderName: newFolders[ind].name,
-                oldFolderName: oldFolders[ind].name
+                newFolderName: newFolders[index].name,
+                oldFolderName: oldFolders[index].name
               }
             }
           });
