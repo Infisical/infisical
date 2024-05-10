@@ -47,6 +47,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
+  useProjectPermission,
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -61,6 +62,9 @@ import {
   useGetUserWsKey,
   useUpdateSecretV3
 } from "@app/hooks/api";
+import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
+import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
+import { TSecretFolder } from "@app/hooks/api/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
@@ -87,6 +91,7 @@ export const SecretOverviewPage = () => {
   const parentTableRef = useRef<HTMLTableElement>(null);
   const [expandableTableWidth, setExpandableTableWidth] = useState(0);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const { permission } = useProjectPermission();
 
   useEffect(() => {
     if (parentTableRef.current) {
@@ -201,11 +206,13 @@ export const SecretOverviewPage = () => {
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
+  const { mutateAsync: updateFolderBatch } = useUpdateFolderBatch();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addSecretsInAllEnvs",
     "addFolder",
-    "misc"
+    "misc",
+    "updateFolder"
   ] as const);
 
   const handleFolderCreate = async (folderName: string) => {
@@ -233,6 +240,59 @@ export const SecretOverviewPage = () => {
         type: "error",
         text: "Failed to create folder"
       });
+    }
+  };
+
+  const handleFolderUpdate = async (newFolderName: string) => {
+    const { name: oldFolderName } = popUp.updateFolder.data as TSecretFolder;
+
+    const updatedFolders: TUpdateFolderBatchDTO["folders"] = [];
+    userAvailableEnvs.forEach((env) => {
+      if (
+        permission.can(
+          ProjectPermissionActions.Edit,
+          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
+        )
+      ) {
+        const folder = getFolderByNameAndEnv(oldFolderName, env.slug);
+        if (folder) {
+          updatedFolders.push({
+            environment: env.slug,
+            name: newFolderName,
+            id: folder.id,
+            path: secretPath
+          });
+        }
+      }
+    });
+
+    if (updatedFolders.length === 0) {
+      createNotification({
+        type: "info",
+        text: "You don't have access to rename selected folder"
+      });
+
+      handlePopUpClose("updateFolder");
+      return;
+    }
+
+    try {
+      await updateFolderBatch({
+        projectSlug,
+        folders: updatedFolders,
+        projectId: workspaceId
+      });
+      createNotification({
+        type: "success",
+        text: "Successfully renamed folder across environments"
+      });
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text: "Failed to rename folder across environments"
+      });
+    } finally {
+      handlePopUpClose("updateFolder");
     }
   };
 
@@ -726,6 +786,9 @@ export const SecretOverviewPage = () => {
                       environments={visibleEnvs}
                       key={`overview-${folderName}-${index + 1}`}
                       onClick={handleFolderClick}
+                      onToggleFolderEdit={(name: string) =>
+                        handlePopUpOpen("updateFolder", { name })
+                      }
                     />
                   ))}
                 {!isTableLoading &&
@@ -798,6 +861,18 @@ export const SecretOverviewPage = () => {
       >
         <ModalContent title="Create Folder">
           <FolderForm onCreateFolder={handleFolderCreate} />
+        </ModalContent>
+      </Modal>
+      <Modal
+        isOpen={popUp.updateFolder.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("updateFolder", isOpen)}
+      >
+        <ModalContent title="Edit Folder Name">
+          <FolderForm
+            isEdit
+            defaultFolderName={(popUp.updateFolder?.data as Pick<TSecretFolder, "name">)?.name}
+            onUpdateFolder={handleFolderUpdate}
+          />
         </ModalContent>
       </Modal>
     </>

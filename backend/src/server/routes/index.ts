@@ -542,8 +542,10 @@ export const registerRoutes = async (
     folderDAL,
     folderVersionDAL,
     projectEnvDAL,
-    snapshotService
+    snapshotService,
+    projectDAL
   });
+
   const integrationAuthService = integrationAuthServiceFactory({
     integrationAuthDAL,
     integrationDAL,

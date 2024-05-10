@@ -1,8 +1,8 @@
-import { faCheck, faFolder, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faFolder, faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Checkbox, Td, Tr } from "@app/components/v2";
+import { Checkbox, IconButton, Td, Tr } from "@app/components/v2";
 
 type Props = {
   folderName: string;
@@ -11,6 +11,7 @@ type Props = {
   onClick: (path: string) => void;
   isSelected: boolean;
   onToggleFolderSelect: (folderName: string) => void;
+  onToggleFolderEdit: (name: string) => void;
 };
 
 export const SecretOverviewFolderRow = ({
@@ -19,6 +20,7 @@ export const SecretOverviewFolderRow = ({
   isFolderPresentInEnv,
   isSelected,
   onToggleFolderSelect,
+  onToggleFolderEdit,
   onClick
 }: Props) => {
   return (
@@ -43,6 +45,18 @@ export const SecretOverviewFolderRow = ({
             />
           </div>
           <div>{folderName}</div>
+          <IconButton
+            ariaLabel="edit-folder"
+            variant="plain"
+            size="sm"
+            className="p-0 opacity-0 group-hover:opacity-100"
+            onClick={(e) => {
+              onToggleFolderEdit(folderName);
+              e.stopPropagation();
+            }}
+          >
+            <FontAwesomeIcon icon={faPencil} size="sm" />
+          </IconButton>
         </div>
       </Td>
       {environments.map(({ slug }, i) => {
