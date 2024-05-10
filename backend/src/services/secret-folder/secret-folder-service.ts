@@ -138,12 +138,10 @@ export const secretFolderServiceFactory = ({
       throw new BadRequestError({ message: "Project not found" });
     }
 
-    const projectId = project.id;
-
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      projectId,
+      project.id,
       actorAuthMethod,
       actorOrgId
     );
@@ -160,12 +158,12 @@ export const secretFolderServiceFactory = ({
         folders.map(async (newFolder) => {
           const { environment, path: secretPath, id, name } = newFolder;
 
-          const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+          const parentFolder = await folderDAL.findBySecretPath(project.id, environment, secretPath);
           if (!parentFolder) {
             throw new BadRequestError({ message: "Secret path not found", name: "Batch update folder" });
           }
 
-          const env = await projectEnvDAL.findOne({ projectId, slug: environment });
+          const env = await projectEnvDAL.findOne({ projectId: project.id, slug: environment });
           if (!env) {
             throw new BadRequestError({ message: "Environment not found", name: "Batch update folder" });
           }
@@ -220,7 +218,7 @@ export const secretFolderServiceFactory = ({
     await Promise.all(result.map(async (res) => snapshotService.performSnapshot(res.newFolder.parentId as string)));
 
     return {
-      projectId,
+      projectId: project.id,
       newFolders: result.map((res) => res.newFolder),
       oldFolders: result.map((res) => res.oldFolder)
     };
