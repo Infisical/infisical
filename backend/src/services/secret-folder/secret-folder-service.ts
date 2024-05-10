@@ -207,6 +207,8 @@ export const secretFolderServiceFactory = ({
       )
     );
 
+    await Promise.all(result.map(async (res) => snapshotService.performSnapshot(res.newFolder.parentId as string)));
+
     return {
       newFolders: result.map((res) => res.newFolder),
       oldFolders: result.map((res) => res.oldFolder)
