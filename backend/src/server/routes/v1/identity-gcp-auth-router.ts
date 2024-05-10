@@ -1,14 +1,12 @@
 import { z } from "zod";
 
+import { IdentityGcpAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
-import {
-  ModifiedIdentityGcpAuthsSchema,
-  validateGcpAuthField
-} from "@app/services/identity-gcp-auth/identity-gcp-auth-validators";
+import { validateGcpAuthField } from "@app/services/identity-gcp-auth/identity-gcp-auth-validators";
 
 export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -76,7 +74,6 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         identityId: z.string().trim()
       }),
       body: z.object({
-        credentials: z.string().trim(),
         type: z.enum(["iam", "gce"]),
         allowedServiceAccounts: validateGcpAuthField,
         allowedProjects: validateGcpAuthField,
@@ -107,7 +104,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       }),
       response: {
         200: z.object({
-          identityGcpAuth: ModifiedIdentityGcpAuthsSchema
+          identityGcpAuth: IdentityGcpAuthsSchema
         })
       }
     },
@@ -162,7 +159,6 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         identityId: z.string().trim()
       }),
       body: z.object({
-        credentials: z.string().trim().optional(),
         type: z.enum(["iam", "gce"]).optional(),
         allowedServiceAccounts: validateGcpAuthField,
         allowedProjects: validateGcpAuthField,
@@ -186,7 +182,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       }),
       response: {
         200: z.object({
-          identityGcpAuth: ModifiedIdentityGcpAuthsSchema
+          identityGcpAuth: IdentityGcpAuthsSchema
         })
       }
     },
@@ -242,7 +238,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       }),
       response: {
         200: z.object({
-          identityGcpAuth: ModifiedIdentityGcpAuthsSchema
+          identityGcpAuth: IdentityGcpAuthsSchema
         })
       }
     },

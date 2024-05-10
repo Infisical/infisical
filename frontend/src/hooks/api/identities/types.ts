@@ -115,7 +115,6 @@ export type UpdateIdentityUniversalAuthDTO = {
 
 export type IdentityGcpAuth = {
   identityId: string;
-  credentials: string;
   type: "iam" | "gce";
   allowedServiceAccounts: string;
   allowedProjects: string;
@@ -129,7 +128,6 @@ export type IdentityGcpAuth = {
 export type AddIdentityGcpAuthDTO = {
   organizationId: string;
   identityId: string;
-  credentials: string;
   type: "iam" | "gce";
   allowedServiceAccounts: string;
   allowedProjects: string;
@@ -145,7 +143,6 @@ export type AddIdentityGcpAuthDTO = {
 export type UpdateIdentityGcpAuthDTO = {
   organizationId: string;
   identityId: string;
-  credentials?: string;
   type?: "iam" | "gce";
   allowedServiceAccounts?: string;
   allowedProjects?: string;

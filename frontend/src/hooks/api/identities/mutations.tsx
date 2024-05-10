@@ -181,7 +181,6 @@ export const useAddIdentityGcpAuth = () => {
   return useMutation<IdentityGcpAuth, {}, AddIdentityGcpAuthDTO>({
     mutationFn: async ({
       identityId,
-      credentials,
       type,
       allowedServiceAccounts,
       allowedProjects,
@@ -196,7 +195,6 @@ export const useAddIdentityGcpAuth = () => {
       } = await apiRequest.post<{ identityGcpAuth: IdentityGcpAuth }>(
         `/api/v1/auth/gcp-auth/identities/${identityId}`,
         {
-          credentials,
           type,
           allowedServiceAccounts,
           allowedProjects,
@@ -221,7 +219,6 @@ export const useUpdateIdentityGcpAuth = () => {
   return useMutation<IdentityGcpAuth, {}, UpdateIdentityGcpAuthDTO>({
     mutationFn: async ({
       identityId,
-      credentials,
       type,
       allowedServiceAccounts,
       allowedProjects,
@@ -236,7 +233,6 @@ export const useUpdateIdentityGcpAuth = () => {
       } = await apiRequest.patch<{ identityGcpAuth: IdentityGcpAuth }>(
         `/api/v1/auth/gcp-auth/identities/${identityId}`,
         {
-          credentials,
           type,
           allowedServiceAccounts,
           allowedProjects,

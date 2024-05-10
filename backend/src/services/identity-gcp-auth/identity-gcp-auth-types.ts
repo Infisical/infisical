@@ -7,7 +7,6 @@ export type TLoginGcpAuthDTO = {
 
 export type TAttachGcpAuthDTO = {
   identityId: string;
-  credentials: string;
   type: "iam" | "gce";
   allowedServiceAccounts: string;
   allowedProjects: string;
@@ -20,7 +19,6 @@ export type TAttachGcpAuthDTO = {
 
 export type TUpdateGcpAuthDTO = {
   identityId: string;
-  credentials?: string;
   type?: "iam" | "gce";
   allowedServiceAccounts?: string;
   allowedProjects?: string;
@@ -35,21 +33,28 @@ export type TGetGcpAuthDTO = {
   identityId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+type TComputeEngineDetails = {
+  instance_creation_timestamp: number;
+  instance_id: string;
+  instance_name: string;
+  project_id: string;
+  project_number: number;
+  zone: string;
+};
+
+export type TGcpIdentityDetails = {
+  email: string;
+  computeEngineDetails?: TComputeEngineDetails;
+};
+
 export type TGcpGceIdTokenPayload = {
   aud: string;
   azp: string;
   email: string;
   email_verified: boolean;
   exp: number;
-  google: {
-    compute_engine: {
-      instance_creation_timestamp: number;
-      instance_id: string;
-      instance_name: string;
-      project_id: string;
-      project_number: number;
-      zone: string;
-    };
+  google?: {
+    compute_engine: TComputeEngineDetails;
   };
   iat: number;
   iss: string;

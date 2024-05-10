@@ -14,9 +14,6 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
       t.uuid("identityId").notNullable().unique();
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
-      t.text("encryptedCredentials").notNullable();
-      t.string("credentialsIV").notNullable();
-      t.string("credentialsTag").notNullable();
       t.string("type").notNullable();
       t.string("allowedServiceAccounts").notNullable();
       t.string("allowedProjects").notNullable();

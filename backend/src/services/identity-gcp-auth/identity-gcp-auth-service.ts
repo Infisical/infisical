@@ -1,23 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
-import { iam_v1 } from "googleapis";
 import jwt from "jsonwebtoken";
 
-import { IdentityAuthMethod, SecretKeyEncoding, TIdentityGcpAuthsUpdate } from "@app/db/schemas";
+import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
-import {
-  decryptSymmetric,
-  encryptSymmetric,
-  generateAsymmetricKeyPair,
-  generateSymmetricKey,
-  infisicalSymmetricDecrypt,
-  infisicalSymmetricEncypt
-} from "@app/lib/crypto/encryption";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
-import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 
 import { AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -28,7 +18,7 @@ import { TIdentityGcpAuthDALFactory } from "./identity-gcp-auth-dal";
 import { validateGceIdentity, validateIamIdentity } from "./identity-gcp-auth-fns";
 import {
   TAttachGcpAuthDTO,
-  TGcpGceIdTokenPayload,
+  TGcpIdentityDetails,
   TGetGcpAuthDTO,
   TLoginGcpAuthDTO,
   TUpdateGcpAuthDTO
@@ -39,7 +29,6 @@ type TIdentityGcpAuthServiceFactoryDep = {
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
   identityDAL: Pick<TIdentityDALFactory, "updateById">;
-  orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -51,7 +40,6 @@ export const identityGcpAuthServiceFactory = ({
   identityOrgMembershipDAL,
   identityAccessTokenDAL,
   identityDAL,
-  orgBotDAL,
   permissionService,
   licenseService
 }: TIdentityGcpAuthServiceFactoryDep) => {
@@ -62,47 +50,20 @@ export const identityGcpAuthServiceFactory = ({
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityGcpAuth.identityId });
     if (!identityMembershipOrg) throw new UnauthorizedError();
 
-    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
-    });
-
-    const { encryptedCredentials, credentialsIV, credentialsTag } = identityGcpAuth;
-    let credentials = "";
-    if (encryptedCredentials && credentialsIV && credentialsTag) {
-      credentials = decryptSymmetric({
-        ciphertext: encryptedCredentials,
-        key,
-        tag: credentialsTag,
-        iv: credentialsIV
-      });
-    }
-
-    let serviceAccountDetails: iam_v1.Schema$ServiceAccount;
-    let gceInstanceDetails: TGcpGceIdTokenPayload | undefined;
+    let gcpIdentityDetails: TGcpIdentityDetails;
     switch (identityGcpAuth.type) {
       case "gce": {
-        const gceIdentity = await validateGceIdentity({
+        gcpIdentityDetails = await validateGceIdentity({
           identityId,
-          jwt: serviceAccountJwt,
-          credentials
+          jwt: serviceAccountJwt
         });
-        serviceAccountDetails = gceIdentity.serviceAccountDetails;
-        gceInstanceDetails = gceIdentity.gceInstanceDetails;
         break;
       }
       case "iam": {
-        const iamIdentity = await validateIamIdentity({
+        gcpIdentityDetails = await validateIamIdentity({
           identityId,
-          jwt: serviceAccountJwt,
-          credentials
+          jwt: serviceAccountJwt
         });
-        serviceAccountDetails = iamIdentity.serviceAccountDetails;
         break;
       }
       default: {
@@ -116,30 +77,29 @@ export const identityGcpAuthServiceFactory = ({
       const isServiceAccountAllowed = identityGcpAuth.allowedServiceAccounts
         .split(",")
         .map((serviceAccount) => serviceAccount.trim())
-        .some(
-          (serviceAccount) =>
-            serviceAccount === serviceAccountDetails.email || serviceAccount === serviceAccountDetails.uniqueId
-        );
+        .some((serviceAccount) => serviceAccount === gcpIdentityDetails.email);
 
       if (!isServiceAccountAllowed) throw new UnauthorizedError();
     }
 
-    if (identityGcpAuth.allowedProjects) {
+    // note that only possible to apply allowed projects/zones filters for GCE instances
+
+    if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedProjects && gcpIdentityDetails.computeEngineDetails) {
       // validate if the project that the service account belongs to is in the list of allowed projects
 
       const isProjectAllowed = identityGcpAuth.allowedProjects
         .split(",")
         .map((project) => project.trim())
-        .some((project) => project === serviceAccountDetails.projectId);
+        .some((project) => project === gcpIdentityDetails.computeEngineDetails?.project_id);
 
       if (!isProjectAllowed) throw new UnauthorizedError();
     }
 
-    if (identityGcpAuth.type === "gce" && gceInstanceDetails && identityGcpAuth.allowedZones) {
+    if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedZones && gcpIdentityDetails.computeEngineDetails) {
       const isZoneAllowed = identityGcpAuth.allowedZones
         .split(",")
         .map((zone) => zone.trim())
-        .some((zone) => zone === gceInstanceDetails!.google.compute_engine.zone);
+        .some((zone) => zone === gcpIdentityDetails.computeEngineDetails?.zone);
 
       if (!isZoneAllowed) throw new UnauthorizedError();
     }
@@ -180,7 +140,6 @@ export const identityGcpAuthServiceFactory = ({
 
   const attachGcpAuth = async ({
     identityId,
-    credentials,
     type,
     allowedServiceAccounts,
     allowedProjects,
@@ -232,60 +191,6 @@ export const identityGcpAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const orgBot = await orgBotDAL.transaction(async (tx) => {
-      const doc = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId }, tx);
-      if (doc) return doc;
-
-      const { privateKey, publicKey } = generateAsymmetricKeyPair();
-      const key = generateSymmetricKey();
-      const {
-        ciphertext: encryptedPrivateKey,
-        iv: privateKeyIV,
-        tag: privateKeyTag,
-        encoding: privateKeyKeyEncoding,
-        algorithm: privateKeyAlgorithm
-      } = infisicalSymmetricEncypt(privateKey);
-      const {
-        ciphertext: encryptedSymmetricKey,
-        iv: symmetricKeyIV,
-        tag: symmetricKeyTag,
-        encoding: symmetricKeyKeyEncoding,
-        algorithm: symmetricKeyAlgorithm
-      } = infisicalSymmetricEncypt(key);
-
-      return orgBotDAL.create(
-        {
-          name: "Infisical org bot",
-          publicKey,
-          privateKeyIV,
-          encryptedPrivateKey,
-          symmetricKeyIV,
-          symmetricKeyTag,
-          encryptedSymmetricKey,
-          symmetricKeyAlgorithm,
-          orgId: identityMembershipOrg.orgId,
-          privateKeyTag,
-          privateKeyAlgorithm,
-          privateKeyKeyEncoding,
-          symmetricKeyKeyEncoding
-        },
-        tx
-      );
-    });
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
-    });
-
-    const {
-      ciphertext: encryptedCredentials,
-      iv: credentialsIV,
-      tag: credentialsTag
-    } = encryptSymmetric(credentials, key);
-
     const identityGcpAuth = await identityGcpAuthDAL.transaction(async (tx) => {
       const doc = await identityGcpAuthDAL.create(
         {
@@ -294,9 +199,6 @@ export const identityGcpAuthServiceFactory = ({
           allowedServiceAccounts,
           allowedProjects,
           allowedZones,
-          encryptedCredentials,
-          credentialsIV,
-          credentialsTag,
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
@@ -313,13 +215,12 @@ export const identityGcpAuthServiceFactory = ({
       );
       return doc;
     });
-    return { ...identityGcpAuth, credentials, orgId: identityMembershipOrg.orgId };
+    return { ...identityGcpAuth, orgId: identityMembershipOrg.orgId };
   };
 
   const updateGcpAuth = async ({
     identityId,
     type,
-    credentials,
     allowedServiceAccounts,
     allowedProjects,
     allowedZones,
@@ -375,7 +276,7 @@ export const identityGcpAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updateQuery: TIdentityGcpAuthsUpdate = {
+    const updatedGcpAuth = await identityGcpAuthDAL.updateById(identityGcpAuth.id, {
       type,
       allowedServiceAccounts,
       allowedProjects,
@@ -386,38 +287,10 @@ export const identityGcpAuthServiceFactory = ({
       accessTokenTrustedIps: reformattedAccessTokenTrustedIps
         ? JSON.stringify(reformattedAccessTokenTrustedIps)
         : undefined
-    };
-
-    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
     });
-
-    if (credentials !== undefined) {
-      const {
-        ciphertext: encryptedCredentials,
-        iv: credentialsIV,
-        tag: credentialsTag
-      } = encryptSymmetric(credentials, key);
-      updateQuery.encryptedCredentials = encryptedCredentials;
-      updateQuery.credentialsIV = credentialsIV;
-      updateQuery.credentialsTag = credentialsTag;
-    }
-
-    const updatedGcpAuth = await identityGcpAuthDAL.updateById(identityGcpAuth.id, updateQuery);
 
     return {
       ...updatedGcpAuth,
-      credentials: decryptSymmetric({
-        ciphertext: updatedGcpAuth.encryptedCredentials,
-        iv: updatedGcpAuth.credentialsIV,
-        tag: updatedGcpAuth.credentialsTag,
-        key
-      }),
       orgId: identityMembershipOrg.orgId
     };
   };
@@ -441,28 +314,7 @@ export const identityGcpAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
 
-    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
-    });
-
-    const { encryptedCredentials, credentialsIV, credentialsTag } = identityGcpAuth;
-    let credentials = "";
-    if (encryptedCredentials && credentialsIV && credentialsTag) {
-      credentials = decryptSymmetric({
-        ciphertext: encryptedCredentials,
-        key,
-        tag: credentialsTag,
-        iv: credentialsIV
-      });
-    }
-
-    return { ...identityGcpAuth, credentials, orgId: identityMembershipOrg.orgId };
+    return { ...identityGcpAuth, orgId: identityMembershipOrg.orgId };
   };
 
   return {

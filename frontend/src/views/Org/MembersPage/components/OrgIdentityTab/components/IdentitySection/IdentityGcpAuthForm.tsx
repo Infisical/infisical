@@ -6,15 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  FormControl,
-  IconButton,
-  Input,
-  Select,
-  SelectItem,
-  TextArea
-} from "@app/components/v2";
+import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import {
   useAddIdentityGcpAuth,
@@ -27,7 +19,6 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
-    credentials: z.string(),
     type: z.enum(["iam", "gce"]),
     allowedServiceAccounts: z.string(),
     allowedProjects: z.string(),
@@ -83,8 +74,7 @@ export const IdentityGcpAuthForm = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      credentials: "",
-      type: "iam",
+      type: "gce",
       allowedServiceAccounts: "",
       allowedProjects: "",
       allowedZones: "",
@@ -106,7 +96,6 @@ export const IdentityGcpAuthForm = ({
   useEffect(() => {
     if (data) {
       reset({
-        credentials: data.credentials,
         type: data.type,
         allowedServiceAccounts: data.allowedServiceAccounts,
         allowedProjects: data.allowedProjects,
@@ -137,7 +126,6 @@ export const IdentityGcpAuthForm = ({
   }, [data]);
 
   const onFormSubmit = async ({
-    credentials,
     type,
     allowedServiceAccounts,
     allowedProjects,
@@ -154,7 +142,6 @@ export const IdentityGcpAuthForm = ({
         await updateMutateAsync({
           identityId: identityAuthMethodData.identityId,
           organizationId: orgId,
-          credentials,
           type,
           allowedServiceAccounts,
           allowedProjects,
@@ -168,7 +155,6 @@ export const IdentityGcpAuthForm = ({
         await addMutateAsync({
           identityId: identityAuthMethodData.identityId,
           organizationId: orgId,
-          credentials,
           type,
           allowedServiceAccounts: allowedServiceAccounts || "",
           allowedProjects: allowedProjects || "",
@@ -211,26 +197,13 @@ export const IdentityGcpAuthForm = ({
               onValueChange={(e) => onChange(e)}
               className="w-full"
             >
+              <SelectItem value="gce" key="gcp-type-gce">
+                GCP ID Token Auth (Recommended)
+              </SelectItem>
               <SelectItem value="iam" key="gcpiam">
                 GCP IAM Auth
               </SelectItem>
-              <SelectItem value="gce" key="gcp-type-gce">
-                GCP GCE Auth
-              </SelectItem>
             </Select>
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="credentials"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Service Account JSON"
-            errorText={error?.message}
-            isError={Boolean(error)}
-          >
-            <TextArea {...field} placeholder="" />
           </FormControl>
         )}
       />
@@ -240,7 +213,7 @@ export const IdentityGcpAuthForm = ({
         name="allowedServiceAccounts"
         render={({ field, fieldState: { error } }) => (
           <FormControl
-            label="Allowed Service Accounts"
+            label="Allowed Service Account Emails"
             isError={Boolean(error)}
             errorText={error?.message}
           >
@@ -252,15 +225,21 @@ export const IdentityGcpAuthForm = ({
           </FormControl>
         )}
       />
-      <Controller
-        control={control}
-        name="allowedProjects"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="Allowed Projects" isError={Boolean(error)} errorText={error?.message}>
-            <Input {...field} placeholder="my-gcp-project, ..." />
-          </FormControl>
-        )}
-      />
+      {watchedType === "gce" && (
+        <Controller
+          control={control}
+          name="allowedProjects"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Allowed Projects"
+              isError={Boolean(error)}
+              errorText={error?.message}
+            >
+              <Input {...field} placeholder="my-gcp-project, ..." />
+            </FormControl>
+          )}
+        />
+      )}
       {watchedType === "gce" && (
         <Controller
           control={control}
