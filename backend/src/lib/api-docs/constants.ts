@@ -252,6 +252,7 @@ export const FOLDERS = {
     name: "The new name of the folder.",
     path: "The path of the folder to update.",
     directory: "The new directory of the folder to update. (Deprecated in favor of path)",
+    projectSlug: "The slug of the project where the folder is located.",
     workspaceId: "The ID of the project where the folder is located."
   },
   DELETE: {

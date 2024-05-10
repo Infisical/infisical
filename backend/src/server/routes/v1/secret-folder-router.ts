@@ -127,6 +127,70 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     }
   });
 
+  server.route({
+    url: "/batch",
+    method: "PATCH",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      description: "Update folders by batch",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        projectSlug: z.string().trim().describe(FOLDERS.UPDATE.projectSlug),
+        folders: z
+          .object({
+            id: z.string().describe(FOLDERS.UPDATE.folderId),
+            environment: z.string().trim().describe(FOLDERS.UPDATE.environment),
+            name: z.string().trim().describe(FOLDERS.UPDATE.name),
+            path: z.string().trim().default("/").transform(removeTrailingSlash).describe(FOLDERS.UPDATE.path)
+          })
+          .array()
+          .min(1)
+      }),
+      response: {
+        200: z.object({
+          folders: SecretFoldersSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { newFolders, oldFolders, projectId } = await server.services.folder.updateManyFolders({
+        ...req.body,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await Promise.all(
+        req.body.folders.map(async (folder, index) => {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            projectId,
+            event: {
+              type: EventType.UPDATE_FOLDER,
+              metadata: {
+                environment: oldFolders[index].envId,
+                folderId: oldFolders[index].id,
+                folderPath: folder.path,
+                newFolderName: newFolders[index].name,
+                oldFolderName: oldFolders[index].name
+              }
+            }
+          });
+        })
+      );
+
+      return { folders: newFolders };
+    }
+  });
+
   // TODO(daniel): Expose this route in api reference and write docs for it.
   server.route({
     method: "DELETE",
