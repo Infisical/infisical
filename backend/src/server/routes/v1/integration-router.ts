@@ -154,7 +154,33 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
           .describe(INTEGRATION.UPDATE.secretPath),
         targetEnvironment: z.string().trim().describe(INTEGRATION.UPDATE.targetEnvironment),
         owner: z.string().trim().describe(INTEGRATION.UPDATE.owner),
-        environment: z.string().trim().describe(INTEGRATION.UPDATE.environment)
+        environment: z.string().trim().describe(INTEGRATION.UPDATE.environment),
+        metadata: z
+          .object({
+            secretPrefix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretPrefix),
+            secretSuffix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretSuffix),
+            initialSyncBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.initialSyncBehavoir),
+            shouldAutoRedeploy: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldAutoRedeploy),
+            secretGCPLabel: z
+              .object({
+                labelName: z.string(),
+                labelValue: z.string()
+              })
+              .optional()
+              .describe(INTEGRATION.CREATE.metadata.secretGCPLabel),
+            secretAWSTag: z
+              .array(
+                z.object({
+                  key: z.string(),
+                  value: z.string()
+                })
+              )
+              .optional()
+              .describe(INTEGRATION.CREATE.metadata.secretAWSTag),
+            kmsKeyId: z.string().optional().describe(INTEGRATION.CREATE.metadata.kmsKeyId),
+            shouldDisableDelete: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldDisableDelete)
+          })
+          .optional()
       }),
       response: {
         200: z.object({
