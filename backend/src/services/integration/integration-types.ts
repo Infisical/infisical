@@ -33,8 +33,8 @@ export type TCreateIntegrationDTO = {
 
 export type TUpdateIntegrationDTO = {
   id: string;
-  app: string;
-  appId: string;
+  app?: string;
+  appId?: string;
   isActive?: boolean;
   secretPath: string;
   targetEnvironment: string;
