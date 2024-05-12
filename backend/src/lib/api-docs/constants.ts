@@ -92,6 +92,18 @@ export const UNIVERSAL_AUTH = {
   }
 } as const;
 
+export const AWS_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login.",
+    iamHttpRequestMethod: "The HTTP request method used in the signed request.",
+    iamRequestUrl:
+      "The base64-encoded HTTP URL used in the signed request. Most likely, the base64-encoding of https://sts.amazonaws.com/",
+    iamRequestBody:
+      "The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.",
+    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request."
+  }
+} as const;
+
 export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
@@ -240,6 +252,7 @@ export const FOLDERS = {
     name: "The new name of the folder.",
     path: "The path of the folder to update.",
     directory: "The new directory of the folder to update. (Deprecated in favor of path)",
+    projectSlug: "The slug of the project where the folder is located.",
     workspaceId: "The ID of the project where the folder is located."
   },
   DELETE: {
@@ -276,7 +289,8 @@ export const RAW_SECRETS = {
     recursive:
       "Whether or not to fetch all secrets from the specified base path, and all of its subdirectories. Note, the max depth is 20 deep.",
     workspaceId: "The ID of the project to list secrets from.",
-    workspaceSlug: "The slug of the project to list secrets from. This parameter is only usable by machine identities.",
+    workspaceSlug:
+      "The slug of the project to list secrets from. This parameter is only applicable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
     includeImports: "Weather to include imported secrets or not."
@@ -295,6 +309,7 @@ export const RAW_SECRETS = {
   GET: {
     secretName: "The name of the secret to get.",
     workspaceId: "The ID of the project to get the secret from.",
+    workspaceSlug: "The slug of the project to get the secret from.",
     environment: "The slug of the environment to get the secret from.",
     secretPath: "The path of the secret to get.",
     version: "The version of the secret to get.",
@@ -465,12 +480,21 @@ export const SECRET_TAGS = {
 export const IDENTITY_ADDITIONAL_PRIVILEGE = {
   CREATE: {
     projectSlug: "The slug of the project of the identity in.",
-    identityId: "The ID of the identity to delete.",
+    identityId: "The ID of the identity to create.",
     slug: "The slug of the privilege to create.",
     permissions: `The permission object for the privilege.
-1. [["read", "secrets", {environment: "dev", secretPath: {$glob: "/"}}]]
-2. [["read", "secrets", {environment: "dev"}], ["create", "secrets", {environment: "dev"}]]
-2. [["read", "secrets", {environment: "dev"}]]
+- Read secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"]}
+\`\`\`
+- Read and Write secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"], {"action": "write", "subject": "secrets"]}
+\`\`\`
+- Read secrets scoped to an environment and secret path
+\`\`\`
+- { "permissions": [{"action": "read", "subject": "secrets", "conditions": { "environment": "dev", "secretPath": { "$glob": "/" } }}] }
+\`\`\`
 `,
     isPackPermission: "Whether the server should pack(compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
@@ -484,11 +508,19 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     slug: "The slug of the privilege to update.",
     newSlug: "The new slug of the privilege to update.",
     permissions: `The permission object for the privilege.
-1. [["read", "secrets", {environment: "dev", secretPath: {$glob: "/"}}]]
-2. [["read", "secrets", {environment: "dev"}], ["create", "secrets", {environment: "dev"}]]
-2. [["read", "secrets", {environment: "dev"}]]
+- Read secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"]}
+\`\`\`
+- Read and Write secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"], {"action": "write", "subject": "secrets"]}
+\`\`\`
+- Read secrets scoped to an environment and secret path
+\`\`\`
+- { "permissions": [{"action": "read", "subject": "secrets", "conditions": { "environment": "dev", "secretPath": { "$glob": "/" } }}] }
+\`\`\`
 `,
-    isPackPermission: "Whether the server should pack(compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
     temporaryMode: "Type of temporary access given. Types: relative",
     temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
@@ -596,7 +628,8 @@ export const INTEGRATION = {
       shouldAutoRedeploy: "Used by Render to trigger auto deploy.",
       secretGCPLabel: "The label for GCP secrets.",
       secretAWSTag: "The tags for AWS secrets.",
-      kmsKeyId: "The ID of the encryption key from AWS KMS."
+      kmsKeyId: "The ID of the encryption key from AWS KMS.",
+      shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store."
     }
   },
   UPDATE: {

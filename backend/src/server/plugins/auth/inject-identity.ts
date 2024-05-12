@@ -108,6 +108,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
     if (req.url.includes("/api/v3/auth/")) {
       return;
     }
+
     if (!authMode) return;
 
     switch (authMode) {

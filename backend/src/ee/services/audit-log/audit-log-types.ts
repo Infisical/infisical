@@ -70,6 +70,10 @@ export enum EventType {
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
+  LOGIN_IDENTITY_AWS_AUTH = "login-identity-aws-auth",
+  ADD_IDENTITY_AWS_AUTH = "add-identity-aws-auth",
+  UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
+  GET_IDENTITY_AWS_AUTH = "get-identity-aws-auth",
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
@@ -454,6 +458,50 @@ interface RevokeIdentityUniversalAuthClientSecretEvent {
   };
 }
 
+interface LoginIdentityAwsAuthEvent {
+  type: EventType.LOGIN_IDENTITY_AWS_AUTH;
+  metadata: {
+    identityId: string;
+    identityAwsAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityAwsAuthEvent {
+  type: EventType.ADD_IDENTITY_AWS_AUTH;
+  metadata: {
+    identityId: string;
+    stsEndpoint: string;
+    allowedPrincipalArns: string;
+    allowedAccountIds: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityAwsAuthEvent {
+  type: EventType.UPDATE_IDENTITY_AWS_AUTH;
+  metadata: {
+    identityId: string;
+    stsEndpoint?: string;
+    allowedPrincipalArns?: string;
+    allowedAccountIds?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityAwsAuthEvent {
+  type: EventType.GET_IDENTITY_AWS_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface CreateEnvironmentEvent {
   type: EventType.CREATE_ENVIRONMENT;
   metadata: {
@@ -712,6 +760,10 @@ export type Event =
   | CreateIdentityUniversalAuthClientSecretEvent
   | GetIdentityUniversalAuthClientSecretsEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
+  | LoginIdentityAwsAuthEvent
+  | AddIdentityAwsAuthEvent
+  | UpdateIdentityAwsAuthEvent
+  | GetIdentityAwsAuthEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

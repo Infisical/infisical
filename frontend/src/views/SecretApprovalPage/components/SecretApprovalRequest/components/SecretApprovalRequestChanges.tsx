@@ -83,7 +83,6 @@ export const SecretApprovalRequestChanges = ({
   workspaceId,
   members = {}
 }: Props) => {
-  
   const { user } = useUser();
   const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
   const {
@@ -94,7 +93,6 @@ export const SecretApprovalRequestChanges = ({
     id: approvalRequestId,
     decryptKey: decryptFileKey!
   });
-  console.log(secretApprovalRequestDetails);
 
   const {
     mutateAsync: updateSecretApprovalRequestStatus,

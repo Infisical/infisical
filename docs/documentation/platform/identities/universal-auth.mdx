@@ -3,19 +3,35 @@ title: Universal Auth
 description: "Learn how to authenticate to Infisical from any platform or environment."
 ---
 
-**Universal Auth** is the most versatile authentication method that can be configured for a [machine identity](/documentation/platform/identities/machine-identities) to access Infisical from any platform or environment.
+**Universal Auth** is a platform-agnostic authentication method that can be configured for a [machine identity](/documentation/platform/identities/machine-identities) suitable to authenticate from any platform/environment.
 
-In this method, each identity is given a **Client ID** for which you can generate one or more **Client Secret(s)**. Together, a **Client ID** and **Client Secret** can be exchanged for an access token to authenticate with the Infisical API.
+## Diagram
 
-## Properties
+The following sequence digram illustrates the Universal Auth workflow for authenticating clients with Infisical.
 
-Universal Auth supports many settings that can be beneficial for tightening your workflow security configuration:
+```mermaid
+sequenceDiagram
+  participant Client as Client
+  participant Infis as Infisical
 
-- Support for restrictions on the number of times that the **Client Secret(s)** and access token(s) can be used.
-- Support for expiration, so, if specified, the **Client Secret** of the identity will automatically be defunct after a period of time.
-- Support for IP allowlisting; this means you can restrict the usage of **Client Secret(s)** and access token to a specific IP or CIDR range.
+  Note over Client,Infis: Step 1: Login Operation
+  Client->>Infis: Send Client ID and Client Secret
 
-## Workflow
+  Note over Infis: Step 2: Client ID and Client Secret validation
+  Infis->>Client: Return short-lived access token
+
+  Note over Client,Infis: Step 3: Access Infisical API with Token
+  Client->>Infis: Make authenticated requests using the short-lived access token
+```
+
+## Concept
+
+In this method, Infisical authenticates an identity by verifying the credentials issued for it at the `/api/v1/auth/universal-auth/login` endpoint. If successful,
+then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
+
+In Universal Auth, an identity is given a **Client ID** and one or more **Client Secret(s)**. Together, a **Client ID** and **Client Secret** can be exchanged for a short-lived access token to authenticate with the Infisical API.
+
+## Guide
 
 In the following steps, we explore how to create and use identities for your workloads and applications to access the Infisical API
 using the Universal Auth authentication method.
@@ -27,18 +43,18 @@ using the Universal Auth authentication method.
     ![identities organization](/images/platform/identities/identities-org.png)
 
     When creating an identity, you specify an organization level [role](/documentation/platform/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
-    
+
     ![identities organization create](/images/platform/identities/identities-org-create.png)
 
     Now input a few details for your new identity. Here's some guidance for each field:
 
     - Name (required): A friendly name for the identity.
     - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
-    
+
     Once you've created an identity, you'll be prompted to configure the **Universal Auth** authentication method for it.
-    
+
     ![identities organization create auth method](/images/platform/identities/identities-org-create-auth-method.png)
-    
+
     Here's some more guidance on each field:
 
     - Access Token TTL (default is `2592000` equivalent to 30 days): The lifetime for an acccess token in seconds. This value will be referenced at renewal time.
@@ -78,8 +94,9 @@ using the Universal Auth authentication method.
     Next, select the identity you want to add to the project and the project level role you want to allow it to assume. The project role assigned will determine what project level resources this identity can have access to.
 
     ![identities project](/images/platform/identities/identities-project.png)
-    
+
     ![identities project create](/images/platform/identities/identities-project-create.png)
+
   </Step>
   <Step title="Accessing the Infisical API with the identity">
     To access the Infisical API as the identity, you should first perform a login operation
@@ -88,16 +105,16 @@ using the Universal Auth authentication method.
     
     #### Sample request
 
-    ```
+    ```bash Request
     curl --location --request POST 'https://app.infisical.com/api/v1/auth/universal-auth/login' \
       --header 'Content-Type: application/x-www-form-urlencoded' \
-      --data-urlencode 'clientSecret=...' \
-      --data-urlencode 'clientId=...'
+      --data-urlencode 'clientId=...' \
+      --data-urlencode 'clientSecret=...'
     ```
-    
+
     #### Sample response
-    
-    ```
+
+    ```bash Response
     {
       "accessToken": "...",
       "expiresIn": 7200,
@@ -107,7 +124,7 @@ using the Universal Auth authentication method.
     ```
 
     Next, you can use the access token to authenticate with the [Infisical API](/api-reference/overview/introduction)
-    
+
     <Note>
       Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
       the default TTL is `7200` seconds which can be adjusted.
@@ -115,6 +132,7 @@ using the Universal Auth authentication method.
       If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
       a new access token should be obtained by performing another login operation.
     </Note>
+
   </Step>
 </Steps>
 
@@ -134,7 +152,8 @@ using the Universal Auth authentication method.
   
   In certain cases, you may want to extend the lifespan of an access token; to do so, you must set a max TTL parameter.
 
-  A token can be renewed any number of time and each call to renew it will extend the toke life by increments of access token TTL. 
-  Regardless of how frequently an access token is renewed, its lifespan remains bound to the maximum TTL determined at its creation
+A token can be renewed any number of time and each call to renew it will extend the toke life by increments of access token TTL.
+Regardless of how frequently an access token is renewed, its lifespan remains bound to the maximum TTL determined at its creation
+
 </Accordion>
 </AccordionGroup>

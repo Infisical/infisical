@@ -2,6 +2,12 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { registerV1EERoutes } from "@app/ee/routes/v1";
+import { accessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
+import { accessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
+import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
+import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
+import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
+import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
@@ -72,6 +78,8 @@ import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
 import { identityAccessTokenDALFactory } from "@app/services/identity-access-token/identity-access-token-dal";
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
+import { identityAwsAuthDALFactory } from "@app/services/identity-aws-auth/identity-aws-auth-dal";
+import { identityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
 import { identityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 import { identityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
@@ -90,6 +98,7 @@ import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
+import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
@@ -157,6 +166,7 @@ export const registerRoutes = async (
   const authDAL = authDALFactory(db);
   const authTokenDAL = tokenDALFactory(db);
   const orgDAL = orgDALFactory(db);
+  const orgMembershipDAL = orgMembershipDALFactory(db);
   const orgBotDAL = orgBotDALFactory(db);
   const incidentContactDAL = incidentContactDALFactory(db);
   const orgRoleDAL = orgRoleDALFactory(db);
@@ -196,6 +206,7 @@ export const registerRoutes = async (
   const identityUaDAL = identityUaDALFactory(db);
   const identityKubernetesAuthDAL = identityKubernetesAuthDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
+  const identityAwsAuthDAL = identityAwsAuthDALFactory(db);
 
   const auditLogDAL = auditLogDALFactory(db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
@@ -208,6 +219,12 @@ export const registerRoutes = async (
   const scimDAL = scimDALFactory(db);
   const ldapConfigDAL = ldapConfigDALFactory(db);
   const ldapGroupMapDAL = ldapGroupMapDALFactory(db);
+
+  const accessApprovalPolicyDAL = accessApprovalPolicyDALFactory(db);
+  const accessApprovalRequestDAL = accessApprovalRequestDALFactory(db);
+  const accessApprovalPolicyApproverDAL = accessApprovalPolicyApproverDALFactory(db);
+  const accessApprovalRequestReviewerDAL = accessApprovalRequestReviewerDALFactory(db);
+
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
   const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
   const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
@@ -265,13 +282,19 @@ export const registerRoutes = async (
     permissionService,
     secretApprovalPolicyDAL
   });
+  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
+
   const samlService = samlConfigServiceFactory({
     permissionService,
     orgBotDAL,
     orgDAL,
+    orgMembershipDAL,
     userDAL,
+    userAliasDAL,
     samlConfigDAL,
-    licenseService
+    licenseService,
+    tokenService,
+    smtpService
   });
   const groupService = groupServiceFactory({
     userDAL,
@@ -300,7 +323,9 @@ export const registerRoutes = async (
     licenseService,
     scimDAL,
     userDAL,
+    userAliasDAL,
     orgDAL,
+    orgMembershipDAL,
     projectDAL,
     projectMembershipDAL,
     groupDAL,
@@ -316,6 +341,7 @@ export const registerRoutes = async (
     ldapConfigDAL,
     ldapGroupMapDAL,
     orgDAL,
+    orgMembershipDAL,
     orgBotDAL,
     groupDAL,
     groupProjectDAL,
@@ -339,8 +365,13 @@ export const registerRoutes = async (
     queueService
   });
 
-  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
-  const userService = userServiceFactory({ userDAL });
+  const userService = userServiceFactory({
+    userDAL,
+    userAliasDAL,
+    orgMembershipDAL,
+    tokenService,
+    smtpService
+  });
   const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, tokenDAL: authTokenDAL });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -349,6 +380,7 @@ export const registerRoutes = async (
     userDAL
   });
   const orgService = orgServiceFactory({
+    userAliasDAL,
     licenseService,
     samlConfigDAL,
     orgRoleDAL,
@@ -509,8 +541,10 @@ export const registerRoutes = async (
     folderDAL,
     folderVersionDAL,
     projectEnvDAL,
-    snapshotService
+    snapshotService,
+    projectDAL
   });
+
   const integrationAuthService = integrationAuthServiceFactory({
     integrationAuthDAL,
     integrationDAL,
@@ -583,6 +617,30 @@ export const registerRoutes = async (
     secretVersionTagDAL,
     secretQueueService
   });
+
+  const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
+    accessApprovalPolicyDAL,
+    accessApprovalPolicyApproverDAL,
+    permissionService,
+    projectEnvDAL,
+    projectMembershipDAL,
+    projectDAL
+  });
+
+  const accessApprovalRequestService = accessApprovalRequestServiceFactory({
+    projectDAL,
+    permissionService,
+    accessApprovalRequestReviewerDAL,
+    additionalPrivilegeDAL: projectUserAdditionalPrivilegeDAL,
+    projectMembershipDAL,
+    accessApprovalPolicyDAL,
+    accessApprovalRequestDAL,
+    projectEnvDAL,
+    userDAL,
+    smtpService,
+    accessApprovalPolicyApproverDAL
+  });
+
   const secretRotationQueue = secretRotationQueueFactory({
     telemetryService,
     secretRotationDAL,
@@ -658,6 +716,14 @@ export const registerRoutes = async (
     permissionService,
     licenseService
   });
+  const identityAwsAuthService = identityAwsAuthServiceFactory({
+    identityAccessTokenDAL,
+    identityAwsAuthDAL,
+    identityOrgMembershipDAL,
+    identityDAL,
+    licenseService,
+    permissionService
+  });
 
   const dynamicSecretProviders = buildDynamicSecretProviders();
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
@@ -728,7 +794,10 @@ export const registerRoutes = async (
     identityProject: identityProjectService,
     identityUa: identityUaService,
     identityKubernetesAuth: identityKubernetesAuthService,
+    identityAwsAuth: identityAwsAuthService,
     secretApprovalPolicy: sapService,
+    accessApprovalPolicy: accessApprovalPolicyService,
+    accessApprovalRequest: accessApprovalRequestService,
     secretApprovalRequest: sarService,
     secretRotation: secretRotationService,
     dynamicSecret: dynamicSecretService,

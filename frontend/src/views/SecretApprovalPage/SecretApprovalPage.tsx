@@ -3,25 +3,31 @@ import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Divider } from "@app/components/v2/Divider";
 import { useWorkspace } from "@app/context";
 
+import { AccessApprovalPolicyList } from "./components/AccessApprovalPolicyList";
+import { AccessApprovalRequest } from "./components/AccessApprovalRequest";
 import { SecretApprovalPolicyList } from "./components/SecretApprovalPolicyList";
 import { SecretApprovalRequest } from "./components/SecretApprovalRequest";
 
 enum TabSection {
-  ApprovalRequests = "approval-requests",
-  Rules = "approval-rules"
+  SecretApprovalRequests = "approval-requests",
+  SecretPolicies = "approval-rules",
+  ResourcePolicies = "resource-rules",
+  ResourceApprovalRequests = "resource-requests"
 }
 
 export const SecretApprovalPage = () => {
   const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
+  const projectId = currentWorkspace?.id || "";
+  const projectSlug = currentWorkspace?.slug || "";
 
   return (
     <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 px-6 text-white">
       <div className="flex items-center justify-between py-6">
         <div className="flex w-full flex-col">
-          <h2 className="text-3xl font-semibold text-gray-200">Secret Approval Workflows</h2>
+          <h2 className="text-3xl font-semibold text-gray-200">Approval Workflows</h2>
           <p className="text-bunker-300">
             Create approval policies for any modifications to secrets in sensitive environments and
             folders.
@@ -39,16 +45,25 @@ export const SecretApprovalPage = () => {
           </Link>
         </div>
       </div>
-      <Tabs defaultValue={TabSection.ApprovalRequests}>
+      <Tabs defaultValue={TabSection.SecretApprovalRequests}>
         <TabList>
-          <Tab value={TabSection.ApprovalRequests}>Secret PRs</Tab>
-          <Tab value={TabSection.Rules}>Policies</Tab>
+          <Tab value={TabSection.SecretApprovalRequests}>Secret Requests</Tab>
+          <Tab value={TabSection.SecretPolicies}>Secret Policies</Tab>
+          <Divider />
+          <Tab value={TabSection.ResourceApprovalRequests}>Access Requests</Tab>
+          <Tab value={TabSection.ResourcePolicies}>Access Request Policies</Tab>
         </TabList>
-        <TabPanel value={TabSection.ApprovalRequests}>
+        <TabPanel value={TabSection.SecretPolicies}>
+          <SecretApprovalPolicyList workspaceId={projectId} />
+        </TabPanel>
+        <TabPanel value={TabSection.SecretApprovalRequests}>
           <SecretApprovalRequest />
         </TabPanel>
-        <TabPanel value={TabSection.Rules}>
-          <SecretApprovalPolicyList workspaceId={workspaceId} />
+        <TabPanel value={TabSection.ResourceApprovalRequests}>
+          <AccessApprovalRequest projectId={projectId} projectSlug={projectSlug} />
+        </TabPanel>
+        <TabPanel value={TabSection.ResourcePolicies}>
+          <AccessApprovalPolicyList workspaceId={projectId} />
         </TabPanel>
       </Tabs>
     </div>

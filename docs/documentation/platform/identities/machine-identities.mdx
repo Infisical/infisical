@@ -7,7 +7,7 @@ description: "Learn how to use Machine Identities to programmatically interact w
 
 An Infisical machine identity is an entity that represents a workload or application that require access to various resources in Infisical. This is conceptually similar to an IAM user in AWS or service account in Google Cloud Platform (GCP).
 
-Each identity must authenticate with the API using a supported authentication method like [Universal Auth](/documentation/platform/identities/universal-auth) to get back a short-lived access token to be used in subsequent requests.
+Each identity must authenticate using a supported authentication method like [Universal Auth](/documentation/platform/identities/universal-auth) or [AWS Auth](/documentation/platform/identities/aws-auth) to get back a short-lived access token to be used in subsequent requests.
 
 ![organization identities](/images/platform/organization/organization-machine-identities.png)
 
@@ -21,7 +21,7 @@ Key Features:
 A typical workflow for using identities consists of four steps:
 
 1. Creating the identity with a name and [role](/documentation/platform/role-based-access-controls) in Organization Access Control > Machine Identities.
-   This step also involves configuring an authentication method for it such as [Universal Auth](/documentation/platform/identities/universal-auth).
+   This step also involves configuring an authentication method for it such as [Universal Auth](/documentation/platform/identities/universal-auth) or [AWS Auth](/documentation/platform/identities/aws-auth).
 2. Adding the identity to the project(s) you want it to have access to.
 3. Authenticating the identity with the Infisical API based on the configured authentication method on it and receiving a short-lived access token back.
 4. Authenticating subsequent requests with the Infisical API using the short-lived access token.
@@ -37,7 +37,8 @@ Machine Identity support for the rest of the clients is planned to be released i
 
 To interact with various resources in Infisical, Machine Identities are able to authenticate using:
 
-- [Universal Auth](/documentation/platform/identities/universal-auth): the most versatile authentication method that can be configured on an identity from any platform/environment to access Infisical.
+- [Universal Auth](/documentation/platform/identities/universal-auth): A platform-agnostic authentication method that can be configured on an identity suitable to authenticate from any platform/environment.
+- [AWS Auth](/documentation/platform/identities/aws-auth): An AWS-native authentication method for IAM principals like EC2 instances or Lambda functions to authenticate with Infisical.
 
 ## FAQ
 

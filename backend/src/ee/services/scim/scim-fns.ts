@@ -2,31 +2,31 @@ import { TListScimGroups, TListScimUsers, TScimGroup, TScimUser } from "./scim-t
 
 export const buildScimUserList = ({
   scimUsers,
-  offset,
+  startIndex,
   limit
 }: {
   scimUsers: TScimUser[];
-  offset: number;
+  startIndex: number;
   limit: number;
 }): TListScimUsers => {
   return {
     Resources: scimUsers,
     itemsPerPage: limit,
     schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-    startIndex: offset,
+    startIndex,
     totalResults: scimUsers.length
   };
 };
 
 export const buildScimUser = ({
-  userId,
+  orgMembershipId,
   username,
   email,
   firstName,
   lastName,
   active
 }: {
-  userId: string;
+  orgMembershipId: string;
   username: string;
   email?: string | null;
   firstName: string;
@@ -35,7 +35,7 @@ export const buildScimUser = ({
 }): TScimUser => {
   const scimUser = {
     schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
-    id: userId,
+    id: orgMembershipId,
     userName: username,
     displayName: `${firstName} ${lastName}`,
     name: {
@@ -65,18 +65,18 @@ export const buildScimUser = ({
 
 export const buildScimGroupList = ({
   scimGroups,
-  offset,
+  startIndex,
   limit
 }: {
   scimGroups: TScimGroup[];
-  offset: number;
+  startIndex: number;
   limit: number;
 }): TListScimGroups => {
   return {
     Resources: scimGroups,
     itemsPerPage: limit,
     schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-    startIndex: offset,
+    startIndex,
     totalResults: scimGroups.length
   };
 };

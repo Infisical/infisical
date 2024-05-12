@@ -35,8 +35,6 @@ export default function LoginPage() {
   const selectOrg = useSelectOrganization();
   const { user, isLoading: userLoading } = useUser();
 
-  
-
   const queryParams = new URLSearchParams(window.location.search);
 
   const logout = useLogoutUser(true);
@@ -153,7 +151,7 @@ export default function LoginPage() {
 
             <div className="space-y-1">
               <p className="text-md text-center text-gray-500">
-                You&lsquo;re currently logged in as <strong>{user.email}</strong>
+                You&lsquo;re currently logged in as <strong>{user.username}</strong>
               </p>
               <p className="text-md text-center text-gray-500">
                 Not you?{" "}

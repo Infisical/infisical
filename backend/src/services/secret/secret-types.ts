@@ -152,7 +152,9 @@ export type TGetASecretRawDTO = {
   type: "shared" | "personal";
   includeImports?: boolean;
   version?: number;
-} & TProjectPermission;
+  projectSlug?: string;
+  projectId?: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSecretRawDTO = TProjectPermission & {
   secretPath: string;

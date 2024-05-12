@@ -74,21 +74,21 @@ jobs:
         uses: pr-mpt/actions-commit-hash@v2
       - name: Download task definition
         run: |
-          aws ecs describe-task-definition --task-definition infisical-prod-platform --query taskDefinition > task-definition.json
+          aws ecs describe-task-definition --task-definition infisical-core-platform --query taskDefinition > task-definition.json
       - name: Render Amazon ECS task definition
         id: render-web-container
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-definition.json
-          container-name: infisical-prod-platform
+          container-name: infisical-core-platform
           image: infisical/staging_infisical:${{ steps.commit.outputs.short }}
           environment-variables: "LOG_LEVEL=info"
       - name: Deploy to Amazon ECS service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.render-web-container.outputs.task-definition }}
-          service: infisical-prod-platform
-          cluster: infisical-prod-platform
+          service: infisical-core-platform
+          cluster: infisical-core-platform
           wait-for-service-stability: true
 
   production-postgres-deployment:
@@ -135,6 +135,6 @@ jobs:
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.render-web-container.outputs.task-definition }}
-          service: infisical-prod-platform
-          cluster: infisical-prod-platform
+          service: infisical-core-platform
+          cluster: infisical-core-platform
           wait-for-service-stability: true

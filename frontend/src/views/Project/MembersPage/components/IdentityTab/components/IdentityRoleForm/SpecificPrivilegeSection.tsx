@@ -142,7 +142,7 @@ const SpecificPrivilegeSecretForm = ({
             .filter(({ allowed }) => allowed)
             .map(({ action }) => ({
               action,
-              subject: [ProjectPermissionSub.Secrets],
+              subject: ProjectPermissionSub.Secrets,
               conditions
             }))
         },
@@ -477,7 +477,7 @@ export const SpecificPrivilegeSection = ({ identityId }: Props) => {
         permissions: [
           {
             action: ProjectPermissionActions.Read,
-            subject: [ProjectPermissionSub.Secrets],
+            subject: ProjectPermissionSub.Secrets,
             conditions: {
               environment: currentWorkspace?.environments?.[0].slug
             }
@@ -512,6 +512,7 @@ export const SpecificPrivilegeSection = ({ identityId }: Props) => {
           ?.filter(({ permissions }) =>
             permissions?.[0]?.subject?.includes(ProjectPermissionSub.Secrets)
           )
+          .sort((a, b) => a.id.localeCompare(b.id))
           ?.map((privilege) => (
             <SpecificPrivilegeSecretForm
               privilege={privilege as TProjectUserPrivilege}

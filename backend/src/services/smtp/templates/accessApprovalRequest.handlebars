@@ -1,0 +1,50 @@
+<html>
+
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>Access Approval Request</title>
+  </head>
+
+  <body>
+    <h2>Infisical</h2>
+    <h2>New access approval request pending your review</h2>
+    <p>You have a new access approval request pending review in project "{{projectName}}".</p>
+
+    <p>
+      {{requesterFullName}}
+      ({{requesterEmail}}) has requested
+      {{#if isTemporary}}
+        temporary
+      {{else}}
+        permanent
+      {{/if}}
+      access to
+      {{secretPath}}
+      in the
+      {{environment}}
+      environment.
+
+      {{#if isTemporary}}
+        <br />
+        This access will expire
+        {{expiresIn}}
+        after it has been approved.
+      {{/if}}
+    </p>
+    <p>
+      The following permissions are requested:
+      <ul>
+        {{#each permissions}}
+          <li>{{this}}</li>
+        {{/each}}
+      </ul>
+    </p>
+
+    <p>
+      View the request and approve or deny it
+      <a href="{{approvalUrl}}">here</a>.
+    </p>
+  </body>
+
+</html>

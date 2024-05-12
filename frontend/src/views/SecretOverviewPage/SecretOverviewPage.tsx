@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -47,6 +47,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
+  useProjectPermission,
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -61,6 +62,9 @@ import {
   useGetUserWsKey,
   useUpdateSecretV3
 } from "@app/hooks/api";
+import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
+import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
+import { TSecretFolder } from "@app/hooks/api/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
@@ -70,6 +74,12 @@ import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSect
 import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
+import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
+
+export enum EntryType {
+  FOLDER = "folder",
+  SECRET = "secret"
+}
 
 export const SecretOverviewPage = () => {
   const { t } = useTranslation();
@@ -81,15 +91,7 @@ export const SecretOverviewPage = () => {
   const parentTableRef = useRef<HTMLTableElement>(null);
   const [expandableTableWidth, setExpandableTableWidth] = useState(0);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-
-  useEffect(() => {
-    const handleParentTableWidthResize = () => {
-      setExpandableTableWidth(parentTableRef.current?.clientWidth || 0);
-    };
-
-    window.addEventListener("resize", handleParentTableWidthResize);
-    return () => window.removeEventListener("resize", handleParentTableWidthResize);
-  }, []);
+  const { permission } = useProjectPermission();
 
   useEffect(() => {
     if (parentTableRef.current) {
@@ -104,6 +106,56 @@ export const SecretOverviewPage = () => {
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
+
+  const [selectedEntries, setSelectedEntries] = useState<{
+    [EntryType.FOLDER]: Record<string, boolean>;
+    [EntryType.SECRET]: Record<string, boolean>;
+  }>({
+    [EntryType.FOLDER]: {},
+    [EntryType.SECRET]: {}
+  });
+
+  const toggleSelectedEntry = useCallback(
+    (type: EntryType, key: string) => {
+      const isChecked = Boolean(selectedEntries[type]?.[key]);
+      const newChecks = { ...selectedEntries };
+
+      // remove selection if its present else add it
+      if (isChecked) {
+        delete newChecks[type][key];
+      } else {
+        newChecks[type][key] = true;
+      }
+
+      setSelectedEntries(newChecks);
+    },
+    [selectedEntries]
+  );
+
+  const resetSelectedEntries = useCallback(() => {
+    setSelectedEntries({
+      [EntryType.FOLDER]: {},
+      [EntryType.SECRET]: {}
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleParentTableWidthResize = () => {
+      setExpandableTableWidth(parentTableRef.current?.clientWidth || 0);
+    };
+
+    const onRouteChangeStart = () => {
+      resetSelectedEntries();
+    };
+
+    router.events.on("routeChangeStart", onRouteChangeStart);
+
+    window.addEventListener("resize", handleParentTableWidthResize);
+    return () => {
+      window.removeEventListener("resize", handleParentTableWidthResize);
+      router.events.off("routeChangeStart", onRouteChangeStart);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isWorkspaceLoading && !workspaceId && router.isReady) {
@@ -129,7 +181,8 @@ export const SecretOverviewPage = () => {
     secretPath,
     decryptFileKey: latestFileKey!
   });
-  const { folders, folderNames, isFolderPresentInEnv } = useGetFoldersByEnv({
+
+  const { folders, folderNames, isFolderPresentInEnv, getFolderByNameAndEnv } = useGetFoldersByEnv({
     projectId: workspaceId,
     path: secretPath,
     environments: userAvailableEnvs.map(({ slug }) => slug)
@@ -153,11 +206,13 @@ export const SecretOverviewPage = () => {
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
+  const { mutateAsync: updateFolderBatch } = useUpdateFolderBatch();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addSecretsInAllEnvs",
     "addFolder",
-    "misc"
+    "misc",
+    "updateFolder"
   ] as const);
 
   const handleFolderCreate = async (folderName: string) => {
@@ -185,6 +240,59 @@ export const SecretOverviewPage = () => {
         type: "error",
         text: "Failed to create folder"
       });
+    }
+  };
+
+  const handleFolderUpdate = async (newFolderName: string) => {
+    const { name: oldFolderName } = popUp.updateFolder.data as TSecretFolder;
+
+    const updatedFolders: TUpdateFolderBatchDTO["folders"] = [];
+    userAvailableEnvs.forEach((env) => {
+      if (
+        permission.can(
+          ProjectPermissionActions.Edit,
+          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
+        )
+      ) {
+        const folder = getFolderByNameAndEnv(oldFolderName, env.slug);
+        if (folder) {
+          updatedFolders.push({
+            environment: env.slug,
+            name: newFolderName,
+            id: folder.id,
+            path: secretPath
+          });
+        }
+      }
+    });
+
+    if (updatedFolders.length === 0) {
+      createNotification({
+        type: "info",
+        text: "You don't have access to rename selected folder"
+      });
+
+      handlePopUpClose("updateFolder");
+      return;
+    }
+
+    try {
+      await updateFolderBatch({
+        projectSlug,
+        folders: updatedFolders,
+        projectId: workspaceId
+      });
+      createNotification({
+        type: "success",
+        text: "Successfully renamed folder across environments"
+      });
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text: "Failed to rename folder across environments"
+      });
+    } finally {
+      handlePopUpClose("updateFolder");
     }
   };
 
@@ -543,6 +651,13 @@ export const SecretOverviewPage = () => {
             </div>
           </div>
         </div>
+        <SelectionPanel
+          secretPath={secretPath}
+          getSecretByKey={getSecretByKey}
+          getFolderByNameAndEnv={getFolderByNameAndEnv}
+          selectedEntries={selectedEntries}
+          resetSelectedEntries={resetSelectedEntries}
+        />
         <div className="thin-scrollbar mt-4" ref={parentTableRef}>
           <TableContainer className="max-h-[calc(100vh-250px)] overflow-y-auto">
             <Table>
@@ -666,9 +781,14 @@ export const SecretOverviewPage = () => {
                     <SecretOverviewFolderRow
                       folderName={folderName}
                       isFolderPresentInEnv={isFolderPresentInEnv}
+                      isSelected={selectedEntries.folder[folderName]}
+                      onToggleFolderSelect={() => toggleSelectedEntry(EntryType.FOLDER, folderName)}
                       environments={visibleEnvs}
                       key={`overview-${folderName}-${index + 1}`}
                       onClick={handleFolderClick}
+                      onToggleFolderEdit={(name: string) =>
+                        handlePopUpOpen("updateFolder", { name })
+                      }
                     />
                   ))}
                 {!isTableLoading &&
@@ -684,6 +804,8 @@ export const SecretOverviewPage = () => {
                   visibleEnvs?.length > 0 &&
                   filteredSecretNames.map((key, index) => (
                     <SecretOverviewTableRow
+                      isSelected={selectedEntries.secret[key]}
+                      onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
                       secretPath={secretPath}
                       isImportedSecretPresentInEnv={isImportedSecretPresentInEnv}
                       onSecretCreate={handleSecretCreate}
@@ -739,6 +861,18 @@ export const SecretOverviewPage = () => {
       >
         <ModalContent title="Create Folder">
           <FolderForm onCreateFolder={handleFolderCreate} />
+        </ModalContent>
+      </Modal>
+      <Modal
+        isOpen={popUp.updateFolder.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("updateFolder", isOpen)}
+      >
+        <ModalContent title="Edit Folder Name">
+          <FolderForm
+            isEdit
+            defaultFolderName={(popUp.updateFolder?.data as Pick<TSecretFolder, "name">)?.name}
+            onUpdateFolder={handleFolderUpdate}
+          />
         </ModalContent>
       </Modal>
     </>

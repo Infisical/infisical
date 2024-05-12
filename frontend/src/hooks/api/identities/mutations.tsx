@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { organizationKeys } from "../organization/queries";
 import { identitiesKeys } from "./queries";
 import {
+  AddIdentityAwsAuthDTO,
   AddIdentityUniversalAuthDTO,
   ClientSecretData,
   CreateIdentityDTO,
@@ -13,7 +14,9 @@ import {
   DeleteIdentityDTO,
   DeleteIdentityUniversalAuthClientSecretDTO,
   Identity,
+  IdentityAwsAuth,
   IdentityUniversalAuth,
+  UpdateIdentityAwsAuthDTO,
   UpdateIdentityDTO,
   UpdateIdentityUniversalAuthDTO
 } from "./types";
@@ -166,6 +169,77 @@ export const useRevokeIdentityUniversalAuthClientSecret = () => {
       queryClient.invalidateQueries(
         identitiesKeys.getIdentityUniversalAuthClientSecrets(identityId)
       );
+    }
+  });
+};
+
+export const useAddIdentityAwsAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityAwsAuth, {}, AddIdentityAwsAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      stsEndpoint,
+      allowedPrincipalArns,
+      allowedAccountIds,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityAwsAuth }
+      } = await apiRequest.post<{ identityAwsAuth: IdentityAwsAuth }>(
+        `/api/v1/auth/aws-auth/identities/${identityId}`,
+        {
+          stsEndpoint,
+          allowedPrincipalArns,
+          allowedAccountIds,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityAwsAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
+export const useUpdateIdentityAwsAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityAwsAuth, {}, UpdateIdentityAwsAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      stsEndpoint,
+      allowedPrincipalArns,
+      allowedAccountIds,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityAwsAuth }
+      } = await apiRequest.patch<{ identityAwsAuth: IdentityAwsAuth }>(
+        `/api/v1/auth/aws-auth/identities/${identityId}`,
+        {
+          stsEndpoint,
+          allowedPrincipalArns,
+          allowedAccountIds,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+      return identityAwsAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
     }
   });
 };

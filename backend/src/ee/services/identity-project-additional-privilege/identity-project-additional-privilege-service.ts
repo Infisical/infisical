@@ -1,5 +1,7 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
+import { PackRule, unpackRules } from "@casl/ability/extra";
 import ms from "ms";
+import { z } from "zod";
 
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
@@ -8,7 +10,7 @@ import { TIdentityProjectDALFactory } from "@app/services/identity-project/ident
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSet, ProjectPermissionSub } from "../permission/project-permission";
 import { TIdentityProjectAdditionalPrivilegeDALFactory } from "./identity-project-additional-privilege-dal";
 import {
   IdentityProjectAdditionalPrivilegeTemporaryMode,
@@ -29,6 +31,27 @@ type TIdentityProjectAdditionalPrivilegeServiceFactoryDep = {
 export type TIdentityProjectAdditionalPrivilegeServiceFactory = ReturnType<
   typeof identityProjectAdditionalPrivilegeServiceFactory
 >;
+
+// TODO(akhilmhdh): move this to more centralized
+export const UnpackedPermissionSchema = z.object({
+  subject: z.union([z.string().min(1), z.string().array()]).optional(),
+  action: z.union([z.string().min(1), z.string().array()]),
+  conditions: z
+    .object({
+      environment: z.string().optional(),
+      secretPath: z
+        .object({
+          $glob: z.string().min(1)
+        })
+        .optional()
+    })
+    .optional()
+});
+
+const unpackPermissions = (permissions: unknown) =>
+  UnpackedPermissionSchema.array().parse(
+    unpackRules((permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
+  );
 
 export const identityProjectAdditionalPrivilegeServiceFactory = ({
   identityProjectAdditionalPrivilegeDAL,
@@ -86,7 +109,10 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
         slug,
         permissions: customPermission
       });
-      return additionalPrivilege;
+      return {
+        ...additionalPrivilege,
+        permissions: unpackPermissions(additionalPrivilege.permissions)
+      };
     }
 
     const relativeTempAllocatedTimeInMs = ms(dto.temporaryRange);
@@ -100,7 +126,10 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       temporaryAccessStartTime: new Date(dto.temporaryAccessStartTime),
       temporaryAccessEndTime: new Date(new Date(dto.temporaryAccessStartTime).getTime() + relativeTempAllocatedTimeInMs)
     });
-    return additionalPrivilege;
+    return {
+      ...additionalPrivilege,
+      permissions: unpackPermissions(additionalPrivilege.permissions)
+    };
   };
 
   const updateBySlug = async ({
@@ -163,7 +192,11 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
         temporaryAccessStartTime: new Date(temporaryAccessStartTime || ""),
         temporaryAccessEndTime: new Date(new Date(temporaryAccessStartTime || "").getTime() + ms(temporaryRange || ""))
       });
-      return additionalPrivilege;
+      return {
+        ...additionalPrivilege,
+
+        permissions: unpackPermissions(additionalPrivilege.permissions)
+      };
     }
 
     const additionalPrivilege = await identityProjectAdditionalPrivilegeDAL.updateById(identityPrivilege.id, {
@@ -174,7 +207,11 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       temporaryRange: null,
       temporaryMode: null
     });
-    return additionalPrivilege;
+    return {
+      ...additionalPrivilege,
+
+      permissions: unpackPermissions(additionalPrivilege.permissions)
+    };
   };
 
   const deleteBySlug = async ({
@@ -220,7 +257,11 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     if (!identityPrivilege) throw new BadRequestError({ message: "Identity additional privilege not found" });
 
     const deletedPrivilege = await identityProjectAdditionalPrivilegeDAL.deleteById(identityPrivilege.id);
-    return deletedPrivilege;
+    return {
+      ...deletedPrivilege,
+
+      permissions: unpackPermissions(deletedPrivilege.permissions)
+    };
   };
 
   const getPrivilegeDetailsBySlug = async ({
@@ -254,7 +295,10 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     });
     if (!identityPrivilege) throw new BadRequestError({ message: "Identity additional privilege not found" });
 
-    return identityPrivilege;
+    return {
+      ...identityPrivilege,
+      permissions: unpackPermissions(identityPrivilege.permissions)
+    };
   };
 
   const listIdentityProjectPrivileges = async ({
@@ -284,7 +328,11 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     const identityPrivileges = await identityProjectAdditionalPrivilegeDAL.find({
       projectMembershipId: identityProjectMembership.id
     });
-    return identityPrivileges;
+    return identityPrivileges.map((el) => ({
+      ...el,
+
+      permissions: unpackPermissions(el.permissions)
+    }));
   };
 
   return {

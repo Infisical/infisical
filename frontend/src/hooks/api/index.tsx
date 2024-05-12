@@ -1,3 +1,4 @@
+export * from "./accessApproval";
 export * from "./admin";
 export * from "./apiKeys";
 export * from "./auditLogs";

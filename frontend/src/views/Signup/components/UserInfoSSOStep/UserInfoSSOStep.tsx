@@ -201,7 +201,7 @@ export const UserInfoSSOStep = ({
               localStorage.setItem("orgData.id", orgId);
               localStorage.setItem("projectData.id", project.id);
 
-              setStep(1);
+              setStep(2);
             } catch (error) {
               setIsLoading(false);
               console.error(error);

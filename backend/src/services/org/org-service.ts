@@ -4,7 +4,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { TProjects } from "@app/db/schemas/projects";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -18,6 +18,7 @@ import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -30,6 +31,7 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgBotDALFactory } from "./org-bot-dal";
 import { TOrgDALFactory } from "./org-dal";
+import { deleteOrgMembershipFn } from "./org-fns";
 import { TOrgRoleDALFactory } from "./org-role-dal";
 import {
   TDeleteOrgMembershipDTO,
@@ -43,6 +45,7 @@ import {
 } from "./org-types";
 
 type TOrgServiceFactoryDep = {
+  userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   orgDAL: TOrgDALFactory;
   orgBotDAL: TOrgBotDALFactory;
   orgRoleDAL: TOrgRoleDALFactory;
@@ -65,6 +68,7 @@ type TOrgServiceFactoryDep = {
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
 
 export const orgServiceFactory = ({
+  userAliasDAL,
   orgDAL,
   userDAL,
   groupDAL,
@@ -427,7 +431,13 @@ export const orgServiceFactory = ({
       if (inviteeUser) {
         // if user already exist means its already part of infisical
         // Thus the signup flow is not needed anymore
-        const [inviteeMembership] = await orgDAL.findMembership({ orgId, userId: inviteeUser.id }, { tx });
+        const [inviteeMembership] = await orgDAL.findMembership(
+          {
+            [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
+            [`${TableName.OrgMembership}.userId` as "userId"]: inviteeUser.id
+          },
+          { tx }
+        );
         if (inviteeMembership && inviteeMembership.status === OrgMembershipStatus.Accepted) {
           throw new BadRequestError({
             message: "Failed to invite an existing member of org",
@@ -519,9 +529,9 @@ export const orgServiceFactory = ({
       throw new BadRequestError({ message: "Invalid request", name: "Verify user to org" });
     }
     const [orgMembership] = await orgDAL.findMembership({
-      userId: user.id,
+      [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
       status: OrgMembershipStatus.Invited,
-      orgId
+      [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId
     });
     if (!orgMembership)
       throw new BadRequestError({
@@ -534,6 +544,10 @@ export const orgServiceFactory = ({
       userId: user.id,
       orgId: orgMembership.orgId,
       code
+    });
+
+    await userDAL.updateById(user.id, {
+      isEmailVerified: true
     });
 
     if (user.isAccepted) {
@@ -572,47 +586,14 @@ export const orgServiceFactory = ({
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
 
-    const deletedMembership = await orgDAL.transaction(async (tx) => {
-      const orgMembership = await orgDAL.deleteMembershipById(membershipId, orgId, tx);
-
-      if (!orgMembership.userId) {
-        await licenseService.updateSubscriptionOrgMemberCount(orgId);
-        return orgMembership;
-      }
-
-      // Get all the project memberships of the user in the organization
-      const projectMemberships = await projectMembershipDAL.findProjectMembershipsByUserId(orgId, orgMembership.userId);
-
-      // Delete all the project memberships of the user in the organization
-      await projectMembershipDAL.delete(
-        {
-          $in: {
-            id: projectMemberships.map((membership) => membership.id)
-          }
-        },
-        tx
-      );
-
-      // Get all the project keys of the user in the organization
-      const projectKeys = await projectKeyDAL.find({
-        $in: {
-          projectId: projectMemberships.map((membership) => membership.projectId)
-        },
-        receiverId: orgMembership.userId
-      });
-
-      // Delete all the project keys of the user in the organization
-      await projectKeyDAL.delete(
-        {
-          $in: {
-            id: projectKeys.map((key) => key.id)
-          }
-        },
-        tx
-      );
-
-      await licenseService.updateSubscriptionOrgMemberCount(orgId);
-      return orgMembership;
+    const deletedMembership = await deleteOrgMembershipFn({
+      orgMembershipId: membershipId,
+      orgId,
+      orgDAL,
+      projectMembershipDAL,
+      projectKeyDAL,
+      userAliasDAL,
+      licenseService
     });
 
     return deletedMembership;

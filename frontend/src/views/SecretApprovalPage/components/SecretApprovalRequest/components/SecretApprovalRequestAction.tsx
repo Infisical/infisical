@@ -37,7 +37,6 @@ export const SecretApprovalRequestAction = ({
   workspaceId,
   canApprove
 }: Props) => {
-  
   const { mutateAsync: performSecretApprovalMerge, isLoading: isMerging } =
     usePerformSecretApprovalRequestMerge();
 
@@ -136,7 +135,7 @@ export const SecretApprovalRequestAction = ({
         <div className="flex items-start space-x-4">
           <FontAwesomeIcon icon={faCheck} className="pt-1 text-2xl text-primary" />
           <span className="flex flex-col">
-            Change request merged
+            Secret approval merged
             <span className="inline-block text-xs text-bunker-200">
               Merged by {statusChangeByEmail}
             </span>
@@ -150,7 +149,7 @@ export const SecretApprovalRequestAction = ({
       <div className="flex items-start space-x-4">
         <FontAwesomeIcon icon={faUserLock} className="pt-1 text-2xl text-primary" />
         <span className="flex flex-col">
-          Change request has been closed
+          Secret approval has been closed
           <span className="inline-block text-xs text-bunker-200">
             Closed by {statusChangeByEmail}
           </span>

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -13,6 +14,7 @@ import {
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { IdentityAwsAuthForm } from "./IdentityAwsAuthForm";
 import { IdentityUniversalAuthForm } from "./IdentityUniversalAuthForm";
 
 type Props = {
@@ -24,22 +26,25 @@ type Props = {
   ) => void;
 };
 
-const identityAuthMethods = [{ label: "Universal Auth", value: IdentityAuthMethod.UNIVERSAL_AUTH }];
+const identityAuthMethods = [
+  { label: "Universal Auth", value: IdentityAuthMethod.UNIVERSAL_AUTH },
+  { label: "AWS Auth", value: IdentityAuthMethod.AWS_AUTH }
+];
 
 const schema = yup
   .object({
-    authMethod: yup.string().required("Auth method is required") // TODO: better enforcement here
+    authMethod: yup.string().required("Auth method is required")
   })
   .required();
 
 export type FormData = yup.InferType<typeof schema>;
 
 export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
-  const {
-    control
-    // watch,
-  } = useForm<FormData>({
-    resolver: yupResolver(schema)
+  const { control, watch, setValue } = useForm<FormData>({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+    }
   });
 
   const identityAuthMethodData = popUp?.identityAuthMethod?.data as {
@@ -48,16 +53,41 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
     authMethod?: IdentityAuthMethod;
   };
 
-  // const authMethod = watch("authMethod");
+  useEffect(() => {
+    if (identityAuthMethodData?.authMethod) {
+      setValue("authMethod", identityAuthMethodData.authMethod);
+      return;
+    }
+
+    setValue("authMethod", IdentityAuthMethod.UNIVERSAL_AUTH);
+  }, [identityAuthMethodData?.authMethod]);
+
+  const authMethod = watch("authMethod");
 
   const renderIdentityAuthForm = () => {
-    return (
-      <IdentityUniversalAuthForm
-        handlePopUpOpen={handlePopUpOpen}
-        handlePopUpToggle={handlePopUpToggle}
-        identityAuthMethodData={identityAuthMethodData}
-      />
-    );
+    switch (identityAuthMethodData?.authMethod ?? authMethod) {
+      case IdentityAuthMethod.AWS_AUTH: {
+        return (
+          <IdentityAwsAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+          />
+        );
+      }
+      case IdentityAuthMethod.UNIVERSAL_AUTH: {
+        return (
+          <IdentityUniversalAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+          />
+        );
+      }
+      default: {
+        return <div />;
+      }
+    }
   };
 
   return (
@@ -83,6 +113,7 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
                 {...field}
                 onValueChange={(e) => onChange(e)}
                 className="w-full"
+                isDisabled={!!identityAuthMethodData?.authMethod}
               >
                 {identityAuthMethods.map(({ label, value }) => (
                   <SelectItem value={String(value || "")} key={label}>

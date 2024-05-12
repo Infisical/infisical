@@ -517,20 +517,22 @@ const syncSecretsAWSParameterStore = async ({
     })
   );
 
-  // Identify secrets to delete
-  await Promise.all(
-    Object.keys(awsParameterStoreSecretsObj).map(async (key) => {
-      if (!(key in secrets)) {
-        // case:
-        // -> delete secret
-        await ssm
-          .deleteParameter({
-            Name: awsParameterStoreSecretsObj[key].Name as string
-          })
-          .promise();
-      }
-    })
-  );
+  if (!metadata.shouldDisableDelete) {
+    // Identify secrets to delete
+    await Promise.all(
+      Object.keys(awsParameterStoreSecretsObj).map(async (key) => {
+        if (!(key in secrets)) {
+          // case:
+          // -> delete secret
+          await ssm
+            .deleteParameter({
+              Name: awsParameterStoreSecretsObj[key].Name as string
+            })
+            .promise();
+        }
+      })
+    );
+  }
 };
 
 /**

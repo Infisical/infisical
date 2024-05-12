@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { SecretKeyEncoding, TUsers } from "@app/db/schemas";
+import { SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
 import { decryptAsymmetric, encryptAsymmetric, infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ScimRequestError } from "@app/lib/errors";
 
@@ -188,9 +188,9 @@ export const addUsersToGroupByUserIds = async ({
     // check if all user(s) are part of the organization
     const existingUserOrgMemberships = await orgDAL.findMembership(
       {
-        orgId: group.orgId,
+        [`${TableName.OrgMembership}.orgId` as "orgId"]: group.orgId,
         $in: {
-          userId: userIds
+          [`${TableName.OrgMembership}.userId` as "userId"]: userIds
         }
       },
       { tx }

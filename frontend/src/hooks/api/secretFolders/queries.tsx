@@ -16,6 +16,7 @@ import {
   TGetFoldersByEnvDTO,
   TGetProjectFoldersDTO,
   TSecretFolder,
+  TUpdateFolderBatchDTO,
   TUpdateFolderDTO
 } from "./types";
 
@@ -79,7 +80,7 @@ export const useGetFoldersByEnv = ({
       });
     });
     return [...names];
-  }, [(folders || []).map((folder) => folder.data)]);
+  }, [...(folders || []).map((folder) => folder.data)]);
 
   const isFolderPresentInEnv = useCallback(
     (name: string, env: string) => {
@@ -91,10 +92,24 @@ export const useGetFoldersByEnv = ({
       }
       return false;
     },
+    [...(folders || []).map((folder) => folder.data)]
+  );
+
+  const getFolderByNameAndEnv = useCallback(
+    (name: string, env: string) => {
+      const selectedEnvIndex = environments.indexOf(env);
+      if (selectedEnvIndex !== -1) {
+        return folders?.[selectedEnvIndex]?.data?.find(
+          ({ name: folderName }) => folderName === name
+        );
+      }
+
+      return undefined;
+    },
     [(folders || []).map((folder) => folder.data)]
   );
 
-  return { folders, folderNames, isFolderPresentInEnv };
+  return { folders, folderNames, isFolderPresentInEnv, getFolderByNameAndEnv };
 };
 
 export const useCreateFolder = () => {
@@ -173,6 +188,46 @@ export const useDeleteFolder = () => {
       queryClient.invalidateQueries(
         secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
       );
+    }
+  });
+};
+
+export const useUpdateFolderBatch = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, TUpdateFolderBatchDTO>({
+    mutationFn: async ({ projectSlug, folders }) => {
+      const { data } = await apiRequest.patch("/api/v1/folders/batch", {
+        projectSlug,
+        folders
+      });
+
+      return data;
+    },
+    onSuccess: (_, { projectId, folders }) => {
+      folders.forEach((folder) => {
+        queryClient.invalidateQueries(
+          folderQueryKeys.getSecretFolders({
+            projectId,
+            environment: folder.environment,
+            path: folder.path
+          })
+        );
+        queryClient.invalidateQueries(
+          secretSnapshotKeys.list({
+            workspaceId: projectId,
+            environment: folder.environment,
+            directory: folder.path
+          })
+        );
+        queryClient.invalidateQueries(
+          secretSnapshotKeys.count({
+            workspaceId: projectId,
+            environment: folder.environment,
+            directory: folder.path
+          })
+        );
+      });
     }
   });
 };
