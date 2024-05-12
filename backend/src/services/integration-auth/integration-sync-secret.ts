@@ -9,9 +9,12 @@
 
 import {
   CreateSecretCommand,
+  DescribeSecretCommand,
   GetSecretValueCommand,
   ResourceNotFoundException,
   SecretsManagerClient,
+  TagResourceCommand,
+  UntagResourceCommand,
   UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
 import { Octokit } from "@octokit/rest";
@@ -574,6 +577,7 @@ const syncSecretsAWSSecretManager = async ({
     if (awsSecretManagerSecret?.SecretString) {
       awsSecretManagerSecretObj = JSON.parse(awsSecretManagerSecret.SecretString);
     }
+
     if (!isEqual(awsSecretManagerSecretObj, secKeyVal)) {
       await secretsManager.send(
         new UpdateSecretCommand({
@@ -582,7 +586,88 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
     }
+
+    const secretAWSTag = metadata.secretAWSTag as { key: string; value: string }[] | undefined;
+
+    if (secretAWSTag && secretAWSTag.length) {
+      const describedSecret = await secretsManager.send(
+        // requires secretsmanager:DescribeSecret policy
+        new DescribeSecretCommand({
+          SecretId: integration.app as string
+        })
+      );
+
+      if (!describedSecret.Tags) return;
+
+      const integrationTagObj = secretAWSTag.reduce(
+        (acc, item) => {
+          acc[item.key] = item.value;
+          return acc;
+        },
+        {} as Record<string, string>
+      );
+
+      const awsTagObj = (describedSecret.Tags || []).reduce(
+        (acc, item) => {
+          if (item.Key && item.Value) {
+            acc[item.Key] = item.Value;
+          }
+          return acc;
+        },
+        {} as Record<string, string>
+      );
+
+      const tagsToUpdate: { Key: string; Value: string }[] = [];
+      const tagsToDelete: { Key: string; Value: string }[] = [];
+
+      describedSecret.Tags?.forEach((tag) => {
+        if (tag.Key && tag.Value) {
+          if (!(tag.Key in integrationTagObj)) {
+            // delete tag from AWS secret manager
+            tagsToDelete.push({
+              Key: tag.Key,
+              Value: tag.Value
+            });
+          } else if (tag.Value !== integrationTagObj[tag.Key]) {
+            // update tag in AWS secret manager
+            tagsToUpdate.push({
+              Key: tag.Key,
+              Value: integrationTagObj[tag.Key]
+            });
+          }
+        }
+      });
+
+      secretAWSTag?.forEach((tag) => {
+        if (!(tag.key in awsTagObj)) {
+          // create tag in AWS secret manager
+          tagsToUpdate.push({
+            Key: tag.key,
+            Value: tag.value
+          });
+        }
+      });
+
+      if (tagsToUpdate.length) {
+        await secretsManager.send(
+          new TagResourceCommand({
+            SecretId: integration.app as string,
+            Tags: tagsToUpdate
+          })
+        );
+      }
+
+      if (tagsToDelete.length) {
+        await secretsManager.send(
+          new UntagResourceCommand({
+            SecretId: integration.app as string,
+            TagKeys: tagsToDelete.map((tag) => tag.Key)
+          })
+        );
+      }
+    }
   } catch (err) {
+    // case when AWS manager can't find the specified secret
     if (err instanceof ResourceNotFoundException && secretsManager) {
       await secretsManager.send(
         new CreateSecretCommand({
