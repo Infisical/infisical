@@ -33,13 +33,27 @@ export type TCreateIntegrationDTO = {
 
 export type TUpdateIntegrationDTO = {
   id: string;
-  app: string;
-  appId: string;
+  app?: string;
+  appId?: string;
   isActive?: boolean;
   secretPath: string;
   targetEnvironment: string;
   owner: string;
   environment: string;
+  metadata?: {
+    secretPrefix?: string;
+    secretSuffix?: string;
+    secretGCPLabel?: {
+      labelName: string;
+      labelValue: string;
+    };
+    secretAWSTag?: {
+      key: string;
+      value: string;
+    }[];
+    kmsKeyId?: string;
+    shouldDisableDelete?: boolean;
+  };
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteIntegrationDTO = {

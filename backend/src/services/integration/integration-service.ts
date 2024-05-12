@@ -103,7 +103,8 @@ export const integrationServiceFactory = ({
     owner,
     isActive,
     environment,
-    secretPath
+    secretPath,
+    metadata
   }: TUpdateIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new BadRequestError({ message: "Integration auth not found" });
@@ -127,7 +128,17 @@ export const integrationServiceFactory = ({
       appId,
       targetEnvironment,
       owner,
-      secretPath
+      secretPath,
+      metadata: {
+        ...(integration.metadata as object),
+        ...metadata
+      }
+    });
+
+    await secretQueueService.syncIntegrations({
+      environment: folder.environment.slug,
+      secretPath,
+      projectId: folder.projectId
     });
 
     return updatedIntegration;
