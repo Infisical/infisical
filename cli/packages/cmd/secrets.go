@@ -148,9 +148,17 @@ var secretsSetCmd = &cobra.Command{
 	Short:                 "Used set secrets",
 	Use:                   "set [secrets]",
 	DisableFlagsInUseLine: true,
-	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		util.RequireLocalWorkspaceFile()
+
+		envFilePath, err := cmd.Flags().GetString("file")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		if envFilePath =="" && len(args) < 1 {
+			util.PrintErrorMessageAndExit("You need to provide either secrets or a path to a .env file containing secrets")
+		}
 
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
@@ -224,6 +232,15 @@ var secretsSetCmd = &cobra.Command{
 		secretOperations := []SecretSetOperation{}
 
 		secretByKey := getSecretsByKeys(secrets)
+
+		// check if user wants to upload secrets from a file
+		if envFilePath!="" {
+			secretsFromFile, err := util.ParseSecretsFromDotEnvFile(envFilePath)
+			if err != nil {
+				util.HandleError(err, "unable to parse secrets from file")
+			}
+			args = secretsFromFile
+		}
 
 		for _, arg := range args {
 			splitKeyValueFromArg := strings.SplitN(arg, "=", 2)
@@ -781,6 +798,7 @@ func init() {
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
 	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
+	secretsSetCmd.Flags().String("file","","Path to env file containing secrets")
 
 	// Only supports logged in users (JWT auth)
 	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
