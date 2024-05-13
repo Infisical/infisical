@@ -549,7 +549,7 @@ export const SecretItem = memo(
                           <Spinner className="m-0 h-4 w-4 p-0" />
                         ) : (
                           <FontAwesomeSymbol
-                            symbolName={FontAwesomeSpriteName.Close}
+                            symbolName={FontAwesomeSpriteName.Check}
                             className={twMerge(
                               "h-4 w-4 text-primary",
                               errors.key && "text-mineshaft-300"
