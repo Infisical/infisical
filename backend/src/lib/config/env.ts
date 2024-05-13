@@ -13,6 +13,10 @@ const zodStrBool = z
 const envSchema = z
   .object({
     PORT: z.coerce.number().default(4000),
+    DISABLE_SECRET_SCANNING: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((el) => el === "true"),
     REDIS_URL: zpStr(z.string()),
     HOST: zpStr(z.string().default("localhost")),
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
