@@ -71,8 +71,8 @@ const SecretScanning = withPermission(
               Automatically monitor your GitHub activity and prevent secret leaks
             </div>
             {config.isSecretScanningDisabled && (
-              <NoticeBanner title="Secret scanning in maintaince" className="mb-4">
-                Due to some issues with secret scanning its disabled. Will be back stronger.
+              <NoticeBanner title="Secret scanning is in maintenance" className="mb-4">
+                We are working on improving the performance of secret scanning due to increased usage.
               </NoticeBanner>
             )}
             <div className="relative mb-6 flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6">
