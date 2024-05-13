@@ -60,6 +60,15 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		delimit, err := cmd.Flags().GetString("delimit")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+		if len(delimit) > 1 && strings.ToLower(format) == FormatCSV {
+			// Must be 1 char because CSV parsing is rune
+			util.HandleError(err, "delimit flag must be 1 character for CSV format. Default is comma.")
+		}
+
 		templatePath, err := cmd.Flags().GetString("template")
 		if err != nil {
 			util.HandleError(err)
@@ -151,7 +160,7 @@ var exportCmd = &cobra.Command{
 		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
 		secrets = util.SortSecretsByKeys(secrets)
 
-		output, err = formatEnvs(secrets, format)
+		output, err = formatEnvs(secrets, format, delimit)
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -167,6 +176,7 @@ func init() {
 	exportCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	exportCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
+	exportCmd.Flags().String("delimit", "", "Character for delimiting values for CSV (default: \",\" ) and .env formats (default: \"'\" )")
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	exportCmd.Flags().Bool("include-imports", true, "Imported linked secrets")
 	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
@@ -177,16 +187,16 @@ func init() {
 }
 
 // Format according to the format flag
-func formatEnvs(envs []models.SingleEnvironmentVariable, format string) (string, error) {
+func formatEnvs(envs []models.SingleEnvironmentVariable, format, delimit string) (string, error) {
 	switch strings.ToLower(format) {
 	case FormatDotenv:
-		return formatAsDotEnv(envs), nil
+		return formatAsDotEnv(envs, delimit), nil
 	case FormatDotEnvExport:
-		return formatAsDotEnvExport(envs), nil
+		return formatAsDotEnvExport(envs, delimit), nil
 	case FormatJson:
 		return formatAsJson(envs), nil
 	case FormatCSV:
-		return formatAsCSV(envs), nil
+		return formatAsCSV(envs, delimit), nil
 	case FormatYaml:
 		return formatAsYaml(envs), nil
 	default:
@@ -195,9 +205,13 @@ func formatEnvs(envs []models.SingleEnvironmentVariable, format string) (string,
 }
 
 // Format environment variables as a CSV file
-func formatAsCSV(envs []models.SingleEnvironmentVariable) string {
+func formatAsCSV(envs []models.SingleEnvironmentVariable, delimit string) string {
 	csvString := &strings.Builder{}
 	writer := csv.NewWriter(csvString)
+	if delimit != "" {
+		// Replace comma with custom delimit
+		writer.Comma = rune(delimit[0])
+	}
 	writer.Write([]string{"Key", "Value"})
 	for _, env := range envs {
 		writer.Write([]string{env.Key, env.Value})
@@ -207,19 +221,27 @@ func formatAsCSV(envs []models.SingleEnvironmentVariable) string {
 }
 
 // Format environment variables as a dotenv file
-func formatAsDotEnv(envs []models.SingleEnvironmentVariable) string {
+func formatAsDotEnv(envs []models.SingleEnvironmentVariable, delimit string) string {
+	if delimit == "" {
+		// Set default to single quote
+		delimit = "'"
+	}
 	var dotenv string
 	for _, env := range envs {
-		dotenv += fmt.Sprintf("%s='%s'\n", env.Key, env.Value)
+		dotenv += fmt.Sprintf("%s=%s%s%s\n", env.Key, delimit, env.Value, delimit)
 	}
 	return dotenv
 }
 
 // Format environment variables as a dotenv file with export at the beginning
-func formatAsDotEnvExport(envs []models.SingleEnvironmentVariable) string {
+func formatAsDotEnvExport(envs []models.SingleEnvironmentVariable, delimit string) string {
+	if delimit == "" {
+		// Set default to single quote
+		delimit = "'"
+	}
 	var dotenv string
 	for _, env := range envs {
-		dotenv += fmt.Sprintf("export %s='%s'\n", env.Key, env.Value)
+		dotenv += fmt.Sprintf("export %s=%s%s%s\n", env.Key, delimit, env.Value, delimit)
 	}
 	return dotenv
 }
