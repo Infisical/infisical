@@ -66,7 +66,12 @@ var exportCmd = &cobra.Command{
 		}
 		if len(delimit) > 1 && strings.ToLower(format) == FormatCSV {
 			// Must be 1 char because CSV parsing is rune
-			util.HandleError(err, "delimit flag must be 1 character for CSV format. Default is comma.")
+			util.HandleError(err, "Delimit flag must be 1 character for CSV format")
+		}
+
+		quota, err := cmd.Flags().GetString("quota")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
 		}
 
 		templatePath, err := cmd.Flags().GetString("template")
@@ -160,7 +165,7 @@ var exportCmd = &cobra.Command{
 		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
 		secrets = util.SortSecretsByKeys(secrets)
 
-		output, err = formatEnvs(secrets, format, delimit)
+		output, err = formatEnvs(secrets, format, delimit, quota)
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -176,7 +181,8 @@ func init() {
 	exportCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	exportCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
-	exportCmd.Flags().String("delimit", "", "Character for delimiting values for CSV (default: \",\" ) and .env formats (default: \"'\" )")
+	exportCmd.Flags().String("delimit", ",", "Character for delimiting values in CSV format")
+	exportCmd.Flags().String("quota", "'", "Character(s) for quoting values in .env format")
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	exportCmd.Flags().Bool("include-imports", true, "Imported linked secrets")
 	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
@@ -187,12 +193,12 @@ func init() {
 }
 
 // Format according to the format flag
-func formatEnvs(envs []models.SingleEnvironmentVariable, format, delimit string) (string, error) {
+func formatEnvs(envs []models.SingleEnvironmentVariable, format, delimit, quota string) (string, error) {
 	switch strings.ToLower(format) {
 	case FormatDotenv:
-		return formatAsDotEnv(envs, delimit), nil
+		return formatAsDotEnv(envs, quota), nil
 	case FormatDotEnvExport:
-		return formatAsDotEnvExport(envs, delimit), nil
+		return formatAsDotEnvExport(envs, quota), nil
 	case FormatJson:
 		return formatAsJson(envs), nil
 	case FormatCSV:
@@ -221,27 +227,27 @@ func formatAsCSV(envs []models.SingleEnvironmentVariable, delimit string) string
 }
 
 // Format environment variables as a dotenv file
-func formatAsDotEnv(envs []models.SingleEnvironmentVariable, delimit string) string {
-	if delimit == "" {
-		// Set default to single quote
-		delimit = "'"
+func formatAsDotEnv(envs []models.SingleEnvironmentVariable, quota string) string {
+	if quota == "" {
+		// Default quota is ","
+		quota = "'"
 	}
 	var dotenv string
 	for _, env := range envs {
-		dotenv += fmt.Sprintf("%s=%s%s%s\n", env.Key, delimit, env.Value, delimit)
+		dotenv += fmt.Sprintf("%s=%s%s%s\n", env.Key, quota, env.Value, quota)
 	}
 	return dotenv
 }
 
 // Format environment variables as a dotenv file with export at the beginning
-func formatAsDotEnvExport(envs []models.SingleEnvironmentVariable, delimit string) string {
-	if delimit == "" {
-		// Set default to single quote
-		delimit = "'"
+func formatAsDotEnvExport(envs []models.SingleEnvironmentVariable, quota string) string {
+	if quota == "" {
+		// Default quota is ","
+		quota = "'"
 	}
 	var dotenv string
 	for _, env := range envs {
-		dotenv += fmt.Sprintf("export %s=%s%s%s\n", env.Key, delimit, env.Value, delimit)
+		dotenv += fmt.Sprintf("export %s=%s%s%s\n", env.Key, quota, env.Value, quota)
 	}
 	return dotenv
 }
