@@ -10,6 +10,7 @@ export * from "./Drawer";
 export * from "./Dropdown";
 export * from "./EmailServiceSetupModal";
 export * from "./EmptyState";
+export * from "./FontAwesomeSymbol";
 export * from "./FormControl";
 export * from "./HoverCardv2";
 export * from "./IconButton";

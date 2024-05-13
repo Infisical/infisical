@@ -1,17 +1,42 @@
-import { TextareaHTMLAttributes, useEffect, useRef, useState } from "react";
+import { forwardRef, TextareaHTMLAttributes, useCallback, useMemo, useRef, useState } from "react";
 import { faCircle, faFolder, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
-import { twMerge } from "tailwind-merge";
 
 import { useWorkspace } from "@app/context";
-import { useDebounce } from "@app/hooks";
-import { useGetFoldersByEnv, useGetProjectSecrets, useGetUserWsKey } from "@app/hooks/api";
+import { useDebounce, useToggle } from "@app/hooks";
+import { useGetProjectFolders, useGetProjectSecrets, useGetUserWsKey } from "@app/hooks/api";
 
 import { SecretInput } from "../SecretInput";
 
-const REGEX_UNCLOSED_SECRET_REFERENCE = /\${(?![^{}]*\})/g;
-const REGEX_OPEN_SECRET_REFERENCE = /\${/g;
+const getIndexOfUnclosedRefToTheLeft = (value: string, pos: number) => {
+  // take substring up to pos in order to consider edits for closed references
+  for (let i = pos; i >= 1; i -= 1) {
+    if (value[i] === "}") return -1;
+    if (value[i - 1] === "$" && value[i] === "{") {
+      return i;
+    }
+  }
+  return -1;
+};
+
+const getIndexOfUnclosedRefToTheRight = (value: string, pos: number) => {
+  // use it with above to identify an open ${
+  for (let i = pos; i < value.length; i += 1) {
+    if (value[i] === "}") return i - 1;
+  }
+  return -1;
+};
+
+const getClosingSymbol = (isSelectedSecret: boolean, isClosed: boolean) => {
+  if (!isClosed) {
+    return isSelectedSecret ? "}" : ".";
+  }
+  if (!isSelectedSecret) return ".";
+  return "";
+};
+
+const mod = (n: number, m: number) => ((n % m) + m) % m;
 
 export enum ReferenceType {
   ENVIRONMENT = "environment",
@@ -19,8 +44,9 @@ export enum ReferenceType {
   SECRET = "secret"
 }
 
-type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
-  value?: string | null;
+type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "value"> & {
+  value?: string;
+  onChange: (val: string) => void;
   isImport?: boolean;
   isVisible?: boolean;
   isReadOnly?: boolean;
@@ -31,339 +57,298 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
 };
 
 type ReferenceItem = {
-  name: string;
+  label: string;
   type: ReferenceType;
-  slug?: string;
+  slug: string;
 };
 
-export const InfisicalSecretInput = ({
-  value: propValue,
-  containerClassName,
-  secretPath: propSecretPath,
-  environment: propEnvironment,
-  onChange,
-  ...props
-}: Props) => {
-  const [inputValue, setInputValue] = useState(propValue ?? "");
-  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
-  const [currentCursorPosition, setCurrentCursorPosition] = useState(0);
-  const [currentReference, setCurrentReference] = useState<string>("");
-  const [secretPath, setSecretPath] = useState<string>(propSecretPath || "/");
-  const [environment, setEnvironment] = useState<string | undefined>(propEnvironment);
-  const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
-  const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
-  const { data: secrets } = useGetProjectSecrets({
-    decryptFileKey: decryptFileKey!,
-    environment: environment || currentWorkspace?.environments?.[0].slug!,
-    secretPath,
-    workspaceId
-  });
-  const { folderNames: folders } = useGetFoldersByEnv({
-    path: secretPath,
-    environments: [environment || currentWorkspace?.environments?.[0].slug!],
-    projectId: workspaceId
-  });
+export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
+  (
+    {
+      value = "",
+      onChange,
+      containerClassName,
+      secretPath: propSecretPath,
+      environment: propEnvironment,
+      ...props
+    },
+    ref
+  ) => {
+    const { currentWorkspace } = useWorkspace();
+    const workspaceId = currentWorkspace?.id || "";
+    const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
 
-  const debouncedCurrentReference = useDebounce(currentReference, 100);
+    const debouncedValue = useDebounce(value, 500);
 
-  const [listReference, setListReference] = useState<ReferenceItem[]>([]);
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const isPopupOpen = isSuggestionsOpen && listReference.length > 0 && currentReference.length > 0;
+    const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
-  useEffect(() => {
-    setInputValue(propValue ?? "");
-  }, [propValue]);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
+    const popoverContentRef = useRef<HTMLDivElement>(null);
+    const [isFocused, setIsFocused] = useToggle(false);
+    const currentCursorPosition = inputRef.current?.selectionStart || 0;
 
-  useEffect(() => {
-    let currentEnvironment = propEnvironment;
-    let currentSecretPath = propSecretPath || "/";
+    const suggestionSource = useMemo(() => {
+      const left = getIndexOfUnclosedRefToTheLeft(debouncedValue, currentCursorPosition - 1);
+      if (left === -1) return { left, value: "", predicate: "", isDeep: false };
 
-    if (!currentReference) {
-      setSecretPath(currentSecretPath);
-      setEnvironment(currentEnvironment);
-      return;
-    }
+      const suggestionSourceValue = debouncedValue.slice(left + 1, currentCursorPosition);
+      let suggestionSourceEnv: string | undefined = propEnvironment;
+      let suggestionSourceSecretPath: string | undefined = propSecretPath || "/";
 
-    const isNested = currentReference.includes(".");
+      // means its like <environment>.<folder1>.<...more folder>.secret
+      const isDeep = suggestionSourceValue.includes(".");
+      let predicate = suggestionSourceValue;
+      if (isDeep) {
+        const [envSlug, ...folderPaths] = suggestionSourceValue.split(".");
+        const isValidEnvSlug = currentWorkspace?.environments.find((e) => e.slug === envSlug);
+        suggestionSourceEnv = isValidEnvSlug ? envSlug : undefined;
+        suggestionSourceSecretPath = `/${folderPaths.slice(0, -1)?.join("/")}`;
+        predicate = folderPaths[folderPaths.length - 1];
+      }
 
-    if (isNested) {
-      const [envSlug, ...folderPaths] = currentReference.split(".");
-      const isValidEnvSlug = currentWorkspace?.environments.find((e) => e.slug === envSlug);
-      currentEnvironment = isValidEnvSlug ? envSlug : undefined;
+      return {
+        left: left + 1,
+        // the full value inside a ${<value>}
+        value: suggestionSourceValue,
+        // the final part after staging.dev.<folder1>.<predicate>
+        predicate,
+        isOpen: left !== -1,
+        isDeep,
+        environment: suggestionSourceEnv,
+        secretPath: suggestionSourceSecretPath
+      };
+    }, [debouncedValue]);
 
-      // should be based on the last valid section (with .)
-      folderPaths.pop();
-      currentSecretPath = `/${folderPaths?.join("/")}`;
-    }
-
-    setSecretPath(currentSecretPath);
-    setEnvironment(currentEnvironment);
-  }, [debouncedCurrentReference]);
-
-  useEffect(() => {
-    const currentListReference: ReferenceItem[] = [];
-    const isNested = currentReference?.includes(".");
-
-    if (!currentReference) {
-      setListReference(currentListReference);
-      return;
-    }
-
-    if (!environment) {
-      currentWorkspace?.environments.forEach((env) => {
-        currentListReference.unshift({
-          name: env.slug,
-          type: ReferenceType.ENVIRONMENT
-        });
-      });
-    } else if (isNested) {
-      folders?.forEach((folder) => {
-        currentListReference.unshift({ name: folder, type: ReferenceType.FOLDER });
-      });
-    } else if (environment) {
-      currentWorkspace?.environments.forEach((env) => {
-        currentListReference.unshift({
-          name: env.slug,
-          type: ReferenceType.ENVIRONMENT
-        });
-      });
-    }
-
-    secrets?.forEach((secret) => {
-      currentListReference.unshift({ name: secret.key, type: ReferenceType.SECRET });
+    const isPopupOpen = Boolean(suggestionSource.isOpen) && isFocused;
+    const { data: secrets } = useGetProjectSecrets({
+      decryptFileKey: decryptFileKey!,
+      environment: suggestionSource.environment || "",
+      secretPath: suggestionSource.secretPath || "",
+      workspaceId,
+      options: {
+        enabled: isPopupOpen
+      }
     });
-
-    // Get fragment inside currentReference
-    const searchFragment = isNested ? currentReference.split(".").pop() || "" : currentReference;
-    const filteredListRef = currentListReference
-      .filter((suggestionEntry) =>
-        suggestionEntry.name.toUpperCase().startsWith(searchFragment.toUpperCase())
-      )
-      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
-
-    setListReference(filteredListRef);
-  }, [secrets, environment, debouncedCurrentReference]);
-
-  const getIndexOfUnclosedRefToTheLeft = (pos: number) => {
-    // take substring up to pos in order to consider edits for closed references
-    const unclosedReferenceIndexMatches = [
-      ...inputValue.substring(0, pos).matchAll(REGEX_UNCLOSED_SECRET_REFERENCE)
-    ].map((match) => match.index);
-
-    // find unclosed reference index less than the current cursor position
-    let indexIter = -1;
-    unclosedReferenceIndexMatches.forEach((index) => {
-      if (index !== undefined && index > indexIter && index < pos) {
-        indexIter = index;
+    const { data: folders } = useGetProjectFolders({
+      environment: suggestionSource.environment || "",
+      path: suggestionSource.secretPath || "",
+      projectId: workspaceId,
+      options: {
+        enabled: isPopupOpen
       }
     });
 
-    return indexIter;
-  };
+    const suggestions = useMemo(() => {
+      if (!isPopupOpen) return [];
+      // reset highlight whenever recomputation happens
+      setHighlightedIndex(-1);
+      const suggestionsArr: ReferenceItem[] = [];
+      const predicate = suggestionSource.predicate.toLowerCase();
 
-  const getIndexOfUnclosedRefToTheRight = (pos: number) => {
-    const unclosedReferenceIndexMatches = [...inputValue.matchAll(REGEX_OPEN_SECRET_REFERENCE)].map(
-      (match) => match.index
-    );
-
-    // find the next unclosed reference index to the right of the current cursor position
-    // this is so that we know the limitation for slicing references
-    let indexIter = Infinity;
-    unclosedReferenceIndexMatches.forEach((index) => {
-      if (index !== undefined && index > pos && index < indexIter) {
-        indexIter = index;
+      if (!suggestionSource.isDeep) {
+        // At first level only environments and secrets
+        (currentWorkspace?.environments || []).forEach(({ name, slug }) => {
+          if (name.toLowerCase().startsWith(predicate))
+            suggestionsArr.push({
+              label: name,
+              slug,
+              type: ReferenceType.ENVIRONMENT
+            });
+        });
+      } else {
+        // one deeper levels its based on an environment folders and secrets
+        (folders || []).forEach(({ name }) => {
+          if (name.toLowerCase().startsWith(predicate))
+            suggestionsArr.push({
+              label: name,
+              slug: name,
+              type: ReferenceType.FOLDER
+            });
+        });
       }
-    });
+      (secrets || []).forEach(({ key }) => {
+        if (key.toLowerCase().startsWith(predicate))
+          suggestionsArr.push({
+            label: key,
+            slug: key,
+            type: ReferenceType.SECRET
+          });
+      });
+      return suggestionsArr;
+    }, [secrets, folders, currentWorkspace?.environments, isPopupOpen, suggestionSource.value]);
 
-    return indexIter;
-  };
+    const handleSuggestionSelect = (selectIndex?: number) => {
+      const selectedSuggestion =
+        suggestions[typeof selectIndex !== "undefined" ? selectIndex : highlightedIndex];
+      if (!selectedSuggestion) {
+        return;
+      }
 
-  const handleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // open suggestions if current position is to the right of an unclosed secret reference
-    const indexIter = getIndexOfUnclosedRefToTheLeft(currentCursorPosition);
-    if (indexIter === -1) {
-      return;
-    }
-
-    setIsSuggestionsOpen(true);
-
-    if (e.key !== "Enter") {
-      // current reference is then going to be based on the text from the closest ${ to the right
-      // until the current cursor position
-      const openReferenceValue = inputValue.slice(indexIter + 2, currentCursorPosition);
-      setCurrentReference(openReferenceValue);
-    }
-  };
-
-  const handleSuggestionSelect = (selectedIndex?: number) => {
-    const selectedSuggestion = listReference[selectedIndex ?? highlightedIndex];
-
-    if (!selectedSuggestion) {
-      return;
-    }
-
-    const leftIndexIter = getIndexOfUnclosedRefToTheLeft(currentCursorPosition);
-    const rightIndexLimit = getIndexOfUnclosedRefToTheRight(currentCursorPosition);
-
-    if (leftIndexIter === -1) {
-      return;
-    }
-
-    let newValue = "";
-    const currentOpenRef = inputValue.slice(leftIndexIter + 2, currentCursorPosition);
-    if (currentOpenRef.includes(".")) {
-      // append suggestion after last DOT (.)
-      const lastDotIndex = currentReference.lastIndexOf(".");
-      const existingPath = currentReference.slice(0, lastDotIndex);
-      const refEndAfterAppending = Math.min(
-        leftIndexIter +
-          3 +
-          existingPath.length +
-          selectedSuggestion.name.length +
-          Number(selectedSuggestion.type !== ReferenceType.SECRET),
-        rightIndexLimit - 1
+      const rightBracketIndex = getIndexOfUnclosedRefToTheRight(value, suggestionSource.left);
+      const isEnclosed = rightBracketIndex !== -1;
+      // <lhsValue>${}<rhsvalue>
+      const lhsValue = value.slice(0, suggestionSource.left);
+      const rhsValue = value.slice(
+        rightBracketIndex !== -1 ? rightBracketIndex + 1 : currentCursorPosition
+      );
+      // mid will be computed value inside the interpolation
+      const mid = suggestionSource.isDeep
+        ? `${suggestionSource.value.slice(0, -suggestionSource.predicate.length || undefined)}${selectedSuggestion.slug
+        }`
+        : selectedSuggestion.slug;
+      // whether we should append . or closing bracket on selecting suggestion
+      const closingSymbol = getClosingSymbol(
+        selectedSuggestion.type === ReferenceType.SECRET,
+        isEnclosed
       );
 
-      newValue = `${inputValue.slice(0, leftIndexIter + 2)}${existingPath}.${
-        selectedSuggestion.name
-      }${selectedSuggestion.type !== ReferenceType.SECRET ? "." : "}"}${inputValue.slice(
-        refEndAfterAppending
-      )}`;
-      const openReferenceValue = newValue.slice(leftIndexIter + 2, refEndAfterAppending);
-      setCurrentReference(openReferenceValue);
+      const newValue = `${lhsValue}${mid}${closingSymbol}${rhsValue}`;
+      onChange?.(newValue);
+      // this delay is for cursor adjustment
+      // cannot do this without a delay because what happens in onChange gets propogated after the cursor change
+      // Thus the cursor goes last to avoid that we put a slight delay on cursor change to make it happen later
+      const delay = setTimeout(() => {
+        clearTimeout(delay);
+        if (inputRef.current)
+          inputRef.current.selectionEnd =
+            lhsValue.length +
+            mid.length +
+            closingSymbol.length +
+            (isEnclosed && selectedSuggestion.type === ReferenceType.SECRET ? 1 : 0); // if secret is selected the cursor should move after the closing bracket -> }
+      }, 10);
+      setHighlightedIndex(-1); // reset highlight
+    };
 
-      // add 1 in order to prevent referenceOpen from being triggered by handleKeyUp
-      setCurrentCursorPosition(refEndAfterAppending + 1);
-    } else {
-      // append selectedSuggestion at position after unclosed ${
-      const refEndAfterAppending = Math.min(
-        selectedSuggestion.name.length +
-          leftIndexIter +
-          2 +
-          Number(selectedSuggestion.type !== ReferenceType.SECRET),
-        rightIndexLimit - 1
-      );
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // key operation should trigger only when popup is open
+      if (isPopupOpen) {
+        if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
+          setHighlightedIndex((prevIndex) => {
+            const pos = mod(prevIndex + 1, suggestions.length);
+            popoverContentRef.current?.children?.[pos]?.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth"
+            });
+            return pos;
+          });
+        } else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
+          setHighlightedIndex((prevIndex) => {
+            const pos = mod(prevIndex - 1, suggestions.length);
+            popoverContentRef.current?.children?.[pos]?.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth"
+            });
+            return pos;
+          });
+        } else if (e.key === "Enter" && highlightedIndex >= 0) {
+          e.preventDefault();
+          handleSuggestionSelect();
+        }
+        if (["ArrowDown", "ArrowUp", "Tab"].includes(e.key)) {
+          e.preventDefault();
+        }
+      }
+    };
 
-      newValue = `${inputValue.slice(0, leftIndexIter + 2)}${selectedSuggestion.name}${
-        selectedSuggestion.type !== ReferenceType.SECRET ? "." : "}"
-      }${inputValue.slice(refEndAfterAppending)}`;
+    const handlePopUpOpen = () => {
+      setHighlightedIndex(-1);
+    };
 
-      const openReferenceValue = newValue.slice(leftIndexIter + 2, refEndAfterAppending);
-      setCurrentReference(openReferenceValue);
-      setCurrentCursorPosition(refEndAfterAppending);
-    }
+    // to handle multiple ref for single component
+    const handleRef = useCallback((el: HTMLTextAreaElement) => {
+      // @ts-expect-error this is for multiple ref single component
+      inputRef.current = el;
+      if (ref) {
+        if (typeof ref === "function") {
+          ref(el);
+        } else {
+          // eslint-disable-next-line
+          ref.current = el;
+        }
+      }
+    }, []);
 
-    onChange?.({ target: { value: newValue } } as any);
-    setInputValue(newValue);
-    setHighlightedIndex(-1);
-    setIsSuggestionsOpen(false);
-  };
+    return (
+      <Popover.Root open={isPopupOpen} onOpenChange={handlePopUpOpen}>
+        <Popover.Trigger asChild>
+          <SecretInput
+            {...props}
+            ref={handleRef}
+            onKeyDown={handleKeyDown}
+            value={value}
+            onFocus={() => setIsFocused.on()}
+            onBlur={(evt) => {
+              // should not on blur when its mouse down selecting a item from suggestion
+              if (!(evt.relatedTarget?.getAttribute("aria-label") === "suggestion-item"))
+                setIsFocused.off();
+            }}
+            onChange={(e) => onChange?.(e.target.value)}
+            containerClassName={containerClassName}
+          />
+        </Popover.Trigger>
+        <Popover.Content
+          align="start"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className="relative top-2 z-[100] max-h-64 overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
+          style={{
+            width: "var(--radix-popover-trigger-width)"
+          }}
+        >
+          <div
+            className="max-w-60 h-full w-full flex-col items-center justify-center rounded-md text-white"
+            ref={popoverContentRef}
+          >
+            {suggestions.map((item, i) => {
+              let entryIcon;
+              if (item.type === ReferenceType.SECRET) {
+                entryIcon = faKey;
+              } else if (item.type === ReferenceType.ENVIRONMENT) {
+                entryIcon = faCircle;
+              } else {
+                entryIcon = faFolder;
+              }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const mod = (n: number, m: number) => ((n % m) + m) % m;
-    if (e.key === "ArrowDown") {
-      setHighlightedIndex((prevIndex) => mod(prevIndex + 1, listReference.length));
-    } else if (e.key === "ArrowUp") {
-      setHighlightedIndex((prevIndex) => mod(prevIndex - 1, listReference.length));
-    } else if (e.key === "Enter" && highlightedIndex >= 0) {
-      handleSuggestionSelect();
-    }
-
-    if (["ArrowDown", "ArrowUp", "Enter"].includes(e.key) && isPopupOpen) {
-      e.preventDefault();
-    }
-  };
-
-  const setIsOpen = (isOpen: boolean) => {
-    setHighlightedIndex(-1);
-
-    if (isSuggestionsOpen) {
-      setIsSuggestionsOpen(isOpen);
-    }
-  };
-
-  const handleSecretChange = (e: any) => {
-    // propagate event to react-hook-form onChange
-    if (onChange) {
-      onChange(e);
-    }
-
-    setCurrentCursorPosition(inputRef.current?.selectionStart || 0);
-    setInputValue(e.target.value);
-  };
-
-  return (
-    <Popover.Root open={isPopupOpen} onOpenChange={setIsOpen}>
-      <Popover.Trigger asChild>
-        <SecretInput
-          {...props}
-          ref={inputRef}
-          onKeyDown={handleKeyDown}
-          onKeyUp={handleKeyUp}
-          value={inputValue}
-          onChange={handleSecretChange}
-          containerClassName={containerClassName}
-        />
-      </Popover.Trigger>
-      <Popover.Content
-        align="start"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        className={twMerge(
-          "relative top-2 z-[100] overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
-        )}
-        style={{
-          width: "var(--radix-popover-trigger-width)",
-          maxHeight: "var(--radix-select-content-available-height)"
-        }}
-      >
-        <div className="max-w-60 h-full w-full flex-col items-center justify-center rounded-md text-white">
-          {listReference.map((item, i) => {
-            let entryIcon;
-            if (item.type === ReferenceType.SECRET) {
-              entryIcon = faKey;
-            } else if (item.type === ReferenceType.ENVIRONMENT) {
-              entryIcon = faCircle;
-            } else {
-              entryIcon = faFolder;
-            }
-
-            return (
-              <div
-                tabIndex={0}
-                role="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setHighlightedIndex(i);
-                  handleSuggestionSelect(i);
-                }}
-                style={{ pointerEvents: "auto" }}
-                className="flex items-center justify-between border-mineshaft-600 text-left"
-                key={`secret-reference-secret-${i + 1}`}
-              >
+              return (
                 <div
-                  className={`${
-                    highlightedIndex === i ? "bg-gray-600" : ""
-                  } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-2 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
+                  tabIndex={0}
+                  role="button"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSuggestionSelect(i);
+                  }}
+                  aria-label="suggestion-item"
+                  onClick={(e) => {
+                    inputRef.current?.focus();
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSuggestionSelect(i);
+                  }}
+                  onMouseEnter={() => setHighlightedIndex(i)}
+                  style={{ pointerEvents: "auto" }}
+                  className="flex items-center justify-between border-mineshaft-600 text-left"
+                  key={`secret-reference-secret-${i + 1}`}
                 >
-                  <div className="flex w-full gap-2">
-                    <div className="flex items-center text-yellow-700">
-                      <FontAwesomeIcon
-                        icon={entryIcon}
-                        size={item.type === ReferenceType.ENVIRONMENT ? "xs" : "1x"}
-                      />
+                  <div
+                    className={`${highlightedIndex === i ? "bg-gray-600" : ""
+                      } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-2 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
+                  >
+                    <div className="flex w-full gap-2">
+                      <div className="flex items-center text-yellow-700">
+                        <FontAwesomeIcon
+                          icon={entryIcon}
+                          size={item.type === ReferenceType.ENVIRONMENT ? "xs" : "1x"}
+                        />
+                      </div>
+                      <div className="text-md w-10/12 truncate text-left">{item.label}</div>
                     </div>
-                    <div className="text-md w-10/12 truncate text-left">{item.name}</div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </Popover.Content>
-    </Popover.Root>
-  );
-};
+              );
+            })}
+          </div>
+        </Popover.Content>
+      </Popover.Root>
+    );
+  }
+);
 
 InfisicalSecretInput.displayName = "InfisicalSecretInput";

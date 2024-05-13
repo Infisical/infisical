@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
 
@@ -17,6 +18,7 @@ import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPa
 import { Filter, GroupBy, SortDir } from "../../SecretMainPage.types";
 import { SecretDetailSidebar } from "./SecretDetaiSidebar";
 import { SecretItem } from "./SecretItem";
+import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
 
 type Props = {
   secrets?: DecryptedSecret[];
@@ -89,7 +91,6 @@ export const SecretListView = ({
   isVisible,
   isProtectedBranch = false
 }: Props) => {
-  
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
@@ -341,6 +342,13 @@ export const SecretListView = ({
               >
                 {namespace}
               </div>
+              {FontAwesomeSpriteSymbols.map(({ icon, symbol }) => (
+                <FontAwesomeIcon
+                  icon={icon}
+                  symbol={symbol}
+                  key={`font-awesome-svg-spritie-${symbol}`}
+                />
+              ))}
               {filteredSecrets.map((secret) => (
                 <SecretItem
                   environment={environment}
