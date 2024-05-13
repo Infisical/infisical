@@ -16,6 +16,7 @@ export * from "./IconButton";
 export * from "./Input";
 export * from "./Menu";
 export * from "./Modal";
+export * from "./NoticeBanner";
 export * from "./Pagination";
 export * from "./Popoverv2";
 export * from "./SecretInput";

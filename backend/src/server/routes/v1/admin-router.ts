@@ -20,16 +20,23 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          config: SuperAdminSchema.omit({ createdAt: true, updatedAt: true }).merge(
-            z.object({ isMigrationModeOn: z.boolean() })
-          )
+          config: SuperAdminSchema.omit({ createdAt: true, updatedAt: true }).extend({
+            isMigrationModeOn: z.boolean(),
+            isSecretScanningDisabled: z.boolean()
+          })
         })
       }
     },
     handler: async () => {
       const config = await getServerCfg();
       const serverEnvs = getConfig();
-      return { config: { ...config, isMigrationModeOn: serverEnvs.MAINTENANCE_MODE } };
+      return {
+        config: {
+          ...config,
+          isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
+          isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING
+        }
+      };
     }
   });
 
