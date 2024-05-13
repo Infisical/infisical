@@ -120,7 +120,7 @@ export default function NavHeader({
             passHref
             legacyBehavior
             href={{
-              pathname: "/project/[id]/secrets/v2/[env]",
+              pathname: "/project/[id]/secrets/[env]",
               query: { id: router.query.id, env: router.query.env }
             }}
           >
