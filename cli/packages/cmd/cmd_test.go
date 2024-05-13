@@ -47,3 +47,81 @@ func TestFilterReservedEnvVars(t *testing.T) {
 	}
 
 }
+
+func TestExportAsDotEnv(t *testing.T) {
+	envs := []models.SingleEnvironmentVariable{
+		{Key: "key1", Value: "val1"},
+		{Key: "key2", Value: "val2"},
+		{Key: "key3", Value: "val3"},
+	}
+
+	res := "key1='val1'\nkey2='val2'\nkey3='val3'\n"
+	out, err := formatEnvs(envs, FormatDotenv, "", "")
+	if err != nil {
+		t.Errorf("formatEnvs failed")
+	}
+	if res != out {
+		t.Errorf("failed to export to .env")
+	}
+
+	res = "key1=\"val1\"\nkey2=\"val2\"\nkey3=\"val3\"\n"
+	out, err = formatEnvs(envs, FormatDotenv, "", `"`)
+	if err != nil {
+		t.Errorf("formatEnvs failed")
+	}
+	if res != out {
+		t.Errorf("failed to replace quota")
+	}
+}
+
+func TestExportAsDotEnvExport(t *testing.T) {
+	envs := []models.SingleEnvironmentVariable{
+		{Key: "key1", Value: "val1"},
+		{Key: "key2", Value: "val2"},
+		{Key: "key3", Value: "val3"},
+	}
+
+	res := "export key1='val1'\nexport key2='val2'\nexport key3='val3'\n"
+	out, err := formatEnvs(envs, FormatDotEnvExport, "", "")
+	if err != nil {
+		t.Errorf("formatEnvs failed")
+	}
+	if res != out {
+		t.Errorf("failed to export to .env")
+	}
+
+	res = "export key1=\"val1\"\nexport key2=\"val2\"\nexport key3=\"val3\"\n"
+	out, err = formatEnvs(envs, FormatDotEnvExport, "", `"`)
+	if err != nil {
+		t.Errorf("formatEnvs failed")
+	}
+	if res != out {
+		t.Errorf("failed to replace quota")
+	}
+}
+
+func TestExportAsCSV(t *testing.T) {
+	envs := []models.SingleEnvironmentVariable{
+		{Key: "key1", Value: "val1"},
+		{Key: "key2", Value: "val2"},
+		{Key: "key3", Value: "val3"},
+	}
+
+	res := "Key,Value\nkey1,val1\nkey2,val2\nkey3,val3\n"
+	out, err := formatEnvs(envs, FormatCSV, "", "")
+	if err != nil {
+		t.Errorf("formatEnvs failed")
+	}
+	if res != out {
+		t.Errorf("failed to export to .env")
+	}
+
+	res = "Key/Value\nkey1/val1\nkey2/val2\nkey3/val3\n"
+	out, err = formatEnvs(envs, FormatCSV, "/", "")
+	if err != nil {
+		t.Errorf("formatEnvs failed")
+	}
+	if res != out {
+		t.Errorf("failed to replace delimiter")
+	}
+}

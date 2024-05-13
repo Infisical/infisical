@@ -133,7 +133,7 @@ var loginCmd = &cobra.Command{
 
 			err = util.StoreUserCredsInKeyRing(&userCredentialsToBeStored)
 			if err != nil {
-				log.Error().Msgf("Unable to store your credentials in system vault [%s]")
+				log.Error().Msgf("Unable to store your credentials in system vault")
 				log.Error().Msgf("\nTo trouble shoot further, read https://infisical.com/docs/cli/faq")
 				log.Debug().Err(err)
 				//return here

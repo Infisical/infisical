@@ -351,7 +351,7 @@ func dynamicSecretTemplateFunction(accessToken string, dynamicSecretManager *Dyn
 	return func(args ...string) (map[string]interface{}, error) {
 		argLength := len(args)
 		if argLength != 4 && argLength != 5 {
-			return nil, fmt.Errorf("Invalid arguments found for dynamic-secret function. Check template %i", templateId)
+			return nil, fmt.Errorf("Invalid arguments found for dynamic-secret function. Check template %d", templateId)
 		}
 
 		projectSlug, envSlug, secretPath, slug, ttl := args[0], args[1], args[2], args[3], ""
