@@ -328,7 +328,7 @@ export const identityKubernetesAuthServiceFactory = ({
       await identityDAL.updateById(
         identityMembershipOrg.identityId,
         {
-          authMethod: IdentityAuthMethod.Kubernetes_Auth
+          authMethod: IdentityAuthMethod.KUBERNETES_AUTH
         },
         tx
       );
@@ -357,7 +357,7 @@ export const identityKubernetesAuthServiceFactory = ({
   }: TUpdateKubernetesAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Kubernetes_Auth)
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.KUBERNETES_AUTH)
       throw new BadRequestError({
         message: "Failed to update Kubernetes Auth"
       });
@@ -454,7 +454,7 @@ export const identityKubernetesAuthServiceFactory = ({
   }: TGetKubernetesAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Kubernetes_Auth)
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.KUBERNETES_AUTH)
       throw new BadRequestError({
         message: "The identity does not have Kubernetes Auth attached"
       });

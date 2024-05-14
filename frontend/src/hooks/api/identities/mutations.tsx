@@ -6,6 +6,7 @@ import { organizationKeys } from "../organization/queries";
 import { identitiesKeys } from "./queries";
 import {
   AddIdentityAwsAuthDTO,
+  AddIdentityGcpAuthDTO,
   AddIdentityKubernetesAuthDTO,
   AddIdentityUniversalAuthDTO,
   ClientSecretData,
@@ -16,10 +17,12 @@ import {
   DeleteIdentityUniversalAuthClientSecretDTO,
   Identity,
   IdentityAwsAuth,
+  IdentityGcpAuth,
   IdentityKubernetesAuth,
   IdentityUniversalAuth,
   UpdateIdentityAwsAuthDTO,
   UpdateIdentityDTO,
+  UpdateIdentityGcpAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
   UpdateIdentityUniversalAuthDTO} from "./types";
 
@@ -175,6 +178,82 @@ export const useRevokeIdentityUniversalAuthClientSecret = () => {
   });
 };
 
+export const useAddIdentityGcpAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityGcpAuth, {}, AddIdentityGcpAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      type,
+      allowedServiceAccounts,
+      allowedProjects,
+      allowedZones,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityGcpAuth }
+      } = await apiRequest.post<{ identityGcpAuth: IdentityGcpAuth }>(
+        `/api/v1/auth/gcp-auth/identities/${identityId}`,
+        {
+          type,
+          allowedServiceAccounts,
+          allowedProjects,
+          allowedZones,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityGcpAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
+export const useUpdateIdentityGcpAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityGcpAuth, {}, UpdateIdentityGcpAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      type,
+      allowedServiceAccounts,
+      allowedProjects,
+      allowedZones,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityGcpAuth }
+      } = await apiRequest.patch<{ identityGcpAuth: IdentityGcpAuth }>(
+        `/api/v1/auth/gcp-auth/identities/${identityId}`,
+        {
+          type,
+          allowedServiceAccounts,
+          allowedProjects,
+          allowedZones,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityGcpAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
 export const useAddIdentityAwsAuth = () => {
   const queryClient = useQueryClient();
   return useMutation<IdentityAwsAuth, {}, AddIdentityAwsAuthDTO>({
@@ -238,6 +317,7 @@ export const useUpdateIdentityAwsAuth = () => {
           accessTokenTrustedIps
         }
       );
+
       return identityAwsAuth;
     },
     onSuccess: (_, { organizationId }) => {

@@ -70,6 +70,10 @@ export enum EventType {
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
+  LOGIN_IDENTITY_GCP_AUTH = "login-identity-gcp-auth",
+  ADD_IDENTITY_GCP_AUTH = "add-identity-gcp-auth",
+  UPDATE_IDENTITY_GCP_AUTH = "update-identity-gcp-auth",
+  GET_IDENTITY_GCP_AUTH = "get-identity-gcp-auth",
   LOGIN_IDENTITY_AWS_AUTH = "login-identity-aws-auth",
   ADD_IDENTITY_AWS_AUTH = "add-identity-aws-auth",
   UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
@@ -458,6 +462,52 @@ interface RevokeIdentityUniversalAuthClientSecretEvent {
   };
 }
 
+interface LoginIdentityGcpAuthEvent {
+  type: EventType.LOGIN_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
+    identityGcpAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityGcpAuthEvent {
+  type: EventType.ADD_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
+    type: string;
+    allowedServiceAccounts: string;
+    allowedProjects: string;
+    allowedZones: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityGcpAuthEvent {
+  type: EventType.UPDATE_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
+    type?: string;
+    allowedServiceAccounts?: string;
+    allowedProjects?: string;
+    allowedZones?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityGcpAuthEvent {
+  type: EventType.GET_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface LoginIdentityAwsAuthEvent {
   type: EventType.LOGIN_IDENTITY_AWS_AUTH;
   metadata: {
@@ -760,6 +810,10 @@ export type Event =
   | CreateIdentityUniversalAuthClientSecretEvent
   | GetIdentityUniversalAuthClientSecretsEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
+  | LoginIdentityGcpAuthEvent
+  | AddIdentityGcpAuthEvent
+  | UpdateIdentityGcpAuthEvent
+  | GetIdentityGcpAuthEvent
   | LoginIdentityAwsAuthEvent
   | AddIdentityAwsAuthEvent
   | UpdateIdentityAwsAuthEvent

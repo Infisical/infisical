@@ -26,10 +26,14 @@ sequenceDiagram
 
 ## Concept
 
-In this method, Infisical authenticates an identity by verifying the credentials issued for it at the `/api/v1/auth/universal-auth/login` endpoint. If successful,
+In this method, Infisical authenticates a client by verifying the credentials issued for it at the `/api/v1/auth/universal-auth/login` endpoint. If successful,
 then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
-In Universal Auth, an identity is given a **Client ID** and one or more **Client Secret(s)**. Together, a **Client ID** and **Client Secret** can be exchanged for a short-lived access token to authenticate with the Infisical API.
+To be more specific:
+
+1. The client submits a **Client ID** and **Client Secret** to Infisical.
+2. Infisical verifies the credential pair.
+3. If all is well, Infisical returns a short-lived access token that the client can use to make authenticated requests to the Infisical API.
 
 ## Guide
 
@@ -148,7 +152,7 @@ using the Universal Auth authentication method.
   - The client secret/access token is being used from an untrusted IP.
 </Accordion>
 <Accordion title="What is access token renewal and TTL/Max TTL?">
-  A identity access token can have a time-to-live (TTL) or incremental lifetime afterwhich it expires.
+  A identity access token can have a time-to-live (TTL) or incremental lifetime after which it expires.
   
   In certain cases, you may want to extend the lifespan of an access token; to do so, you must set a max TTL parameter.
 

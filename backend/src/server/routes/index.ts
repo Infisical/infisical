@@ -80,6 +80,8 @@ import { identityAccessTokenDALFactory } from "@app/services/identity-access-tok
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { identityAwsAuthDALFactory } from "@app/services/identity-aws-auth/identity-aws-auth-dal";
 import { identityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
+import { identityGcpAuthDALFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-dal";
+import { identityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
 import { identityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 import { identityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
@@ -158,7 +160,10 @@ export const registerRoutes = async (
     keyStore
   }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory; keyStore: TKeyStoreFactory }
 ) => {
-  await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
+  const appCfg = getConfig();
+  if (!appCfg.DISABLE_SECRET_SCANNING) {
+    await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
+  }
 
   // db layers
   const userDAL = userDALFactory(db);
@@ -207,6 +212,8 @@ export const registerRoutes = async (
   const identityKubernetesAuthDAL = identityKubernetesAuthDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
   const identityAwsAuthDAL = identityAwsAuthDALFactory(db);
+
+  const identityGcpAuthDAL = identityGcpAuthDALFactory(db);
 
   const auditLogDAL = auditLogDALFactory(db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
@@ -716,6 +723,15 @@ export const registerRoutes = async (
     permissionService,
     licenseService
   });
+  const identityGcpAuthService = identityGcpAuthServiceFactory({
+    identityGcpAuthDAL,
+    identityOrgMembershipDAL,
+    identityAccessTokenDAL,
+    identityDAL,
+    permissionService,
+    licenseService
+  });
+
   const identityAwsAuthService = identityAwsAuthServiceFactory({
     identityAccessTokenDAL,
     identityAwsAuthDAL,
@@ -794,6 +810,7 @@ export const registerRoutes = async (
     identityProject: identityProjectService,
     identityUa: identityUaService,
     identityKubernetesAuth: identityKubernetesAuthService,
+    identityGcpAuth: identityGcpAuthService,
     identityAwsAuth: identityAwsAuthService,
     secretApprovalPolicy: sapService,
     accessApprovalPolicy: accessApprovalPolicyService,
