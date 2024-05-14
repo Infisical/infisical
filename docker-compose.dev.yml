@@ -91,6 +91,8 @@ services:
       - TELEMETRY_ENABLED=false
     volumes:
       - ./backend/src:/app/src
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
     container_name: infisical-dev-frontend
@@ -128,7 +130,7 @@ services:
     ports:
       - 1025:1025 # SMTP server
       - 8025:8025 # Web UI
-  
+
   openldap: # note: more advanced configuration is available
     image: osixia/openldap:1.5.0
     restart: always

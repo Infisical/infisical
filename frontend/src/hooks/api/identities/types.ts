@@ -153,6 +153,54 @@ export type UpdateIdentityAwsAuthDTO = {
   }[];
 };
 
+export type IdentityKubernetesAuth = {
+  identityId: string;
+  kubernetesHost: string;
+  tokenReviewerJwt: string;
+  allowedNamespaces: string;
+  allowedNames: string;
+  allowedAudience: string;
+  caCert: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityKubernetesAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  kubernetesHost: string;
+  tokenReviewerJwt: string;
+  allowedNamespaces: string;
+  allowedNames: string;
+  allowedAudience: string;
+  caCert: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityKubernetesAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  kubernetesHost?: string;
+  tokenReviewerJwt?: string;
+  allowedNamespaces?: string;
+  allowedNames?: string;
+  allowedAudience?: string;
+  caCert?: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
 export type CreateIdentityUniversalAuthClientSecretDTO = {
   identityId: string;
   description?: string;

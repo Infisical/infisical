@@ -22,7 +22,7 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.omit(
 export const registerIdentityKubernetesRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/kubernetes/login",
+    url: "/kubernetes-auth/login",
     config: {
       rateLimit: writeLimit
     },
@@ -88,7 +88,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }),
       body: z.object({
         kubernetesHost: z.string().trim().min(1),
-        caCert: z.string().trim().min(1),
+        caCert: z.string().trim().default(""),
         tokenReviewerJwt: z.string().trim().min(1),
         allowedNamespaces: z.string(), // TODO: validation
         allowedNames: z.string(),
@@ -174,7 +174,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }),
       body: z.object({
         kubernetesHost: z.string().trim().min(1).optional(),
-        kubernetesCaCert: z.string().trim().min(1).optional(),
+        caCert: z.string().trim().optional(),
         tokenReviewerJwt: z.string().trim().min(1).optional(),
         allowedNamespaces: z.string().optional(), // TODO: validation
         allowedNames: z.string().optional(),

@@ -15,10 +15,10 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("identityId").notNullable().unique();
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
       t.string("kubernetesHost").notNullable();
-      t.string("encryptedCaCert").notNullable();
+      t.text("encryptedCaCert").notNullable();
       t.string("caCertIV").notNullable();
       t.string("caCertTag").notNullable();
-      t.string("encryptedTokenReviewerJwt").notNullable();
+      t.text("encryptedTokenReviewerJwt").notNullable();
       t.string("tokenReviewerJwtIV").notNullable();
       t.string("tokenReviewerJwtTag").notNullable();
       t.string("allowedNamespaces").notNullable();

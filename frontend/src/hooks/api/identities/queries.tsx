@@ -2,14 +2,20 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { ClientSecretData, IdentityAwsAuth, IdentityUniversalAuth } from "./types";
+import {
+  ClientSecretData,
+  IdentityAwsAuth,
+  IdentityKubernetesAuth,
+  IdentityUniversalAuth} from "./types";
 
 export const identitiesKeys = {
   getIdentityUniversalAuth: (identityId: string) =>
     [{ identityId }, "identity-universal-auth"] as const,
   getIdentityUniversalAuthClientSecrets: (identityId: string) =>
     [{ identityId }, "identity-universal-auth-client-secrets"] as const,
-  getIdentityAwsAuth: (identityId: string) => [{ identityId }, "identity-aws-auth"] as const
+  getIdentityAwsAuth: (identityId: string) => [{ identityId }, "identity-aws-auth"] as const,
+  getIdentityKubernetesAuth: (identityId: string) =>
+    [{ identityId }, "identity-kubernetes-auth"] as const
 };
 
 export const useGetIdentityUniversalAuth = (identityId: string) => {
@@ -53,6 +59,21 @@ export const useGetIdentityAwsAuth = (identityId: string) => {
         `/api/v1/auth/aws-auth/identities/${identityId}`
       );
       return identityAwsAuth;
+    }
+  });
+};
+
+export const useGetIdentityKubernetesAuth = (identityId: string) => {
+  return useQuery({
+    enabled: Boolean(identityId),
+    queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId),
+    queryFn: async () => {
+      const {
+        data: { identityKubernetesAuth }
+      } = await apiRequest.get<{ identityKubernetesAuth: IdentityKubernetesAuth }>(
+        `/api/v1/auth/kubernetes-auth/identities/${identityId}`
+      );
+      return identityKubernetesAuth;
     }
   });
 };
