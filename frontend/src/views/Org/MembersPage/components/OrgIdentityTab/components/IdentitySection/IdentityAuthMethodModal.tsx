@@ -15,6 +15,7 @@ import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityAwsAuthForm } from "./IdentityAwsAuthForm";
+import { IdentityGcpAuthForm } from "./IdentityGcpAuthForm";
 import { IdentityUniversalAuthForm } from "./IdentityUniversalAuthForm";
 
 type Props = {
@@ -28,6 +29,7 @@ type Props = {
 
 const identityAuthMethods = [
   { label: "Universal Auth", value: IdentityAuthMethod.UNIVERSAL_AUTH },
+  { label: "GCP Auth", value: IdentityAuthMethod.GCP_AUTH },
   { label: "AWS Auth", value: IdentityAuthMethod.AWS_AUTH }
 ];
 
@@ -69,6 +71,15 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
       case IdentityAuthMethod.AWS_AUTH: {
         return (
           <IdentityAwsAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+          />
+        );
+      }
+      case IdentityAuthMethod.GCP_AUTH: {
+        return (
+          <IdentityGcpAuthForm
             handlePopUpOpen={handlePopUpOpen}
             handlePopUpToggle={handlePopUpToggle}
             identityAuthMethodData={identityAuthMethodData}

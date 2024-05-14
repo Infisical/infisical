@@ -3,6 +3,7 @@ import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
+import { registerIdentityGcpAuthRouter } from "./identity-gcp-auth-router";
 import { registerIdentityRouter } from "./identity-router";
 import { registerIdentityUaRouter } from "./identity-ua";
 import { registerIntegrationAuthRouter } from "./integration-auth-router";
@@ -28,6 +29,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     async (authRouter) => {
       await authRouter.register(registerAuthRoutes);
       await authRouter.register(registerIdentityUaRouter);
+      await authRouter.register(registerIdentityGcpAuthRouter);
       await authRouter.register(registerIdentityAccessTokenRouter);
       await authRouter.register(registerIdentityAwsAuthRouter);
     },

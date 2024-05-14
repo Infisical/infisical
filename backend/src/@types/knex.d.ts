@@ -62,6 +62,9 @@ import {
   TIdentityAwsAuths,
   TIdentityAwsAuthsInsert,
   TIdentityAwsAuthsUpdate,
+  TIdentityGcpAuths,
+  TIdentityGcpAuthsInsert,
+  TIdentityGcpAuthsUpdate,
   TIdentityOrgMemberships,
   TIdentityOrgMembershipsInsert,
   TIdentityOrgMembershipsUpdate,
@@ -328,6 +331,11 @@ declare module "knex/types/tables" {
       TIdentityUniversalAuths,
       TIdentityUniversalAuthsInsert,
       TIdentityUniversalAuthsUpdate
+    >;
+    [TableName.IdentityGcpAuth]: Knex.CompositeTableType<
+      TIdentityGcpAuths,
+      TIdentityGcpAuthsInsert,
+      TIdentityGcpAuthsUpdate
     >;
     [TableName.IdentityAwsAuth]: Knex.CompositeTableType<
       TIdentityAwsAuths,
