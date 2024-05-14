@@ -156,7 +156,10 @@ export const registerRoutes = async (
     keyStore
   }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory; keyStore: TKeyStoreFactory }
 ) => {
-  await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
+  const appCfg = getConfig();
+  if (!appCfg.DISABLE_SECRET_SCANNING) {
+    await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
+  }
 
   // db layers
   const userDAL = userDALFactory(db);
