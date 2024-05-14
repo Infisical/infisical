@@ -243,6 +243,74 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
+  const upsertSecretReferences = async (
+    data: {
+      secretId: string;
+      references: Array<{ environment: string; secretPath: string }>;
+    }[] = [],
+    tx?: Knex
+  ) => {
+    try {
+      if (!data.length) return;
+
+      await (tx || db)(TableName.SecretReference)
+        .whereIn(
+          "secretId",
+          data.map(({ secretId }) => secretId)
+        )
+        .delete();
+      const newSecretReferences = data
+        .filter(({ references }) => references.length)
+        .flatMap(({ secretId, references }) =>
+          references.map(({ environment, secretPath }) => ({
+            secretPath,
+            secretId,
+            environment
+          }))
+        );
+      if (!newSecretReferences.length) return;
+      const secretReferences = await (tx || db)(TableName.SecretReference).insert(newSecretReferences);
+      return secretReferences;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "UpsertSecretReference" });
+    }
+  };
+
+  const findReferencedSecretReferences = async (projectId: string, envSlug: string, secretPath: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db)(TableName.SecretReference)
+        .where({
+          secretPath,
+          environment: envSlug
+        })
+        .join(TableName.Secret, `${TableName.Secret}.id`, `${TableName.SecretReference}.secretId`)
+        .join(TableName.SecretFolder, `${TableName.Secret}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where("projectId", projectId)
+        .select(selectAllTableCols(TableName.SecretReference))
+        .select("folderId");
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindReferencedSecretReferences" });
+    }
+  };
+
+  // special query to backfill secret value
+  const findAllProjectSecretValues = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db)(TableName.Secret)
+        .join(TableName.SecretFolder, `${TableName.Secret}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where("projectId", projectId)
+        // not empty
+        .whereNotNull("secretValueCiphertext")
+        .select("secretValueTag", "secretValueCiphertext", "secretValueIV", `${TableName.Secret}.id` as "id");
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindAllProjectSecretValues" });
+    }
+  };
+
   return {
     ...secretOrm,
     update,
@@ -252,6 +320,9 @@ export const secretDALFactory = (db: TDbClient) => {
     getSecretTags,
     findByFolderId,
     findByFolderIds,
-    findByBlindIndexes
+    findByBlindIndexes,
+    upsertSecretReferences,
+    findReferencedSecretReferences,
+    findAllProjectSecretValues
   };
 };
