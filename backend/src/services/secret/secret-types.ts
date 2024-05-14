@@ -11,6 +11,8 @@ import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/se
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
+import { ActorType } from "../auth/auth-type";
+
 type TPartialSecret = Pick<TSecrets, "id" | "secretReminderRepeatDays" | "secretReminderNote">;
 
 type TPartialInputSecret = Pick<TSecrets, "type" | "secretReminderNote" | "secretReminderRepeatDays" | "id">;
@@ -388,7 +390,8 @@ export type TSyncSecretsDTO<T extends boolean = false> = {
   : {
       environmentId: string;
       folderId: string;
-      membershipId: string;
+      actor: ActorType;
+      actorId: string;
       // used for import creation to trigger replication
       pickOnlyImportIds?: string[];
       secrets: {

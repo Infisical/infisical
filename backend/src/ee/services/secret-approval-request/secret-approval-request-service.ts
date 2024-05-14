@@ -484,13 +484,14 @@ export const secretApprovalRequestServiceFactory = ({
     });
     await snapshotService.performSnapshot(folderId);
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
-    // TODO(akhilmhdh-pg):  change query to do secret path from folder
+    if (!folder) throw new BadRequestError({ message: "Folder not found" });
     await secretQueueService.syncSecrets({
       projectId,
       secretPath: folder.path,
       environmentSlug: folder.environmentSlug,
       folderId: folder.id,
-      membershipId: membership.id,
+      actorId,
+      actor,
       environmentId: folder.envId,
       secrets: mergeStatus.secrets.created
         .map(({ id, version }) => ({

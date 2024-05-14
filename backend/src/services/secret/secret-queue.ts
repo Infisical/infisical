@@ -354,7 +354,8 @@ export const secretQueueFactory = ({
       secrets,
       folderId,
       excludeReplication,
-      membershipId
+      actorId,
+      actor
     } = job.data;
     await queueService.queue(
       QueueName.SecretWebhook,
@@ -380,7 +381,8 @@ export const secretQueueFactory = ({
         secretPath,
         folderId,
         secrets,
-        membershipId,
+        actorId,
+        actor,
         excludeReplication,
         environmentSlug: environment
       });

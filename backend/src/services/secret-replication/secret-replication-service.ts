@@ -9,6 +9,8 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
+import { ActorType } from "../auth/auth-type";
+import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { fnSecretBulkInsert, fnSecretBulkUpdate } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -36,6 +38,7 @@ type TSecretReplicationServiceFactoryDep = {
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById" | "saveTagsToSecret" | "deleteTagsManySecret" | "find">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create" | "transaction">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findOne">;
   secretApprovalRequestSecretDAL: Pick<
     TSecretApprovalRequestSecretDALFactory,
     "insertMany" | "insertApprovalSecretTags"
@@ -60,11 +63,12 @@ export const secretReplicationServiceFactory = ({
   secretApprovalRequestSecretDAL,
   secretApprovalRequestDAL,
   secretQueueService,
-  snapshotService
+  snapshotService,
+  projectMembershipDAL
 }: TSecretReplicationServiceFactoryDep) => {
   queueService.start(QueueName.SecretReplication, async (job) => {
     logger.info(job.data, "Replication started");
-    const { secrets, folderId, secretPath, environmentId, projectId, membershipId, pickOnlyImportIds } = job.data;
+    const { secrets, folderId, secretPath, environmentId, projectId, actorId, actor, pickOnlyImportIds } = job.data;
     let secretImports = await secretImportDAL.find({
       importPath: secretPath,
       importEnv: environmentId,
@@ -140,7 +144,13 @@ export const secretReplicationServiceFactory = ({
           importedFolder.path
         );
         // this means it should be a approval request rather than direct replication
-        if (policy) {
+        if (policy && actor === ActorType.USER) {
+          const membership = await projectMembershipDAL.findOne({ projectId, userId: actorId });
+          if (!membership) {
+            logger.error("Project membership not found in %s for user %s", projectId, actorId);
+            return;
+          }
+
           const localSecretsLatestVersions = localSecrets.map(({ id }) => id);
           const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
             importFolderId,
@@ -154,7 +164,7 @@ export const secretReplicationServiceFactory = ({
                 policyId: policy.id,
                 status: "open",
                 hasMerged: false,
-                committerId: membershipId,
+                committerId: membership.id,
                 isReplicated: true
               },
               tx
@@ -294,7 +304,8 @@ export const secretReplicationServiceFactory = ({
             secrets: nestedImportSecrets,
             secretPath: importedFolder.path,
             environmentId: importedFolder.envId,
-            membershipId
+            actorId,
+            actor
           });
           const folderLock = await keyStore
             .acquireLock([`secret-replication-${importFolderId}`], 5000)

@@ -56,7 +56,7 @@ export const secretImportServiceFactory = ({
     isReplication,
     path
   }: TCreateSecretImportDTO) => {
-    const { permission, membership } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -111,7 +111,7 @@ export const secretImportServiceFactory = ({
       );
     });
 
-    if (secImport.isReplication && sourceFolder && membership) {
+    if (secImport.isReplication && sourceFolder) {
       const importedSecrets = await secretDAL.find({ folderId: sourceFolder?.id });
       await secretQueueService.replicateSecrets({
         secretPath: secImport.importPath,
@@ -120,8 +120,8 @@ export const secretImportServiceFactory = ({
         pickOnlyImportIds: [secImport.id],
         folderId: sourceFolder.id,
         secrets: importedSecrets.map(({ id, version }) => ({ operation: SecretOperations.Create, version, id })),
-        // TODO(akhilmhdh): approval based replication this will fail for identity
-        membershipId: membership.id,
+        actorId,
+        actor,
         environmentId: importEnv.id
       });
     } else {
@@ -310,8 +310,8 @@ export const secretImportServiceFactory = ({
         pickOnlyImportIds: [secretImportDoc.id],
         folderId: sourceFolder.id,
         secrets: importedSecrets.map(({ id, version }) => ({ operation: SecretOperations.Create, version, id })),
-        // TODO(akhilmhdh): approval based replication this will fail for identity
-        membershipId: membership.id,
+        actorId,
+        actor,
         environmentId: secretImportDoc.importEnv.id
       });
     }

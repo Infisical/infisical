@@ -149,7 +149,7 @@ export const secretServiceFactory = ({
     projectId,
     ...inputSecret
   }: TCreateSecretDTO) => {
-    const { permission, membership } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -238,9 +238,9 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       secretPath: path,
-      // if secret service reached means there was no secret policy
-      // TODO(akhilmhdh): The policy based replication will fail if machine identity is used.
-      membershipId: membership?.id as string,
+      folderId: folder.id,
+      actorId,
+      actor,
       projectId,
       environmentSlug: folder.environment.slug,
       environmentId: folder.envId,
@@ -265,7 +265,7 @@ export const secretServiceFactory = ({
     projectId,
     ...inputSecret
   }: TUpdateSecretDTO) => {
-    const { permission, membership } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -381,9 +381,8 @@ export const secretServiceFactory = ({
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
-      // if secret service reached means there was no secret policy
-      // TODO(akhilmhdh): The policy based replication will fail if machine identity is used.
-      membershipId: membership?.id as string,
+      actor,
+      actorId,
       secretPath: path,
       folderId: folder.id,
       projectId,
@@ -410,7 +409,7 @@ export const secretServiceFactory = ({
     projectId,
     ...inputSecret
   }: TDeleteSecretDTO) => {
-    const { permission, membership } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -466,9 +465,8 @@ export const secretServiceFactory = ({
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
-      // if secret service reached means there was no secret policy
-      // TODO(akhilmhdh): The policy based replication will fail if machine identity is used.
-      membershipId: membership?.id as string,
+      actor,
+      actorId,
       secretPath: path,
       folderId: folder.id,
       projectId,
@@ -703,7 +701,7 @@ export const secretServiceFactory = ({
     projectId,
     secrets: inputSecrets
   }: TCreateBulkSecretDTO) => {
-    const { permission, membership } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -768,9 +766,8 @@ export const secretServiceFactory = ({
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
-      // if secret service reached means there was no secret policy
-      // TODO(akhilmhdh): The policy based replication will fail if machine identity is used.
-      membershipId: membership?.id as string,
+      actor,
+      actorId,
       secretPath: path,
       folderId: folder.id,
       projectId,
@@ -792,7 +789,7 @@ export const secretServiceFactory = ({
     projectId,
     secrets: inputSecrets
   }: TUpdateBulkSecretDTO) => {
-    const { permission, membership } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -878,9 +875,8 @@ export const secretServiceFactory = ({
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
-      // if secret service reached means there was no secret policy
-      // TODO(akhilmhdh): The policy based replication will fail if machine identity is used.
-      membershipId: membership?.id as string,
+      actor,
+      actorId,
       secretPath: path,
       folderId: folder.id,
       projectId,
@@ -902,7 +898,7 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TDeleteBulkSecretDTO) => {
-    const { permission, membership } = await permissionService.getProjectPermission(
+    const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
@@ -952,9 +948,8 @@ export const secretServiceFactory = ({
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
-      // if secret service reached means there was no secret policy
-      // TODO(akhilmhdh): The policy based replication will fail if machine identity is used.
-      membershipId: membership?.id as string,
+      actor,
+      actorId,
       secretPath: path,
       folderId: folder.id,
       projectId,

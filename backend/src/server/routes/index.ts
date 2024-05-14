@@ -679,7 +679,8 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
     secretQueueService,
-    snapshotService
+    snapshotService,
+    projectMembershipDAL
   });
   const secretRotationQueue = secretRotationQueueFactory({
     telemetryService,
