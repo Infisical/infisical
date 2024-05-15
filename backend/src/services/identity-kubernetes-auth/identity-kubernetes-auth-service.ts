@@ -115,11 +115,9 @@ export const identityKubernetesAuthServiceFactory = ({
           "Content-Type": "application/json",
           Authorization: `Bearer ${tokenReviewerJwt}`
         },
-        ...(caCert && {
-          httpsAgent: new https.Agent({
-            ca: caCert,
-            rejectUnauthorized: true
-          })
+        httpsAgent: new https.Agent({
+          ca: caCert,
+          rejectUnauthorized: !!caCert
         })
       }
     );
