@@ -416,7 +416,8 @@
             "api-reference/endpoints/universal-auth/create-client-secret",
             "api-reference/endpoints/universal-auth/list-client-secrets",
             "api-reference/endpoints/universal-auth/revoke-client-secret",
-            "api-reference/endpoints/universal-auth/renew-access-token"
+            "api-reference/endpoints/universal-auth/renew-access-token",
+            "api-reference/endpoints/universal-auth/revoke-access-token"
           ]
         },
         {
