@@ -25,7 +25,7 @@ export const BackfillSecretReferenceSecretion = () => {
 	return (
 		<div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
 			<div className="flex w-full items-center justify-between">
-				<p className="text-xl font-semibold">Sync Secret References</p>
+				<p className="text-xl font-semibold">Index Secret References</p>
 			</div>
 			<p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">
 				This will index all secret references, enabling integrations to be triggered when their values change going forward.
@@ -36,7 +36,7 @@ export const BackfillSecretReferenceSecretion = () => {
 				onClick={handleBackfill}
 				isDisabled={!isAdmin}
 			>
-				Resync Secret References
+				Index Secret References
 			</Button>
 		</div>
 	);
