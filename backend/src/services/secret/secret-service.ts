@@ -285,7 +285,7 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return { ...secret[0], environment, workspace: projectId, tags };
+    return { ...secret[0], environment, workspace: projectId, tags, secretPath: path };
   };
 
   const updateSecret = async ({
@@ -415,7 +415,7 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return { ...updatedSecret[0], workspace: projectId, environment };
+    return { ...updatedSecret[0], workspace: projectId, environment, secretPath: path };
   };
 
   const deleteSecret = async ({
@@ -484,7 +484,7 @@ export const secretServiceFactory = ({
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
 
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment };
+    return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment, secretPath: path };
   };
 
   const getSecrets = async ({
@@ -681,7 +681,8 @@ export const secretServiceFactory = ({
             return {
               ...importedSecrets[i].secrets[j],
               workspace: projectId,
-              environment: importedSecrets[i].environment
+              environment: importedSecrets[i].environment,
+              secretPath: importedSecrets[i].secretPath
             };
           }
         }
@@ -689,7 +690,7 @@ export const secretServiceFactory = ({
     }
     if (!secret) throw new BadRequestError({ message: "Secret not found" });
 
-    return { ...secret, workspace: projectId, environment };
+    return { ...secret, workspace: projectId, environment, secretPath: path };
   };
 
   const createManySecret = async ({
@@ -984,6 +985,7 @@ export const secretServiceFactory = ({
           secretKey: string;
           secretValue: string;
           secretComment?: string;
+          secretPath: string;
         }[]
       ) => {
         const secretRecord: Record<
@@ -996,7 +998,8 @@ export const secretServiceFactory = ({
         > = {};
 
         secretBatch.forEach((decryptedSecret) => {
-          secretRecord[decryptedSecret.secretKey] = {
+          const uniqueKey = `${decryptedSecret.secretPath}/${decryptedSecret.secretKey}`;
+          secretRecord[uniqueKey] = {
             value: decryptedSecret.secretValue,
             comment: decryptedSecret.secretComment
           };
@@ -1005,8 +1008,9 @@ export const secretServiceFactory = ({
         await expandSecrets(secretRecord);
 
         secretBatch.forEach((decryptedSecret, index) => {
+          const uniqueKey = `${decryptedSecret.secretPath}/${decryptedSecret.secretKey}`;
           // eslint-disable-next-line no-param-reassign
-          secretBatch[index].secretValue = secretRecord[decryptedSecret.secretKey].value;
+          secretBatch[index].secretValue = secretRecord[uniqueKey].value;
         });
       };
 
@@ -1055,6 +1059,7 @@ export const secretServiceFactory = ({
       includeImports,
       version
     });
+
     return decryptSecretRaw(secret, botKey);
   };
 
@@ -1227,7 +1232,9 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(secrets[0].folderId);
     await secretQueueService.syncSecrets({ secretPath, projectId, environment });
 
-    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+    return secrets.map((secret) =>
+      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+    );
   };
 
   const updateManySecretsRaw = async ({
@@ -1279,7 +1286,9 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(secrets[0].folderId);
     await secretQueueService.syncSecrets({ secretPath, projectId, environment });
 
-    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+    return secrets.map((secret) =>
+      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+    );
   };
 
   const deleteManySecretsRaw = async ({
@@ -1313,7 +1322,9 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(secrets[0].folderId);
     await secretQueueService.syncSecrets({ secretPath, projectId, environment });
 
-    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+    return secrets.map((secret) =>
+      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+    );
   };
 
   const getSecretVersions = async ({

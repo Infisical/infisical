@@ -353,7 +353,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
 };
 
 export const decryptSecretRaw = (
-  secret: TSecrets & { workspace: string; environment: string; secretPath?: string },
+  secret: TSecrets & { workspace: string; environment: string; secretPath: string },
   key: string
 ) => {
   const secretKey = decryptSymmetric128BitHexKeyUTF8({
