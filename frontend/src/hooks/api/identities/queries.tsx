@@ -2,7 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { ClientSecretData, IdentityAwsAuth, IdentityGcpAuth, IdentityUniversalAuth } from "./types";
+import {
+  ClientSecretData,
+  IdentityAwsAuth,
+  IdentityAzureAuth,
+  IdentityGcpAuth,
+  IdentityUniversalAuth} from "./types";
 
 export const identitiesKeys = {
   getIdentityUniversalAuth: (identityId: string) =>
@@ -10,7 +15,8 @@ export const identitiesKeys = {
   getIdentityUniversalAuthClientSecrets: (identityId: string) =>
     [{ identityId }, "identity-universal-auth-client-secrets"] as const,
   getIdentityGcpAuth: (identityId: string) => [{ identityId }, "identity-gcp-auth"] as const,
-  getIdentityAwsAuth: (identityId: string) => [{ identityId }, "identity-aws-auth"] as const
+  getIdentityAwsAuth: (identityId: string) => [{ identityId }, "identity-aws-auth"] as const,
+  getIdentityAzureAuth: (identityId: string) => [{ identityId }, "identity-azure-auth"] as const
 };
 
 export const useGetIdentityUniversalAuth = (identityId: string) => {
@@ -69,6 +75,21 @@ export const useGetIdentityAwsAuth = (identityId: string) => {
         `/api/v1/auth/aws-auth/identities/${identityId}`
       );
       return identityAwsAuth;
+    }
+  });
+};
+
+export const useGetIdentityAzureAuth = (identityId: string) => {
+  return useQuery({
+    enabled: Boolean(identityId),
+    queryKey: identitiesKeys.getIdentityAzureAuth(identityId),
+    queryFn: async () => {
+      const {
+        data: { identityAzureAuth }
+      } = await apiRequest.get<{ identityAzureAuth: IdentityAzureAuth }>(
+        `/api/v1/auth/azure-auth/identities/${identityId}`
+      );
+      return identityAzureAuth;
     }
   });
 };

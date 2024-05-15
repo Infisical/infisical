@@ -74,6 +74,10 @@ export enum EventType {
   ADD_IDENTITY_AWS_AUTH = "add-identity-aws-auth",
   UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
   GET_IDENTITY_AWS_AUTH = "get-identity-aws-auth",
+  LOGIN_IDENTITY_AZURE_AUTH = "login-identity-azure-auth",
+  ADD_IDENTITY_AZURE_AUTH = "add-identity-azure-auth",
+  UPDATE_IDENTITY_AZURE_AUTH = "update-identity-azure-auth",
+  GET_IDENTITY_AZURE_AUTH = "get-identity-azure-auth",
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
@@ -504,6 +508,48 @@ interface GetIdentityAwsAuthEvent {
   };
 }
 
+interface LoginIdentityAzureAuthEvent {
+  type: EventType.LOGIN_IDENTITY_AZURE_AUTH;
+  metadata: {
+    identityId: string;
+    identityAzureAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityAzureAuthEvent {
+  type: EventType.ADD_IDENTITY_AZURE_AUTH;
+  metadata: {
+    identityId: string;
+    tenantId: string;
+    resource: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityAzureAuthEvent {
+  type: EventType.UPDATE_IDENTITY_AZURE_AUTH;
+  metadata: {
+    identityId: string;
+    tenantId?: string;
+    resource?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityAzureAuthEvent {
+  type: EventType.GET_IDENTITY_AZURE_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface CreateEnvironmentEvent {
   type: EventType.CREATE_ENVIRONMENT;
   metadata: {
@@ -766,6 +812,10 @@ export type Event =
   | AddIdentityAwsAuthEvent
   | UpdateIdentityAwsAuthEvent
   | GetIdentityAwsAuthEvent
+  | LoginIdentityAzureAuthEvent
+  | AddIdentityAzureAuthEvent
+  | UpdateIdentityAzureAuthEvent
+  | GetIdentityAzureAuthEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

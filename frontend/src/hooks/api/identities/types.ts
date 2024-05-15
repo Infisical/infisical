@@ -195,6 +195,45 @@ export type UpdateIdentityAwsAuthDTO = {
   }[];
 };
 
+export type IdentityAzureAuth = {
+  identityId: string;
+  tenantId: string;
+  resource: string;
+  allowedServicePrincipalIds: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityAzureAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  tenantId: string;
+  resource: string;
+  allowedServicePrincipalIds: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityAzureAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  tenantId?: string;
+  resource?: string;
+  allowedServicePrincipalIds?: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
 export type CreateIdentityUniversalAuthClientSecretDTO = {
   identityId: string;
   description?: string;
