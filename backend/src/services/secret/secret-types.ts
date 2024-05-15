@@ -223,11 +223,13 @@ export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
   secretId: string;
 };
 
+export type TSecretReference = { environment: string; secretPath: string };
+
 export type TFnSecretBulkInsert = {
   folderId: string;
   tx?: Knex;
-  inputSecrets: Array<Omit<TSecretsInsert, "folderId"> & { tags?: string[] }>;
-  secretDAL: Pick<TSecretDALFactory, "insertMany">;
+  inputSecrets: Array<Omit<TSecretsInsert, "folderId"> & { tags?: string[]; references?: TSecretReference[] }>;
+  secretDAL: Pick<TSecretDALFactory, "insertMany" | "upsertSecretReferences">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
@@ -236,8 +238,11 @@ export type TFnSecretBulkInsert = {
 export type TFnSecretBulkUpdate = {
   folderId: string;
   projectId: string;
-  inputSecrets: { filter: Partial<TSecrets>; data: TSecretsUpdate & { tags?: string[] } }[];
-  secretDAL: Pick<TSecretDALFactory, "bulkUpdate">;
+  inputSecrets: {
+    filter: Partial<TSecrets>;
+    data: TSecretsUpdate & { tags?: string[]; references?: TSecretReference[] };
+  }[];
+  secretDAL: Pick<TSecretDALFactory, "bulkUpdate" | "upsertSecretReferences">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret" | "deleteTagsManySecret">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
@@ -293,6 +298,8 @@ export type TRemoveSecretReminderDTO = {
   secretId: string;
   repeatDays: number;
 };
+
+export type TBackFillSecretReferencesDTO = TProjectPermission;
 
 // ---
 

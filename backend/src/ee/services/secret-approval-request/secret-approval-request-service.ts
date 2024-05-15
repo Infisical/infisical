@@ -7,12 +7,15 @@ import {
   SecretType,
   TSecretApprovalRequestsSecretsInsert
 } from "@app/db/schemas";
+import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { groupBy, pick, unique } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
+import { getAllNestedSecretReferences } from "@app/services/secret/secret-fns";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
@@ -53,6 +56,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany" | "insertMany">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
+  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretService: Pick<
     TSecretServiceFactory,
     | "fnSecretBulkInsert"
@@ -80,7 +84,8 @@ export const secretApprovalRequestServiceFactory = ({
   snapshotService,
   secretService,
   secretVersionDAL,
-  secretQueueService
+  secretQueueService,
+  projectBotService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
@@ -352,7 +357,7 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const secretDeletionCommits = secretApprovalSecrets.filter(({ op }) => op === CommitType.Delete);
-
+    const botKey = await projectBotService.getBotKey(projectId).catch(() => null);
     const mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
       const newSecrets = secretCreationCommits.length
         ? await secretService.fnSecretBulkInsert({
@@ -379,7 +384,17 @@ export const secretApprovalRequestServiceFactory = ({
               ]),
               tags: el?.tags.map(({ id }) => id),
               version: 1,
-              type: SecretType.Shared
+              type: SecretType.Shared,
+              references: botKey
+                ? getAllNestedSecretReferences(
+                    decryptSymmetric128BitHexKeyUTF8({
+                      ciphertext: el.secretValueCiphertext,
+                      iv: el.secretValueIV,
+                      tag: el.secretValueTag,
+                      key: botKey
+                    })
+                  )
+                : undefined
             })),
             secretDAL,
             secretVersionDAL,
@@ -414,7 +429,17 @@ export const secretApprovalRequestServiceFactory = ({
                   "secretReminderNote",
                   "secretReminderRepeatDays",
                   "secretBlindIndex"
-                ])
+                ]),
+                references: botKey
+                  ? getAllNestedSecretReferences(
+                      decryptSymmetric128BitHexKeyUTF8({
+                        ciphertext: el.secretValueCiphertext,
+                        iv: el.secretValueIV,
+                        tag: el.secretValueTag,
+                        key: botKey
+                      })
+                    )
+                  : undefined
               }
             })),
             secretDAL,

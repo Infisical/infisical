@@ -2,12 +2,22 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding, SecretsSchema, SecretType } from "@app/db/schemas";
+import {
+  ProjectMembershipRole,
+  SecretEncryptionAlgo,
+  SecretKeyEncoding,
+  SecretsSchema,
+  SecretType
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { getConfig } from "@app/lib/config/env";
-import { buildSecretBlindIndexFromName, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import {
+  buildSecretBlindIndexFromName,
+  decryptSymmetric128BitHexKeyUTF8,
+  encryptSymmetric128BitHexKeyUTF8
+} from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy, pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -27,12 +37,14 @@ import {
   fnSecretBlindIndexCheck,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
+  getAllNestedSecretReferences,
   interpolateSecrets,
   recursivelyGetSecretPaths
 } from "./secret-fns";
 import { TSecretQueueFactory } from "./secret-queue";
 import {
   TAttachSecretTagsDTO,
+  TBackFillSecretReferencesDTO,
   TCreateBulkSecretDTO,
   TCreateManySecretRawDTO,
   TCreateSecretDTO,
@@ -91,6 +103,22 @@ export const secretServiceFactory = ({
   secretImportDAL,
   secretVersionTagDAL
 }: TSecretServiceFactoryDep) => {
+  const getSecretReference = async (projectId: string) => {
+    // if bot key missing means e2e still exist
+    const botKey = await projectBotService.getBotKey(projectId).catch(() => null);
+    return (el: { ciphertext?: string; iv: string; tag: string }) =>
+      botKey
+        ? getAllNestedSecretReferences(
+            decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: el.ciphertext || "",
+              iv: el.iv,
+              tag: el.tag,
+              key: botKey
+            })
+          )
+        : undefined;
+  };
+
   // utility function to get secret blind index data
   const interalGenSecBlindIndexByName = async (projectId: string, secretName: string) => {
     const appCfg = getConfig();
@@ -225,6 +253,7 @@ export const secretServiceFactory = ({
     if ((inputSecret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
 
     const { secretName, type, ...el } = inputSecret;
+    const references = await getSecretReference(projectId);
     const secret = await secretDAL.transaction((tx) =>
       fnSecretBulkInsert({
         folderId,
@@ -237,7 +266,12 @@ export const secretServiceFactory = ({
             userId: inputSecret.type === SecretType.Personal ? actorId : null,
             algorithm: SecretEncryptionAlgo.AES_256_GCM,
             keyEncoding: SecretKeyEncoding.UTF8,
-            tags: inputSecret.tags
+            tags: inputSecret.tags,
+            references: references({
+              ciphertext: inputSecret.secretValueCiphertext,
+              iv: inputSecret.secretValueIV,
+              tag: inputSecret.secretValueTag
+            })
           }
         ],
         secretDAL,
@@ -335,6 +369,7 @@ export const secretServiceFactory = ({
 
     const { secretName, ...el } = inputSecret;
 
+    const references = await getSecretReference(projectId);
     const updatedSecret = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
         folderId,
@@ -360,7 +395,12 @@ export const secretServiceFactory = ({
                 "secretReminderRepeatDays",
                 "tags"
               ]),
-              secretBlindIndex: newSecretNameBlindIndex || keyName2BlindIndex[secretName]
+              secretBlindIndex: newSecretNameBlindIndex || keyName2BlindIndex[secretName],
+              references: references({
+                ciphertext: inputSecret.secretValueCiphertext,
+                iv: inputSecret.secretValueIV,
+                tag: inputSecret.secretValueTag
+              })
             }
           }
         ],
@@ -700,6 +740,7 @@ export const secretServiceFactory = ({
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
     if (tags.length !== tagIds.length) throw new BadRequestError({ message: "Tag not found" });
 
+    const references = await getSecretReference(projectId);
     const newSecrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkInsert({
         inputSecrets: inputSecrets.map(({ secretName, ...el }) => ({
@@ -708,7 +749,12 @@ export const secretServiceFactory = ({
           secretBlindIndex: keyName2BlindIndex[secretName],
           type: SecretType.Shared,
           algorithm: SecretEncryptionAlgo.AES_256_GCM,
-          keyEncoding: SecretKeyEncoding.UTF8
+          keyEncoding: SecretKeyEncoding.UTF8,
+          references: references({
+            ciphertext: el.secretValueCiphertext,
+            iv: el.secretValueIV,
+            tag: el.secretValueTag
+          })
         })),
         folderId,
         secretDAL,
@@ -783,6 +829,8 @@ export const secretServiceFactory = ({
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
     if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+
+    const references = await getSecretReference(projectId);
     const secrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
         folderId,
@@ -799,7 +847,15 @@ export const secretServiceFactory = ({
                 ? newKeyName2BlindIndex[newSecretName]
                 : keyName2BlindIndex[secretName],
             algorithm: SecretEncryptionAlgo.AES_256_GCM,
-            keyEncoding: SecretKeyEncoding.UTF8
+            keyEncoding: SecretKeyEncoding.UTF8,
+            references:
+              el.secretValueIV && el.secretValueTag
+                ? references({
+                    ciphertext: el.secretValueCiphertext,
+                    iv: el.secretValueIV,
+                    tag: el.secretValueTag
+                  })
+                : undefined
           }
         })),
         secretDAL,
@@ -1488,6 +1544,51 @@ export const secretServiceFactory = ({
     };
   };
 
+  // this is a backfilling API for secret references
+  // what it does is it will go through all the secret values and parse all references
+  // populate the secret reference to do sync integrations
+  const backfillSecretReferences = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: TBackFillSecretReferencesDTO) => {
+    const { hasRole } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    if (!hasRole(ProjectMembershipRole.Admin))
+      throw new BadRequestError({ message: "Only admins are allowed to take this action" });
+
+    const botKey = await projectBotService.getBotKey(projectId);
+    if (!botKey)
+      throw new BadRequestError({ message: "Please upgrade your project first", name: "bot_not_found_error" });
+
+    await secretDAL.transaction(async (tx) => {
+      const secrets = await secretDAL.findAllProjectSecretValues(projectId, tx);
+      await secretDAL.upsertSecretReferences(
+        secrets.map(({ id, secretValueCiphertext, secretValueIV, secretValueTag }) => ({
+          secretId: id,
+          references: getAllNestedSecretReferences(
+            decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: secretValueCiphertext,
+              iv: secretValueIV,
+              tag: secretValueTag,
+              key: botKey
+            })
+          )
+        }))
+      );
+    });
+
+    return { message: "Successfully backfilled secret references" };
+  };
+
   return {
     attachTags,
     detachTags,
@@ -1508,6 +1609,7 @@ export const secretServiceFactory = ({
     updateManySecretsRaw,
     deleteManySecretsRaw,
     getSecretVersions,
+    backfillSecretReferences,
     // external services function
     fnSecretBulkDelete,
     fnSecretBulkUpdate,

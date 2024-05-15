@@ -607,6 +607,7 @@ export const registerRoutes = async (
   });
   const sarService = secretApprovalRequestServiceFactory({
     permissionService,
+    projectBotService,
     folderDAL,
     secretDAL,
     secretTagDAL,

@@ -65,7 +65,13 @@ export type TQueueJobTypes = {
   };
   [QueueName.IntegrationSync]: {
     name: QueueJobs.IntegrationSync;
-    payload: { projectId: string; environment: string; secretPath: string; depth?: number };
+    payload: {
+      projectId: string;
+      environment: string;
+      secretPath: string;
+      depth?: number;
+      deDupeQueue?: Record<string, boolean>;
+    };
   };
   [QueueName.SecretFullRepoScan]: {
     name: QueueJobs.SecretScan;

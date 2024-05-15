@@ -1926,4 +1926,41 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       return { secrets };
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/backfill-secret-references",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      description: "Backfill secret references",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        projectId: z.string().trim().min(1)
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectId } = req.body;
+      const message = await server.services.secret.backfillSecretReferences({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId
+      });
+
+      return message;
+    }
+  });
 };
