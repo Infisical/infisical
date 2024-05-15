@@ -1562,10 +1562,12 @@ export const secretServiceFactory = ({
       actorOrgId
     );
 
-    if (!hasRole(ProjectMembershipRole.Admin)) throw new BadRequestError({ message: "Only admins are allowed" });
+    if (!hasRole(ProjectMembershipRole.Admin))
+      throw new BadRequestError({ message: "Only admins are allowed to take this action" });
 
     const botKey = await projectBotService.getBotKey(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Kindly upgrade your project", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({ message: "Please upgrade your project first", name: "bot_not_found_error" });
 
     await secretDAL.transaction(async (tx) => {
       const secrets = await secretDAL.findAllProjectSecretValues(projectId, tx);
@@ -1584,7 +1586,7 @@ export const secretServiceFactory = ({
       );
     });
 
-    return { message: "Successfully backfilled secret references." };
+    return { message: "Successfully backfilled secret references" };
   };
 
   return {

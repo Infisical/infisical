@@ -396,13 +396,34 @@ export const decryptSecretRaw = (
   };
 };
 
-export const getAllNestedSecretReferences = (value: string) => {
-  const references = Array.from(value.matchAll(INTERPOLATION_SYNTAX_REG), (m) => m[1]);
+/**
+ * Grabs and processes nested secret references from a string
+ *
+ * This function looks for patterns that match the interpolation syntax in the input string.
+ * It filters out references that include nested paths, splits them into environment and
+ * secret path parts, and then returns an array of objects with the environment and the
+ * joined secret path.
+ *
+ * @param {string} maybeSecretReference - The string that has the potential secret references.
+ * @returns {Array<{ environment: string, secretPath: string }>} - An array of objects
+ * with the environment and joined secret path.
+ *
+ * @example
+ * const value = "Hello ${dev.someFolder.OtherFolder.SECRET_NAME} and ${prod.anotherFolder.SECRET_NAME}";
+ * const result = getAllNestedSecretReferences(value);
+ * // result will be:
+ * // [
+ * //   { environment: 'dev', secretPath: '/someFolder/OtherFolder' },
+ * //   { environment: 'prod', secretPath: '/anotherFolder' }
+ * // ]
+ */
+export const getAllNestedSecretReferences = (maybeSecretReference: string) => {
+  const references = Array.from(maybeSecretReference.matchAll(INTERPOLATION_SYNTAX_REG), (m) => m[1]);
   return references
     .filter((el) => el.includes("."))
     .map((el) => {
-      const [environment, ...secretPath] = el.split(".");
-      return { environment, secretPath: path.join("/", ...secretPath.slice(0, -1)) };
+      const [environment, ...secretPathList] = el.split(".");
+      return { environment, secretPath: path.join("/", ...secretPathList.slice(0, -1)) };
     });
 };
 
