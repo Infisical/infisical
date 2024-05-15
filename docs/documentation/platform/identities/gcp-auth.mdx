@@ -46,7 +46,7 @@ then Infisical returns a short-lived access token that can be used to make authe
 To be more specific:
 
 1. The client running on a GCP service obtains an [ID token](https://cloud.google.com/docs/authentication/get-id-token) constituting the identity for a GCP resource such as a GCE instance or Cloud Function; this is a unique JWT token that includes details about the instance as well as Google's [RS256 signature](https://datatracker.ietf.org/doc/html/rfc7518#section-3.3).
-2. The client sends the ID token to Infisical.
+2. The client sends the ID token to Infisical at the `/api/v1/auth/gcp-auth/login` endpoint.
 3. Infisical verifies the token against Google's [public OAuth2 certificates](https://www.googleapis.com/oauth2/v3/certs).
 4. Infisical checks if the entity behind the ID token is allowed to authenticate with Infisical based on set criteria such as **Allowed Service Account Emails**.
 5. If all is well, Infisical returns a short-lived access token that the client can use to make authenticated requests to the Infisical API.
@@ -208,7 +208,7 @@ then Infisical returns a short-lived access token that can be used to make authe
 To be more specific:
 
 1. The client generates a signed JWT token using the `projects.serviceAccounts.signJwt` [API method](https://cloud.google.com/iam/docs/reference/credentials/rest/v1/projects.serviceAccounts/signJwt); this is done using the service account credentials associated with the client.
-2. The client sends the signed JWT token to Infisical.
+2. The client sends the signed JWT token to Infisical at the `/api/v1/auth/gcp-auth/login` endpoint.
 3. Infisical verifies the signed JWT token.
 4. Infisical checks if the service account behind the JWT token is allowed to authenticate with Infisical based **Allowed Service Account Emails**.
 5. If all is well, Infisical returns a short-lived access token that the client can use to make authenticated requests to the Infisical API.

@@ -1,0 +1,233 @@
+---
+title: Kubernetes Auth
+description: "Learn how to authenticate with Infisical in Kubernetes"
+---
+
+**Kubernetes Auth** is a Kubernetes-native authentication method for applications (e.g. pods) to access Infisical.
+
+## Diagram
+
+    The following sequence digram illustrates the Kubernetes Auth workflow for authenticating applications running in pods with Infisical.
+
+```mermaid
+sequenceDiagram
+  participant Pod as Pod
+  participant Infis as Infisical
+  participant KubernetesServer as K8s API Server
+
+  Note over Pod: Step 1: Service Account JWT Token Retrieval
+
+  Note over Pod,Infis: Step 2: JWT Token Login Operation
+  Pod->>Infis: Send JWT token to /api/v1/auth/kubernetes-auth/login
+  Infis->>KubernetesServer: Forward JWT token for validation
+    KubernetesServer-->>Infis: Return identity info for JWT
+
+  Note over Infis: Step 3: Identity Property Verification
+  Infis->>Pod: Return short-lived access token
+
+  Note over Pod,Infis: Step 4: Access Infisical API with Token
+  Pod->>Infis: Make authenticated requests using the short-lived access token
+```
+
+## Concept
+
+At a high-level, Infisical authenticates an application in Kubernetes by verifying its identity and checking that it meets specific requirements (e.g. it is bound to an allowed service account) at the `/api/v1/auth/kubernetes-auth/login` endpoint. If successful,
+then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
+
+To be more specific:
+
+1. The application retrieves its [service account credential](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#opt-out-of-api-credential-automounting) that is a JWT token at the `/var/run/secrets/kubernetes.io/serviceaccount/token` pod path.
+2. The application sends the JWT token to Infisical at the `/api/v1/auth/kubernetes-auth/login` endpoint after which Infisical forwards the JWT token to the Kubernetes API Server at the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/). Infisical is able to authenticate and interact with the TokenReview API by using a long-lived service account JWT token itself (referred to onward as the token reviewer JWT token).
+3. Infisical checks the identity's properties against set criteria such **Allowed Service Account Names** and **Allowed Namespaces**.
+4. If all is well, Infisical returns a short-lived access token that the application can use to make authenticated requests to the Infisical API.
+
+<Note>
+We recommend using one of Infisical's clients like SDKs or the Infisical Agent
+to authenticate with Infisical using Kubernetes Auth as they handle the
+authentication process including service account credential retrieval for you.
+
+Also, note that Infisical needs access to send requests to the Kubernetes API Server
+as part of the Kubernetes Auth workflow.
+
+</Note>
+
+## Guide
+
+In the following steps, we explore how to create and use identities for your applications in Kubernetes to access the Infisical API using the Kubernetes Auth authentication method.
+
+<Steps>
+    <Step title="Obtaining the token reviewer JWT for Infisical">
+        1.1. Start by creating a service account in your Kubernetes cluster that will be used by Infisical to authenticate with the Kubernetes API Server.
+
+        ```bash
+        kubectl create serviceaccount infisical-auth -n default
+        ```
+
+        1.2. Bind the service account to the `system:auth-delegator` cluster role. As described [here](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#other-component-roles), this role allows delegated authentication and authorization checks, specifically for Infisical to access the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/). You can apply the following configuration file:
+
+        ```yaml
+        apiVersion: [rbac.authorization.k8s.io/v1](http://rbac.authorization.k8s.io/v1)
+        kind: ClusterRoleBinding
+        metadata:
+            name: role-tokenreview-binding
+            namespace: default
+        roleRef:
+            apiGroup: [rbac.authorization.k8s.io](http://rbac.authorization.k8s.io/)
+            kind: ClusterRole
+            name: system:auth-delegator
+        subjects:
+        - kind: ServiceAccount
+            name: infisical-auth
+            namespace: default
+        ```
+
+        1.3. Next, create a long-lived service account JWT token (i.e. the token reviewer JWT token) for the service account using this configuration file for a new `Secret` resource:
+
+        ```yaml
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: infisical-auth-token
+            annotations:
+        ¦ kubernetes.io/service-account.name: "infisical-auth"
+        type: kubernetes.io/service-account-token
+        ```
+
+        1.4. Link the secret in step 1.3 to the service account in step 1.1:
+
+        ```bash
+        kubectl patch serviceaccount infisical-auth -p '{"secrets": [{"name": "infisical-auth-token"}]}' -n default
+        ```
+
+        1.5. Finally, retrieve the token reviewer JWT token from the secret.
+
+        ```bash
+        kubectl get secret infisical-auth-token -n default -o=jsonpath='{.data.token}' | base64 --decode
+        ```
+
+        Keep this JWT token handy as you will need it for the **Token Reviewer JWT** field when configuring the Kubernetes Auth authentication method for the identity in step 2.
+
+    </Step>
+
+  <Step title="Creating an identity">
+    To create an identity, head to your Organization Settings > Access Control > Machine Identities and press **Create identity**.
+
+    ![identities organization](/images/platform/identities/identities-org.png)
+
+    When creating an identity, you specify an organization level [role](/documentation/platform/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
+
+    ![identities organization create](/images/platform/identities/identities-org-create.png)
+
+    Now input a few details for your new identity. Here's some guidance for each field:
+
+    - Name (required): A friendly name for the identity.
+    - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
+
+    Once you've created an identity, you'll be prompted to configure the authentication method for it. Here, select **Kubernetes Auth**.
+
+    ![identities organization create auth method](/images/platform/identities/identities-org-create-kubernetes-auth-method.png)
+
+    Here's some more guidance on each field:
+
+    - Kubernetes Host / Base Kubernetes API URL: The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running `kubectl cluster-info`.
+    - Token Reviewer JWT: A long-lived service account JWT token for Infisical to access the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/) to validate other service account JWT tokens submitted by applications/pods. This is the JWT token obtained from step 1.5.
+    - Allowed Service Account Names: A comma-separated list of trusted service account names that are allowed to authenticate with Infisical.
+    - Allowed Namespaces: A comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.
+    - Allowed Audience: An optional audience claim that the service account JWT token must have to authenticate with Infisical.
+    - CA Certificate: The PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server.
+    - Access Token TTL (default is `2592000` equivalent to 30 days): The lifetime for an acccess token in seconds. This value will be referenced at renewal time.
+    - Access Token Max TTL (default is `2592000`  equivalent to 30 days): The maximum lifetime for an acccess token in seconds. This value will be referenced at renewal time.
+    - Access Token Max Number of Uses (default is `0`): The maximum number of times that an access token can be used; a value of `0` implies infinite number of uses.
+    - Access Token Trusted IPs: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0`, allowing usage from any network address.
+
+  </Step>
+  <Step title="Adding an identity to a project">
+    To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.
+
+    To do this, head over to the project you want to add the identity to and go to Project Settings > Access Control > Machine Identities and press **Add identity**.
+
+    Next, select the identity you want to add to the project and the project level role you want to allow it to assume. The project role assigned will determine what project level resources this identity can have access to.
+
+    ![identities project](/images/platform/identities/identities-project.png)
+
+    ![identities project create](/images/platform/identities/identities-project-create.png)
+
+  </Step>
+  <Step title="Accessing the Infisical API with the identity">
+    To access the Infisical API as the identity, you should first make sure that the pod running your application is bound to a service account specified in the **Allowed Service Account Names** field of the identity's Kubernetes Auth authentication method configuration in step 2.
+    
+    Once bound, the pod will receive automatically mounted service account credentials that is a JWT token at the `/var/run/secrets/kubernetes.io/serviceaccount/token` path. This token should be used to authenticate with Infisical at the `/api/v1/auth/kubernetes-auth/login` endpoint.
+    
+    For information on how to configure sevice accounts for pods, refer to the guide [here](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/).
+    
+    We provide a code example below of how you might retrieve the JWT token and use it to authenticate with Infisical to gain access to the [Infisical API](/api-reference/overview/introduction).
+   <Accordion
+        title="Sample code for inside an application"
+    > 
+        The shown example uses Node.js but you can use any other language to retrieve the service account JWT token and use it to authenticate with Infisical.
+        
+        ```javascript   
+        const fs = require("fs");
+        try {
+            const tokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token";
+            const jwtToken = fs.readFileSync(tokenPath, "utf8");
+
+            const infisicalUrl = "https://app.infisical.com"; // or your self-hosted Infisical URL
+            const identityId = "<your-identity-id>";
+
+            const { data } = await axios.post(
+                `{infisicalUrl}/api/v1/auth/kubernetes-auth/login`,
+                {
+                    identityId,
+                    jwtToken,
+                }
+            );
+
+            console.log("result data: ", data); // access token here
+        } catch(err) {
+            console.error(err);
+        }
+        ```
+    </Accordion>
+
+    <Tip>
+        We recommend using one of Infisical's clients like SDKs or the Infisical Agent to authenticate with Infisical using Kubernetes Auth as they handle the authentication process including service account credential retrieval for you.
+    </Tip>
+
+    <Note>
+    Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
+    the default TTL is `7200` seconds which can be adjusted.
+
+    If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
+    a new access token should be obtained by performing another login operation.
+    </Note>
+
+  </Step>
+</Steps>
+
+**FAQ**
+
+<AccordionGroup>
+<Accordion title="Why is the Infisical API rejecting my service account JWT token?">
+  There are a few reasons for why this might happen:
+  - The Kubernetes Auth authentication method configuration is invalid.
+  - The service account JWT token has expired is malformed or invalid.
+  - The service account associated with the JWT token does not meet the criteria set forth in the Kubernetes Auth authentication method configuration such as **Allowed Service Account Names** and **Allowed Namespaces**.
+</Accordion>
+<Accordion title="Why is the Infisical API rejecting my access token?">
+  There are a few reasons for why this might happen:
+  
+  - The access token has expired.
+  - The identity is insufficently permissioned to interact with the resources you wish to access.
+  - The client access token is being used from an untrusted IP.
+</Accordion>
+<Accordion title="What is access token renewal and TTL/Max TTL?">
+  A identity access token can have a time-to-live (TTL) or incremental lifetime after which it expires.
+  
+  In certain cases, you may want to extend the lifespan of an access token; to do so, you must set a max TTL parameter.
+
+A token can be renewed any number of time and each call to renew it will extend the toke life by increments of access token TTL.
+Regardless of how frequently an access token is renewed, its lifespan remains bound to the maximum TTL determined at its creation
+
+</Accordion>
+</AccordionGroup>
