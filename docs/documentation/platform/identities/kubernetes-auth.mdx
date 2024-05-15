@@ -37,8 +37,8 @@ then Infisical returns a short-lived access token that can be used to make authe
 To be more specific:
 
 1. The application retrieves its [service account credential](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#opt-out-of-api-credential-automounting) that is a JWT token at the `/var/run/secrets/kubernetes.io/serviceaccount/token` pod path.
-2. The application sends the JWT token to Infisical at the `/api/v1/auth/kubernetes-auth/login` endpoint after which Infisical forwards the JWT token to the Kubernetes API Server at the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/). Infisical is able to authenticate and interact with the TokenReview API by using a long-lived service account JWT token itself (referred to onward as the token reviewer JWT token).
-3. Infisical checks the identity's properties against set criteria such **Allowed Service Account Names** and **Allowed Namespaces**.
+2. The application sends the JWT token to Infisical at the `/api/v1/auth/kubernetes-auth/login` endpoint after which Infisical forwards the JWT token to the Kubernetes API Server at the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/) for verification and to obtain the service account information associated with the JWT token. Infisical is able to authenticate and interact with the TokenReview API by using a long-lived service account JWT token itself (referred to onward as the token reviewer JWT token).
+3. Infisical checks the service account properties against set criteria such **Allowed Service Account Names** and **Allowed Namespaces**.
 4. If all is well, Infisical returns a short-lived access token that the application can use to make authenticated requests to the Infisical API.
 
 <Note>
