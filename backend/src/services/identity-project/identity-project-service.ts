@@ -136,7 +136,7 @@ export const identityProjectServiceFactory = ({
         message: `Identity with id ${identityId} doesn't exists in project with id ${projectId}`
       });
 
-    for (const { role: requestedRoleChange } of roles) {
+    for await (const { role: requestedRoleChange } of roles) {
       const { permission: rolePermission } = await permissionService.getProjectPermissionByRole(
         requestedRoleChange,
         projectId
