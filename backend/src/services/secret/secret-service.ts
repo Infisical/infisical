@@ -285,7 +285,7 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return { ...secret[0], environment, workspace: projectId, tags };
+    return { ...secret[0], environment, workspace: projectId, tags, secretPath: path };
   };
 
   const updateSecret = async ({
@@ -415,7 +415,7 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return { ...updatedSecret[0], workspace: projectId, environment };
+    return { ...updatedSecret[0], workspace: projectId, environment, secretPath: path };
   };
 
   const deleteSecret = async ({
@@ -484,7 +484,7 @@ export const secretServiceFactory = ({
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
 
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment };
+    return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment, secretPath: path };
   };
 
   const getSecrets = async ({
@@ -681,7 +681,8 @@ export const secretServiceFactory = ({
             return {
               ...importedSecrets[i].secrets[j],
               workspace: projectId,
-              environment: importedSecrets[i].environment
+              environment: importedSecrets[i].environment,
+              secretPath: importedSecrets[i].secretPath
             };
           }
         }
@@ -689,7 +690,7 @@ export const secretServiceFactory = ({
     }
     if (!secret) throw new BadRequestError({ message: "Secret not found" });
 
-    return { ...secret, workspace: projectId, environment };
+    return { ...secret, workspace: projectId, environment, secretPath: path };
   };
 
   const createManySecret = async ({
@@ -980,34 +981,40 @@ export const secretServiceFactory = ({
       });
 
       const batchSecretsExpand = async (
-        secretBatch: {
-          secretKey: string;
-          secretValue: string;
-          secretComment?: string;
-        }[]
+        secretBatch: { secretKey: string; secretValue: string; secretComment?: string; secretPath: string }[]
       ) => {
-        const secretRecord: Record<
-          string,
-          {
-            value: string;
-            comment?: string;
-            skipMultilineEncoding?: boolean;
+        // Group secrets by secretPath
+        const secretsByPath: Record<string, { secretKey: string; secretValue: string; secretComment?: string }[]> = {};
+
+        secretBatch.forEach((secret) => {
+          if (!secretsByPath[secret.secretPath]) {
+            secretsByPath[secret.secretPath] = [];
           }
-        > = {};
-
-        secretBatch.forEach((decryptedSecret) => {
-          secretRecord[decryptedSecret.secretKey] = {
-            value: decryptedSecret.secretValue,
-            comment: decryptedSecret.secretComment
-          };
+          secretsByPath[secret.secretPath].push(secret);
         });
 
-        await expandSecrets(secretRecord);
+        // Expand secrets for each group
+        for (const secPath in secretsByPath) {
+          if (!Object.hasOwn(secretsByPath, path)) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
 
-        secretBatch.forEach((decryptedSecret, index) => {
-          // eslint-disable-next-line no-param-reassign
-          secretBatch[index].secretValue = secretRecord[decryptedSecret.secretKey].value;
-        });
+          const secretRecord: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }> = {};
+          secretsByPath[secPath].forEach((decryptedSecret) => {
+            secretRecord[decryptedSecret.secretKey] = {
+              value: decryptedSecret.secretValue,
+              comment: decryptedSecret.secretComment
+            };
+          });
+
+          await expandSecrets(secretRecord);
+
+          secretsByPath[secPath].forEach((decryptedSecret) => {
+            // eslint-disable-next-line no-param-reassign
+            decryptedSecret.secretValue = secretRecord[decryptedSecret.secretKey].value;
+          });
+        }
       };
 
       // expand secrets
@@ -1055,6 +1062,7 @@ export const secretServiceFactory = ({
       includeImports,
       version
     });
+
     return decryptSecretRaw(secret, botKey);
   };
 
@@ -1227,7 +1235,9 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(secrets[0].folderId);
     await secretQueueService.syncSecrets({ secretPath, projectId, environment });
 
-    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+    return secrets.map((secret) =>
+      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+    );
   };
 
   const updateManySecretsRaw = async ({
@@ -1279,7 +1289,9 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(secrets[0].folderId);
     await secretQueueService.syncSecrets({ secretPath, projectId, environment });
 
-    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+    return secrets.map((secret) =>
+      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+    );
   };
 
   const deleteManySecretsRaw = async ({
@@ -1313,7 +1325,9 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(secrets[0].folderId);
     await secretQueueService.syncSecrets({ secretPath, projectId, environment });
 
-    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+    return secrets.map((secret) =>
+      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+    );
   };
 
   const getSecretVersions = async ({
@@ -1582,7 +1596,8 @@ export const secretServiceFactory = ({
               key: botKey
             })
           )
-        }))
+        })),
+        tx
       );
     });
 

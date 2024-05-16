@@ -353,7 +353,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
 };
 
 export const decryptSecretRaw = (
-  secret: TSecrets & { workspace: string; environment: string; secretPath?: string },
+  secret: TSecrets & { workspace: string; environment: string; secretPath: string },
   key: string
 ) => {
   const secretKey = decryptSymmetric128BitHexKeyUTF8({
@@ -520,7 +520,8 @@ export const fnSecretBulkInsert = async ({
     inputSecrets.map(({ references = [], secretBlindIndex }) => ({
       secretId: newSecretGroupByBlindIndex[secretBlindIndex as string][0].id,
       references
-    }))
+    })),
+    tx
   );
   if (newSecretTags.length) {
     const secTags = await secretTagDAL.saveTagsToSecret(newSecretTags, tx);
@@ -565,7 +566,8 @@ export const fnSecretBulkUpdate = async ({
       .map(({ data: { references = [] } }, i) => ({
         secretId: newSecrets[i].id,
         references
-      }))
+      })),
+    tx
   );
   const secsUpdatedTag = inputSecrets.flatMap(({ data: { tags } }, i) =>
     tags !== undefined ? { tags, secretId: newSecrets[i].id } : []
