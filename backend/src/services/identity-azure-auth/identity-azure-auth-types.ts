@@ -79,7 +79,7 @@ type TUserPayload = {
   xms_tcdt: number;
 };
 
-type TAppRegistrationPayload = {
+type TAppPayload = {
   aud: string;
   iss: string;
   iat: number;
@@ -90,7 +90,7 @@ type TAppRegistrationPayload = {
   appidacr: string;
   idp: string;
   idtyp: string;
-  oid: string;
+  oid: string; // service principal id
   rh: string;
   sub: string;
   tid: string;
@@ -103,7 +103,7 @@ type TAppRegistrationPayload = {
   xms_tcdt: number;
 };
 
-export type TAzureAuthJwtPayload = TUserPayload | TAppRegistrationPayload;
+export type TAzureAuthJwtPayload = TUserPayload | TAppPayload;
 
 export type TDecodedAzureAuthJwt = {
   header: {

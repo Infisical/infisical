@@ -63,7 +63,7 @@ export const identityAzureAuthServiceFactory = ({
       const isServicePrincipalAllowed = identityAzureAuth.allowedServicePrincipalIds
         .split(",")
         .map((servicePrincipalId) => servicePrincipalId.trim())
-        .some((servicePrincipalId) => servicePrincipalId === azureIdentity.appid);
+        .some((servicePrincipalId) => servicePrincipalId === azureIdentity.oid);
 
       if (!isServicePrincipalAllowed) throw new UnauthorizedError();
     }

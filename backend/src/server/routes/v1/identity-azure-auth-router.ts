@@ -6,6 +6,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import { validateAzureAuthField } from "@app/services/identity-azure-auth/identity-azure-auth-validators";
 
 export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -75,7 +76,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
       body: z.object({
         tenantId: z.string().trim(),
         resource: z.string().trim(),
-        allowedServicePrincipalIds: z.string().trim(),
+        allowedServicePrincipalIds: validateAzureAuthField,
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
@@ -157,7 +158,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
       body: z.object({
         tenantId: z.string().trim().optional(),
         resource: z.string().trim().optional(),
-        allowedServicePrincipalIds: z.string().trim().optional(),
+        allowedServicePrincipalIds: validateAzureAuthField.optional(),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()

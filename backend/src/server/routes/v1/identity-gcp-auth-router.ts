@@ -160,9 +160,9 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       }),
       body: z.object({
         type: z.enum(["iam", "gce"]).optional(),
-        allowedServiceAccounts: validateGcpAuthField,
-        allowedProjects: validateGcpAuthField,
-        allowedZones: validateGcpAuthField,
+        allowedServiceAccounts: validateGcpAuthField.optional(),
+        allowedProjects: validateGcpAuthField.optional(),
+        allowedZones: validateGcpAuthField.optional(),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()

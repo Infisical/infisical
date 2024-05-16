@@ -187,7 +187,7 @@ export const IdentityAzureAuthForm = ({
             errorText={error?.message}
             isRequired
           >
-            <Input {...field} placeholder="" type="text" />
+            <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" type="text" />
           </FormControl>
         )}
       />
@@ -200,7 +200,7 @@ export const IdentityAzureAuthForm = ({
             isError={Boolean(error)}
             errorText={error?.message}
           >
-            <Input {...field} placeholder="" />
+            <Input {...field} placeholder="https://management.azure.com/" />
           </FormControl>
         )}
       />
@@ -213,7 +213,7 @@ export const IdentityAzureAuthForm = ({
             isError={Boolean(error)}
             errorText={error?.message}
           >
-            <Input {...field} placeholder="" />
+            <Input {...field} placeholder="00000000-0000-0000-0000-000000000000, ..." />
           </FormControl>
         )}
       />
