@@ -310,16 +310,16 @@ export const secretServiceFactory = ({
     }
 
     let newSecretNameBlindIndex: string | undefined;
-    // if (inputSecret?.newSecretName) {
-    //   const { keyName2BlindIndex: kN2NewBlindIndex } = await fnSecretBlindIndexCheck({
-    //     inputSecrets: [{ secretName: inputSecret.newSecretName }],
-    //     folderId,
-    //     isNew: true,
-    //     blindIndexCfg,
-    //     secretDAL
-    //   });
-    //   newSecretNameBlindIndex = kN2NewBlindIndex[inputSecret.newSecretName];
-    // }
+    if (inputSecret?.newSecretName) {
+      const { keyName2BlindIndex: kN2NewBlindIndex } = await fnSecretBlindIndexCheck({
+        inputSecrets: [{ secretName: inputSecret.newSecretName }],
+        folderId,
+        isNew: true,
+        blindIndexCfg,
+        secretDAL
+      });
+      newSecretNameBlindIndex = kN2NewBlindIndex[inputSecret.newSecretName];
+    }
 
     await secretQueueService.handleSecretReminder({
       newSecret: {
