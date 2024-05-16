@@ -104,24 +104,68 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
       throw new DatabaseError({ error, name: "Create" });
     }
   },
-  updateById: async (id: string, data: Tables[Tname]["update"], tx?: Knex) => {
+  updateById: async (
+    id: string,
+    {
+      $incr,
+      $decr,
+      ...data
+    }: Tables[Tname]["update"] & {
+      $incr?: { [x in keyof Partial<Tables[Tname]["base"]>]: number };
+      $decr?: { [x in keyof Partial<Tables[Tname]["base"]>]: number };
+    },
+    tx?: Knex
+  ) => {
     try {
-      const [res] = await (tx || db)(tableName)
+      const query = (tx || db)(tableName)
         .where({ id } as never)
         .update(data as never)
         .returning("*");
-      return res;
+      if ($incr) {
+        Object.entries($incr).forEach(([incrementField, incrementValue]) => {
+          void query.increment(incrementField, incrementValue);
+        });
+      }
+      if ($decr) {
+        Object.entries($decr).forEach(([incrementField, incrementValue]) => {
+          void query.increment(incrementField, incrementValue);
+        });
+      }
+      const [docs] = await query;
+      return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update by id" });
     }
   },
-  update: async (filter: TFindFilter<Tables[Tname]["base"]>, data: Tables[Tname]["update"], tx?: Knex) => {
+  update: async (
+    filter: TFindFilter<Tables[Tname]["base"]>,
+    {
+      $incr,
+      $decr,
+      ...data
+    }: Tables[Tname]["update"] & {
+      $incr?: { [x in keyof Partial<Tables[Tname]["base"]>]: number };
+      $decr?: { [x in keyof Partial<Tables[Tname]["base"]>]: number };
+    },
+    tx?: Knex
+  ) => {
     try {
-      const res = await (tx || db)(tableName)
+      const query = (tx || db)(tableName)
         .where(buildFindFilter(filter))
         .update(data as never)
         .returning("*");
-      return res;
+      // increment and decrement operation in update
+      if ($incr) {
+        Object.entries($incr).forEach(([incrementField, incrementValue]) => {
+          void query.increment(incrementField, incrementValue);
+        });
+      }
+      if ($decr) {
+        Object.entries($decr).forEach(([incrementField, incrementValue]) => {
+          void query.increment(incrementField, incrementValue);
+        });
+      }
+      return await query;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update" });
     }
