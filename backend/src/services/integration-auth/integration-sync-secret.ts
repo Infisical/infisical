@@ -479,10 +479,10 @@ const syncSecretsAWSParameterStore = async ({
       .promise();
 
     if (parameters.Parameters) {
-      parameters.Parameters.forEach((sec) => {
-        if (sec.Name) {
-          const secKey = sec.Name.substring((integration.path as string).length);
-          awsParameterStoreSecretsObj[secKey] = sec;
+      parameters.Parameters.forEach((parameter) => {
+        if (parameter.Name) {
+          const secKey = parameter.Name.substring((integration.path as string).length);
+          awsParameterStoreSecretsObj[secKey] = parameter;
         }
       });
     }
