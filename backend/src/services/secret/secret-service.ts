@@ -981,37 +981,40 @@ export const secretServiceFactory = ({
       });
 
       const batchSecretsExpand = async (
-        secretBatch: {
-          secretKey: string;
-          secretValue: string;
-          secretComment?: string;
-          secretPath: string;
-        }[]
+        secretBatch: { secretKey: string; secretValue: string; secretComment?: string; secretPath: string }[]
       ) => {
-        const secretRecord: Record<
-          string,
-          {
-            value: string;
-            comment?: string;
-            skipMultilineEncoding?: boolean;
+        // Group secrets by secretPath
+        const secretsByPath: Record<string, { secretKey: string; secretValue: string; secretComment?: string }[]> = {};
+
+        secretBatch.forEach((secret) => {
+          if (!secretsByPath[secret.secretPath]) {
+            secretsByPath[secret.secretPath] = [];
           }
-        > = {};
-
-        secretBatch.forEach((decryptedSecret) => {
-          const uniqueKey = `${decryptedSecret.secretPath}/${decryptedSecret.secretKey}`;
-          secretRecord[uniqueKey] = {
-            value: decryptedSecret.secretValue,
-            comment: decryptedSecret.secretComment
-          };
+          secretsByPath[secret.secretPath].push(secret);
         });
 
-        await expandSecrets(secretRecord);
+        // Expand secrets for each group
+        for (const secPath in secretsByPath) {
+          if (!Object.hasOwn(secretsByPath, path)) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
 
-        secretBatch.forEach((decryptedSecret, index) => {
-          const uniqueKey = `${decryptedSecret.secretPath}/${decryptedSecret.secretKey}`;
-          // eslint-disable-next-line no-param-reassign
-          secretBatch[index].secretValue = secretRecord[uniqueKey].value;
-        });
+          const secretRecord: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }> = {};
+          secretsByPath[secPath].forEach((decryptedSecret) => {
+            secretRecord[decryptedSecret.secretKey] = {
+              value: decryptedSecret.secretValue,
+              comment: decryptedSecret.secretComment
+            };
+          });
+
+          await expandSecrets(secretRecord);
+
+          secretsByPath[secPath].forEach((decryptedSecret) => {
+            // eslint-disable-next-line no-param-reassign
+            decryptedSecret.secretValue = secretRecord[decryptedSecret.secretKey].value;
+          });
+        }
       };
 
       // expand secrets
