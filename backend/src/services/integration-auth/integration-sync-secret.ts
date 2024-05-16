@@ -494,52 +494,63 @@ const syncSecretsAWSParameterStore = async ({
   // don't use Promise.all() and promise map here
   // it will cause rate limit
   for (const key in secrets) {
-    if (!(key in awsParameterStoreSecretsObj)) {
-      // case: secret does not exist in AWS parameter store
-      // -> create secret
-      if (secrets[key].value) {
+    if (Object.hasOwn(secrets, key)) {
+      if (!(key in awsParameterStoreSecretsObj)) {
+        // case: secret does not exist in AWS parameter store
+        // -> create secret
+        if (secrets[key].value) {
+          await ssm
+            .putParameter({
+              Name: `${integration.path}${key}`,
+              Type: "SecureString",
+              Value: secrets[key].value,
+              ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
+              // Overwrite: true,
+              Tags: metadata.secretAWSTag
+                ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+                    Key: tag.key,
+                    Value: tag.value
+                  }))
+                : []
+            })
+            .promise();
+        }
+        // case: secret exists in AWS parameter store
+      } else if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
+        // case: secret value doesn't match one in AWS parameter store
+        // -> update secret
         await ssm
           .putParameter({
             Name: `${integration.path}${key}`,
             Type: "SecureString",
             Value: secrets[key].value,
-            ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
-            // Overwrite: true,
-            Tags: metadata.secretAWSTag
-              ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
-                  Key: tag.key,
-                  Value: tag.value
-                }))
-              : []
+            Overwrite: true
+            // Tags: metadata.secretAWSTag ? [{ Key: metadata.secretAWSTag.key, Value: metadata.secretAWSTag.value }] : []
           })
           .promise();
       }
-      // case: secret exists in AWS parameter store
-    } else if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
-      // case: secret value doesn't match one in AWS parameter store
-      // -> update secret
-      await ssm
-        .putParameter({
-          Name: `${integration.path}${key}`,
-          Type: "SecureString",
-          Value: secrets[key].value,
-          Overwrite: true
-          // Tags: metadata.secretAWSTag ? [{ Key: metadata.secretAWSTag.key, Value: metadata.secretAWSTag.value }] : []
-        })
-        .promise();
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, 50);
+      });
     }
   }
 
   if (!metadata.shouldDisableDelete) {
     for (const key in awsParameterStoreSecretsObj) {
-      if (!(key in secrets)) {
-        // case:
-        // -> delete secret
-        await ssm
-          .deleteParameter({
-            Name: awsParameterStoreSecretsObj[key].Name as string
-          })
-          .promise();
+      if (Object.hasOwn(awsParameterStoreSecretsObj, key)) {
+        if (!(key in secrets)) {
+          // case:
+          // -> delete secret
+          await ssm
+            .deleteParameter({
+              Name: awsParameterStoreSecretsObj[key].Name as string
+            })
+            .promise();
+        }
+        await new Promise((resolve) => {
+          setTimeout(resolve, 50);
+        });
       }
     }
   }
