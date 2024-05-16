@@ -1596,7 +1596,8 @@ export const secretServiceFactory = ({
               key: botKey
             })
           )
-        }))
+        })),
+        tx
       );
     });
 
