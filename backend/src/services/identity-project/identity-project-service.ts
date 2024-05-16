@@ -82,6 +82,7 @@ export const identityProjectServiceFactory = ({
       role,
       project.id
     );
+
     const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
     if (!hasPriviledge)
       throw new ForbiddenRequestError({
@@ -135,16 +136,18 @@ export const identityProjectServiceFactory = ({
         message: `Identity with id ${identityId} doesn't exists in project with id ${projectId}`
       });
 
-    const { permission: identityRolePermission } = await permissionService.getProjectPermission(
-      ActorType.IDENTITY,
-      projectIdentity.identityId,
-      projectIdentity.projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
+    for await (const { role: requestedRoleChange } of roles) {
+      const { permission: rolePermission } = await permissionService.getProjectPermissionByRole(
+        requestedRoleChange,
+        projectId
+      );
+
+      const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
+
+      if (!hasRequiredPriviledges) {
+        throw new ForbiddenRequestError({ message: "Failed to change to a more privileged role" });
+      }
+    }
 
     // validate custom roles input
     const customInputRoles = roles.filter(
