@@ -462,27 +462,39 @@ const syncSecretsAWSParameterStore = async ({
   ssm.config.update(config);
 
   const metadata = z.record(z.any()).parse(integration.metadata || {});
+  const awsParameterStoreSecretsObj: Record<string, AWS.SSM.Parameter> = {};
 
-  const params = {
-    Path: integration.path as string,
-    Recursive: false,
-    WithDecryption: true
-  };
+  // now fetch all aws parameter store secrets
+  let hasNext = true;
+  let nextToken: string | undefined;
+  while (hasNext) {
+    const parameters = await ssm
+      .getParametersByPath({
+        Path: integration.path as string,
+        Recursive: false,
+        WithDecryption: true,
+        MaxResults: 10,
+        NextToken: nextToken
+      })
+      .promise();
 
-  const parameterList = (await ssm.getParametersByPath(params).promise()).Parameters;
+    if (parameters.Parameters) {
+      parameters.Parameters.forEach((parameter) => {
+        if (parameter.Name) {
+          const secKey = parameter.Name.substring((integration.path as string).length);
+          awsParameterStoreSecretsObj[secKey] = parameter;
+        }
+      });
+    }
+    hasNext = Boolean(parameters.NextToken);
+    nextToken = parameters.NextToken;
+  }
 
-  const awsParameterStoreSecretsObj = (parameterList || [])
-    .filter(({ Name }) => Boolean(Name))
-    .reduce(
-      (obj, secret) => ({
-        ...obj,
-        [(secret.Name as string).substring((integration.path as string).length)]: secret
-      }),
-      {} as Record<string, AWS.SSM.Parameter>
-    );
   // Identify secrets to create
-  await Promise.all(
-    Object.keys(secrets).map(async (key) => {
+  // don't use Promise.all() and promise map here
+  // it will cause rate limit
+  for (const key in secrets) {
+    if (Object.hasOwn(secrets, key)) {
       if (!(key in awsParameterStoreSecretsObj)) {
         // case: secret does not exist in AWS parameter store
         // -> create secret
@@ -517,13 +529,16 @@ const syncSecretsAWSParameterStore = async ({
           })
           .promise();
       }
-    })
-  );
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, 50);
+      });
+    }
+  }
 
   if (!metadata.shouldDisableDelete) {
-    // Identify secrets to delete
-    await Promise.all(
-      Object.keys(awsParameterStoreSecretsObj).map(async (key) => {
+    for (const key in awsParameterStoreSecretsObj) {
+      if (Object.hasOwn(awsParameterStoreSecretsObj, key)) {
         if (!(key in secrets)) {
           // case:
           // -> delete secret
@@ -533,8 +548,11 @@ const syncSecretsAWSParameterStore = async ({
             })
             .promise();
         }
-      })
-    );
+        await new Promise((resolve) => {
+          setTimeout(resolve, 50);
+        });
+      }
+    }
   }
 };
 

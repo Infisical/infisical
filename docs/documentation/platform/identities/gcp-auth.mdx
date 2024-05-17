@@ -123,7 +123,7 @@ access the Infisical API using the GCP ID Token authentication method.
                 <CodeGroup>
                 ```bash curl
                 curl -H "Metadata-Flavor: Google" \
-                'http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=<identityId>'
+                'http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=<identityId>&format=full'
                 ```
                 </CodeGroup>
 

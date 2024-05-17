@@ -36,4 +36,29 @@ export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvid
       };
     }
   });
+
+  server.route({
+    url: "/token/revoke",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Revoke access token",
+      body: z.object({
+        accessToken: z.string().trim().describe(UNIVERSAL_AUTH.REVOKE_ACCESS_TOKEN.accessToken)
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      await server.services.identityAccessToken.revokeAccessToken(req.body.accessToken);
+      return {
+        message: "Successfully revoked access token"
+      };
+    }
+  });
 };
