@@ -41,3 +41,7 @@ export type TDeleteProjectIdentityDTO = {
 } & TProjectPermission;
 
 export type TListProjectIdentityDTO = TProjectPermission;
+
+export type TGetProjectIdentityByIdentityIdDTO = {
+  identityId: string;
+} & TProjectPermission;

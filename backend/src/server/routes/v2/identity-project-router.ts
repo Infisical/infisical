@@ -251,4 +251,61 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       return { identityMemberships };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/identity-memberships/:identityId",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Return project identity membership",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECT_IDENTITIES.GET_IDENTITY_MEMBERSHIP_BY_ID.projectId),
+        identityId: z.string().trim().describe(PROJECT_IDENTITIES.GET_IDENTITY_MEMBERSHIP_BY_ID.identityId)
+      }),
+      response: {
+        200: z.object({
+          identityMembership: z.object({
+            id: z.string(),
+            identityId: z.string(),
+            createdAt: z.date(),
+            updatedAt: z.date(),
+            roles: z.array(
+              z.object({
+                id: z.string(),
+                role: z.string(),
+                customRoleId: z.string().optional().nullable(),
+                customRoleName: z.string().optional().nullable(),
+                customRoleSlug: z.string().optional().nullable(),
+                isTemporary: z.boolean(),
+                temporaryMode: z.string().optional().nullable(),
+                temporaryRange: z.string().nullable().optional(),
+                temporaryAccessStartTime: z.date().nullable().optional(),
+                temporaryAccessEndTime: z.date().nullable().optional()
+              })
+            ),
+            identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true })
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityMembership = await server.services.identityProject.getProjectIdentityByIdentityId({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        identityId: req.params.identityId
+      });
+      return { identityMembership };
+    }
+  });
 };

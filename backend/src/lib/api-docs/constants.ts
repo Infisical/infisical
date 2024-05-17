@@ -197,6 +197,10 @@ export const PROJECT_USERS = {
   GET_USER_MEMBERSHIPS: {
     workspaceId: "The ID of the project to get memberships from."
   },
+  GET_USER_MEMBERSHIP: {
+    workspaceId: "The ID of the project to get memberships from.",
+    username: "The username to get project membership of. Email is the default username."
+  },
   UPDATE_USER_MEMBERSHIP: {
     workspaceId: "The ID of the project to update the membership for.",
     membershipId: "The ID of the membership to update.",
@@ -207,6 +211,10 @@ export const PROJECT_USERS = {
 export const PROJECT_IDENTITIES = {
   LIST_IDENTITY_MEMBERSHIPS: {
     projectId: "The ID of the project to get identity memberships from."
+  },
+  GET_IDENTITY_MEMBERSHIP_BY_ID: {
+    identityId: "The ID of the identity to get the membership for.",
+    projectId: "The ID of the project to get the identity membership for."
   },
   UPDATE_IDENTITY_MEMBERSHIP: {
     projectId: "The ID of the project to update the identity membership for.",

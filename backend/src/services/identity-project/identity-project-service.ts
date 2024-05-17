@@ -18,6 +18,7 @@ import { TIdentityProjectMembershipRoleDALFactory } from "./identity-project-mem
 import {
   TCreateProjectIdentityDTO,
   TDeleteProjectIdentityDTO,
+  TGetProjectIdentityByIdentityIdDTO,
   TListProjectIdentityDTO,
   TUpdateProjectIdentityDTO
 } from "./identity-project-types";
@@ -282,10 +283,33 @@ export const identityProjectServiceFactory = ({
     return identityMemberships;
   };
 
+  const getProjectIdentityByIdentityId = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    identityId
+  }: TGetProjectIdentityByIdentityIdDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
+
+    const [identityMembership] = await identityProjectDAL.findByProjectId(projectId, { identityId });
+    if (!identityMembership) throw new BadRequestError({ message: `Membership not found for identity ${identityId}` });
+    return identityMembership;
+  };
+
   return {
     createProjectIdentity,
     updateProjectIdentity,
     deleteProjectIdentity,
-    listProjectIdentities
+    listProjectIdentities,
+    getProjectIdentityByIdentityId
   };
 };
