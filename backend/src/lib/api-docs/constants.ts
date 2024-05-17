@@ -145,36 +145,6 @@ export const PROJECTS = {
     name: "The new name of the project.",
     autoCapitalization: "Disable or enable auto-capitalization for the project."
   },
-  INVITE_MEMBER: {
-    projectId: "The ID of the project to invite the member to.",
-    emails: "A list of organization member emails to invite to the project.",
-    usernames: "A list of usernames to invite to the project."
-  },
-  REMOVE_MEMBER: {
-    projectId: "The ID of the project to remove the member from.",
-    emails: "A list of organization member emails to remove from the project.",
-    usernames: "A list of usernames to remove from the project."
-  },
-  GET_USER_MEMBERSHIPS: {
-    workspaceId: "The ID of the project to get memberships from."
-  },
-  UPDATE_USER_MEMBERSHIP: {
-    workspaceId: "The ID of the project to update the membership for.",
-    membershipId: "The ID of the membership to update.",
-    roles: "A list of roles to update the membership to."
-  },
-  LIST_IDENTITY_MEMBERSHIPS: {
-    projectId: "The ID of the project to get identity memberships from."
-  },
-  UPDATE_IDENTITY_MEMBERSHIP: {
-    projectId: "The ID of the project to update the identity membership for.",
-    identityId: "The ID of the identity to update the membership for.",
-    roles: "A list of roles to update the membership to."
-  },
-  DELETE_IDENTITY_MEMBERSHIP: {
-    projectId: "The ID of the project to delete the identity membership from.",
-    identityId: "The ID of the identity to delete the membership from."
-  },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
   },
@@ -212,6 +182,42 @@ export const PROJECTS = {
     workspaceId: "The ID of the project to list integration auths for."
   }
 } as const;
+
+export const PROJECT_USERS = {
+  INVITE_MEMBER: {
+    projectId: "The ID of the project to invite the member to.",
+    emails: "A list of organization member emails to invite to the project.",
+    usernames: "A list of usernames to invite to the project."
+  },
+  REMOVE_MEMBER: {
+    projectId: "The ID of the project to remove the member from.",
+    emails: "A list of organization member emails to remove from the project.",
+    usernames: "A list of usernames to remove from the project."
+  },
+  GET_USER_MEMBERSHIPS: {
+    workspaceId: "The ID of the project to get memberships from."
+  },
+  UPDATE_USER_MEMBERSHIP: {
+    workspaceId: "The ID of the project to update the membership for.",
+    membershipId: "The ID of the membership to update.",
+    roles: "A list of roles to update the membership to."
+  }
+};
+
+export const PROJECT_IDENTITIES = {
+  LIST_IDENTITY_MEMBERSHIPS: {
+    projectId: "The ID of the project to get identity memberships from."
+  },
+  UPDATE_IDENTITY_MEMBERSHIP: {
+    projectId: "The ID of the project to update the identity membership for.",
+    identityId: "The ID of the identity to update the membership for.",
+    roles: "A list of roles to update the membership to."
+  },
+  DELETE_IDENTITY_MEMBERSHIP: {
+    projectId: "The ID of the project to delete the identity membership from.",
+    identityId: "The ID of the identity to delete the membership from."
+  }
+};
 
 export const ENVIRONMENTS = {
   CREATE: {

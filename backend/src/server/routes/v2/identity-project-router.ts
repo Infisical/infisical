@@ -7,7 +7,7 @@ import {
   ProjectMembershipRole,
   ProjectUserMembershipRolesSchema
 } from "@app/db/schemas";
-import { PROJECTS } from "@app/lib/api-docs";
+import { PROJECT_IDENTITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -64,8 +64,8 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECTS.UPDATE_IDENTITY_MEMBERSHIP.projectId),
-        identityId: z.string().trim().describe(PROJECTS.UPDATE_IDENTITY_MEMBERSHIP.identityId)
+        projectId: z.string().trim().describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.projectId),
+        identityId: z.string().trim().describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.identityId)
       }),
       body: z.object({
         roles: z
@@ -85,7 +85,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
             ])
           )
           .min(1)
-          .describe(PROJECTS.UPDATE_IDENTITY_MEMBERSHIP.roles)
+          .describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles)
       }),
       response: {
         200: z.object({
@@ -122,8 +122,8 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECTS.DELETE_IDENTITY_MEMBERSHIP.projectId),
-        identityId: z.string().trim().describe(PROJECTS.DELETE_IDENTITY_MEMBERSHIP.identityId)
+        projectId: z.string().trim().describe(PROJECT_IDENTITIES.DELETE_IDENTITY_MEMBERSHIP.projectId),
+        identityId: z.string().trim().describe(PROJECT_IDENTITIES.DELETE_IDENTITY_MEMBERSHIP.identityId)
       }),
       response: {
         200: z.object({
@@ -159,7 +159,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECTS.LIST_IDENTITY_MEMBERSHIPS.projectId)
+        projectId: z.string().trim().describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.projectId)
       }),
       response: {
         200: z.object({
