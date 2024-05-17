@@ -8,6 +8,7 @@ import {
   ProjectUserMembershipRolesSchema
 } from "@app/db/schemas";
 import { PROJECT_IDENTITIES } from "@app/lib/api-docs";
+import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -22,12 +23,48 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      description: "Create project identity membership",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         projectId: z.string().trim(),
         identityId: z.string().trim()
       }),
       body: z.object({
-        role: z.string().trim().min(1).default(ProjectMembershipRole.NoAccess)
+        // @depreciated
+        role: z.string().trim().optional().default(ProjectMembershipRole.NoAccess),
+        roles: z
+          .array(
+            z.union([
+              z.object({
+                role: z.string().describe(PROJECT_IDENTITIES.CREATE_IDENTITY_MEMBERSHIP.roles.role),
+                isTemporary: z
+                  .literal(false)
+                  .default(false)
+                  .describe(PROJECT_IDENTITIES.CREATE_IDENTITY_MEMBERSHIP.roles.role)
+              }),
+              z.object({
+                role: z.string().describe(PROJECT_IDENTITIES.CREATE_IDENTITY_MEMBERSHIP.roles.role),
+                isTemporary: z.literal(true).describe(PROJECT_IDENTITIES.CREATE_IDENTITY_MEMBERSHIP.roles.role),
+                temporaryMode: z
+                  .nativeEnum(ProjectUserMembershipTemporaryMode)
+                  .describe(PROJECT_IDENTITIES.CREATE_IDENTITY_MEMBERSHIP.roles.role),
+                temporaryRange: z
+                  .string()
+                  .refine((val) => ms(val) > 0, "Temporary range must be a positive number")
+                  .describe(PROJECT_IDENTITIES.CREATE_IDENTITY_MEMBERSHIP.roles.role),
+                temporaryAccessStartTime: z
+                  .string()
+                  .datetime()
+                  .describe(PROJECT_IDENTITIES.CREATE_IDENTITY_MEMBERSHIP.roles.role)
+              })
+            ])
+          )
+          .describe(PROJECT_IDENTITIES.CREATE_IDENTITY_MEMBERSHIP.roles.description)
+          .optional()
       }),
       response: {
         200: z.object({
@@ -36,6 +73,9 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
+      const { role, roles } = req.body;
+      if (!role && !roles) throw new BadRequestError({ message: "You must provide either role or roles field" });
+
       const identityMembership = await server.services.identityProject.createProjectIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -43,7 +83,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         actorOrgId: req.permission.orgId,
         identityId: req.params.identityId,
         projectId: req.params.projectId,
-        role: req.body.role
+        roles: roles || [{ role }]
       });
       return { identityMembership };
     }
@@ -72,20 +112,31 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
           .array(
             z.union([
               z.object({
-                role: z.string(),
-                isTemporary: z.literal(false).default(false)
+                role: z.string().describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles.role),
+                isTemporary: z
+                  .literal(false)
+                  .default(false)
+                  .describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles.isTemporary)
               }),
               z.object({
-                role: z.string(),
-                isTemporary: z.literal(true),
-                temporaryMode: z.nativeEnum(ProjectUserMembershipTemporaryMode),
-                temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
-                temporaryAccessStartTime: z.string().datetime()
+                role: z.string().describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles.role),
+                isTemporary: z.literal(true).describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles.isTemporary),
+                temporaryMode: z
+                  .nativeEnum(ProjectUserMembershipTemporaryMode)
+                  .describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles.temporaryMode),
+                temporaryRange: z
+                  .string()
+                  .refine((val) => ms(val) > 0, "Temporary range must be a positive number")
+                  .describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles.temporaryRange),
+                temporaryAccessStartTime: z
+                  .string()
+                  .datetime()
+                  .describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles.temporaryAccessStartTime)
               })
             ])
           )
           .min(1)
-          .describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles)
+          .describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles.description)
       }),
       response: {
         200: z.object({

@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "https://app.infisical.com/api/docs/json",
+  "openapi": "http://localhost:8080/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -463,8 +463,9 @@
           ]
         },
         {
-          "group": "Projects",
+          "group": "Project Identities",
           "pages": [
+            "api-reference/endpoints/project-identities/add-identity-membership",
             "api-reference/endpoints/project-identities/list-identity-memberships",
             "api-reference/endpoints/project-identities/update-identity-membership",
             "api-reference/endpoints/project-identities/delete-identity-membership"

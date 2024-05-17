@@ -211,11 +211,31 @@ export const PROJECT_IDENTITIES = {
   UPDATE_IDENTITY_MEMBERSHIP: {
     projectId: "The ID of the project to update the identity membership for.",
     identityId: "The ID of the identity to update the membership for.",
-    roles: "A list of roles to update the membership to."
+    roles: {
+      description: "A list of role slugs to assign to the identity project membership.",
+      role: "The role slug to assign to the newly created identity project membership.",
+      isTemporary: "Whether the assigned role is temporary.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s,2m,3h",
+      temporaryAccessStartTime: "Time to which the temporary access starts"
+    }
   },
   DELETE_IDENTITY_MEMBERSHIP: {
     projectId: "The ID of the project to delete the identity membership from.",
     identityId: "The ID of the identity to delete the membership from."
+  },
+  CREATE_IDENTITY_MEMBERSHIP: {
+    projectId: "The ID of the project to create the identity membership from.",
+    identityId: "The ID of the identity to create the membership from.",
+    role: "The role slug to assign to the newly created identity project membership.",
+    roles: {
+      description: "A list of role slugs to assign to the newly created identity project membership.",
+      role: "The role slug to assign to the newly created identity project membership.",
+      isTemporary: "Whether the assigned role is temporary.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s,2m,3h",
+      temporaryAccessStartTime: "Time to which the temporary access starts"
+    }
   }
 };
 
