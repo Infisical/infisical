@@ -8,6 +8,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { UnpackedPermissionSchema } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 
 // sometimes the return data must be santizied to avoid leaking important values
 // always prefer pick over omit in zod
@@ -64,14 +65,12 @@ export const secretRawSchema = z.object({
   secretComment: z.string().optional()
 });
 
-export const PermissionSchema = z.object({
+export const ProjectPermissionSchema = z.object({
   action: z
-    .string()
-    .min(1)
+    .nativeEnum(ProjectPermissionActions)
     .describe("Describe what action an entity can take. Possible actions: create, edit, delete, and read"),
   subject: z
-    .string()
-    .min(1)
+    .nativeEnum(ProjectPermissionSub)
     .describe("The entity this permission pertains to. Possible options: secrets, environments"),
   conditions: z
     .object({

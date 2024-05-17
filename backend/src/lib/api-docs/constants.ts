@@ -89,6 +89,9 @@ export const UNIVERSAL_AUTH = {
   },
   RENEW_ACCESS_TOKEN: {
     accessToken: "The access token to renew."
+  },
+  REVOKE_ACCESS_TOKEN: {
+    accessToken: "The access token to revoke."
   }
 } as const;
 

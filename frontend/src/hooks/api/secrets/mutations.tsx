@@ -87,11 +87,11 @@ export const useCreateSecretV3 = ({
 
       const randomBytes = latestFileKey
         ? decryptAssymmetric({
-            ciphertext: latestFileKey.encryptedKey,
-            nonce: latestFileKey.nonce,
-            publicKey: latestFileKey.sender.publicKey,
-            privateKey: PRIVATE_KEY
-          })
+          ciphertext: latestFileKey.encryptedKey,
+          nonce: latestFileKey.nonce,
+          publicKey: latestFileKey.sender.publicKey,
+          privateKey: PRIVATE_KEY
+        })
         : crypto.randomBytes(16).toString("hex");
 
       const reqBody = {
@@ -148,11 +148,11 @@ export const useUpdateSecretV3 = ({
 
       const randomBytes = latestFileKey
         ? decryptAssymmetric({
-            ciphertext: latestFileKey.encryptedKey,
-            nonce: latestFileKey.nonce,
-            publicKey: latestFileKey.sender.publicKey,
-            privateKey: PRIVATE_KEY
-          })
+          ciphertext: latestFileKey.encryptedKey,
+          nonce: latestFileKey.nonce,
+          publicKey: latestFileKey.sender.publicKey,
+          privateKey: PRIVATE_KEY
+        })
         : crypto.randomBytes(16).toString("hex");
 
       const reqBody = {
@@ -244,11 +244,11 @@ export const useCreateSecretBatch = ({
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
       const randomBytes = latestFileKey
         ? decryptAssymmetric({
-            ciphertext: latestFileKey.encryptedKey,
-            nonce: latestFileKey.nonce,
-            publicKey: latestFileKey.sender.publicKey,
-            privateKey: PRIVATE_KEY
-          })
+          ciphertext: latestFileKey.encryptedKey,
+          nonce: latestFileKey.nonce,
+          publicKey: latestFileKey.sender.publicKey,
+          privateKey: PRIVATE_KEY
+        })
         : crypto.randomBytes(16).toString("hex");
 
       const reqBody = {
@@ -297,11 +297,11 @@ export const useUpdateSecretBatch = ({
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
       const randomBytes = latestFileKey
         ? decryptAssymmetric({
-            ciphertext: latestFileKey.encryptedKey,
-            nonce: latestFileKey.nonce,
-            publicKey: latestFileKey.sender.publicKey,
-            privateKey: PRIVATE_KEY
-          })
+          ciphertext: latestFileKey.encryptedKey,
+          nonce: latestFileKey.nonce,
+          publicKey: latestFileKey.sender.publicKey,
+          privateKey: PRIVATE_KEY
+        })
         : crypto.randomBytes(16).toString("hex");
 
       const reqBody = {
@@ -379,3 +379,13 @@ export const createSecret = async (dto: CreateSecretDTO) => {
   const { data } = await apiRequest.post(`/api/v3/secrets/${dto.secretKey}`, dto);
   return data;
 };
+
+export const useBackfillSecretReference = () =>
+  useMutation<{ message: string }, {}, { projectId: string }>({
+    mutationFn: async ({ projectId }) => {
+      const { data } = await apiRequest.post("/api/v3/secrets/backfill-secret-references", {
+        projectId
+      });
+      return data.message;
+    }
+  });

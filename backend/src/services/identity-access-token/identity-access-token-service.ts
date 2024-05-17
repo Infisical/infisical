@@ -106,6 +106,24 @@ export const identityAccessTokenServiceFactory = ({
     return { accessToken, identityAccessToken: updatedIdentityAccessToken };
   };
 
+  const revokeAccessToken = async (accessToken: string) => {
+    const appCfg = getConfig();
+
+    const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload & {
+      identityAccessTokenId: string;
+    };
+    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) throw new UnauthorizedError();
+
+    const identityAccessToken = await identityAccessTokenDAL.findOne({
+      [`${TableName.IdentityAccessToken}.id` as "id"]: decodedToken.identityAccessTokenId,
+      isAccessTokenRevoked: false
+    });
+    if (!identityAccessToken) throw new UnauthorizedError();
+
+    const revokedToken = await identityAccessTokenDAL.deleteById(identityAccessToken.id);
+    return { revokedToken };
+  };
+
   const fnValidateIdentityAccessToken = async (token: TIdentityAccessTokenJwtPayload, ipAddress?: string) => {
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: token.identityAccessTokenId,
@@ -132,5 +150,5 @@ export const identityAccessTokenServiceFactory = ({
     return { ...identityAccessToken, orgId: identityOrgMembership.orgId };
   };
 
-  return { renewAccessToken, fnValidateIdentityAccessToken };
+  return { renewAccessToken, revokeAccessToken, fnValidateIdentityAccessToken };
 };

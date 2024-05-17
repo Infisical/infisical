@@ -234,6 +234,7 @@ import {
   TWebhooksInsert,
   TWebhooksUpdate
 } from "@app/db/schemas";
+import { TSecretReferences, TSecretReferencesInsert, TSecretReferencesUpdate } from "@app/db/schemas/secret-references";
 
 declare module "knex/types/tables" {
   interface Tables {
@@ -307,6 +308,11 @@ declare module "knex/types/tables" {
     >;
     [TableName.ProjectKeys]: Knex.CompositeTableType<TProjectKeys, TProjectKeysInsert, TProjectKeysUpdate>;
     [TableName.Secret]: Knex.CompositeTableType<TSecrets, TSecretsInsert, TSecretsUpdate>;
+    [TableName.SecretReference]: Knex.CompositeTableType<
+      TSecretReferences,
+      TSecretReferencesInsert,
+      TSecretReferencesUpdate
+    >;
     [TableName.SecretBlindIndex]: Knex.CompositeTableType<
       TSecretBlindIndexes,
       TSecretBlindIndexesInsert,
