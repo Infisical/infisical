@@ -8,7 +8,7 @@ import { IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { PermissionSchema, SanitizedIdentityPrivilegeSchema } from "@app/server/routes/sanitizedSchemas";
+import { ProjectPermissionSchema, SanitizedIdentityPrivilegeSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
@@ -39,7 +39,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           })
           .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
-        permissions: PermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions)
+        permissions: ProjectPermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions)
       }),
       response: {
         200: z.object({
@@ -90,7 +90,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           })
           .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
-        permissions: PermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions),
+        permissions: ProjectPermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions),
         temporaryMode: z
           .nativeEnum(IdentityProjectAdditionalPrivilegeTemporaryMode)
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.temporaryMode),
@@ -155,7 +155,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
                 message: "Slug must be a valid slug"
               })
               .describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.newSlug),
-            permissions: PermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.permissions),
+            permissions: ProjectPermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.permissions),
             isTemporary: z.boolean().describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.isTemporary),
             temporaryMode: z
               .nativeEnum(IdentityProjectAdditionalPrivilegeTemporaryMode)
