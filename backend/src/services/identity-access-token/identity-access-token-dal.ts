@@ -39,11 +39,18 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             `${TableName.IdentityAwsAuth}.identityId`
           );
         })
+        .leftJoin(TableName.IdentityKubernetesAuth, (qb) => {
+          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.KUBERNETES_AUTH])).andOn(
+            `${TableName.Identity}.id`,
+            `${TableName.IdentityKubernetesAuth}.identityId`
+          );
+        })
         .select(selectAllTableCols(TableName.IdentityAccessToken))
         .select(
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityUniversalAuth).as("accessTokenTrustedIpsUa"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityGcpAuth).as("accessTokenTrustedIpsGcp"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAwsAuth).as("accessTokenTrustedIpsAws"),
+          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityKubernetesAuth).as("accessTokenTrustedIpsK8s"),
           db.ref("name").withSchema(TableName.Identity)
         )
         .first();
@@ -53,7 +60,10 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
       return {
         ...doc,
         accessTokenTrustedIps:
-          doc.accessTokenTrustedIpsUa || doc.accessTokenTrustedIpsGcp || doc.accessTokenTrustedIpsAws
+          doc.accessTokenTrustedIpsUa ||
+          doc.accessTokenTrustedIpsGcp ||
+          doc.accessTokenTrustedIpsAws ||
+          doc.accessTokenTrustedIpsK8s
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "IdAccessTokenFindOne" });

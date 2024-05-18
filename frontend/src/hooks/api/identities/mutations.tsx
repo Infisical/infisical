@@ -7,6 +7,7 @@ import { identitiesKeys } from "./queries";
 import {
   AddIdentityAwsAuthDTO,
   AddIdentityGcpAuthDTO,
+  AddIdentityKubernetesAuthDTO,
   AddIdentityUniversalAuthDTO,
   ClientSecretData,
   CreateIdentityDTO,
@@ -17,12 +18,13 @@ import {
   Identity,
   IdentityAwsAuth,
   IdentityGcpAuth,
+  IdentityKubernetesAuth,
   IdentityUniversalAuth,
   UpdateIdentityAwsAuthDTO,
   UpdateIdentityDTO,
   UpdateIdentityGcpAuthDTO,
-  UpdateIdentityUniversalAuthDTO
-} from "./types";
+  UpdateIdentityKubernetesAuthDTO,
+  UpdateIdentityUniversalAuthDTO} from "./types";
 
 export const useCreateIdentity = () => {
   const queryClient = useQueryClient();
@@ -317,6 +319,91 @@ export const useUpdateIdentityAwsAuth = () => {
       );
 
       return identityAwsAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
+// --- K8s auth (TODO: add cert and token reviewer JWT fields)
+
+export const useAddIdentityKubernetesAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityKubernetesAuth, {}, AddIdentityKubernetesAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      kubernetesHost,
+      tokenReviewerJwt,
+      allowedNames,
+      allowedNamespaces,
+      allowedAudience,
+      caCert,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityKubernetesAuth }
+      } = await apiRequest.post<{ identityKubernetesAuth: IdentityKubernetesAuth }>(
+        `/api/v1/auth/kubernetes-auth/identities/${identityId}`,
+        {
+          kubernetesHost,
+          tokenReviewerJwt,
+          allowedNames,
+          allowedNamespaces,
+          allowedAudience,
+          caCert,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityKubernetesAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
+export const useUpdateIdentityKubernetesAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityKubernetesAuth, {}, UpdateIdentityKubernetesAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      kubernetesHost,
+      tokenReviewerJwt,
+      allowedNamespaces,
+      allowedNames,
+      allowedAudience,
+      caCert,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityKubernetesAuth }
+      } = await apiRequest.patch<{ identityKubernetesAuth: IdentityKubernetesAuth }>(
+        `/api/v1/auth/kubernetes-auth/identities/${identityId}`,
+        {
+          kubernetesHost,
+          tokenReviewerJwt,
+          allowedNames,
+          allowedNamespaces,
+          allowedAudience,
+          caCert,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+      return identityKubernetesAuth;
     },
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));

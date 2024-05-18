@@ -82,6 +82,8 @@ import { identityAwsAuthDALFactory } from "@app/services/identity-aws-auth/ident
 import { identityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
 import { identityGcpAuthDALFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-dal";
 import { identityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
+import { identityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
+import { identityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectMembershipRoleDALFactory } from "@app/services/identity-project/identity-project-membership-role-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
@@ -207,6 +209,7 @@ export const registerRoutes = async (
   const identityProjectAdditionalPrivilegeDAL = identityProjectAdditionalPrivilegeDALFactory(db);
 
   const identityUaDAL = identityUaDALFactory(db);
+  const identityKubernetesAuthDAL = identityKubernetesAuthDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
   const identityAwsAuthDAL = identityAwsAuthDALFactory(db);
 
@@ -712,6 +715,15 @@ export const registerRoutes = async (
     identityUaDAL,
     licenseService
   });
+  const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({
+    identityKubernetesAuthDAL,
+    identityOrgMembershipDAL,
+    identityAccessTokenDAL,
+    identityDAL,
+    orgBotDAL,
+    permissionService,
+    licenseService
+  });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
     identityGcpAuthDAL,
     identityOrgMembershipDAL,
@@ -798,6 +810,7 @@ export const registerRoutes = async (
     identityAccessToken: identityAccessTokenService,
     identityProject: identityProjectService,
     identityUa: identityUaService,
+    identityKubernetesAuth: identityKubernetesAuthService,
     identityGcpAuth: identityGcpAuthService,
     identityAwsAuth: identityAwsAuthService,
     secretApprovalPolicy: sapService,

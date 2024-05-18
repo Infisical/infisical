@@ -19,6 +19,7 @@ export * from "./identities";
 export * from "./identity-access-tokens";
 export * from "./identity-aws-auths";
 export * from "./identity-gcp-auths";
+export * from "./identity-kubernetes-auths";
 export * from "./identity-org-memberships";
 export * from "./identity-project-additional-privilege";
 export * from "./identity-project-membership-role";
