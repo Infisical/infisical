@@ -36,7 +36,7 @@ then Infisical returns a short-lived access token that can be used to make authe
 
 To be more specific:
 
-1. The application retrieves its [service account credential](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#opt-out-of-api-credential-automounting) that is a JWT token at the `/var/run/secrets/kubernetes.io/serviceaccount/token` pod path.
+1. The application deployed on Kubernetes retrieves its [service account credential](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#opt-out-of-api-credential-automounting) that is a JWT token at the `/var/run/secrets/kubernetes.io/serviceaccount/token` pod path.
 2. The application sends the JWT token to Infisical at the `/api/v1/auth/kubernetes-auth/login` endpoint after which Infisical forwards the JWT token to the Kubernetes API Server at the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/) for verification and to obtain the service account information associated with the JWT token. Infisical is able to authenticate and interact with the TokenReview API by using a long-lived service account JWT token itself (referred to onward as the token reviewer JWT token).
 3. Infisical checks the service account properties against set criteria such **Allowed Service Account Names** and **Allowed Namespaces**.
 4. If all is well, Infisical returns a short-lived access token that the application can use to make authenticated requests to the Infisical API.
@@ -45,10 +45,6 @@ To be more specific:
 We recommend using one of Infisical's clients like SDKs or the Infisical Agent
 to authenticate with Infisical using Kubernetes Auth as they handle the
 authentication process including service account credential retrieval for you.
-
-Also, note that Infisical needs access to send requests to the Kubernetes API Server
-as part of the Kubernetes Auth workflow.
-
 </Note>
 
 ## Guide
@@ -59,38 +55,56 @@ In the following steps, we explore how to create and use identities for your app
     <Step title="Obtaining the token reviewer JWT for Infisical">
         1.1. Start by creating a service account in your Kubernetes cluster that will be used by Infisical to authenticate with the Kubernetes API Server.
 
-        ```bash
-        kubectl create serviceaccount infisical-auth -n default
+        ```yaml infisical-service-account.yaml
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: infisical-auth
+          namespace: default
+
+        ```
+
+        ```
+        kubectl apply -f infisical-service-account.yaml
         ```
 
         1.2. Bind the service account to the `system:auth-delegator` cluster role. As described [here](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#other-component-roles), this role allows delegated authentication and authorization checks, specifically for Infisical to access the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/). You can apply the following configuration file:
 
-        ```yaml
-        apiVersion: [rbac.authorization.k8s.io/v1](http://rbac.authorization.k8s.io/v1)
+        ```yaml cluster-role-binding.yaml
+        apiVersion: rbac.authorization.k8s.io/v1
         kind: ClusterRoleBinding
         metadata:
-            name: role-tokenreview-binding
-            namespace: default
+          name: role-tokenreview-binding
+          namespace: default
         roleRef:
-            apiGroup: [rbac.authorization.k8s.io](http://rbac.authorization.k8s.io/)
-            kind: ClusterRole
-            name: system:auth-delegator
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: system:auth-delegator
         subjects:
-        - kind: ServiceAccount
+          - kind: ServiceAccount
             name: infisical-auth
             namespace: default
         ```
 
+        ```
+        kubectl apply -f cluster-role-binding.yaml
+        ```
+
         1.3. Next, create a long-lived service account JWT token (i.e. the token reviewer JWT token) for the service account using this configuration file for a new `Secret` resource:
 
-        ```yaml
+        ```yaml service-account-token.yaml
         apiVersion: v1
         kind: Secret
-        metadata:
-            name: infisical-auth-token
-            annotations:
-        ¦ kubernetes.io/service-account.name: "infisical-auth"
         type: kubernetes.io/service-account-token
+        metadata:
+          name: infisical-auth-token
+          annotations:
+            kubernetes.io/service-account.name: "infisical-auth"
+        ```
+
+
+        ```
+        kubectl apply -f service-account-token.yaml
         ```
 
         1.4. Link the secret in step 1.3 to the service account in step 1.1:
@@ -179,7 +193,7 @@ In the following steps, we explore how to create and use identities for your app
                 `{infisicalUrl}/api/v1/auth/kubernetes-auth/login`,
                 {
                     identityId,
-                    jwtToken,
+                    jwt,
                 }
             );
 
@@ -198,7 +212,7 @@ In the following steps, we explore how to create and use identities for your app
     Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
     the default TTL is `7200` seconds which can be adjusted.
 
-    If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
+    If an identity access token exceeds its max ttl, it can no longer authenticate with the Infisical API. In this case,
     a new access token should be obtained by performing another login operation.
     </Note>
 

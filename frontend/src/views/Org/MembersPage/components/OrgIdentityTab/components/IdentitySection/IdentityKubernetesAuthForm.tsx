@@ -210,7 +210,7 @@ export const IdentityKubernetesAuthForm = ({
             errorText={error?.message}
             isRequired
           >
-            <Input {...field} placeholder="" type="text" />
+            <Input {...field} placeholder="https://my-example-k8s-api-host.com" type="text" />
           </FormControl>
         )}
       />
@@ -237,7 +237,7 @@ export const IdentityKubernetesAuthForm = ({
             isError={Boolean(error)}
             errorText={error?.message}
           >
-            <Input {...field} placeholder="" />
+            <Input {...field} placeholder="service-account-1-name, service-account-1-name" />
           </FormControl>
         )}
       />
@@ -251,7 +251,7 @@ export const IdentityKubernetesAuthForm = ({
             isError={Boolean(error)}
             errorText={error?.message}
           >
-            <Input {...field} placeholder="" type="text" />
+            <Input {...field} placeholder="namespaceA, namespaceB" type="text" />
           </FormControl>
         )}
       />
