@@ -9,6 +9,10 @@ export type TInviteUserToProjectDTO = {
   emails: string[];
 } & TProjectPermission;
 
+export type TGetProjectMembershipByUsernameDTO = {
+  username: string;
+} & TProjectPermission;
+
 export type TUpdateProjectMembershipDTO = {
   membershipId: string;
   roles: (

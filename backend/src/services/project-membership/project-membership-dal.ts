@@ -9,11 +9,19 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
   const projectMemberOrm = ormify(db, TableName.ProjectMembership);
 
   // special query
-  const findAllProjectMembers = async (projectId: string) => {
+  const findAllProjectMembers = async (projectId: string, filter: { usernames?: string[]; username?: string } = {}) => {
     try {
       const docs = await db(TableName.ProjectMembership)
         .where({ [`${TableName.ProjectMembership}.projectId` as "projectId"]: projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .where((qb) => {
+          if (filter.usernames) {
+            void qb.whereIn("username", filter.usernames);
+          }
+          if (filter.username) {
+            void qb.where("username", filter.username);
+          }
+        })
         .join<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
