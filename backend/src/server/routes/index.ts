@@ -1,3 +1,4 @@
+import ratelimiter, { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -61,7 +62,7 @@ import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
-import { readLimit } from "@app/server/config/rateLimiter";
+import { globalRateLimiterCfg, readLimit } from "@app/server/config/rateLimiter";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
@@ -838,6 +839,11 @@ export const registerRoutes = async (
   server.decorate<FastifyZodProvider["store"]>("store", {
     user: userDAL
   });
+
+  // Rate limiters and security headers
+  if (appCfg.isProductionMode) {
+    await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg());
+  }
 
   await server.register(injectIdentity, { userDAL, serviceTokenDAL });
   await server.register(injectPermission);
