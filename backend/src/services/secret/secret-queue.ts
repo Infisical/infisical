@@ -463,20 +463,37 @@ export const secretQueueFactory = ({
         });
       }
 
-      await syncIntegrationSecrets({
-        createManySecretsRawFn,
-        updateManySecretsRawFn,
-        integrationDAL,
-        integration,
-        integrationAuth,
-        secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets,
-        accessId: accessId as string,
-        accessToken,
-        appendices: {
-          prefix: metadata?.secretPrefix || "",
-          suffix: metadata?.secretSuffix || ""
-        }
-      });
+      try {
+        await syncIntegrationSecrets({
+          createManySecretsRawFn,
+          updateManySecretsRawFn,
+          integrationDAL,
+          integration,
+          integrationAuth,
+          secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets,
+          accessId: accessId as string,
+          accessToken,
+          appendices: {
+            prefix: metadata?.secretPrefix || "",
+            suffix: metadata?.secretSuffix || ""
+          }
+        });
+
+        await integrationDAL.updateById(integration.id, {
+          lastSyncJobId: job.id,
+          lastUsed: new Date(),
+          syncMessage: "",
+          isSynced: true
+        });
+      } catch (err: unknown) {
+        logger.info("Secret integration sync error:", err);
+        await integrationDAL.updateById(integration.id, {
+          lastSyncJobId: job.id,
+          lastUsed: new Date(),
+          syncMessage: (err as Error)?.message,
+          isSynced: false
+        });
+      }
     }
 
     logger.info("Secret integration sync ended: %s", job.id);

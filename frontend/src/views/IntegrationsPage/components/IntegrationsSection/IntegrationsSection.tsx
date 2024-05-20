@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { faArrowRight, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -74,7 +75,7 @@ export const IntegrationsSection = ({
         </div>
       )}
       {!isLoading && isBotActive && (
-        <div className="flex flex-col min-w-max space-y-4 p-6 pt-0">
+        <div className="flex min-w-max flex-col space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
             <div
               className="max-w-8xl flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3"
@@ -137,11 +138,12 @@ export const IntegrationsSection = ({
                       "App"
                     }
                   />
-                  <div className="min-w-[8rem] max-w-[12rem] overflow-scroll no-scrollbar no-scrollbar::-webkit-scrollbar whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                  <div className="no-scrollbar::-webkit-scrollbar min-w-[8rem] max-w-[12rem] overflow-scroll whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 no-scrollbar">
                     {(integration.integration === "hashicorp-vault" &&
                       `${integration.app} - path: ${integration.path}`) ||
                       (integration.scope === "github-org" && `${integration.owner}`) ||
-                      (integration.integration === "aws-parameter-store" && `${integration.path}`) ||
+                      (integration.integration === "aws-parameter-store" &&
+                        `${integration.path}`) ||
                       (integration.scope?.startsWith("github-") &&
                         `${integration.owner}/${integration.app}`) ||
                       integration.app}
@@ -188,6 +190,28 @@ export const IntegrationsSection = ({
                 )}
               </div>
               <div className="flex cursor-default items-center">
+                {!!integration.isSynced && !!integration.lastUsed && (
+                  <div className="mr-5 flex items-center justify-end text-sm">
+                    <div>
+                      Last sync: {format(new Date(integration.lastUsed), "yyyy-MM-dd, hh:mm aaa")}
+                    </div>
+                    <Tooltip
+                      center
+                      content={
+                        integration.isSynced
+                          ? "Secrets are in sync"
+                          : `Failed to sync secrets: ${integration.syncMessage || "Generic error"}`
+                      }
+                    >
+                      <FontAwesomeIcon
+                        icon={integration.isSynced ? faCheck : faXmark}
+                        className={`ml-3 ${
+                          integration.isSynced ? "text-green-600" : "text-red-600"
+                        }`}
+                      />
+                    </Tooltip>
+                  </div>
+                )}
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Delete}
                   a={ProjectPermissionSub.Integrations}
@@ -217,7 +241,9 @@ export const IntegrationsSection = ({
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure want to remove ${
           (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
-        } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || "this project"}?`}
+        } integration for ${
+          (popUp?.deleteConfirmation.data as TIntegration)?.app || "this project"
+        }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
         deleteKey={
           (popUp?.deleteConfirmation?.data as TIntegration)?.app ||
