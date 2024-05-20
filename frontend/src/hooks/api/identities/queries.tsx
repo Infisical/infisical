@@ -7,6 +7,7 @@ import {
   IdentityAwsAuth,
   IdentityAzureAuth,
   IdentityGcpAuth,
+  IdentityKubernetesAuth,
   IdentityUniversalAuth} from "./types";
 
 export const identitiesKeys = {
@@ -14,6 +15,8 @@ export const identitiesKeys = {
     [{ identityId }, "identity-universal-auth"] as const,
   getIdentityUniversalAuthClientSecrets: (identityId: string) =>
     [{ identityId }, "identity-universal-auth-client-secrets"] as const,
+  getIdentityKubernetesAuth: (identityId: string) =>
+    [{ identityId }, "identity-kubernetes-auth"] as const,
   getIdentityGcpAuth: (identityId: string) => [{ identityId }, "identity-gcp-auth"] as const,
   getIdentityAwsAuth: (identityId: string) => [{ identityId }, "identity-aws-auth"] as const,
   getIdentityAzureAuth: (identityId: string) => [{ identityId }, "identity-azure-auth"] as const
@@ -90,6 +93,21 @@ export const useGetIdentityAzureAuth = (identityId: string) => {
         `/api/v1/auth/azure-auth/identities/${identityId}`
       );
       return identityAzureAuth;
+    }
+  });
+};
+
+export const useGetIdentityKubernetesAuth = (identityId: string) => {
+  return useQuery({
+    enabled: Boolean(identityId),
+    queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId),
+    queryFn: async () => {
+      const {
+        data: { identityKubernetesAuth }
+      } = await apiRequest.get<{ identityKubernetesAuth: IdentityKubernetesAuth }>(
+        `/api/v1/auth/kubernetes-auth/identities/${identityId}`
+      );
+      return identityKubernetesAuth;
     }
   });
 };

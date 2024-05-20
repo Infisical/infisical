@@ -63,6 +63,10 @@ export enum EventType {
   ADD_IDENTITY_UNIVERSAL_AUTH = "add-identity-universal-auth",
   UPDATE_IDENTITY_UNIVERSAL_AUTH = "update-identity-universal-auth",
   GET_IDENTITY_UNIVERSAL_AUTH = "get-identity-universal-auth",
+  LOGIN_IDENTITY_KUBERNETES_AUTH = "login-identity-kubernetes-auth",
+  ADD_IDENTITY_KUBERNETES_AUTH = "add-identity-kubernetes-auth",
+  UPDATE_IDENTITY_KUBENETES_AUTH = "update-identity-kubernetes-auth",
+  GET_IDENTITY_KUBERNETES_AUTH = "get-identity-kubernetes-auth",
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
@@ -390,6 +394,50 @@ interface UpdateIdentityUniversalAuthEvent {
 
 interface GetIdentityUniversalAuthEvent {
   type: EventType.GET_IDENTITY_UNIVERSAL_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface LoginIdentityKubernetesAuthEvent {
+  type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH;
+  metadata: {
+    identityId: string;
+    identityKubernetesAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityKubernetesAuthEvent {
+  type: EventType.ADD_IDENTITY_KUBERNETES_AUTH;
+  metadata: {
+    identityId: string;
+    kubernetesHost: string;
+    allowedNamespaces: string;
+    allowedNames: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityKubernetesAuthEvent {
+  type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH;
+  metadata: {
+    identityId: string;
+    kubernetesHost?: string;
+    allowedNamespaces?: string;
+    allowedNames?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityKubernetesAuthEvent {
+  type: EventType.GET_IDENTITY_KUBERNETES_AUTH;
   metadata: {
     identityId: string;
   };
@@ -801,6 +849,10 @@ export type Event =
   | AddIdentityUniversalAuthEvent
   | UpdateIdentityUniversalAuthEvent
   | GetIdentityUniversalAuthEvent
+  | LoginIdentityKubernetesAuthEvent
+  | AddIdentityKubernetesAuthEvent
+  | UpdateIdentityKubernetesAuthEvent
+  | GetIdentityKubernetesAuthEvent
   | CreateIdentityUniversalAuthClientSecretEvent
   | GetIdentityUniversalAuthClientSecretsEvent
   | RevokeIdentityUniversalAuthClientSecretEvent

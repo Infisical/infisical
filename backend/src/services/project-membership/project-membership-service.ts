@@ -34,6 +34,7 @@ import {
   TAddUsersToWorkspaceNonE2EEDTO,
   TDeleteProjectMembershipOldDTO,
   TDeleteProjectMembershipsDTO,
+  TGetProjectMembershipByUsernameDTO,
   TGetProjectMembershipDTO,
   TUpdateProjectMembershipDTO
 } from "./project-membership-types";
@@ -87,6 +88,28 @@ export const projectMembershipServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
     return projectMembershipDAL.findAllProjectMembers(projectId);
+  };
+
+  const getProjectMembershipByUsername = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    username
+  }: TGetProjectMembershipByUsernameDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+
+    const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { username });
+    if (!membership) throw new BadRequestError({ message: `Project membership not found for user ${username}` });
+    return membership;
   };
 
   const addUsersToProject = async ({
@@ -510,6 +533,7 @@ export const projectMembershipServiceFactory = ({
 
   return {
     getProjectMemberships,
+    getProjectMembershipByUsername,
     updateProjectMembership,
     addUsersToProjectNonE2EE,
     deleteProjectMemberships,

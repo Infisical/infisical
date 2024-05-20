@@ -7,7 +7,12 @@ description: "Learn how to use Machine Identities to programmatically interact w
 
 An Infisical machine identity is an entity that represents a workload or application that require access to various resources in Infisical. This is conceptually similar to an IAM user in AWS or service account in Google Cloud Platform (GCP).
 
+<<<<<<< HEAD
 Each identity must authenticate with the Infisical API using a supported authentication method like [Universal Auth](/documentation/platform/identities/universal-auth), [AWS Auth](/documentation/platform/identities/aws-auth), [Azure Auth](/documentation/platform/identities/azure-auth), or [GCP Auth](/documentation/platform/identities/gcp-auth) to get back a short-lived access token to be used in subsequent requests.
+=======
+Each identity must authenticate with the Infisical API using a supported authentication method like [Universal Auth](/documentation/platform/identities/universal-auth), [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth), [AWS Auth](/documentation/platform/identities/aws-auth), or [GCP Auth](/documentation/platform/identities/gcp-auth) to get back a short-lived access token to be used in subsequent requests.
+
+> > > > > > > origin
 
 ![Organization Identities](/images/platform/organization/organization-machine-identities.png)
 
@@ -38,6 +43,7 @@ Machine Identity support for the rest of the clients is planned to be released i
 To interact with various resources in Infisical, Machine Identities are able to authenticate using:
 
 - [Universal Auth](/documentation/platform/identities/universal-auth): A platform-agnostic authentication method that can be configured on an identity suitable to authenticate from any platform/environment.
+- [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth): A Kubernetes-native authentication method for applications (e.g. pods) to authenticate with Infisical.
 - [AWS Auth](/documentation/platform/identities/aws-auth): An AWS-native authentication method for AWS services (e.g. EC2, Lambda functions, etc.) to authenticate with Infisical.
 - [Azure Auth](/documentation/platform/identities/azure-auth): An Azure-native authentication method for Azure resources (e.g. Azure VMs, Azure App Services, Azure Functions, Azure Kubernetes Service, etc.) to authenticate with Infisical.
 - [GCP Auth](/documentation/platform/identities/gcp-auth): A GCP-native authentication method for GCP resources (e.g. Compute Engine, App Engine, Cloud Run, Google Kubernetes Engine, IAM service accounts, etc.) to authenticate with Infisical.

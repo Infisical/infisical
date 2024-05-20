@@ -8,6 +8,7 @@ import {
   AddIdentityAwsAuthDTO,
   AddIdentityAzureAuthDTO,
   AddIdentityGcpAuthDTO,
+  AddIdentityKubernetesAuthDTO,
   AddIdentityUniversalAuthDTO,
   ClientSecretData,
   CreateIdentityDTO,
@@ -19,12 +20,15 @@ import {
   IdentityAwsAuth,
   IdentityAzureAuth,
   IdentityGcpAuth,
+  IdentityKubernetesAuth,
   IdentityUniversalAuth,
   UpdateIdentityAwsAuthDTO,
   UpdateIdentityAzureAuthDTO,
   UpdateIdentityDTO,
   UpdateIdentityGcpAuthDTO,
-  UpdateIdentityUniversalAuthDTO} from "./types";
+  UpdateIdentityKubernetesAuthDTO,
+  UpdateIdentityUniversalAuthDTO
+} from "./types";
 
 export const useCreateIdentity = () => {
   const queryClient = useQueryClient();
@@ -362,6 +366,48 @@ export const useAddIdentityAzureAuth = () => {
   });
 };
 
+export const useAddIdentityKubernetesAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityKubernetesAuth, {}, AddIdentityKubernetesAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      kubernetesHost,
+      tokenReviewerJwt,
+      allowedNames,
+      allowedNamespaces,
+      allowedAudience,
+      caCert,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityKubernetesAuth }
+      } = await apiRequest.post<{ identityKubernetesAuth: IdentityKubernetesAuth }>(
+        `/api/v1/auth/kubernetes-auth/identities/${identityId}`,
+        {
+          kubernetesHost,
+          tokenReviewerJwt,
+          allowedNames,
+          allowedNamespaces,
+          allowedAudience,
+          caCert,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityKubernetesAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
 export const useUpdateIdentityAzureAuth = () => {
   const queryClient = useQueryClient();
   return useMutation<IdentityAzureAuth, {}, UpdateIdentityAzureAuthDTO>({
@@ -391,6 +437,48 @@ export const useUpdateIdentityAzureAuth = () => {
       );
 
       return identityAzureAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
+export const useUpdateIdentityKubernetesAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityKubernetesAuth, {}, UpdateIdentityKubernetesAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      kubernetesHost,
+      tokenReviewerJwt,
+      allowedNamespaces,
+      allowedNames,
+      allowedAudience,
+      caCert,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityKubernetesAuth }
+      } = await apiRequest.patch<{ identityKubernetesAuth: IdentityKubernetesAuth }>(
+        `/api/v1/auth/kubernetes-auth/identities/${identityId}`,
+        {
+          kubernetesHost,
+          tokenReviewerJwt,
+          allowedNames,
+          allowedNamespaces,
+          allowedAudience,
+          caCert,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityKubernetesAuth;
     },
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));

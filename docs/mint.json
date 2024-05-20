@@ -32,7 +32,10 @@
     "thumbsRating": true
   },
   "api": {
-    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
+    "baseUrl": [
+      "https://app.infisical.com",
+      "http://localhost:8080"
+    ]
   },
   "topbarLinks": [
     {
@@ -73,7 +76,9 @@
         "documentation/getting-started/introduction",
         {
           "group": "Quickstart",
-          "pages": ["documentation/guides/local-development"]
+          "pages": [
+            "documentation/guides/local-development"
+          ]
         },
         {
           "group": "Guides",
@@ -153,6 +158,7 @@
         "documentation/platform/auth-methods/email-password",
         "documentation/platform/token",
         "documentation/platform/identities/universal-auth",
+        "documentation/platform/identities/kubernetes-auth",
         "documentation/platform/identities/gcp-auth",
         "documentation/platform/identities/azure-auth",
         "documentation/platform/identities/aws-auth",
@@ -214,7 +220,9 @@
         },
         {
           "group": "Reference architectures",
-          "pages": ["self-hosting/reference-architectures/aws-ecs"]
+          "pages": [
+            "self-hosting/reference-architectures/aws-ecs"
+          ]
         },
         "self-hosting/ee",
         "self-hosting/faq"
@@ -370,11 +378,15 @@
     },
     {
       "group": "Build Tool Integrations",
-      "pages": ["integrations/build-tools/gradle"]
+      "pages": [
+        "integrations/build-tools/gradle"
+      ]
     },
     {
       "group": "",
-      "pages": ["sdks/overview"]
+      "pages": [
+        "sdks/overview"
+      ]
     },
     {
       "group": "SDK's",
@@ -392,7 +404,9 @@
         "api-reference/overview/authentication",
         {
           "group": "Examples",
-          "pages": ["api-reference/overview/examples/integration"]
+          "pages": [
+            "api-reference/overview/examples/integration"
+          ]
         }
       ]
     },
@@ -438,15 +452,28 @@
             "api-reference/endpoints/workspaces/delete-workspace",
             "api-reference/endpoints/workspaces/get-workspace",
             "api-reference/endpoints/workspaces/update-workspace",
-            "api-reference/endpoints/workspaces/invite-member-to-workspace",
-            "api-reference/endpoints/workspaces/remove-member-from-workspace",
-            "api-reference/endpoints/workspaces/memberships",
-            "api-reference/endpoints/workspaces/update-membership",
-            "api-reference/endpoints/workspaces/list-identity-memberships",
-            "api-reference/endpoints/workspaces/update-identity-membership",
-            "api-reference/endpoints/workspaces/delete-identity-membership",
             "api-reference/endpoints/workspaces/secret-snapshots",
             "api-reference/endpoints/workspaces/rollback-snapshot"
+          ]
+        },
+        {
+          "group": "Project Users",
+          "pages": [
+            "api-reference/endpoints/project-users/invite-member-to-workspace",
+            "api-reference/endpoints/project-users/remove-member-from-workspace",
+            "api-reference/endpoints/project-users/memberships",
+            "api-reference/endpoints/project-users/get-by-username",
+            "api-reference/endpoints/project-users/update-membership"
+          ]
+        },
+        {
+          "group": "Project Identities",
+          "pages": [
+            "api-reference/endpoints/project-identities/add-identity-membership",
+            "api-reference/endpoints/project-identities/list-identity-memberships",
+            "api-reference/endpoints/project-identities/get-by-id",
+            "api-reference/endpoints/project-identities/update-identity-membership",
+            "api-reference/endpoints/project-identities/delete-identity-membership"
           ]
         },
         {
@@ -525,11 +552,15 @@
         },
         {
           "group": "Service Tokens",
-          "pages": ["api-reference/endpoints/service-tokens/get"]
+          "pages": [
+            "api-reference/endpoints/service-tokens/get"
+          ]
         },
         {
           "group": "Audit Logs",
-          "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+          "pages": [
+            "api-reference/endpoints/audit-logs/export-audit-log"
+          ]
         }
       ]
     },
@@ -545,7 +576,9 @@
     },
     {
       "group": "",
-      "pages": ["changelog/overview"]
+      "pages": [
+        "changelog/overview"
+      ]
     },
     {
       "group": "Contributing",
@@ -569,7 +602,9 @@
         },
         {
           "group": "Contributing to SDK",
-          "pages": ["contributing/sdk/developing"]
+          "pages": [
+            "contributing/sdk/developing"
+          ]
         }
       ]
     }

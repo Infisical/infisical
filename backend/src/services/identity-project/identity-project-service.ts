@@ -18,6 +18,7 @@ import { TIdentityProjectMembershipRoleDALFactory } from "./identity-project-mem
 import {
   TCreateProjectIdentityDTO,
   TDeleteProjectIdentityDTO,
+  TGetProjectIdentityByIdentityIdDTO,
   TListProjectIdentityDTO,
   TUpdateProjectIdentityDTO
 } from "./identity-project-types";
@@ -51,7 +52,7 @@ export const identityProjectServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     projectId,
-    role
+    roles
   }: TCreateProjectIdentityDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -78,18 +79,33 @@ export const identityProjectServiceFactory = ({
         message: `Failed to find identity with id ${identityId}`
       });
 
-    const { permission: rolePermission, role: customRole } = await permissionService.getProjectPermissionByRole(
-      role,
-      project.id
+    for await (const { role: requestedRoleChange } of roles) {
+      const { permission: rolePermission } = await permissionService.getProjectPermissionByRole(
+        requestedRoleChange,
+        projectId
+      );
+
+      const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
+
+      if (!hasRequiredPriviledges) {
+        throw new ForbiddenRequestError({ message: "Failed to change to a more privileged role" });
+      }
+    }
+
+    // validate custom roles input
+    const customInputRoles = roles.filter(
+      ({ role }) => !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
     );
+    const hasCustomRole = Boolean(customInputRoles.length);
+    const customRoles = hasCustomRole
+      ? await projectRoleDAL.find({
+          projectId,
+          $in: { slug: customInputRoles.map(({ role }) => role) }
+        })
+      : [];
+    if (customRoles.length !== customInputRoles.length) throw new BadRequestError({ message: "Custom role not found" });
 
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
-      throw new ForbiddenRequestError({
-        message: "Failed to add identity to project with more privileged role"
-      });
-    const isCustomRole = Boolean(customRole);
-
+    const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
     const projectIdentity = await identityProjectDAL.transaction(async (tx) => {
       const identityProjectMembership = await identityProjectDAL.create(
         {
@@ -98,16 +114,32 @@ export const identityProjectServiceFactory = ({
         },
         tx
       );
+      const sanitizedProjectMembershipRoles = roles.map((inputRole) => {
+        const isCustomRole = Boolean(customRolesGroupBySlug?.[inputRole.role]?.[0]);
+        if (!inputRole.isTemporary) {
+          return {
+            projectMembershipId: identityProjectMembership.id,
+            role: isCustomRole ? ProjectMembershipRole.Custom : inputRole.role,
+            customRoleId: customRolesGroupBySlug[inputRole.role] ? customRolesGroupBySlug[inputRole.role][0].id : null
+          };
+        }
 
-      await identityProjectMembershipRoleDAL.create(
-        {
+        // check cron or relative here later for now its just relative
+        const relativeTimeInMs = ms(inputRole.temporaryRange);
+        return {
           projectMembershipId: identityProjectMembership.id,
-          role: isCustomRole ? ProjectMembershipRole.Custom : role,
-          customRoleId: customRole?.id
-        },
-        tx
-      );
-      return identityProjectMembership;
+          role: isCustomRole ? ProjectMembershipRole.Custom : inputRole.role,
+          customRoleId: customRolesGroupBySlug[inputRole.role] ? customRolesGroupBySlug[inputRole.role][0].id : null,
+          isTemporary: true,
+          temporaryMode: ProjectUserMembershipTemporaryMode.Relative,
+          temporaryRange: inputRole.temporaryRange,
+          temporaryAccessStartTime: new Date(inputRole.temporaryAccessStartTime),
+          temporaryAccessEndTime: new Date(new Date(inputRole.temporaryAccessStartTime).getTime() + relativeTimeInMs)
+        };
+      });
+
+      const identityRoles = await identityProjectMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
+      return { ...identityProjectMembership, roles: identityRoles };
     });
     return projectIdentity;
   };
@@ -251,10 +283,33 @@ export const identityProjectServiceFactory = ({
     return identityMemberships;
   };
 
+  const getProjectIdentityByIdentityId = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    identityId
+  }: TGetProjectIdentityByIdentityIdDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
+
+    const [identityMembership] = await identityProjectDAL.findByProjectId(projectId, { identityId });
+    if (!identityMembership) throw new BadRequestError({ message: `Membership not found for identity ${identityId}` });
+    return identityMembership;
+  };
+
   return {
     createProjectIdentity,
     updateProjectIdentity,
     deleteProjectIdentity,
-    listProjectIdentities
+    listProjectIdentities,
+    getProjectIdentityByIdentityId
   };
 };
