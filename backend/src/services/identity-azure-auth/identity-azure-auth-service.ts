@@ -24,7 +24,7 @@ import {
 } from "./identity-azure-auth-types";
 
 type TIdentityAzureAuthServiceFactoryDep = {
-  identityAzureAuthDAL: TIdentityAzureAuthDALFactory; // TODO: Pick
+  identityAzureAuthDAL: Pick<TIdentityAzureAuthDALFactory, "findOne" | "transaction" | "create" | "updateById">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
   identityDAL: Pick<TIdentityDALFactory, "updateById">;
