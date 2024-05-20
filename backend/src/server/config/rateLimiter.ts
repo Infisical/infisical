@@ -10,12 +10,10 @@ const getDistinctRequestActorId = (req: FastifyRequest) => {
     return req.auth.user.username;
   }
   if (req?.auth?.actor === ActorType.IDENTITY) {
-    return `identity-${req.auth.identityId}`;
+    return `${req.auth.identityId}-machine-identity-`;
   }
   if (req?.auth?.actor === ActorType.SERVICE) {
-    return (
-      `${req.auth.serviceToken.createdByEmail}-service-token` || `service-token-null-creator-${req.auth.serviceTokenId}`
-    ); // when user gets removed from system
+    return `${req.auth.serviceToken.id}-service-token`; // when user gets removed from system
   }
   return req.realIp;
 };
