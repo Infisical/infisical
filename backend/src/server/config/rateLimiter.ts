@@ -52,7 +52,7 @@ export const writeLimit: RateLimitOptions = {
 export const secretsLimit: RateLimitOptions = {
   // secrets, folders, secret imports
   timeWindow: 60 * 1000,
-  max: 60,
+  max: 1000,
   keyGenerator: (req) => getDistinctRequestActorId(req)
 };
 
