@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { faArrowRight, faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faCalendarCheck } from "@fortawesome/free-regular-svg-icons";
+import { faArrowRight, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
@@ -13,6 +14,7 @@ import {
   FormLabel,
   IconButton,
   Skeleton,
+  Tag,
   Tooltip
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
@@ -189,35 +191,51 @@ export const IntegrationsSection = ({
                   </div>
                 )}
               </div>
-              <div className="flex cursor-default items-center">
-                {!!integration.isSynced && !!integration.lastUsed && (
-                  <div className="mr-5 flex items-center justify-end text-sm">
-                    <div>
-                      Last sync: {format(new Date(integration.lastUsed), "yyyy-MM-dd, hh:mm aaa")}
-                    </div>
+              <div className="mt-[1.5rem] flex cursor-default">
+                {integration.isSynced != null && integration.lastUsed != null && (
+                  <Tag
+                    key={integration.id}
+                    className={integration.isSynced ? "bg-green/50" : "bg-red/80"}
+                  >
                     <Tooltip
                       center
+                      className="max-w-xs whitespace-normal break-words"
                       content={
-                        integration.isSynced
-                          ? "Secrets are in sync"
-                          : `Failed to sync secrets: ${integration.syncMessage || "Generic error"}`
+                        <div className="flex max-h-[10rem] flex-col overflow-auto ">
+                          <div className="flex self-start">
+                            <FontAwesomeIcon
+                              icon={faCalendarCheck}
+                              className="pt-0.5 pr-2 text-sm"
+                            />
+                            <div className="text-sm">Last sync</div>
+                          </div>
+                          <div className="pl-5 text-left text-xs">
+                            {format(new Date(integration.lastUsed), "yyyy-MM-dd, hh:mm aaa")}
+                          </div>
+                          {!integration.isSynced && (
+                            <>
+                              <div className="mt-2 flex self-start">
+                                <FontAwesomeIcon icon={faXmark} className="pt-1 pr-2 text-sm" />
+                                <div className="text-sm">Fail reason</div>
+                              </div>
+                              <div className="pl-5 text-left text-xs">
+                                {integration.syncMessage}
+                              </div>
+                            </>
+                          )}
+                        </div>
                       }
                     >
-                      <FontAwesomeIcon
-                        icon={integration.isSynced ? faCheck : faXmark}
-                        className={`ml-3 ${
-                          integration.isSynced ? "text-green-600" : "text-red-600"
-                        }`}
-                      />
+                      <div className="px-2 text-white">Sync Status</div>
                     </Tooltip>
-                  </div>
+                  </Tag>
                 )}
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Delete}
                   a={ProjectPermissionSub.Integrations}
                 >
                   {(isAllowed: boolean) => (
-                    <div className="ml-2 opacity-80 duration-200 hover:opacity-100">
+                    <div className="ml-2 flex items-end opacity-80 duration-200 hover:opacity-100">
                       <Tooltip content="Remove Integration">
                         <IconButton
                           onClick={() => handlePopUpOpen("deleteConfirmation", integration)}
