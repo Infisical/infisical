@@ -8,8 +8,6 @@ import cors from "@fastify/cors";
 import fastifyEtag from "@fastify/etag";
 import fastifyFormBody from "@fastify/formbody";
 import helmet from "@fastify/helmet";
-import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
-import ratelimiter from "@fastify/rate-limit";
 import fasitfy from "fastify";
 import { Knex } from "knex";
 import { Logger } from "pino";
@@ -19,7 +17,6 @@ import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { fastifyErrHandler } from "./plugins/error-handler";
 import { registerExternalNextjs } from "./plugins/external-nextjs";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
@@ -67,10 +64,6 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
     await server.register(fastifyFormBody);
     await server.register(fastifyErrHandler);
 
-    // Rate limiters and security headers
-    if (appCfg.isProductionMode) {
-      await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg());
-    }
     await server.register(helmet, { contentSecurityPolicy: false });
 
     await server.register(maintenanceMode);
