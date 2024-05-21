@@ -29,6 +29,9 @@ export type TIntegration = {
   secretPath: string;
   createdAt: string;
   updatedAt: string;
+  lastUsed?: string;
+  isSynced?: boolean;
+  syncMessage?: string;
   __v: number;
   metadata?: {
     secretSuffix?: string;

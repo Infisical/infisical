@@ -198,7 +198,8 @@ export const useGetWorkspaceIntegrations = (workspaceId: string) =>
   useQuery({
     queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId),
     queryFn: () => fetchWorkspaceIntegrations(workspaceId),
-    enabled: Boolean(workspaceId)
+    enabled: Boolean(workspaceId),
+    refetchInterval: 4000
   });
 
 export const createWorkspace = ({
