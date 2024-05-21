@@ -225,7 +225,7 @@ export const PROJECT_IDENTITIES = {
     roles: {
       description: "A list of role slugs to assign to the identity project membership.",
       role: "The role slug to assign to the newly created identity project membership.",
-      isTemporary: "Whether the assigned role is temporary.",
+      isTemporary: "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
       temporaryMode: "Type of temporary expiry.",
       temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s,2m,3h",
       temporaryAccessStartTime: "Time to which the temporary access starts"
@@ -242,7 +242,7 @@ export const PROJECT_IDENTITIES = {
     roles: {
       description: "A list of role slugs to assign to the newly created identity project membership.",
       role: "The role slug to assign to the newly created identity project membership.",
-      isTemporary: "Whether the assigned role is temporary.",
+      isTemporary: "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
       temporaryMode: "Type of temporary expiry.",
       temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s,2m,3h",
       temporaryAccessStartTime: "Time to which the temporary access starts"
