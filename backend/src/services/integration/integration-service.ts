@@ -9,7 +9,12 @@ import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TIntegrationDALFactory } from "./integration-dal";
-import { TCreateIntegrationDTO, TDeleteIntegrationDTO, TUpdateIntegrationDTO } from "./integration-types";
+import {
+  TCreateIntegrationDTO,
+  TDeleteIntegrationDTO,
+  TSyncIntegrationDTO,
+  TUpdateIntegrationDTO
+} from "./integration-types";
 
 type TIntegrationServiceFactoryDep = {
   integrationDAL: TIntegrationDALFactory;
@@ -201,10 +206,35 @@ export const integrationServiceFactory = ({
     return integrations;
   };
 
+  const syncIntegration = async ({ id, actorId, actor, actorOrgId, actorAuthMethod }: TSyncIntegrationDTO) => {
+    const integration = await integrationDAL.findById(id);
+    if (!integration) {
+      throw new BadRequestError({ message: "Integration not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integration.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+
+    await secretQueueService.syncIntegrations({
+      environment: integration.environment.slug,
+      secretPath: integration.secretPath,
+      projectId: integration.projectId
+    });
+
+    return { ...integration, envId: integration.environment.id };
+  };
+
   return {
     createIntegration,
     updateIntegration,
     deleteIntegration,
-    listIntegrationByProject
+    listIntegrationByProject,
+    syncIntegration
   };
 };

@@ -262,5 +262,64 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // TODO(akhilmhdh-pg): manual sync
+  server.route({
+    method: "POST",
+    url: "/:integrationId/sync",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Manually trigger sync of an integration by integration id",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        integrationId: z.string().trim().describe(INTEGRATION.SYNC.integrationId)
+      }),
+      response: {
+        200: z.object({
+          integration: IntegrationsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const integration = await server.services.integration.syncIntegration({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: integration.projectId,
+        event: {
+          type: EventType.MANUAL_SYNC_INTEGRATION,
+          // eslint-disable-next-line
+          metadata: shake({
+            integrationId: integration.id,
+            integration: integration.integration,
+            environment: integration.environment.slug,
+            secretPath: integration.secretPath,
+            url: integration.url,
+            app: integration.app,
+            appId: integration.appId,
+            targetEnvironment: integration.targetEnvironment,
+            targetEnvironmentId: integration.targetEnvironmentId,
+            targetService: integration.targetService,
+            targetServiceId: integration.targetServiceId,
+            path: integration.path,
+            region: integration.region
+            // eslint-disable-next-line
+          }) as any
+        }
+      });
+
+      return { integration };
+    }
+  });
 };

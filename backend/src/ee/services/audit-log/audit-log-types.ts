@@ -51,6 +51,7 @@ export enum EventType {
   UNAUTHORIZE_INTEGRATION = "unauthorize-integration",
   CREATE_INTEGRATION = "create-integration",
   DELETE_INTEGRATION = "delete-integration",
+  MANUAL_SYNC_INTEGRATION = "manual-sync-integration",
   ADD_TRUSTED_IP = "add-trusted-ip",
   UPDATE_TRUSTED_IP = "update-trusted-ip",
   DELETE_TRUSTED_IP = "delete-trusted-ip",
@@ -267,6 +268,25 @@ interface DeleteIntegrationEvent {
   metadata: {
     integrationId: string;
     integration: string; // TODO: fix type
+    environment: string;
+    secretPath: string;
+    url?: string;
+    app?: string;
+    appId?: string;
+    targetEnvironment?: string;
+    targetEnvironmentId?: string;
+    targetService?: string;
+    targetServiceId?: string;
+    path?: string;
+    region?: string;
+  };
+}
+
+interface ManualSyncIntegrationEvent {
+  type: EventType.MANUAL_SYNC_INTEGRATION;
+  metadata: {
+    integrationId: string;
+    integration: string;
     environment: string;
     secretPath: string;
     url?: string;
@@ -791,6 +811,7 @@ export type Event =
   | UnauthorizeIntegrationEvent
   | CreateIntegrationEvent
   | DeleteIntegrationEvent
+  | ManualSyncIntegrationEvent
   | AddTrustedIPEvent
   | UpdateTrustedIPEvent
   | DeleteTrustedIPEvent

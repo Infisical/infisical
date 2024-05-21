@@ -1,6 +1,7 @@
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { faCalendarCheck } from "@fortawesome/free-regular-svg-icons";
-import { faArrowRight, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faRefresh, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
@@ -9,6 +10,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
   AlertDescription,
+  Button,
   DeleteActionModal,
   EmptyState,
   FormLabel,
@@ -19,6 +21,7 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
+import { useSyncIntegration } from "@app/hooks/api/integrations/queries";
 import { TIntegration } from "@app/hooks/api/types";
 
 type Props = {
@@ -41,6 +44,17 @@ export const IntegrationsSection = ({
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteConfirmation"
   ] as const);
+
+  const syncPollingRef = useRef<NodeJS.Timeout | null>(null);
+  const { mutate: syncIntegration } = useSyncIntegration(syncPollingRef);
+
+  useEffect(() => {
+    return () => {
+      if (syncPollingRef.current) {
+        clearInterval(syncPollingRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="mb-8">
@@ -193,49 +207,75 @@ export const IntegrationsSection = ({
               </div>
               <div className="mt-[1.5rem] flex cursor-default">
                 {integration.isSynced != null && integration.lastUsed != null && (
-                  <Tag
-                    key={integration.id}
-                    className={integration.isSynced ? "bg-green/50" : "bg-red/80"}
-                  >
-                    <Tooltip
-                      center
-                      className="max-w-xs whitespace-normal break-words"
-                      content={
-                        <div className="flex max-h-[10rem] flex-col overflow-auto ">
-                          <div className="flex self-start">
-                            <FontAwesomeIcon
-                              icon={faCalendarCheck}
-                              className="pt-0.5 pr-2 text-sm"
-                            />
-                            <div className="text-sm">Last sync</div>
-                          </div>
-                          <div className="pl-5 text-left text-xs">
-                            {format(new Date(integration.lastUsed), "yyyy-MM-dd, hh:mm aaa")}
-                          </div>
-                          {!integration.isSynced && (
-                            <>
-                              <div className="mt-2 flex self-start">
-                                <FontAwesomeIcon icon={faXmark} className="pt-1 pr-2 text-sm" />
-                                <div className="text-sm">Fail reason</div>
-                              </div>
-                              <div className="pl-5 text-left text-xs">
-                                {integration.syncMessage}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      }
+                  <>
+                    <Tag
+                      key={integration.id}
+                      className={integration.isSynced ? "bg-green/50" : "bg-red/80"}
                     >
-                      <div className="px-2 text-white">Sync Status</div>
-                    </Tooltip>
-                  </Tag>
+                      <Tooltip
+                        center
+                        className="max-w-xs whitespace-normal break-words"
+                        content={
+                          <div className="flex max-h-[10rem] flex-col overflow-auto ">
+                            <div className="flex self-start">
+                              <FontAwesomeIcon
+                                icon={faCalendarCheck}
+                                className="pt-0.5 pr-2 text-sm"
+                              />
+                              <div className="text-sm">Last sync</div>
+                            </div>
+                            <div className="pl-5 text-left text-xs">
+                              {format(new Date(integration.lastUsed), "yyyy-MM-dd, hh:mm aaa")}
+                            </div>
+                            {!integration.isSynced && (
+                              <>
+                                <div className="mt-2 flex self-start">
+                                  <FontAwesomeIcon icon={faXmark} className="pt-1 pr-2 text-sm" />
+                                  <div className="text-sm">Fail reason</div>
+                                </div>
+                                <div className="pl-5 text-left text-xs">
+                                  {integration.syncMessage}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        }
+                      >
+                        <div className="px-2 text-white">Sync Status</div>
+                      </Tooltip>
+                    </Tag>
+                    {!integration.isSynced && integration.lastUsed != null && (
+                      <div className="mr-1 flex items-end opacity-80 duration-200 hover:opacity-100">
+                        <Tooltip
+                          className="text-center"
+                          content="Manually sync integration secrets"
+                        >
+                          <Button
+                            onClick={() =>
+                              syncIntegration({
+                                workspaceId,
+                                id: integration.id,
+                                lastUsed: integration.lastUsed as string
+                              })
+                            }
+                            isLoading={!!syncPollingRef.current}
+                            className="max-w-[2.5rem]"
+                            isDisabled={!!syncPollingRef.current}
+                            colorSchema="primary"
+                          >
+                            <FontAwesomeIcon icon={faRefresh} className="px-1" />
+                          </Button>
+                        </Tooltip>
+                      </div>
+                    )}
+                  </>
                 )}
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Delete}
                   a={ProjectPermissionSub.Integrations}
                 >
                   {(isAllowed: boolean) => (
-                    <div className="ml-2 flex items-end opacity-80 duration-200 hover:opacity-100">
+                    <div className="flex items-end opacity-80 duration-200 hover:opacity-100">
                       <Tooltip content="Remove Integration">
                         <IconButton
                           onClick={() => handlePopUpOpen("deleteConfirmation", integration)}

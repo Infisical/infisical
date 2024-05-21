@@ -649,6 +649,9 @@ export const INTEGRATION = {
   },
   DELETE: {
     integrationId: "The ID of the integration object."
+  },
+  SYNC: {
+    integrationId: "The ID of the integration object to manually sync"
   }
 };
 
