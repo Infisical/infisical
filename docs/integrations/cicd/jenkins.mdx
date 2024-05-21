@@ -1,5 +1,5 @@
 ---
-title: "Jenkins"
+title: "Jenkins Plugin"
 description: "How to effectively and securely manage secrets in Jenkins using Infisical"
 ---
 
@@ -18,144 +18,129 @@ Prerequisites:
 
 <Tabs>
 
-  <Tab title="Machine Identity (Recommended)">
-      ## Add Infisical Machine Identity to Jenkins
+  <Tab title="Using Plugin with Machine Identities (Recommended)">
+     
+    ## Jenkins Infisical Plugin
 
-      After setting up your project in Infisical and installing the Infisical CLI to the environment where your Jenkins builds will run, you will need to add the Infisical Machine Identity to Jenkins.
+    This plugin adds a build wrapper to set environment variables from [Infisical](https://infisical.com). Secrets are generally masked in the build log, so you can't accidentally print them.
 
-      To generate a Infisical machine identity, follow the guide [here](/documentation/platform/identities/machine-identities).
-      Once you have generated the token, navigate to **Manage Jenkins > Manage Credentials** in your Jenkins instance.
+    ## Infisical Authentication
 
-      ![Jenkins step 1](../../images/integrations/jenkins/jenkins_1.png)
+    Authenticating with Infisical is done through the use of [Machine Identities](https://infisical.com/docs/documentation/platform/identities/machine-identities).
+    Currently the Jenkins plugin only supports [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth) for authentication. More methods will be added soon.
 
-      Click on the credential store you want to store the Infisical Machine Identity in. In this case, we're using the default Jenkins global store.
-
-      <Info>
-        Each of your projects will have a different `INFISICAL_TOKEN`.
-        As a result, it may make sense to spread these out into separate credential domains depending on your use case.
-      </Info>
-
-      ![Jenkins step 2](../../images/integrations/jenkins/jenkins_2.png)
-
-      Now, click Add Credentials.
-
-      ![Jenkins step 3](../../images/integrations/jenkins/jenkins_3.png)
-
-      Choose **Secret text** for the **Kind** option from the dropdown list and enter the Infisical Service Token in the **Secret** field.
-      Although the **ID** can be any value, we'll set it to `infisical-machine-identity-client-id` and `infisical-machine-identity-client-secret` for the sake of this guide.
-      The description is optional and can be any text you prefer.
+    ### How does Universal Auth work?
+    To use Universal Auth, you'll need to create a new Credential _(Infisical Universal Auth Credential)_. The credential should contain your Universal Auth client ID, and your Universal Auth client secret.
+    Please [read more here](https://infisical.com/docs/documentation/platform/identities/universal-auth) on how to setup a Machine Identity to use universal auth.
 
 
-      ![Jenkins step 4](../../images/integrations/jenkins/jenkins_4_identity_id.png)
-      ![Jenkins step 5](../../images/integrations/jenkins/jenkins_4_identity_secret.png)
+    ### Creating a Universal Auth credential
 
-      When you're done, you should see two credentials similar to the one below:
+    Creating a universal auth credential inside Jenkins is very straight forward.
 
-      ![Jenkins step 6](../../images/integrations/jenkins/jenkins_5_identity.png)
+    Simply navigate to<br/>
+    `Dashboard -> Manage Jenkins -> Credentials -> System -> Global credentials (unrestricted)`.
 
+    Press the `Add Credentials` button and select `Infisical Universal Auth Credential` in the `Kind` field.
 
-      ## Use Infisical in a Freestyle Project
+    The `ID` and `Description` field doesn't matter much in this case, as they won't be read anywhere. The description field will be displayed as the credential name during the plugin configuration.
 
-      To fetch secrets with Infisical in a Freestyle Project job, you'll need to expose the credential you created above as an environment variable to the Infisical CLI.
-      To do so, first click **New Item** from the dashboard navigation sidebar:
-
-      ![Jenkins step 6](../../images/integrations/jenkins/jenkins_6.png)
-
-      Enter the name of the job, choose the **Freestyle Project** option, and click **OK**.
-
-      ![Jenkins step 7](../../images/integrations/jenkins/jenkins_7.png)
-
-      Scroll down to the **Build Environment** section and enable the **Use secret text(s) or file(s)** option. Then click **Add** under the **Bindings** section and choose **Secret text** from the dropdown menu.
-
-      ![Jenkins step 8](../../images/integrations/jenkins/jenkins_8.png)
-
-      Enter `INFISICAL_MACHINE_IDENTITY_CLIENT_ID` in the **Variable** field for the client ID, and `INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET` for the client secret. Then click the **Specific credentials** option from the Credentials section and select the credentials you created earlier.
-      In this case, we saved it as `Infisical Machine Identity Client ID` and `Infisical Machine Identity Client Secret` so we'll choose those from the dropdown menu.
-
-      Make sure to add bindings for both the client ID and the client secret.
-
-      ![Jenkins step 9](../../images/integrations/jenkins/jenkins_9_identity.png)
-
-      Scroll down to the **Build** section and choose **Execute shell** from the **Add build step** menu.
-
-      ![Jenkins step 10](../../images/integrations/jenkins/jenkins_10_identity.png)
-
-      In the command field, you can now use the Infisical CLI to fetch secrets.
-      The example command below will print the secrets using the service token passed as a credential. When done, click  **Save**.
-
-      ```bash
-        export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=$INFISICAL_MACHINE_IDENTITY_CLIENT_ID --client-secret=$INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET --silent --plain)
-        infisical secrets --env dev --projectId=<your-project-id>
-      ```
-
-      ![Jenkins step 11](../../images/integrations/jenkins/jenkins_11_identity.png)
-
-      Finally, click **Build Now** from the navigation sidebar to run your new job.
-
-      <Info>
-        Running into issues? Join Infisical's [community Slack](https://infisical.com/slack) for quick support.
-      </Info>
+    ![Infisical Universal Auth Credential](../../images/integrations/jenkins/plugin/universal-auth-credential.png)
 
 
 
-      ## Use Infisical in a Jenkins Pipeline
+    ## Plugin Usage
+    ### Configuration
 
-      To fetch secrets using Infisical in a Pipeline job, you'll need to expose the Jenkins credential you created above as an environment variable.
-      To do so, click **New Item** from the dashboard navigation sidebar:
+    Configuration takes place on a job-level basis.
 
-      ![Jenkins step 6](../../images/integrations/jenkins/jenkins_6.png)
+    Inside your job, you simply tick the `Infisical Plugin` checkbox under "Build Environment". After enabling the plugin, you'll see a new section appear where you'll have to configure the plugin.
 
-      Enter the name of the job, choose the **Pipeline** option, and click OK.
+    ![Plugin enabled](../../images/integrations/jenkins/plugin/plugin-checked.png)
 
-      ![Jenkins step 12](../../images/integrations/jenkins/jenkins_12.png)
+    You'll be prompted with 4 options to fill:
+    * Infisical URL
+        * This defaults to https://app.infisical.com. This field is only relevant if you're running a managed or self-hosted instance. If you are using Infisical Cloud, leave this as-is, otherwise enter the URL of your Infisical instance.
+    * Infisical Credential
+        * This is where you select your Infisical credential to use for authentication. In the step above [Creating a Universal Auth credential](#creating-a-universal-auth-credential), you can read on how to configure the credential. Simply select the credential you have created for this field.
+    * Infisical Project Slug
+        * This is the slug of the project you wish to fetch secrets from. You can find this in your project settings on Infisical by clicking "Copy project slug".
+    * Environment Slug
+        * This is the slug of the environment to fetch secrets from. In most cases it's either `dev`, `staging`, or `prod`. You can however create custom environments in Infisical. If you are using custom environments, you need to enter the slug of the custom environment you wish to fetch secrets from.
+      
+    That's it! Now you're ready to select which secrets you want to fetch into Jenkins.
+    By clicking the `Add an Infisical secret` in the Jenkins UI like seen in the screenshot below.
 
-      Scroll down to the **Pipeline** section, paste the following into the **Script** field, and click **Save**.
+    ![Add Infisical secret](../../images/integrations/jenkins/plugin/add-infisical-secret.png)
 
-      ```
-      pipeline {
-          agent any
+    You need to select which secrets that should be pulled into Jenkins.
+    You start by specifying a [folder path from Infisical](https://infisical.com/docs/documentation/platform/folder#comparing-folders). The root path is simply `/`. You also need to select wether or not you want to [include imports](https://infisical.com/docs/documentation/platform/secret-reference#secret-imports). Now you can add secrets the secret keys that you want to pull from Infisical into Jenkins. If you want to add multiple secrets, press the "Add key/value pair".
 
-          environment {
-              MACHINE_IDENTITY_CLIENT_ID = credentials('infisical-machine-identity-client-id')
-              MACHINE_IDENTITY_CLIENT_SECRET = credentials('infisical-machine-identity-client-secret')
+    If you wish to pull secrets from multiple paths, you can press the "Add an Infisical secret" button at the bottom, and configure a new set of secrets to pull.
 
-          }
 
-          stages {
-              stage('Run Infisical') {
-                  steps {
-                      sh("export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=${MACHINE_IDENTITY_CLIENT_ID} --client-secret=${MACHINE_IDENTITY_CLIENT_SECRET} --silent --plain)")
-                      sh("infisical secrets --env=dev --path=/ --projectId=<your-project-id>")
+    ## Pipeline usage
 
-                      // doesn't work
-                      // sh("docker run --rm test-container infisical secrets --projectId=<your-project-id>")
 
-                      // works
-                      // sh("docker run -e INFISICAL_TOKEN=${INFISICAL_TOKEN} --rm test-container infisical secrets --env=dev --path=/ --projectId=<your-project-id>")
+    ### Generating pipeline block
 
-                      // doesn't work
-                      // sh("docker-compose up -d")
+    Using the Infisical Plugin in a Jenkins pipeline is very straight forward. To generate a block to use the Infisical Plugin in a Pipeline, simply to go `{JENKINS_URL}/jenkins/job/{JOB_ID}/pipeline-syntax/`.
 
-                      // works
-                      // sh("INFISICAL_TOKEN=${INFISICAL_TOKEN} docker-compose up -d")
-                  }
-              }
-          }
-      }
-      ```
+    You can find a direct link on the Pipeline configuration page in the very bottom of the page, see image below.
+
+    ![Pipeline Syntax Highlight](../../images/integrations/jenkins/plugin/pipeline-syntax-highlight.png)
+
+    On the Snippet Generator page, simply configure the Infisical Plugin like it's documented in the [Configuration documentation](#configuration) step.
+
+    Once you have filled out the configuration, press `Generate Pipeline Script`, and it will generate a block you can use in your pipeline.
+
+    ![Pipeline Configuration](../../images/integrations/jenkins/plugin/pipeline-configuration.png)
+
+    ### Using Infisical in a Pipeline
+
+    Using the generated block in a pipeline is very straight forward. There's a few approaches on how to implement the block in a Pipeline script.
+    Here's an example of using the generated block in a pipeline script. Make sure to replace the placeholder values with your own values.
+
+    The script is formatted for clarity. All these fields will be pre-filled for you if you use the `Snippet Generator` like described in the [step above](#generating-pipeline-block).
+    ```groovy
+    node {
+        withInfisical(
+            configuration: [
+                infisicalCredentialId: 'YOUR_CREDENTIAL_ID',
+                infisicalEnvironmentSlug: 'PROJECT_ENV_SLUG', 
+                infisicalProjectSlug: 'PROJECT_SLUG', 
+                infisicalUrl: 'https://app.infisical.com' // Change this to your Infisical instance URL if you aren't using Infisical Cloud.
+            ], 
+            infisicalSecrets: [
+                infisicalSecret(
+                    includeImports: true, 
+                    path: '/', 
+                    secretValues: [
+                        [infisicalKey: 'DATABASE_URL'],
+                        [infisicalKey: "API_URL"],
+                        [infisicalKey: 'THIS_KEY_MIGHT_NOT_EXIST', isRequired: false],
+                    ]
+                )
+            ]
+        ) {
+            // Code runs here
+            sh "printenv"
+        }     
+    }
+    ```
+
 
   </Tab>
 
-  <Tab title="Service Token (Deprecated)">
+  <Tab title="Using CLI with Service Tokens (Deprecated)">
     ## Add Infisical Service Token to Jenkins
 
-    <Warning>
+  <Warning>
+    Service tokens are being deprecated in favor of [machine identities](/documentation/platform/identities/machine-identities).
+    They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
 
-Service tokens are being deprecated in favor of [machine identities](/documentation/platform/identities/machine-identities).
-
-They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
-
-</Warning>
+    **Please use our Jenkins Plugin instead!**
+  </Warning>
 
     After setting up your project in Infisical and installing the Infisical CLI to the environment where your Jenkins builds will run, you will need to add the Infisical Service Token to Jenkins.
 
