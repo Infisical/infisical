@@ -259,11 +259,11 @@ export const IntegrationsSection = ({
                               })
                             }
                             isLoading={!!syncPollingRef.current}
-                            className="max-w-[2.5rem]"
-                            isDisabled={!!syncPollingRef.current}
+                            className="max-w-[2.5rem] bg-mineshaft-500"
                             colorSchema="primary"
+                            variant="outline"
                           >
-                            <FontAwesomeIcon icon={faRefresh} className="px-1" />
+                            <FontAwesomeIcon icon={faRefresh} className="px-1 text-bunker-200" />
                           </Button>
                         </Tooltip>
                       </div>
