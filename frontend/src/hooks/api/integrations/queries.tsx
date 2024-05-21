@@ -1,10 +1,10 @@
-import { MutableRefObject } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace/queries";
-import { TCloudIntegration, TIntegration } from "./types";
+import { TCloudIntegration } from "./types";
 
 export const integrationQueryKeys = {
   getIntegrations: () => ["integrations"] as const
@@ -112,27 +112,14 @@ export const useDeleteIntegration = () => {
   });
 };
 
-export const useSyncIntegration = (pollingRef: MutableRefObject<NodeJS.Timeout | null>) => {
-  const queryClient = useQueryClient();
-
+export const useSyncIntegration = () => {
   return useMutation<{}, {}, { id: string; workspaceId: string; lastUsed: string }>({
     mutationFn: ({ id }) => apiRequest.post(`/api/v1/integration/${id}/sync`),
-    onSuccess: (_, { id, workspaceId, lastUsed }) => {
-      // eslint-disable-next-line no-param-reassign
-      pollingRef.current = setInterval(() => {
-        const integrations: TIntegration[] | undefined = queryClient.getQueryData(
-          workspaceKeys.getWorkspaceIntegrations(workspaceId)
-        );
-
-        const integration = integrations?.find((entry) => entry.id === id);
-        if (!integration || integration.lastUsed !== lastUsed) {
-          clearInterval(pollingRef.current as NodeJS.Timeout);
-          // eslint-disable-next-line no-param-reassign
-          pollingRef.current = null;
-          return;
-        }
-        queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
-      }, 3500);
+    onSuccess: () => {
+      createNotification({
+        text: "Successfully triggered manual sync",
+        type: "success"
+      });
     }
   });
 };
