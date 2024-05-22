@@ -13,7 +13,8 @@ import { TokenType } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
-import { validateProviderAuthToken } from "./auth-fns";
+import { processFailedMfaAttempt } from "../user/user-fns";
+import { enforceUserLockStatus, validateProviderAuthToken } from "./auth-fns";
 import {
   TLoginClientProofDTO,
   TLoginGenServerPublicKeyDTO,
@@ -212,6 +213,9 @@ export const authLoginServiceFactory = ({
     });
     // send multi factor auth token if they it enabled
     if (userEnc.isMfaEnabled && userEnc.email) {
+      const user = await userDAL.findById(userEnc.userId);
+      enforceUserLockStatus(user.isLocked, user.temporaryLockDateEnd);
+
       const mfaToken = jwt.sign(
         {
           authMethod,
@@ -300,6 +304,7 @@ export const authLoginServiceFactory = ({
   const resendMfaToken = async (userId: string) => {
     const user = await userDAL.findById(userId);
     if (!user || !user.email) return;
+    enforceUserLockStatus(user.isLocked, user.temporaryLockDateEnd);
     await sendUserMfaCode({
       userId: user.id,
       email: user.email
@@ -311,16 +316,50 @@ export const authLoginServiceFactory = ({
    * Third step of login in which user completes with mfa
    * */
   const verifyMfaToken = async ({ userId, mfaToken, mfaJwtToken, ip, userAgent, orgId }: TVerifyMfaTokenDTO) => {
-    await tokenService.validateTokenForUser({
-      type: TokenType.TOKEN_EMAIL_MFA,
-      userId,
-      code: mfaToken
-    });
+    const appCfg = getConfig();
+    const user = await userDAL.findById(userId);
+    enforceUserLockStatus(user.isLocked, user.temporaryLockDateEnd);
+
+    try {
+      await tokenService.validateTokenForUser({
+        type: TokenType.TOKEN_EMAIL_MFA,
+        userId,
+        code: mfaToken
+      });
+    } catch (err) {
+      const updatedUser = await processFailedMfaAttempt(userId, userDAL);
+      if (updatedUser.isLocked) {
+        if (updatedUser.email) {
+          const unlockToken = await tokenService.createTokenForUser({
+            type: TokenType.TOKEN_USER_UNLOCK,
+            userId: updatedUser.id
+          });
+
+          await smtpService.sendMail({
+            template: SmtpTemplates.UnlockAccount,
+            subjectLine: "Unlock your Infisical account",
+            recipients: [updatedUser.email],
+            substitutions: {
+              token: unlockToken,
+              callback_url: `${appCfg.SITE_URL}/api/v1/user/${updatedUser.id}/unlock-verify`
+            }
+          });
+        }
+      }
+
+      throw err;
+    }
 
     const decodedToken = jwt.verify(mfaJwtToken, getConfig().AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
 
     const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
+
+    // reset lock states
+    await userDAL.updateById(userId, {
+      consecutiveFailedMfaAttempts: 0,
+      temporaryLockDateEnd: null
+    });
 
     const token = await generateUserTokens({
       user: {

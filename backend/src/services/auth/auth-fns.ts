@@ -44,3 +44,24 @@ export const validateSignUpAuthorization = (token: string, userId: string, valid
   if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) throw new UnauthorizedError();
   if (decodedToken.userId !== userId) throw new UnauthorizedError();
 };
+
+export const enforceUserLockStatus = (isLocked: boolean, temporaryLockDateEnd?: Date | null) => {
+  if (isLocked) {
+    throw new UnauthorizedError({
+      name: "User Locked",
+      message:
+        "User is locked due to multiple failed login attempts. An email has been sent to you in order to unlock your account."
+    });
+  }
+
+  if (temporaryLockDateEnd) {
+    const timeDiff = new Date().getTime() - temporaryLockDateEnd.getTime();
+    if (timeDiff < 0)
+      throw new UnauthorizedError({
+        name: "User Locked",
+        message: `User is locked due to multiple failed login attempts. Try logging in again after ${Math.round(
+          (-1 * timeDiff) / 1000
+        )} seconds.`
+      });
+  }
+};
