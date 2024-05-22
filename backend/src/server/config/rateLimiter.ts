@@ -56,7 +56,6 @@ export const mfaRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   max: 20,
   keyGenerator: (req) => {
-    // fallback to IP to avoid global rate limiting when authorization is set to empty
     return req.headers.authorization?.split(" ")[1] || req.realIp;
   }
 };
