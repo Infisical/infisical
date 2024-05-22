@@ -49,6 +49,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         await server.services.user.unlockUser(req.params.userId, req.query.token);
       } catch (err) {
         logger.error(`User unlock failed for ${req.params.userId}`);
+        logger.error(err);
       }
       return res.redirect(`${appCfg.SITE_URL}/login`);
     }

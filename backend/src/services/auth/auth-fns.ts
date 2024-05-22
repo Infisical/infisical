@@ -59,7 +59,7 @@ export const enforceUserLockStatus = (isLocked: boolean, temporaryLockDateEnd?: 
     if (timeDiff < 0)
       throw new UnauthorizedError({
         name: "User Locked",
-        message: `User is locked due to multiple failed login attempts. Try logging in again after ${Math.round(
+        message: `User is locked due to multiple failed login attempts. Try again after ${Math.round(
           (-1 * timeDiff) / 1000
         )} seconds.`
       });

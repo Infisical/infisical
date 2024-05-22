@@ -38,7 +38,7 @@ export const processFailedMfaAttempt = async (userId: string, userDAL: Pick<TUse
       const progressiveDelaysInMins = [5, 30, 60];
 
       // lock user when failed attempt exceeds threshold
-      if (user.consecutiveFailedMfaAttempts > PROGRESSIVE_DELAY_INTERVAL * progressiveDelaysInMins.length) {
+      if (user.consecutiveFailedMfaAttempts >= PROGRESSIVE_DELAY_INTERVAL * (progressiveDelaysInMins.length + 1)) {
         return (
           await tx(TableName.Users)
             .where("id", userId)
