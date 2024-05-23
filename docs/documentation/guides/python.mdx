@@ -5,7 +5,7 @@ title: "Python"
 This guide demonstrates how to use Infisical to manage secrets for your Python stack from local development to production. It uses:
 
 - Infisical (you can use [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance of Infisical](https://infisical.com/docs/self-hosting/overview)) to store your secrets.
-- The [infisical-python](https://github.com/Infisical/sdk/tree/main/crates/infisical-py) Python client SDK to fetch secrets back to your Python application on demand.
+- The [infisical-python](https://pypi.org/project/infisical-python/) Python client SDK to fetch secrets back to your Python application on demand.
 
 ## Project Setup
 
@@ -36,23 +36,27 @@ python3 -m venv env
 source env/bin/activate
 ```
 
-Install Flask and [infisical-python](https://github.com/Infisical/sdk/tree/main/crates/infisical-py), the client Python SDK for Infisical.
+Install Flask and [infisical-python](https://pypi.org/project/infisical-python/), the client Python SDK for Infisical.
 
 ```console
-pip install Flask infisical-python
+pip install flask infisical-python
 ```
 
 Finally, create an `app.py` file containing the application code.
 
 ```py
 from flask import Flask
-from infisical_client import ClientSettings, InfisicalClient, GetSecretOptions
+from infisical_client import ClientSettings, InfisicalClient, GetSecretOptions, AuthenticationOptions, UniversalAuthMethod
 
 app = Flask(__name__)
 
 client = InfisicalClient(ClientSettings(
-    client_id="MACHINE_IDENTITY_CLIENT_ID",
-    client_secret="MACHINE_IDENTITY_CLIENT_SECRET",
+    auth=AuthenticationOptions(
+      universal_auth=UniversalAuthMethod(
+        client_id="CLIENT_ID",
+        client_secret="CLIENT_SECRET",
+      )
+    )
 ))
 
 @app.route("/")
