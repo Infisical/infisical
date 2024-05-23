@@ -43,6 +43,11 @@ export enum IntegrationInitialSyncBehavior {
   PREFER_SOURCE = "prefer-source"
 }
 
+export enum IntegrationMappingBehavior {
+  ONE_TO_ONE = "one-to-one",
+  MANY_TO_ONE = "many-to-one"
+}
+
 export enum IntegrationUrls {
   // integration oauth endpoints
   GCP_TOKEN_URL = "https://oauth2.googleapis.com/token",
