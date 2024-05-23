@@ -49,6 +49,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             secretPrefix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretPrefix),
             secretSuffix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretSuffix),
             initialSyncBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.initialSyncBehavoir),
+            mappingBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.mappingBehavior),
             shouldAutoRedeploy: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldAutoRedeploy),
             secretGCPLabel: z
               .object({
@@ -160,6 +161,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             secretPrefix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretPrefix),
             secretSuffix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretSuffix),
             initialSyncBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.initialSyncBehavoir),
+            mappingBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.mappingBehavior),
             shouldAutoRedeploy: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldAutoRedeploy),
             secretGCPLabel: z
               .object({

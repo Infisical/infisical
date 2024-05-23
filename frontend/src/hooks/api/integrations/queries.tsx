@@ -64,6 +64,7 @@ export const useCreateIntegration = () => {
         secretSuffix?: string;
         initialSyncBehavior?: string;
         shouldAutoRedeploy?: boolean;
+        mappingBehavior?: string;
         secretAWSTag?: {
           key: string;
           value: string;
