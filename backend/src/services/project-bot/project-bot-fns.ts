@@ -20,10 +20,7 @@ export const getBotKeyFnFactory = (
 ) => {
   const getBotKeyFn = async (projectId: string) => {
     const project = await projectDAL.findById(projectId);
-    if (!project)
-      throw new BadRequestError({
-        message: "Project not found during bot lookup."
-      });
+    if (!project) throw new BadRequestError({ message: "Project not found during bot lookup." });
 
     const bot = await projectBotDAL.findOne({ projectId: project.id });
 
