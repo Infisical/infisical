@@ -587,7 +587,10 @@ const syncSecretsAWSSecretManager = async ({
     }
   });
 
-  const processAwsSecret = async (secretId: string, keyValuePairs: Record<string, string | null | undefined>) => {
+  const processAwsSecret = async (
+    secretId: string,
+    secretValue: Record<string, string | null | undefined> | string
+  ) => {
     try {
       const awsSecretManagerSecret = await secretsManager.send(
         new GetSecretValueCommand({
@@ -595,17 +598,20 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
 
-      let awsSecretManagerSecretObj: { [key: string]: AWS.SecretsManager } = {};
-
+      let secretToCompare;
       if (awsSecretManagerSecret?.SecretString) {
-        awsSecretManagerSecretObj = JSON.parse(awsSecretManagerSecret.SecretString);
+        if (typeof secretValue === "string") {
+          secretToCompare = awsSecretManagerSecret.SecretString;
+        } else {
+          secretToCompare = JSON.parse(awsSecretManagerSecret.SecretString);
+        }
       }
 
-      if (!isEqual(awsSecretManagerSecretObj, keyValuePairs)) {
+      if (!isEqual(secretToCompare, secretValue)) {
         await secretsManager.send(
           new UpdateSecretCommand({
             SecretId: secretId,
-            SecretString: JSON.stringify(keyValuePairs)
+            SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue)
           })
         );
       }
@@ -695,7 +701,7 @@ const syncSecretsAWSSecretManager = async ({
         await secretsManager.send(
           new CreateSecretCommand({
             Name: secretId,
-            SecretString: JSON.stringify(keyValuePairs),
+            SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue),
             ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
             Tags: metadata.secretAWSTag
               ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
@@ -708,9 +714,7 @@ const syncSecretsAWSSecretManager = async ({
 
   if (metadata.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE) {
     for await (const [key, value] of Object.entries(secrets)) {
-      await processAwsSecret(key, {
-        [key]: value.value
-      });
+      await processAwsSecret(key, value.value);
     }
   } else {
     await processAwsSecret(integration.app as string, getSecretKeyValuePair(secrets));
