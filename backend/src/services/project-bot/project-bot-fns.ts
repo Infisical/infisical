@@ -3,6 +3,7 @@ import { decryptAsymmetric, infisicalSymmetricDecrypt } from "@app/lib/crypto/en
 import { BadRequestError } from "@app/lib/errors";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 
+import { TProjectDALFactory } from "../project/project-dal";
 import { TGetPrivateKeyDTO } from "./project-bot-types";
 
 export const getBotPrivateKey = ({ bot }: TGetPrivateKeyDTO) =>
@@ -13,11 +14,20 @@ export const getBotPrivateKey = ({ bot }: TGetPrivateKeyDTO) =>
     ciphertext: bot.encryptedPrivateKey
   });
 
-export const getBotKeyFnFactory = (projectBotDAL: TProjectBotDALFactory) => {
+export const getBotKeyFnFactory = (
+  projectBotDAL: TProjectBotDALFactory,
+  projectDAL: Pick<TProjectDALFactory, "findById">
+) => {
   const getBotKeyFn = async (projectId: string) => {
-    const bot = await projectBotDAL.findOne({ projectId });
+    const project = await projectDAL.findById(projectId);
+    if (!project)
+      throw new BadRequestError({
+        message: "Project not found during bot lookup."
+      });
 
-    if (!bot) throw new BadRequestError({ message: "failed to find bot key" });
+    const bot = await projectBotDAL.findOne({ projectId: project.id });
+
+    if (!bot) throw new BadRequestError({ message: "Failed to find bot key" });
     if (!bot.isActive) throw new BadRequestError({ message: "Bot is not active" });
     if (!bot.encryptedProjectKeyNonce || !bot.encryptedProjectKey)
       throw new BadRequestError({ message: "Encryption key missing" });
