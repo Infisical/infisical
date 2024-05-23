@@ -73,11 +73,11 @@ const awsRegions = [
 
 const mappingBehaviors = [
   {
-    label: "Many to One - secrets will be mapped to one AWS Secret",
+    label: "Many to One (All Infisical secrets will be mapped to a single AWS secret)",
     value: IntegrationMappingBehavior.MANY_TO_ONE
   },
   {
-    label: "One to One - secrets will be mapped to individual AWS secrets",
+    label: "One to One - (Each Infisical secret will be mapped to its own AWS secret)",
     value: IntegrationMappingBehavior.ONE_TO_ONE
   }
 ];
@@ -277,10 +277,14 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                   onValueChange={(val) => {
                     setSelectedMappingBehavior(val as IntegrationMappingBehavior);
                   }}
-                  className="w-full border border-mineshaft-500"
+                  className="w-full border border-mineshaft-500 text-left"
                 >
                   {mappingBehaviors.map((option) => (
-                    <SelectItem value={option.value} key={`aws-environment-${option.value}`}>
+                    <SelectItem
+                      value={option.value}
+                      className="text-left"
+                      key={`aws-environment-${option.value}`}
+                    >
                       {option.label}
                     </SelectItem>
                   ))}
