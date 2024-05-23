@@ -5,6 +5,7 @@ export * from "./auditLogs";
 export * from "./auditLogStreams";
 export * from "./auth";
 export * from "./bots";
+export * from "./ca";
 export * from "./dynamicSecret";
 export * from "./dynamicSecretLease";
 export * from "./groups";

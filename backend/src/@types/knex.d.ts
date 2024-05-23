@@ -32,6 +32,15 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
+  TCertificateAuthorities,
+  TCertificateAuthoritiesInsert,
+  TCertificateAuthoritiesUpdate,
+  TCertificateAuthorityCerts,
+  TCertificateAuthorityCertsInsert,
+  TCertificateAuthorityCertsUpdate,
+  TCertificateAuthoritySk,
+  TCertificateAuthoritySkInsert,
+  TCertificateAuthoritySkUpdate,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
@@ -240,6 +249,21 @@ declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.Groups]: Knex.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.CertificateAuthority]: Knex.CompositeTableType<
+      TCertificateAuthorities,
+      TCertificateAuthoritiesInsert,
+      TCertificateAuthoritiesUpdate
+    >;
+    [TableName.CertificateAuthorityCert]: Knex.CompositeTableType<
+      TCertificateAuthorityCerts,
+      TCertificateAuthorityCertsInsert,
+      TCertificateAuthorityCertsUpdate
+    >;
+    [TableName.CertificateAuthoritySk]: Knex.CompositeTableType<
+      TCertificateAuthoritySk,
+      TCertificateAuthoritySkInsert,
+      TCertificateAuthoritySkUpdate
+    >;
     [TableName.UserGroupMembership]: Knex.CompositeTableType<
       TUserGroupMembership,
       TUserGroupMembershipInsert,

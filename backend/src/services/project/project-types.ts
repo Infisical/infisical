@@ -75,3 +75,7 @@ export type AddUserToWsDTO = {
     userPublicKey: string;
   }[];
 };
+
+export type TListProjectCasDTO = {
+  filter: Filter;
+} & Omit<TProjectPermission, "projectId">;

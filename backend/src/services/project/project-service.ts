@@ -16,6 +16,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
+import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
@@ -36,6 +37,7 @@ import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
   TGetProjectDTO,
+  TListProjectCasDTO,
   TToggleProjectAutoCapitalizationDTO,
   TUpdateProjectDTO,
   TUpdateProjectNameDTO,
@@ -62,6 +64,7 @@ type TProjectServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -89,6 +92,7 @@ export const projectServiceFactory = ({
   licenseService,
   projectUserMembershipRoleDAL,
   identityProjectMembershipRoleDAL,
+  certificateAuthorityDAL,
   keyStore
 }: TProjectServiceFactoryDep) => {
   /*
@@ -492,6 +496,30 @@ export const projectServiceFactory = ({
     return project.upgradeStatus || null;
   };
 
+  /**
+   * Return list of CAs for project
+   */
+  const listProjectCas = async ({
+    // actorId,
+    // actorOrgId,
+    // actorAuthMethod,
+    filter // actor
+  }: TListProjectCasDTO) => {
+    const project = await projectDAL.findProjectByFilter(filter);
+
+    // const { permission } = await permissionService.getProjectPermission(
+    //   actor,
+    //   actorId,
+    //   project.id,
+    //   actorAuthMethod,
+    //   actorOrgId
+    // );
+    // TODO: add permissioning
+
+    const cas = await certificateAuthorityDAL.find({ projectId: project.id });
+    return cas;
+  };
+
   return {
     createProject,
     deleteProject,
@@ -501,6 +529,7 @@ export const projectServiceFactory = ({
     getAProject,
     toggleAutoCapitalization,
     updateName,
-    upgradeProject
+    upgradeProject,
+    listProjectCas
   };
 };

@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
+import { CertificateAuthoritiesSchema, ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -305,6 +305,40 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return project;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:slug/cas",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        slug: slugSchema.describe("The slug of the project to list CAs.")
+      }),
+      response: {
+        200: z.object({
+          cas: z.array(CertificateAuthoritiesSchema)
+        })
+      }
+    },
+
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const cas = await server.services.project.listProjectCas({
+        filter: {
+          slug: req.params.slug,
+          orgId: req.permission.orgId,
+          type: ProjectFilterType.SLUG
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+      return { cas };
     }
   });
 };

@@ -71,6 +71,11 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
+// ca / certs
+import { certificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { certificateAuthoritySkDALFactory } from "@app/services/certificate-authority/certificate-authority-sk-dal";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
@@ -220,6 +225,16 @@ export const registerRoutes = async (
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
+
+  const certificateAuthorityDAL = certificateAuthorityDALFactory(db);
+  const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
+  const certificateAuthoritySkDAL = certificateAuthoritySkDALFactory(db);
+  const certificateAuthorityService = certificateAuthorityServiceFactory({
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySkDAL,
+    projectDAL
+  });
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -504,6 +519,7 @@ export const registerRoutes = async (
     projectMembershipDAL,
     folderDAL,
     licenseService,
+    certificateAuthorityDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore
@@ -826,6 +842,7 @@ export const registerRoutes = async (
     ldap: ldapService,
     auditLog: auditLogService,
     auditLogStream: auditLogStreamService,
+    certificateAuthority: certificateAuthorityService,
     secretScanning: secretScanningService,
     license: licenseService,
     trustedIp: trustedIpService,

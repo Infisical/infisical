@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { TCertificateAuthority } from "../ca/types";
 import { TGroupMembership } from "../groups/types";
 import { IdentityMembership } from "../identities/types";
 import { IntegrationAuth } from "../integrationAuth/types";
@@ -39,7 +40,8 @@ export const workspaceKeys = {
   getWorkspaceIdentityMemberships: (workspaceId: string) =>
     [{ workspaceId }, "workspace-identity-memberships"] as const,
   getWorkspaceGroupMemberships: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-groups"] as const
+    [{ workspaceId }, "workspace-groups"] as const,
+  getWorkspaceCas: (workspaceId: string) => [{ workspaceId }, "workspace-cas"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -467,5 +469,20 @@ export const useListWorkspaceGroups = (projectSlug: string) => {
       return groupMemberships;
     },
     enabled: true
+  });
+};
+
+export const useListWorkspaceCas = (projectSlug: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceCas(projectSlug),
+    queryFn: async () => {
+      const {
+        data: { cas }
+      } = await apiRequest.get<{ cas: TCertificateAuthority[] }>(
+        `/api/v2/workspace/${projectSlug}/cas`
+      );
+      return cas;
+    },
+    enabled: Boolean(projectSlug)
   });
 };

@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  CertificateAuthority = "certificate_authorities",
+  CertificateAuthorityCert = "certificate_authority_certs",
+  CertificateAuthoritySk = "certificate_authority_sk",
   Groups = "groups",
   GroupProjectMembership = "group_project_memberships",
   GroupProjectMembershipRole = "group_project_membership_roles",
