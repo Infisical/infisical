@@ -138,11 +138,6 @@ export const authPaswordServiceFactory = ({
       code
     });
 
-    await userDAL.updateById(user.id, {
-      isLocked: false,
-      temporaryLockDateEnd: null
-    });
-
     const token = jwt.sign(
       {
         authTokenType: AuthTokenType.SIGNUP_TOKEN,
@@ -178,6 +173,12 @@ export const authPaswordServiceFactory = ({
       tag: encryptedPrivateKeyTag,
       salt,
       verifier
+    });
+
+    await userDAL.updateById(userId, {
+      isLocked: false,
+      temporaryLockDateEnd: null,
+      consecutiveFailedMfaAttempts: 0
     });
   };
 
