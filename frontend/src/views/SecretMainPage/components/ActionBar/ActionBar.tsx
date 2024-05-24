@@ -23,6 +23,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { decryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   DeleteActionModal,
@@ -43,8 +44,9 @@ import {
   UpgradePlanModal
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
+import { interpolateSecrets } from "@app/helpers/secret";
 import { usePopUp } from "@app/hooks";
-import { useCreateFolder, useDeleteSecretBatch } from "@app/hooks/api";
+import { useCreateFolder, useDeleteSecretBatch, useGetUserWsKey } from "@app/hooks/api";
 import { DecryptedSecret, TImportedSecrets, WsTag } from "@app/hooks/api/types";
 import { debounce } from "@app/lib/fn/debounce";
 
@@ -112,6 +114,7 @@ export const ActionBar = ({
 
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
+  const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
 
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
@@ -144,30 +147,59 @@ export const ActionBar = ({
   const handleSecretDownload = async () => {
     const secPriority: Record<string, boolean> = {};
     const downloadedSecrets: Array<{ key: string; value: string; comment?: string }> = [];
+
+    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
+    const workspaceKey = decryptAssymmetric({
+      ciphertext: decryptFileKey!.encryptedKey,
+      nonce: decryptFileKey!.nonce,
+      publicKey: decryptFileKey!.sender.publicKey,
+      privateKey: PRIVATE_KEY
+    });
+
+    const expandSecrets = interpolateSecrets({
+      projectId: workspaceId,
+      secretEncKey: workspaceKey
+    });
+
+    const secretRecord: Record<
+      string,
+      { value: string; comment?: string; skipMultilineEncoding?: boolean }
+    > = {};
+
     // load up secrets in dashboard
-    secrets?.forEach(({ key, value, comment }) => {
+    secrets?.forEach(({ key, value, valueOverride, comment }) => {
       secPriority[key] = true;
-      downloadedSecrets.push({ key, value, comment });
+      downloadedSecrets.push({ key, value: valueOverride || value, comment });
     });
     // now load imported secrets with secPriority
     for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
-      importedSecrets[i].secrets.forEach(({ key, value, comment }) => {
+      importedSecrets[i].secrets.forEach(({ key, value, valueOverride, comment }) => {
         if (secPriority?.[key]) return;
-        downloadedSecrets.unshift({ key, value, comment });
+        downloadedSecrets.unshift({ key, value: valueOverride || value, comment });
         secPriority[key] = true;
       });
     }
 
+    downloadedSecrets.forEach((secret) => {
+      secretRecord[secret.key] = {
+        value: secret.value,
+        comment: secret.comment
+      };
+    });
+
+    await expandSecrets(secretRecord);
+
     const file = downloadedSecrets
       .sort((a, b) => a.key.toLowerCase().localeCompare(b.key.toLowerCase()))
       .reduce(
-        (prev, { key, value, comment }, index) =>
+        (prev, { key, comment }, index) =>
           prev +
           (comment
-            ? `${index === 0 ? "#" : "\n#"} ${comment}\n${key}=${value}\n`
-            : `${key}=${value}\n`),
+            ? `${index === 0 ? "#" : "\n#"} ${comment}\n${key}=${secretRecord[key].value}\n`
+            : `${key}=${secretRecord[key].value}\n`),
         ""
       );
+
     const blob = new Blob([file], { type: "text/plain;charset=utf-8" });
     FileSaver.saveAs(blob, `${environment}.env`);
   };
