@@ -2696,18 +2696,21 @@ const syncSecretsCloudflarePages = async ({
     })
   ).data.result.deployment_configs[integration.targetEnvironment as string].env_vars;
 
-  // copy the secrets object, so we can set deleted keys to null
-  const secretsObj = Object.fromEntries(
-    Object.entries(getSecretKeyValuePair(secrets)).map(([key, val]) => [
-      key,
-      key in Object.keys(getSecretsRes) ? { type: "secret_text", value: val } : null
-    ])
-  );
+  let secretEntries: [string, object | null][] = Object.entries(getSecretKeyValuePair(secrets)).map(([key, val]) => [
+    key,
+    { type: "secret_text", value: val }
+  ]);
+
+  if (getSecretsRes) {
+    const toDeleteKeys = Object.keys(getSecretsRes).filter((key) => !Object.keys(secrets).includes(key));
+    const toDeleteEntries: [string, null][] = toDeleteKeys.map((key) => [key, null]);
+    secretEntries = [...secretEntries, ...toDeleteEntries];
+  }
 
   const data = {
     deployment_configs: {
       [integration.targetEnvironment as string]: {
-        env_vars: secretsObj
+        env_vars: Object.fromEntries(secretEntries)
       }
     }
   };
