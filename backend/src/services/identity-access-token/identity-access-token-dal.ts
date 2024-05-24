@@ -48,7 +48,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             .where("accessTokenNumUsesLimit", ">", 0)
             .andWhere(
               "accessTokenNumUses",
-              ">",
+              ">=",
               db.ref("accessTokenNumUsesLimit").withSchema(TableName.IdentityAccessToken)
             );
         })
@@ -76,7 +76,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         .delete();
       return await docs;
     } catch (error) {
-      throw new DatabaseError({ error, name: "IdentityAccesTokenPrune" });
+      throw new DatabaseError({ error, name: "IdentityAccessTokenPrune" });
     }
   };
 

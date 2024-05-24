@@ -44,7 +44,10 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     await queueService.queue(QueueName.DailyResourceCleanUp, QueueJobs.DailyResourceCleanUp, undefined, {
       delay: 5000,
       jobId: QueueName.DailyResourceCleanUp,
-      repeat: { pattern: "0 0 * * *", utc: true }
+      repeat: {
+        every: 10000
+        // limit: 100,
+      }
     });
   };
 
