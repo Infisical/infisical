@@ -23,14 +23,11 @@ export const UsersSchema = z.object({
   isGhost: z.boolean().default(false),
   username: z.string(),
   isEmailVerified: z.boolean().default(false).nullable().optional(),
-  consecutiveFailedMfaAttempts: z.number(),
-  isLocked: z.boolean(),
+  consecutiveFailedMfaAttempts: z.number().optional(),
+  isLocked: z.boolean().optional(),
   temporaryLockDateEnd: z.date().nullable().optional()
 });
 
 export type TUsers = z.infer<typeof UsersSchema>;
-export type TUsersInsert = Omit<
-  z.input<typeof UsersSchema>,
-  TImmutableDBKeys | "isLocked" | "consecutiveFailedMfaAttempts"
->;
+export type TUsersInsert = Omit<z.input<typeof UsersSchema>, TImmutableDBKeys>;
 export type TUsersUpdate = Partial<Omit<z.input<typeof UsersSchema>, TImmutableDBKeys>>;

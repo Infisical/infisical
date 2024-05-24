@@ -138,6 +138,11 @@ export const authPaswordServiceFactory = ({
       code
     });
 
+    await userDAL.updateById(user.id, {
+      isLocked: false,
+      temporaryLockDateEnd: null
+    });
+
     const token = jwt.sign(
       {
         authTokenType: AuthTokenType.SIGNUP_TOKEN,

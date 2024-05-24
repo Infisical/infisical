@@ -4,7 +4,7 @@ import { TUsers, UserDeviceSchema } from "@app/db/schemas";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, UnauthorizedError } from "@app/lib/errors";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TTokenDALFactory } from "../auth-token/auth-token-dal";
@@ -13,7 +13,6 @@ import { TokenType } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
-import { processFailedMfaAttempt } from "../user/user-fns";
 import { enforceUserLockStatus, validateProviderAuthToken } from "./auth-fns";
 import {
   TLoginClientProofDTO,
@@ -214,7 +213,7 @@ export const authLoginServiceFactory = ({
     // send multi factor auth token if they it enabled
     if (userEnc.isMfaEnabled && userEnc.email) {
       const user = await userDAL.findById(userEnc.userId);
-      enforceUserLockStatus(user.isLocked, user.temporaryLockDateEnd);
+      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
       const mfaToken = jwt.sign(
         {
@@ -304,11 +303,59 @@ export const authLoginServiceFactory = ({
   const resendMfaToken = async (userId: string) => {
     const user = await userDAL.findById(userId);
     if (!user || !user.email) return;
-    enforceUserLockStatus(user.isLocked, user.temporaryLockDateEnd);
+    enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
     await sendUserMfaCode({
       userId: user.id,
       email: user.email
     });
+  };
+
+  const processFailedMfaAttempt = async (userId: string) => {
+    try {
+      const updatedUser = await userDAL.transaction(async (tx) => {
+        const PROGRESSIVE_DELAY_INTERVAL = 3;
+        const user = await userDAL.incrementFailedMfaAttempt(userId, tx);
+
+        if (!user) {
+          throw new Error("User not found");
+        }
+
+        const progressiveDelaysInMins = [5, 30, 60];
+
+        // lock user when failed attempt exceeds threshold
+        if (
+          user.consecutiveFailedMfaAttempts &&
+          user.consecutiveFailedMfaAttempts >= PROGRESSIVE_DELAY_INTERVAL * (progressiveDelaysInMins.length + 1)
+        ) {
+          return userDAL.updateById(
+            userId,
+            {
+              isLocked: true,
+              temporaryLockDateEnd: null
+            },
+            tx
+          );
+        }
+
+        // delay user only when failed MFA attempts is a multiple of configured delay interval
+        if (user.consecutiveFailedMfaAttempts && user.consecutiveFailedMfaAttempts % PROGRESSIVE_DELAY_INTERVAL === 0) {
+          const delayIndex = user.consecutiveFailedMfaAttempts / PROGRESSIVE_DELAY_INTERVAL - 1;
+          return userDAL.updateById(
+            userId,
+            {
+              temporaryLockDateEnd: new Date(new Date().getTime() + progressiveDelaysInMins[delayIndex] * 60 * 1000)
+            },
+            tx
+          );
+        }
+
+        return user;
+      });
+
+      return updatedUser;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Process failed MFA Attempt" });
+    }
   };
 
   /*
@@ -318,7 +365,7 @@ export const authLoginServiceFactory = ({
   const verifyMfaToken = async ({ userId, mfaToken, mfaJwtToken, ip, userAgent, orgId }: TVerifyMfaTokenDTO) => {
     const appCfg = getConfig();
     const user = await userDAL.findById(userId);
-    enforceUserLockStatus(user.isLocked, user.temporaryLockDateEnd);
+    enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
     try {
       await tokenService.validateTokenForUser({
@@ -327,7 +374,7 @@ export const authLoginServiceFactory = ({
         code: mfaToken
       });
     } catch (err) {
-      const updatedUser = await processFailedMfaAttempt(userId, userDAL);
+      const updatedUser = await processFailedMfaAttempt(userId);
       if (updatedUser.isLocked) {
         if (updatedUser.email) {
           const unlockToken = await tokenService.createTokenForUser({
@@ -341,7 +388,7 @@ export const authLoginServiceFactory = ({
             recipients: [updatedUser.email],
             substitutions: {
               token: unlockToken,
-              callback_url: `${appCfg.SITE_URL}/api/v1/user/${updatedUser.id}/unlock-verify`
+              callback_url: `${appCfg.SITE_URL}/api/v1/user/${updatedUser.id}/unlock`
             }
           });
         }

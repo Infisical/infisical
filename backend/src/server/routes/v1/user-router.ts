@@ -32,7 +32,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:userId/unlock-verify",
+    url: "/:userId/unlock",
     config: {
       rateLimit: authRateLimit
     },

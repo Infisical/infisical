@@ -50,7 +50,7 @@ export const enforceUserLockStatus = (isLocked: boolean, temporaryLockDateEnd?: 
     throw new UnauthorizedError({
       name: "User Locked",
       message:
-        "User is locked due to multiple failed login attempts. An email has been sent to you in order to unlock your account."
+        "User is locked due to multiple failed login attempts. An email has been sent to you in order to unlock your account. You can also reset your password to unlock."
     });
   }
 
