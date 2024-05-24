@@ -21,17 +21,18 @@ export const identityAccessTokenServiceFactory = ({
   identityAccessTokenDAL,
   identityOrgMembershipDAL
 }: TIdentityAccessTokenServiceFactoryDep) => {
-  const validateAccessTokenExp = (identityAccessToken: TIdentityAccessTokens) => {
+  const validateAccessTokenExp = async (identityAccessToken: TIdentityAccessTokens) => {
     const {
+      id: tokenId,
       accessTokenTTL,
       accessTokenNumUses,
       accessTokenNumUsesLimit,
       accessTokenLastRenewedAt,
-      accessTokenMaxTTL,
       createdAt: accessTokenCreatedAt
     } = identityAccessToken;
 
     if (accessTokenNumUsesLimit > 0 && accessTokenNumUses > 0 && accessTokenNumUses >= accessTokenNumUsesLimit) {
+      await identityAccessTokenDAL.deleteById(tokenId);
       throw new BadRequestError({
         message: "Unable to renew because access token number of uses limit reached"
       });
@@ -46,40 +47,25 @@ export const identityAccessTokenServiceFactory = ({
         const ttlInMilliseconds = Number(accessTokenTTL) * 1000;
         const expirationDate = new Date(accessTokenRenewed.getTime() + ttlInMilliseconds);
 
-        if (currentDate > expirationDate)
+        if (currentDate > expirationDate) {
+          await identityAccessTokenDAL.deleteById(tokenId);
           throw new UnauthorizedError({
             message: "Failed to renew MI access token due to TTL expiration"
           });
+        }
       } else {
         // access token has never been renewed
         const accessTokenCreated = new Date(accessTokenCreatedAt);
         const ttlInMilliseconds = Number(accessTokenTTL) * 1000;
         const expirationDate = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
 
-        if (currentDate > expirationDate)
+        if (currentDate > expirationDate) {
+          await identityAccessTokenDAL.deleteById(tokenId);
           throw new UnauthorizedError({
             message: "Failed to renew MI access token due to TTL expiration"
           });
+        }
       }
-    }
-
-    // max ttl checks
-    if (Number(accessTokenMaxTTL) > 0) {
-      const accessTokenCreated = new Date(accessTokenCreatedAt);
-      const ttlInMilliseconds = Number(accessTokenMaxTTL) * 1000;
-      const currentDate = new Date();
-      const expirationDate = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
-
-      if (currentDate > expirationDate)
-        throw new UnauthorizedError({
-          message: "Failed to renew MI access token due to Max TTL expiration"
-        });
-
-      const extendToDate = new Date(currentDate.getTime() + Number(accessTokenTTL));
-      if (extendToDate > expirationDate)
-        throw new UnauthorizedError({
-          message: "Failed to renew MI access token past its Max TTL expiration"
-        });
     }
   };
 
@@ -97,7 +83,32 @@ export const identityAccessTokenServiceFactory = ({
     });
     if (!identityAccessToken) throw new UnauthorizedError();
 
-    validateAccessTokenExp(identityAccessToken);
+    await validateAccessTokenExp(identityAccessToken);
+
+    const { accessTokenMaxTTL, createdAt: accessTokenCreatedAt, accessTokenTTL } = identityAccessToken;
+
+    // max ttl checks - will it go above max ttl
+    if (Number(accessTokenMaxTTL) > 0) {
+      const accessTokenCreated = new Date(accessTokenCreatedAt);
+      const ttlInMilliseconds = Number(accessTokenMaxTTL) * 1000;
+      const currentDate = new Date();
+      const expirationDate = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
+
+      if (currentDate > expirationDate) {
+        await identityAccessTokenDAL.deleteById(identityAccessToken.id);
+        throw new UnauthorizedError({
+          message: "Failed to renew MI access token due to Max TTL expiration"
+        });
+      }
+
+      const extendToDate = new Date(currentDate.getTime() + Number(accessTokenTTL * 1000));
+      if (extendToDate > expirationDate) {
+        await identityAccessTokenDAL.deleteById(identityAccessToken.id);
+        throw new UnauthorizedError({
+          message: "Failed to renew MI access token past its Max TTL expiration"
+        });
+      }
+    }
 
     const updatedIdentityAccessToken = await identityAccessTokenDAL.updateById(identityAccessToken.id, {
       accessTokenLastRenewedAt: new Date()
@@ -131,7 +142,7 @@ export const identityAccessTokenServiceFactory = ({
     });
     if (!identityAccessToken) throw new UnauthorizedError();
 
-    if (ipAddress) {
+    if (ipAddress && identityAccessToken) {
       checkIPAgainstBlocklist({
         ipAddress,
         trustedIps: identityAccessToken?.accessTokenTrustedIps as TIp[]
@@ -146,7 +157,14 @@ export const identityAccessTokenServiceFactory = ({
       throw new UnauthorizedError({ message: "Identity does not belong to any organization" });
     }
 
-    validateAccessTokenExp(identityAccessToken);
+    await validateAccessTokenExp(identityAccessToken);
+
+    await identityAccessTokenDAL.updateById(identityAccessToken.id, {
+      accessTokenLastUsedAt: new Date(),
+      $incr: {
+        accessTokenNumUses: 1
+      }
+    });
     return { ...identityAccessToken, orgId: identityOrgMembership.orgId };
   };
 
