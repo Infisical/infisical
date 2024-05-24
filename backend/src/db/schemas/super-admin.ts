@@ -12,9 +12,13 @@ export const SuperAdminSchema = z.object({
   initialized: z.boolean().default(false).nullable().optional(),
   allowSignUp: z.boolean().default(true).nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  allowedSignUpDomain: z.string().nullable().optional(),
+  instanceId: z.string().uuid().default("00000000-0000-0000-0000-000000000000"),
+  trustSamlEmails: z.boolean().default(false).nullable().optional(),
+  trustLdapEmails: z.boolean().default(false).nullable().optional()
 });
 
 export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;
-export type TSuperAdminInsert = Omit<TSuperAdmin, TImmutableDBKeys>;
-export type TSuperAdminUpdate = Partial<Omit<TSuperAdmin, TImmutableDBKeys>>;
+export type TSuperAdminInsert = Omit<z.input<typeof SuperAdminSchema>, TImmutableDBKeys>;
+export type TSuperAdminUpdate = Partial<Omit<z.input<typeof SuperAdminSchema>, TImmutableDBKeys>>;

@@ -1,25 +1,25 @@
 ---
 title: "Docker"
-description: "Learn how to feed secrets from Infisical into your docker application"
+description: "Learn how to feed secrets from Infisical into your Docker application."
 ---
-There are many methods to inject Infisical secrets to docker-based applications. 
-Regardless of which method you choose, these methods will inject secrets from Infisical as environment variables into your Docker container.
+There are many methods to inject Infisical secrets into Docker-based applications. 
+Regardless of the method you choose, they all inject secrets from Infisical as environment variables into your Docker container.
 
 <Card title="Docker Entrypoint" color="#ea5a0c" href="./docker">
   Install and run your app start command with Infisical CLI
 </Card>
 <CardGroup cols={2}>
   <Card title="Docker run" color="#0285c7" href="./docker-pass-envs">
-    Feed secrets via `--env-file` flag in docker run command
+    Feed secrets with the `--env-file` flag when using the
+    `docker run` command
   </Card>
   <Card title="Docker compose" color="#16a34a" href="./docker-compose">
-    Inject secrets to multiple services using Docker Compose
+    Inject secrets into multiple services using Docker Compose
   </Card>
 </CardGroup>
 
 <Info>
 The main difference between the "Docker Entrypoint" and "Docker run" approach is where the Infisical CLI is installed. 
-In most production settings, it's typically inconvenient to have the Infisical CLI installed and executed externally.
-As a result, we suggest using the "Docker Entrypoint" method for production purposes. 
+In most production settings, it's typically less convenient to have the Infisical CLI installed and executed externally, so we suggest using the "Docker Entrypoint" method for production purposes. 
 However, if this limitation doesn't apply to you, select the method that best fits your needs.
 </Info>

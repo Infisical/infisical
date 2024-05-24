@@ -1,18 +1,18 @@
 ---
 title: "JumpCloud SAML"
-description: "Configure JumpCloud SAML for Infisical SSO"
+description: "Learn how to configure JumpCloud SAML for Infisical SSO."
 ---
 
 <Info>
-   JumpCloud SAML SSO feature is a paid feature.
+   JumpCloud SAML SSO is a paid feature.
    
    If you're using Infisical Cloud, then it is available under the **Pro Tier**. If you're self-hosting Infisical,
-   then you should contact team@infisical.com to purchase an enterprise license to use it.
+   then you should contact sales@infisical.com to purchase an enterprise license to use it.
 </Info>
 
 <Steps>
    <Step title="Prepare the SAML SSO configuration in Infisical">
-      In Infisical, head over to your organization Settings > Authentication > SAML SSO Configuration and select **Set up SAML SSO**.
+      In Infisical, head to your Organization Settings > Authentication > SAML SSO Configuration and select **Set up SAML SSO**.
 
       Next, copy the **ACS URL** and **SP Entity ID** to use when configuring the JumpCloud SAML application.
 
@@ -71,9 +71,21 @@ description: "Configure JumpCloud SAML for Infisical SSO"
       ![JumpCloud SAML assignment](../../../images/sso/jumpcloud/assignment.png)
    </Step>
    <Step title="Enable SAML SSO in Infisical">
-      Enabling SAML SSO enforces all members in your organization to only be able to log into Infisical via JumpCloud.
+      Enabling SAML SSO allows members in your organization to log into Infisical via JumpCloud.
 
       ![JumpCloud SAML assignment](../../../images/sso/jumpcloud/enable-saml.png)
+   </Step>
+   <Step title="Enforce SAML SSO in Infisical">
+      Enforcing SAML SSO ensures that members in your organization can only access Infisical
+      by logging into the organization via JumpCloud.
+
+      To enforce SAML SSO, you're required to test out the SAML connection by successfully authenticating at least one JumpCloud user with Infisical;
+      Once you've completed this requirement, you can toggle the **Enforce SAML SSO** button to enforce SAML SSO.
+      
+      <Warning>
+         We recommend ensuring that your account is provisioned the application in JumpCloud
+         prior to enforcing SAML SSO to prevent any unintended issues.
+      </Warning>
    </Step>
 </Steps>
 

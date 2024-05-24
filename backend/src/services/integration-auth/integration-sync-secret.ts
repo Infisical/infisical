@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
@@ -8,9 +9,12 @@
 
 import {
   CreateSecretCommand,
+  DescribeSecretCommand,
   GetSecretValueCommand,
   ResourceNotFoundException,
   SecretsManagerClient,
+  TagResourceCommand,
+  UntagResourceCommand,
   UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
 import { Octokit } from "@octokit/rest";
@@ -20,11 +24,18 @@ import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
 import { z } from "zod";
 
-import { TIntegrationAuths, TIntegrations } from "@app/db/schemas";
+import { SecretType, TIntegrationAuths, TIntegrations, TSecrets } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
-import { Integrations, IntegrationUrls } from "./integration-list";
+import { TIntegrationDALFactory } from "../integration/integration-dal";
+import {
+  IntegrationInitialSyncBehavior,
+  IntegrationMappingBehavior,
+  Integrations,
+  IntegrationUrls
+} from "./integration-list";
 
 const getSecretKeyValuePair = (secrets: Record<string, { value: string | null; comment?: string } | null>) =>
   Object.keys(secrets).reduce<Record<string, string | null | undefined>>((prev, key) => {
@@ -441,49 +452,74 @@ const syncSecretsAWSParameterStore = async ({
 }) => {
   if (!accessId) return;
 
-  AWS.config.update({
+  const config = new AWS.Config({
     region: integration.region as string,
-    accessKeyId: accessId,
-    secretAccessKey: accessToken
+    credentials: {
+      accessKeyId: accessId,
+      secretAccessKey: accessToken
+    }
   });
 
   const ssm = new AWS.SSM({
     apiVersion: "2014-11-06",
     region: integration.region as string
   });
+  ssm.config.update(config);
 
-  const params = {
-    Path: integration.path as string,
-    Recursive: true,
-    WithDecryption: true
-  };
+  const metadata = z.record(z.any()).parse(integration.metadata || {});
+  const awsParameterStoreSecretsObj: Record<string, AWS.SSM.Parameter> = {};
 
-  const parameterList = (await ssm.getParametersByPath(params).promise()).Parameters;
+  // now fetch all aws parameter store secrets
+  let hasNext = true;
+  let nextToken: string | undefined;
+  while (hasNext) {
+    const parameters = await ssm
+      .getParametersByPath({
+        Path: integration.path as string,
+        Recursive: false,
+        WithDecryption: true,
+        MaxResults: 10,
+        NextToken: nextToken
+      })
+      .promise();
 
-  const awsParameterStoreSecretsObj = (parameterList || [])
-    .filter(({ Name }) => Boolean(Name))
-    .reduce(
-      (obj, secret) => ({
-        ...obj,
-        [(secret.Name as string).substring((integration.path as string).length)]: secret
-      }),
-      {} as Record<string, AWS.SSM.Parameter>
-    );
+    if (parameters.Parameters) {
+      parameters.Parameters.forEach((parameter) => {
+        if (parameter.Name) {
+          const secKey = parameter.Name.substring((integration.path as string).length);
+          awsParameterStoreSecretsObj[secKey] = parameter;
+        }
+      });
+    }
+    hasNext = Boolean(parameters.NextToken);
+    nextToken = parameters.NextToken;
+  }
 
   // Identify secrets to create
-  await Promise.all(
-    Object.keys(secrets).map(async (key) => {
+  // don't use Promise.all() and promise map here
+  // it will cause rate limit
+  for (const key in secrets) {
+    if (Object.hasOwn(secrets, key)) {
       if (!(key in awsParameterStoreSecretsObj)) {
         // case: secret does not exist in AWS parameter store
         // -> create secret
-        await ssm
-          .putParameter({
-            Name: `${integration.path}${key}`,
-            Type: "SecureString",
-            Value: secrets[key].value,
-            Overwrite: true
-          })
-          .promise();
+        if (secrets[key].value) {
+          await ssm
+            .putParameter({
+              Name: `${integration.path}${key}`,
+              Type: "SecureString",
+              Value: secrets[key].value,
+              ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
+              // Overwrite: true,
+              Tags: metadata.secretAWSTag
+                ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+                    Key: tag.key,
+                    Value: tag.value
+                  }))
+                : []
+            })
+            .promise();
+        }
         // case: secret exists in AWS parameter store
       } else if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
         // case: secret value doesn't match one in AWS parameter store
@@ -494,32 +530,35 @@ const syncSecretsAWSParameterStore = async ({
             Type: "SecureString",
             Value: secrets[key].value,
             Overwrite: true
+            // Tags: metadata.secretAWSTag ? [{ Key: metadata.secretAWSTag.key, Value: metadata.secretAWSTag.value }] : []
           })
           .promise();
       }
-    })
-  );
 
-  // Identify secrets to delete
-  await Promise.all(
-    Object.keys(awsParameterStoreSecretsObj).map(async (key) => {
-      if (!(key in secrets)) {
-        // case:
-        // -> delete secret
-        await ssm
-          .deleteParameter({
-            Name: awsParameterStoreSecretsObj[key].Name as string
-          })
-          .promise();
+      await new Promise((resolve) => {
+        setTimeout(resolve, 50);
+      });
+    }
+  }
+
+  if (!metadata.shouldDisableDelete) {
+    for (const key in awsParameterStoreSecretsObj) {
+      if (Object.hasOwn(awsParameterStoreSecretsObj, key)) {
+        if (!(key in secrets)) {
+          // case:
+          // -> delete secret
+          await ssm
+            .deleteParameter({
+              Name: awsParameterStoreSecretsObj[key].Name as string
+            })
+            .promise();
+        }
+        await new Promise((resolve) => {
+          setTimeout(resolve, 50);
+        });
       }
-    })
-  );
-
-  AWS.config.update({
-    region: undefined,
-    accessKeyId: undefined,
-    secretAccessKey: undefined
-  });
+    }
+  }
 };
 
 /**
@@ -536,65 +575,149 @@ const syncSecretsAWSSecretManager = async ({
   accessId: string | null;
   accessToken: string;
 }) => {
-  let secretsManager;
-  const secKeyVal = getSecretKeyValuePair(secrets);
-  try {
-    if (!accessId) return;
+  const metadata = z.record(z.any()).parse(integration.metadata || {});
 
-    AWS.config.update({
-      region: integration.region as string,
+  if (!accessId) return;
+
+  const secretsManager = new SecretsManagerClient({
+    region: integration.region as string,
+    credentials: {
       accessKeyId: accessId,
       secretAccessKey: accessToken
-    });
+    }
+  });
 
-    secretsManager = new SecretsManagerClient({
-      region: integration.region as string,
-      credentials: {
-        accessKeyId: accessId,
-        secretAccessKey: accessToken
+  const processAwsSecret = async (
+    secretId: string,
+    secretValue: Record<string, string | null | undefined> | string
+  ) => {
+    try {
+      const awsSecretManagerSecret = await secretsManager.send(
+        new GetSecretValueCommand({
+          SecretId: secretId
+        })
+      );
+
+      let secretToCompare;
+      if (awsSecretManagerSecret?.SecretString) {
+        if (typeof secretValue === "string") {
+          secretToCompare = awsSecretManagerSecret.SecretString;
+        } else {
+          secretToCompare = JSON.parse(awsSecretManagerSecret.SecretString);
+        }
       }
-    });
 
-    const awsSecretManagerSecret = await secretsManager.send(
-      new GetSecretValueCommand({
-        SecretId: integration.app as string
-      })
-    );
+      if (!isEqual(secretToCompare, secretValue)) {
+        await secretsManager.send(
+          new UpdateSecretCommand({
+            SecretId: secretId,
+            SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue)
+          })
+        );
+      }
 
-    let awsSecretManagerSecretObj: { [key: string]: AWS.SecretsManager } = {};
+      const secretAWSTag = metadata.secretAWSTag as { key: string; value: string }[] | undefined;
 
-    if (awsSecretManagerSecret?.SecretString) {
-      awsSecretManagerSecretObj = JSON.parse(awsSecretManagerSecret.SecretString);
+      if (secretAWSTag && secretAWSTag.length) {
+        const describedSecret = await secretsManager.send(
+          // requires secretsmanager:DescribeSecret policy
+          new DescribeSecretCommand({
+            SecretId: secretId
+          })
+        );
+
+        if (!describedSecret.Tags) return;
+
+        const integrationTagObj = secretAWSTag.reduce(
+          (acc, item) => {
+            acc[item.key] = item.value;
+            return acc;
+          },
+          {} as Record<string, string>
+        );
+
+        const awsTagObj = (describedSecret.Tags || []).reduce(
+          (acc, item) => {
+            if (item.Key && item.Value) {
+              acc[item.Key] = item.Value;
+            }
+            return acc;
+          },
+          {} as Record<string, string>
+        );
+
+        const tagsToUpdate: { Key: string; Value: string }[] = [];
+        const tagsToDelete: { Key: string; Value: string }[] = [];
+
+        describedSecret.Tags?.forEach((tag) => {
+          if (tag.Key && tag.Value) {
+            if (!(tag.Key in integrationTagObj)) {
+              // delete tag from AWS secret manager
+              tagsToDelete.push({
+                Key: tag.Key,
+                Value: tag.Value
+              });
+            } else if (tag.Value !== integrationTagObj[tag.Key]) {
+              // update tag in AWS secret manager
+              tagsToUpdate.push({
+                Key: tag.Key,
+                Value: integrationTagObj[tag.Key]
+              });
+            }
+          }
+        });
+
+        secretAWSTag?.forEach((tag) => {
+          if (!(tag.key in awsTagObj)) {
+            // create tag in AWS secret manager
+            tagsToUpdate.push({
+              Key: tag.key,
+              Value: tag.value
+            });
+          }
+        });
+
+        if (tagsToUpdate.length) {
+          await secretsManager.send(
+            new TagResourceCommand({
+              SecretId: secretId,
+              Tags: tagsToUpdate
+            })
+          );
+        }
+
+        if (tagsToDelete.length) {
+          await secretsManager.send(
+            new UntagResourceCommand({
+              SecretId: secretId,
+              TagKeys: tagsToDelete.map((tag) => tag.Key)
+            })
+          );
+        }
+      }
+    } catch (err) {
+      // case when AWS manager can't find the specified secret
+      if (err instanceof ResourceNotFoundException && secretsManager) {
+        await secretsManager.send(
+          new CreateSecretCommand({
+            Name: secretId,
+            SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue),
+            ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
+            Tags: metadata.secretAWSTag
+              ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
+              : []
+          })
+        );
+      }
     }
+  };
 
-    if (!isEqual(awsSecretManagerSecretObj, secKeyVal)) {
-      await secretsManager.send(
-        new UpdateSecretCommand({
-          SecretId: integration.app as string,
-          SecretString: JSON.stringify(secKeyVal)
-        })
-      );
+  if (metadata.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE) {
+    for await (const [key, value] of Object.entries(secrets)) {
+      await processAwsSecret(key, value.value);
     }
-
-    AWS.config.update({
-      region: undefined,
-      accessKeyId: undefined,
-      secretAccessKey: undefined
-    });
-  } catch (err) {
-    if (err instanceof ResourceNotFoundException && secretsManager) {
-      await secretsManager.send(
-        new CreateSecretCommand({
-          Name: integration.app as string,
-          SecretString: JSON.stringify(secKeyVal)
-        })
-      );
-    }
-    AWS.config.update({
-      region: undefined,
-      accessKeyId: undefined,
-      secretAccessKey: undefined
-    });
+  } else {
+    await processAwsSecret(integration.app as string, getSecretKeyValuePair(secrets));
   }
 };
 
@@ -602,11 +725,25 @@ const syncSecretsAWSSecretManager = async ({
  * Sync/push [secrets] to Heroku app named [integration.app]
  */
 const syncSecretsHeroku = async ({
+  createManySecretsRawFn,
+  updateManySecretsRawFn,
+  integrationDAL,
   integration,
   secrets,
   accessToken
 }: {
-  integration: TIntegrations;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
   secrets: Record<string, { value: string; comment?: string } | null>;
   accessToken: string;
 }) => {
@@ -620,11 +757,73 @@ const syncSecretsHeroku = async ({
     })
   ).data;
 
+  const secretsToAdd: { [key: string]: string } = {};
+  const secretsToUpdate: { [key: string]: string } = {};
+
+  const metadata = z.record(z.any()).parse(integration.metadata);
+
   Object.keys(herokuSecrets).forEach((key) => {
-    if (!(key in secrets)) {
-      secrets[key] = null;
-    }
+    if (!integration.lastUsed) {
+      // first time using integration
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        case IntegrationInitialSyncBehavior.OVERWRITE_TARGET: {
+          if (!(key in secrets)) secrets[key] = null;
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_TARGET: {
+          if (!(key in secrets)) {
+            secretsToAdd[key] = herokuSecrets[key];
+          } else if (secrets[key]?.value !== herokuSecrets[key]) {
+            secretsToUpdate[key] = herokuSecrets[key];
+          }
+          secrets[key] = {
+            value: herokuSecrets[key]
+          };
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
+          if (!(key in secrets)) {
+            secrets[key] = herokuSecrets[key];
+            secretsToAdd[key] = herokuSecrets[key];
+          }
+          break;
+        }
+        default: {
+          if (!(key in secrets)) secrets[key] = null;
+          break;
+        }
+      }
+    } else if (!(key in secrets)) secrets[key] = null;
   });
+
+  if (Object.keys(secretsToAdd).length) {
+    await createManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToAdd).map((key) => ({
+        secretName: key,
+        secretValue: secretsToAdd[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
+  if (Object.keys(secretsToUpdate).length) {
+    await updateManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToUpdate).map((key) => ({
+        secretName: key,
+        secretValue: secretsToUpdate[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
 
   await request.patch(
     `${IntegrationUrls.HEROKU_API_URL}/apps/${integration.app}/config-vars`,
@@ -637,6 +836,10 @@ const syncSecretsHeroku = async ({
       }
     }
   );
+
+  await integrationDAL.updateById(integration.id, {
+    lastUsed: new Date()
+  });
 };
 
 /**
@@ -1048,98 +1251,176 @@ const syncSecretsGitHub = async ({
   interface GitHubRepoKey {
     key_id: string;
     key: string;
+    id?: number | undefined;
+    url?: string | undefined;
+    title?: string | undefined;
+    created_at?: string | undefined;
   }
 
   interface GitHubSecret {
     name: string;
     created_at: string;
     updated_at: string;
-  }
-
-  interface GitHubSecretRes {
-    [index: string]: GitHubSecret;
+    visibility?: "all" | "private" | "selected";
+    selected_repositories_url?: string | undefined;
   }
 
   const octokit = new Octokit({
     auth: accessToken
   });
 
-  // const user = (await octokit.request('GET /user', {})).data;
-  const repoPublicKey: GitHubRepoKey = (
-    await octokit.request("GET /repos/{owner}/{repo}/actions/secrets/public-key", {
-      owner: integration.owner as string,
-      repo: integration.app as string
-    })
-  ).data;
+  enum GithubScope {
+    Repo = "github-repo",
+    Org = "github-org",
+    Env = "github-env"
+  }
+
+  let repoPublicKey: GitHubRepoKey;
+
+  switch (integration.scope) {
+    case GithubScope.Org: {
+      const { data } = await octokit.request("GET /orgs/{org}/actions/secrets/public-key", {
+        org: integration.owner as string
+      });
+      repoPublicKey = data;
+      break;
+    }
+    case GithubScope.Env: {
+      const { data } = await octokit.request(
+        "GET /repositories/{repository_id}/environments/{environment_name}/secrets/public-key",
+        {
+          repository_id: Number(integration.appId),
+          environment_name: integration.targetEnvironmentId as string
+        }
+      );
+      repoPublicKey = data;
+      break;
+    }
+    default: {
+      const { data } = await octokit.request("GET /repos/{owner}/{repo}/actions/secrets/public-key", {
+        owner: integration.owner as string,
+        repo: integration.app as string
+      });
+      repoPublicKey = data;
+      break;
+    }
+  }
 
   // Get local copy of decrypted secrets. We cannot decrypt them as we dont have access to GH private key
-  let encryptedSecrets: GitHubSecretRes = (
-    await octokit.request("GET /repos/{owner}/{repo}/actions/secrets", {
-      owner: integration.owner as string,
-      repo: integration.app as string
-    })
-  ).data.secrets.reduce(
-    (obj, secret) => ({
-      ...obj,
-      [secret.name]: secret
-    }),
-    {}
-  );
+  let encryptedSecrets: GitHubSecret[];
 
-  encryptedSecrets = Object.keys(encryptedSecrets).reduce(
-    (
-      result: {
-        [key: string]: GitHubSecret;
-      },
-      key
-    ) => {
-      if (
-        (appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) &&
-        (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)
-      ) {
-        result[key] = encryptedSecrets[key];
-      }
-      return result;
-    },
-    {}
-  );
-
-  await Promise.all(
-    Object.keys(encryptedSecrets).map(async (key) => {
-      if (!(key in secrets)) {
-        return octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+  switch (integration.scope) {
+    case GithubScope.Org: {
+      encryptedSecrets = (
+        await octokit.request("GET /orgs/{org}/actions/secrets", {
+          org: integration.owner as string
+        })
+      ).data.secrets;
+      break;
+    }
+    case GithubScope.Env: {
+      encryptedSecrets = (
+        await octokit.request("GET /repositories/{repository_id}/environments/{environment_name}/secrets", {
+          repository_id: Number(integration.appId),
+          environment_name: integration.targetEnvironmentId as string
+        })
+      ).data.secrets;
+      break;
+    }
+    default: {
+      encryptedSecrets = (
+        await octokit.request("GET /repos/{owner}/{repo}/actions/secrets", {
           owner: integration.owner as string,
-          repo: integration.app as string,
-          secret_name: key
-        });
+          repo: integration.app as string
+        })
+      ).data.secrets;
+      break;
+    }
+  }
+
+  for await (const encryptedSecret of encryptedSecrets) {
+    if (
+      !(encryptedSecret.name in secrets) &&
+      !(appendices?.prefix !== undefined && !encryptedSecret.name.startsWith(appendices?.prefix)) &&
+      !(appendices?.suffix !== undefined && !encryptedSecret.name.endsWith(appendices?.suffix))
+    ) {
+      switch (integration.scope) {
+        case GithubScope.Org: {
+          await octokit.request("DELETE /orgs/{org}/actions/secrets/{secret_name}", {
+            org: integration.owner as string,
+            secret_name: encryptedSecret.name
+          });
+          break;
+        }
+        case GithubScope.Env: {
+          await octokit.request(
+            "DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
+            {
+              repository_id: Number(integration.appId),
+              environment_name: integration.targetEnvironmentId as string,
+              secret_name: encryptedSecret.name
+            }
+          );
+          break;
+        }
+        default: {
+          await octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+            owner: integration.owner as string,
+            repo: integration.app as string,
+            secret_name: encryptedSecret.name
+          });
+          break;
+        }
       }
-    })
-  );
+    }
+  }
 
-  await Promise.all(
-    Object.keys(secrets).map((key) => {
-      // let encryptedSecret;
-      return sodium.ready.then(async () => {
-        // convert secret & base64 key to Uint8Array.
-        const binkey = sodium.from_base64(repoPublicKey.key, sodium.base64_variants.ORIGINAL);
-        const binsec = sodium.from_string(secrets[key].value);
+  await sodium.ready.then(async () => {
+    for await (const key of Object.keys(secrets)) {
+      // convert secret & base64 key to Uint8Array.
+      const binkey = sodium.from_base64(repoPublicKey.key, sodium.base64_variants.ORIGINAL);
+      const binsec = sodium.from_string(secrets[key].value);
 
-        // encrypt secret using libsodium
-        const encBytes = sodium.crypto_box_seal(binsec, binkey);
+      // encrypt secret using libsodium
+      const encBytes = sodium.crypto_box_seal(binsec, binkey);
 
-        // convert encrypted Uint8Array to base64
-        const encryptedSecret = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
+      // convert encrypted Uint8Array to base64
+      const encryptedSecret = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
 
-        await octokit.request("PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
-          owner: integration.owner as string,
-          repo: integration.app as string,
-          secret_name: key,
-          encrypted_value: encryptedSecret,
-          key_id: repoPublicKey.key_id
-        });
-      });
-    })
-  );
+      switch (integration.scope) {
+        case GithubScope.Org:
+          await octokit.request("PUT /orgs/{org}/actions/secrets/{secret_name}", {
+            org: integration.owner as string,
+            secret_name: key,
+            visibility: "all",
+            encrypted_value: encryptedSecret,
+            key_id: repoPublicKey.key_id
+          });
+          break;
+        case GithubScope.Env:
+          await octokit.request(
+            "PUT /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
+            {
+              repository_id: Number(integration.appId),
+              environment_name: integration.targetEnvironmentId as string,
+              secret_name: key,
+              encrypted_value: encryptedSecret,
+              key_id: repoPublicKey.key_id
+            }
+          );
+          break;
+        default:
+          await octokit.request("PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+            owner: integration.owner as string,
+            repo: integration.app as string,
+            secret_name: key,
+            encrypted_value: encryptedSecret,
+            key_id: repoPublicKey.key_id
+          });
+          break;
+      }
+    }
+  });
 };
 
 /**
@@ -1167,6 +1448,22 @@ const syncSecretsRender = async ({
       }
     }
   );
+
+  if (integration.metadata) {
+    const metadata = z.record(z.any()).parse(integration.metadata);
+    if (metadata.shouldAutoRedeploy === true) {
+      await request.post(
+        `${IntegrationUrls.RENDER_API_URL}/v1/services/${integration.appId}/deploys`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      );
+    }
+  }
 };
 
 /**
@@ -1224,21 +1521,21 @@ const syncSecretsRailway = async ({
     }
   `;
 
-  const input = {
-    projectId: integration.appId,
-    environmentId: integration.targetEnvironmentId,
-    ...(integration.targetServiceId ? { serviceId: integration.targetServiceId } : {}),
-    replace: true,
-    variables: getSecretKeyValuePair(secrets)
+  const variables = {
+    input: {
+      projectId: integration.appId,
+      environmentId: integration.targetEnvironmentId,
+      ...(integration.targetServiceId ? { serviceId: integration.targetServiceId } : {}),
+      replace: true,
+      variables: getSecretKeyValuePair(secrets)
+    }
   };
 
   await request.post(
     IntegrationUrls.RAILWAY_API_URL,
     {
       query,
-      variables: {
-        input
-      }
+      variables
     },
     {
       headers: {
@@ -1989,16 +2286,29 @@ const syncSecretsQovery = async ({
  * @param {String} obj.accessToken - access token for Terraform Cloud API
  */
 const syncSecretsTerraformCloud = async ({
+  createManySecretsRawFn,
+  updateManySecretsRawFn,
   integration,
   secrets,
-  accessToken
+  accessToken,
+  integrationDAL
 }: {
-  integration: TIntegrations;
-  secrets: Record<string, { value: string; comment?: string }>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+  };
+  secrets: Record<string, { value: string; comment?: string } | null>;
   accessToken: string;
+  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
 }) => {
   // get secrets from Terraform Cloud
-  const getSecretsRes = (
+  const terraformSecrets = (
     await request.get<{ data: { attributes: { key: string; value: string }; id: string }[] }>(
       `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`,
       {
@@ -2016,9 +2326,74 @@ const syncSecretsTerraformCloud = async ({
     {} as Record<string, { attributes: { key: string; value: string }; id: string }>
   );
 
+  const secretsToAdd: { [key: string]: string } = {};
+  const secretsToUpdate: { [key: string]: string } = {};
+
+  const metadata = z.record(z.any()).parse(integration.metadata);
+
+  Object.keys(terraformSecrets).forEach((key) => {
+    if (!integration.lastUsed) {
+      // first time using integration
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        case IntegrationInitialSyncBehavior.PREFER_TARGET: {
+          if (!(key in secrets)) {
+            secretsToAdd[key] = terraformSecrets[key].attributes.value;
+          } else if (secrets[key]?.value !== terraformSecrets[key].attributes.value) {
+            secretsToUpdate[key] = terraformSecrets[key].attributes.value;
+          }
+          secrets[key] = {
+            value: terraformSecrets[key].attributes.value
+          };
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
+          if (!(key in secrets)) {
+            secrets[key] = {
+              value: terraformSecrets[key].attributes.value
+            };
+            secretsToAdd[key] = terraformSecrets[key].attributes.value;
+          }
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    } else if (!(key in secrets)) secrets[key] = null;
+  });
+
+  if (Object.keys(secretsToAdd).length) {
+    await createManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToAdd).map((key) => ({
+        secretName: key,
+        secretValue: secretsToAdd[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
+  if (Object.keys(secretsToUpdate).length) {
+    await updateManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToUpdate).map((key) => ({
+        secretName: key,
+        secretValue: secretsToUpdate[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
   // create or update secrets on Terraform Cloud
   for await (const key of Object.keys(secrets)) {
-    if (!(key in getSecretsRes)) {
+    if (!(key in terraformSecrets)) {
       // case: secret does not exist in Terraform Cloud
       // -> add secret
       await request.post(
@@ -2028,7 +2403,7 @@ const syncSecretsTerraformCloud = async ({
             type: "vars",
             attributes: {
               key,
-              value: secrets[key].value,
+              value: secrets[key]?.value,
               category: integration.targetService
             }
           }
@@ -2042,17 +2417,17 @@ const syncSecretsTerraformCloud = async ({
         }
       );
       // case: secret exists in Terraform Cloud
-    } else if (secrets[key].value !== getSecretsRes[key].attributes.value) {
+    } else if (secrets[key]?.value !== terraformSecrets[key].attributes.value) {
       // -> update secret
       await request.patch(
-        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${getSecretsRes[key].id}`,
+        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${terraformSecrets[key].id}`,
         {
           data: {
             type: "vars",
-            id: getSecretsRes[key].id,
+            id: terraformSecrets[key].id,
             attributes: {
-              ...getSecretsRes[key],
-              value: secrets[key].value
+              ...terraformSecrets[key],
+              value: secrets[key]?.value
             }
           }
         },
@@ -2067,11 +2442,11 @@ const syncSecretsTerraformCloud = async ({
     }
   }
 
-  for await (const key of Object.keys(getSecretsRes)) {
+  for await (const key of Object.keys(terraformSecrets)) {
     if (!(key in secrets)) {
       // case: delete secret
       await request.delete(
-        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${getSecretsRes[key].id}`,
+        `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${terraformSecrets[key].id}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -2082,6 +2457,10 @@ const syncSecretsTerraformCloud = async ({
       );
     }
   }
+
+  await integrationDAL.updateById(integration.id, {
+    lastUsed: new Date()
+  });
 };
 
 /**
@@ -2606,7 +2985,7 @@ const syncSecretsDigitalOceanAppPlatform = async ({
       spec: {
         name: integration.app,
         ...appSettings,
-        envs: Object.entries(secrets).map(([key, data]) => ({ key, value: data.value }))
+        envs: Object.entries(secrets).map(([key, data]) => ({ key, value: data.value, type: "SECRET" }))
       }
     },
     {
@@ -2950,8 +3329,14 @@ const syncSecretsHasuraCloud = async ({
 
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
+ *
+ * Do this in terms of DAL
+ *
  */
 export const syncIntegrationSecrets = async ({
+  createManySecretsRawFn,
+  updateManySecretsRawFn,
+  integrationDAL,
   integration,
   integrationAuth,
   secrets,
@@ -2959,7 +3344,18 @@ export const syncIntegrationSecrets = async ({
   accessToken,
   appendices
 }: {
-  integration: TIntegrations;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
   integrationAuth: TIntegrationAuths;
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
@@ -2999,6 +3395,9 @@ export const syncIntegrationSecrets = async ({
       break;
     case Integrations.HEROKU:
       await syncSecretsHeroku({
+        createManySecretsRawFn,
+        updateManySecretsRawFn,
+        integrationDAL,
         integration,
         secrets,
         accessToken
@@ -3103,9 +3502,12 @@ export const syncIntegrationSecrets = async ({
       break;
     case Integrations.TERRAFORM_CLOUD:
       await syncSecretsTerraformCloud({
+        createManySecretsRawFn,
+        updateManySecretsRawFn,
         integration,
         secrets,
-        accessToken
+        accessToken,
+        integrationDAL
       });
       break;
     case Integrations.HASHICORP_VAULT:

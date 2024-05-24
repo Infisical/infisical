@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { TGroupOrgMembership } from "../groups/types";
 import { IdentityMembershipOrg } from "../identities/types";
 import {
   BillingDetails,
@@ -12,8 +13,8 @@ import {
   PlanBillingInfo,
   PmtMethod,
   ProductsTable,
-  RenameOrgDTO,
-  TaxID
+  TaxID,
+  UpdateOrgDTO
 } from "./types";
 
 export const organizationKeys = {
@@ -27,7 +28,9 @@ export const organizationKeys = {
   getOrgTaxIds: (orgId: string) => [{ orgId }, "organization-tax-ids"] as const,
   getOrgInvoices: (orgId: string) => [{ orgId }, "organization-invoices"] as const,
   getOrgLicenses: (orgId: string) => [{ orgId }, "organization-licenses"] as const,
-  getOrgIdentityMemberships: (orgId: string) => [{ orgId }, "organization-identity-memberships"] as const,
+  getOrgIdentityMemberships: (orgId: string) =>
+    [{ orgId }, "organization-identity-memberships"] as const,
+  getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const
 };
 
 export const fetchOrganizations = async () => {
@@ -46,7 +49,7 @@ export const useGetOrganizations = () => {
   });
 };
 
-export const useCreateOrg = () => {
+export const useCreateOrg = (options: { invalidate: boolean } = { invalidate: true }) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -60,17 +63,23 @@ export const useCreateOrg = () => {
       return organization;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      if (options?.invalidate) {
+        queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      }
     }
   });
 };
 
-export const useRenameOrg = () => {
+export const useUpdateOrg = () => {
   const queryClient = useQueryClient();
-
-  return useMutation<{}, {}, RenameOrgDTO>({
-    mutationFn: ({ newOrgName, orgId }) => {
-      return apiRequest.patch(`/api/v1/organization/${orgId}/name`, { name: newOrgName });
+  return useMutation<{}, {}, UpdateOrgDTO>({
+    mutationFn: ({ name, authEnforced, scimEnabled, slug, orgId }) => {
+      return apiRequest.patch(`/api/v1/organization/${orgId}`, {
+        name,
+        authEnforced,
+        scimEnabled,
+        slug
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
@@ -394,6 +403,22 @@ export const useDeleteOrgById = () => {
       queryClient.invalidateQueries(organizationKeys.getOrgTaxIds(dto.organizationId));
       queryClient.invalidateQueries(organizationKeys.getOrgInvoices(dto.organizationId));
       queryClient.invalidateQueries(organizationKeys.getOrgLicenses(dto.organizationId));
+    }
+  });
+};
+
+export const useGetOrganizationGroups = (organizationId: string) => {
+  return useQuery({
+    queryKey: organizationKeys.getOrgGroups(organizationId),
+    enabled: Boolean(organizationId),
+    queryFn: async () => {
+      const {
+        data: { groups }
+      } = await apiRequest.get<{ groups: TGroupOrgMembership[] }>(
+        `/api/v1/organization/${organizationId}/groups`
+      );
+
+      return groups;
     }
   });
 };

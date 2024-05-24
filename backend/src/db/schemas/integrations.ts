@@ -27,9 +27,13 @@ export const IntegrationsSchema = z.object({
   envId: z.string().uuid(),
   secretPath: z.string().default("/"),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  lastUsed: z.date().nullable().optional(),
+  isSynced: z.boolean().nullable().optional(),
+  syncMessage: z.string().nullable().optional(),
+  lastSyncJobId: z.string().nullable().optional()
 });
 
 export type TIntegrations = z.infer<typeof IntegrationsSchema>;
-export type TIntegrationsInsert = Omit<TIntegrations, TImmutableDBKeys>;
-export type TIntegrationsUpdate = Partial<Omit<TIntegrations, TImmutableDBKeys>>;
+export type TIntegrationsInsert = Omit<z.input<typeof IntegrationsSchema>, TImmutableDBKeys>;
+export type TIntegrationsUpdate = Partial<Omit<z.input<typeof IntegrationsSchema>, TImmutableDBKeys>>;

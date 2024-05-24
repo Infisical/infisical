@@ -22,9 +22,10 @@ export const SamlConfigsSchema = z.object({
   certTag: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid()
+  orgId: z.string().uuid(),
+  lastUsed: z.date().nullable().optional()
 });
 
 export type TSamlConfigs = z.infer<typeof SamlConfigsSchema>;
-export type TSamlConfigsInsert = Omit<TSamlConfigs, TImmutableDBKeys>;
-export type TSamlConfigsUpdate = Partial<Omit<TSamlConfigs, TImmutableDBKeys>>;
+export type TSamlConfigsInsert = Omit<z.input<typeof SamlConfigsSchema>, TImmutableDBKeys>;
+export type TSamlConfigsUpdate = Partial<Omit<z.input<typeof SamlConfigsSchema>, TImmutableDBKeys>>;

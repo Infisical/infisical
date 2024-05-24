@@ -56,18 +56,20 @@ export default function NavHeader({
 
   return (
     <div className="flex flex-row items-center pt-6">
-      <div className="mr-2 flex h-5 w-5 items-center justify-center rounded-md bg-primary text-sm text-black">
+      <div className="mr-2 flex h-5 w-5 min-w-[1.25rem] items-center justify-center rounded-md bg-primary text-sm text-black">
         {currentOrg?.name?.charAt(0)}
       </div>
       <Link passHref legacyBehavior href={`/org/${currentOrg?.id}/overview`}>
-        <a className="pl-0.5 text-sm font-semibold text-primary/80 hover:text-primary">
+        <a className="truncate pl-0.5 text-sm font-semibold text-primary/80 hover:text-primary">
           {currentOrg?.name}
         </a>
       </Link>
       {isProjectRelated && (
         <>
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-xs text-gray-400" />
-          <div className="text-sm font-semibold text-bunker-300">{currentWorkspace?.name}</div>
+          <div className="truncate text-sm font-semibold text-bunker-300">
+            {currentWorkspace?.name}
+          </div>
         </>
       )}
       {isOrganizationRelated && (
@@ -118,7 +120,7 @@ export default function NavHeader({
             passHref
             legacyBehavior
             href={{
-              pathname: "/project/[id]/secrets/v2/[env]",
+              pathname: "/project/[id]/secrets/[env]",
               query: { id: router.query.id, env: router.query.env }
             }}
           >

@@ -1,10 +1,17 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { NoEnvironmentsBanner } from "@app/components/integrations/NoEnvironmentsBanner";
+import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal, Skeleton, Tooltip } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useWorkspace
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { IntegrationAuth, TCloudIntegration } from "@app/hooks/api/types";
 
@@ -31,18 +38,32 @@ export const CloudIntegrationSection = ({
     "deleteConfirmation"
   ] as const);
   const { permission } = useProjectPermission();
-  const { createNotification } = useNotificationContext();
+  const { currentWorkspace } = useWorkspace();
 
   const isEmpty = !isLoading && !cloudIntegrations?.length;
 
-  const sortedCloudIntegrations = cloudIntegrations.sort((a, b) => a.name.localeCompare(b.name));
+  const sortedCloudIntegrations = useMemo(() => {
+    const sortedIntegrations = cloudIntegrations.sort((a, b) => a.name.localeCompare(b.name));
+
+    if (currentWorkspace?.environments.length === 0) {
+      return sortedIntegrations.map((integration) => ({ ...integration, isAvailable: false }));
+    }
+
+    return sortedIntegrations;
+  }, [cloudIntegrations, currentWorkspace?.environments]);
 
   return (
     <div>
+      <div className="px-5">
+        {currentWorkspace?.environments.length === 0 && (
+          <NoEnvironmentsBanner projectId={currentWorkspace.id} />
+        )}
+      </div>
       <div className="m-4 mt-7 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
         <h1 className="text-3xl font-semibold">{t("integrations.cloud-integrations")}</h1>
         <p className="text-base text-gray-400">{t("integrations.click-to-start")}</p>
       </div>
+
       <div className="mx-6 grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-4">
         {isLoading &&
           Array.from({ length: 12 }).map((_, index) => (
@@ -88,7 +109,7 @@ export const CloudIntegrationSection = ({
               </div>
               {cloudIntegration.isAvailable &&
                 Boolean(integrationAuths?.[cloudIntegration.slug]) && (
-                  <div className="absolute top-0 right-0 z-40 h-full">
+                  <div className="absolute top-0 right-0 z-30 h-full">
                     <div className="relative h-full">
                       <div className="absolute top-0 right-0 w-24 flex-row items-center overflow-hidden whitespace-nowrap rounded-tr-md rounded-bl-md bg-primary py-0.5 px-2 text-xs text-black opacity-80 transition-all duration-300 group-hover:w-0 group-hover:p-0">
                         <FontAwesomeIcon icon={faCheck} className="mr-2 text-xs" />

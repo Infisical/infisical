@@ -25,11 +25,19 @@ export const projectKeyServiceFactory = ({
     receiverId,
     actor,
     actorId,
+    actorOrgId,
+    actorAuthMethod,
     projectId,
     nonce,
     encryptedKey
   }: TUploadProjectKeyDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
 
     const receiverMembership = await projectMembershipDAL.findOne({
@@ -45,14 +53,32 @@ export const projectKeyServiceFactory = ({
     await projectKeyDAL.create({ projectId, receiverId, encryptedKey, nonce, senderId: actorId });
   };
 
-  const getLatestProjectKey = async ({ actorId, projectId, actor }: TGetLatestProjectKeyDTO) => {
-    await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getLatestProjectKey = async ({
+    actorId,
+    projectId,
+    actor,
+    actorOrgId,
+    actorAuthMethod
+  }: TGetLatestProjectKeyDTO) => {
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
     const latestKey = await projectKeyDAL.findLatestProjectKey(actorId, projectId);
     return latestKey;
   };
 
-  const getProjectPublicKeys = async ({ actor, actorId, projectId }: TGetLatestProjectKeyDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getProjectPublicKeys = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TGetLatestProjectKeyDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
     return projectKeyDAL.findAllProjectUserPubKeys(projectId);
   };

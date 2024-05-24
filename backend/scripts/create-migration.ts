@@ -7,10 +7,10 @@ const prompt = promptSync({ sigint: true });
 
 const migrationName = prompt("Enter name for migration: ");
 
+// Remove spaces from migration name and replace with hyphens
+const formattedMigrationName = migrationName.replace(/\s+/g, "-");
+
 execSync(
-  `npx knex migrate:make --knexfile ${path.join(
-    __dirname,
-    "../src/db/knexfile.ts"
-  )} -x ts ${migrationName}`,
+  `npx knex migrate:make --knexfile ${path.join(__dirname, "../src/db/knexfile.ts")} -x ts ${formattedMigrationName}`,
   { stdio: "inherit" }
 );

@@ -3,16 +3,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import {
-  Button,
-  FormControl,
-  Input,
-  Modal,
-  ModalContent,
-  Select,
-  SelectItem
-} from "@app/components/v2";
+import { createNotification } from "@app/components/notifications";
+import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useWorkspace } from "@app/context";
 import { useCreateSecretImport } from "@app/hooks/api";
 
@@ -50,12 +43,12 @@ export const CreateSecretImportForm = ({
     handleSubmit,
     control,
     reset,
+    watch,
     formState: { isSubmitting }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
   const { currentWorkspace } = useWorkspace();
   const environments = currentWorkspace?.environments || [];
-
-  const { createNotification } = useNotificationContext();
+  const selectedEnvironment = watch("environment");
 
   const { mutateAsync: createSecretImport } = useCreateSecretImport();
 
@@ -81,7 +74,7 @@ export const CreateSecretImportForm = ({
       });
     } catch (err) {
       console.error(err);
-      const axiosError = err as AxiosError
+      const axiosError = err as AxiosError;
       if (axiosError?.response?.status === 401) {
         createNotification({
           text: "You do not have access to the selected environment/path",
@@ -130,7 +123,7 @@ export const CreateSecretImportForm = ({
             defaultValue="/"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Secret Path" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} />
+                <SecretPathInput {...field} environment={selectedEnvironment} />
               </FormControl>
             )}
           />

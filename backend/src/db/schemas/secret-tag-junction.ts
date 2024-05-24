@@ -14,5 +14,5 @@ export const SecretTagJunctionSchema = z.object({
 });
 
 export type TSecretTagJunction = z.infer<typeof SecretTagJunctionSchema>;
-export type TSecretTagJunctionInsert = Omit<TSecretTagJunction, TImmutableDBKeys>;
-export type TSecretTagJunctionUpdate = Partial<Omit<TSecretTagJunction, TImmutableDBKeys>>;
+export type TSecretTagJunctionInsert = Omit<z.input<typeof SecretTagJunctionSchema>, TImmutableDBKeys>;
+export type TSecretTagJunctionUpdate = Partial<Omit<z.input<typeof SecretTagJunctionSchema>, TImmutableDBKeys>>;

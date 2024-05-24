@@ -109,7 +109,7 @@ const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string })
  */
 const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
   const res = (
-    await request.get<{ name: string }[]>(`${IntegrationUrls.HEROKU_API_URL}/apps`, {
+    await request.get<{ name: string; id: string }[]>(`${IntegrationUrls.HEROKU_API_URL}/apps`, {
       headers: {
         Accept: "application/vnd.heroku+json; version=3",
         Authorization: `Bearer ${accessToken}`
@@ -118,7 +118,8 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
   ).data;
 
   const apps = res.map((a) => ({
-    name: a.name
+    name: a.name,
+    appId: a.id
   }));
 
   return apps;
@@ -128,26 +129,55 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
  * Return list of names of apps for Vercel integration
  */
 const getAppsVercel = async ({ accessToken, teamId }: { teamId?: string | null; accessToken: string }) => {
-  const res = (
-    await request.get<{ projects: { name: string; id: string }[] }>(`${IntegrationUrls.VERCEL_API_URL}/v9/projects`, {
+  const apps: Array<{ name: string; appId: string }> = [];
+
+  const limit = "20";
+  let hasMorePages = true;
+  let next: number | null = null;
+
+  interface Response {
+    projects: { name: string; id: string }[];
+    pagination: {
+      count: number;
+      next: number | null;
+      prev: number;
+    };
+  }
+
+  while (hasMorePages) {
+    const params: { [key: string]: string } = {
+      limit
+    };
+
+    if (teamId) {
+      params.teamId = teamId;
+    }
+
+    if (next) {
+      params.until = String(next);
+    }
+
+    const { data } = await request.get<Response>(`${IntegrationUrls.VERCEL_API_URL}/v9/projects`, {
+      params: new URLSearchParams(params),
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Accept-Encoding": "application/json"
-      },
-      ...(teamId
-        ? {
-            params: {
-              teamId
-            }
-          }
-        : {})
-    })
-  ).data;
+      }
+    });
 
-  const apps = res.projects.map((a) => ({
-    name: a.name,
-    appId: a.id
-  }));
+    data.projects.forEach((a) => {
+      apps.push({
+        name: a.name,
+        appId: a.id
+      });
+    });
+
+    next = data.pagination.next;
+
+    if (data.pagination.next === null) {
+      hasMorePages = false;
+    }
+  }
 
   return apps;
 };
@@ -259,20 +289,44 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
  * Return list of services for Render integration
  */
 const getAppsRender = async ({ accessToken }: { accessToken: string }) => {
-  const res = (
-    await request.get<{ service: { name: string; id: string } }[]>(`${IntegrationUrls.RENDER_API_URL}/v1/services`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-        "Accept-Encoding": "application/json"
-      }
-    })
-  ).data;
+  const apps: Array<{ name: string; appId: string }> = [];
+  let hasMorePages = true;
+  const perPage = 100;
+  let cursor;
 
-  const apps = res.map((a) => ({
-    name: a.service.name,
-    appId: a.service.id
-  }));
+  interface RenderService {
+    cursor: string;
+    service: { name: string; id: string };
+  }
+
+  while (hasMorePages) {
+    const res: RenderService[] = (
+      await request.get<RenderService[]>(`${IntegrationUrls.RENDER_API_URL}/v1/services`, {
+        params: new URLSearchParams({
+          ...(cursor ? { cursor: String(cursor) } : {}),
+          limit: String(perPage)
+        }),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+          "Accept-Encoding": "application/json"
+        }
+      })
+    ).data;
+
+    res.forEach((a) => {
+      apps.push({
+        name: a.service.name,
+        appId: a.service.id
+      });
+    });
+
+    if (res.length < perPage) {
+      hasMorePages = false;
+    } else {
+      cursor = res[res.length - 1].cursor;
+    }
+  }
 
   return apps;
 };

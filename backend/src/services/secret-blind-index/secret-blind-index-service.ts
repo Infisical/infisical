@@ -24,16 +24,34 @@ export const secretBlindIndexServiceFactory = ({
   permissionService,
   secretDAL
 }: TSecretBlindIndexServiceFactoryDep) => {
-  const getSecretBlindIndexStatus = async ({ actor, projectId, actorId }: TGetProjectBlindIndexStatusDTO) => {
-    await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getSecretBlindIndexStatus = async ({
+    actor,
+    projectId,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetProjectBlindIndexStatusDTO) => {
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
 
     const secretCount = await secretBlindIndexDAL.countOfSecretsWithNullSecretBlindIndex(projectId);
     return Number(secretCount);
   };
 
-  const getProjectSecrets = async ({ projectId, actorId, actor }: TGetProjectSecretsDTO) => {
-    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    if (membership?.role !== ProjectMembershipRole.Admin) {
+  const getProjectSecrets = async ({
+    projectId,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    actor
+  }: TGetProjectSecretsDTO) => {
+    const { hasRole } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new UnauthorizedError({ message: "User must be admin" });
     }
 
@@ -45,10 +63,18 @@ export const secretBlindIndexServiceFactory = ({
     projectId,
     actor,
     actorId,
+    actorAuthMethod,
+    actorOrgId,
     secretsToUpdate
   }: TUpdateProjectSecretNameDTO) => {
-    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    if (membership?.role !== ProjectMembershipRole.Admin) {
+    const { hasRole } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new UnauthorizedError({ message: "User must be admin" });
     }
 

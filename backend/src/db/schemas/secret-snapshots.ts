@@ -17,5 +17,5 @@ export const SecretSnapshotsSchema = z.object({
 });
 
 export type TSecretSnapshots = z.infer<typeof SecretSnapshotsSchema>;
-export type TSecretSnapshotsInsert = Omit<TSecretSnapshots, TImmutableDBKeys>;
-export type TSecretSnapshotsUpdate = Partial<Omit<TSecretSnapshots, TImmutableDBKeys>>;
+export type TSecretSnapshotsInsert = Omit<z.input<typeof SecretSnapshotsSchema>, TImmutableDBKeys>;
+export type TSecretSnapshotsUpdate = Partial<Omit<z.input<typeof SecretSnapshotsSchema>, TImmutableDBKeys>>;

@@ -11,11 +11,13 @@ import {
   TUserEncryptionKeys
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { buildFindFilter, selectAllTableCols, TFindFilter, TFindOpt, withTransaction } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt, withTransaction } from "@app/lib/knex";
 
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
 
 export const orgDALFactory = (db: TDbClient) => {
+  const orgOrm = ormify(db, TableName.Organization);
+
   const findOrgById = async (orgId: string) => {
     try {
       const org = await db(TableName.Organization).where({ id: orgId }).first();
@@ -55,7 +57,7 @@ export const orgDALFactory = (db: TDbClient) => {
   const findAllOrgMembers = async (orgId: string) => {
     try {
       const members = await db(TableName.OrgMembership)
-        .where({ orgId })
+        .where(`${TableName.OrgMembership}.orgId`, orgId)
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
@@ -70,17 +72,113 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("roleId").withSchema(TableName.OrgMembership),
           db.ref("status").withSchema(TableName.OrgMembership),
           db.ref("email").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
-        );
+        )
+        .where({ isGhost: false }); // MAKE SURE USER IS NOT A GHOST USER
+
+      return members.map(({ email, username, firstName, lastName, userId, publicKey, ...data }) => ({
+        ...data,
+        user: { email, username, firstName, lastName, id: userId, publicKey }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all org members" });
+    }
+  };
+
+  const countAllOrgMembers = async (orgId: string) => {
+    try {
+      interface CountResult {
+        count: string;
+      }
+
+      const count = await db(TableName.OrgMembership)
+        .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .count("*")
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .where({ isGhost: false })
+        .first();
+
+      return parseInt((count as unknown as CountResult).count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count all org members" });
+    }
+  };
+
+  const findOrgMembersByUsername = async (orgId: string, usernames: string[]) => {
+    try {
+      const members = await db(TableName.OrgMembership)
+        .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin<TUserEncryptionKeys>(
+          TableName.UserEncryptionKey,
+          `${TableName.UserEncryptionKey}.userId`,
+          `${TableName.Users}.id`
+        )
+        .select(
+          db.ref("id").withSchema(TableName.OrgMembership),
+          db.ref("inviteEmail").withSchema(TableName.OrgMembership),
+          db.ref("orgId").withSchema(TableName.OrgMembership),
+          db.ref("role").withSchema(TableName.OrgMembership),
+          db.ref("roleId").withSchema(TableName.OrgMembership),
+          db.ref("status").withSchema(TableName.OrgMembership),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
+        )
+        .where({ isGhost: false })
+        .whereIn("username", usernames);
       return members.map(({ email, firstName, lastName, userId, publicKey, ...data }) => ({
         ...data,
         user: { email, firstName, lastName, id: userId, publicKey }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org members" });
+    }
+  };
+
+  const findOrgGhostUser = async (orgId: string) => {
+    try {
+      const member = await db(TableName.OrgMembership)
+        .where({ orgId })
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
+        .select(
+          db.ref("id").withSchema(TableName.OrgMembership),
+          db.ref("orgId").withSchema(TableName.OrgMembership),
+          db.ref("role").withSchema(TableName.OrgMembership),
+          db.ref("roleId").withSchema(TableName.OrgMembership),
+          db.ref("status").withSchema(TableName.OrgMembership),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
+        )
+        .where({ isGhost: true })
+        .first();
+      return member;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const ghostUserExists = async (orgId: string) => {
+    try {
+      const member = await db(TableName.OrgMembership)
+        .where({ orgId })
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
+        .select(db.ref("id").withSchema(TableName.Users).as("userId"))
+        .where({ isGhost: true })
+        .first();
+      return Boolean(member);
+    } catch (error) {
+      return false;
     }
   };
 
@@ -163,7 +261,23 @@ export const orgDALFactory = (db: TDbClient) => {
         // eslint-disable-next-line
         .where(buildFindFilter(filter))
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
-        .select(selectAllTableCols(TableName.OrgMembership), db.ref("email").withSchema(TableName.Users));
+        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
+        .leftJoin(TableName.UserAliases, function joinUserAlias() {
+          this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.OrgMembership}.userId`)
+            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.OrgMembership}.orgId`)
+            .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
+        })
+        .select(
+          selectAllTableCols(TableName.OrgMembership),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.ref("scimEnabled").withSchema(TableName.Organization),
+          db.ref("externalId").withSchema(TableName.UserAliases)
+        )
+        .where({ isGhost: false });
+
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {
@@ -177,10 +291,15 @@ export const orgDALFactory = (db: TDbClient) => {
   };
 
   return withTransaction(db, {
+    ...orgOrm,
     findOrgByProjectId,
     findAllOrgMembers,
+    countAllOrgMembers,
     findOrgById,
     findAllOrgsByUserId,
+    ghostUserExists,
+    findOrgMembersByUsername,
+    findOrgGhostUser,
     create,
     updateById,
     deleteById,

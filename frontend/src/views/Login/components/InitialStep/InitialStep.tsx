@@ -1,20 +1,19 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import axios from "axios";
 
 import Error from "@app/components/basic/Error";
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
 
-import { navigateUserToOrg } from "../../Login.utils";
+import { navigateUserToSelectOrg } from "../../Login.utils";
 
 type Props = {
   setStep: (step: number) => void;
@@ -26,12 +25,27 @@ type Props = {
 
 export const InitialStep = ({ setStep, email, setEmail, password, setPassword }: Props) => {
   const router = useRouter();
-  const { createNotification } = useNotificationContext();
+
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(false);
   const { config } = useServerConfig();
   const queryParams = new URLSearchParams(window.location.search);
+
+  useEffect(() => {
+    if (
+      process.env.NEXT_PUBLIC_SAML_ORG_SLUG &&
+      process.env.NEXT_PUBLIC_SAML_ORG_SLUG !== "saml-org-slug-default"
+    ) {
+      const callbackPort = queryParams.get("callback_port");
+      window.open(
+        `/api/v1/sso/redirect/saml2/organizations/${process.env.NEXT_PUBLIC_SAML_ORG_SLUG}${
+          callbackPort ? `?callback_port=${callbackPort}` : ""
+        }`
+      );
+      window.close();
+    }
+  }, []);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -57,17 +71,14 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             setIsLoading(false);
             return;
           }
-          // case: login was successful
-          const cliUrl = `http://127.0.0.1:${callbackPort}/`;
 
-          // send request to server endpoint
-          const instance = axios.create();
-          await instance.post(cliUrl, { ...isCliLoginSuccessful.loginResponse });
-
-          // cli page
-          router.push("/cli-redirect");
-
-          // on success, router.push to cli Login Successful page
+          navigateUserToSelectOrg(router, callbackPort!);
+        } else {
+          setLoginError(true);
+          createNotification({
+            text: "CLI login unsuccessful. Double-check your credentials and try again.",
+            type: "error"
+          });
         }
       } else {
         const isLoginSuccessful = await attemptLogin({
@@ -85,7 +96,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             return;
           }
 
-          await navigateUserToOrg(router);
+          navigateUserToSelectOrg(router);
 
           // case: login does not require MFA step
           createNotification({
@@ -180,7 +191,20 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
           className="mx-0 h-10 w-full"
         >
-          Continue with SSO
+          Continue with SAML
+        </Button>
+      </div>
+      <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+        <Button
+          colorSchema="primary"
+          variant="outline_bg"
+          onClick={() => {
+            router.push("/login/ldap");
+          }}
+          leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+          className="mx-0 h-10 w-full"
+        >
+          Continue with LDAP
         </Button>
       </div>
       <div className="my-4 flex w-1/4 min-w-[20rem] flex-row items-center py-2 lg:w-1/6">
@@ -230,12 +254,12 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
         <div className="mt-6 flex flex-row text-sm text-bunker-400">
           <Link href="/signup">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-              Don&apos;t have an acount yet? {t("login.create-account")}
+              Don&apos;t have an account yet? {t("login.create-account")}
             </span>
           </Link>
         </div>
       ) : (
-        <div />
+        <div className="mt-4" />
       )}
       <div className="mt-2 flex flex-row text-sm text-bunker-400">
         <Link href="/verify-email">

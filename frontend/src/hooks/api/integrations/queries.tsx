@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace/queries";
@@ -61,9 +62,20 @@ export const useCreateIntegration = () => {
       metadata?: {
         secretPrefix?: string;
         secretSuffix?: string;
-      }
+        initialSyncBehavior?: string;
+        shouldAutoRedeploy?: boolean;
+        mappingBehavior?: string;
+        secretAWSTag?: {
+          key: string;
+          value: string;
+        }[];
+        kmsKeyId?: string;
+        shouldDisableDelete?: boolean;
+      };
     }) => {
-      const { data: { integration } } = await apiRequest.post("/api/v1/integration", {
+      const {
+        data: { integration }
+      } = await apiRequest.post("/api/v1/integration", {
         integrationAuthId,
         isActive,
         app,
@@ -97,6 +109,18 @@ export const useDeleteIntegration = () => {
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));
+    }
+  });
+};
+
+export const useSyncIntegration = () => {
+  return useMutation<{}, {}, { id: string; workspaceId: string; lastUsed: string }>({
+    mutationFn: ({ id }) => apiRequest.post(`/api/v1/integration/${id}/sync`),
+    onSuccess: () => {
+      createNotification({
+        text: "Successfully triggered manual sync",
+        type: "success"
+      });
     }
   });
 };

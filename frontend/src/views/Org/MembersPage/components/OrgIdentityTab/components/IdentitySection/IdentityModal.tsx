@@ -3,7 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
@@ -15,7 +15,10 @@ import {
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useCreateIdentity, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
-import { IdentityAuthMethod } from "@app/hooks/api/identities";
+import {
+  IdentityAuthMethod
+  // useAddIdentityUniversalAuth
+} from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup
@@ -41,8 +44,6 @@ type Props = {
 };
 
 export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
-  const { createNotification } = useNotificationContext();
-
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -50,6 +51,7 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
 
   const { mutateAsync: createMutateAsync } = useCreateIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
+  // const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
 
   const {
     control,
@@ -121,6 +123,16 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
           organizationId: orgId
         });
 
+        // await addMutateAsync({
+        //   organizationId: orgId,
+        //   identityId: createdId,
+        //   clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+        //   accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+        //   accessTokenTTL: 2592000,
+        //   accessTokenMaxTTL: 2592000,
+        //   accessTokenNumUsesLimit: 0
+        // });
+
         handlePopUpToggle("identity", false);
         handlePopUpOpen("identityAuthMethod", {
           identityId: createdId,
@@ -140,7 +152,7 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
       const error = err as any;
       const text =
         error?.response?.data?.message ??
-        `Failed to ${popUp?.identity?.data ? "updated" : "created"} identity`;
+        `Failed to ${popUp?.identity?.data ? "update" : "create"} identity`;
 
       createNotification({
         text,

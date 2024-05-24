@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type UserCredentials struct {
 	Email        string `json:"email"`
 	PrivateKey   string `json:"privateKey"`
@@ -21,11 +23,12 @@ type LoggedInUser struct {
 }
 
 type SingleEnvironmentVariable struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-	Type  string `json:"type"`
-	ID    string `json:"_id"`
-	Tags  []struct {
+	Key         string `json:"key"`
+	WorkspaceId string `json:"workspace"`
+	Value       string `json:"value"`
+	Type        string `json:"type"`
+	ID          string `json:"_id"`
+	Tags        []struct {
 		ID        string `json:"_id"`
 		Name      string `json:"name"`
 		Slug      string `json:"slug"`
@@ -34,17 +37,44 @@ type SingleEnvironmentVariable struct {
 	Comment string `json:"comment"`
 }
 
+type PlaintextSecretResult struct {
+	Secrets []SingleEnvironmentVariable
+	Etag    string
+}
+
+type DynamicSecret struct {
+	Id         string `json:"id"`
+	DefaultTTL string `json:"defaultTTL"`
+	MaxTTL     string `json:"maxTTL"`
+	Type       string `json:"type"`
+}
+
+type DynamicSecretLease struct {
+	Lease struct {
+		Id       string    `json:"id"`
+		ExpireAt time.Time `json:"expireAt"`
+	} `json:"lease"`
+	DynamicSecret DynamicSecret `json:"dynamicSecret"`
+	// this is a varying dict based on provider
+	Data map[string]interface{} `json:"data"`
+}
+
+type TokenDetails struct {
+	Type  string
+	Token string
+}
+
 type SingleFolder struct {
 	ID   string `json:"_id"`
 	Name string `json:"name"`
 }
 
 type Workspace struct {
-	ID           string `json:"_id"`
-	Name         string `json:"name"`
-	Plan         string `json:"plan,omitempty"`
-	V            int    `json:"__v"`
-	Organization string `json:"organization,omitempty"`
+	ID             string `json:"_id"`
+	Name           string `json:"name"`
+	Plan           string `json:"plan,omitempty"`
+	V              int    `json:"__v"`
+	OrganizationId string `json:"orgId"`
 }
 
 type WorkspaceConfigFile struct {
@@ -63,17 +93,20 @@ type GetAllSecretsParameters struct {
 	Environment              string
 	EnvironmentPassedViaFlag bool
 	InfisicalToken           string
+	UniversalAuthAccessToken string
 	TagSlugs                 string
 	WorkspaceId              string
 	SecretsPath              string
 	IncludeImport            bool
+	Recursive                bool
 }
 
 type GetAllFoldersParameters struct {
-	WorkspaceId    string
-	Environment    string
-	FoldersPath    string
-	InfisicalToken string
+	WorkspaceId              string
+	Environment              string
+	FoldersPath              string
+	InfisicalToken           string
+	UniversalAuthAccessToken string
 }
 
 type CreateFolderParameters struct {
@@ -90,4 +123,14 @@ type DeleteFolderParameters struct {
 	Environment    string
 	FolderPath     string
 	InfisicalToken string
+}
+
+type ExpandSecretsAuthentication struct {
+	InfisicalToken           string
+	UniversalAuthAccessToken string
+}
+
+type MachineIdentityCredentials struct {
+	ClientId     string
+	ClientSecret string
 }

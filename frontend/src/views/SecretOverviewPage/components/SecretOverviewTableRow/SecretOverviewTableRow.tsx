@@ -4,27 +4,32 @@ import {
   faCheck,
   faEye,
   faEyeSlash,
+  faFileImport,
   faKey,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Button, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
+import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 
 import { SecretEditRow } from "./SecretEditRow";
+import SecretRenameRow from "./SecretRenameRow";
 
 type Props = {
   secretKey: string;
   secretPath: string;
   environments: { name: string; slug: string }[];
   expandableColWidth: number;
+  isSelected: boolean;
+  onToggleSecretSelect: (key: string) => void;
   getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
   onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
+  isImportedSecretPresentInEnv: (name: string, env: string, secretName: string) => boolean;
 };
 
 export const SecretOverviewTableRow = ({
@@ -35,7 +40,10 @@ export const SecretOverviewTableRow = ({
   onSecretUpdate,
   onSecretCreate,
   onSecretDelete,
-  expandableColWidth
+  isImportedSecretPresentInEnv,
+  expandableColWidth,
+  onToggleSecretSelect,
+  isSelected
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 1; // secret key row
@@ -52,7 +60,21 @@ export const SecretOverviewTableRow = ({
           <div className="h-full w-full border-r border-mineshaft-600 py-2.5 px-5">
             <div className="flex items-center space-x-5">
               <div className="text-blue-300/70">
-                <FontAwesomeIcon icon={isFormExpanded ? faAngleDown : faKey} />
+                <Checkbox
+                  id={`checkbox-${secretKey}`}
+                  isChecked={isSelected}
+                  onCheckedChange={() => {
+                    onToggleSecretSelect(secretKey);
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  className={twMerge("hidden group-hover:flex", isSelected && "flex")}
+                />
+                <FontAwesomeIcon
+                  className={twMerge("block group-hover:hidden", isSelected && "hidden")}
+                  icon={isFormExpanded ? faAngleDown : faKey}
+                />
               </div>
               <div title={secretKey}>{secretKey}</div>
             </div>
@@ -60,6 +82,9 @@ export const SecretOverviewTableRow = ({
         </Td>
         {environments.map(({ slug }, i) => {
           const secret = getSecretByKey(slug, secretKey);
+
+          const isSecretImported = isImportedSecretPresentInEnv(secretPath, slug, secretKey);
+
           const isSecretPresent = Boolean(secret);
           const isSecretEmpty = secret?.value === "";
           return (
@@ -68,16 +93,29 @@ export const SecretOverviewTableRow = ({
               className={twMerge(
                 "py-0 px-0 group-hover:bg-mineshaft-700",
                 isFormExpanded && "border-t-2 border-mineshaft-500",
-                isSecretPresent && !isSecretEmpty ? "text-green-600" : "",
-                isSecretPresent && isSecretEmpty ? "text-yellow" : "",
-                !isSecretPresent && !isSecretEmpty ? "text-red-600" : ""
+                (isSecretPresent && !isSecretEmpty) || isSecretImported ? "text-green-600" : "",
+                isSecretPresent && isSecretEmpty && !isSecretImported ? "text-yellow" : "",
+                !isSecretPresent && !isSecretEmpty && !isSecretImported ? "text-red-600" : ""
               )}
             >
               <div className="h-full w-full border-r border-mineshaft-600 py-[0.85rem] px-5">
                 <div className="flex justify-center">
                   {!isSecretEmpty && (
-                    <Tooltip content={isSecretPresent ? "Present secret" : "Missing secret"}>
-                      <FontAwesomeIcon icon={isSecretPresent ? faCheck : faXmark} />
+                    <Tooltip
+                      center
+                      content={
+                        // eslint-disable-next-line no-nested-ternary
+                        isSecretPresent
+                          ? "Present secret"
+                          : isSecretImported
+                          ? "Imported secret"
+                          : "Missing secret"
+                      }
+                    >
+                      <FontAwesomeIcon
+                        // eslint-disable-next-line no-nested-ternary
+                        icon={isSecretPresent ? faCheck : isSecretImported ? faFileImport : faXmark}
+                      />
                     </Tooltip>
                   )}
                   {isSecretEmpty && (
@@ -105,6 +143,13 @@ export const SecretOverviewTableRow = ({
                 width: `calc(${expandableColWidth}px - 1rem)`
               }}
             >
+              <SecretRenameRow
+                secretKey={secretKey}
+                environments={environments}
+                secretPath={secretPath}
+                getSecretByKey={getSecretByKey}
+              />
+
               <TableContainer>
                 <table className="secret-table">
                   <thead>
@@ -135,13 +180,24 @@ export const SecretOverviewTableRow = ({
                       const secret = getSecretByKey(slug, secretKey);
                       const isCreatable = !secret;
 
+                      const isImportedSecret = isImportedSecretPresentInEnv(
+                        secretPath,
+                        slug,
+                        secretKey
+                      );
+
                       return (
                         <tr
                           key={`secret-expanded-${slug}-${secretKey}`}
                           className="hover:bg-mineshaft-700"
                         >
-                          <td className="flex" style={{ padding: "0.25rem 1rem" }}>
-                            <div className="flex h-8 items-center">{name}</div>
+                          <td
+                            className="flex h-full items-center"
+                            style={{ padding: "0.25rem 1rem" }}
+                          >
+                            <div title={name} className="flex h-8 w-[8rem] items-center ">
+                              <span className="truncate">{name}</span>
+                            </div>
                           </td>
                           <td className="col-span-2 h-8 w-full">
                             <SecretEditRow
@@ -150,6 +206,7 @@ export const SecretOverviewTableRow = ({
                               secretName={secretKey}
                               defaultValue={secret?.value}
                               secretId={secret?.id}
+                              isImportedSecret={isImportedSecret}
                               isCreatable={isCreatable}
                               onSecretDelete={onSecretDelete}
                               onSecretCreate={onSecretCreate}

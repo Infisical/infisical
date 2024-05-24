@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import attemptChangePassword from "@app/components/utilities/attemptChangePassword";
 import checkPassword from "@app/components/utilities/checks/password/checkPassword";
 import { Button, FormControl, Input } from "@app/components/v2";
@@ -34,7 +34,7 @@ export type FormData = yup.InferType<typeof schema>;
 
 export const ChangePasswordSection = () => {
   const { t } = useTranslation();
-  const { createNotification } = useNotificationContext();
+  
   const { user } = useUser();
   const { reset, control, handleSubmit } = useForm({
     defaultValues: {
@@ -48,8 +48,6 @@ export const ChangePasswordSection = () => {
 
   const onFormSubmit = async ({ oldPassword, newPassword }: FormData) => {
     try {
-      if (!user?.email) return;
-
       const errorCheck = await checkPassword({
         password: newPassword,
         setErrors
@@ -59,7 +57,7 @@ export const ChangePasswordSection = () => {
 
       setIsLoading(true);
       await attemptChangePassword({
-        email: user.email,
+        email: user.username,
         currentPassword: oldPassword,
         newPassword
       });

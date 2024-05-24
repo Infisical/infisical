@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
@@ -21,25 +21,29 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 enum AuthProvider {
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
-  JUMPCLOUD_SAML = "jumpcloud-saml"
+  JUMPCLOUD_SAML = "jumpcloud-saml",
+  KEYCLOAK_SAML = "keycloak-saml",
+  GOOGLE_SAML = "google-saml"
 }
 
 const ssoAuthProviders = [
   { label: "Okta SAML", value: AuthProvider.OKTA_SAML },
   { label: "Azure SAML", value: AuthProvider.AZURE_SAML },
-  { label: "JumpCloud SAML", value: AuthProvider.JUMPCLOUD_SAML }
+  { label: "JumpCloud SAML", value: AuthProvider.JUMPCLOUD_SAML },
+  { label: "Keycloak SAML", value: AuthProvider.KEYCLOAK_SAML },
+  { label: "Google SAML", value: AuthProvider.GOOGLE_SAML }
 ];
 
-const schema = yup
+const schema = z
   .object({
-    authProvider: yup.string().required("SSO Type is required"),
-    entryPoint: yup.string().required("IdP entrypoint is required"),
-    issuer: yup.string().required("Issuer string is required"),
-    cert: yup.string().required("IdP's public signing certificate is required")
+    authProvider: z.string().min(1, "SSO Type is required"),
+    entryPoint: z.string().default(""),
+    issuer: z.string().default(""),
+    cert: z.string().default("")
   })
   .required();
 
-export type AddSSOFormData = yup.InferType<typeof schema>;
+export type AddSSOFormData = z.infer<typeof schema>;
 
 type Props = {
   popUp: UsePopUpState<["addSSO"]>;
@@ -49,7 +53,7 @@ type Props = {
 
 export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
-  const { createNotification } = useNotificationContext();
+  
   const { mutateAsync: createMutateAsync, isLoading: createIsLoading } = useCreateSSOConfig();
   const { mutateAsync: updateMutateAsync, isLoading: updateIsLoading } = useUpdateSSOConfig();
   const { data } = useGetSSOConfig(currentOrg?.id ?? "");
@@ -58,7 +62,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) 
     defaultValues: {
       authProvider: AuthProvider.OKTA_SAML
     },
-    resolver: yupResolver(schema)
+    resolver: zodResolver(schema)
   });
 
   useEffect(() => {
@@ -140,7 +144,24 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) 
           issuer: "IdP Entity ID",
           issuerPlaceholder: "xxx"
         };
-
+      case AuthProvider.KEYCLOAK_SAML:
+        return {
+          acsUrl: "Valid redirect URI",
+          entityId: "SP Entity ID",
+          entryPoint: "IDP URL",
+          entryPointPlaceholder: "https://keycloak.mysite.com/realms/myrealm/protocol/saml",
+          issuer: "Client ID",
+          issuerPlaceholder: window.origin
+        };
+      case AuthProvider.GOOGLE_SAML:
+        return {
+          acsUrl: "ACS URL",
+          entityId: "SP Entity ID",
+          entryPoint: "SSO URL",
+          entryPointPlaceholder: "https://accounts.google.com/o/saml2/idp?idpid=xxx",
+          issuer: "IdP Entity ID",
+          issuerPlaceholder: "https://accounts.google.com/o/saml2/idp?idpid=xxx"
+        };
       default:
         return {
           acsUrl: "ACS URL",
@@ -163,7 +184,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) 
         reset();
       }}
     >
-      <ModalContent title="Add SSO">
+      <ModalContent title="Manage SAML configuration">
         <form onSubmit={handleSubmit(onSSOModalSubmit)}>
           <Controller
             control={control}

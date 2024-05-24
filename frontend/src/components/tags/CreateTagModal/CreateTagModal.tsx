@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
@@ -110,7 +110,7 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
   } = useForm<FormData>({
     resolver: zodResolver(createTagSchema)
   });
-  const { createNotification } = useNotificationContext();
+  
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
 

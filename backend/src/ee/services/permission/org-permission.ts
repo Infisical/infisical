@@ -16,6 +16,9 @@ export enum OrgPermissionSubjects {
   Settings = "settings",
   IncidentAccount = "incident-contact",
   Sso = "sso",
+  Scim = "scim",
+  Ldap = "ldap",
+  Groups = "groups",
   Billing = "billing",
   SecretScanning = "secret-scanning",
   Identity = "identity"
@@ -29,6 +32,9 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
+  | [OrgPermissionActions, OrgPermissionSubjects.Scim]
+  | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
+  | [OrgPermissionActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionActions, OrgPermissionSubjects.Identity];
@@ -69,6 +75,21 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Sso);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Scim);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Scim);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Groups);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Groups);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Groups);
+
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Billing);
@@ -91,6 +112,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);

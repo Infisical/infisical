@@ -1,7 +1,7 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner, ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal, UpgradePlanModal } from "@app/components/v2";
 import {
@@ -19,7 +19,7 @@ import { EnvironmentTable } from "./EnvironmentTable";
 import { UpdateEnvironmentModal } from "./UpdateEnvironmentModal";
 
 export const EnvironmentSection = () => {
-  const { createNotification } = useNotificationContext();
+  
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
   const { permission } = useProjectPermission();
@@ -63,7 +63,10 @@ export const EnvironmentSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div
+      id="environments"
+      className="mb-6 scroll-m-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+    >
       <div className="mb-8 flex justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Environments</p>
         <div>

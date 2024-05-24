@@ -1,0 +1,261 @@
+version: "3"
+
+services:
+  haproxy:
+    image: haproxy:latest
+    ports:
+      - '7001:7000'
+      - '5002:5433' # Postgres master 
+      - '5003:5434' # Postgres read 
+      - '6379:6379'
+      - '8080:8080'
+    networks:
+    - infisical
+    configs:
+      - source: haproxy-config
+        target: /usr/local/etc/haproxy/haproxy.cfg
+    deploy:
+      mode: global
+          
+  infisical:
+    container_name: infisical-backend
+    image: infisical/infisical:v0.60.1-postgres
+    env_file: .env
+    networks:
+      - infisical
+    secrets:
+      - env_file
+    deploy:
+      replicas: 5
+    
+  etcd1:
+    image: ghcr.io/zalando/spilo-16:3.2-p2
+    networks:
+      - infisical
+    environment:
+      ETCD_UNSUPPORTED_ARCH: arm64
+    container_name: demo-etcd1
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node1
+    hostname: etcd1
+    command: |
+      etcd --name etcd1 
+      --listen-client-urls http://0.0.0.0:2379 
+      --listen-peer-urls=http://0.0.0.0:2380 
+      --advertise-client-urls http://etcd1:2379 
+      --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380 
+      --initial-advertise-peer-urls=http://etcd1:2380 
+      --initial-cluster-state=new
+
+  etcd2:
+    image: ghcr.io/zalando/spilo-16:3.2-p2
+    networks:
+      - infisical
+    environment:
+      ETCD_UNSUPPORTED_ARCH: arm64
+    container_name: demo-etcd2
+    hostname: etcd2
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node2
+    command: |
+      etcd --name etcd2 
+      --listen-client-urls http://0.0.0.0:2379 
+      --listen-peer-urls=http://0.0.0.0:2380 
+      --advertise-client-urls http://etcd2:2379 
+      --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380 
+      --initial-advertise-peer-urls=http://etcd2:2380 
+      --initial-cluster-state=new
+
+  etcd3:
+    image: ghcr.io/zalando/spilo-16:3.2-p2
+    networks:
+      - infisical
+    environment:
+      ETCD_UNSUPPORTED_ARCH: arm64
+    container_name: demo-etcd3
+    hostname: etcd3
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node3
+    command: |
+      etcd --name etcd3 
+      --listen-client-urls http://0.0.0.0:2379 
+      --listen-peer-urls=http://0.0.0.0:2380 
+      --advertise-client-urls http://etcd3:2379 
+      --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380 
+      --initial-advertise-peer-urls=http://etcd3:2380 
+      --initial-cluster-state=new
+
+  spolo1:
+    image: ghcr.io/zalando/spilo-16:3.2-p2
+    container_name: postgres-1
+    networks:
+    - infisical
+    hostname: postgres-1
+    environment:
+        ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+        PGPASSWORD_SUPERUSER: "postgres"
+        PGUSER_SUPERUSER: "postgres"
+        SCOPE: infisical
+    volumes:
+      - postgres_data1:/home/postgres/pgdata
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node1
+
+  spolo2:
+    image: ghcr.io/zalando/spilo-16:3.2-p2
+    container_name: postgres-2
+    networks:
+    - infisical
+    hostname: postgres-2
+    environment:
+        ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+        PGPASSWORD_SUPERUSER: "postgres"
+        PGUSER_SUPERUSER: "postgres"
+        SCOPE: infisical
+    volumes:
+      - postgres_data2:/home/postgres/pgdata
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node2
+
+  spolo3:
+    image: ghcr.io/zalando/spilo-16:3.2-p2
+    container_name: postgres-3
+    networks:
+    - infisical
+    hostname: postgres-3
+    environment:
+        ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+        PGPASSWORD_SUPERUSER: "postgres"
+        PGUSER_SUPERUSER: "postgres"
+        SCOPE: infisical
+    volumes:
+      - postgres_data3:/home/postgres/pgdata
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node3
+
+
+  redis_replica0:
+    image: bitnami/redis:6.2.10
+    environment:
+      - REDIS_REPLICATION_MODE=master
+      - REDIS_PASSWORD=123456
+    networks:
+      - infisical
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node1
+
+  redis_replica1:
+    image: bitnami/redis:6.2.10
+    environment:
+      - REDIS_REPLICATION_MODE=slave
+      - REDIS_MASTER_HOST=redis_replica0
+      - REDIS_MASTER_PORT_NUMBER=6379
+      - REDIS_MASTER_PASSWORD=123456
+      - REDIS_PASSWORD=123456
+    networks:
+      - infisical
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node2
+
+  redis_replica2:
+    image: bitnami/redis:6.2.10
+    environment:
+      - REDIS_REPLICATION_MODE=slave
+      - REDIS_MASTER_HOST=redis_replica0
+      - REDIS_MASTER_PORT_NUMBER=6379
+      - REDIS_MASTER_PASSWORD=123456
+      - REDIS_PASSWORD=123456
+    networks:
+      - infisical
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node3
+
+  redis_sentinel1:
+    image: bitnami/redis-sentinel:6.2.10
+    environment:
+      - REDIS_SENTINEL_QUORUM=2
+      - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
+      - REDIS_SENTINEL_FAILOVER_TIMEOUT=60000
+      - REDIS_SENTINEL_PORT_NUMBER=26379
+      - REDIS_MASTER_HOST=redis_replica1
+      - REDIS_MASTER_PORT_NUMBER=6379
+      - REDIS_MASTER_PASSWORD=123456
+    networks:
+      - infisical
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node1
+
+  redis_sentinel2:
+    image: bitnami/redis-sentinel:6.2.10
+    environment:
+      - REDIS_SENTINEL_QUORUM=2
+      - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
+      - REDIS_SENTINEL_FAILOVER_TIMEOUT=60000
+      - REDIS_SENTINEL_PORT_NUMBER=26379
+      - REDIS_MASTER_HOST=redis_replica1
+      - REDIS_MASTER_PORT_NUMBER=6379
+      - REDIS_MASTER_PASSWORD=123456
+    networks:
+      - infisical
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node2
+
+  redis_sentinel3:
+    image: bitnami/redis-sentinel:6.2.10
+    environment:
+      - REDIS_SENTINEL_QUORUM=2
+      - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
+      - REDIS_SENTINEL_FAILOVER_TIMEOUT=60000
+      - REDIS_SENTINEL_PORT_NUMBER=26379
+      - REDIS_MASTER_HOST=redis_replica1
+      - REDIS_MASTER_PORT_NUMBER=6379
+      - REDIS_MASTER_PASSWORD=123456
+    networks:
+      - infisical
+    deploy:
+      placement:
+        constraints:
+          - node.labels.name == node3
+
+networks:
+  infisical:
+
+
+volumes:
+  postgres_data1:
+  postgres_data2:
+  postgres_data3:
+  postgres_data4:
+  redis0:
+  redis1:
+  redis2:
+
+configs:
+  haproxy-config:
+    file: ./haproxy.cfg
+
+secrets:
+  env_file:
+    file: .env

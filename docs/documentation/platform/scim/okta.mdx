@@ -1,0 +1,70 @@
+---
+title: "Okta SCIM"
+description: "Learn how to configure SCIM provisioning with Okta for Infisical."
+---
+
+<Info>
+    Okta SCIM provisioning is a paid feature.
+    
+    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
+    then you should contact sales@infisical.com to purchase an enterprise license to use it.
+</Info>
+
+Prerequisites:
+- [Configure Okta SAML for Infisical](/documentation/platform/sso/okta)
+
+<Steps>
+    <Step title="Create a SCIM token in Infisical">
+        In Infisical, head to your Organization Settings > Authentication > SCIM Configuration and
+        press the **Enable SCIM provisioning** toggle to allow Okta to provision/deprovision users and user groups for your organization.
+        
+        ![SCIM enable provisioning](/images/platform/scim/scim-enable-provisioning.png)
+        
+        Next, press **Manage SCIM Tokens** and then **Create** to generate a SCIM token for Okta.
+        
+        ![SCIM create token](/images/platform/scim/scim-create-token.png)
+        
+        Next, copy the **SCIM URL** and **New SCIM Token** to use when configuring SCIM in Okta.
+        
+        ![SCIM copy token](/images/platform/scim/scim-copy-token.png)
+    </Step>
+    <Step title="Configure SCIM in Okta">
+        In Okta, head to your Application > General > App Settings. Next, select **Edit** and check the box
+        labled **Enable SCIM provisioning**.
+
+        ![SCIM Okta](/images/platform/scim/okta/scim-okta-enable-provisioning.png)
+
+        Next, head to Provisioning > Integration and set the following SCIM connection fields:
+        
+        - SCIM connector base URL: Input the **SCIM URL** from Step 1.
+        - Unique identifier field for users: Input `email`.
+        - Supported provisioning actions: Select **Push New Users**, **Push Profile Updates**, and **Push Groups**.
+        - Authentication Mode: `HTTP Header`.
+        
+        ![SCIM Okta](/images/platform/scim/okta/scim-okta-config.png)
+
+        Under HTTP Header > Authorization: Bearer, input the **New SCIM Token** from Step 1.
+
+        ![SCIM Okta](/images/platform/scim/okta/scim-okta-auth.png)
+
+        Next, press **Test Connector Configuration** to check that SCIM is configured properly.
+        
+        ![SCIM Okta](/images/platform/scim/okta/scim-okta-test.png)
+        
+        Next, head to Provisioning > To App and check the boxes labeled **Enable** for **Create Users**, **Update User Attributes**, and **Deactivate Users**.
+        
+        ![SCIM Okta](/images/platform/scim/okta/scim-okta-app-settings.png)
+        
+        Now Okta can provision/deprovision users and user groups to/from your organization in Infisical.
+    </Step>
+</Steps>
+
+**FAQ**
+
+<AccordionGroup>
+<Accordion title="Why do SCIM-provisioned users have to finish setting up their account?">
+    Infisical's SCIM implmentation accounts for retaining the end-to-end encrypted architecture of Infisical because we decouple the **authentication** and **decryption** steps in the platform. 
+    
+    For this reason, SCIM-provisioned users are initialized but must finish setting up their account when logging in the first time by creating a master encryption/decryption key. With this implementation, IdPs and SCIM providers cannot and will not have access to the decryption key needed to decrypt your secrets.
+</Accordion>
+</AccordionGroup>

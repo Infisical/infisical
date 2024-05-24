@@ -1,10 +1,5 @@
-import crypto from "crypto";
-
-import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import encryptSecrets from "@app/components/utilities/secrets/encryptSecrets";
-import { uploadWsKey } from "@app/hooks/api/keys/queries";
 import { createSecret } from "@app/hooks/api/secrets/mutations";
-import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { createWorkspace } from "@app/hooks/api/workspace/queries";
 
 const secretsToBeAdded = [
@@ -82,72 +77,48 @@ const secretsToBeAdded = [
  * @param {String} obj.projectName - name of new project
  * @returns {Project} project - new project
  */
-const initProjectHelper = async ({
-  organizationId,
-  projectName
-}: {
-  organizationId: string;
-  projectName: string;
-}) => {
+const initProjectHelper = async ({ projectName }: { projectName: string }) => {
   // create new project
   const {
-    data: { workspace }
+    data: { project }
   } = await createWorkspace({
-    workspaceName: projectName,
-    organizationId
-  });
-
-  // create and upload new (encrypted) project key
-  const randomBytes = crypto.randomBytes(16).toString("hex");
-  const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
-
-  if (!PRIVATE_KEY) throw new Error("Failed to find private key");
-
-  const user = await fetchUserDetails();
-
-  const { ciphertext, nonce } = encryptAssymmetric({
-    plaintext: randomBytes,
-    publicKey: user.publicKey,
-    privateKey: PRIVATE_KEY
-  });
-
-  await uploadWsKey({
-    workspaceId: workspace.id,
-    userId: user.id,
-    encryptedKey: ciphertext,
-    nonce
+    projectName
   });
 
   // encrypt and upload secrets to new project
   const secrets = await encryptSecrets({
     secretsToEncrypt: secretsToBeAdded,
-    workspaceId: workspace.id,
+    workspaceId: project.id,
     env: "dev"
   });
 
-  secrets?.forEach((secret) => {
-    createSecret({
-      workspaceId: workspace.id,
-      environment: secret.environment,
-      type: secret.type,
-      secretKey: secret.secretName,
-      secretKeyCiphertext: secret.secretKeyCiphertext,
-      secretKeyIV: secret.secretKeyIV,
-      secretKeyTag: secret.secretKeyTag,
-      secretValueCiphertext: secret.secretValueCiphertext,
-      secretValueIV: secret.secretValueIV,
-      secretValueTag: secret.secretValueTag,
-      secretCommentCiphertext: secret.secretCommentCiphertext,
-      secretCommentIV: secret.secretCommentIV,
-      secretCommentTag: secret.secretCommentTag,
-      secretPath: "/",
-      metadata: {
-        source: "signup"
-      }
+  try {
+    secrets?.forEach((secret) => {
+      createSecret({
+        workspaceId: project.id,
+        environment: secret.environment,
+        type: secret.type,
+        secretKey: secret.secretName,
+        secretKeyCiphertext: secret.secretKeyCiphertext,
+        secretKeyIV: secret.secretKeyIV,
+        secretKeyTag: secret.secretKeyTag,
+        secretValueCiphertext: secret.secretValueCiphertext,
+        secretValueIV: secret.secretValueIV,
+        secretValueTag: secret.secretValueTag,
+        secretCommentCiphertext: secret.secretCommentCiphertext,
+        secretCommentIV: secret.secretCommentIV,
+        secretCommentTag: secret.secretCommentTag,
+        secretPath: "/",
+        metadata: {
+          source: "signup"
+        }
+      });
     });
-  });
+  } catch (err) {
+    console.error("Failed to upload secrets", err);
+  }
 
-  return workspace;
+  return project;
 };
 
 export { initProjectHelper };

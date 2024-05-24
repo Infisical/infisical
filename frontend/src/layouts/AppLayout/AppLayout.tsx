@@ -4,9 +4,8 @@
 /* eslint-disable vars-on-top */
 /* eslint-disable no-var */
 /* eslint-disable func-names */
-import crypto from "crypto";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Image from "next/image";
@@ -29,12 +28,12 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
+import { twMerge } from "tailwind-merge";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { tempLocalStorage } from "@app/components/utilities/checks/tempLocalStorage";
-import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   Checkbox,
@@ -51,6 +50,7 @@ import {
   SelectItem,
   UpgradePlanModal
 } from "@app/components/v2";
+import { UpgradeOverlay } from "@app/components/v2/UpgradeOverlay";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -62,16 +62,17 @@ import {
 import { usePopUp } from "@app/hooks";
 import {
   fetchOrgUsers,
-  useAddUserToWs,
+  useAddUserToWsNonE2EE,
   useCreateWorkspace,
+  useGetAccessRequestsCount,
   useGetOrgTrialUrl,
   useGetSecretApprovalRequestCount,
   useGetUserAction,
   useLogoutUser,
   useRegisterUserAction,
-  useUploadWsKey
+  useSelectOrganization
 } from "@app/hooks/api";
-import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
+import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 import { CreateOrgModal } from "@app/views/Org/components";
 
 interface LayoutProps {
@@ -102,7 +103,12 @@ const supportOptions = [
 ];
 
 const formSchema = yup.object({
-  name: yup.string().required().label("Project Name").trim(),
+  name: yup
+    .string()
+    .required()
+    .label("Project Name")
+    .trim()
+    .max(64, "Too long, maximum length is 64 characters"),
   addMembers: yup.bool().required().label("Add Members")
 });
 
@@ -110,27 +116,32 @@ type TAddProjectFormData = yup.InferType<typeof formSchema>;
 
 export const AppLayout = ({ children }: LayoutProps) => {
   const router = useRouter();
-  const { createNotification } = useNotificationContext();
+
   const { mutateAsync } = useGetOrgTrialUrl();
 
-  // eslint-disable-next-line prefer-const
   const { workspaces, currentWorkspace } = useWorkspace();
   const { orgs, currentOrg } = useOrganization();
 
   const { user } = useUser();
   const { subscription } = useSubscription();
   const workspaceId = currentWorkspace?.id || "";
+  const projectSlug = currentWorkspace?.slug || "";
   const { data: updateClosed } = useGetUserAction("december_update_closed");
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
+  const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
+
+  const pendingRequestsCount = useMemo(() => {
+    return (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
+  }, [secretApprovalReqCount, accessApprovalRequestCount]);
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
     : true;
 
   const createWs = useCreateWorkspace();
-  const uploadWsKey = useUploadWsKey();
-  const addWsUser = useAddUserToWs();
+  const addUsersToProject = useAddUserToWsNonE2EE();
+
   const infisicalPlatformVersion = process.env.NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -150,6 +161,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { t } = useTranslation();
 
   const registerUserAction = useRegisterUserAction();
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   const closeUpdate = async () => {
     await registerUserAction.mutateAsync("december_update_closed");
@@ -167,8 +179,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
   };
 
   const changeOrg = async (orgId: string) => {
-    localStorage.setItem("orgData.id", orgId);
-    router.push(`/org/${orgId}/overview`);
+    await selectOrganization({
+      organizationId: orgId
+    });
+
+    await navigateUserToOrg(router, orgId);
   };
 
   // TODO(akhilmhdh): This entire logic will be rechecked and will try to avoid
@@ -220,59 +235,42 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
     // type check
-    if (!currentOrg?.id) return;
+    if (!currentOrg) return;
+    if (!user) return;
     try {
       const {
         data: {
-          workspace: { id: newWorkspaceId }
+          project: { id: newProjectId }
         }
       } = await createWs.mutateAsync({
-        organizationId: currentOrg?.id,
-        workspaceName: name
-      });
-
-      const randomBytes = crypto.randomBytes(16).toString("hex");
-      const PRIVATE_KEY = String(localStorage.getItem("PRIVATE_KEY"));
-      const { ciphertext, nonce } = encryptAssymmetric({
-        plaintext: randomBytes,
-        publicKey: user.publicKey,
-        privateKey: PRIVATE_KEY
-      });
-
-      await uploadWsKey.mutateAsync({
-        encryptedKey: ciphertext,
-        nonce,
-        userId: user?.id,
-        workspaceId: newWorkspaceId
+        projectName: name
       });
 
       if (addMembers) {
-        // not using hooks because need at this point only
         const orgUsers = await fetchOrgUsers(currentOrg.id);
-        const decryptKey = await fetchUserWsKey(newWorkspaceId);
-        await addWsUser.mutateAsync({
-          workspaceId: newWorkspaceId,
-          decryptKey,
-          userPrivateKey: PRIVATE_KEY,
-          members: orgUsers
-            .filter(
-              ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
-            )
-            .map(({ user: orgUser, id: orgMembershipId }) => ({
-              userPublicKey: orgUser.publicKey,
-              orgMembershipId
-            }))
+        await addUsersToProject.mutateAsync({
+          usernames: orgUsers
+            .map((member) => member.user.username)
+            .filter((username) => username !== user.username),
+          projectId: newProjectId
         });
       }
+
+      // eslint-disable-next-line no-promise-executor-return -- We do this because the function returns too fast, which sometimes causes an error when the user is redirected.
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+
+      // eslint-disable-next-line no-promise-executor-return -- We do this because the function returns too fast, which sometimes causes an error when the user is redirected.
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+
       createNotification({ text: "Workspace created", type: "success" });
       handlePopUpClose("addNewWs");
-      router.push(`/project/${newWorkspaceId}/secrets/overview`);
+      router.push(`/project/${newProjectId}/secrets/overview`);
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create workspace", type: "error" });
     }
   };
-  
+
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
@@ -280,6 +278,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
               <div>
+                <UpgradeOverlay />
                 {!router.asPath.includes("personal") && (
                   <div className="flex h-12 cursor-default items-center px-3 pt-6">
                     {(router.asPath.includes("project") ||
@@ -291,13 +290,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </Link>
                     )}
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild className="data-[state=open]:bg-mineshaft-600">
+                      <DropdownMenuTrigger
+                        asChild
+                        className="max-w-[160px] data-[state=open]:bg-mineshaft-600"
+                      >
                         <div className="mr-auto flex items-center rounded-md py-1.5 pl-1.5 pr-2 hover:bg-mineshaft-600">
-                          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary text-sm">
+                          <div className="flex h-5 w-5 min-w-[20px] items-center justify-center rounded-md bg-primary text-sm">
                             {currentOrg?.name.charAt(0)}
                           </div>
                           <div
-                            className="overflow-hidden text-ellipsis pl-2 text-sm text-mineshaft-100"
+                            className="overflow-hidden truncate text-ellipsis pl-2 text-sm text-mineshaft-100"
                             style={{ maxWidth: "140px" }}
                           >
                             {currentOrg?.name}
@@ -309,27 +311,45 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </div>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
-                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.email}</div>
-                        {orgs?.map((org) => (
-                          <DropdownMenuItem key={org.id}>
-                            <Button
-                              onClick={() => changeOrg(org?.id)}
-                              variant="plain"
-                              colorSchema="secondary"
-                              size="xs"
-                              className="flex w-full items-center justify-start p-0 font-normal"
-                              leftIcon={
-                                currentOrg?.id === org.id && (
-                                  <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
-                                )
-                              }
-                            >
-                              <div className="flex w-full items-center justify-between">
-                                {org.name}
-                              </div>
-                            </Button>
-                          </DropdownMenuItem>
-                        ))}
+                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.username}</div>
+                        {orgs?.map((org) => {
+                          return (
+                            <DropdownMenuItem key={org.id}>
+                              <Button
+                                onClick={async () => {
+                                  if (currentOrg?.id === org.id) return;
+
+                                  if (org.authEnforced) {
+                                    // org has an org-level auth method enabled (e.g. SAML)
+                                    // -> logout + redirect to SAML SSO
+
+                                    await logout.mutateAsync();
+                                    window.open(
+                                      `/api/v1/sso/redirect/saml2/organizations/${org.slug}`
+                                    );
+                                    window.close();
+                                    return;
+                                  }
+
+                                  changeOrg(org?.id);
+                                }}
+                                variant="plain"
+                                colorSchema="secondary"
+                                size="xs"
+                                className="flex w-full items-center justify-start p-0 font-normal"
+                                leftIcon={
+                                  currentOrg?.id === org.id && (
+                                    <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
+                                  )
+                                }
+                              >
+                                <div className="flex w-full max-w-[150px] items-center justify-between truncate">
+                                  {org.name}
+                                </div>
+                              </Button>
+                            </DropdownMenuItem>
+                          );
+                        })}
                         {/* <DropdownMenuItem key="add-org">
                           <Button
                             onClick={() => handlePopUpOpen("createOrg")}
@@ -366,7 +386,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </div>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
-                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.email}</div>
+                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.username}</div>
                         <Link href="/personal-settings">
                           <DropdownMenuItem>Personal Settings</DropdownMenuItem>
                         </Link>
@@ -422,7 +442,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <Select
                         defaultValue={currentWorkspace?.id}
                         value={currentWorkspace?.id}
-                        className="w-full truncate bg-mineshaft-600 py-2.5 font-medium"
+                        className="w-full bg-mineshaft-600 py-2.5 font-medium [&>*:first-child]:truncate"
                         onValueChange={(value) => {
                           router.push(`/project/${value}/secrets/overview`);
                           localStorage.setItem("projectData.id", value);
@@ -437,7 +457,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
                               <SelectItem
                                 key={`ws-layout-list-${id}`}
                                 value={id}
-                                className={`${currentWorkspace?.id === id && "bg-mineshaft-600"}`}
+                                className={twMerge(
+                                  currentWorkspace?.id === id && "bg-mineshaft-600",
+                                  "truncate"
+                                )}
                               >
                                 {name}
                               </SelectItem>
@@ -538,10 +561,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             }
                             icon="system-outline-189-domain-verification"
                           >
-                            Secret Approvals
-                            {Boolean(secretApprovalReqCount?.open) && (
+                            Approvals
+                            {Boolean(
+                              secretApprovalReqCount?.open ||
+                                accessApprovalRequestCount?.pendingCount
+                            ) && (
                               <span className="ml-2 rounded border border-primary-400 bg-primary-600 py-0.5 px-1 text-xs font-semibold text-black">
-                                {secretApprovalReqCount?.open}
+                                {pendingRequestsCount}
                               </span>
                             )}
                           </MenuItem>
@@ -604,7 +630,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      {(window.location.origin.includes("https://app.infisical.com")) && (
+                      {(window.location.origin.includes("https://app.infisical.com") ||
+                        window.location.origin.includes("https://gamma.infisical.com")) && (
                         <Link href={`/org/${currentOrg?.id}/billing`} passHref>
                           <a>
                             <MenuItem

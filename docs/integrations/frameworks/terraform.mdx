@@ -1,6 +1,6 @@
 ---
 title: "Terraform"
-description: "Fetch Secrets From Infisical With Terraform"
+description: "Learn how to fetch Secrets From Infisical With Terraform."
 ---
 
 This guide provides step-by-step guidance on how to fetch secrets from Infisical using Terraform.
@@ -34,7 +34,9 @@ Set up the Infisical provider by specifying the `host` and `service_token`. Repl
 ```hcl main.tf
 provider "infisical" {
   host          = "https://app.infisical.com" # Only required if using self hosted instance of Infisical, default is https://app.infisical.com
-  service_token = "<>" # Get token https://infisical.com/docs/documentation/platform/token
+  client_id     = "<>"
+  client_secret = "<>"
+  service_token = "<>" # DEPRECATED, USE MACHINE IDENTITY AUTH INSTEAD
 }
 ```
 
@@ -54,6 +56,7 @@ Use the `infisical_secrets` data source to fetch your secrets. In this block, yo
 data "infisical_secrets" "my-secrets" {
   env_slug    = "dev"
   folder_path = "/some-folder/another-folder"
+  workspace_id = "your-project-id"
 }
 ```
 

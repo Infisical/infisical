@@ -1,13 +1,21 @@
 ---
-title: "Project"
-description: "How Infisical organizes secrets into projects."
+title: "Projects"
+description: "Learn more and understand the concept of Infisical projects."
 ---
 
-A project houses application configuration and secrets for an application.
+A project in Infisical belongs to an [organization](./organization) and contains a number of environments, folders, and secrets. 
+Only users and machine identities who belong to a project can access resources inside of it according to predefined permissions. 
+
+## Project environments
+
+For both visual and organizational structure, Infisical allows splitting up secrets into environments (e.g., development, staging, production). In project settings, such environments can be 
+customized depending on the intended use case. 
+
+![project secrets overview](../../images/platform/project/project-environments.png)
 
 ## Secrets Overview
 
-The **Secrets Overview** page captures a birds-eye-view of secrets and folders across environments like development, staging, or production. 
+The **Secrets Overview** page captures a birds-eye-view of secrets and [folders](./folder) across environments. 
 This is useful for comparing secrets, identifying if anything is missing, and making quick changes.
 
 ![project secrets overview](../../images/platform/project/project-secrets-overview-open.png)

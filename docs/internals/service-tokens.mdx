@@ -1,13 +1,20 @@
 ---
 title: "Service tokens"
-description: "Understanding service tokens and their best practices"
+description: "Understanding service tokens and their best practices."
 ---
+
+<Warning>
+  Service tokens are being deprecated in favor of [machine identities](/documentation/platform/identities/machine-identities).
+
+They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
+
+</Warning>
 ​
 Many clients use service tokens to authenticate and read/write secrets from/to Infisical; they can be created in your project settings.
 
 ## Anatomy
 
-A service token in Infisical consists of the token itself, a `string`, and a corresponding document in the storage backend containing its 
+A service token in Infisical consists of the token itself, a `string`, and a corresponding document in the storage backend containing its
 properties and metadata.
 
 ### Database model
@@ -22,12 +29,13 @@ The storage backend model for a token contains the following information:
 
 ### Token
 
-A service token itself consist of two parts used for authentication and decryption, separated by the delimiter `.`. 
+A service token itself consist of two parts used for authentication and decryption, separated by the delimiter `.`.
 
 Consider the token `st.abc.def.ghi`. Here, `st.abc.def` can be used to authenticate with the API, by including it in the `Authorization` header under `Bearer st.abc.def`, and retrieve (encrypted) secrets as well as a project key back. Meanwhile, `ghi`, a hex-string, can be used to decrypt the project key used to decrypt the secrets.
 
 Note that when using service tokens via select client methods like SDK or CLI, cryptographic operations are abstracted for you that is the token is parsed and encryption/decryption operations are handled. If using service tokens with the REST API and end-to-end encryption enabled, then you will have to handle the encryption/decryption operations yourself.
 ​
+
 ## Recommendations
 
 ### Issuance

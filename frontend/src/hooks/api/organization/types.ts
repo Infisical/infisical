@@ -3,11 +3,17 @@ export type Organization = {
   name: string;
   createAt: string;
   updatedAt: string;
+  authEnforced: boolean;
+  scimEnabled: boolean;
+  slug: string;
 };
 
-export type RenameOrgDTO = {
+export type UpdateOrgDTO = {
   orgId: string;
-  newOrgName: string;
+  name?: string;
+  authEnforced?: boolean;
+  scimEnabled?: boolean;
+  slug?: string;
 };
 
 export type BillingDetails = {

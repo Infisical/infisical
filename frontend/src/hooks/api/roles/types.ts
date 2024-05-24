@@ -41,7 +41,7 @@ export type TPermission = {
 export type TProjectPermission = {
   conditions?: Record<string, any>;
   action: string;
-  subject: [string];
+  subject: string | string[];
 };
 
 export type TGetUserOrgPermissionsDTO = {

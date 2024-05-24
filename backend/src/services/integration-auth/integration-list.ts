@@ -37,6 +37,17 @@ export enum IntegrationType {
   OAUTH2 = "oauth2"
 }
 
+export enum IntegrationInitialSyncBehavior {
+  OVERWRITE_TARGET = "overwrite-target",
+  PREFER_TARGET = "prefer-target",
+  PREFER_SOURCE = "prefer-source"
+}
+
+export enum IntegrationMappingBehavior {
+  ONE_TO_ONE = "one-to-one",
+  MANY_TO_ONE = "many-to-one"
+}
+
 export enum IntegrationUrls {
   // integration oauth endpoints
   GCP_TOKEN_URL = "https://oauth2.googleapis.com/token",

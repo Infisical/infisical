@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ServiceTokensSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -17,10 +18,19 @@ export const sanitizedServiceTokenSchema = ServiceTokensSchema.omit({
 
 export const registerServiceTokenRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/",
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.SERVICE_TOKEN]),
     schema: {
+      description: "Return Infisical Token data",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       response: {
         200: ServiceTokensSchema.merge(
           z.object({
@@ -40,6 +50,8 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     handler: async (req) => {
       const { serviceToken, user } = await server.services.serviceToken.getServiceToken({
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         actor: req.permission.type
       });
 
@@ -61,8 +73,11 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
-    url: "/",
     method: "POST",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
@@ -92,6 +107,8 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
       const { serviceToken, token } = await server.services.serviceToken.createServiceToken({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         ...req.body,
         projectId: req.body.workspaceId
       });
@@ -112,8 +129,11 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
-    url: "/:serviceTokenId",
     method: "DELETE",
+    url: "/:serviceTokenId",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
@@ -129,6 +149,8 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
       const serviceTokenData = await server.services.serviceToken.deleteServiceToken({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         id: req.params.serviceTokenId
       });
 

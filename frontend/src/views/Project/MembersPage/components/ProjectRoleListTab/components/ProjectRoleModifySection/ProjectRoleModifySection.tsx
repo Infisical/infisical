@@ -18,7 +18,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useCreateProjectRole, useUpdateProjectRole } from "@app/hooks/api";
@@ -55,10 +55,16 @@ const SINGLE_PERMISSION_LIST = [
     formName: "role"
   },
   {
-    title: "Project Members",
-    subtitle: "Project members management control",
+    title: "User management",
+    subtitle: "Add, view and remove users from the project",
     icon: faUser,
     formName: "member"
+  },
+  {
+    title: "Group management",
+    subtitle: "Add, view and remove user groups from the project",
+    icon: faUsers,
+    formName: "groups"
   },
   {
     title: "Machine identity management",
@@ -119,7 +125,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
   const isNonEditable = ["admin", "member", "viewer", "no-access"].includes(role?.slug || "");
   const isNewRole = !role?.slug;
 
-  const { createNotification } = useNotificationContext();
+  
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
 
@@ -128,6 +134,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
     register,
     formState: { isSubmitting, isDirty, errors },
     setValue,
+    getValues,
     control
   } = useForm<TFormSchema>({
     defaultValues: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : {},
@@ -226,6 +233,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
           </div>
           <div>
             <MultiEnvProjectPermission
+              getValue={getValues}
               isNonEditable={isNonEditable}
               control={control}
               setValue={setValue}

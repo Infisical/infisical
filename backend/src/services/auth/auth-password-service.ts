@@ -99,7 +99,7 @@ export const authPaswordServiceFactory = ({
    * Email password reset flow via email. Step 1 send email
    */
   const sendPasswordResetEmail = async (email: string) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findUserByUsername(email);
     // ignore as user is not found to avoid an outside entity to identify infisical registered accounts
     if (!user || (user && !user.isAccepted)) return;
 
@@ -126,7 +126,7 @@ export const authPaswordServiceFactory = ({
    * */
   const verifyPasswordResetEmail = async (email: string, code: string) => {
     const cfg = getConfig();
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findUserByUsername(email);
     // ignore as user is not found to avoid an outside entity to identify infisical registered accounts
     if (!user || (user && !user.isAccepted)) {
       throw new Error("Failed email verification for pass reset");
@@ -192,7 +192,7 @@ export const authPaswordServiceFactory = ({
   }: TCreateBackupPrivateKeyDTO) => {
     const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
-      throw new Error("Failed to find  user");
+      throw new Error("Failed to find user");
     }
 
     if (!userEnc.clientPublicKey || !userEnc.serverPrivateKey) throw new Error("failed to create backup key");
@@ -239,7 +239,7 @@ export const authPaswordServiceFactory = ({
   const getBackupPrivateKeyOfUser = async (userId: string) => {
     const user = await userDAL.findUserEncKeyByUserId(userId);
     if (!user || (user && !user.isAccepted)) {
-      throw new Error("Failed to find  user");
+      throw new Error("Failed to find user");
     }
     const backupKey = await authDAL.getBackupPrivateKeyByUserId(userId);
     if (!backupKey) throw new Error("Failed to find user backup key");

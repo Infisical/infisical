@@ -1,0 +1,60 @@
+---
+title: "Schema migration"
+description: "Learn how to run Postgres schema migrations."
+---
+
+Running schema migrations is a requirement before deploying Infisical. 
+Each time you decide to upgrade your version of Infisical, it's necessary to run schema migrations for that specific version. 
+The guide below outlines a step-by-step guide to help you manually run schema migrations for Infisical.
+
+### Prerequisites
+- Docker installed on your machine
+- An active PostgreSQL database
+- Postgres database connection string
+
+<Steps>
+  <Step title="Pull the Infisical Docker Image">
+    First, ensure you have the correct version of the Infisical Docker image. You can pull it from Docker Hub using the following command:
+    ```bash
+    docker pull infisical/infisical:<version>
+    ```
+    Replace `<version>` with the specific version number you intend to deploy. View available versions [here](https://hub.docker.com/r/infisical/infisical/tags)
+  </Step>
+
+  <Step title="Set Up the Environment Variable">
+    The Docker image requires a `DB_CONNECTION_URI` environment variable. This connection string should point to your PostgreSQL database. The format generally looks like this: `postgresql://username:password@host:port/database`.
+  </Step>
+
+  <Step title="Run the Migration ">
+    To run the schema migration for the version of Infisical you want to deploy, use the following Docker command:
+
+    ```bash
+    docker run --env DB_CONNECTION_URI=<your_connection_string> infisical/infisical:<version> npm run migration:latest
+    ```
+    Replace `<your_connection_string>` with your actual PostgreSQL connection string, and `<version>` with the desired version number.
+  </Step>
+
+  <Step title="Verify the Migration">
+    After running the migration, it's good practice to check if the migration was successful. You can do this by checking the logs or accessing your database to ensure the schema has been updated accordingly.
+  </Step>
+  <Step title="Rollback If Needed">
+    If you need to rollback a migration by one step, use the following command:
+
+    ```bash
+    docker run --env DB_CONNECTION_URI=<your_connection_string> infisical/infisical:<version> npm run migration:rollback
+    ```
+  </Step>
+
+  <Step title="Repeat for Each Version">
+    It's important to run schema migrations for each version of the Infisical you deploy. For instance, if you're updating from `infisical/infisical:1` to `infisical/infisical:2`, ensure you run the schema migrations for `infisical/infisical:2` before deploying it.
+  </Step>
+</Steps>
+
+<Tip>
+  In a production setting, we recommend a more structured approach to deploying migrations prior to upgrading Infisical. This can be accomplished via CI automation.
+</Tip>
+
+### Additional discussion 
+- Always back up your database before running migrations, especially in a production environment.
+- Test the migration process in a staging environment before applying it to production.
+- Keep track of the versions and their corresponding migrations to avoid any inconsistencies.

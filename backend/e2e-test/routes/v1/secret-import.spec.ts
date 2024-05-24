@@ -1,32 +1,57 @@
 import { seedData1 } from "@app/db/seed-data";
 
-describe("Secret Folder Router", async () => {
+const createSecretImport = async (importPath: string, importEnv: string) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: `/api/v1/secret-imports`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    },
+    body: {
+      workspaceId: seedData1.project.id,
+      environment: seedData1.environment.slug,
+      path: "/",
+      import: {
+        environment: importEnv,
+        path: importPath
+      }
+    }
+  });
+
+  expect(res.statusCode).toBe(200);
+  const payload = JSON.parse(res.payload);
+  expect(payload).toHaveProperty("secretImport");
+  return payload.secretImport;
+};
+
+const deleteSecretImport = async (id: string) => {
+  const res = await testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/secret-imports/${id}`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    },
+    body: {
+      workspaceId: seedData1.project.id,
+      environment: seedData1.environment.slug,
+      path: "/"
+    }
+  });
+
+  expect(res.statusCode).toBe(200);
+  const payload = JSON.parse(res.payload);
+  expect(payload).toHaveProperty("secretImport");
+  return payload.secretImport;
+};
+
+describe("Secret Import Router", async () => {
   test.each([
-    { importEnv: "dev", importPath: "/" }, // one in root
+    { importEnv: "prod", importPath: "/" }, // one in root
     { importEnv: "staging", importPath: "/" } // then create a deep one creating intermediate ones
   ])("Create secret import $importEnv with path $importPath", async ({ importPath, importEnv }) => {
-    const res = await testServer.inject({
-      method: "POST",
-      url: `/api/v1/secret-imports`,
-      headers: {
-        authorization: `Bearer ${jwtAuthToken}`
-      },
-      body: {
-        workspaceId: seedData1.project.id,
-        environment: seedData1.environment.slug,
-        path: "/",
-        import: {
-          environment: importEnv,
-          path: importPath
-        }
-      }
-    });
-
-    expect(res.statusCode).toBe(200);
-    const payload = JSON.parse(res.payload);
-    expect(payload).toHaveProperty("secretImport");
     // check for default environments
-    expect(payload.secretImport).toEqual(
+    const payload = await createSecretImport(importPath, importEnv);
+    expect(payload).toEqual(
       expect.objectContaining({
         id: expect.any(String),
         importPath: expect.any(String),
@@ -37,10 +62,12 @@ describe("Secret Folder Router", async () => {
         })
       })
     );
+    await deleteSecretImport(payload.id);
   });
 
-  let testSecretImportId = "";
   test("Get secret imports", async () => {
+    const createdImport1 = await createSecretImport("/", "prod");
+    const createdImport2 = await createSecretImport("/", "staging");
     const res = await testServer.inject({
       method: "GET",
       url: `/api/v1/secret-imports`,
@@ -58,7 +85,6 @@ describe("Secret Folder Router", async () => {
     const payload = JSON.parse(res.payload);
     expect(payload).toHaveProperty("secretImports");
     expect(payload.secretImports.length).toBe(2);
-    testSecretImportId = payload.secretImports[0].id;
     expect(payload.secretImports).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -72,12 +98,20 @@ describe("Secret Folder Router", async () => {
         })
       ])
     );
+    await deleteSecretImport(createdImport1.id);
+    await deleteSecretImport(createdImport2.id);
   });
 
   test("Update secret import position", async () => {
-    const res = await testServer.inject({
+    const prodImportDetails = { path: "/", envSlug: "prod" };
+    const stagingImportDetails = { path: "/", envSlug: "staging" };
+
+    const createdImport1 = await createSecretImport(prodImportDetails.path, prodImportDetails.envSlug);
+    const createdImport2 = await createSecretImport(stagingImportDetails.path, stagingImportDetails.envSlug);
+
+    const updateImportRes = await testServer.inject({
       method: "PATCH",
-      url: `/api/v1/secret-imports/${testSecretImportId}`,
+      url: `/api/v1/secret-imports/${createdImport1.id}`,
       headers: {
         authorization: `Bearer ${jwtAuthToken}`
       },
@@ -91,8 +125,8 @@ describe("Secret Folder Router", async () => {
       }
     });
 
-    expect(res.statusCode).toBe(200);
-    const payload = JSON.parse(res.payload);
+    expect(updateImportRes.statusCode).toBe(200);
+    const payload = JSON.parse(updateImportRes.payload);
     expect(payload).toHaveProperty("secretImport");
     // check for default environments
     expect(payload.secretImport).toEqual(
@@ -102,7 +136,7 @@ describe("Secret Folder Router", async () => {
         position: 2,
         importEnv: expect.objectContaining({
           name: expect.any(String),
-          slug: expect.any(String),
+          slug: expect.stringMatching(prodImportDetails.envSlug),
           id: expect.any(String)
         })
       })
@@ -124,28 +158,19 @@ describe("Secret Folder Router", async () => {
     expect(secretImportsListRes.statusCode).toBe(200);
     const secretImportList = JSON.parse(secretImportsListRes.payload);
     expect(secretImportList).toHaveProperty("secretImports");
-    expect(secretImportList.secretImports[1].id).toEqual(testSecretImportId);
+    expect(secretImportList.secretImports[1].id).toEqual(createdImport1.id);
+    expect(secretImportList.secretImports[0].id).toEqual(createdImport2.id);
+
+    await deleteSecretImport(createdImport1.id);
+    await deleteSecretImport(createdImport2.id);
   });
 
   test("Delete secret import position", async () => {
-    const res = await testServer.inject({
-      method: "DELETE",
-      url: `/api/v1/secret-imports/${testSecretImportId}`,
-      headers: {
-        authorization: `Bearer ${jwtAuthToken}`
-      },
-      body: {
-        workspaceId: seedData1.project.id,
-        environment: seedData1.environment.slug,
-        path: "/"
-      }
-    });
-
-    expect(res.statusCode).toBe(200);
-    const payload = JSON.parse(res.payload);
-    expect(payload).toHaveProperty("secretImport");
+    const createdImport1 = await createSecretImport("/", "prod");
+    const createdImport2 = await createSecretImport("/", "staging");
+    const deletedImport = await deleteSecretImport(createdImport1.id);
     // check for default environments
-    expect(payload.secretImport).toEqual(
+    expect(deletedImport).toEqual(
       expect.objectContaining({
         id: expect.any(String),
         importPath: expect.any(String),
@@ -175,5 +200,7 @@ describe("Secret Folder Router", async () => {
     expect(secretImportList).toHaveProperty("secretImports");
     expect(secretImportList.secretImports.length).toEqual(1);
     expect(secretImportList.secretImports[0].position).toEqual(1);
+
+    await deleteSecretImport(createdImport2.id);
   });
 });

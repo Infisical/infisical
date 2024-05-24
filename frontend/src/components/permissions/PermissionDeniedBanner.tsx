@@ -13,26 +13,24 @@ export const PermissionDeniedBanner = ({ containerClassName, className, children
   return (
     <div
       className={twMerge(
-        "container h-full mx-auto flex justify-center items-center",
+        "container mx-auto flex h-full items-center justify-center",
         containerClassName
       )}
     >
-      <div
-        className={twMerge(
-          "rounded-md bg-mineshaft-800 text-bunker-300 p-16 flex space-x-12 items-end",
-          className
-        )}
-      >
-        <div>
-          <FontAwesomeIcon icon={faLock} size="6x" />
-        </div>
-        <div>
-          <div className="text-4xl font-medium mb-2">Access Restricted</div>
-          {children || (
-            <div className="text-sm">
-              Your role has limited permissions, please <br/> contact your administrator to gain access
-            </div>
-          )}
+      <div className={twMerge("rounded-md bg-mineshaft-800 p-16 text-bunker-300", className)}>
+        <div className="flex items-end space-x-12">
+          <div>
+            <FontAwesomeIcon icon={faLock} size="6x" />
+          </div>
+          <div>
+            <div className="mb-2 text-4xl font-medium">Access Restricted</div>
+            {children || (
+              <div className="text-sm">
+                Your role has limited permissions, please <br /> contact your administrator to gain
+                access
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

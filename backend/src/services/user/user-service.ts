@@ -1,16 +1,156 @@
 import { BadRequestError } from "@app/lib/errors";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { AuthMethod } from "../auth/auth-type";
 import { TUserDALFactory } from "./user-dal";
 
 type TUserServiceFactoryDep = {
-  userDAL: TUserDALFactory;
+  userDAL: Pick<
+    TUserDALFactory,
+    | "find"
+    | "findOne"
+    | "findById"
+    | "transaction"
+    | "updateById"
+    | "update"
+    | "deleteById"
+    | "findOneUserAction"
+    | "createUserAction"
+    | "findUserEncKeyByUserId"
+  >;
+  userAliasDAL: Pick<TUserAliasDALFactory, "find" | "insertMany">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 
-export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
+export const userServiceFactory = ({
+  userDAL,
+  userAliasDAL,
+  orgMembershipDAL,
+  tokenService,
+  smtpService
+}: TUserServiceFactoryDep) => {
+  const sendEmailVerificationCode = async (username: string) => {
+    const user = await userDAL.findOne({ username });
+    if (!user) throw new BadRequestError({ name: "Failed to find user" });
+    if (!user.email)
+      throw new BadRequestError({ name: "Failed to send email verification code due to no email on user" });
+    if (user.isEmailVerified)
+      throw new BadRequestError({ name: "Failed to send email verification code due to email already verified" });
+
+    const token = await tokenService.createTokenForUser({
+      type: TokenType.TOKEN_EMAIL_VERIFICATION,
+      userId: user.id
+    });
+
+    await smtpService.sendMail({
+      template: SmtpTemplates.EmailVerification,
+      subjectLine: "Infisical confirmation code",
+      recipients: [user.email],
+      substitutions: {
+        code: token
+      }
+    });
+  };
+
+  const verifyEmailVerificationCode = async (username: string, code: string) => {
+    const user = await userDAL.findOne({ username });
+    if (!user) throw new BadRequestError({ name: "Failed to find user" });
+    if (!user.email)
+      throw new BadRequestError({ name: "Failed to verify email verification code due to no email on user" });
+    if (user.isEmailVerified)
+      throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
+
+    await tokenService.validateTokenForUser({
+      type: TokenType.TOKEN_EMAIL_VERIFICATION,
+      userId: user.id,
+      code
+    });
+
+    const { email } = user;
+
+    await userDAL.transaction(async (tx) => {
+      await userDAL.updateById(
+        user.id,
+        {
+          isEmailVerified: true
+        },
+        tx
+      );
+
+      // check if there are users with the same email.
+      const users = await userDAL.find(
+        {
+          email,
+          isEmailVerified: true
+        },
+        { tx }
+      );
+
+      if (users.length > 1) {
+        // merge users
+        const mergeUser = users.find((u) => u.id !== user.id);
+        if (!mergeUser) throw new BadRequestError({ name: "Failed to find merge user" });
+
+        const mergeUserOrgMembershipSet = new Set(
+          (await orgMembershipDAL.find({ userId: mergeUser.id }, { tx })).map((m) => m.orgId)
+        );
+        const myOrgMemberships = (await orgMembershipDAL.find({ userId: user.id }, { tx })).filter(
+          (m) => !mergeUserOrgMembershipSet.has(m.orgId)
+        );
+
+        const userAliases = await userAliasDAL.find(
+          {
+            userId: user.id
+          },
+          { tx }
+        );
+        await userDAL.deleteById(user.id, tx);
+
+        if (myOrgMemberships.length) {
+          await orgMembershipDAL.insertMany(
+            myOrgMemberships.map((orgMembership) => ({
+              ...orgMembership,
+              userId: mergeUser.id
+            })),
+            tx
+          );
+        }
+
+        if (userAliases.length) {
+          await userAliasDAL.insertMany(
+            userAliases.map((userAlias) => ({
+              ...userAlias,
+              userId: mergeUser.id
+            })),
+            tx
+          );
+        }
+      } else {
+        // update current user's username to [email]
+        await userDAL.updateById(
+          user.id,
+          {
+            username: email
+          },
+          tx
+        );
+      }
+    });
+  };
+
   const toggleUserMfa = async (userId: string, isMfaEnabled: boolean) => {
+    const user = await userDAL.findById(userId);
+
+    if (!user || !user.email) throw new BadRequestError({ name: "Failed to toggle MFA" });
+
     const updatedUser = await userDAL.updateById(userId, {
       isMfaEnabled,
       mfaMethods: isMfaEnabled ? ["email"] : []
@@ -30,14 +170,11 @@ export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
     const user = await userDAL.findById(userId);
     if (!user) throw new BadRequestError({ name: "Update auth methods" });
 
-    const hasSamlEnabled = user?.authMethods?.some((method) =>
-      [AuthMethod.OKTA_SAML, AuthMethod.AZURE_SAML, AuthMethod.JUMPCLOUD_SAML].includes(method as AuthMethod)
-    );
-    if (hasSamlEnabled)
-      throw new BadRequestError({
-        name: "Update auth method",
-        message: "Failed to update auth methods due to SAML SSO "
-      });
+    if (user.authMethods?.includes(AuthMethod.LDAP))
+      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
+
+    if (authMethods.includes(AuthMethod.LDAP))
+      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
 
     const updatedUser = await userDAL.updateById(userId, { authMethods });
     return updatedUser;
@@ -71,6 +208,8 @@ export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
   };
 
   return {
+    sendEmailVerificationCode,
+    verifyEmailVerificationCode,
     toggleUserMfa,
     updateUserName,
     updateAuthMethods,

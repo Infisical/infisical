@@ -14,7 +14,8 @@ export async function seed(knex: Knex): Promise<void> {
   const [org] = await knex(TableName.Organization)
     .insert([
       {
-        // @ts-expect-error exluded type id needs to be inserted here to keep it testable
+        // eslint-disable-next-line
+        // @ts-ignore
         id: seedData1.organization.id,
         name: "infisical",
         slug: "infisical",

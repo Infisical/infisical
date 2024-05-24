@@ -1,6 +1,6 @@
 ---
-title: "PR Workflows"
-description: "Infisical PR Workflows allows you to create a set of policies to control secret operations."
+title: "Approval Workflows"
+description: "Learn how to enable a set of policies to manage changes to sensitive secrets and environments."
 ---
 
 ## Problem at hand
@@ -14,15 +14,15 @@ Updating secrets in high-stakes environments (e.g., production) can have a numbe
 
 As a wide-spread software engineering practice, developers have to submit their code as a PR that needs to be approved before the code is merged into the main branch. 
 
-In a similar way, to solve the above-mentioned issues, Infisical provides a feature called `PR Workflows` for secret management. This is a set of policies and workflows that help advance access controls, compliance procedures, and stability of a particular environment. In other words, **PR Workflows** help you secure, stabilize, and streamline the change of secrets in high-stakes environments. 
+In a similar way, to solve the above-mentioned issues, Infisical provides a feature called `Approval Workflows` for secret management. This is a set of policies and workflows that help advance access controls, compliance procedures, and stability of a particular environment. In other words, **Approval Workflows** help you secure, stabilize, and streamline the change of secrets in high-stakes environments. 
 
 ### Setting a policy
 
-First, you would need to create a set of policies for a certain environment. In the example below you can see a generic policy for a production environment. In this case, any user who submits a change to `prod` would first have to get an approval by a predefined user (or multiple users).
+First, you would need to create a set of policies for a certain environment. In the example below, a generic policy for a production environment is shown. In this case, any user who submits a change to `prod` would first have to get an approval by a predefined approver (or multiple approvers).
 
 ![create secret update policy](../../images/platform/pr-workflows/secret-update-policy.png)
 
-### Example of updating secrets with PR workflows
+### Example of updating secrets with Approval workflows
 
 When a user submits a change to an enviropnment that is under a particular policy, a corresponsing change request will go to a predefined approver (or multiple approvers). 
 

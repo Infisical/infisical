@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/models"
@@ -52,25 +51,19 @@ var initCmd = &cobra.Command{
 
 		httpClient := resty.New()
 		httpClient.SetAuthToken(userCreds.UserCredentials.JTWToken)
-		workspaceResponse, err := api.CallGetAllWorkSpacesUserBelongsTo(httpClient)
+
+		organizationResponse, err := api.CallGetAllOrganizations(httpClient)
 		if err != nil {
-			util.HandleError(err, "Unable to pull projects that belong to you")
+			util.HandleError(err, "Unable to pull organizations that belong to you")
 		}
 
-		workspaces := workspaceResponse.Workspaces
-		if len(workspaces) == 0 {
-			message := fmt.Sprintf("You don't have any projects created in Infisical. You must first create a project at %s", util.INFISICAL_TOKEN_NAME)
-			util.PrintErrorMessageAndExit(message)
-		}
+		organizations := organizationResponse.Organizations
 
-		var workspaceNames []string
-		for _, workspace := range workspaces {
-			workspaceNames = append(workspaceNames, workspace.Name)
-		}
+		organizationNames := util.GetOrganizationsNameList(organizationResponse)
 
 		prompt := promptui.Select{
-			Label: "Which of your Infisical projects would you like to connect this project to?",
-			Items: workspaceNames,
+			Label: "Which Infisical organization would you like to select a project from?",
+			Items: organizationNames,
 			Size:  7,
 		}
 
@@ -79,7 +72,42 @@ var initCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
-		err = writeWorkspaceFile(workspaces[index])
+		selectedOrganization := organizations[index]
+
+		tokenResponse, err := api.CallSelectOrganization(httpClient, api.SelectOrganizationRequest{OrganizationId: selectedOrganization.ID})
+
+		if err != nil {
+			util.HandleError(err, "Unable to select organization")
+		}
+
+		// set the config jwt token to the new token
+		userCreds.UserCredentials.JTWToken = tokenResponse.Token
+		err = util.StoreUserCredsInKeyRing(&userCreds.UserCredentials)
+		httpClient.SetAuthToken(tokenResponse.Token)
+
+		if err != nil {
+			util.HandleError(err, "Unable to store your user credentials")
+		}
+
+		workspaceResponse, err := api.CallGetAllWorkSpacesUserBelongsTo(httpClient)
+		if err != nil {
+			util.HandleError(err, "Unable to pull projects that belong to you")
+		}
+
+		filteredWorkspaces, workspaceNames := util.GetWorkspacesInOrganization(workspaceResponse, selectedOrganization.ID)
+
+		prompt = promptui.Select{
+			Label: "Which of your Infisical projects would you like to connect this project to?",
+			Items: workspaceNames,
+			Size:  7,
+		}
+
+		index, _, err = prompt.Run()
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		err = writeWorkspaceFile(filteredWorkspaces[index])
 		if err != nil {
 			util.HandleError(err)
 		}

@@ -1,7 +1,7 @@
 import { faArrowDown, faArrowUp, faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   EmptyState,
@@ -36,7 +36,7 @@ type Props = {
 
 export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace, isLoading } = useWorkspace();
-  const { createNotification } = useNotificationContext();
+  
   const updateEnvironment = useUpdateWsEnvironment();
 
   const handleReorderEnv = async (id: string, position: number) => {

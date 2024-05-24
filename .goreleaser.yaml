@@ -190,10 +190,34 @@ dockers:
   - dockerfile: docker/alpine
     goos: linux
     goarch: amd64
+    use: buildx
     ids:
       - all-other-builds
     image_templates:
-      - "infisical/cli:{{ .Version }}"
-      - "infisical/cli:{{ .Major }}.{{ .Minor }}"
-      - "infisical/cli:{{ .Major }}"
-      - "infisical/cli:latest"
+      - "infisical/cli:{{ .Major }}.{{ .Minor }}.{{ .Patch }}-amd64"
+      - "infisical/cli:latest-amd64"
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/amd64"
+  - dockerfile: docker/alpine
+    goos: linux
+    goarch: amd64
+    use: buildx
+    ids:
+      - all-other-builds
+    image_templates:
+      - "infisical/cli:{{ .Major }}.{{ .Minor }}.{{ .Patch }}-arm64"
+      - "infisical/cli:latest-arm64"
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm64"
+
+docker_manifests:
+  - name_template: "infisical/cli:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+    image_templates:
+      - "infisical/cli:{{ .Major }}.{{ .Minor }}.{{ .Patch }}-amd64"
+      - "infisical/cli:{{ .Major }}.{{ .Minor }}.{{ .Patch }}-arm64"
+  - name_template: "infisical/cli:latest"
+    image_templates:
+      - "infisical/cli:latest-amd64"
+      - "infisical/cli:latest-arm64"

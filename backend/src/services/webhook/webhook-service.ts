@@ -30,13 +30,21 @@ export const webhookServiceFactory = ({ webhookDAL, projectEnvDAL, permissionSer
   const createWebhook = async ({
     actor,
     actorId,
+    actorOrgId,
+    actorAuthMethod,
     projectId,
     webhookUrl,
     environment,
     secretPath,
     webhookSecretKey
   }: TCreateWebhookDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new BadRequestError({ message: "Env not found" });
@@ -72,33 +80,51 @@ export const webhookServiceFactory = ({ webhookDAL, projectEnvDAL, permissionSer
     return { ...webhook, projectId, environment: env };
   };
 
-  const updateWebhook = async ({ actorId, actor, id, isDisabled }: TUpdateWebhookDTO) => {
+  const updateWebhook = async ({ actorId, actor, actorOrgId, actorAuthMethod, id, isDisabled }: TUpdateWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new BadRequestError({ message: "Webhook not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, webhook.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      webhook.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
 
     const updatedWebhook = await webhookDAL.updateById(id, { isDisabled });
     return { ...webhook, ...updatedWebhook };
   };
 
-  const deleteWebhook = async ({ id, actor, actorId }: TDeleteWebhookDTO) => {
+  const deleteWebhook = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new BadRequestError({ message: "Webhook not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, webhook.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      webhook.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
 
     const deletedWebhook = await webhookDAL.deleteById(id);
     return { ...webhook, ...deletedWebhook };
   };
 
-  const testWebhook = async ({ id, actor, actorId }: TTestWebhookDTO) => {
+  const testWebhook = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TTestWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new BadRequestError({ message: "Webhook not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, webhook.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      webhook.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
 
     let webhookError: string | undefined;
@@ -118,8 +144,22 @@ export const webhookServiceFactory = ({ webhookDAL, projectEnvDAL, permissionSer
     return { ...webhook, ...updatedWebhook };
   };
 
-  const listWebhooks = async ({ actorId, actor, projectId, secretPath, environment }: TListWebhookDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const listWebhooks = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    secretPath,
+    environment
+  }: TListWebhookDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
 
     return webhookDAL.findAllWebhooks(projectId, environment, secretPath);

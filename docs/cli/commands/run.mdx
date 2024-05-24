@@ -11,6 +11,7 @@ description: "The command that injects your secrets into local environment"
     # Example
     infisical run [options] -- npm run dev
     ```
+
   </Tab>
 
   <Tab title="Chained commands">
@@ -20,6 +21,7 @@ description: "The command that injects your secrets into local environment"
     # Example
     infisical run [options] --command "npm run bootstrap && npm run dev start; other-bash-command"
     ```
+
   </Tab>
 </Tabs>
 
@@ -27,27 +29,38 @@ description: "The command that injects your secrets into local environment"
 
 Inject secrets from Infisical into your application process.
 
-
 ## Subcommands & flags
 
 <Accordion title="infisical run" defaultOpen="true">
   Use this command to inject secrets into your applications process
 
-  ```bash
-  $ infisical run -- <your application command>
+```bash
+$ infisical run -- <your application command>
 
-  # Example 
-  $ infisical run -- npm run dev
-  ```
+# Example
+$ infisical run -- npm run dev
+```
 
-  ### Environment variables
+### Environment variables
+
   <Accordion title="INFISICAL_TOKEN">
-    Used to fetch secrets via a [service token](/documentation/platform/token) apposed to logged in credentials. Simply, export this variable in the terminal before running this command.
+    Used to fetch secrets via a [machine identity](/documentation/platform/identities/machine-identities) apposed to logged in credentials. Simply, export this variable in the terminal before running this command.
 
     ```bash
-    # Example 
-    export INFISICAL_TOKEN=st.63e03c4a97cb4a747186c71e.ed5b46a34c078a8f94e8228f4ab0ff97.4f7f38034811995997d72badf44b42ec
+    # Example
+    export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<identity-client-id> --client-secret=<identity-client-secret> --silent --plain) # --plain flag will output only the token, so it can be fed to an environment variable. --silent will disable any update messages.
     ```
+
+    <Info>
+      Alternatively, you may use service tokens.
+
+      Please note, however, that service tokens are being deprecated in favor of [machine identities](/documentation/platform/identities/machine-identities). They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
+      ```bash
+      # Example
+      export INFISICAL_TOKEN=<service-token>
+      ```
+
+  </Info>
   </Accordion>
 
   <Accordion title="INFISICAL_DISABLE_UPDATE_CHECK">
@@ -56,71 +69,96 @@ Inject secrets from Infisical into your application process.
     To use, simply export this variable in the terminal before running this command.
 
     ```bash
-    # Example 
+    # Example
     export INFISICAL_DISABLE_UPDATE_CHECK=true
     ```
+
   </Accordion>
 
-  ### Flags 
-  
+### Flags
+
    <Accordion title="--project-config-dir">
-    Explicitly set the directory where the .infisical.json resides. This is useful for some monorepo setups. 
+    Explicitly set the directory where the .infisical.json resides. This is useful for some monorepo setups.
 
     ```bash
-    # Example 
+    # Example
     infisical run --project-config-dir=/some-dir -- printenv
     ```
+
   </Accordion>
 
   <Accordion title="--command">
     Pass secrets into multiple commands at once
 
     ```bash
-    # Example 
+    # Example
     infisical run --command="npm run build && npm run dev; more-commands..."
     ```
+
+  </Accordion>
+
+  <Accordion title="--projectId">
+    The project ID to fetch secrets from. This is required when using a machine identity to authenticate.
+
+    ```bash
+    # Example
+    infisical run --projectId=<project-id> -- npm run dev
+    ```
+
   </Accordion>
 
   <Accordion title="--token">
-    If you are using a [service token](/documentation/platform/token) to authenticate, you can pass the token as a flag
+    If you are using a [machine identity](/documentation/platform/identities/machine-identities) to authenticate, you can pass the token as a flag
 
     ```bash
-    # Example 
-    infisical run --token="st.63e03c4a97cb4a747186c71e.ed5b46a34c078a8f94e8228f4ab0ff97.4f7f38034811995997d72badf44b42ec" -- npm run start
+    # Example
+    infisical run --token="<universal-auth-access-token>" --projectId=<project-id> -- npm run start
     ```
 
-    You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the run command. This will have the same effect as setting the token with `--token` flag 
+    You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the run command. This will have the same effect as setting the token with `--token` flag
+
   </Accordion>
 
   <Accordion title="--expand">
     Turn on or off the shell parameter expansion in your secrets. If you have used shell parameters in your secret(s), activating this feature will populate them before injecting them into your application process.
 
     Default value: `true`
+
   </Accordion>
 
-  <Accordion title="--env">
-    This is used to specify the environment from which secrets should be retrieved. The accepted values are the environment slugs defined for your project, such as `dev`, `staging`, `test`, and `prod`.
-    
-    Default value: `dev`
+  <Accordion title="--include-imports">
+    By default imported secrets are available, you can disable it by setting this option to false.
+
+    Default value: `true`
   </Accordion>
+
+{" "}
+
+<Accordion title="--env">
+  This is used to specify the environment from which secrets should be
+  retrieved. The accepted values are the environment slugs defined for your
+  project, such as `dev`, `staging`, `test`, and `prod`. Default value: `dev`
+</Accordion>
 
   <Accordion title="--secret-overriding">
     Prioritizes personal secrets with the same name over shared secrets
 
     Default value: `true`
+
   </Accordion>
 
   <Accordion title="--tags">
     When working with tags, you can use this flag to filter and retrieve only secrets that are associated with a specific tag(s).
 
     ```bash
-    # Example 
+    # Example
     infisical run --tags=tag1,tag2,tag3 -- npm run dev
     ```
 
     Note: you must reference the tag by its slug name not its fully qualified name. Go to project settings to view all tag slugs.
 
     By default, all secrets are fetched
+
   </Accordion>
 
   <Accordion title="--path">

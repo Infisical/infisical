@@ -3,7 +3,7 @@ import { faInfoCircle, faPlug, faPlus } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -34,7 +34,7 @@ import { AddWebhookForm, TFormSchema } from "./AddWebhookForm";
 export const WebhooksTab = withProjectPermission(
   () => {
     const { t } = useTranslation();
-    const { createNotification } = useNotificationContext();
+    
     const { currentWorkspace } = useWorkspace();
     const workspaceId = currentWorkspace?.id || "";
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
@@ -139,7 +139,7 @@ export const WebhooksTab = withProjectPermission(
     };
 
     return (
-      <div className="mb-6 max-w-screen-lg rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="flex justify-between">
           <p className="text-xl font-semibold text-mineshaft-100">{t("settings.webhooks.title")}</p>
           <ProjectPermissionCan

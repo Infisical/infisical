@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
@@ -6,6 +6,7 @@ import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import NavHeader from "@app/components/navigation/NavHeader";
+import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
 import { ContentLoader } from "@app/components/v2";
 import {
@@ -16,7 +17,8 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
-  useGetImportedSecrets,
+  useGetDynamicSecrets,
+  useGetImportedSecretsSingleEnv,
   useGetProjectFolders,
   useGetProjectSecrets,
   useGetSecretApprovalPolicyOfABoard,
@@ -27,8 +29,10 @@ import {
   useGetWsTags
 } from "@app/hooks/api";
 
+import { ProjectIndexSecretsSection } from "../SecretOverviewPage/components/ProjectIndexSecretsSection";
 import { ActionBar } from "./components/ActionBar";
 import { CreateSecretForm } from "./components/CreateSecretForm";
+import { DynamicSecretListView } from "./components/DynamicSecretListView";
 import { FolderListView } from "./components/FolderListView";
 import { PitDrawer } from "./components/PitDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
@@ -46,9 +50,10 @@ const LOADER_TEXT = [
 
 export const SecretMainPage = () => {
   const { t } = useTranslation();
-  const { currentWorkspace } = useWorkspace();
+  const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const router = useRouter();
   const { permission } = useProjectPermission();
+  
 
   const [isVisible, setIsVisible] = useState(false);
   const [sortDir, setSortDir] = useState<SortDir>(SortDir.ASC);
@@ -64,6 +69,7 @@ export const SecretMainPage = () => {
   // env slug
   const environment = router.query.env as string;
   const workspaceId = currentWorkspace?.id || "";
+  const projectSlug = currentWorkspace?.slug || "";
   const secretPath = (router.query.secretPath as string) || "/";
   const canReadSecret = permission.can(
     ProjectPermissionActions.Read,
@@ -73,6 +79,20 @@ export const SecretMainPage = () => {
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRollback
   );
+
+  useEffect(() => {
+    if (
+      !isWorkspaceLoading &&
+      !currentWorkspace?.environments.find((env) => env.slug === environment) &&
+      router.isReady
+    ) {
+      router.push(`/project/${workspaceId}/secrets/overview`);
+      createNotification({
+        text: "No envronment found with given slug",
+        type: "error"
+      });
+    }
+  }, [isWorkspaceLoading, currentWorkspace, environment, router.isReady]);
 
   const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
 
@@ -86,12 +106,14 @@ export const SecretMainPage = () => {
       enabled: canReadSecret
     }
   });
+
   // fetch folders
   const { data: folders, isLoading: isFoldersLoading } = useGetProjectFolders({
     projectId: workspaceId,
     environment,
     path: secretPath
   });
+
   // fetch secret imports
   const {
     data: secretImports,
@@ -107,7 +129,7 @@ export const SecretMainPage = () => {
   });
 
   // fetch imported secrets to show user the overriden ones
-  const { data: importedSecrets } = useGetImportedSecrets({
+  const { data: importedSecrets } = useGetImportedSecretsSingleEnv({
     projectId: workspaceId,
     environment,
     decryptFileKey: decryptFileKey!,
@@ -116,6 +138,13 @@ export const SecretMainPage = () => {
       enabled: canReadSecret
     }
   });
+
+  const { data: dynamicSecrets, isLoading: isDynamicSecretLoading } = useGetDynamicSecrets({
+    projectSlug,
+    environmentSlug: environment,
+    path: secretPath
+  });
+
   // fech tags
   const { data: tags } = useGetWsTags(canReadSecret ? workspaceId : "");
 
@@ -146,7 +175,9 @@ export const SecretMainPage = () => {
     isPaused: !canDoReadRollback
   });
 
-  const isNotEmtpy = Boolean(secrets?.length || folders?.length || secretImports?.length);
+  const isNotEmtpy = Boolean(
+    secrets?.length || folders?.length || secretImports?.length || dynamicSecrets?.length
+  );
 
   const handleSortToggle = () =>
     setSortDir((state) => (state === SortDir.ASC ? SortDir.DESC : SortDir.ASC));
@@ -196,7 +227,8 @@ export const SecretMainPage = () => {
 
   // loading screen when u have permission
   const loadingOnAccess =
-    canReadSecret && (isSecretsLoading || isSecretImportsLoading || isFoldersLoading);
+    canReadSecret &&
+    (isSecretsLoading || isSecretImportsLoading || isFoldersLoading || isDynamicSecretLoading);
   // loading screen when you don't have permission but as folder's is viewable need to wait for that
   const loadingOnDenied = !canReadSecret && isFoldersLoading;
   if (loadingOnAccess || loadingOnDenied) {
@@ -219,6 +251,7 @@ export const SecretMainPage = () => {
             protectionPolicyName={boardPolicy?.name}
           />
         </div>
+        <ProjectIndexSecretsSection decryptFileKey={decryptFileKey!} />
         {!isRollbackMode ? (
           <>
             <ActionBar
@@ -226,6 +259,7 @@ export const SecretMainPage = () => {
               importedSecrets={importedSecrets}
               environment={environment}
               workspaceId={workspaceId}
+              projectSlug={projectSlug}
               secretPath={secretPath}
               isVisible={isVisible}
               filter={filter}
@@ -279,7 +313,17 @@ export const SecretMainPage = () => {
                   workspaceId={workspaceId}
                   secretPath={secretPath}
                   sortDir={sortDir}
+                  searchTerm={filter.searchFilter}
                 />
+                {canReadSecret && (
+                  <DynamicSecretListView
+                    sortDir={sortDir}
+                    environment={environment}
+                    projectSlug={projectSlug}
+                    secretPath={secretPath}
+                    dynamicSecrets={dynamicSecrets || []}
+                  />
+                )}
                 {canReadSecret && (
                   <SecretListView
                     secrets={secrets}

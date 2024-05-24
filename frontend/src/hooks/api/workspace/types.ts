@@ -1,10 +1,22 @@
+export enum ProjectVersion {
+  V1 = 1,
+  V2 = 2
+}
+
+export enum ProjectUserMembershipTemporaryMode {
+  Relative = "relative"
+}
+
 export type Workspace = {
   __v: number;
   id: string;
   name: string;
   orgId: string;
+  version: ProjectVersion;
+  upgradeStatus: string | null;
   autoCapitalization: boolean;
   environments: WorkspaceEnv[];
+  slug: string;
 };
 
 export type WorkspaceEnv = {
@@ -23,10 +35,16 @@ export type NameWorkspaceSecretsDTO = {
   }[];
 };
 
+export type TGetUpgradeProjectStatusDTO = {
+  projectId: string;
+  onSuccess?: (data?: { status: string }) => void;
+  enabled?: boolean;
+  refetchInterval?: number;
+};
+
 // mutation dto
 export type CreateWorkspaceDTO = {
-  workspaceName: string;
-  organizationId: string;
+  projectName: string;
 };
 
 export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
@@ -57,3 +75,57 @@ export type UpdateEnvironmentDTO = {
 };
 
 export type DeleteEnvironmentDTO = { workspaceId: string; id: string };
+
+export type TUpdateWorkspaceUserRoleDTO = {
+  membershipId: string;
+  workspaceId: string;
+  roles: (
+    | {
+        role: string;
+        isTemporary?: false;
+      }
+    | {
+        role: string;
+        isTemporary: true;
+        temporaryMode: ProjectUserMembershipTemporaryMode;
+        temporaryRange: string;
+        temporaryAccessStartTime: string;
+      }
+  )[];
+};
+
+export type TUpdateWorkspaceIdentityRoleDTO = {
+  identityId: string;
+  workspaceId: string;
+  roles: (
+    | {
+        role: string;
+        isTemporary?: false;
+      }
+    | {
+        role: string;
+        isTemporary: true;
+        temporaryMode: ProjectUserMembershipTemporaryMode;
+        temporaryRange: string;
+        temporaryAccessStartTime: string;
+      }
+  )[];
+};
+
+export type TUpdateWorkspaceGroupRoleDTO = {
+  groupSlug: string;
+  projectSlug: string;
+  roles: (
+    | {
+        role: string;
+        isTemporary?: false;
+      }
+    | {
+        role: string;
+        isTemporary: true;
+        temporaryMode: ProjectUserMembershipTemporaryMode;
+        temporaryRange: string;
+        temporaryAccessStartTime: string;
+      }
+  )[];
+};

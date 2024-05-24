@@ -108,6 +108,8 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         >
           <Input
             placeholder=""
+            type="password"
+            autoComplete="new-password"
             value={accessSecretKey}
             onChange={(e) => setAccessSecretKey(e.target.value)}
           />

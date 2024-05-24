@@ -22,7 +22,11 @@ export const secretDALFactory = (db: TDbClient) => {
 
   // the idea is to use postgres specific function
   // insert with id this will cause a conflict then merge the data
-  const bulkUpdate = async (data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>, tx?: Knex) => {
+  const bulkUpdate = async (
+    data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
+
+    tx?: Knex
+  ) => {
     try {
       const secs = await Promise.all(
         data.map(async ({ filter, data: updateData }) => {
@@ -36,6 +40,35 @@ export const secretDALFactory = (db: TDbClient) => {
         })
       );
       return secs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "bulk update secret" });
+    }
+  };
+
+  const bulkUpdateNoVersionIncrement = async (data: TSecrets[], tx?: Knex) => {
+    try {
+      const existingSecrets = await secretOrm.find(
+        {
+          $in: {
+            id: data.map((el) => el.id)
+          }
+        },
+        { tx }
+      );
+
+      if (existingSecrets.length !== data.length) {
+        throw new BadRequestError({ message: "Some of the secrets do not exist" });
+      }
+
+      if (data.length === 0) return [];
+
+      const updatedSecrets = await (tx || db)(TableName.Secret)
+        .insert(data)
+        .onConflict("id") // this will cause a conflict then merge the data
+        .merge() // Merge the data with the existing data
+        .returning("*");
+
+      return updatedSecrets;
     } catch (error) {
       throw new DatabaseError({ error, name: "bulk update secret" });
     }
@@ -57,6 +90,12 @@ export const secretDALFactory = (db: TDbClient) => {
               type: el.type,
               ...(el.type === SecretType.Personal ? { userId } : {})
             });
+            if (el.type === SecretType.Shared) {
+              void bd.orWhere({
+                secretBlindIndex: el.blindIndex,
+                type: SecretType.Personal
+              });
+            }
           });
         })
         .delete()
@@ -77,6 +116,71 @@ export const secretDALFactory = (db: TDbClient) => {
 
       const secs = await (tx || db)(TableName.Secret)
         .where({ folderId })
+        .where((bd) => {
+          void bd.whereNull("userId").orWhere({ userId: userId || null });
+        })
+        .leftJoin(TableName.JnSecretTag, `${TableName.Secret}.id`, `${TableName.JnSecretTag}.${TableName.Secret}Id`)
+        .leftJoin(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
+        .select(selectAllTableCols(TableName.Secret))
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"))
+        .orderBy("id", "asc");
+      const data = sqlNestRelationships({
+        data: secs,
+        key: "id",
+        parentMapper: (el) => ({ _id: el.id, ...SecretsSchema.parse(el) }),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug, tagName: name }) => ({
+              id,
+              color,
+              slug,
+              name
+            })
+          }
+        ]
+      });
+      return data;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "get all secret" });
+    }
+  };
+
+  const getSecretTags = async (secretId: string, tx?: Knex) => {
+    try {
+      const tags = await (tx || db)(TableName.JnSecretTag)
+        .join(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
+        .where({ [`${TableName.Secret}Id` as const]: secretId })
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"));
+
+      return tags.map((el) => ({
+        id: el.tagId,
+        color: el.tagColor,
+        slug: el.tagSlug,
+        name: el.tagName
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "get secret tags" });
+    }
+  };
+
+  const findByFolderIds = async (folderIds: string[], userId?: string, tx?: Knex) => {
+    try {
+      // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
+      if (userId && !uuidValidate(userId)) {
+        // eslint-disable-next-line no-param-reassign
+        userId = undefined;
+      }
+
+      const secs = await (tx || db)(TableName.Secret)
+        .whereIn("folderId", folderIds)
         .where((bd) => {
           void bd.whereNull("userId").orWhere({ userId: userId || null });
         })
@@ -139,5 +243,86 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...secretOrm, update, bulkUpdate, deleteMany, findByFolderId, findByBlindIndexes };
+  const upsertSecretReferences = async (
+    data: {
+      secretId: string;
+      references: Array<{ environment: string; secretPath: string }>;
+    }[] = [],
+    tx?: Knex
+  ) => {
+    try {
+      if (!data.length) return;
+
+      await (tx || db)(TableName.SecretReference)
+        .whereIn(
+          "secretId",
+          data.map(({ secretId }) => secretId)
+        )
+        .delete();
+      const newSecretReferences = data
+        .filter(({ references }) => references.length)
+        .flatMap(({ secretId, references }) =>
+          references.map(({ environment, secretPath }) => ({
+            secretPath,
+            secretId,
+            environment
+          }))
+        );
+      if (!newSecretReferences.length) return;
+      const secretReferences = await (tx || db)(TableName.SecretReference).insert(newSecretReferences);
+      return secretReferences;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "UpsertSecretReference" });
+    }
+  };
+
+  const findReferencedSecretReferences = async (projectId: string, envSlug: string, secretPath: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db)(TableName.SecretReference)
+        .where({
+          secretPath,
+          environment: envSlug
+        })
+        .join(TableName.Secret, `${TableName.Secret}.id`, `${TableName.SecretReference}.secretId`)
+        .join(TableName.SecretFolder, `${TableName.Secret}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where("projectId", projectId)
+        .select(selectAllTableCols(TableName.SecretReference))
+        .select("folderId");
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindReferencedSecretReferences" });
+    }
+  };
+
+  // special query to backfill secret value
+  const findAllProjectSecretValues = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db)(TableName.Secret)
+        .join(TableName.SecretFolder, `${TableName.Secret}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where("projectId", projectId)
+        // not empty
+        .whereNotNull("secretValueCiphertext")
+        .select("secretValueTag", "secretValueCiphertext", "secretValueIV", `${TableName.Secret}.id` as "id");
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindAllProjectSecretValues" });
+    }
+  };
+
+  return {
+    ...secretOrm,
+    update,
+    bulkUpdate,
+    deleteMany,
+    bulkUpdateNoVersionIncrement,
+    getSecretTags,
+    findByFolderId,
+    findByFolderIds,
+    findByBlindIndexes,
+    upsertSecretReferences,
+    findReferencedSecretReferences,
+    findAllProjectSecretValues
+  };
 };

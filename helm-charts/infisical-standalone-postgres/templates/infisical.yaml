@@ -1,0 +1,94 @@
+{{- $infisicalValues := .Values.infisical }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "infisical.fullname" . }}
+  annotations:
+    updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}
+    {{- with $infisicalValues.deploymentAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  labels:
+    {{- include "infisical.labels" . | nindent 4 }}
+spec:
+  replicas: {{ $infisicalValues.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "infisical.matchLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "infisical.matchLabels" . | nindent 8 }}
+      annotations:
+        updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}
+        {{- with $infisicalValues.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+    {{- with $infisicalValues.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- if $infisicalValues.image.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}
+    {{- end }}
+    {{- if $infisicalValues.autoDatabaseSchemaMigration }}
+      initContainers:
+      - name: "migration-init"
+        image: "ghcr.io/groundnuty/k8s-wait-for:no-root-v2.0"
+        imagePullPolicy: {{ $infisicalValues.image.pullPolicy }}
+        args: 
+        - "job"
+        - "{{ .Release.Name }}-schema-migration-{{ .Release.Revision }}"
+    {{- end }}
+      containers:
+      - name: {{ template "infisical.name" . }}-{{ $infisicalValues.name }}
+        image: "{{ $infisicalValues.image.repository }}:{{ $infisicalValues.image.tag }}"
+        imagePullPolicy: {{ $infisicalValues.image.pullPolicy }}
+        readinessProbe:
+          httpGet:
+            path: /api/status
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        ports: 
+        - containerPort: 8080
+        env:
+        {{- if .Values.postgresql.enabled }}
+        - name: DB_CONNECTION_URI
+          value: {{ include "infisical.postgresDBConnectionString" . }}
+        {{- end }}
+        {{- if .Values.redis.enabled }}
+        - name: REDIS_URL
+          value: {{ include "infisical.redisConnectionString" . }}
+        {{- end }}
+        envFrom:
+        - secretRef:
+            name: {{ $infisicalValues.kubeSecretRef }}
+        {{- if  $infisicalValues.resources }}
+        resources: {{- toYaml $infisicalValues.resources | nindent 12 }}
+        {{- end }}
+---
+
+apiVersion: v1
+kind: Service 
+metadata:
+  name: {{ include "infisical.fullname" . }}
+  labels:
+    {{- include "infisical.labels" . | nindent 4 }}
+  {{- with $infisicalValues.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ $infisicalValues.service.type }}
+  selector:
+    {{- include "infisical.matchLabels" . | nindent 8 }}
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      {{- if eq $infisicalValues.service.type "NodePort" }}
+      nodePort: {{ $infisicalValues.service.nodePort }}
+      {{- end }}

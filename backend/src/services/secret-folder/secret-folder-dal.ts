@@ -170,7 +170,8 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
           //  if the given folder id is root folder id then intial path is set as / instead of /root
           //  if not root folder the path here will be /<folder name>
           path: db.raw(`CONCAT('/', (CASE WHEN "parentId" is NULL THEN '' ELSE ${TableName.SecretFolder}.name END))`),
-          child: db.raw("NULL::uuid")
+          child: db.raw("NULL::uuid"),
+          environmentSlug: `${TableName.Environment}.slug`
         })
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where({ projectId })
@@ -190,14 +191,15 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
                   ELSE  CONCAT('/', secret_folders.name) 
                 END, parent.path )`
                 ),
-                child: db.raw("COALESCE(parent.child, parent.id)")
+                child: db.raw("COALESCE(parent.child, parent.id)"),
+                environmentSlug: "parent.environmentSlug"
               })
               .from(TableName.SecretFolder)
               .join("parent", "parent.parentId", `${TableName.SecretFolder}.id`)
         );
     })
     .select("*")
-    .from<TSecretFolders & { child: string | null; path: string }>("parent");
+    .from<TSecretFolders & { child: string | null; path: string; environmentSlug: string }>("parent");
 
 export type TSecretFolderDALFactory = ReturnType<typeof secretFolderDALFactory>;
 // never change this. If u do write a migration for it
@@ -257,10 +259,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   const findSecretPathByFolderIds = async (projectId: string, folderIds: string[], tx?: Knex) => {
     try {
       const folders = await sqlFindSecretPathByFolderId(tx || db, projectId, folderIds);
+
       const rootFolders = groupBy(
         folders.filter(({ parentId }) => parentId === null),
         (i) => i.child || i.id // root condition then child and parent will null
       );
+
       return folderIds.map((folderId) => rootFolders[folderId]?.[0]);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by secret path" });

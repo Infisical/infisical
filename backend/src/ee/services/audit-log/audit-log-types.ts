@@ -15,7 +15,7 @@ export type TListProjectAuditLogDTO = {
 
 export type TCreateAuditLogDTO = {
   event: Event;
-  actor: UserActor | IdentityActor | ServiceActor;
+  actor: UserActor | IdentityActor | ServiceActor | ScimClientActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -51,6 +51,7 @@ export enum EventType {
   UNAUTHORIZE_INTEGRATION = "unauthorize-integration",
   CREATE_INTEGRATION = "create-integration",
   DELETE_INTEGRATION = "delete-integration",
+  MANUAL_SYNC_INTEGRATION = "manual-sync-integration",
   ADD_TRUSTED_IP = "add-trusted-ip",
   UPDATE_TRUSTED_IP = "update-trusted-ip",
   DELETE_TRUSTED_IP = "delete-trusted-ip",
@@ -63,9 +64,21 @@ export enum EventType {
   ADD_IDENTITY_UNIVERSAL_AUTH = "add-identity-universal-auth",
   UPDATE_IDENTITY_UNIVERSAL_AUTH = "update-identity-universal-auth",
   GET_IDENTITY_UNIVERSAL_AUTH = "get-identity-universal-auth",
+  LOGIN_IDENTITY_KUBERNETES_AUTH = "login-identity-kubernetes-auth",
+  ADD_IDENTITY_KUBERNETES_AUTH = "add-identity-kubernetes-auth",
+  UPDATE_IDENTITY_KUBENETES_AUTH = "update-identity-kubernetes-auth",
+  GET_IDENTITY_KUBERNETES_AUTH = "get-identity-kubernetes-auth",
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
+  LOGIN_IDENTITY_GCP_AUTH = "login-identity-gcp-auth",
+  ADD_IDENTITY_GCP_AUTH = "add-identity-gcp-auth",
+  UPDATE_IDENTITY_GCP_AUTH = "update-identity-gcp-auth",
+  GET_IDENTITY_GCP_AUTH = "get-identity-gcp-auth",
+  LOGIN_IDENTITY_AWS_AUTH = "login-identity-aws-auth",
+  ADD_IDENTITY_AWS_AUTH = "add-identity-aws-auth",
+  UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
+  GET_IDENTITY_AWS_AUTH = "get-identity-aws-auth",
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
@@ -92,7 +105,8 @@ export enum EventType {
 
 interface UserActorMetadata {
   userId: string;
-  email: string;
+  email?: string | null;
+  username: string;
 }
 
 interface ServiceActorMetadata {
@@ -104,6 +118,8 @@ interface IdentityActorMetadata {
   identityId: string;
   name: string;
 }
+
+interface ScimClientActorMetadata {}
 
 export interface UserActor {
   type: ActorType.USER;
@@ -120,7 +136,12 @@ export interface IdentityActor {
   metadata: IdentityActorMetadata;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor;
+export interface ScimClientActor {
+  type: ActorType.SCIM_CLIENT;
+  metadata: ScimClientActorMetadata;
+}
+
+export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -261,6 +282,25 @@ interface DeleteIntegrationEvent {
   };
 }
 
+interface ManualSyncIntegrationEvent {
+  type: EventType.MANUAL_SYNC_INTEGRATION;
+  metadata: {
+    integrationId: string;
+    integration: string;
+    environment: string;
+    secretPath: string;
+    url?: string;
+    app?: string;
+    appId?: string;
+    targetEnvironment?: string;
+    targetEnvironmentId?: string;
+    targetService?: string;
+    targetServiceId?: string;
+    path?: string;
+    region?: string;
+  };
+}
+
 interface AddTrustedIPEvent {
   type: EventType.ADD_TRUSTED_IP;
   metadata: {
@@ -375,6 +415,50 @@ interface GetIdentityUniversalAuthEvent {
   };
 }
 
+interface LoginIdentityKubernetesAuthEvent {
+  type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH;
+  metadata: {
+    identityId: string;
+    identityKubernetesAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityKubernetesAuthEvent {
+  type: EventType.ADD_IDENTITY_KUBERNETES_AUTH;
+  metadata: {
+    identityId: string;
+    kubernetesHost: string;
+    allowedNamespaces: string;
+    allowedNames: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityKubernetesAuthEvent {
+  type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH;
+  metadata: {
+    identityId: string;
+    kubernetesHost?: string;
+    allowedNamespaces?: string;
+    allowedNames?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityKubernetesAuthEvent {
+  type: EventType.GET_IDENTITY_KUBERNETES_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface CreateIdentityUniversalAuthClientSecretEvent {
   type: EventType.CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET;
   metadata: {
@@ -395,6 +479,96 @@ interface RevokeIdentityUniversalAuthClientSecretEvent {
   metadata: {
     identityId: string;
     clientSecretId: string;
+  };
+}
+
+interface LoginIdentityGcpAuthEvent {
+  type: EventType.LOGIN_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
+    identityGcpAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityGcpAuthEvent {
+  type: EventType.ADD_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
+    type: string;
+    allowedServiceAccounts: string;
+    allowedProjects: string;
+    allowedZones: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityGcpAuthEvent {
+  type: EventType.UPDATE_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
+    type?: string;
+    allowedServiceAccounts?: string;
+    allowedProjects?: string;
+    allowedZones?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityGcpAuthEvent {
+  type: EventType.GET_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface LoginIdentityAwsAuthEvent {
+  type: EventType.LOGIN_IDENTITY_AWS_AUTH;
+  metadata: {
+    identityId: string;
+    identityAwsAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityAwsAuthEvent {
+  type: EventType.ADD_IDENTITY_AWS_AUTH;
+  metadata: {
+    identityId: string;
+    stsEndpoint: string;
+    allowedPrincipalArns: string;
+    allowedAccountIds: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityAwsAuthEvent {
+  type: EventType.UPDATE_IDENTITY_AWS_AUTH;
+  metadata: {
+    identityId: string;
+    stsEndpoint?: string;
+    allowedPrincipalArns?: string;
+    allowedAccountIds?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityAwsAuthEvent {
+  type: EventType.GET_IDENTITY_AWS_AUTH;
+  metadata: {
+    identityId: string;
   };
 }
 
@@ -637,6 +811,7 @@ export type Event =
   | UnauthorizeIntegrationEvent
   | CreateIntegrationEvent
   | DeleteIntegrationEvent
+  | ManualSyncIntegrationEvent
   | AddTrustedIPEvent
   | UpdateTrustedIPEvent
   | DeleteTrustedIPEvent
@@ -649,9 +824,21 @@ export type Event =
   | AddIdentityUniversalAuthEvent
   | UpdateIdentityUniversalAuthEvent
   | GetIdentityUniversalAuthEvent
+  | LoginIdentityKubernetesAuthEvent
+  | AddIdentityKubernetesAuthEvent
+  | UpdateIdentityKubernetesAuthEvent
+  | GetIdentityKubernetesAuthEvent
   | CreateIdentityUniversalAuthClientSecretEvent
   | GetIdentityUniversalAuthClientSecretsEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
+  | LoginIdentityGcpAuthEvent
+  | AddIdentityGcpAuthEvent
+  | UpdateIdentityGcpAuthEvent
+  | GetIdentityGcpAuthEvent
+  | LoginIdentityAwsAuthEvent
+  | AddIdentityAwsAuthEvent
+  | UpdateIdentityAwsAuthEvent
+  | GetIdentityAwsAuthEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

@@ -7,23 +7,25 @@ import { twMerge } from "tailwind-merge";
 export type FormLabelProps = {
   id?: string;
   isRequired?: boolean;
+  isOptional?:boolean;
   label?: ReactNode;
   icon?: ReactNode;
   className?: string;
 };
 
-export const FormLabel = ({ id, label, isRequired, icon, className }: FormLabelProps) => (
+export const FormLabel = ({ id, label, isRequired, icon, className,isOptional }: FormLabelProps) => (
   <Label.Root
     className={twMerge(
-      "mb-0.5 ml-1 block flex items-center text-sm font-normal text-mineshaft-400",
+      "mb-0.5 ml-1 flex items-center text-sm font-normal text-mineshaft-400",
       className
     )}
     htmlFor={id}
   >
     {label}
     {isRequired && <span className="ml-1 text-red">*</span>}
+    {isOptional && <span className="ml-1 text-gray-500 italic text-xs">- Optional</span>}
     {icon && (
-      <span className="ml-2 text-mineshaft-300 hover:text-mineshaft-200 cursor-default">
+      <span className="ml-2 cursor-default text-mineshaft-300 hover:text-mineshaft-200">
         {icon}
       </span>
     )}
@@ -54,6 +56,7 @@ export const FormHelperText = ({ isError, text }: FormHelperTextProps) => (
 export type FormControlProps = {
   id?: string;
   isRequired?: boolean;
+  isOptional?: boolean;
   isError?: boolean;
   label?: ReactNode;
   helperText?: ReactNode;
@@ -66,6 +69,7 @@ export type FormControlProps = {
 export const FormControl = ({
   children,
   isRequired,
+  isOptional,
   label,
   helperText,
   errorText,
@@ -77,7 +81,13 @@ export const FormControl = ({
   return (
     <div className={twMerge("mb-4", className)}>
       {typeof label === "string" ? (
-        <FormLabel label={label} isRequired={isRequired} id={id} icon={icon} />
+        <FormLabel
+          label={label}
+          isOptional={isOptional}
+          isRequired={isRequired}
+          id={id}
+          icon={icon}
+        />
       ) : (
         label
       )}

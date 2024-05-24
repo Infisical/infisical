@@ -29,6 +29,7 @@ module.exports = {
   },
   plugins: ["react", "prettier", "simple-import-sort", "import"],
   rules: {
+    "@typescript-eslint/no-empty-function": "off",
     quotes: ["error", "double", { avoidEscape: true }],
     "comma-dangle": ["error", "only-multiline"],
     "react/react-in-jsx-scope": "off",
@@ -72,7 +73,6 @@ module.exports = {
     ],
     "@typescript-eslint/no-non-null-assertion": "off",
     "simple-import-sort/exports": "warn",
-    "@typescript-eslint/no-empty-function": "off",
     "simple-import-sort/imports": [
       "warn",
       {

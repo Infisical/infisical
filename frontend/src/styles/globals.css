@@ -5,6 +5,14 @@ html {
   @apply overflow-hidden;
 }
 
+:root {
+  --toastify-color-dark: theme(colors.mineshaft.700);
+}
+
+.Toastify__toast {
+  @apply rounded-md;
+}
+
 .rdp-day,
 .rdp-nav_button {
   @apply rounded-md hover:text-mineshaft-500;
@@ -36,6 +44,14 @@ html {
   .min-table-row {
     width: 1%;
     white-space: nowrap;
+  }
+
+  .w-inherit {
+    width: inherit;
+  }
+
+  .h-inherit {
+    height: inherit;
   }
 }
 

@@ -7,13 +7,16 @@ export enum AuthMethod {
   GITLAB = "gitlab",
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
-  JUMPCLOUD_SAML = "jumpcloud-saml"
+  JUMPCLOUD_SAML = "jumpcloud-saml",
+  KEYCLOAK_SAML = "keycloak-saml",
+  LDAP = "ldap"
 }
 
 export type User = {
   createdAt: Date;
   updatedAt: Date;
-  email: string;
+  username: string;
+  email?: string;
   superAdmin: boolean;
   firstName?: string;
   lastName?: string;
@@ -23,6 +26,11 @@ export type User = {
   seenIps: string[];
   id: string;
 };
+
+export enum UserAliasType {
+  LDAP = "ldap",
+  SAML = "saml"
+}
 
 export type UserEnc = {
   encryptionVersion?: number;
@@ -38,7 +46,8 @@ export type UserEnc = {
 export type OrgUser = {
   id: string;
   user: {
-    email: string;
+    username: string;
+    email?: string;
     firstName: string;
     lastName: string;
     id: string;
@@ -58,12 +67,52 @@ export type TProjectMembership = {
   createdAt: string;
   updatedAt: string;
   projectId: string;
-  roleId: string;
+  roles: string[];
 };
 
-export type TWorkspaceUser = OrgUser;
+export type TWorkspaceUser = {
+  id: string;
+  user: {
+    email: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+    id: string;
+    publicKey: string;
+  };
+  inviteEmail: string;
+  organization: string;
+  roles: (
+    | {
+        id: string;
+        role: "owner" | "admin" | "member" | "no-access" | "custom";
+        customRoleId: string;
+        customRoleName: string;
+        customRoleSlug: string;
+        isTemporary: false;
+        temporaryRange: null;
+        temporaryMode: null;
+        temporaryAccessEndTime: null;
+        temporaryAccessStartTime: null;
+      }
+    | {
+        id: string;
+        role: "owner" | "admin" | "member" | "no-access" | "custom";
+        customRoleId: string;
+        customRoleName: string;
+        customRoleSlug: string;
+        isTemporary: true;
+        temporaryRange: string;
+        temporaryMode: string;
+        temporaryAccessEndTime: string;
+        temporaryAccessStartTime: string;
+      }
+  )[];
+  status: "invited" | "accepted" | "verified" | "completed";
+  deniedPermissions: any[];
+};
 
-export type AddUserToWsDTO = {
+export type AddUserToWsDTOE2EE = {
   workspaceId: string;
   decryptKey: UserWsKeyPair;
   userPrivateKey: string;
@@ -71,6 +120,11 @@ export type AddUserToWsDTO = {
     orgMembershipId: string;
     userPublicKey: string;
   }[];
+};
+
+export type AddUserToWsDTONonE2EE = {
+  projectId: string;
+  usernames: string[];
 };
 
 export type UpdateOrgUserRoleDTO = {

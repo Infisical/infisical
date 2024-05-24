@@ -1,57 +1,67 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import jwt_decode from "jwt-decode";
 
-import {
-    BackupPDFStep,
-    UserInfoSSOStep} from "./components";
+import { BackupPDFStep, EmailConfirmationStep, UserInfoSSOStep } from "./components";
 
-type Props = { 
-    providerAuthToken: string;
-}
+type Props = {
+  providerAuthToken: string;
+};
 
-export const SignupSSO = ({
-    providerAuthToken
-}: Props) => {
-    const [step, setStep] = useState(0);
-    const [password, setPassword] = useState("");
+export const SignupSSO = ({ providerAuthToken }: Props) => {
+  const [step, setStep] = useState(0);
+  const [password, setPassword] = useState("");
 
-    const {
-        email,
-        organizationName,
-        firstName,
-        lastName,
-    } = jwt_decode(providerAuthToken) as any;
+  const {
+    username,
+    email,
+    organizationName,
+    organizationSlug,
+    firstName,
+    lastName,
+    authType,
+    isEmailVerified
+  } = jwt_decode(providerAuthToken) as any;
 
-    const renderView = () => {
-        switch (step) {
-            case 0:
-                return (
-                    <UserInfoSSOStep 
-                        email={email}
-                        name={`${firstName} ${lastName}`}
-                        providerOrganizationName={organizationName}
-                        password={password}
-                        setPassword={setPassword}
-                        setStep={setStep}
-                        providerAuthToken={providerAuthToken}
-                    />
-                );
-            case 1:
-                return (
-                    <BackupPDFStep 
-                        email={email}
-                        password={password}
-                        name={`${firstName} ${lastName}`}
-                    />
-                );
-            default:
-                return <div />
-        }
+  useEffect(() => {
+    if (!isEmailVerified) {
+      setStep(0);
+    } else {
+      setStep(1);
     }
-    
-    return (
-        <div>
-            {renderView()}
-        </div>
-    );
-}
+  }, []);
+
+  const renderView = () => {
+    switch (step) {
+      case 0:
+        return (
+          <EmailConfirmationStep
+            authType={authType}
+            username={username}
+            email={email}
+            organizationSlug={organizationSlug}
+            setStep={setStep}
+          />
+        );
+      case 1:
+        return (
+          <UserInfoSSOStep
+            username={username}
+            name={`${firstName} ${lastName}`}
+            providerOrganizationName={organizationName}
+            password={password}
+            setPassword={setPassword}
+            setStep={setStep}
+            providerAuthToken={providerAuthToken}
+          />
+        );
+      case 2:
+        return (
+          <BackupPDFStep email={username} password={password} name={`${firstName} ${lastName}`} />
+        );
+      default:
+        return <div />;
+    }
+  };
+
+  return <div>{renderView()}</div>;
+};

@@ -86,6 +86,8 @@ export default function QoveryCreateIntegrationPage() {
           <Input
             placeholder=""
             value={accessToken}
+            type="password"
+            autoComplete="new-password"
             onChange={(e) => setAccessToken(e.target.value)}
           />
         </FormControl>

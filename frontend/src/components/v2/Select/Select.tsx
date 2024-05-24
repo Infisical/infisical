@@ -1,6 +1,6 @@
 import { forwardRef, ReactNode } from "react";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
-import { faCaretDown, faCaretUp,faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faCaretDown, faCaretUp, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { twMerge } from "tailwind-merge";
@@ -41,23 +41,27 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           ref={ref}
           className={twMerge(
             `inline-flex items-center justify-between rounded-md
-            bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200`,
-            className
+            bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none focus:bg-mineshaft-700/80 data-[placeholder]:text-mineshaft-200`,
+            className,
+            isDisabled && "cursor-not-allowed opacity-50"
           )}
         >
           <SelectPrimitive.Value placeholder={placeholder}>
             {props.icon ? <FontAwesomeIcon icon={props.icon} /> : placeholder}
           </SelectPrimitive.Value>
-          {!isDisabled && (
-            <SelectPrimitive.Icon className="ml-3">
-              <FontAwesomeIcon icon={faCaretDown} size="sm" />
-            </SelectPrimitive.Icon>
-          )}
+
+          <SelectPrimitive.Icon className="ml-3">
+            <FontAwesomeIcon
+              icon={faCaretDown}
+              size="sm"
+              className={twMerge(isDisabled && "opacity-30")}
+            />
+          </SelectPrimitive.Icon>
         </SelectPrimitive.Trigger>
         <SelectPrimitive.Portal>
           <SelectPrimitive.Content
             className={twMerge(
-              "relative top-1 z-[100] overflow-hidden rounded-md bg-mineshaft-900 border border-mineshaft-600 font-inter text-bunker-100 shadow-md",
+              "relative top-1 z-[100] overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md",
               dropdownContainerClassName
             )}
             position={position}
@@ -106,7 +110,7 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         className={twMerge(
           `relative mb-0.5 flex
           cursor-pointer select-none items-center rounded-md py-2 pl-10 pr-4 text-sm
-          outline-none transition-all hover:bg-mineshaft-500`,
+          outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-700/80`,
           isSelected && "bg-primary",
           isDisabled &&
             "cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600",

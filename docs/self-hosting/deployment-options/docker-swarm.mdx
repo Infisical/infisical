@@ -1,0 +1,216 @@
+---
+title: "Docker Swarm"
+description: "How to self Infisical with Docker Swarm (HA)."
+---
+
+# Self-Hosting Infisical with Docker Swarm
+
+This guide will provide step-by-step instructions on how to self-host Infisical using Docker Swarm. This is particularly helpful for those wanting to self host Infisical on premise while still maintaining high availability (HA) for the core Infisical components. 
+The guide will demonstrate a setup with three nodes, ensuring that the cluster can tolerate the failure of one node while remaining fully operational.
+
+## Docker Swarm
+
+[Docker Swarm](https://docs.docker.com/engine/swarm/) is a native clustering and orchestration solution for Docker containers. 
+It simplifies the deployment and management of containerized applications across multiple nodes, making it a great choice for self-hosting Infisical.
+
+Unlike Kubernetes, which requires a deep understanding of the Kubernetes ecosystem, if you're accustomed to Docker and Docker Compose, you're already familiar with most of Docker Swarm. 
+For this reason, we suggest teams use Docker Swarm to deploy Infisical in a highly available and fault tolerant manner.
+
+## Prerequisites
+- Understanding of Docker Swarm
+- Bare/Virtual Machines with Docker installed on each VM.
+- Docker Swarm initialized on the VMs.
+
+## Core Components for High Availability
+
+The provided Docker stack includes the following core components to achieve high availability:
+
+1. **Spilo**: [Spilo](https://github.com/zalando/spilo) is used to run PostgreSQL with [Patroni](https://github.com/zalando/patroni) for HA and automatic failover. It utilizes etcd for leader election of the PostgreSQL instances.
+
+2. **Redis**: Redis is used for caching and is set up with Redis Sentinel for HA. 
+The stack includes three Redis replicas and three Redis Sentinel instances for monitoring and failover.
+
+3. **Infisical**: Infisical is stateless, allowing for easy scaling and replication across multiple nodes.
+
+4. **HAProxy**: HAProxy is used as a load balancer to distribute traffic to the PostgreSQL and Redis instances. 
+It is configured to perform health checks and route requests to the appropriate backend services.
+
+## Node Failure Tolerance
+
+To ensure Infisical is highly available and fault tolerant, it's important to choose the number of nodes in the cluster. 
+The following table shows the relationship between the number of nodes and the maximum number of nodes that can be down while the cluster continues to function:
+
+| Total Nodes | Max Nodes Down | Min Nodes Required |
+|-------------|----------------|-------------------|
+| 1           | 0              | 1                 |
+| 2           | 0              | 2                 |
+| 3           | 1              | 2                 |
+| 4           | 1              | 3                 |
+| 5           | 2              | 3                 |
+| 6           | 2              | 4                 |
+| 7           | 3              | 4                 |
+
+The formula for calculating the minimum number of nodes required is: `floor(n/2) + 1`, where `n` is the total number of nodes.
+
+This guide will demonstrate a setup with three nodes, which allows for one node to be down while the cluster remains operational. This fault tolerance applies to the following components:
+
+- Redis Sentinel: With three Sentinel instances, one instance can be down, and the remaining two can still form a quorum to make decisions.
+- Redis: With three Redis instances (one master and two replicas), one instance can be down, and the remaining two can continue to provide caching services.
+- PostgreSQL: With three PostgreSQL instances managed by Patroni and etcd, one instance can be down, and the remaining two can maintain data consistency and availability.
+- Manager Nodes: In a Docker Swarm cluster with three manager nodes, one manager node can be down, and the remaining two can continue to manage the cluster. 
+For the sake of simplicity, the example in this guide only contains one manager node.   
+
+It's important to note that while the cluster can tolerate the failure of one node in a three-node setup, it's recommended to have a minimum of three nodes to ensure high availability. 
+With two nodes, the failure of a single node can result in a loss of quorum and potential downtime.
+
+## Docker Deployment Stack Overview
+
+The [Docker stack file](https://github.com/Infisical/infisical/tree/main/docker-swarm) used in this guide defines the services and their configurations for deploying Infisical in a highly available manner. The main components of this stack are as follows.
+
+1. **HAProxy**: The HAProxy service is configured to expose ports for accessing PostgreSQL (5433 for the master, 5434 for replicas), Redis master (6379), and the Infisical backend (8080). It uses a config file (`haproxy.cfg`) to define the load balancing and health check rules.
+
+2. **Infisical**: The Infisical backend service is deployed with the latest PostgreSQL-compatible image. It is connected to the `infisical` network and uses secrets for environment variables.
+
+3. **etcd**: Three etcd instances (etcd1, etcd2, etcd3) are deployed, one on each node, to provide distributed key-value storage for leader election and configuration management.
+
+4. **Spilo**: Three Spilo instances (spolo1, spolo2, spolo3) are deployed, one on each node, to run PostgreSQL with Patroni for high availability. They are connected to the `infisical` network and use persistent volumes for data storage.
+
+5. **Redis**: Three Redis instances (redis_replica0, redis_replica1, redis_replica2) are deployed, one on each node, with redis_replica0 acting as the master. They are connected to the `infisical` network.
+
+6. **Redis Sentinel**: Three Redis Sentinel instances (redis_sentinel1, redis_sentinel2, redis_sentinel3) are deployed, one on each node, to monitor and manage the Redis instances. They are connected to the `infisical` network.
+
+## Deployment instructions
+
+<Steps>
+  <Step title="Initialize Docker Swarm on one of the VMs by running the following command">
+    ```
+   docker swarm init 
+   ```
+
+   Replace `<MANAGER_NODE_IP>` with the IP address of the VM that will serve as the manager node. Remember to copy the join token returned by the this init command.
+   
+   <Tip>
+    For the sake of simplicity, we only use one manager node in this example deployment. However, in production settings, we recommended you have at least 3 manager nodes.
+   </Tip>
+  </Step>
+
+  <Step title="On the other VMs, join the Docker Swarm by running the command provided by the manager node">
+    ```
+   docker swarm join --token <JOIN_TOKEN> <MANAGER_NODE_IP>:2377
+   ```
+
+   Replace `<JOIN_TOKEN>` with the token provided by the manager node during initialization.
+
+  </Step>
+
+  <Step title="Label the nodes with `node.labels.name` to specify their roles.">
+    Labels on nodes will help us select where stateful components such as Postgres and Redis are deployed on. To label nodes, follow the steps below. 
+
+     ```
+   docker node update --label-add name=node1 <NODE1_ID>
+   docker node update --label-add name=node2 <NODE2_ID>
+   docker node update --label-add name=node3 <NODE3_ID>
+   ```
+
+   Replace `<NODE1_ID>`, `<NODE2_ID>`, and `<NODE3_ID>` with the respective node IDs. 
+   To view the list of nodes and their ids, run the following on the manager node `docker node ls`.
+
+  </Step>
+
+  <Step title="Copy deployment assets to manager node">
+  Copy the Docker stack YAML file, HAProxy configuration file and example `.env` file to the manager node. Ensure that all 3 files are placed in the same file directory.
+  - [Docker stack file](https://github.com/Infisical/infisical/blob/main/docker-swarm/stack.yaml) (rename to infisical-stack.yaml)
+  - [HA configuration file](https://github.com/Infisical/infisical/blob/main/docker-swarm/haproxy.cfg) (rename to haproxy.cfg)
+  - [Example .env file](https://github.com/Infisical/infisical/blob/main/docker-swarm/.env-example) (rename to .env)
+  </Step>
+
+  <Step title="Deploy stack">
+
+   ```
+   docker stack deploy -c infisical-stack.yaml infisical
+   ```
+  </Step>
+
+  <Step title="Check service status">
+    ```plain
+    $ docker service ls 
+    ID             NAME                        MODE         REPLICAS   IMAGE                                  PORTS
+    4kzq3ub8qgn9   infisical_etcd1             replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
+    tqx9t82bn8d9   infisical_etcd2             replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
+    t8vbkrasy8fz   infisical_etcd3             replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
+    77iei42fcf6q   infisical_haproxy           global       4/4        haproxy:latest                         *:5002-5003->5433-5434/tcp, *:6379->6379/tcp, *:7001->7000/tcp, *:8080->8080/tcp
+    jaewzqy8md56   infisical_infisical         replicated   5/5        infisical/infisical:v0.60.1-postgres   
+    58w4zablfbtb   infisical_redis_replica0    replicated   1/1        bitnami/redis:6.2.10                   
+    w4yag2whq0un   infisical_redis_replica1    replicated   1/1        bitnami/redis:6.2.10                   
+    w03mriy0jave   infisical_redis_replica2    replicated   1/1        bitnami/redis:6.2.10                   
+    ppo6rk47hc9t   infisical_redis_sentinel1   replicated   1/1        bitnami/redis-sentinel:6.2.10          
+    ub29vd0lnq7f   infisical_redis_sentinel2   replicated   1/1        bitnami/redis-sentinel:6.2.10          
+    szg3yky7yji2   infisical_redis_sentinel3   replicated   1/1        bitnami/redis-sentinel:6.2.10          
+    eqtocpf5tiy0   infisical_spolo1            replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
+    3lznscvk7k5t   infisical_spolo2            replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
+    v04ml7rz2j5q   infisical_spolo3            replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2
+    ```
+
+    <Note>
+      You'll notice that service `infisical_infisical` will not be in running state. 
+      This is expected as the database does not yet have the desired schemas. 
+      Once the database schema migrations have been successfully applied, this issue should be resolved.
+    </Note>
+  </Step>
+
+  <Step title="Run schema migrations">
+    Run the schema migration to initialize the database. Follow the [guide here](/self-hosting/configuration/schema-migrations) to learn how. 
+
+    To connect to the Postgres database, use the following default credentials defined in the Docker swarm: username: `postgres`,  password: `postgres` and database: `postgres`. 
+  </Step>
+
+  <Step title="View service status">
+    ![HA Proxy stats](/images/self-hosting/deployment-options/docker-swarm/ha-proxy-ha.png)
+    To view the health of services in your Infisical cluster, visit port `<NODE-IP>:7001` of any node in your Docker swarm. 
+    This port will expose the HA Proxy stats. 
+
+    Run the following command to view the IPs of the nodes in your docker swarm.
+
+    ```plain
+    $ docker node ls
+    ID                            HOSTNAME    STATUS    AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+    0jnegl4gpo235l66nglcwc07t     localhost   Ready     Active                          26.0.2
+    no1a7zwj88057k73m196ulkq6 *   localhost   Ready     Active         Leader           26.0.2
+    wcb2x27w3tq7ht4v1h7ke49qk     localhost   Ready     Active                          26.0.2
+    zov5q7uop7wpxc2ndz712v9oa     localhost   Ready     Active                          26.0.2
+    ```
+
+    <Info>
+      The stats page may take 1-2 minutes to become accessible.
+    </Info>
+  </Step>
+
+  <Step title="Initialize Infisical">
+    ![self host sign up](/images/self-hosting/applicable-to-all/selfhost-signup.png)
+    Once all expected services are up and running, visit `<NODE-IP>:8080` of any node in the swarm. This will take you to the Infisical configuration page.
+  </Step>
+
+  </Steps>
+
+## FAQ
+<Accordion title="How do I scale Infisical cluster further?" defaultOpen="true">
+  To further scale and make the system more resilient, you can add more nodes to the Docker Swarm and update the stack configuration accordingly:
+
+  1. Add new VMs and join them to the Docker Swarm as worker nodes.
+
+  2. Update the Docker stack YAML file to include the new nodes in the `deploy` section of the relevant services, specifying the appropriate `node.labels.name` constraints.
+
+  3. Update the HAProxy configuration file (`haproxy.cfg`) to include the new nodes in the backend sections for PostgreSQL and Redis.
+
+  4. Redeploy the updated stack using the `docker stack deploy` command.
+
+  Note that the database containers (PostgreSQL) are stateful and cannot be simply replicated. Instead, one database instance is deployed per node to ensure data consistency and avoid conflicts.
+
+</Accordion>
+
+<Accordion title="How do I configure backups for Postgres and Redis?">
+Native tooling for scheduled backups of Postgres and Redis is currently in development. 
+In the meantime, we recommend using a variety of open-source tools available for this purpose. 
+For Postgres, [Spilo](https://github.com/zalando/spilo) provides built-in support for scheduled data dumps. 
+You can explore other third party tools for managing db backups, one such tool is [docker-db-backup](https://github.com/tiredofit/docker-db-backup).
+</Accordion>

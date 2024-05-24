@@ -1,8 +1,9 @@
 import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import slugify from "@sindresorhus/slugify";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useUpdateWsEnvironment } from "@app/hooks/api";
@@ -16,13 +17,19 @@ type Props = {
 
 const schema = yup.object({
   name: yup.string().label("Environment Name").required(),
-  slug: yup.string().label("Environment Slug").required()
+  slug: yup
+    .string()
+    .label("Environment Slug")
+    .test({
+      test: (slug) => slugify(slug as string) === slug,
+      message: "Slug must be a valid slug"
+    })
+    .required()
 });
 
 export type FormData = yup.InferType<typeof schema>;
 
 export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
-  const { createNotification } = useNotificationContext();
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync, isLoading } = useUpdateWsEnvironment();
   const { control, handleSubmit, reset } = useForm<FormData>({
@@ -108,7 +115,11 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
               Update
             </Button>
 
-            <Button colorSchema="secondary" variant="plain">
+            <Button
+              onClick={() => handlePopUpClose("updateEnv")}
+              colorSchema="secondary"
+              variant="plain"
+            >
               Cancel
             </Button>
           </div>

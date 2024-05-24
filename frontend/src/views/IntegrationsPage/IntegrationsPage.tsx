@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
@@ -17,20 +17,23 @@ import {
   useUpdateBotActiveStatus
 } from "@app/hooks/api";
 import { IntegrationAuth } from "@app/hooks/api/types";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { CloudIntegrationSection } from "./components/CloudIntegrationSection";
 import { FrameworkIntegrationSection } from "./components/FrameworkIntegrationSection";
+import { InfrastructureIntegrationSection } from "./components/InfrastructureIntegrationSection/InfrastructureIntegrationSection";
 import { IntegrationsSection } from "./components/IntegrationsSection";
 import { generateBotKey, redirectForProviderAuth } from "./IntegrationPage.utils";
 
 type Props = {
   frameworkIntegrations: Array<{ name: string; slug: string; image: string; docsLink: string }>;
+  infrastructureIntegrations: Array<{ name: string; slug: string; image: string; docsLink: string }>;
 };
 
 export const IntegrationsPage = withProjectPermission(
-  ({ frameworkIntegrations }: Props) => {
+  ({ frameworkIntegrations, infrastructureIntegrations }: Props) => {
     const { t } = useTranslation();
-    const { createNotification } = useNotificationContext();
+    
 
     const { currentWorkspace } = useWorkspace();
     const workspaceId = currentWorkspace?.id || "";
@@ -92,7 +95,7 @@ export const IntegrationsPage = withProjectPermission(
         isIntegrationsAuthorizedEmpty &&
         isIntegrationsEmpty
       ) {
-        if (bot?.id)
+        if (bot?.id && currentWorkspace?.version === ProjectVersion.V1)
           updateBotActiveStatusSync({
             isActive: false,
             botId: bot.id,
@@ -113,7 +116,7 @@ export const IntegrationsPage = withProjectPermission(
       if (!selectedCloudIntegration) return;
 
       try {
-        if (bot && !bot.isActive) {
+        if (bot && !bot.isActive && currentWorkspace?.version === ProjectVersion.V1) {
           const botKey = generateBotKey(bot.publicKey, latestWsKey!);
           await updateBotActiveStatus({
             workspaceId,
@@ -227,6 +230,7 @@ export const IntegrationsPage = withProjectPermission(
           </ModalContent>
         </Modal>
         <FrameworkIntegrationSection frameworks={frameworkIntegrations} />
+        <InfrastructureIntegrationSection integrations={infrastructureIntegrations} />
       </div>
     );
   },

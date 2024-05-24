@@ -14,6 +14,7 @@ import fasitfy from "fastify";
 import { Knex } from "knex";
 import { Logger } from "pino";
 
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
@@ -23,6 +24,7 @@ import { fastifyErrHandler } from "./plugins/error-handler";
 import { registerExternalNextjs } from "./plugins/external-nextjs";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
 import { fastifyIp } from "./plugins/ip";
+import { maintenanceMode } from "./plugins/maintenanceMode";
 import { fastifySwagger } from "./plugins/swagger";
 import { registerRoutes } from "./routes";
 
@@ -31,13 +33,14 @@ type TMain = {
   smtp: TSmtpService;
   logger?: Logger;
   queue: TQueueServiceFactory;
+  keyStore: TKeyStoreFactory;
 };
 
 // Run the server!
-export const main = async ({ db, smtp, logger, queue }: TMain) => {
+export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
   const appCfg = getConfig();
   const server = fasitfy({
-    logger,
+    logger: appCfg.NODE_ENV === "test" ? false : logger,
     trustProxy: true,
     connectionTimeout: 30 * 1000,
     ignoreTrailingSlash: true
@@ -70,7 +73,9 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
     }
     await server.register(helmet, { contentSecurityPolicy: false });
 
-    await server.register(registerRoutes, { smtp, queue, db });
+    await server.register(maintenanceMode);
+
+    await server.register(registerRoutes, { smtp, queue, db, keyStore });
 
     if (appCfg.isProductionMode) {
       await server.register(registerExternalNextjs, {

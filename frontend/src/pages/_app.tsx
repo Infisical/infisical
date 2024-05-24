@@ -2,6 +2,7 @@
 /* eslint-disable no-var */
 /* eslint-disable func-names */
 /* eslint-disable react/jsx-props-no-spreading */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 
 import { useEffect } from "react";
@@ -11,7 +12,7 @@ import { config } from "@fortawesome/fontawesome-svg-core";
 import { QueryClientProvider } from "@tanstack/react-query";
 import NProgress from "nprogress";
 
-import NotificationProvider from "@app/components/context/Notifications/NotificationProvider";
+import { NotificationContainer } from "@app/components/notifications";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { TooltipProvider } from "@app/components/v2";
 import { publicPaths } from "@app/const";
@@ -29,6 +30,7 @@ import { AppLayout } from "@app/layouts";
 import { queryClient } from "@app/reactQuery";
 
 import "nprogress/nprogress.css";
+import "react-toastify/dist/ReactToastify.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "react-day-picker/dist/style.css";
 import "../styles/globals.css";
@@ -84,13 +86,14 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
   ) {
     return (
       <QueryClientProvider client={queryClient}>
-        <NotificationProvider>
-          <ServerConfigProvider>
+        <NotificationContainer />
+        <ServerConfigProvider>
+          <UserProvider>
             <AuthProvider>
               <Component {...pageProps} />
             </AuthProvider>
-          </ServerConfigProvider>
-        </NotificationProvider>
+          </UserProvider>
+        </ServerConfigProvider>
       </QueryClientProvider>
     );
   }
@@ -100,27 +103,26 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <NotificationProvider>
-          <ServerConfigProvider>
-            <AuthProvider>
-              <OrgProvider>
-                <OrgPermissionProvider>
-                  <WorkspaceProvider>
-                    <ProjectPermissionProvider>
-                      <SubscriptionProvider>
-                        <UserProvider>
-                          <Layout>
-                            <Component {...pageProps} />
-                          </Layout>
-                        </UserProvider>
-                      </SubscriptionProvider>
-                    </ProjectPermissionProvider>
-                  </WorkspaceProvider>
-                </OrgPermissionProvider>
-              </OrgProvider>
-            </AuthProvider>
-          </ServerConfigProvider>
-        </NotificationProvider>
+        <NotificationContainer />
+        <ServerConfigProvider>
+          <AuthProvider>
+            <OrgProvider>
+              <OrgPermissionProvider>
+                <WorkspaceProvider>
+                  <ProjectPermissionProvider>
+                    <SubscriptionProvider>
+                      <UserProvider>
+                        <Layout>
+                          <Component {...pageProps} />
+                        </Layout>
+                      </UserProvider>
+                    </SubscriptionProvider>
+                  </ProjectPermissionProvider>
+                </WorkspaceProvider>
+              </OrgPermissionProvider>
+            </OrgProvider>
+          </AuthProvider>
+        </ServerConfigProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

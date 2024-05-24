@@ -1,18 +1,18 @@
 ---
-title: "Azure SAML"
-description: "Configure Azure SAML for Infisical SSO"
+title: "Entra ID / Azure AD SAML"
+description: "Learn how to configure Microsoft Entra ID for Infisical SSO."
 ---
 
 <Info>
-   Azure SAML SSO feature is a paid feature.
+   Azure SAML SSO is a paid feature.
    
    If you're using Infisical Cloud, then it is available under the **Pro Tier**. If you're self-hosting Infisical,
-   then you should contact team@infisical.com to purchase an enterprise license to use it.
+   then you should contact sales@infisical.com to purchase an enterprise license to use it.
 </Info>
 
 <Steps>
    <Step title="Prepare the SAML SSO configuration in Infisical">
-      In Infisical, head over to your organization Settings > Authentication > SAML SSO Configuration and select **Set up SAML SSO**.
+      In Infisical, head to your Organization Settings > Authentication > SAML SSO Configuration and select **Set up SAML SSO**.
 
       Next, copy the **Reply URL (Assertion Consumer Service URL)** and **Identifier (Entity ID)** to use when configuring the Azure SAML application.
 
@@ -91,9 +91,21 @@ description: "Configure Azure SAML for Infisical SSO"
       ![Azure SAML assignment](../../../images/sso/azure/assignment.png)
    </Step>   
    <Step title="Enable SAML SSO in Infisical">
-      Enabling SAML SSO enforces all members in your organization to only be able to log into Infisical via Azure.
+      Enabling SAML SSO allows members in your organization to log into Infisical via Azure.
 
       ![Azure SAML assignment](../../../images/sso/azure/enable-saml.png)
+   </Step>
+   <Step title="Enforce SAML SSO in Infisical">
+      Enforcing SAML SSO ensures that members in your organization can only access Infisical
+      by logging into the organization via Azure.
+
+      To enforce SAML SSO, you're required to test out the SAML connection by successfully authenticating at least one Azure user with Infisical;
+      Once you've completed this requirement, you can toggle the **Enforce SAML SSO** button to enforce SAML SSO.
+
+      <Warning>
+         We recommend ensuring that your account is provisioned the application in Azure
+         prior to enforcing SAML SSO to prevent any unintended issues.
+      </Warning>
    </Step>
 </Steps>
 

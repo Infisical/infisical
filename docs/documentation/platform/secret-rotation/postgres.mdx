@@ -1,37 +1,104 @@
 ---
 title: "PostgreSQL/CockroachDB"
-description: "Rotated database user password of a postgreSQL or cockroach db"
+description: "Learn how to automatically rotate PostgreSQL/CockroachDB user passwords."
 ---
 
-Infisical will update periodically the provided database user's password.
+The Infisical Postgres secret rotation allows you to automatically rotate your Postgres database user's password at a predefined interval.
 
-<Warning>
-	At present Infisical do require access to your database. We will soon be released Infisical agent based rotation which would help you rotate without direct database access from Infisical cloud.
-</Warning>
 
-## Working
+## Prerequisite
 
-1. User's has to create the two user's for Infisical to rotate and provide them required database access
-2. Infisical will connect with your database with admin access
-3. If last rotated one was username1, then username2 is chosen to be rotated
-5. Update it's password with random value
-6. After testing it gets saved to the provided secret mapping
+1. Create two users with the required permission in your PostgreSQL instance. We'll refer to them as `user-a` and `user-b`.
+2. Create another PostgreSQL user with just the permission to update the passwords of `user-a` and `user-b`. We'll refer to this user as the `admin` user.
+
+To learn more about Postgres permission system, please visit this [documentation](https://www.postgresql.org/docs/9.1/sql-grant.html).
+
+
+## How it works 
+
+1. Infisical connects to your database using the provided `admin` user account.
+2. A random value is generated and the password for `user-a` is updated with the new value.
+3. The new password is then tested by logging into the database
+4. If test is success, it's saved to the output secret mappings so that rest of the system gets the newly rotated value(s).
+5. The process is then repeated for `user-b` on the next rotation.
+6. The cycle repeats until secret rotation is deleted/stopped.
 
 ## Rotation Configuration
 
-1. Head over to Secret Rotation configuration page of your project by clicking on side bar `Secret Rotation`
-2. Click on `PostgreSQL`
-3. Provide the inputs
-	- Admin Username: DB admin username
-	- Admin Password: DB admin password
-	- Host: DB host
-	- Port: DB port(number)
-	- Username1: The first username in two to rotate
-	- Username2: The second username in two to rotate
-	- CA: Certificate to connect with database(string)
-4. Final step
-	- Select `Environment`, `Secret Path` and `Interval` to rotate the secrets
-	- Finally select the secrets in your provided board to replace with new secret after each rotation
-	- Your done and good to go.
+<Steps>
+  <Step title="Open Secret Rotation Page">
+	Head over to Secret Rotation configuration page of your project by clicking on `Secret Rotation` in the left side bar 
+  </Step>
+  <Step title="Click on PostgresSQL card" />
 
-Congrats. You have 10x your PostgreSQL/CockroachDB access security. 
+  <Step title="Provide the inputs">
+	<ParamField path="Admin Username" type="string" required="true">
+		Rotator admin username
+	</ParamField>
+
+	<ParamField path="Admin password" type="string" required="true">
+		Rotator admin password
+	</ParamField>
+
+	<ParamField path="Host" type="string" required="true">
+		Database host url
+	</ParamField>
+
+	<ParamField path="Port" type="number" required="true">
+		Database port number
+	</ParamField>
+
+	<ParamField path="Username1" type="string" required="true">
+		The first username of two to rotate - `user-a`
+	</ParamField>
+
+	<ParamField path="Username2" type="string" required="true">
+		The second username of two to rotate - `user-b`
+	</ParamField>
+ 
+	<ParamField path="CA" type="string" optional>
+		Optional database certificate to connect with database
+	</ParamField>
+  </Step>
+  <Step title="Configure the output secret mapping">
+
+  	When a secret rotation is successful, the updated values needs to be saved to an existing key(s) in your project. 
+
+	<ParamField path="Environment" type="string" required>
+		The environment where the rotated credentials should be mapped to.
+	</ParamField>
+
+	<ParamField path="Secret Path" type="string" required>
+		The secret path where the rotated credentials should be mapped to.
+	</ParamField>
+
+	<ParamField path="Interval" type="number" required>
+		What interval should the credentials be rotated in days.
+	</ParamField>
+
+	<ParamField path="DB USERNAME" type="string" required>
+		Select an existing secret key where the rotated database username value should be saved to.
+	</ParamField>
+
+	<ParamField path="DB PASSWORD" type="string" required>
+		Select an existing select key where the rotated database password value should be saved to.
+	</ParamField>
+  </Step>
+</Steps>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Why can't we delete the other user when rotating?">
+  	When a system has multiple nodes by horizontal scaling, redeployment doesn't happen instantly.
+
+	This means that when the secrets are rotated, and the redeployment is triggered, the existing system will still be using the old credentials until the change rolls out. 
+
+	To avoid causing failure for them, the old credentials are not removed. Instead, in the next rotation, the previous user's credentials are updated.
+  </Accordion>
+  <Accordion title="Why do you need root user account?">
+	The admin account is used by Infisical to update the credentials for `user-a` and `user-b`. 
+
+	You don't need to grant all permission for your admin account but rather just the permissions to update both of the user's passwords.
+  </Accordion>
+</AccordionGroup>

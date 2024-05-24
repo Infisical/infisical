@@ -1,14 +1,16 @@
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
 import frameworkIntegrationOptions from "public/json/frameworkIntegrations.json";
+import infrastructureIntegrationOptions from "public/json/infrastructureIntegrations.json";
 
 import { IntegrationsPage } from "@app/views/IntegrationsPage";
 
 type Props = {
   frameworkIntegrations: typeof frameworkIntegrationOptions;
+  infrastructureIntegrations: typeof infrastructureIntegrationOptions; 
 };
 
-const Integration = ({ frameworkIntegrations }: Props) => {
+const Integration = ({ frameworkIntegrations, infrastructureIntegrations }: Props) => {
   const { t } = useTranslation();
 
   return (
@@ -20,7 +22,7 @@ const Integration = ({ frameworkIntegrations }: Props) => {
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t("integrations.description") as string} />
       </Head>
-      <IntegrationsPage frameworkIntegrations={frameworkIntegrations} />
+      <IntegrationsPage frameworkIntegrations={frameworkIntegrations} infrastructureIntegrations={infrastructureIntegrations} />
     </>
   );
 };
@@ -28,7 +30,8 @@ const Integration = ({ frameworkIntegrations }: Props) => {
 export const getStaticProps = () => {
   return {
     props: {
-      frameworkIntegrations: frameworkIntegrationOptions
+      frameworkIntegrations: frameworkIntegrationOptions,
+      infrastructureIntegrations: infrastructureIntegrationOptions
     }
   };
 };

@@ -30,10 +30,18 @@ export const auditLogServiceFactory = ({
     startDate,
     actor,
     actorId,
+    actorOrgId,
+    actorAuthMethod,
     projectId,
     auditLogActor
   }: TListProjectAuditLogDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
     const auditLogs = await auditLogDAL.find({
       startDate,
@@ -57,6 +65,7 @@ export const auditLogServiceFactory = ({
     if (data.event.type !== EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH) {
       if (!data.projectId && !data.orgId) throw new BadRequestError({ message: "Must either project id or org id" });
     }
+
     return auditLogQueue.pushToLog(data);
   };
 

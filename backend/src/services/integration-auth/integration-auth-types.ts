@@ -44,6 +44,16 @@ export type TIntegrationAuthChecklyGroupsDTO = {
   accountId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TIntegrationAuthGithubOrgsDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TIntegrationAuthGithubEnvsDTO = {
+  id: string;
+  repoName: string;
+  repoOwner: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TIntegrationAuthQoveryOrgsDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
@@ -53,6 +63,11 @@ export type TIntegrationAuthQoveryProjectDTO = {
   orgId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TIntegrationAuthAwsKmsKeyDTO = {
+  id: string;
+  region: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TIntegrationAuthQoveryEnvironmentsDTO = {
   id: string;
 } & TProjectPermission;
@@ -60,6 +75,10 @@ export type TIntegrationAuthQoveryEnvironmentsDTO = {
 export type TIntegrationAuthQoveryScopesDTO = {
   id: string;
   environmentId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TIntegrationAuthHerokuPipelinesDTO = {
+  id: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TIntegrationAuthRailwayEnvDTO = {
@@ -127,6 +146,12 @@ export type TNorthflankSecretGroup = {
   description: string;
   priority: number;
   projectId: string;
+};
+
+export type THerokuPipelineCoupling = {
+  app: { id: string };
+  stage: string;
+  pipeline: { id: string; name: string };
 };
 
 export type TTeamCityBuildConfig = {

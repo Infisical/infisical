@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Switch } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
@@ -25,8 +25,6 @@ const authMethodOpts: AuthMethodOption[] = [
   { label: "GitLab", value: AuthMethod.GITLAB, icon: faGitlab }
 ];
 
-const samlProviders = [AuthMethod.OKTA_SAML, AuthMethod.JUMPCLOUD_SAML, AuthMethod.AZURE_SAML];
-
 const schema = yup.object({
   authMethods: yup.array().required("Auth method is required")
 });
@@ -34,7 +32,7 @@ const schema = yup.object({
 export type FormData = yup.InferType<typeof schema>;
 
 export const AuthMethodSection = () => {
-  const { createNotification } = useNotificationContext();
+  
   const { user } = useUser();
   const { mutateAsync } = useUpdateUserAuthMethods();
 
@@ -56,17 +54,6 @@ export const AuthMethodSection = () => {
   }, [user]);
 
   const onAuthMethodToggle = async (value: boolean, authMethodOpt: AuthMethodOption) => {
-    const hasSamlEnabled = user.authMethods.some((authMethod: AuthMethod) =>
-      samlProviders.includes(authMethod)
-    );
-
-    if (hasSamlEnabled) {
-      createNotification({
-        text: "SAML authentication can only be configured in your organization settings",
-        type: "error"
-      });
-    }
-
     const newAuthMethods = value
       ? [...authMethods, authMethodOpt.value]
       : authMethods.filter((auth) => auth !== authMethodOpt.value);

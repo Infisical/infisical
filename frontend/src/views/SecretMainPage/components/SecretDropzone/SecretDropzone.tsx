@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 // TODO:(akhilmhdh) convert all the util functions like this into a lib folder grouped by functionality
 import { parseDotEnv } from "@app/components/utilities/parseDotEnv";
@@ -60,7 +60,7 @@ export const SecretDropzone = ({
   const { t } = useTranslation();
   const [isDragActive, setDragActive] = useToggle();
   const [isLoading, setIsLoading] = useToggle();
-  const { createNotification } = useNotificationContext();
+
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "importSecEnv",
     "overlapKeyWarning"
@@ -119,8 +119,7 @@ export const SecretDropzone = ({
     if (!file) {
       createNotification({
         text: "You can't inject files from VS Code. Click 'Reveal in finder', and drag your file directly from the directory where it's located.",
-        type: "error",
-        timeoutMs: 10000
+        type: "error"
       });
       return;
     }
@@ -153,7 +152,7 @@ export const SecretDropzone = ({
 
     e.dataTransfer.dropEffect = "copy";
     setDragActive.off();
-    parseFile(e.dataTransfer.files[0]);
+    parseFile(e.dataTransfer.files[0], e.dataTransfer.files[0].type === "application/json");
   };
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {

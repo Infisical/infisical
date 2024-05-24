@@ -4,8 +4,10 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
+import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { fnSecretsFromImports } from "./secret-import-fns";
@@ -21,8 +23,10 @@ type TSecretImportServiceFactoryDep = {
   secretImportDAL: TSecretImportDALFactory;
   folderDAL: TSecretFolderDALFactory;
   secretDAL: Pick<TSecretDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   projectEnvDAL: TProjectEnvDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
@@ -34,10 +38,27 @@ export const secretImportServiceFactory = ({
   projectEnvDAL,
   permissionService,
   folderDAL,
-  secretDAL
+  projectDAL,
+  secretDAL,
+  secretQueueService
 }: TSecretImportServiceFactoryDep) => {
-  const createImport = async ({ environment, data, actor, actorId, projectId, path }: TCreateSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const createImport = async ({
+    environment,
+    data,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    path
+  }: TCreateSecretImportDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
     // check if user has permission to import into destination  path
     ForbiddenError.from(permission).throwUnlessCan(
@@ -54,12 +75,23 @@ export const secretImportServiceFactory = ({
       })
     );
 
+    await projectDAL.checkProjectUpgradeStatus(projectId);
+
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Create import" });
 
-    // TODO(akhilmhdh-pg): updated permission check add here
     const [importEnv] = await projectEnvDAL.findBySlugs(projectId, [data.environment]);
     if (!importEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
+
+    const sourceFolder = await folderDAL.findBySecretPath(projectId, data.environment, data.path);
+    if (sourceFolder) {
+      const existingImport = await secretImportDAL.findOne({
+        folderId: sourceFolder.id,
+        importEnv: folder.environment.id,
+        importPath: path
+      });
+      if (existingImport) throw new BadRequestError({ message: "Cyclic import not allowed" });
+    }
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
       const lastPos = await secretImportDAL.findLastImportPosition(folder.id, tx);
@@ -74,11 +106,33 @@ export const secretImportServiceFactory = ({
       );
     });
 
+    await secretQueueService.syncSecrets({
+      secretPath: secImport.importPath,
+      projectId,
+      environment: importEnv.slug
+    });
+
     return { ...secImport, importEnv };
   };
 
-  const updateImport = async ({ path, environment, projectId, actor, actorId, data, id }: TUpdateSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const updateImport = async ({
+    path,
+    environment,
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    data,
+    id
+  }: TUpdateSecretImportDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -94,6 +148,20 @@ export const secretImportServiceFactory = ({
       ? (await projectEnvDAL.findBySlugs(projectId, [data.environment]))?.[0]
       : await projectEnvDAL.findById(secImpDoc.importEnv);
     if (!importedEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
+
+    const sourceFolder = await folderDAL.findBySecretPath(
+      projectId,
+      importedEnv.slug,
+      data.path || secImpDoc.importPath
+    );
+    if (sourceFolder) {
+      const existingImport = await secretImportDAL.findOne({
+        folderId: sourceFolder.id,
+        importEnv: folder.environment.id,
+        importPath: path
+      });
+      if (existingImport) throw new BadRequestError({ message: "Cyclic import not allowed" });
+    }
 
     const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
       const secImp = await secretImportDAL.findOne({ folderId: folder.id, id });
@@ -115,8 +183,23 @@ export const secretImportServiceFactory = ({
     return { ...updatedSecImport, importEnv: importedEnv };
   };
 
-  const deleteImport = async ({ path, environment, projectId, actor, actorId, id }: TDeleteSecretImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const deleteImport = async ({
+    path,
+    environment,
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    id
+  }: TDeleteSecretImportDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -134,11 +217,32 @@ export const secretImportServiceFactory = ({
       if (!importEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
       return { ...doc, importEnv };
     });
+
+    await secretQueueService.syncSecrets({
+      secretPath: path,
+      projectId,
+      environment
+    });
+
     return secImport;
   };
 
-  const getImports = async ({ path, environment, projectId, actor, actorId }: TGetSecretImportsDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getImports = async ({
+    path,
+    environment,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetSecretImportsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -151,8 +255,22 @@ export const secretImportServiceFactory = ({
     return secImports;
   };
 
-  const getSecretsFromImports = async ({ path, environment, projectId, actor, actorId }: TGetSecretsFromImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getSecretsFromImports = async ({
+    path,
+    environment,
+    projectId,
+    actor,
+    actorAuthMethod,
+    actorId,
+    actorOrgId
+  }: TGetSecretsFromImportDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -172,7 +290,7 @@ export const secretImportServiceFactory = ({
         })
       )
     );
-    return fnSecretsFromImports({ allowedImports, folderDAL, secretDAL });
+    return fnSecretsFromImports({ allowedImports, folderDAL, secretDAL, secretImportDAL });
   };
 
   return {

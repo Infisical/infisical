@@ -2,7 +2,7 @@ import { useState } from "react";
 import { faEdit, faMagnifyingGlass, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -29,7 +29,7 @@ type Props = {
 
 export const ProjectRoleList = ({ onSelectRole }: Props) => {
   const [searchRoles, setSearchRoles] = useState("");
-  const { createNotification } = useNotificationContext();
+
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
@@ -50,7 +50,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
       handlePopUpClose("deleteRole");
     } catch (err) {
       console.log(err);
-      createNotification({ type: "error", text: "Failed to create role" });
+      createNotification({ type: "error", text: "Failed to delete role" });
     }
   };
 

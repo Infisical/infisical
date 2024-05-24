@@ -1,6 +1,6 @@
 ---
 title: "Docker Run"
-description: "Pass secrets to your docker container at run time"
+description: "Learn how to pass secrets to your docker container at run time."
 ---
 
 This method allows you to feed secrets from Infisical into your container using the `--env-file` flag of `docker run` command. 
@@ -10,8 +10,11 @@ For this method to function as expected, you must have a bash shell (for process
 
 ## 1. Authentication
 
-If you are already logged in via the CLI you can skip this step. Otherwise, head to your project settings in Infisical Cloud to generate an [Infisical Token](/documentation/platform/token). The service token will allow you to authenticate and fetch secrets from Infisical. 
-Once you have created a service token with the required permissions, you'll need to feed the token to the CLI. 
+If you are already logged in via the CLI you can skip this step. Otherwise, head to your organization settings in Infisical Cloud to create a [Machine Identity](../../documentation/platform/identities/machine-identities). The machine identity will allow you to authenticate and fetch secrets from Infisical. 
+Once you have created a machine identity with the required permissions, you'll need to feed the token to the CLI.
+<Info> 
+  Please note that we highly recommend using `infisical login` for local development.
+</Info>
 
 #### Pass as flag
 You may use the --token flag to set the token 
@@ -27,8 +30,14 @@ The CLI is configured to look for an environment variable named `INFISICAL_TOKEN
 export INFISICAL_TOKEN=<>
 ```
 
+You can use the `infisical login --method=universal-auth` command to directly obtain a universal auth access token and set it as an environment variable.
+
+```bash
+  export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<your-client-id> --client-secret=<your-client-secret> --silent --plain)
+```
+
 <Warning>
-  In production scenarios, please to avoid using the `infisical login` command and instead use a [service token](/documentation/platform/token).
+  In production scenarios, please to avoid using the `infisical login` command and instead use a [machine identity](../../documentation/platform/identities/machine-identities).
 </Warning>
 
 ## 2. Run your docker command with Infisical 

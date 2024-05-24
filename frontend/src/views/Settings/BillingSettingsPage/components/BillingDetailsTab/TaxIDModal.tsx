@@ -2,7 +2,7 @@ import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
@@ -85,7 +85,7 @@ type Props = {
 };
 
 export const TaxIDModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
-  const { createNotification } = useNotificationContext();
+  
   const { currentOrg } = useOrganization();
   const addOrgTaxId = useAddOrgTaxId();
 

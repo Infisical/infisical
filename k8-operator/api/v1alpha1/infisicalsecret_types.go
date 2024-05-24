@@ -9,12 +9,20 @@ type Authentication struct {
 	ServiceAccount ServiceAccountDetails `json:"serviceAccount"`
 	// +kubebuilder:validation:Optional
 	ServiceToken ServiceTokenDetails `json:"serviceToken"`
+	// +kubebuilder:validation:Optional
+	UniversalAuth UniversalAuthDetails `json:"universalAuth"`
+}
+
+type UniversalAuthDetails struct {
+	// +kubebuilder:validation:Required
+	CredentialsRef KubeSecretReference `json:"credentialsRef"`
+	// +kubebuilder:validation:Required
+	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
 }
 
 type ServiceTokenDetails struct {
 	// +kubebuilder:validation:Required
 	ServiceTokenSecretReference KubeSecretReference `json:"serviceTokenSecretReference"`
-
 	// +kubebuilder:validation:Required
 	SecretsScope SecretScopeInWorkspace `json:"secretsScope"`
 }
@@ -28,9 +36,21 @@ type ServiceAccountDetails struct {
 type SecretScopeInWorkspace struct {
 	// +kubebuilder:validation:Required
 	SecretsPath string `json:"secretsPath"`
-
 	// +kubebuilder:validation:Required
 	EnvSlug string `json:"envSlug"`
+	// +kubebuilder:validation:Optional
+	Recursive bool `json:"recursive"`
+}
+
+type MachineIdentityScopeInWorkspace struct {
+	// +kubebuilder:validation:Required
+	SecretsPath string `json:"secretsPath"`
+	// +kubebuilder:validation:Required
+	EnvSlug string `json:"envSlug"`
+	// +kubebuilder:validation:Required
+	ProjectSlug string `json:"projectSlug"`
+	// +kubebuilder:validation:Optional
+	Recursive bool `json:"recursive"`
 }
 
 type KubeSecretReference struct {
@@ -56,6 +76,14 @@ type MangedKubeSecretConfig struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default:=Opaque
 	SecretType string `json:"secretType"`
+
+	// The Kubernetes Secret creation policy.
+	// Enum with values: 'Owner', 'Orphan'.
+	// Owner creates the secret and sets .metadata.ownerReferences of the InfisicalSecret CRD that created it.
+	// Orphan will not set the secret owner. This will result in the secret being orphaned and not deleted when the resource is deleted.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=Orphan
+	CreationPolicy string `json:"creationPolicy"`
 }
 
 // InfisicalSecretSpec defines the desired state of InfisicalSecret

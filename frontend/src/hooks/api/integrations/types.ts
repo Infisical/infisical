@@ -11,31 +11,46 @@ export type TCloudIntegration = {
 
 export type TIntegration = {
   id: string;
-  projectId: string;
-  envId: string;
-  environment: { slug: string; name: string; id: string };
   isActive: boolean;
-  url: any;
-  app: string;
-  appId: string;
-  targetEnvironment: string;
-  targetEnvironmentId: string;
-  targetService: string;
-  targetServiceId: string;
-  owner: string;
-  path: string;
-  region: string;
+  url?: string;
+  app?: string;
+  appId?: string;
+  targetEnvironment?: string;
+  targetEnvironmentId?: string;
+  targetService?: string;
+  targetServiceId?: string;
+  owner?: string;
+  path?: string;
+  region?: string;
+  scope?: string;
   integration: string;
-  integrationAuth: string;
+  integrationAuthId: string;
+  envId: string;
   secretPath: string;
   createdAt: string;
   updatedAt: string;
+  lastUsed?: string;
+  isSynced?: boolean;
+  syncMessage?: string;
   __v: number;
   metadata?: {
     secretSuffix?: string;
+    syncBehavior?: IntegrationSyncBehavior;
+    mappingBehavior?: IntegrationMappingBehavior;
     scope: string;
     org: string;
     project: string;
     environment: string;
   };
 };
+
+export enum IntegrationSyncBehavior {
+  OVERWRITE_TARGET = "overwrite-target",
+  PREFER_TARGET = "prefer-target",
+  PREFER_SOURCE = "prefer-source"
+}
+
+export enum IntegrationMappingBehavior {
+  ONE_TO_ONE = "one-to-one",
+  MANY_TO_ONE = "many-to-one"
+}

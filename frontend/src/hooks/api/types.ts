@@ -1,3 +1,7 @@
+import { ZodIssue } from "zod";
+
+export type { TAccessApprovalPolicy } from "./accessApproval/types";
+export type { TAuditLogStream } from "./auditLogStreams/types";
 export type { GetAuthTokenAPI } from "./auth/types";
 export type { IncidentContact } from "./incidentContacts/types";
 export type { IntegrationAuth } from "./integrationAuth/types";
@@ -22,7 +26,7 @@ export * from "./secrets/types";
 export type { CreateServiceTokenDTO, ServiceToken } from "./serviceTokens/types";
 export type { SubscriptionPlan } from "./subscriptions/types";
 export type { WsTag } from "./tags/types";
-export type { AddUserToWsDTO, OrgUser, TWorkspaceUser, User, UserEnc } from "./users/types";
+export type { AddUserToWsDTOE2EE, OrgUser, TWorkspaceUser, User, UserEnc } from "./users/types";
 export type { TWebhook } from "./webhooks/types";
 export type {
   CreateEnvironmentDTO,
@@ -36,3 +40,23 @@ export type {
   WorkspaceEnv,
   WorkspaceTag
 } from "./workspace/types";
+
+export enum ApiErrorTypes {
+  ValidationError = "ValidationFailure",
+  BadRequestError = "BadRequest",
+  UnauthorizedError = "UnauthorizedError",
+  ForbiddenError = "PermissionDenied"
+}
+
+export type TApiErrors =
+  | {
+      error: ApiErrorTypes.ValidationError;
+      message: ZodIssue[];
+      statusCode: 403;
+    }
+  | { error: ApiErrorTypes.ForbiddenError; message: string; statusCode: 401 }
+  | {
+      statusCode: 400;
+      message: string;
+      error: ApiErrorTypes.BadRequestError;
+    };

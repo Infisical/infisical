@@ -28,12 +28,15 @@ export const formSchema = z.object({
         })
         .optional(),
       member: generalPermissionSchema,
+      groups: generalPermissionSchema,
       role: generalPermissionSchema,
       settings: generalPermissionSchema,
       "service-account": generalPermissionSchema,
       "incident-contact": generalPermissionSchema,
       "secret-scanning": generalPermissionSchema,
       sso: generalPermissionSchema,
+      scim: generalPermissionSchema,
+      ldap: generalPermissionSchema,
       billing: generalPermissionSchema,
       identity: generalPermissionSchema
     })

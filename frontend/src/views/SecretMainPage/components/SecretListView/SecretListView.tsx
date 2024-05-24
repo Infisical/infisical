@@ -1,8 +1,9 @@
 import { useCallback } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { CreateTagModal } from "@app/components/tags/CreateTagModal";
 import { DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
@@ -17,6 +18,7 @@ import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPa
 import { Filter, GroupBy, SortDir } from "../../SecretMainPage.types";
 import { SecretDetailSidebar } from "./SecretDetaiSidebar";
 import { SecretItem } from "./SecretItem";
+import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
 
 type Props = {
   secrets?: DecryptedSecret[];
@@ -89,7 +91,6 @@ export const SecretListView = ({
   isVisible,
   isProtectedBranch = false
 }: Props) => {
-  const { createNotification } = useNotificationContext();
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
@@ -206,7 +207,7 @@ export const SecretListView = ({
         reminderRepeatDays,
         reminderNote
       } = modSecret;
-      const hasKeyChanged = oldKey !== key;
+      const hasKeyChanged = oldKey !== key && key;
 
       const tagIds = tags?.map(({ id }) => id);
       const oldTagIds = (orgSecret?.tags || []).map(({ id }) => id);
@@ -341,6 +342,13 @@ export const SecretListView = ({
               >
                 {namespace}
               </div>
+              {FontAwesomeSpriteSymbols.map(({ icon, symbol }) => (
+                <FontAwesomeIcon
+                  icon={icon}
+                  symbol={symbol}
+                  key={`font-awesome-svg-spritie-${symbol}`}
+                />
+              ))}
               {filteredSecrets.map((secret) => (
                 <SecretItem
                   environment={environment}

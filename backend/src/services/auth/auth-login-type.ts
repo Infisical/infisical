@@ -17,8 +17,10 @@ export type TLoginClientProofDTO = {
 export type TVerifyMfaTokenDTO = {
   userId: string;
   mfaToken: string;
+  mfaJwtToken: string;
   ip: string;
   userAgent: string;
+  orgId?: string;
 };
 
 export type TOauthLoginDTO = {
@@ -27,5 +29,4 @@ export type TOauthLoginDTO = {
   lastName?: string;
   authMethod: AuthMethod;
   callbackPort?: string;
-  isSignupAllowed?: boolean;
 };

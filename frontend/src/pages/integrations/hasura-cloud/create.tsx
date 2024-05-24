@@ -9,15 +9,8 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import queryString from "query-string";
 import * as yup from "yup";
 
-import {
-  Button,
-  Card,
-  CardTitle,
-  FormControl,
-  Input,
-  Select,
-  SelectItem
-} from "@app/components/v2";
+import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "@app/components/v2";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
@@ -38,6 +31,7 @@ export default function HasuraCloudCreateIntegrationPage() {
   const {
     control,
     handleSubmit,
+    watch,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: yupResolver(schema)
@@ -50,6 +44,8 @@ export default function HasuraCloudCreateIntegrationPage() {
   const { data: integrationAuth, isLoading: isIntegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
   );
+
+  const selectedSourceEnvironment = watch("sourceEnvironment");
 
   const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } =
     useGetIntegrationAuthApps({
@@ -147,7 +143,7 @@ export default function HasuraCloudCreateIntegrationPage() {
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Secrets Path" errorText={error?.message} isError={Boolean(error)}>
-                <Input {...field} />
+                <SecretPathInput {...field} environment={selectedSourceEnvironment} />
               </FormControl>
             )}
           />

@@ -3,8 +3,8 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { Button, NoticeBanner } from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects, useServerConfig } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { SecretScanningLogsTable } from "@app/views/SecretScanning/components";
 
@@ -17,6 +17,7 @@ const SecretScanning = withPermission(
     const router = useRouter();
     const queryParams = router.query;
     const [integrationEnabled, setIntegrationStatus] = useState(false);
+    const { config } = useServerConfig();
 
     useEffect(() => {
       const linkInstallation = async () => {
@@ -69,6 +70,11 @@ const SecretScanning = withPermission(
             <div className="mb-6 text-lg text-mineshaft-300">
               Automatically monitor your GitHub activity and prevent secret leaks
             </div>
+            {config.isSecretScanningDisabled && (
+              <NoticeBanner title="Secret scanning is in maintenance" className="mb-4">
+                We are working on improving the performance of secret scanning due to increased usage.
+              </NoticeBanner>
+            )}
             <div className="relative mb-6 flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6">
               <div className="flex flex-col items-start">
                 <div className="mb-1 flex flex-row">
@@ -110,7 +116,7 @@ const SecretScanning = withPermission(
                         colorSchema="primary"
                         onClick={generateNewIntegrationSession}
                         className="h-min py-2"
-                        isDisabled={!isAllowed}
+                        isDisabled={!isAllowed || config.isSecretScanningDisabled}
                       >
                         Integrate with GitHub
                       </Button>

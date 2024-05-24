@@ -36,5 +36,5 @@ export const SecretVersionsSchema = z.object({
 });
 
 export type TSecretVersions = z.infer<typeof SecretVersionsSchema>;
-export type TSecretVersionsInsert = Omit<TSecretVersions, TImmutableDBKeys>;
-export type TSecretVersionsUpdate = Partial<Omit<TSecretVersions, TImmutableDBKeys>>;
+export type TSecretVersionsInsert = Omit<z.input<typeof SecretVersionsSchema>, TImmutableDBKeys>;
+export type TSecretVersionsUpdate = Partial<Omit<z.input<typeof SecretVersionsSchema>, TImmutableDBKeys>>;

@@ -58,7 +58,7 @@ export const DeleteActionModal = ({
         title={title}
         subTitle={subTitle}
         footerContent={
-          <div className="flex items-center mx-2">
+          <div className="mx-2 flex items-center">
             <Button
               className="mr-4"
               colorSchema="danger"
@@ -91,7 +91,11 @@ export const DeleteActionModal = ({
             }
             className="mb-0"
           >
-            <Input value={inputData} onChange={(e) => setInputData(e.target.value)} placeholder="Type to delete..." />
+            <Input
+              value={inputData}
+              onChange={(e) => setInputData(e.target.value)}
+              placeholder="Type to delete..."
+            />
           </FormControl>
         </form>
       </ModalContent>

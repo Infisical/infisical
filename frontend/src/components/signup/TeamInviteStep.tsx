@@ -16,7 +16,7 @@ export default function TeamInviteStep(): JSX.Element {
   const router = useRouter();
   const [emails, setEmails] = useState("");
   const { data: serverDetails } = useFetchServerStatus();
-  
+
   const { mutateAsync } = useAddUserToOrg();
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
@@ -40,55 +40,61 @@ export default function TeamInviteStep(): JSX.Element {
   };
 
   return (
-    <div className="w-max mx-auto min-w-lg h-full pb-4 px-8 mb-64 md:mb-32">
-      <p className="text-2xl font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
+    <div className="min-w-lg mx-auto mb-64 h-full w-max px-8 pb-4 md:mb-32">
+      <p className="flex justify-center bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-2xl font-semibold text-transparent">
         {t("signup.step5-invite-team")}
       </p>
-      <p className="text-center flex justify-center text-bunker-400 md:mx-8 mb-6 mt-4">
+      <p className="mb-6 mt-4 flex justify-center text-center text-bunker-400 md:mx-8">
         {t("signup.step5-subtitle")}
       </p>
-      <div className="bg-mineshaft-800 border border-mineshaft-500 w-max mx-auto pt-6 pb-4 px-8 rounded-xl drop-shadow-xl mb-6">
+      <div className="mx-auto mb-6 w-max rounded-xl border border-mineshaft-500 bg-mineshaft-800 px-8 pt-6 pb-4 drop-shadow-xl">
         <div>
-          <div className="text-bunker-300 font-medium pl-1 pb-1 text-sm">
+          <div className="pl-1 pb-1 text-sm font-medium text-bunker-300">
             <span>Emails</span>
           </div>
           <textarea
-            className="bg-mineshaft-900/70 min-w-[30rem] h-20 w-full placeholder:text-bunker-400 py-1 px-2 rounded-md border border-mineshaft-500 text-sm text-bunker-300 outline-none focus:ring-2 ring-primary-800 ring-opacity-70"
+            className="h-20 w-full min-w-[30rem] rounded-md border border-mineshaft-500 bg-mineshaft-900/70 py-1 px-2 text-sm text-bunker-300 outline-none ring-primary-800 ring-opacity-70 placeholder:text-bunker-400 focus:ring-2"
             value={emails}
             onChange={(e) => setEmails(e.target.value)}
             placeholder="email@example.com, email2@example.com..."
           />
         </div>
-        <div className="flex flex-row items-end justify-end mt-0 md:mt-4 md:mb-2 w-full md:min-w-[30rem] mt-2 md:max-w-md mx-auto text-sm">
+        <div className="mx-auto mt-0 mt-2 flex w-full flex-row items-end justify-end text-sm md:mt-4 md:mb-2 md:min-w-[30rem] md:max-w-md">
           <Button
             onClick={() => {
               if (serverDetails?.emailConfigured) {
-                inviteUsers({ emails })
+                inviteUsers({ emails });
               } else {
                 handlePopUpOpen("setUpEmail");
               }
             }}
             size="sm"
             // isFullWidth
-            className='h-10'
+            className="h-10"
             colorSchema="primary"
             variant="solid"
-          > {t("signup.step5-send-invites") ?? ""} </Button>
+          >
+            {" "}
+            {t("signup.step5-send-invites") ?? ""}{" "}
+          </Button>
         </div>
         <EmailServiceSetupModal
           isOpen={popUp.setUpEmail?.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}
         />
       </div>
-      <div className="flex flex-row max-w-max min-w-28 items-center justify-center md:p-2 min-w-[20rem] max-h-24 mx-auto text-lg px-4 mt-4 mb-2">
+      <div className="min-w-28 mx-auto mt-4 mb-2 flex max-h-24 min-w-[20rem] max-w-max flex-row items-center justify-center px-4 text-lg md:p-2">
         <Button
           onClick={redirectToHome}
           size="sm"
           isFullWidth
-          className='h-12'
+          className="h-12"
           colorSchema="secondary"
           variant="outline"
-        > {t("signup.step5-skip") ?? "Skip"} </Button>
+        >
+          {" "}
+          {t("signup.step5-skip") ?? "Skip"}{" "}
+        </Button>
       </div>
     </div>
   );

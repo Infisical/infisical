@@ -1,0 +1,80 @@
+{
+  "name": "Infisical",
+  "openapi": "https://app.infisical.com/api/docs/json",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg",
+    "href": "https://infisical.com"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#26272b",
+    "light": "#97b31d",
+    "dark": "#A1B659",
+    "ultraLight": "#E7F256",
+    "ultraDark": "#8D9F4C",
+    "background": {
+      "light": "#ffffff",
+      "dark": "#0D1117"
+    },
+    "anchors": {
+      "from": "#000000",
+      "to": "#707174"
+    }
+  },
+  "modeToggle": {
+    "default": "light",
+    "isHidden": true
+  },
+  "feedback": {
+    "suggestEdit": true,
+    "raiseIssue": true,
+    "thumbsRating": true
+  },
+  "api": {
+    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
+  },
+  "topbarLinks": [
+    {
+      "name": "Log In",
+      "url": "https://app.infisical.com/login"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Start for Free",
+    "url": "https://app.infisical.com/signup"
+  },
+  "tabs": [
+    {
+      "name": "Integrations",
+      "url": "integrations"
+    },
+    {
+      "name": "CLI",
+      "url": "cli"
+    },
+    {
+      "name": "API Reference",
+      "url": "api-reference"
+    },
+    {
+      "name": "SDKs",
+      "url": "sdks"
+    },
+    {
+      "name": "Changelog",
+      "url": "changelog"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "documentation/getting-started/introduction"
+      ]
+    }
+  ],
+  "integrations": {
+    "intercom": "hsg644ru"
+  }
+}

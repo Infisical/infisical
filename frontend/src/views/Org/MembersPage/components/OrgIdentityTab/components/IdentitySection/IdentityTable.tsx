@@ -1,7 +1,7 @@
 import { faKey, faLock, faPencil, faServer, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   EmptyState,
@@ -23,8 +23,6 @@ import { useGetIdentityMembershipOrgs, useGetOrgRoles, useUpdateIdentity } from 
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-// TODO: some kind of map
-
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
@@ -44,7 +42,6 @@ type Props = {
 };
 
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
-  const { createNotification } = useNotificationContext();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 

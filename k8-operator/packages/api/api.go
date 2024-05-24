@@ -58,13 +58,16 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 		R().
 		SetResult(&secretsResponse).
 		SetHeader("User-Agent", USER_AGENT_NAME).
-		SetHeader("If-None-Match", request.ETag).
 		SetQueryParam("environment", request.Environment).
 		SetQueryParam("include_imports", "true"). // TODO needs to be set as a option
 		SetQueryParam("workspaceId", request.WorkspaceId)
 
 	if request.SecretPath != "" {
 		httpRequest.SetQueryParam("secretPath", request.SecretPath)
+	}
+
+	if request.Recursive {
+		httpRequest.SetQueryParam("recursive", "true")
 	}
 
 	response, err := httpRequest.Get(fmt.Sprintf("%v/v3/secrets", API_HOST_URL))
@@ -77,13 +80,10 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 		return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
 	}
 
-	if response.StatusCode() == 304 {
-		secretsResponse.Modified = false
-	} else {
-		secretsResponse.Modified = true
-	}
+	responseETag := response.Header().Get("etag")
 
-	secretsResponse.ETag = response.Header().Get("etag")
+	secretsResponse.Modified = request.ETag != responseETag
+	secretsResponse.ETag = responseETag
 
 	return secretsResponse, nil
 }
@@ -105,6 +105,80 @@ func CallGetServiceTokenAccountDetailsV2(httpClient *resty.Client) (ServiceAccou
 	}
 
 	return serviceAccountDetailsResponse, nil
+}
+
+func CallUniversalMachineIdentityLogin(request MachineIdentityUniversalAuthLoginRequest) (MachineIdentityDetailsResponse, error) {
+	var machineIdentityDetailsResponse MachineIdentityDetailsResponse
+
+	response, err := resty.New().
+		R().
+		SetResult(&machineIdentityDetailsResponse).
+		SetBody(request).
+		SetHeader("User-Agent", USER_AGENT_NAME).
+		Post(fmt.Sprintf("%v/v1/auth/universal-auth/login", API_HOST_URL))
+
+	if err != nil {
+		return MachineIdentityDetailsResponse{}, fmt.Errorf("CallUniversalMachineIdentityLogin: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return MachineIdentityDetailsResponse{}, fmt.Errorf("CallUniversalMachineIdentityLogin: Unsuccessful response: [response=%s]", response)
+	}
+
+	return machineIdentityDetailsResponse, nil
+}
+
+func CallUniversalMachineIdentityRefreshAccessToken(request MachineIdentityUniversalAuthRefreshRequest) (MachineIdentityDetailsResponse, error) {
+	var universalAuthRefreshResponse MachineIdentityDetailsResponse
+
+	response, err := resty.New().
+		R().
+		SetResult(&universalAuthRefreshResponse).
+		SetHeader("User-Agent", USER_AGENT_NAME).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v1/auth/token/renew", API_HOST_URL))
+
+	if err != nil {
+		return MachineIdentityDetailsResponse{}, fmt.Errorf("CallUniversalAuthRefreshAccessToken: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return MachineIdentityDetailsResponse{}, fmt.Errorf("CallUniversalAuthRefreshAccessToken: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return universalAuthRefreshResponse, nil
+}
+
+func CallGetDecryptedSecretsV3(httpClient *resty.Client, request GetDecryptedSecretsV3Request) (GetDecryptedSecretsV3Response, error) {
+	var decryptedSecretsResponse GetDecryptedSecretsV3Response
+
+	req := httpClient.
+		R().
+		SetResult(&decryptedSecretsResponse).
+		SetHeader("User-Agent", USER_AGENT_NAME).
+		SetQueryParam("secretPath", request.SecretPath).
+		SetQueryParam("workspaceSlug", request.ProjectSlug).
+		SetQueryParam("environment", request.Environment)
+
+	if request.Recursive {
+		req.SetQueryParam("recursive", "true")
+	}
+
+	response, err := req.Get(fmt.Sprintf("%v/v3/secrets/raw", API_HOST_URL))
+
+	if err != nil {
+		return GetDecryptedSecretsV3Response{}, fmt.Errorf("CallGetDecryptedSecretsV3: Unable to complete api request [err=%s]", err)
+	}
+	if response.IsError() {
+		return GetDecryptedSecretsV3Response{}, fmt.Errorf("CallGetDecryptedSecretsV3: Unsuccessful response: [response=%s]", response)
+	}
+
+	responseETag := response.Header().Get("etag")
+
+	decryptedSecretsResponse.Modified = request.ETag != responseETag
+	decryptedSecretsResponse.ETag = responseETag
+
+	return decryptedSecretsResponse, nil
 }
 
 func CallGetServiceAccountWorkspacePermissionsV2(httpClient *resty.Client) (ServiceAccountWorkspacePermissions, error) {

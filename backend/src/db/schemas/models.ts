@@ -2,6 +2,11 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  Groups = "groups",
+  GroupProjectMembership = "group_project_memberships",
+  GroupProjectMembershipRole = "group_project_membership_roles",
+  UserGroupMembership = "user_group_membership",
+  UserAliases = "user_aliases",
   UserEncryptionKey = "user_encryption_keys",
   AuthTokens = "auth_tokens",
   AuthTokenSession = "auth_token_sessions",
@@ -19,8 +24,11 @@ export enum TableName {
   Environment = "project_environments",
   ProjectMembership = "project_memberships",
   ProjectRoles = "project_roles",
+  ProjectUserAdditionalPrivilege = "project_user_additional_privilege",
+  ProjectUserMembershipRole = "project_user_membership_roles",
   ProjectKeys = "project_keys",
   Secret = "secrets",
+  SecretReference = "secret_references",
   SecretBlindIndex = "secret_blind_indexes",
   SecretVersion = "secret_versions",
   SecretFolder = "secret_folders",
@@ -37,9 +45,19 @@ export enum TableName {
   Identity = "identities",
   IdentityAccessToken = "identity_access_tokens",
   IdentityUniversalAuth = "identity_universal_auths",
+  IdentityKubernetesAuth = "identity_kubernetes_auths",
+  IdentityGcpAuth = "identity_gcp_auths",
   IdentityUaClientSecret = "identity_ua_client_secrets",
+  IdentityAwsAuth = "identity_aws_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
+  IdentityProjectMembershipRole = "identity_project_membership_role",
+  IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
+  ScimToken = "scim_tokens",
+  AccessApprovalPolicy = "access_approval_policies",
+  AccessApprovalPolicyApprover = "access_approval_policies_approvers",
+  AccessApprovalRequest = "access_approval_requests",
+  AccessApprovalRequestReviewer = "access_approval_requests_reviewers",
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
   SecretApprovalRequest = "secret_approval_requests",
@@ -49,11 +67,16 @@ export enum TableName {
   SecretRotation = "secret_rotations",
   SecretRotationOutput = "secret_rotation_outputs",
   SamlConfig = "saml_configs",
+  LdapConfig = "ldap_configs",
+  LdapGroupMap = "ldap_group_maps",
   AuditLog = "audit_logs",
+  AuditLogStream = "audit_log_streams",
   GitAppInstallSession = "git_app_install_sessions",
   GitAppOrg = "git_app_org",
   SecretScanningGitRisk = "secret_scanning_git_risks",
   TrustedIps = "trusted_ips",
+  DynamicSecret = "dynamic_secrets",
+  DynamicSecretLease = "dynamic_secret_leases",
   // junction tables with tags
   JnSecretTag = "secret_tag_junction",
   SecretVersionTag = "secret_version_tag_junction"
@@ -111,6 +134,20 @@ export enum SecretType {
   Personal = "personal"
 }
 
+export enum ProjectVersion {
+  V1 = 1,
+  V2 = 2
+}
+
+export enum ProjectUpgradeStatus {
+  InProgress = "IN_PROGRESS",
+  // Completed -> Will be null if completed. So a completed status is not needed
+  Failed = "FAILED"
+}
+
 export enum IdentityAuthMethod {
-  Univeral = "universal-auth"
+  Univeral = "universal-auth",
+  KUBERNETES_AUTH = "kubernetes-auth",
+  GCP_AUTH = "gcp-auth",
+  AWS_AUTH = "aws-auth"
 }

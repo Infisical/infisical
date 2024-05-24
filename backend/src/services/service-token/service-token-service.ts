@@ -9,6 +9,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TServiceTokenDALFactory } from "./service-token-dal";
@@ -24,6 +25,7 @@ type TServiceTokenServiceFactoryDep = {
   userDAL: TUserDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findBySlugs">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceFactory>;
@@ -32,13 +34,16 @@ export const serviceTokenServiceFactory = ({
   serviceTokenDAL,
   userDAL,
   permissionService,
-  projectEnvDAL
+  projectEnvDAL,
+  projectDAL
 }: TServiceTokenServiceFactoryDep) => {
   const createServiceToken = async ({
     iv,
     tag,
     name,
     actor,
+    actorOrgId,
+    actorAuthMethod,
     scopes,
     actorId,
     projectId,
@@ -46,7 +51,13 @@ export const serviceTokenServiceFactory = ({
     permissions,
     encryptedKey
   }: TCreateServiceTokenDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
 
     scopes.forEach(({ environment, secretPath }) => {
@@ -90,11 +101,17 @@ export const serviceTokenServiceFactory = ({
     return { token, serviceToken };
   };
 
-  const deleteServiceToken = async ({ actorId, actor, id }: TDeleteServiceTokenDTO) => {
+  const deleteServiceToken = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TDeleteServiceTokenDTO) => {
     const serviceToken = await serviceTokenDAL.findById(id);
     if (!serviceToken) throw new BadRequestError({ message: "Token not found" });
 
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, serviceToken.projectId);
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      serviceToken.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens);
 
     const deletedServiceToken = await serviceTokenDAL.deleteById(id);
@@ -113,8 +130,20 @@ export const serviceTokenServiceFactory = ({
     return { serviceToken, user: serviceTokenUser };
   };
 
-  const getProjectServiceTokens = async ({ actorId, actor, projectId }: TProjectServiceTokensDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+  const getProjectServiceTokens = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TProjectServiceTokensDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
 
     const tokens = await serviceTokenDAL.find({ projectId }, { sort: [["createdAt", "desc"]] });
@@ -124,7 +153,11 @@ export const serviceTokenServiceFactory = ({
   const fnValidateServiceToken = async (token: string) => {
     const [, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>token.split(".", 3);
     const serviceToken = await serviceTokenDAL.findById(TOKEN_IDENTIFIER);
+
     if (!serviceToken) throw new UnauthorizedError();
+    const project = await projectDAL.findById(serviceToken.projectId);
+
+    if (!project) throw new UnauthorizedError({ message: "Service token project not found" });
 
     if (serviceToken.expiresAt && new Date(serviceToken.expiresAt) < new Date()) {
       await serviceTokenDAL.deleteById(serviceToken.id);
@@ -136,7 +169,8 @@ export const serviceTokenServiceFactory = ({
     const updatedToken = await serviceTokenDAL.updateById(serviceToken.id, {
       lastUsed: new Date()
     });
-    return updatedToken;
+
+    return { ...serviceToken, lastUsed: updatedToken.lastUsed, orgId: project.orgId };
   };
 
   return {

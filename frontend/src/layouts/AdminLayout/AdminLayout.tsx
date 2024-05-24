@@ -4,6 +4,7 @@
 /* eslint-disable vars-on-top */
 /* eslint-disable no-var */
 /* eslint-disable func-names */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 
 import { useTranslation } from "react-i18next";
@@ -121,7 +122,7 @@ export const AdminLayout = ({ children }: LayoutProps) => {
                         </div>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
-                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.email}</div>
+                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.username}</div>
                         <Link href="/personal-settings">
                           <DropdownMenuItem>Personal Settings</DropdownMenuItem>
                         </Link>

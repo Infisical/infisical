@@ -44,6 +44,7 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
         type: ActorType.USER,
         metadata: {
           email: req.auth.user.email,
+          username: req.auth.user.username,
           userId: req.permission.id
         }
       };
@@ -62,6 +63,11 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
           name: req.auth.identityName,
           identityId: req.auth.identityId
         }
+      };
+    } else if (req.auth.actor === ActorType.SCIM_CLIENT) {
+      payload.actor = {
+        type: ActorType.SCIM_CLIENT,
+        metadata: {}
       };
     } else {
       throw new BadRequestError({ message: "Missing logic for other actor" });

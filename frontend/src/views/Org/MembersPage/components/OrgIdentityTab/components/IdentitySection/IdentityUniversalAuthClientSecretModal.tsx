@@ -7,7 +7,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { format } from "date-fns";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   DeleteActionModal,
@@ -66,7 +66,7 @@ export const IdentityUniversalAuthClientSecretModal = ({
   handlePopUpToggle
 }: Props) => {
   const { t } = useTranslation();
-  const { createNotification } = useNotificationContext();
+  
   const [token, setToken] = useState("");
   const [isClientSecretCopied, setIsClientSecretCopied] = useToggle(false);
   const [isClientIdCopied, setIsClientIdCopied] = useToggle(false);

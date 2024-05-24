@@ -7,13 +7,14 @@ import {
   faMoneyBill,
   faServer,
   faSignIn,
+  faUser,
   faUserCog,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useCreateOrgRole, useUpdateOrgRole } from "@app/hooks/api";
@@ -35,10 +36,16 @@ type Props = {
 
 const SIMPLE_PERMISSION_OPTIONS = [
   {
-    title: "Members management",
-    subtitle: "Invite, view and remove members from the organization",
-    icon: faUsers,
+    title: "User management",
+    subtitle: "Invite, view and remove users from the organization",
+    icon: faUser,
     formName: "member"
+  },
+  {
+    title: "Group management",
+    subtitle: "Invite, view and remove user groups from the organization",
+    icon: faUsers,
+    formName: "groups"
   },
   {
     title: "Machine identity management",
@@ -81,6 +88,18 @@ const SIMPLE_PERMISSION_OPTIONS = [
     subtitle: "Define organization level SSO requirements",
     icon: faSignIn,
     formName: "sso"
+  },
+  {
+    title: "LDAP",
+    subtitle: "Define organization level LDAP requirements",
+    icon: faSignIn,
+    formName: "ldap"
+  },
+  {
+    title: "SCIM",
+    subtitle: "Define organization level SCIM requirements",
+    icon: faUsers,
+    formName: "scim"
   }
 ] as const;
 
@@ -88,7 +107,7 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
   const isNonEditable = ["owner", "admin", "member", "no-access"].includes(role?.slug || "");
   const isNewRole = !role?.slug;
 
-  const { createNotification } = useNotificationContext();
+  
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const {

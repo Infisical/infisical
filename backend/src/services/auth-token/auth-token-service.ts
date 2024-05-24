@@ -27,10 +27,17 @@ export const getTokenConfig = (tokenType: TokenType) => {
       const expiresAt = new Date(new Date().getTime() + 86400000);
       return { token, expiresAt };
     }
+    case TokenType.TOKEN_EMAIL_VERIFICATION: {
+      // generate random 6-digit code
+      const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
+      const triesLeft = 3;
+      const expiresAt = new Date(new Date().getTime() + 86400000);
+      return { token, triesLeft, expiresAt };
+    }
     case TokenType.TOKEN_EMAIL_MFA: {
       // generate random 6-digit code
       const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
-      const triesLeft = 5;
+      const triesLeft = 3;
       const expiresAt = new Date(new Date().getTime() + 300000);
       return { token, triesLeft, expiresAt };
     }
@@ -141,7 +148,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL }: TAuthTokenServiceFact
     const user = await userDAL.findById(session.userId);
     if (!user || !user.isAccepted) throw new UnauthorizedError({ name: "Token user not found" });
 
-    return { user, tokenVersionId: token.tokenVersionId };
+    return { user, tokenVersionId: token.tokenVersionId, orgId: token.organizationId };
   };
 
   return {

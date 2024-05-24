@@ -1,6 +1,7 @@
 import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
 import Redis from "ioredis";
 
+import { SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TScanFullRepoEventPayload,
@@ -12,10 +13,13 @@ export enum QueueName {
   SecretReminder = "secret-reminder",
   AuditLog = "audit-log",
   AuditLogPrune = "audit-log-prune",
+  TelemetryInstanceStats = "telemtry-self-hosted-stats",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
   SecretFullRepoScan = "secret-full-repo-scan",
-  SecretPushEventScan = "secret-push-event-scan"
+  SecretPushEventScan = "secret-push-event-scan",
+  UpgradeProjectToGhost = "upgrade-project-to-ghost",
+  DynamicSecretRevocation = "dynamic-secret-revocation"
 }
 
 export enum QueueJobs {
@@ -24,8 +28,12 @@ export enum QueueJobs {
   AuditLog = "audit-log-job",
   AuditLogPrune = "audit-log-prune-job",
   SecWebhook = "secret-webhook-trigger",
+  TelemetryInstanceStats = "telemetry-self-hosted-stats",
   IntegrationSync = "secret-integration-pull",
-  SecretScan = "secret-scan"
+  SecretScan = "secret-scan",
+  UpgradeProjectToGhost = "upgrade-project-to-ghost-job",
+  DynamicSecretRevocation = "dynamic-secret-revocation",
+  DynamicSecretPruning = "dynamic-secret-pruning"
 }
 
 export type TQueueJobTypes = {
@@ -53,17 +61,53 @@ export type TQueueJobTypes = {
   };
   [QueueName.SecretWebhook]: {
     name: QueueJobs.SecWebhook;
-    payload: { projectId: string; environment: string; secretPath: string };
+    payload: { projectId: string; environment: string; secretPath: string; depth?: number };
   };
   [QueueName.IntegrationSync]: {
     name: QueueJobs.IntegrationSync;
-    payload: { projectId: string; environment: string; secretPath: string };
+    payload: {
+      projectId: string;
+      environment: string;
+      secretPath: string;
+      depth?: number;
+      deDupeQueue?: Record<string, boolean>;
+    };
   };
   [QueueName.SecretFullRepoScan]: {
     name: QueueJobs.SecretScan;
     payload: TScanFullRepoEventPayload;
   };
   [QueueName.SecretPushEventScan]: { name: QueueJobs.SecretScan; payload: TScanPushEventPayload };
+  [QueueName.UpgradeProjectToGhost]: {
+    name: QueueJobs.UpgradeProjectToGhost;
+    payload: {
+      projectId: string;
+      startedByUserId: string;
+      encryptedPrivateKey: {
+        encryptedKey: string;
+        encryptedKeyIv: string;
+        encryptedKeyTag: string;
+        keyEncoding: SecretKeyEncoding;
+      };
+    };
+  };
+  [QueueName.TelemetryInstanceStats]: {
+    name: QueueJobs.TelemetryInstanceStats;
+    payload: undefined;
+  };
+  [QueueName.DynamicSecretRevocation]:
+    | {
+        name: QueueJobs.DynamicSecretRevocation;
+        payload: {
+          leaseId: string;
+        };
+      }
+    | {
+        name: QueueJobs.DynamicSecretPruning;
+        payload: {
+          dynamicSecretCfgId: string;
+        };
+      };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;

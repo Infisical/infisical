@@ -15,7 +15,7 @@ import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
-import { completeAccountSignup } from "@app/hooks/api/auth/queries";
+import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import ProjectService from "@app/services/ProjectService";
 
@@ -24,7 +24,7 @@ const client = new jsrp.client();
 
 type Props = {
   setStep: (step: number) => void;
-  email: string;
+  username: string;
   password: string;
   setPassword: (value: string) => void;
   name: string;
@@ -57,7 +57,7 @@ type Errors = {
  * @param {string} obj.setLastName - function managing the state of user's last name
  */
 export const UserInfoSSOStep = ({
-  email,
+  username,
   name,
   providerOrganizationName,
   password,
@@ -72,6 +72,7 @@ export const UserInfoSSOStep = ({
   const [errors, setErrors] = useState<Errors>({});
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   useEffect(() => {
     if (providerOrganizationName !== undefined) {
@@ -113,7 +114,7 @@ export const UserInfoSSOStep = ({
 
       client.init(
         {
-          username: email,
+          username,
           password
         },
         async () => {
@@ -156,7 +157,7 @@ export const UserInfoSSOStep = ({
               });
 
               const response = await completeAccountSignup({
-                email,
+                email: username,
                 firstName: name.split(" ")[0],
                 lastName: name.split(" ").slice(1).join(" "),
                 protectedKey,
@@ -188,15 +189,19 @@ export const UserInfoSSOStep = ({
 
               const userOrgs = await fetchOrganizations();
               const orgId = userOrgs[0]?.id;
+
+              await selectOrganization({
+                organizationId: orgId
+              });
+
               const project = await ProjectService.initProject({
-                organizationId: orgId,
                 projectName: "Example Project"
               });
 
               localStorage.setItem("orgData.id", orgId);
               localStorage.setItem("projectData.id", project.id);
 
-              setStep(1);
+              setStep(2);
             } catch (error) {
               setIsLoading(false);
               console.error(error);
@@ -244,6 +249,7 @@ export const UserInfoSSOStep = ({
               onChange={(e) => setOrganizationName(e.target.value)}
               isRequired
               className="h-12"
+              maxLength={64}
               disabled
             />
             {organizationNameError && (

@@ -1,31 +1,58 @@
 ---
 title: "Twilio SendGrid"
-description: "Rotate Twilio SendGrid API keys"
+description: "Find out how to rotate Twilio SendGrid API keys."
 ---
 
-Twilio SendGrid is a cloud-based email delivery platform that helps businesses send transactional and marketing emails.
-It uses an API key to do various operations. Using Infisical you can easily dynamically change the keys.
+Eliminate the use of long lived secrets by rotating Twilio SendGrid API keys with Infisical.
 
-## Working
+## Prerequisite
 
-1. Infisical will need an admin token of SendGrid to create API keys dynamically.
-2. Using the given admin token and scope by user Infisical will create and rotate API keys periodically
-3. Under the hood infisical uses [SendGrid API](https://docs.sendgrid.com/api-reference/api-keys/create-api-keys)
+You will need a valid SendGrid admin key with the necessary scope to create additional API keys. 
+
+Follow the [SendGrid Docs to create an admin api key](https://docs.sendgrid.com/ui/account-and-settings/api-keys).
+
+## How it works
+
+Using the provided admin API key, Infisical will attempt to create child API keys with the specified permissions. 
+New keys will ge generated every time a rotation occurs. Behind the scenes, Infisical uses the [SendGrid API](https://docs.sendgrid.com/api-reference/api-keys/create-api-keys) to generate new API keys.
 
 ## Rotation Configuration
 
-1. Head over to Secret Rotation configuration page of your project by clicking on side bar `Secret Rotation`
-2. Click on `Twilio SendGrid Card`
-3. Provide the inputs
-	- Admin API Key: 
-		SendGrid admin key to create lower scoped API keys.
-	- API Key Scopes
-		SendGrid generated API Key's scopes. For more info refer [this doc](https://docs.sendgrid.com/api-reference/api-key-permissions/api-key-permissions)
+<Steps>
+  <Step title="Open Secret Rotation Page">
+	Head over to Secret Rotation configuration page of your project by clicking on `Secret Rotation` in the left side bar 
+  </Step>
+  <Step title="Click on Twilio SendGrid Card" />
+  <Step title="Provide the inputs">
+	<ParamField path="Admin API Key" type="string" required>
+		SendGrid admin API key with permission to create child scoped API keys.
+	</ParamField>
 
-4. Final step
-	- Select `Environment`, `Secret Path` and `Interval` to rotate the secrets
-	- Finally select the secrets in your provided board to replace with new secret after each rotation
-	- Your done and good to go.
-
-Now your output mapped secret value will be replaced periodically by SendGrid.
+	<ParamField path="Admin API Key" type="array" required>
+		The permissions that the newly generated API keys will have. To view possible permissions, visit [this documentation](https://docs.sendgrid.com/api-reference/api-key-permissions/api-key-permissions).
+		Permissions must be entered as a list of strings. 
 		
+		Example: `["user.profile.read", "user.profile.update"]`
+	</ParamField>
+  </Step>
+  <Step title="Configure the output secret mapping">
+  	When a secret rotation is successful, the updated values needs to be saved to an existing key(s) in your project. 
+	<ParamField path="Environment" type="string" required>
+		The environment where the rotated credentials should be mapped to.
+	</ParamField>
+
+	<ParamField path="Secret Path" type="string" required>
+		The secret path where the rotated credentials should be mapped to.
+	</ParamField>
+
+	<ParamField path="Interval" type="number" required>
+		What interval should the credentials be rotated in days.
+	</ParamField>
+
+	<ParamField path="API KEY" type="string" required>
+		Select an existing select key where the newly rotated API key will get saved to.
+	</ParamField>
+  </Step>
+</Steps>
+
+Now your output mapped secret value will be replaced periodically by SendGrid.	

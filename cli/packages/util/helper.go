@@ -8,9 +8,14 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"sort"
 	"strings"
+	"time"
 
+	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/models"
+	"github.com/go-resty/resty/v2"
+	"github.com/spf13/cobra"
 )
 
 type DecodedSymmetricEncryptionDetails = struct {
@@ -49,6 +54,14 @@ func GetBase64DecodedSymmetricEncryptionDetails(key string, cipher string, IV st
 	}, nil
 }
 
+// Helper function to sort the secrets by key so we can create a consistent output
+func SortSecretsByKeys(secrets []models.SingleEnvironmentVariable) []models.SingleEnvironmentVariable {
+	sort.Slice(secrets, func(i, j int) bool {
+		return secrets[i].Key < secrets[j].Key
+	})
+	return secrets
+}
+
 func IsSecretEnvironmentValid(env string) bool {
 	if env == "prod" || env == "dev" || env == "test" || env == "staging" {
 		return true
@@ -61,6 +74,72 @@ func IsSecretTypeValid(s string) bool {
 		return true
 	}
 	return false
+}
+
+func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err error) {
+	infisicalToken, err := cmd.Flags().GetString("token")
+
+	if err != nil {
+		return nil, err
+	}
+
+	if infisicalToken == "" { // If no flag is passed, we first check for the universal auth access token env variable.
+		infisicalToken = os.Getenv(INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN_NAME)
+
+		if infisicalToken == "" { // If it's still empty after the first env check, we check for the service token env variable.
+			infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
+		}
+	}
+
+	if infisicalToken == "" { // If it's empty, we return nothing at all.
+		return nil, nil
+	}
+
+	if strings.HasPrefix(infisicalToken, "st.") {
+		return &models.TokenDetails{
+			Type:  SERVICE_TOKEN_IDENTIFIER,
+			Token: infisicalToken,
+		}, nil
+	}
+
+	return &models.TokenDetails{
+		Type:  UNIVERSAL_AUTH_TOKEN_IDENTIFIER,
+		Token: infisicalToken,
+	}, nil
+
+}
+
+func UniversalAuthLogin(clientId string, clientSecret string) (api.UniversalAuthLoginResponse, error) {
+	httpClient := resty.New()
+	httpClient.SetRetryCount(10000).
+		SetRetryMaxWaitTime(20 * time.Second).
+		SetRetryWaitTime(5 * time.Second)
+
+	tokenResponse, err := api.CallUniversalAuthLogin(httpClient, api.UniversalAuthLoginRequest{ClientId: clientId, ClientSecret: clientSecret})
+	if err != nil {
+		return api.UniversalAuthLoginResponse{}, err
+	}
+
+	return tokenResponse, nil
+}
+
+func RenewUniversalAuthAccessToken(accessToken string) (string, error) {
+
+	httpClient := resty.New()
+	httpClient.SetRetryCount(10000).
+		SetRetryMaxWaitTime(20 * time.Second).
+		SetRetryWaitTime(5 * time.Second)
+
+	request := api.UniversalAuthRefreshRequest{
+		AccessToken: accessToken,
+	}
+
+	tokenResponse, err := api.CallUniversalAuthRefreshAccessToken(httpClient, request)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenResponse.AccessToken, nil
 }
 
 // Checks if the passed in email already exists in the users slice
@@ -80,6 +159,11 @@ func RequireLogin() {
 	if configFile.LoggedInUserEmail == "" {
 		PrintErrorMessageAndExit("You must be logged in to run this command. To login, run [infisical login]")
 	}
+}
+
+func IsLoggedIn() bool {
+	configFile, _ := GetConfigFile()
+	return configFile.LoggedInUserEmail != ""
 }
 
 func RequireServiceToken() {

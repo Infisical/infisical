@@ -3,7 +3,7 @@ import { subject } from "@casl/ability";
 import { faClose, faFolder, faPencilSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton, Modal, ModalContent } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
@@ -20,12 +20,14 @@ type Props = {
   workspaceId: string;
   secretPath?: string;
   sortDir: SortDir;
+  searchTerm?: string;
 };
 
 export const FolderListView = ({
   folders = [],
   environment,
   workspaceId,
+  searchTerm,
   secretPath = "/",
   sortDir = SortDir.ASC
 }: Props) => {
@@ -34,8 +36,6 @@ export const FolderListView = ({
     "deleteFolder"
   ] as const);
   const router = useRouter();
-
-  const { createNotification } = useNotificationContext();
 
   const { mutateAsync: updateFolder } = useUpdateFolder();
   const { mutateAsync: deleteFolder } = useDeleteFolder();
@@ -100,6 +100,7 @@ export const FolderListView = ({
   return (
     <>
       {folders
+        .filter(({ name }) => name.toUpperCase().includes(String(searchTerm?.toUpperCase())))
         .sort((a, b) =>
           sortDir === SortDir.ASC
             ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())

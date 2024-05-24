@@ -1,7 +1,5 @@
 // REFACTOR(akhilmhdh): This file needs to be split into multiple components too complex
 
-import crypto from "crypto";
-
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -23,17 +21,16 @@ import {
   faNetworkWired,
   faPlug,
   faPlus,
-  faUserPlus,
+  faUserPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
-import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   Checkbox,
@@ -47,6 +44,7 @@ import {
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
+  useOrganization,
   useSubscription,
   useUser,
   useWorkspace
@@ -54,12 +52,11 @@ import {
 import { withPermission } from "@app/hoc";
 import {
   fetchOrgUsers,
-  useAddUserToWs,
+  useAddUserToWsNonE2EE,
   useCreateWorkspace,
-  useRegisterUserAction,
-  useUploadWsKey
+  useRegisterUserAction
 } from "@app/hooks/api";
-import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
+// import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -312,9 +309,8 @@ const LearningItem = ({
         href={link}
       >
         <div
-          className={`${
-            complete ? "bg-gradient-to-r from-primary-500/70 p-[0.07rem]" : ""
-          } mb-3 rounded-md`}
+          className={`${complete ? "bg-gradient-to-r from-primary-500/70 p-[0.07rem]" : ""
+            } mb-3 rounded-md`}
         >
           <div
             onKeyDown={() => null}
@@ -325,11 +321,10 @@ const LearningItem = ({
                 await registerUserAction.mutateAsync(userAction);
               }
             }}
-            className={`group relative flex h-[5.5rem] w-full items-center justify-between overflow-hidden rounded-md border ${
-              complete
+            className={`group relative flex h-[5.5rem] w-full items-center justify-between overflow-hidden rounded-md border ${complete
                 ? "cursor-default border-mineshaft-900 bg-gradient-to-r from-[#0e1f01] to-mineshaft-700"
                 : "cursor-pointer border-mineshaft-600 bg-mineshaft-800 shadow-xl hover:bg-mineshaft-700"
-            } text-mineshaft-100 duration-200`}
+              } text-mineshaft-100 duration-200`}
           >
             <div className="mr-4 flex flex-row items-center">
               <FontAwesomeIcon icon={icon} className="mx-2 w-16 text-4xl" />
@@ -407,9 +402,8 @@ const LearningItemSquare = ({
       href={link}
     >
       <div
-        className={`${
-          complete ? "bg-gradient-to-r from-primary-500/70 p-[0.07rem]" : ""
-        } w-full rounded-md`}
+        className={`${complete ? "bg-gradient-to-r from-primary-500/70 p-[0.07rem]" : ""
+          } w-full rounded-md`}
       >
         <div
           onKeyDown={() => null}
@@ -420,11 +414,10 @@ const LearningItemSquare = ({
               await registerUserAction.mutateAsync(userAction);
             }
           }}
-          className={`group relative flex w-full items-center justify-between overflow-hidden rounded-md border ${
-            complete
+          className={`group relative flex w-full items-center justify-between overflow-hidden rounded-md border ${complete
               ? "cursor-default border-mineshaft-900 bg-gradient-to-r from-[#0e1f01] to-mineshaft-700"
               : "cursor-pointer border-mineshaft-600 bg-mineshaft-800 shadow-xl hover:bg-mineshaft-700"
-          } text-mineshaft-100 duration-200`}
+            } text-mineshaft-100 duration-200`}
         >
           <div className="flex w-full flex-col items-center px-6 py-4">
             <div className="flex w-full flex-row items-start justify-between">
@@ -438,9 +431,8 @@ const LearningItemSquare = ({
                 </div>
               )}
               <div
-                className={`text-right text-sm font-normal text-mineshaft-300 ${
-                  complete ? "font-semibold text-primary" : ""
-                }`}
+                className={`text-right text-sm font-normal text-mineshaft-300 ${complete ? "font-semibold text-primary" : ""
+                  }`}
               >
                 {complete ? "Complete!" : `About ${time}`}
               </div>
@@ -457,7 +449,12 @@ const LearningItemSquare = ({
 };
 
 const formSchema = yup.object({
-  name: yup.string().required().label("Project Name").trim(),
+  name: yup
+    .string()
+    .required()
+    .label("Project Name")
+    .trim()
+    .max(64, "Too long, maximum length is 64 characters"),
   addMembers: yup.bool().required().label("Add Members")
 });
 
@@ -472,10 +469,11 @@ const OrganizationPage = withPermission(
     const router = useRouter();
 
     const { workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
-    const currentOrg = String(router.query.id);
-    const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === currentOrg) || [];
-    const { createNotification } = useNotificationContext();
-    const addWsUser = useAddUserToWs();
+    const { currentOrg } = useOrganization();
+    const routerOrgId = String(router.query.id);
+    const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === routerOrgId) || [];
+
+    const addUsersToProject = useAddUserToWsNonE2EE();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "addNewWs",
@@ -497,61 +495,38 @@ const OrganizationPage = withPermission(
     const [searchFilter, setSearchFilter] = useState("");
     const createWs = useCreateWorkspace();
     const { user } = useUser();
-    const uploadWsKey = useUploadWsKey();
     const { data: serverDetails } = useFetchServerStatus();
 
     const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
       // type check
       if (!currentOrg) return;
+      if (!user) return;
       try {
         const {
           data: {
-            workspace: { id: newWorkspaceId }
+            project: { id: newProjectId }
           }
         } = await createWs.mutateAsync({
-          organizationId: currentOrg,
-          workspaceName: name
-        });
-
-        const randomBytes = crypto.randomBytes(16).toString("hex");
-        const PRIVATE_KEY = String(localStorage.getItem("PRIVATE_KEY"));
-        const { ciphertext, nonce } = encryptAssymmetric({
-          plaintext: randomBytes,
-          publicKey: user.publicKey,
-          privateKey: PRIVATE_KEY
-        });
-
-        await uploadWsKey.mutateAsync({
-          encryptedKey: ciphertext,
-          nonce,
-          userId: user?.id,
-          workspaceId: newWorkspaceId
+          projectName: name
         });
 
         if (addMembers) {
-          // not using hooks because need at this point only
-          const orgUsers = await fetchOrgUsers(currentOrg);
-          const decryptKey = await fetchUserWsKey(newWorkspaceId);
-          const members = orgUsers
-            .filter(
-              ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
-            )
-            .map(({ user: orgUser, id: orgMembershipId }) => ({
-              userPublicKey: orgUser.publicKey,
-              orgMembershipId
-            }));
-          if (members.length) {
-            await addWsUser.mutateAsync({
-              workspaceId: newWorkspaceId,
-              decryptKey,
-              userPrivateKey: PRIVATE_KEY,
-              members
-            });
-          }
+          const orgUsers = await fetchOrgUsers(currentOrg.id);
+
+          await addUsersToProject.mutateAsync({
+            usernames: orgUsers
+              .map((member) => member.user.username)
+              .filter((username) => username !== user.username),
+            projectId: newProjectId
+          });
         }
-        createNotification({ text: "Workspace created", type: "success" });
+
+        // eslint-disable-next-line no-promise-executor-return -- We do this because the function returns too fast, which sometimes causes an error when the user is redirected.
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+
         handlePopUpClose("addNewWs");
-        router.push(`/project/${newWorkspaceId}/secrets/overview`);
+        createNotification({ text: "Workspace created", type: "success" });
+        router.push(`/project/${newProjectId}/secrets/overview`);
       } catch (err) {
         console.error(err);
         createNotification({ text: "Failed to create workspace", type: "error" });
@@ -566,7 +541,7 @@ const OrganizationPage = withPermission(
 
     useEffect(() => {
       onboardingCheck({
-        orgId: currentOrg,
+        orgId: routerOrgId,
         setHasUserClickedIntro,
         setHasUserClickedSlack,
         setHasUserPushedSecrets,
@@ -655,22 +630,21 @@ const OrganizationPage = withPermission(
             {orgWorkspaces
               .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
               .map((workspace) => (
+                // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
                 <div
+                  onClick={() => {
+                    router.push(`/project/${workspace.id}/secrets/overview`);
+                    localStorage.setItem("projectData.id", workspace.id);
+                  }}
                   key={workspace.id}
-                  className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+                  className="min-w-72 group flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
                 >
-                  <div className="mt-0 text-lg text-mineshaft-100">{workspace.name}</div>
+                  <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
                   <div className="mt-0 pb-6 text-sm text-mineshaft-300">
                     {workspace.environments?.length || 0} environments
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      router.push(`/project/${workspace.id}/secrets/overview`);
-                      localStorage.setItem("projectData.id", workspace.id);
-                    }}
-                  >
-                    <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
+                  <button type="button">
+                    <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all group-hover:border-primary-500/80 group-hover:bg-primary-800/20 group-hover:text-mineshaft-200">
                       Explore{" "}
                       <FontAwesomeIcon
                         icon={faArrowRight}
@@ -717,7 +691,7 @@ const OrganizationPage = withPermission(
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group ml-auto w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200"
+                    className="group ml-auto w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200"
                     href={feature.link}
                   >
                     Learn more{" "}
@@ -735,95 +709,94 @@ const OrganizationPage = withPermission(
           new Date().getTime() - new Date(user?.createdAt).getTime() <
           30 * 24 * 60 * 60 * 1000
         ) && (
-          <div className="mb-4 flex flex-col items-start justify-start px-6 pb-6 pb-0 text-3xl">
-            <p className="mr-4 mb-4 font-semibold text-white">Onboarding Guide</p>
-            <div className="mb-3 grid w-full grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              <LearningItemSquare
-                text="Watch Infisical demo"
-                subText="Set up Infisical in 3 min."
-                complete={hasUserClickedIntro}
-                icon={faHandPeace}
-                time="3 min"
-                userAction="intro_cta_clicked"
-                link="https://www.youtube.com/watch?v=PK23097-25I"
-              />
-              {orgWorkspaces.length !== 0 && (
-                <>
-                  <LearningItemSquare
-                    text="Add your secrets"
-                    subText="Drop a .env file or type your secrets."
-                    complete={hasUserPushedSecrets}
-                    icon={faPlus}
-                    time="1 min"
-                    userAction="first_time_secrets_pushed"
-                    link={`/project/${orgWorkspaces[0]?.id}/secrets/overview`}
-                  />
-                  <LearningItemSquare
-                    text="Invite your teammates"
-                    subText="Infisical is better used as a team."
-                    complete={usersInOrg}
-                    icon={faUserPlus}
-                    time="2 min"
-                    link={`/org/${router.query.id}/members?action=invite`}
-                  />
-                </>
-              )}
-              <div className="block xl:hidden 2xl:block">
+            <div className="mb-4 flex flex-col items-start justify-start px-6 pb-0 text-3xl">
+              <p className="mr-4 mb-4 font-semibold text-white">Onboarding Guide</p>
+              <div className="mb-3 grid w-full grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 <LearningItemSquare
-                  text="Join Infisical Slack"
-                  subText="Have any questions? Ask us!"
-                  complete={hasUserClickedSlack}
-                  icon={faSlack}
-                  time="1 min"
-                  userAction="slack_cta_clicked"
-                  link="https://infisical.com/slack"
+                  text="Watch Infisical demo"
+                  subText="Set up Infisical in 3 min."
+                  complete={hasUserClickedIntro}
+                  icon={faHandPeace}
+                  time="3 min"
+                  userAction="intro_cta_clicked"
+                  link="https://www.youtube.com/watch?v=PK23097-25I"
                 />
+                {orgWorkspaces.length !== 0 && (
+                  <>
+                    <LearningItemSquare
+                      text="Add your secrets"
+                      subText="Drop a .env file or type your secrets."
+                      complete={hasUserPushedSecrets}
+                      icon={faPlus}
+                      time="1 min"
+                      userAction="first_time_secrets_pushed"
+                      link={`/project/${orgWorkspaces[0]?.id}/secrets/overview`}
+                    />
+                    <LearningItemSquare
+                      text="Invite your teammates"
+                      subText="Infisical is better used as a team."
+                      complete={usersInOrg}
+                      icon={faUserPlus}
+                      time="2 min"
+                      link={`/org/${router.query.id}/members?action=invite`}
+                    />
+                  </>
+                )}
+                <div className="block xl:hidden 2xl:block">
+                  <LearningItemSquare
+                    text="Join Infisical Slack"
+                    subText="Have any questions? Ask us!"
+                    complete={hasUserClickedSlack}
+                    icon={faSlack}
+                    time="1 min"
+                    userAction="slack_cta_clicked"
+                    link="https://infisical.com/slack"
+                  />
+                </div>
               </div>
-            </div>
-            {orgWorkspaces.length !== 0 && (
-              <div className="group relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 text-mineshaft-100 shadow-xl duration-200">
-                <div className="mb-4 flex w-full flex-row items-center pr-4">
-                  <div className="mr-4 flex w-full flex-row items-center">
-                    <FontAwesomeIcon icon={faNetworkWired} className="mx-2 w-16 text-4xl" />
-                    {false && (
-                      <div className="absolute left-12 top-10 flex h-7 w-7 items-center justify-center rounded-full bg-bunker-500 p-2 group-hover:bg-mineshaft-700">
-                        <FontAwesomeIcon
-                          icon={faCheckCircle}
-                          className="h-5 w-5 text-4xl text-green"
-                        />
-                      </div>
-                    )}
-                    <div className="flex flex-col items-start pl-0.5">
-                      <div className="mt-0.5 text-xl font-semibold">Inject secrets locally</div>
-                      <div className="text-sm font-normal">
-                        Replace .env files with a more secure and efficient alternative.
+              {orgWorkspaces.length !== 0 && (
+                <div className="group relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 text-mineshaft-100 shadow-xl duration-200">
+                  <div className="mb-4 flex w-full flex-row items-center pr-4">
+                    <div className="mr-4 flex w-full flex-row items-center">
+                      <FontAwesomeIcon icon={faNetworkWired} className="mx-2 w-16 text-4xl" />
+                      {false && (
+                        <div className="absolute left-12 top-10 flex h-7 w-7 items-center justify-center rounded-full bg-bunker-500 p-2 group-hover:bg-mineshaft-700">
+                          <FontAwesomeIcon
+                            icon={faCheckCircle}
+                            className="h-5 w-5 text-4xl text-green"
+                          />
+                        </div>
+                      )}
+                      <div className="flex flex-col items-start pl-0.5">
+                        <div className="mt-0.5 text-xl font-semibold">Inject secrets locally</div>
+                        <div className="text-sm font-normal">
+                          Replace .env files with a more secure and efficient alternative.
+                        </div>
                       </div>
                     </div>
+                    <div
+                      className={`w-28 pr-4 text-right text-sm font-semibold ${false && "text-green"
+                        }`}
+                    >
+                      About 2 min
+                    </div>
                   </div>
-                  <div
-                    className={`w-28 pr-4 text-right text-sm font-semibold ${
-                      false && "text-green"
-                    }`}
-                  >
-                    About 2 min
-                  </div>
+                  <TabsObject />
+                  {false && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
                 </div>
-                <TabsObject />
-                {false && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
-              </div>
-            )}
-            {orgWorkspaces.length !== 0 && (
-              <LearningItem
-                text="Integrate Infisical with your infrastructure"
-                subText="Connect Infisical to various 3rd party services and platforms."
-                complete={false}
-                icon={faPlug}
-                time="15 min"
-                link="https://infisical.com/docs/integrations/overview"
-              />
-            )}
-          </div>
-        )}
+              )}
+              {orgWorkspaces.length !== 0 && (
+                <LearningItem
+                  text="Integrate Infisical with your infrastructure"
+                  subText="Connect Infisical to various 3rd party services and platforms."
+                  complete={false}
+                  icon={faPlug}
+                  time="15 min"
+                  link="https://infisical.com/docs/integrations/overview"
+                />
+              )}
+            </div>
+          )}
         <Modal
           isOpen={popUp.addNewWs.isOpen}
           onOpenChange={(isModalOpen) => {

@@ -10,7 +10,8 @@
   <a href="https://infisical.com/">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/documentation/getting-started/introduction">Docs</a> |
-  <a href="https://www.infisical.com">Website</a>
+  <a href="https://www.infisical.com">Website</a> |
+  <a href="https://infisical.com/careers">Hiring (Remote/SF)</a>
 </h4>
 
 <p align="center">
@@ -75,7 +76,7 @@ Check out the [Quickstart Guides](https://infisical.com/docs/getting-started/int
 
 | Use Infisical Cloud                                                                                                                                     | Deploy Infisical on premise                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The fastest and most reliable way to <br> get started with Infisical is signing up <br> for free to [Infisical Cloud](https://app.infisical.com/login). | <a href="https://infisical.com/docs/self-hosting/deployment-options/aws-ec2"><img src=".github/images/deploy-to-aws.png" width="150" width="300" /></a> <a href="https://infisical.com/docs/self-hosting/deployment-options/digital-ocean-marketplace" alt="Deploy to DigitalOcean"> <img width="217" alt="Deploy to DO" src="https://www.deploytodo.com/do-btn-blue.svg"/> </a> <br> View all [deployment options](https://infisical.com/docs/self-hosting/overview) |
+| The fastest and most reliable way to <br> get started with Infisical is signing up <br> for free to [Infisical Cloud](https://app.infisical.com/login). |  <br> View all [deployment options](https://infisical.com/docs/self-hosting/overview) |
 
 ### Run Infisical locally
 
@@ -84,13 +85,13 @@ To set up and run Infisical locally, make sure you have Git and Docker installed
 Linux/macOS:
 
 ```console
-git clone https://github.com/Infisical/infisical && cd "$(basename $_ .git)" && cp .env.example .env && docker-compose -f docker-compose.yml up
+git clone https://github.com/Infisical/infisical && cd "$(basename $_ .git)" && cp .env.example .env && docker-compose -f docker-compose.prod.yml up
 ```
 
 Windows Command Prompt:
 
 ```console
-git clone https://github.com/Infisical/infisical && cd infisical && copy .env.example .env && docker-compose -f docker-compose.yml up
+git clone https://github.com/Infisical/infisical && cd infisical && copy .env.example .env && docker-compose -f docker-compose.prod.yml up
 ```
 
 Create an account at `http://localhost:80`

@@ -1,4 +1,4 @@
-import { TOrgRole, TProjectRole } from "../roles/types";
+import { TOrgRole } from "../roles/types";
 import { IdentityAuthMethod } from "./enums";
 
 export type IdentityTrustedIp = {
@@ -29,9 +29,30 @@ export type IdentityMembershipOrg = {
 export type IdentityMembership = {
   id: string;
   identity: Identity;
-  organization: string;
-  role: "admin" | "member" | "viewer" | "no-access" | "custom";
-  customRole?: TProjectRole;
+  roles: Array<
+    {
+      id: string;
+      role: "owner" | "admin" | "member" | "no-access" | "custom";
+      customRoleId: string;
+      customRoleName: string;
+      customRoleSlug: string;
+    } & (
+      | {
+          isTemporary: false;
+          temporaryRange: null;
+          temporaryMode: null;
+          temporaryAccessEndTime: null;
+          temporaryAccessStartTime: null;
+        }
+      | {
+          isTemporary: true;
+          temporaryRange: string;
+          temporaryMode: string;
+          temporaryAccessEndTime: string;
+          temporaryAccessStartTime: string;
+        }
+    )
+  >;
   createdAt: string;
   updatedAt: string;
 };
@@ -84,6 +105,136 @@ export type UpdateIdentityUniversalAuthDTO = {
   clientSecretTrustedIps?: {
     ipAddress: string;
   }[];
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type IdentityGcpAuth = {
+  identityId: string;
+  type: "iam" | "gce";
+  allowedServiceAccounts: string;
+  allowedProjects: string;
+  allowedZones: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityGcpAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  type: "iam" | "gce";
+  allowedServiceAccounts: string;
+  allowedProjects: string;
+  allowedZones: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityGcpAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  type?: "iam" | "gce";
+  allowedServiceAccounts?: string;
+  allowedProjects?: string;
+  allowedZones?: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type IdentityAwsAuth = {
+  identityId: string;
+  type: "iam";
+  stsEndpoint: string;
+  allowedPrincipalArns: string;
+  allowedAccountIds: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityAwsAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  stsEndpoint: string;
+  allowedPrincipalArns: string;
+  allowedAccountIds: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityAwsAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  stsEndpoint?: string;
+  allowedPrincipalArns?: string;
+  allowedAccountIds?: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type IdentityKubernetesAuth = {
+  identityId: string;
+  kubernetesHost: string;
+  tokenReviewerJwt: string;
+  allowedNamespaces: string;
+  allowedNames: string;
+  allowedAudience: string;
+  caCert: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityKubernetesAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  kubernetesHost: string;
+  tokenReviewerJwt: string;
+  allowedNamespaces: string;
+  allowedNames: string;
+  allowedAudience: string;
+  caCert: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityKubernetesAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  kubernetesHost?: string;
+  tokenReviewerJwt?: string;
+  allowedNamespaces?: string;
+  allowedNames?: string;
+  allowedAudience?: string;
+  caCert?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;

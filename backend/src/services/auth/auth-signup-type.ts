@@ -34,4 +34,5 @@ export type TCompleteAccountInviteDTO = {
   verifier: string;
   ip: string;
   userAgent: string;
+  authorization: string;
 };

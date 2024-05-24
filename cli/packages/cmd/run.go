@@ -62,12 +62,17 @@ var runCmd = &cobra.Command{
 			}
 		}
 
-		infisicalToken, err := cmd.Flags().GetString("token")
+		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
 
 		projectConfigDir, err := cmd.Flags().GetString("project-config-dir")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -97,7 +102,27 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports}, projectConfigDir)
+		recursive, err := cmd.Flags().GetBool("recursive")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		request := models.GetAllSecretsParameters{
+			Environment:   environmentName,
+			WorkspaceId:   projectId,
+			TagSlugs:      tagSlugs,
+			SecretsPath:   secretsPath,
+			IncludeImport: includeImports,
+			Recursive:     recursive,
+		}
+
+		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+			request.InfisicalToken = token.Token
+		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+			request.UniversalAuthAccessToken = token.Token
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables(request, projectConfigDir)
 
 		if err != nil {
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
@@ -110,7 +135,16 @@ var runCmd = &cobra.Command{
 		}
 
 		if shouldExpandSecrets {
-			secrets = util.ExpandSecrets(secrets, infisicalToken, projectConfigDir)
+
+			authParams := models.ExpandSecretsAuthentication{}
+
+			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+				authParams.InfisicalToken = token.Token
+			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+				authParams.UniversalAuthAccessToken = token.Token
+			}
+
+			secrets = util.ExpandSecrets(secrets, authParams, projectConfigDir)
 		}
 
 		secretsByKey := getSecretsByKeys(secrets)
@@ -141,7 +175,15 @@ var runCmd = &cobra.Command{
 
 		log.Debug().Msgf("injecting the following environment variables into shell: %v", env)
 
-		Telemetry.CaptureEvent("cli-command:run", posthog.NewProperties().Set("secretsCount", len(secrets)).Set("environment", environmentName).Set("isUsingServiceToken", infisicalToken != "").Set("single-command", strings.Join(args, " ")).Set("multi-command", cmd.Flag("command").Value.String()).Set("version", util.CLI_VERSION))
+		Telemetry.CaptureEvent("cli-command:run",
+			posthog.NewProperties().
+				Set("secretsCount", len(secrets)).
+				Set("environment", environmentName).
+				Set("isUsingServiceToken", token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER).
+				Set("isUsingUniversalAuthToken", token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER).
+				Set("single-command", strings.Join(args, " ")).
+				Set("multi-command", cmd.Flag("command").Value.String()).
+				Set("version", util.CLI_VERSION))
 
 		if cmd.Flags().Changed("command") {
 			command := cmd.Flag("command").Value.String()
@@ -196,9 +238,11 @@ func filterReservedEnvVars(env map[string]models.SingleEnvironmentVariable) {
 func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	runCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	runCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	runCmd.Flags().Bool("include-imports", true, "Import linked secrets ")
+	runCmd.Flags().Bool("recursive", false, "Fetch secrets from all sub-folders")
 	runCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	runCmd.Flags().StringP("command", "c", "", "chained commands to execute (e.g. \"npm install && npm run dev; echo ...\")")
 	runCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs ")

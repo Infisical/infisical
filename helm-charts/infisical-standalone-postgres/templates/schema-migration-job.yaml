@@ -1,0 +1,36 @@
+{{- $infisicalValues := .Values.infisical }}
+{{- if $infisicalValues.autoDatabaseSchemaMigration }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}-schema-migration-{{ .Release.Revision }}"
+  labels:
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      name: "{{ .Release.Name }}-create-tables"
+      labels:
+        app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+        helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    spec:
+    {{- if $infisicalValues.image.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}
+    {{- end }}
+      restartPolicy: OnFailure
+      containers:
+        - name: infisical-schema-migration
+          image: "{{ $infisicalValues.image.repository }}:{{ $infisicalValues.image.tag }}"
+          command: ["npm", "run", "migration:latest"]
+          env:
+          {{- if .Values.postgresql.enabled }}
+          - name: DB_CONNECTION_URI
+            value: {{ include "infisical.postgresDBConnectionString" . }}
+          {{- end }}
+          envFrom:
+          - secretRef:
+              name: {{ $infisicalValues.kubeSecretRef }}
+{{- end }}

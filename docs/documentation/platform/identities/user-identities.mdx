@@ -1,0 +1,22 @@
+---
+title: User Identities
+description: "Read more about the concept of user identities in Infisical."
+---
+
+## Concept
+
+A **user identity** (also known as **user**) represents a developer, admin, or any other human entity interacting with resources in Infisical. 
+
+Users can be added manually (through Web UI) or programmatically (e.g., API) to [organizations](../organization) and [projects](../projects). 
+
+Upon being added to an organization and projects, users assume a certain set of roles and permissions that represents their identity. 
+
+![organization members](../../../images/platform/organization/organization-members.png)
+
+## Authentication methods
+
+To interact with various resources in Infisical, users are able to utilize a number of authentication methods: 
+- **Email & Password**: the most common authentication method that is used for authentication into Web Dashboard and Infisical CLI. It is recommended to utilize [Multi-factor Authentication](/documentation/platform/mfa) in addition to it.  
+- **SSO**: Infisical natively integrates with a number of SSO identity providers like [Google](/documentation/platform/sso/google), [GitHub](/documentation/platform/sso/github), and [GitLab](/documentation/platform/sso/gitlab). 
+- **SAML SSO**: It is also possible to set up SAML SSO integration with identity providers like [Okta](/documentation/platform/sso/okta), [Microsoft Entra ID](/documentation/platform/sso/azure) (formerly known as Azure AD), [JumpCloud](/documentation/platform/sso/jumpcloud), [Google](/documentation/platform/sso/google-saml), and more. 
+- **LDAP**: For organizations with more advanced needs, Infisical also provides user authentication with [LDAP](/documentation/platform/ldap/overview) that includes a number of LDAP providers.

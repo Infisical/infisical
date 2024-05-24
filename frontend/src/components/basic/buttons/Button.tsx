@@ -43,7 +43,7 @@ const Button = ({
   loading,
   icon,
   iconDisabled,
-  type = "button",
+  type = "button"
 }: ButtonProps): JSX.Element => {
   // Check if the button show always be 'active' - then true;
   // or if it should switch between 'active' and 'disabled' - then give the status
@@ -53,9 +53,13 @@ const Button = ({
     "group m-auto md:m-0 inline-block rounded-md duration-200",
 
     // Setting background colors and hover modes
-    color === "mineshaft" && activityStatus && "bg-mineshaft-800 border border-mineshaft-600 hover:bg-primary/[0.15] hover:border-primary/60",
+    color === "mineshaft" &&
+      activityStatus &&
+      "bg-mineshaft-800 border border-mineshaft-600 hover:bg-primary/[0.15] hover:border-primary/60",
     color === "mineshaft" && !activityStatus && "bg-mineshaft",
-    (color === "primary" || !color) && activityStatus && "bg-primary border border-primary-400 opacity-80 hover:opacity-100",
+    (color === "primary" || !color) &&
+      activityStatus &&
+      "bg-primary border border-primary-400 opacity-80 hover:opacity-100",
     (color === "primary" || !color) && !activityStatus && "bg-primary",
     color === "red" && "bg-red-800 border border-red",
 
@@ -78,7 +82,9 @@ const Button = ({
     color !== "mineshaft" && color !== "red" && color !== "none" && "text-black",
     color === "red" && "text-gray-200",
     color === "none" && "text-gray-200 text-xl",
-    activityStatus && color !== "red" && color !== "mineshaft" && color !== "none" ? "group-hover:text-black" : "",
+    activityStatus && color !== "red" && color !== "mineshaft" && color !== "none"
+      ? "group-hover:text-black"
+      : "",
 
     size === "icon" && "flex items-center justify-center"
   );
@@ -103,7 +109,7 @@ const Button = ({
         <div
           className={`${
             loading === true ? "opacity-100" : "opacity-0"
-          } absolute flex items-center px-3 bg-primary duration-200 w-full`}
+          } absolute flex w-full items-center bg-primary px-3 duration-200`}
         >
           <Image
             src="/images/loading/loadingblack.gif"
@@ -116,7 +122,7 @@ const Button = ({
         {icon && (
           <FontAwesomeIcon
             icon={icon}
-            className={`flex my-auto font-extrabold ${size === "icon-sm" ? "text-sm" : "text-sm"} ${
+            className={`my-auto flex font-extrabold ${size === "icon-sm" ? "text-sm" : "text-sm"} ${
               (text || textDisabled) && "mr-2"
             }`}
           />
@@ -124,7 +130,7 @@ const Button = ({
         {iconDisabled && (
           <FontAwesomeIcon
             icon={iconDisabled as IconProp}
-            className={`flex my-auto font-extrabold ${size === "icon-sm" ? "text-sm" : "text-md"} ${
+            className={`my-auto flex font-extrabold ${size === "icon-sm" ? "text-sm" : "text-md"} ${
               (text || textDisabled) && "mr-2"
             }`}
           />

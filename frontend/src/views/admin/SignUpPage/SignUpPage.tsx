@@ -5,14 +5,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { z } from "zod";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { createNotification } from "@app/components/notifications";
 import { generateBackupPDFAsync } from "@app/components/utilities/generateBackupPDF";
 // TODO(akhilmhdh): rewrite this into module functions in lib
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, ContentLoader, FormControl, Input } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
-import { useCreateAdminUser } from "@app/hooks/api";
+import { useCreateAdminUser, useSelectOrganization } from "@app/hooks/api";
 import { generateUserBackupKey, generateUserPassKey } from "@app/lib/crypto";
 import { isLoggedIn } from "@app/reactQuery";
 
@@ -48,7 +48,7 @@ export const SignUpPage = () => {
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema)
   });
-  const { createNotification } = useNotificationContext();
+  
   const [step, setStep] = useState(SignupSteps.DetailsForm);
 
   const { config } = useServerConfig();
@@ -64,6 +64,7 @@ export const SignUpPage = () => {
   }, []);
 
   const { mutateAsync: createAdminUser } = useCreateAdminUser();
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   const handleFormSubmit = async ({ email, password, firstName, lastName }: TFormSchema) => {
     // avoid multi submission
@@ -76,6 +77,7 @@ export const SignUpPage = () => {
         lastName,
         ...userPass
       });
+
       SecurityClient.setToken(res.token);
       saveTokenToLocalStorage({
         publicKey: userPass.publicKey,
@@ -84,6 +86,12 @@ export const SignUpPage = () => {
         tag: userPass.encryptedPrivateKeyTag,
         privateKey
       });
+      await selectOrganization({ organizationId: res.organization.id });
+
+      // TODO(akhilmhdh): This is such a confusing pattern and too unreliable
+      // Will be refactored in next iteration to make it url based rather than local storage ones
+      // Part of migration to nextjs 14
+      localStorage.setItem("orgData.id", res.organization.id);
       setStep(SignupSteps.BackupKey);
     } catch (err) {
       console.log(err);
@@ -128,10 +136,10 @@ export const SignUpPage = () => {
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: 30 }}
           >
-            <div className="flex flex-col items-center space-y-4 text-center">
+            <div className="flex flex-col items-center space-y-2 text-center">
               <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
-              <div className="text-4xl">Welcome to Infisical</div>
-              <div>Create your first Admin Account</div>
+              <div className="pt-4 text-4xl">Welcome to Infisical</div>
+              <div className="pb-4 text-bunker-300">Create your first Super Admin Account</div>
             </div>
             <form onSubmit={handleSubmit(handleFormSubmit)}>
               <div className="mt-8">
@@ -145,7 +153,7 @@ export const SignUpPage = () => {
                         errorText={error?.message}
                         isError={Boolean(error)}
                       >
-                        <Input isFullWidth size="lg" {...field} />
+                        <Input isFullWidth size="md" {...field} />
                       </FormControl>
                     )}
                   />
@@ -158,7 +166,7 @@ export const SignUpPage = () => {
                         errorText={error?.message}
                         isError={Boolean(error)}
                       >
-                        <Input isFullWidth size="lg" {...field} />
+                        <Input isFullWidth size="md" {...field} />
                       </FormControl>
                     )}
                   />
@@ -168,7 +176,7 @@ export const SignUpPage = () => {
                   name="email"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl label="Email" errorText={error?.message} isError={Boolean(error)}>
-                      <Input isFullWidth size="lg" {...field} />
+                      <Input isFullWidth size="md" {...field} />
                     </FormControl>
                   )}
                 />
@@ -181,7 +189,7 @@ export const SignUpPage = () => {
                       errorText={error?.message}
                       isError={Boolean(error)}
                     >
-                      <Input isFullWidth size="lg" type="password" {...field} />
+                      <Input isFullWidth size="md" type="password" {...field} />
                     </FormControl>
                   )}
                 />
@@ -194,13 +202,20 @@ export const SignUpPage = () => {
                       errorText={error?.message}
                       isError={Boolean(error)}
                     >
-                      <Input isFullWidth size="lg" type="password" {...field} />
+                      <Input isFullWidth size="md" type="password" {...field} />
                     </FormControl>
                   )}
                 />
               </div>
-              <Button type="submit" isFullWidth className="mt-4" isLoading={isSubmitting}>
-                Let&apos;s Go
+              <Button
+                type="submit"
+                colorSchema="primary"
+                variant="outline_bg"
+                isFullWidth
+                className="mt-4"
+                isLoading={isSubmitting}
+              >
+                Continue
               </Button>
             </form>
           </motion.div>

@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/Infisical/infisical-merge/packages/api"
@@ -13,13 +12,11 @@ import (
 
 func GetAllFolders(params models.GetAllFoldersParameters) ([]models.SingleFolder, error) {
 
-	if params.InfisicalToken == "" {
-		params.InfisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
-	}
-
 	var foldersToReturn []models.SingleFolder
 	var folderErr error
-	if params.InfisicalToken == "" {
+	if params.InfisicalToken == "" && params.UniversalAuthAccessToken == "" {
+		RequireLogin()
+		RequireLocalWorkspaceFile()
 
 		log.Debug().Msg("GetAllFolders: Trying to fetch folders using logged in details")
 
@@ -44,9 +41,22 @@ func GetAllFolders(params models.GetAllFoldersParameters) ([]models.SingleFolder
 		folders, err := GetFoldersViaJTW(loggedInUserDetails.UserCredentials.JTWToken, workspaceFile.WorkspaceId, params.Environment, params.FoldersPath)
 		folderErr = err
 		foldersToReturn = folders
-	} else {
+	} else if params.InfisicalToken != "" {
+		log.Debug().Msg("GetAllFolders: Trying to fetch folders using service token")
+
 		// get folders via service token
 		folders, err := GetFoldersViaServiceToken(params.InfisicalToken, params.WorkspaceId, params.Environment, params.FoldersPath)
+		folderErr = err
+		foldersToReturn = folders
+	} else if params.UniversalAuthAccessToken != "" {
+		log.Debug().Msg("GetAllFolders: Trying to fetch folders using universal auth")
+
+		if params.WorkspaceId == "" {
+			PrintErrorMessageAndExit("Project ID is required when using machine identity")
+		}
+
+		// get folders via machine identity
+		folders, err := GetFoldersViaMachineIdentity(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.FoldersPath)
 		folderErr = err
 		foldersToReturn = folders
 	}
@@ -132,6 +142,34 @@ func GetFoldersViaServiceToken(fullServiceToken string, workspaceId string, envi
 	return folders, nil
 }
 
+func GetFoldersViaMachineIdentity(accessToken string, workspaceId string, envSlug string, foldersPath string) ([]models.SingleFolder, error) {
+	httpClient := resty.New()
+	httpClient.SetAuthToken(accessToken).
+		SetHeader("Accept", "application/json")
+
+	getFoldersRequest := api.GetFoldersV1Request{
+		WorkspaceId: workspaceId,
+		Environment: envSlug,
+		FoldersPath: foldersPath,
+	}
+
+	apiResponse, err := api.CallGetFoldersV1(httpClient, getFoldersRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	var folders []models.SingleFolder
+
+	for _, folder := range apiResponse.Folders {
+		folders = append(folders, models.SingleFolder{
+			Name: folder.Name,
+			ID:   folder.ID,
+		})
+	}
+
+	return folders, nil
+}
+
 // CreateFolder creates a folder in Infisical
 func CreateFolder(params models.CreateFolderParameters) (models.SingleFolder, error) {
 	loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
@@ -154,7 +192,7 @@ func CreateFolder(params models.CreateFolderParameters) (models.SingleFolder, er
 		WorkspaceId: params.WorkspaceId,
 		Environment: params.Environment,
 		FolderName:  params.FolderName,
-		Directory:   params.FolderPath,
+		Path:        params.FolderPath,
 	}
 
 	apiResponse, err := api.CallCreateFolderV1(httpClient, createFolderRequest)

@@ -1,10 +1,17 @@
 import jwt from "jsonwebtoken";
 
-import { OrgMembershipStatus } from "@app/db/schemas";
+import { OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -20,6 +27,14 @@ import { AuthMethod, AuthTokenType } from "./auth-type";
 type TAuthSignupDep = {
   authDAL: TAuthDALFactory;
   userDAL: TUserDALFactory;
+  userGroupMembershipDAL: Pick<
+    TUserGroupMembershipDALFactory,
+    "find" | "transaction" | "insertMany" | "deletePendingUserGroupMembershipsByUserIds"
+  >;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
@@ -31,6 +46,11 @@ export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
   authDAL,
   userDAL,
+  userGroupMembershipDAL,
+  projectKeyDAL,
+  projectDAL,
+  projectBotDAL,
+  groupProjectDAL,
   tokenService,
   smtpService,
   orgService,
@@ -44,13 +64,13 @@ export const authSignupServiceFactory = ({
       throw new Error("Provided a disposable email");
     }
 
-    let user = await userDAL.findUserByEmail(email);
+    let user = await userDAL.findUserByUsername(email);
     if (user && user.isAccepted) {
       // TODO(akhilmhdh-pg): copy as old one. this needs to be changed due to security issues
       throw new Error("Failed to send verification code for complete account");
     }
     if (!user) {
-      user = await userDAL.create({ authMethods: [AuthMethod.EMAIL], email });
+      user = await userDAL.create({ authMethods: [AuthMethod.EMAIL], username: email, email, isGhost: false });
     }
     if (!user) throw new Error("Failed to create user");
 
@@ -60,9 +80,9 @@ export const authSignupServiceFactory = ({
     });
 
     await smtpService.sendMail({
-      template: SmtpTemplates.EmailVerification,
+      template: SmtpTemplates.SignupEmailVerification,
       subjectLine: "Infisical confirmation code",
-      recipients: [email],
+      recipients: [user.email as string],
       substitutions: {
         code: token
       }
@@ -70,7 +90,7 @@ export const authSignupServiceFactory = ({
   };
 
   const verifyEmailSignup = async (email: string, code: string) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findUserByUsername(email);
     if (!user || (user && user.isAccepted)) {
       // TODO(akhilmhdh): copy as old one. this needs to be changed due to security issues
       throw new Error("Failed to send verification code for complete account");
@@ -81,6 +101,8 @@ export const authSignupServiceFactory = ({
       userId: user.id,
       code
     });
+
+    await userDAL.updateById(user.id, { isEmailVerified: true });
 
     // generate jwt token this is a temporary token
     const jwtToken = jwt.sign(
@@ -115,13 +137,17 @@ export const authSignupServiceFactory = ({
     userAgent,
     authorization
   }: TCompleteAccountSignupDTO) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findOne({ username: email });
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
 
+    let organizationId: string | null = null;
+    let authMethod: AuthMethod | null = null;
     if (providerAuthToken) {
-      validateProviderAuthToken(providerAuthToken, user.email);
+      const { orgId, authMethod: userAuthMethod } = validateProviderAuthToken(providerAuthToken, user.username);
+      authMethod = userAuthMethod;
+      organizationId = orgId;
     } else {
       validateSignUpAuthorization(authorization, user.id);
     }
@@ -144,15 +170,38 @@ export const authSignupServiceFactory = ({
         },
         tx
       );
+      // If it's SAML Auth and the organization ID is present, we should check if the user has a pending invite for this org, and accept it
+      if ((isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && organizationId) {
+        const [pendingOrgMembership] = await orgDAL.findMembership({
+          [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
+          status: OrgMembershipStatus.Invited,
+          [`${TableName.OrgMembership}.orgId` as "orgId"]: organizationId
+        });
+
+        if (pendingOrgMembership) {
+          await orgDAL.updateMembershipById(
+            pendingOrgMembership.id,
+            {
+              status: OrgMembershipStatus.Accepted
+            },
+            tx
+          );
+        }
+      }
+
       return { info: us, key: userEncKey };
     });
 
-    const hasSamlEnabled = user?.authMethods?.some((authMethod) =>
-      [AuthMethod.OKTA_SAML, AuthMethod.AZURE_SAML, AuthMethod.JUMPCLOUD_SAML].includes(authMethod as AuthMethod)
-    );
+    if (!organizationId) {
+      const newOrganization = await orgService.createOrganization({
+        userId: user.id,
+        userEmail: user.email ?? user.username,
+        orgName: organizationName
+      });
 
-    if (!hasSamlEnabled) {
-      await orgService.createOrganization(user.id, user.email, organizationName);
+      if (!newOrganization) throw new Error("Failed to create organization");
+
+      organizationId = newOrganization.id;
     }
 
     const updatedMembersips = await orgDAL.updateMembership(
@@ -161,6 +210,16 @@ export const authSignupServiceFactory = ({
     );
     const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
     await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
+
+    await convertPendingGroupAdditionsToGroupMemberships({
+      userIds: [user.id],
+      userDAL,
+      userGroupMembershipDAL,
+      groupProjectDAL,
+      projectKeyDAL,
+      projectDAL,
+      projectBotDAL
+    });
 
     const tokenSession = await tokenService.getUserTokenSession({
       userAgent,
@@ -172,10 +231,12 @@ export const authSignupServiceFactory = ({
 
     const accessToken = jwt.sign(
       {
+        authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
-        accessVersion: tokenSession.accessVersion
+        accessVersion: tokenSession.accessVersion,
+        organizationId
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_AUTH_LIFETIME }
@@ -183,16 +244,18 @@ export const authSignupServiceFactory = ({
 
     const refreshToken = jwt.sign(
       {
+        authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
-        refreshVersion: tokenSession.refreshVersion
+        refreshVersion: tokenSession.refreshVersion,
+        organizationId
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_REFRESH_LIFETIME }
     );
 
-    return { user: updateduser.info, accessToken, refreshToken };
+    return { user: updateduser.info, accessToken, refreshToken, organizationId };
   };
 
   /*
@@ -212,12 +275,15 @@ export const authSignupServiceFactory = ({
     protectedKeyTag,
     encryptedPrivateKey,
     encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag
+    encryptedPrivateKeyTag,
+    authorization
   }: TCompleteAccountInviteDTO) => {
-    const user = await userDAL.findUserByEmail(email);
+    const user = await userDAL.findUserByUsername(email);
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
+
+    validateSignUpAuthorization(authorization, user.id);
 
     const [orgMembership] = await orgDAL.findMembership({
       inviteEmail: email,
@@ -257,6 +323,17 @@ export const authSignupServiceFactory = ({
       const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
       await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
 
+      await convertPendingGroupAdditionsToGroupMemberships({
+        userIds: [user.id],
+        userDAL,
+        userGroupMembershipDAL,
+        groupProjectDAL,
+        projectKeyDAL,
+        projectDAL,
+        projectBotDAL,
+        tx
+      });
+
       return { info: us, key: userEncKey };
     });
 
@@ -270,6 +347,7 @@ export const authSignupServiceFactory = ({
 
     const accessToken = jwt.sign(
       {
+        authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
@@ -281,6 +359,7 @@ export const authSignupServiceFactory = ({
 
     const refreshToken = jwt.sign(
       {
+        authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,

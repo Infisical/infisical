@@ -10,13 +10,17 @@ import {
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretApprovalRequestRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/",
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim(),
@@ -52,6 +56,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const approvals = await server.services.secretApprovalRequest.getSecretApprovals({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         ...req.query,
         projectId: req.query.workspaceId
       });
@@ -60,8 +66,11 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   });
 
   server.route({
-    url: "/count",
     method: "GET",
+    url: "/count",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         workspaceId: z.string().trim()
@@ -80,6 +89,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const approvals = await server.services.secretApprovalRequest.requestCount({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         projectId: req.query.workspaceId
       });
       return { approvals };
@@ -89,6 +100,9 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   server.route({
     url: "/:id/merge",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         id: z.string()
@@ -104,6 +118,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const { approval } = await server.services.secretApprovalRequest.mergeSecretApprovalRequest({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         approvalId: req.params.id
       });
       return { approval };
@@ -111,8 +127,11 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   });
 
   server.route({
-    url: "/:id/review",
     method: "POST",
+    url: "/:id/review",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         id: z.string()
@@ -131,6 +150,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const review = await server.services.secretApprovalRequest.reviewApproval({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         approvalId: req.params.id,
         status: req.body.status
       });
@@ -139,8 +160,11 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   });
 
   server.route({
-    url: "/:id/status",
     method: "POST",
+    url: "/:id/status",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         id: z.string()
@@ -159,6 +183,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const approval = await server.services.secretApprovalRequest.updateApprovalStatus({
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         approvalId: req.params.id,
         status: req.body.status
       });
@@ -193,8 +219,11 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     .array()
     .optional();
   server.route({
-    url: "/:id",
     method: "GET",
+    url: "/:id",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         id: z.string()
@@ -266,6 +295,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       const approval = await server.services.secretApprovalRequest.getSecretApprovalDetails({
         actor: req.permission.type,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         id: req.params.id
       });
       return { approval };

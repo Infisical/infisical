@@ -1,12 +1,17 @@
 export {
+  useAddGroupToWorkspace,
+  useDeleteGroupFromWorkspace,
+  useUpdateGroupWorkspaceRole
+} from "./mutations";
+export {
   useAddIdentityToWorkspace,
-  useAddUserToWorkspace,
   useCreateWorkspace,
   useCreateWsEnvironment,
   useDeleteIdentityFromWorkspace,
   useDeleteUserFromWorkspace,
   useDeleteWorkspace,
   useDeleteWsEnvironment,
+  useGetUpgradeProjectStatus,
   useGetUserWorkspaceMemberships,
   useGetUserWorkspaces,
   useGetWorkspaceAuthorizations,
@@ -16,10 +21,12 @@ export {
   useGetWorkspaceIntegrations,
   useGetWorkspaceSecrets,
   useGetWorkspaceUsers,
+  useListWorkspaceGroups,
   useNameWorkspaceSecrets,
   useRenameWorkspace,
   useToggleAutoCapitalization,
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
-  useUpdateWsEnvironment
+  useUpdateWsEnvironment,
+  useUpgradeProject
 } from "./queries";
