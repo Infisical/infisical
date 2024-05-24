@@ -21,6 +21,7 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useSyncIntegration } from "@app/hooks/api/integrations/queries";
+import { IntegrationMappingBehavior } from "@app/hooks/api/integrations/types";
 import { TIntegration } from "@app/hooks/api/types";
 
 type Props = {
@@ -131,30 +132,35 @@ export const IntegrationsSection = ({
                     </div>
                   </div>
                 )}
-                <div className="ml-2 flex flex-col">
-                  <FormLabel
-                    label={
-                      (integration.integration === "qovery" && integration?.scope) ||
-                      (integration.integration === "aws-secret-manager" && "Secret") ||
-                      (integration.integration === "aws-parameter-store" && "Path") ||
-                      (integration?.integration === "terraform-cloud" && "Project") ||
-                      (integration?.scope === "github-org" && "Organization") ||
-                      (["github-repo", "github-env"].includes(integration?.scope as string) &&
-                        "Repository") ||
-                      "App"
-                    }
-                  />
-                  <div className="no-scrollbar::-webkit-scrollbar min-w-[8rem] max-w-[12rem] overflow-scroll whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 no-scrollbar">
-                    {(integration.integration === "hashicorp-vault" &&
-                      `${integration.app} - path: ${integration.path}`) ||
-                      (integration.scope === "github-org" && `${integration.owner}`) ||
-                      (integration.integration === "aws-parameter-store" &&
-                        `${integration.path}`) ||
-                      (integration.scope?.startsWith("github-") &&
-                        `${integration.owner}/${integration.app}`) ||
-                      integration.app}
+                {!(
+                  integration.integration === "aws-secret-manager" &&
+                  integration.metadata?.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE
+                ) && (
+                  <div className="ml-2 flex flex-col">
+                    <FormLabel
+                      label={
+                        (integration.integration === "qovery" && integration?.scope) ||
+                        (integration.integration === "aws-secret-manager" && "Secret") ||
+                        (integration.integration === "aws-parameter-store" && "Path") ||
+                        (integration?.integration === "terraform-cloud" && "Project") ||
+                        (integration?.scope === "github-org" && "Organization") ||
+                        (["github-repo", "github-env"].includes(integration?.scope as string) &&
+                          "Repository") ||
+                        "App"
+                      }
+                    />
+                    <div className="no-scrollbar::-webkit-scrollbar min-w-[8rem] max-w-[12rem] overflow-scroll whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 no-scrollbar">
+                      {(integration.integration === "hashicorp-vault" &&
+                        `${integration.app} - path: ${integration.path}`) ||
+                        (integration.scope === "github-org" && `${integration.owner}`) ||
+                        (integration.integration === "aws-parameter-store" &&
+                          `${integration.path}`) ||
+                        (integration.scope?.startsWith("github-") &&
+                          `${integration.owner}/${integration.app}`) ||
+                        integration.app}
+                    </div>
                   </div>
-                </div>
+                )}
                 {(integration.integration === "vercel" ||
                   integration.integration === "netlify" ||
                   integration.integration === "railway" ||

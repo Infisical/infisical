@@ -608,7 +608,7 @@ export const createManySecretsRawFnFactory = ({
   secretVersionTagDAL,
   folderDAL
 }: TCreateManySecretsRawFnFactory) => {
-  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL);
+  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const createManySecretsRawFn = async ({
     projectId,
     environment,
@@ -706,7 +706,7 @@ export const updateManySecretsRawFnFactory = ({
   secretVersionTagDAL,
   folderDAL
 }: TUpdateManySecretsRawFnFactory) => {
-  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL);
+  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const updateManySecretsRawFn = async ({
     projectId,
     environment,

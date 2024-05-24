@@ -7,7 +7,6 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -167,15 +166,11 @@ export const serviceTokenServiceFactory = ({
 
     const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceToken.secretHash);
     if (!isMatch) throw new UnauthorizedError();
-    // const updatedToken = await serviceTokenDAL.updateById(serviceToken.id, {
-    //   lastUsed: new Date()
-    // });
+    const updatedToken = await serviceTokenDAL.updateById(serviceToken.id, {
+      lastUsed: new Date()
+    });
 
-    logger.info(
-      `fnValidateServiceToken: [serviceToken=${serviceToken.id}] [serviceTokenProjectId=${serviceToken.projectId}]`
-    );
-
-    return { ...serviceToken, lastUsed: serviceToken.lastUsed, orgId: project.orgId };
+    return { ...serviceToken, lastUsed: updatedToken.lastUsed, orgId: project.orgId };
   };
 
   return {

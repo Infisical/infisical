@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -104,9 +106,9 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectGhostUser = async (projectId: string) => {
+  const findProjectGhostUser = async (projectId: string, tx?: Knex) => {
     try {
-      const ghostUser = await db(TableName.ProjectMembership)
+      const ghostUser = await (tx || db)(TableName.ProjectMembership)
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.Users))

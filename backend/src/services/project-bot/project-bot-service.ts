@@ -25,7 +25,7 @@ export const projectBotServiceFactory = ({
   projectDAL,
   permissionService
 }: TProjectBotServiceFactoryDep) => {
-  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL);
+  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
 
   const getBotKey = async (projectId: string) => {
     return getBotKeyFn(projectId);
