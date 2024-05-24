@@ -152,7 +152,7 @@ export const SecretDropzone = ({
 
     e.dataTransfer.dropEffect = "copy";
     setDragActive.off();
-    parseFile(e.dataTransfer.files[0]);
+    parseFile(e.dataTransfer.files[0], e.dataTransfer.files[0].type === "application/json");
   };
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
