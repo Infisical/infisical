@@ -470,10 +470,10 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse recursive flag")
 	}
 
-	//deprecated (showOnlyValue) in favor of --plain
+	// deprecated, in favor of --plain
 	showOnlyValue, err := cmd.Flags().GetBool("raw-value")
 	if err != nil {
-		util.HandleError(err, "Unable to parse path flag")
+		util.HandleError(err, "Unable to parse flag")
 	}
 
 	plainOutput, err := cmd.Flags().GetBool("plain")
@@ -533,7 +533,8 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if plainOutput {
+	// showOnlyValue deprecated in favor of --plain, below only for backward compatibility
+	if plainOutput || showOnlyValue {
 		for _, secret := range requestedSecrets {
 			fmt.Println(secret.Value)
 		}
@@ -541,16 +542,6 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		visualize.PrintAllSecretDetails(requestedSecrets)
 	}
 
-	// deprecated (showOnlyValue)
-	if showOnlyValue && len(requestedSecrets) > 1 {
-		util.PrintErrorMessageAndExit("--raw-value only works with one secret.")
-	}
-
-	if showOnlyValue {
-		fmt.Printf(requestedSecrets[0].Value)
-	} else {
-		visualize.PrintAllSecretDetails(requestedSecrets)
-	}
 	Telemetry.CaptureEvent("cli-command:secrets get", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 }
 
