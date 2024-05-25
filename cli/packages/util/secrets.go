@@ -1,6 +1,7 @@
 package util
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/crypto"
@@ -802,4 +804,378 @@ func GetPlainTextWorkspaceKey(authenticationToken string, receiverPrivateKey str
 	}
 
 	return crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey), nil
+}
+
+func SetPlainTextSecretsViaJWT(secretsToSet []string, JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, secretsPath string) ([]models.SecretSetOperation, error) {
+	httpClient := resty.New().
+		SetAuthToken(JTWToken).
+		SetHeader("Accept", "application/json")
+
+	request := api.GetEncryptedWorkspaceKeyRequest{
+		WorkspaceId: workspaceId,
+	}
+
+	workspaceKeyResponse, err := api.CallGetEncryptedWorkspaceKey(httpClient, request)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get your encrypted workspace key")
+	}
+
+	encryptedWorkspaceKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.EncryptedKey)
+	encryptedWorkspaceKeySenderPublicKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.Sender.PublicKey)
+	encryptedWorkspaceKeyNonce, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.Nonce)
+	currentUsersPrivateKey, _ := base64.StdEncoding.DecodeString(receiversPrivateKey)
+
+	if len(currentUsersPrivateKey) == 0 || len(encryptedWorkspaceKeySenderPublicKey) == 0 {
+		log.Debug().Msgf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
+		return nil, fmt.Errorf("Some required user credentials are missing to generate your [plainTextEncryptionKey]. Please run [infisical login] then try again")
+	}
+
+	// decrypt workspace key
+	plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
+
+	// pull current secrets
+	secrets, err := GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath}, "")
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve secrets")
+	}
+
+	secretsToCreate := []api.Secret{}
+	secretsToModify := []api.Secret{}
+	secretOperations := []models.SecretSetOperation{}
+
+	secretByKey := getSecretsByKeys(secrets)
+
+	for _, secretToSet := range secretsToSet {
+		splitKeyValueFromStr := strings.SplitN(secretToSet, "=", 2)
+		if splitKeyValueFromStr[0] == "" || splitKeyValueFromStr[1] == "" {
+			return nil, fmt.Errorf("ensure that each secret has a none empty key and value. Modify the input and try again")
+		}
+
+		if unicode.IsNumber(rune(splitKeyValueFromStr[0][0])) {
+			return nil, fmt.Errorf("keys of secrets cannot start with a number. Modify the key name(s) and try again")
+		}
+
+		// Key and value from string
+		key := splitKeyValueFromStr[0]
+		value := splitKeyValueFromStr[1]
+
+		hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
+		encryptedKey, err := crypto.EncryptSymmetric([]byte(key), []byte(plainTextEncryptionKey))
+		if err != nil {
+			return nil, fmt.Errorf("unable to encrypt your secrets")
+		}
+
+		hashedValue := fmt.Sprintf("%x", sha256.Sum256([]byte(value)))
+		encryptedValue, err := crypto.EncryptSymmetric([]byte(value), []byte(plainTextEncryptionKey))
+		if err != nil {
+			return nil, fmt.Errorf("unable to encrypt your secrets")
+		}
+
+		if existingSecret, ok := secretByKey[key]; ok {
+			// case: secret exists in project so it needs to be modified
+			encryptedSecretDetails := api.Secret{
+				ID:                    existingSecret.ID,
+				SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
+				SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
+				SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
+				SecretValueHash:       hashedValue,
+				PlainTextKey:          key,
+				Type:                  existingSecret.Type,
+			}
+
+			// Only add to modifications if the value is different
+			if existingSecret.Value != value {
+				secretsToModify = append(secretsToModify, encryptedSecretDetails)
+				secretOperations = append(secretOperations, models.SecretSetOperation{
+					SecretKey:       key,
+					SecretValue:     value,
+					SecretOperation: "SECRET VALUE MODIFIED",
+				})
+			} else {
+				// Current value is same as exisitng so no change
+				secretOperations = append(secretOperations, models.SecretSetOperation{
+					SecretKey:       key,
+					SecretValue:     value,
+					SecretOperation: "SECRET VALUE UNCHANGED",
+				})
+			}
+
+		} else {
+			// case: secret doesn't exist in project so it needs to be created
+			encryptedSecretDetails := api.Secret{
+				SecretKeyCiphertext:   base64.StdEncoding.EncodeToString(encryptedKey.CipherText),
+				SecretKeyIV:           base64.StdEncoding.EncodeToString(encryptedKey.Nonce),
+				SecretKeyTag:          base64.StdEncoding.EncodeToString(encryptedKey.AuthTag),
+				SecretKeyHash:         hashedKey,
+				SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
+				SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
+				SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
+				SecretValueHash:       hashedValue,
+				Type:                  SECRET_TYPE_SHARED,
+				PlainTextKey:          key,
+			}
+			secretsToCreate = append(secretsToCreate, encryptedSecretDetails)
+			secretOperations = append(secretOperations, models.SecretSetOperation{
+				SecretKey:       key,
+				SecretValue:     value,
+				SecretOperation: "SECRET CREATED",
+			})
+		}
+	}
+
+	for _, secret := range secretsToCreate {
+		createSecretRequest := api.CreateSecretV3Request{
+			WorkspaceID:           workspaceId,
+			Environment:           environmentName,
+			SecretName:            secret.PlainTextKey,
+			SecretKeyCiphertext:   secret.SecretKeyCiphertext,
+			SecretKeyIV:           secret.SecretKeyIV,
+			SecretKeyTag:          secret.SecretKeyTag,
+			SecretValueCiphertext: secret.SecretValueCiphertext,
+			SecretValueIV:         secret.SecretValueIV,
+			SecretValueTag:        secret.SecretValueTag,
+			Type:                  secret.Type,
+			SecretPath:            secretsPath,
+		}
+
+		err = api.CallCreateSecretsV3(httpClient, createSecretRequest)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to process new secret creations")
+		}
+	}
+
+	for _, secret := range secretsToModify {
+		updateSecretRequest := api.UpdateSecretByNameV3Request{
+			WorkspaceID:           workspaceId,
+			Environment:           environmentName,
+			SecretValueCiphertext: secret.SecretValueCiphertext,
+			SecretValueIV:         secret.SecretValueIV,
+			SecretValueTag:        secret.SecretValueTag,
+			Type:                  secret.Type,
+			SecretPath:            secretsPath,
+		}
+
+		err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest, secret.PlainTextKey)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to process secret update request")
+		}
+	}
+
+	return secretOperations, err
+}
+
+func SetPlainTextSecretsViaServiceToken(secretsToSet []string, fullServiceToken string, environment string, secretsPath string) ([]models.SecretSetOperation, error) {
+	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
+	if len(serviceTokenParts) < 4 {
+		return nil, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
+	}
+
+	serviceToken := fmt.Sprintf("%v.%v.%v", serviceTokenParts[0], serviceTokenParts[1], serviceTokenParts[2])
+
+	httpClient := resty.New()
+
+	httpClient.SetAuthToken(serviceToken).
+		SetHeader("Accept", "application/json")
+
+	serviceTokenDetails, err := api.CallGetServiceTokenDetailsV2(httpClient)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get service token details. [err=%v]", err)
+	}
+
+	// if multiple scopes are there then user needs to specify which environment and secret path
+	if environment == "" {
+		if len(serviceTokenDetails.Scopes) != 1 {
+			return nil, fmt.Errorf("you need to provide the --env for multiple environment scoped token")
+		} else {
+			environment = serviceTokenDetails.Scopes[0].Environment
+		}
+	}
+
+	decodedSymmetricEncryptionDetails, err := GetBase64DecodedSymmetricEncryptionDetails(serviceTokenParts[3], serviceTokenDetails.EncryptedKey, serviceTokenDetails.Iv, serviceTokenDetails.Tag)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode symmetric encryption details [err=%v]", err)
+	}
+
+	plainTextEncryptionKey, err := crypto.DecryptSymmetric([]byte(serviceTokenParts[3]), decodedSymmetricEncryptionDetails.Cipher, decodedSymmetricEncryptionDetails.Tag, decodedSymmetricEncryptionDetails.IV)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decrypt the required workspace key")
+	}
+
+	// pull current secrets
+	secrets, err := GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environment, SecretsPath: secretsPath}, "")
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve secrets")
+	}
+
+	secretsToCreate := []api.Secret{}
+	secretsToModify := []api.Secret{}
+	secretOperations := []models.SecretSetOperation{}
+
+	secretByKey := getSecretsByKeys(secrets)
+
+	for _, secretToSet := range secretsToSet {
+		splitKeyValueFromStr := strings.SplitN(secretToSet, "=", 2)
+		if splitKeyValueFromStr[0] == "" || splitKeyValueFromStr[1] == "" {
+			return nil, fmt.Errorf("ensure that each secret has a none empty key and value. Modify the input and try again")
+		}
+
+		if unicode.IsNumber(rune(splitKeyValueFromStr[0][0])) {
+			return nil, fmt.Errorf("keys of secrets cannot start with a number. Modify the key name(s) and try again")
+		}
+
+		// Key and value from string
+		key := splitKeyValueFromStr[0]
+		value := splitKeyValueFromStr[1]
+
+		hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
+		encryptedKey, err := crypto.EncryptSymmetric([]byte(key), []byte(plainTextEncryptionKey))
+		if err != nil {
+			return nil, fmt.Errorf("unable to encrypt your secrets")
+		}
+
+		hashedValue := fmt.Sprintf("%x", sha256.Sum256([]byte(value)))
+		encryptedValue, err := crypto.EncryptSymmetric([]byte(value), []byte(plainTextEncryptionKey))
+		if err != nil {
+			return nil, fmt.Errorf("unable to encrypt your secrets")
+		}
+
+		if existingSecret, ok := secretByKey[key]; ok {
+			// case: secret exists in project so it needs to be modified
+			encryptedSecretDetails := api.Secret{
+				ID:                    existingSecret.ID,
+				SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
+				SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
+				SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
+				SecretValueHash:       hashedValue,
+				PlainTextKey:          key,
+				Type:                  existingSecret.Type,
+			}
+
+			// Only add to modifications if the value is different
+			if existingSecret.Value != value {
+				secretsToModify = append(secretsToModify, encryptedSecretDetails)
+				secretOperations = append(secretOperations, models.SecretSetOperation{
+					SecretKey:       key,
+					SecretValue:     value,
+					SecretOperation: "SECRET VALUE MODIFIED",
+				})
+			} else {
+				// Current value is same as exisitng so no change
+				secretOperations = append(secretOperations, models.SecretSetOperation{
+					SecretKey:       key,
+					SecretValue:     value,
+					SecretOperation: "SECRET VALUE UNCHANGED",
+				})
+			}
+
+		} else {
+			// case: secret doesn't exist in project so it needs to be created
+			encryptedSecretDetails := api.Secret{
+				SecretKeyCiphertext:   base64.StdEncoding.EncodeToString(encryptedKey.CipherText),
+				SecretKeyIV:           base64.StdEncoding.EncodeToString(encryptedKey.Nonce),
+				SecretKeyTag:          base64.StdEncoding.EncodeToString(encryptedKey.AuthTag),
+				SecretKeyHash:         hashedKey,
+				SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
+				SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
+				SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
+				SecretValueHash:       hashedValue,
+				Type:                  SECRET_TYPE_SHARED,
+				PlainTextKey:          key,
+			}
+			secretsToCreate = append(secretsToCreate, encryptedSecretDetails)
+			secretOperations = append(secretOperations, models.SecretSetOperation{
+				SecretKey:       key,
+				SecretValue:     value,
+				SecretOperation: "SECRET CREATED",
+			})
+		}
+	}
+
+	for _, secret := range secretsToCreate {
+		createSecretRequest := api.CreateSecretV3Request{
+			WorkspaceID:           serviceTokenDetails.Workspace,
+			Environment:           environment,
+			SecretName:            secret.PlainTextKey,
+			SecretKeyCiphertext:   secret.SecretKeyCiphertext,
+			SecretKeyIV:           secret.SecretKeyIV,
+			SecretKeyTag:          secret.SecretKeyTag,
+			SecretValueCiphertext: secret.SecretValueCiphertext,
+			SecretValueIV:         secret.SecretValueIV,
+			SecretValueTag:        secret.SecretValueTag,
+			Type:                  secret.Type,
+			SecretPath:            secretsPath,
+		}
+
+		err = api.CallCreateSecretsV3(httpClient, createSecretRequest)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to process new secret creations")
+		}
+	}
+
+	for _, secret := range secretsToModify {
+		updateSecretRequest := api.UpdateSecretByNameV3Request{
+			WorkspaceID:           serviceTokenDetails.Workspace,
+			Environment:           environment,
+			SecretValueCiphertext: secret.SecretValueCiphertext,
+			SecretValueIV:         secret.SecretValueIV,
+			SecretValueTag:        secret.SecretValueTag,
+			Type:                  secret.Type,
+			SecretPath:            secretsPath,
+		}
+
+		err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest, secret.PlainTextKey)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to process secret update request")
+		}
+	}
+
+	return secretOperations, err
+}
+
+func SetAllEnvironmentVariables(params models.SetAllSecretsParameters) ([]models.SecretSetOperation, error) {
+	var infisicalToken string
+	if params.InfisicalToken == "" {
+		infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
+	} else {
+		infisicalToken = params.InfisicalToken
+	}
+
+	isConnected := CheckIsConnectedToInternet()
+	var secretOperations []models.SecretSetOperation
+	var errorToReturn error
+
+	if infisicalToken == "" {
+		if isConnected {
+			log.Debug().Msg("SetAllEnvironmentVariables: Connected to internet, checking logged in creds")
+			RequireLocalWorkspaceFile()
+			RequireLogin()
+		}
+
+		log.Debug().Msg("SetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
+
+		workspaceFile, err := GetWorkSpaceFromFile()
+		if err != nil {
+			return nil, fmt.Errorf("Unable to get your local config details")
+		}
+
+		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
+		if err != nil {
+			return nil, fmt.Errorf("Unable to authenticate")
+		}
+
+		if loggedInUserDetails.LoginExpired {
+			return nil, fmt.Errorf("Your login session has expired, please run [infisical login] and try again")
+		}
+
+		secretOperations, errorToReturn = SetPlainTextSecretsViaJWT(params.SecretsToSet, loggedInUserDetails.UserCredentials.JTWToken,
+			loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId,
+			params.Environment, params.SecretsPath)
+	} else {
+		log.Debug().Msg("Trying to fetch secrets using service token")
+
+		secretOperations, errorToReturn = SetPlainTextSecretsViaServiceToken(params.SecretsToSet, infisicalToken,
+			params.Environment, params.SecretsPath)
+	}
+
+	return secretOperations, errorToReturn
 }
