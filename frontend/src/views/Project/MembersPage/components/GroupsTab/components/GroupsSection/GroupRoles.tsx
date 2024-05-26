@@ -201,11 +201,7 @@ export type TMemberRolesProp = {
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
-export const GroupRoles = ({
-  roles = [],
-  disableEdit = false,
-  groupSlug
-}: TMemberRolesProp) => {
+export const GroupRoles = ({ roles = [], disableEdit = false, groupSlug }: TMemberRolesProp) => {
   const { currentWorkspace } = useWorkspace();
   const { popUp, handlePopUpToggle } = usePopUp(["editRole"] as const);
   const [searchRoles, setSearchRoles] = useState("");
@@ -220,9 +216,9 @@ export const GroupRoles = ({
     resolver: zodResolver(formSchema)
   });
 
-  const workspaceId = currentWorkspace?.id || "";
+  const projectSlug = currentWorkspace?.slug || "";
 
-  const { data: projectRoles, isLoading: isRolesLoading } = useGetProjectRoles(workspaceId);
+  const { data: projectRoles, isLoading: isRolesLoading } = useGetProjectRoles(projectSlug);
   const userRolesGroupBySlug = groupBy(roles, ({ customRoleSlug, role }) => customRoleSlug || role);
 
   const updateGroupWorkspaceRole = useUpdateGroupWorkspaceRole();
@@ -317,7 +313,7 @@ export const GroupRoles = ({
                               icon={faClock}
                               className={twMerge(
                                 new Date() > new Date(temporaryAccessEndTime as string) &&
-                                "text-red-600"
+                                  "text-red-600"
                               )}
                             />
                           </Tooltip>
@@ -390,14 +386,14 @@ export const GroupRoles = ({
                               defaultValue={
                                 userProjectRoleDetails?.isTemporary
                                   ? {
-                                    isTemporary: true,
-                                    temporaryAccessStartTime:
-                                      userProjectRoleDetails.temporaryAccessStartTime as string,
-                                    temporaryRange:
-                                      userProjectRoleDetails.temporaryRange as string,
-                                    temporaryAccessEndTime:
-                                      userProjectRoleDetails.temporaryAccessEndTime
-                                  }
+                                      isTemporary: true,
+                                      temporaryAccessStartTime:
+                                        userProjectRoleDetails.temporaryAccessStartTime as string,
+                                      temporaryRange:
+                                        userProjectRoleDetails.temporaryRange as string,
+                                      temporaryAccessEndTime:
+                                        userProjectRoleDetails.temporaryAccessEndTime
+                                    }
                                   : false
                               }
                               render={({ field }) => (
