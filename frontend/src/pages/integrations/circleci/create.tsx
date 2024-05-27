@@ -13,6 +13,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 
@@ -67,6 +68,15 @@ export default function CircleCICreateIntegrationPage() {
 
   useEffect(() => {
     if (workspace && availableEnvironments) {
+      if (!availableEnvironments.length) {
+        createNotification({
+          title: "Insufficient Access",
+          text: "You do not have read access to any environment",
+          type: "error"
+        });
+
+        return;
+      }
       setSelectedSourceEnvironment(availableEnvironments[0].slug);
     }
   }, [workspace, availableEnvironments]);

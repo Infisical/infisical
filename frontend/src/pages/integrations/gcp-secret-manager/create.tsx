@@ -12,6 +12,7 @@ import { motion } from "framer-motion";
 import queryString from "query-string";
 import * as yup from "yup";
 
+import { createNotification } from "@app/components/notifications";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -117,6 +118,15 @@ export default function GCPSecretManagerCreateIntegrationPage() {
 
   useEffect(() => {
     if (workspace && availableEnvironments) {
+      if (!availableEnvironments.length) {
+        createNotification({
+          title: "Insufficient Access",
+          text: "You do not have read access to any environment",
+          type: "error"
+        });
+
+        return;
+      }
       setValue("selectedSourceEnvironment", availableEnvironments[0].slug);
     }
   }, [workspace, availableEnvironments]);

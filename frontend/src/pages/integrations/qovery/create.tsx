@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import queryString from "query-string";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
@@ -111,6 +112,15 @@ export default function QoveryCreateIntegrationPage() {
 
   useEffect(() => {
     if (workspace && availableEnvironments) {
+      if (!availableEnvironments.length) {
+        createNotification({
+          title: "Insufficient Access",
+          text: "You do not have read access to any environment",
+          type: "error"
+        });
+
+        return;
+      }
       setSelectedSourceEnvironment(availableEnvironments[0].slug);
     }
   }, [workspace, availableEnvironments]);

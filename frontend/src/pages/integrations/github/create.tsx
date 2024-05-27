@@ -154,6 +154,15 @@ export default function GitHubCreateIntegrationPage() {
 
   useEffect(() => {
     if (workspace && availableEnvironments) {
+      if (!availableEnvironments.length) {
+        createNotification({
+          title: "Insufficient Access",
+          text: "You do not have read access to any environment",
+          type: "error"
+        });
+
+        return;
+      }
       setValue("selectedSourceEnvironment", availableEnvironments[0].slug);
     }
   }, [workspace, availableEnvironments]);

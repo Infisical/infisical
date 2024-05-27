@@ -14,6 +14,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import queryString from "query-string";
 
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
@@ -133,6 +134,15 @@ export default function AWSSecretManagerCreateIntegrationPage() {
 
   useEffect(() => {
     if (workspace && availableEnvironments) {
+      if (!availableEnvironments.length) {
+        createNotification({
+          title: "Insufficient Access",
+          text: "You do not have read access to any environment",
+          type: "error"
+        });
+
+        return;
+      }
       setSelectedSourceEnvironment(availableEnvironments[0].slug);
       setSelectedAWSRegion(awsRegions[0].slug);
     }

@@ -49,6 +49,15 @@ export default function CloudflareWorkersIntegrationPage() {
 
   useEffect(() => {
     if (workspace && availableEnvironments) {
+      if (!availableEnvironments.length) {
+        createNotification({
+          title: "Insufficient Access",
+          text: "You do not have read access to any environment",
+          type: "error"
+        });
+
+        return;
+      }
       setSelectedSourceEnvironment(availableEnvironments[0].slug);
     }
   }, [workspace, availableEnvironments]);
