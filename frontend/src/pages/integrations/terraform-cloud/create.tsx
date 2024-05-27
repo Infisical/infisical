@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { subject } from "@casl/ability";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
 
@@ -30,8 +32,14 @@ const initialSyncBehaviors = [
     label: "No Import - Overwrite all values in Terraform Cloud",
     value: IntegrationSyncBehavior.OVERWRITE_TARGET
   },
-  { label: "Import non-sensitive - Prefer values from Terraform Cloud", value: IntegrationSyncBehavior.PREFER_TARGET },
-  { label: "Import non-sensitive - Prefer values from Infisical", value: IntegrationSyncBehavior.PREFER_SOURCE }
+  {
+    label: "Import non-sensitive - Prefer values from Terraform Cloud",
+    value: IntegrationSyncBehavior.PREFER_TARGET
+  },
+  {
+    label: "Import non-sensitive - Prefer values from Infisical",
+    value: IntegrationSyncBehavior.PREFER_SOURCE
+  }
 ];
 
 const variableTypes = [{ name: "env" }, { name: "terraform" }];
@@ -54,14 +62,27 @@ export default function TerraformCloudCreateIntegrationPage() {
   const [variableType, setVariableType] = useState("");
   const [variableTypeErrorText, setVariableTypeErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [initialSyncBehavior, setInitialSyncBehavior] = useState("prefer-source")
+  const [initialSyncBehavior, setInitialSyncBehavior] = useState("prefer-source");
+
+  const { permission } = useProjectPermission();
+
+  const availableEnvironments = useMemo(
+    () =>
+      workspace?.environments.filter((env) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath: "/" })
+        )
+      ),
+    [workspace]
+  );
 
   useEffect(() => {
-    if (workspace) {
-      setSelectedSourceEnvironment(workspace.environments[0].slug);
+    if (workspace && availableEnvironments) {
+      setSelectedSourceEnvironment(availableEnvironments[0].slug);
       setVariableType(variableTypes[0].name);
     }
-  }, [workspace]);
+  }, [workspace, availableEnvironments]);
 
   useEffect(() => {
     if (integrationAuthApps) {
@@ -153,7 +174,7 @@ export default function TerraformCloudCreateIntegrationPage() {
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
             className="w-full border border-mineshaft-500"
           >
-            {workspace?.environments.map((sourceEnvironment) => (
+            {availableEnvironments?.map((sourceEnvironment) => (
               <SelectItem
                 value={sourceEnvironment.slug}
                 key={`source-environment-${sourceEnvironment.slug}`}
@@ -212,7 +233,11 @@ export default function TerraformCloudCreateIntegrationPage() {
           </Select>
         </FormControl>
         <FormControl label="Initial Sync Behavior" className="px-6">
-          <Select value={initialSyncBehavior} onValueChange={(e) => setInitialSyncBehavior(e)} className="w-full border border-mineshaft-600">
+          <Select
+            value={initialSyncBehavior}
+            onValueChange={(e) => setInitialSyncBehavior(e)}
+            className="w-full border border-mineshaft-600"
+          >
             {initialSyncBehaviors.map((b) => {
               return (
                 <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>

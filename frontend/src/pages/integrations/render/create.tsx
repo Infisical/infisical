@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { subject } from "@casl/ability";
 import {
   faArrowUpRightFromSquare,
   faBookOpen,
@@ -16,6 +17,7 @@ import queryString from "query-string";
 import * as yup from "yup";
 
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 
 import {
@@ -69,11 +71,24 @@ export default function RenderCreateIntegrationPage() {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  const { permission } = useProjectPermission();
+
+  const availableEnvironments = useMemo(
+    () =>
+      workspace?.environments.filter((env) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath: "/" })
+        )
+      ),
+    [workspace]
+  );
+
   useEffect(() => {
-    if (workspace) {
-      setValue("selectedSourceEnvironment", workspace.environments[0].slug);
+    if (workspace && availableEnvironments) {
+      setValue("selectedSourceEnvironment", availableEnvironments[0].slug);
     }
-  }, [workspace]);
+  }, [workspace, availableEnvironments]);
 
   useEffect(() => {
     if (integrationAuthApps) {
@@ -167,7 +182,7 @@ export default function RenderCreateIntegrationPage() {
                   onValueChange={(e) => onChange(e)}
                   className="w-full"
                 >
-                  {workspace?.environments.map((sourceEnvironment) => (
+                  {availableEnvironments?.map((sourceEnvironment) => (
                     <SelectItem
                       value={sourceEnvironment.slug}
                       key={`source-environment-${sourceEnvironment.slug}`}

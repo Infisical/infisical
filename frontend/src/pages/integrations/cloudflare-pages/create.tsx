@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
+import { subject } from "@casl/ability";
 import axios from "axios";
 import queryString from "query-string";
 
 import { createNotification } from "@app/components/notifications";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useCreateIntegration, useGetWorkspaceById } from "@app/hooks/api";
 
 import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "../../../components/v2";
@@ -37,11 +39,24 @@ export default function CloudflarePagesIntegrationPage() {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  const { permission } = useProjectPermission();
+
+  const availableEnvironments = useMemo(
+    () =>
+      workspace?.environments.filter((env) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath: "/" })
+        )
+      ),
+    [workspace]
+  );
+
   useEffect(() => {
-    if (workspace) {
-      setSelectedSourceEnvironment(workspace.environments[0].slug);
+    if (workspace && availableEnvironments) {
+      setSelectedSourceEnvironment(availableEnvironments[0].slug);
     }
-  }, [workspace]);
+  }, [workspace, availableEnvironments]);
 
   useEffect(() => {
     if (integrationAuthApps) {
@@ -112,7 +127,7 @@ export default function CloudflarePagesIntegrationPage() {
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
             className="w-full border border-mineshaft-500"
           >
-            {workspace?.environments.map((sourceEnvironment) => (
+            {availableEnvironments?.map((sourceEnvironment) => (
               <SelectItem
                 value={sourceEnvironment.slug}
                 key={`source-environment-${sourceEnvironment.slug}`}

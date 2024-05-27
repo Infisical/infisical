@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { subject } from "@casl/ability";
 import {
   faAngleDown,
   faArrowUpRightFromSquare,
@@ -38,6 +39,7 @@ import {
   TabPanel,
   Tabs
 } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import {
   useCreateIntegration,
   useGetIntegrationAuthApps,
@@ -98,7 +100,6 @@ type FormData = yup.InferType<typeof schema>;
 export default function GitHubCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
-  
 
   const integrationAuthId =
     (queryString.parse(router.asPath.split("?")[1]).integrationAuthId as string) ?? "";
@@ -138,11 +139,24 @@ export default function GitHubCreateIntegrationPage() {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  const { permission } = useProjectPermission();
+
+  const availableEnvironments = useMemo(
+    () =>
+      workspace?.environments.filter((env) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath: "/" })
+        )
+      ),
+    [workspace]
+  );
+
   useEffect(() => {
-    if (workspace) {
-      setValue("selectedSourceEnvironment", workspace.environments[0].slug);
+    if (workspace && availableEnvironments) {
+      setValue("selectedSourceEnvironment", availableEnvironments[0].slug);
     }
-  }, [workspace]);
+  }, [workspace, availableEnvironments]);
 
   useEffect(() => {
     if (integrationAuthGithubEnvs && integrationAuthGithubEnvs?.length > 0) {
@@ -303,7 +317,7 @@ export default function GitHubCreateIntegrationPage() {
                         onValueChange={onChange}
                         className="w-full border border-mineshaft-500"
                       >
-                        {workspace?.environments.map((sourceEnvironment) => (
+                        {availableEnvironments?.map((sourceEnvironment) => (
                           <SelectItem
                             value={sourceEnvironment.slug}
                             key={`source-environment-${sourceEnvironment.slug}`}

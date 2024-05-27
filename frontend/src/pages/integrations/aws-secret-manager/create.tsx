@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { subject } from "@casl/ability";
 import {
   faArrowUpRightFromSquare,
   faBookOpen,
@@ -13,6 +14,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import queryString from "query-string";
 
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
 import { IntegrationMappingBehavior } from "@app/hooks/api/integrations/types";
@@ -104,6 +106,18 @@ export default function AWSSecretManagerCreateIntegrationPage() {
   const [tagKey, setTagKey] = useState("");
   const [tagValue, setTagValue] = useState("");
   const [kmsKeyId, setKmsKeyId] = useState("");
+  const { permission } = useProjectPermission();
+
+  const availableEnvironments = useMemo(
+    () =>
+      workspace?.environments.filter((env) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath: "/" })
+        )
+      ),
+    [workspace]
+  );
 
   // const [path, setPath] = useState('');
   // const [pathErrorText, setPathErrorText] = useState('');
@@ -118,11 +132,11 @@ export default function AWSSecretManagerCreateIntegrationPage() {
     });
 
   useEffect(() => {
-    if (workspace) {
-      setSelectedSourceEnvironment(workspace.environments[0].slug);
+    if (workspace && availableEnvironments) {
+      setSelectedSourceEnvironment(availableEnvironments[0].slug);
       setSelectedAWSRegion(awsRegions[0].slug);
     }
-  }, [workspace]);
+  }, [workspace, availableEnvironments]);
 
   //    const isValidAWSPath = (path: string) => {
   //         const pattern = /^\/[\w./]+\/$/;
@@ -238,7 +252,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                   onValueChange={(val) => setSelectedSourceEnvironment(val)}
                   className="w-full border border-mineshaft-500"
                 >
-                  {workspace?.environments.map((sourceEnvironment) => (
+                  {availableEnvironments?.map((sourceEnvironment) => (
                     <SelectItem
                       value={sourceEnvironment.slug}
                       key={`flyio-environment-${sourceEnvironment.slug}`}

@@ -1,8 +1,10 @@
+import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { subject } from "@casl/ability";
 import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -11,6 +13,7 @@ import * as yup from "yup";
 
 import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
@@ -72,6 +75,19 @@ export default function HasuraCloudCreateIntegrationPage() {
     }
   };
 
+  const { permission } = useProjectPermission();
+
+  const availableEnvironments = useMemo(
+    () =>
+      workspace?.environments.filter((env) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath: "/" })
+        )
+      ),
+    [workspace]
+  );
+
   return integrationAuth && workspace && integrationAuthApps ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
       <Head>
@@ -125,7 +141,7 @@ export default function HasuraCloudCreateIntegrationPage() {
                     field.onChange(val);
                   }}
                 >
-                  {workspace?.environments.map((sourceEnvironment) => (
+                  {availableEnvironments?.map((sourceEnvironment) => (
                     <SelectItem
                       value={sourceEnvironment.slug}
                       key={`source-environment-${sourceEnvironment.slug}`}

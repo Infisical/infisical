@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { subject } from "@casl/ability";
 import {
   faArrowUpRightFromSquare,
   faBookOpen,
@@ -12,6 +13,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 
 import {
@@ -46,6 +48,19 @@ export default function HashiCorpVaultCreateIntegrationPage() {
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
   const [isLoading, setIsLoading] = useState(false);
+
+  const { permission } = useProjectPermission();
+
+  const availableEnvironments = useMemo(
+    () =>
+      workspace?.environments.filter((env) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath: "/" })
+        )
+      ),
+    [workspace]
+  );
 
   const isValidVaultPath = (vaultPath: string) => {
     return !(vaultPath.length === 0 || vaultPath.startsWith("/") || vaultPath.endsWith("/"));
@@ -129,7 +144,7 @@ export default function HashiCorpVaultCreateIntegrationPage() {
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
             className="w-full border border-mineshaft-500"
           >
-            {workspace?.environments.map((sourceEnvironment) => (
+            {availableEnvironments?.map((sourceEnvironment) => (
               <SelectItem
                 value={sourceEnvironment.slug}
                 key={`vault-environment-${sourceEnvironment.slug}`}
