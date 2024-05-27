@@ -46,16 +46,19 @@ Finally, create an index.js file containing the application code.
 
 ```js
 const express = require('express');
-const { InfisicalClient, LogLevel } = require("@infisical/sdk");
+const { InfisicalClient } = require("@infisical/sdk");
 
 const app = express();
 
 const PORT = 3000;
 
 const client = new InfisicalClient({
-    clientId: "YOUR_CLIENT_ID",
-    clientSecret: "YOUR_CLIENT_SECRET",
-    logLevel: LogLevel.Error
+    auth: {
+      universalAuth: {
+        clientId: "YOUR_CLIENT_ID",
+        clientSecret: "YOUR_CLIENT_SECRET",
+      }
+    }
 });
 
 app.get("/", async (req, res) => {

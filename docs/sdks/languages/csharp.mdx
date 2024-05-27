@@ -228,6 +228,61 @@ The SDK supports a variety of authentication methods. The most common authentica
   var infisicalClient = new InfisicalClient(settings);
 ```
 
+
+#### Azure Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Azure.
+  Please [read more](/documentation/platform/identities/azure-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```csharp
+  ClientSettings settings = new ClientSettings
+  {
+    Auth = new AuthenticationOptions
+    {
+      Azure = new AzureAuthMethod
+      {
+        IdentityId = "YOUR_IDENTITY_ID",
+      }
+    }
+  };
+
+  var infisicalClient = new InfisicalClient(settings);
+```
+
+#### Kubernetes Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Kubernetes.
+  Please [read more](/documentation/platform/identities/kubernetes-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_KUBERNETES_IDENTITY_ID` - Your Infisical Machine Identity ID.
+- `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+
+**Using the SDK directly**
+```csharp
+  ClientSettings settings = new ClientSettings
+  {
+    Auth = new AuthenticationOptions
+    {
+      Kubernetes = new KubernetesAuthMethod
+      {
+        ServiceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token", // Optional
+        IdentityId = "YOUR_IDENTITY_ID",
+      }
+    }
+  };
+
+  var infisicalClient = new InfisicalClient(settings);
+```
+
+
+
 ### Caching
 
 To reduce the number of API requests, the SDK temporarily stores secrets it retrieves. By default, a secret remains cached for 5 minutes after it's first fetched. Each time it's fetched again, this 5-minute timer resets. You can adjust this caching duration by setting the "cacheTTL" option when creating the client.

@@ -201,6 +201,53 @@ client = InfisicalClient(ClientSettings(
 ))
 ```
 
+#### Azure Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Azure.
+  Please [read more](/documentation/platform/identities/azure-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```python
+from infisical_client import InfisicalClient, ClientSettings, AuthenticationOptions, AzureAuthMethod
+
+kubernetes_client = InfisicalClient(ClientSettings(
+    auth=AuthenticationOptions(
+        azure=AzureAuthMethod(
+            identity_id="YOUR_IDENTITY_ID",
+        )
+    )
+))
+```
+
+
+#### Kubernetes Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Kubernetes.
+  Please [read more](/documentation/platform/identities/kubernetes-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_KUBERNETES_IDENTITY_ID` - Your Infisical Machine Identity ID.
+- `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+
+**Using the SDK directly**
+```python
+from infisical_client import InfisicalClient, ClientSettings, AuthenticationOptions, KubernetesAuthMethod
+
+kubernetes_client = InfisicalClient(ClientSettings(
+    auth=AuthenticationOptions(
+        kubernetes=KubernetesAuthMethod(
+            identity_id="YOUR_IDENTITY_ID",
+            service_account_token_path="/var/run/secrets/kubernetes.io/serviceaccount/token" # Optional
+        )
+    )
+))
+```
+
 ### Caching
 
 To reduce the number of API requests, the SDK temporarily stores secrets it retrieves. By default, a secret remains cached for 5 minutes after it's first fetched. Each time it's fetched again, this 5-minute timer resets. You can adjust this caching duration by setting the "cache_ttl" option when creating the client.
