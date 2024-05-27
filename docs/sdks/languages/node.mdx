@@ -14,7 +14,7 @@ If you're working with Node.js, the official [Infisical Node SDK](https://github
 ```js
 import express from "express";
 
-import { InfisicalClient, LogLevel } from "@infisical/sdk";
+import { InfisicalClient } from "@infisical/sdk";
 
 const app = express();
 
@@ -27,8 +27,7 @@ const client = new InfisicalClient({
         clientId: "YOUR_CLIENT_ID",
         clientSecret: "YOUR_CLIENT_SECRET"
       }
-    },
-    logLevel: LogLevel.Error
+    }
 });
 
 app.get("/", async (req, res) => {
@@ -226,7 +225,48 @@ const client = new InfisicalClient({
 });
 ```
 
+#### Azure Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Azure.
+  Please [read more](/documentation/platform/identities/azure-auth) about this authentication method.
+</Info>
 
+**Using environment variables**
+- `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```js
+const client = new InfisicalClient({
+  auth: {
+    azure: {
+      identityId: "YOUR_IDENTITY_ID"
+    }
+  }
+});
+```
+
+
+#### Kubernetes Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Kubernetes.
+  Please [read more](/documentation/platform/identities/kubernetes-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_KUBERNETES_IDENTITY_ID` - Your Infisical Machine Identity ID.
+- `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+
+**Using the SDK directly**
+```js
+const client = new InfisicalClient({
+  auth: {
+    kubernetes: {
+      identityId: "YOUR_IDENTITY_ID",
+      serviceAccountTokenPathEnvName: "/var/run/secrets/kubernetes.io/serviceaccount/token" // Optional
+    }
+  }
+});
+```
 
 ### Caching
 
