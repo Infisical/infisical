@@ -4,7 +4,7 @@ sidebarTitle: "Node.js"
 icon: "node"
 ---
 
-If you're working with Node.js, the official [infisical-node](https://github.com/Infisical/sdk/tree/main/languages/node) package is the easiest way to fetch and work with secrets for your application.
+If you're working with Node.js, the official [Infisical Node SDK](https://github.com/Infisical/sdk/tree/main/languages/node) package is the easiest way to fetch and work with secrets for your application.
 
 - [NPM Package](https://www.npmjs.com/package/@infisical/sdk)
 - [Github Repository](https://github.com/Infisical/sdk/tree/main/languages/node)
@@ -21,14 +21,19 @@ const app = express();
 const PORT = 3000;
 
 const client = new InfisicalClient({
-    clientId: "YOUR_CLIENT_ID",
-    clientSecret: "YOUR_CLIENT_SECRET",
+    siteUrl: "https://app.infisical.com", // Optional, defaults to https://app.infisical.com
+    auth: {
+      universalAuth: {
+        clientId: "YOUR_CLIENT_ID",
+        clientSecret: "YOUR_CLIENT_SECRET"
+      }
+    },
     logLevel: LogLevel.Error
 });
 
 app.get("/", async (req, res) => {
-    // access value
-
+  // Access the secret
+  
     const name = await client.getSecret({
         environment: "dev",
         projectId: "PROJECT_ID",
@@ -72,8 +77,12 @@ Import the SDK and create a client instance with your [Machine Identity](/docume
     import { InfisicalClient, LogLevel } from "@infisical/sdk";
 
     const client = new InfisicalClient({
-        clientId: "YOUR_CLIENT_ID",
-        clientSecret: "YOUR_CLIENT_SECRET",
+        auth: {
+          universalAuth: {
+            clientId: "YOUR_CLIENT_ID",
+            clientSecret: "YOUR_CLIENT_SECRET"
+          }
+        },
         logLevel: LogLevel.Error
     });
     ```
@@ -81,31 +90,40 @@ Import the SDK and create a client instance with your [Machine Identity](/docume
   </Tab>
   <Tab title="ES5">
     ```js
-    const { InfisicalClient, LogLevel } = require("@infisical/sdk");
+    const { InfisicalClient } = require("@infisical/sdk");
 
     const client = new InfisicalClient({
-        clientId: "YOUR_CLIENT_ID",
-        clientSecret: "YOUR_CLIENT_SECRET",
-        logLevel: LogLevel.Error
+        auth: {
+          universalAuth: {
+            clientId: "YOUR_CLIENT_ID",
+            clientSecret: "YOUR_CLIENT_SECRET"
+          }
+        },
     });
     ```
 
   </Tab>
 </Tabs>
 
-#### Parameters
+### Parameters
 
 <ParamField query="options" type="object">
     <Expandable title="properties">
-        <ParamField query="clientId" type="string" optional>
+        <ParamField query="clientId" deprecated type="string" optional>
             Your machine identity client ID.
+            
+            **This field is deprecated and will be removed in future versions.** Please use the `auth.universalAuth.clientId` field instead.
         </ParamField>
-          <ParamField query="clientSecret" type="string" optional>
+          <ParamField query="clientSecret" deprecated type="string" optional>
             Your machine identity client secret.
+            
+            **This field is deprecated and will be removed in future versions.** Please use the `auth.universalAuth.clientSecret` field instead.
         </ParamField>
 
-         <ParamField query="accessToken" type="string" optional>
+         <ParamField query="accessToken" deprecated type="string" optional>
             An access token obtained from the machine identity login endpoint.
+            
+            **This field is deprecated and will be removed in future versions.** Please use the `auth.accessToken` field instead.
         </ParamField>
 
         <ParamField query="cacheTtl" type="number" default="300" optional>
@@ -119,9 +137,96 @@ Import the SDK and create a client instance with your [Machine Identity](/docume
         <ParamField query="logLevel" type="enum" default="Error" optional>
             The level of logs you wish to log The logs are derived from Rust, as we have written our base SDK in Rust.
         </ParamField>
+
+        <ParamField query="auth" type="AuthenticationOptions">
+            The authentication object to use for the client. This is required unless you're using environment variables.
+        </ParamField>
     </Expandable>
 
 </ParamField>
+
+
+### Authentication
+
+The SDK supports a variety of authentication methods. The most common authentication method is Universal Auth, which uses a client ID and client secret to authenticate.
+
+#### Universal Auth
+
+**Using environment variables**
+- `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` - Your machine identity client ID.
+- `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` - Your machine identity client secret.
+
+**Using the SDK directly**
+```js
+const client = new InfisicalClient({
+    auth: {
+      universalAuth: {
+        clientId: "YOUR_CLIENT_ID",
+        clientSecret: "YOUR_CLIENT_SECRET"
+      }
+    }
+});
+```
+
+#### GCP ID Token Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Google Cloud Platform.
+  Please [read more](/documentation/platform/identities/gcp-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_GCP_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```js
+const client = new InfisicalClient({
+    auth: {
+      gcpIdToken: {
+        identityId: "YOUR_IDENTITY_ID"
+      }
+    }
+});
+```
+
+#### GCP IAM Auth
+
+**Using environment variables**
+- `INFISICAL_GCP_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+- `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` - The path to your GCP service account key file.
+
+**Using the SDK directly**
+```js
+const client = new InfisicalClient({
+    auth: {
+      gcpIam: {
+        identityId: "YOUR_IDENTITY_ID",
+        serviceAccountKeyFilePath: "./path/to/your/service-account-key.json"
+      }
+    }
+});
+```
+
+#### AWS IAM Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on AWS.
+  Please [read more](/documentation/platform/identities/aws-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_AWS_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```js
+const client = new InfisicalClient({
+    auth: {
+      awsIam: {
+        identityId: "YOUR_IDENTITY_ID"
+      }
+    }
+});
+```
+
+
 
 ### Caching
 
@@ -159,6 +264,14 @@ Retrieve all secrets within the Infisical project and environment that client is
 
         <ParamField query="attachToProcessEnv" type="boolean" default="false" optional>
             Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `process.env["SECRET_NAME"]`.
+        </ParamField>
+
+        <ParamField query="recursive" type="boolean" default="false" optional>
+            Whether or not to fetch secrets recursively from the specified path. Please note that there's a 20-depth limit for recursive fetching.
+        </ParamField>
+
+        <ParamField query="expandSecretReferences" type="boolean" default="true" optional>
+            Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
         </ParamField>
 
         <ParamField query="includeImports" type="false" default="boolean" optional>
