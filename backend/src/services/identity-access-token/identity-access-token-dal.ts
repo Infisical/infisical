@@ -39,6 +39,12 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             `${TableName.IdentityAwsAuth}.identityId`
           );
         })
+        .leftJoin(TableName.IdentityAzureAuth, (qb) => {
+          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.AZURE_AUTH])).andOn(
+            `${TableName.Identity}.id`,
+            `${TableName.IdentityAzureAuth}.identityId`
+          );
+        })
         .leftJoin(TableName.IdentityKubernetesAuth, (qb) => {
           qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.KUBERNETES_AUTH])).andOn(
             `${TableName.Identity}.id`,
@@ -50,6 +56,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityUniversalAuth).as("accessTokenTrustedIpsUa"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityGcpAuth).as("accessTokenTrustedIpsGcp"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAwsAuth).as("accessTokenTrustedIpsAws"),
+          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAzureAuth).as("accessTokenTrustedIpsAzure"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityKubernetesAuth).as("accessTokenTrustedIpsK8s"),
           db.ref("name").withSchema(TableName.Identity)
         )
@@ -63,6 +70,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           doc.accessTokenTrustedIpsUa ||
           doc.accessTokenTrustedIpsGcp ||
           doc.accessTokenTrustedIpsAws ||
+          doc.accessTokenTrustedIpsAzure ||
           doc.accessTokenTrustedIpsK8s
       };
     } catch (error) {

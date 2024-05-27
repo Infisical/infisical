@@ -21,21 +21,28 @@ namespace Example
         static void Main(string[] args)
         {
 
-            var settings = new ClientSettings
+          ClientSettings settings = new ClientSettings
+          {
+            Auth = new AuthenticationOptions
             {
-                ClientId = "CLIENT_ID",
-                ClientSecret = "CLIENT_SECRET",
-                // SiteUrl = "http://localhost:8080", <-- This line can be omitted if you're using Infisical Cloud.
-            };
-            var infisical = new InfisicalClient(settings);
+              UniversalAuth = new UniversalAuthMethod
+              {
+                ClientId = "your-client-id",
+                ClientSecret = "your-client-secret"
+              }
+            }
+          };
 
-            var options = new GetSecretOptions
+
+          var infisicalClient = new InfisicalClient(settings);
+
+            var getSecretOptions = new GetSecretOptions
             {
                 SecretName = "TEST",
                 ProjectId = "PROJECT_ID",
                 Environment = "dev",
             };
-            var secret = infisical.GetSecret(options);
+            var secret = infisical.GetSecret(getSecretOptions);
 
 
             Console.WriteLine($"The value of secret '{secret.SecretKey}', is: {secret.SecretValue}");
@@ -51,8 +58,6 @@ This example demonstrates how to use the Infisical C# SDK in a C# application. T
 </Warning>
 
 # Installation
-
-Run `npm` to add `@infisical/sdk` to your project.
 
 ```console
 $ dotnet add package Infisical.Sdk
@@ -70,14 +75,20 @@ namespace Example
     {
         static void Main(string[] args)
         {
-
-            var settings = new ClientSettings
+          ClientSettings settings = new ClientSettings
+          {
+            Auth = new AuthenticationOptions
             {
-                ClientId = "CLIENT_ID",
-                ClientSecret = "CLIENT_SECRET",
-            };
+              UniversalAuth = new UniversalAuthMethod
+              {
+                ClientId = "your-client-id",
+                ClientSecret = "your-client-secret"
+              }
+            }
+          };
 
-            var infisical = new InfisicalClient(settings); // <-- Your SDK instance!
+
+          var infisicalClient = new InfisicalClient(settings); // <-- Your SDK client is now ready to use
         }
     }
 }
@@ -87,14 +98,14 @@ namespace Example
 
 <ParamField query="options" type="object">
     <Expandable title="properties">
-        <ParamField query="ClientId" type="string" optional>
+        <ParamField query="ClientId" deprecated type="string" optional>
             Your machine identity client ID.
         </ParamField>
-          <ParamField query="ClientSecret" type="string" optional>
+          <ParamField query="ClientSecret" deprecated type="string" optional>
             Your machine identity client secret.
         </ParamField>
 
-         <ParamField query="AccessToken" type="string" optional>
+         <ParamField query="AccessToken" deprecated type="string" optional>
             An access token obtained from the machine identity login endpoint.
         </ParamField>
 
@@ -103,12 +114,174 @@ namespace Example
             If manually set to 0, caching will be disabled, this is not recommended.
         </ParamField>
 
-        <ParamField query="SiteUrl()" type="string" default="https://app.infisical.com" optional>
+        <ParamField query="SiteUrl" type="string" default="https://app.infisical.com" optional>
             Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`)
+        </ParamField>
+
+        <ParamField query="Auth" type="AuthenticationOptions">
+          The authentication object to use for the client. This is required unless you're using environment variables.
         </ParamField>
     </Expandable>
 
 </ParamField>
+
+### Authentication
+
+The SDK supports a variety of authentication methods. The most common authentication method is Universal Auth, which uses a client ID and client secret to authenticate.
+
+#### Universal Auth
+
+**Using environment variables**
+- `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` - Your machine identity client ID.
+- `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` - Your machine identity client secret.
+
+**Using the SDK directly**
+```csharp
+    ClientSettings settings = new ClientSettings
+    {
+      Auth = new AuthenticationOptions
+      {
+        UniversalAuth = new UniversalAuthMethod
+        {
+          ClientId = "your-client-id",
+          ClientSecret = "your-client-secret"
+        }
+      }
+    };
+
+    var infisicalClient = new InfisicalClient(settings);
+```
+
+#### GCP ID Token Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Google Cloud Platform.
+  Please [read more](/documentation/platform/identities/gcp-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_GCP_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```csharp
+  ClientSettings settings = new ClientSettings
+  {
+    Auth = new AuthenticationOptions
+    {
+      GcpIdToken = new GcpIdTokenAuthMethod
+      {
+        IdentityId = "your-machine-identity-id",
+      }
+    }
+  };
+
+
+  var infisicalClient = new InfisicalClient(settings);
+```
+
+#### GCP IAM Auth
+
+**Using environment variables**
+- `INFISICAL_GCP_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+- `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` - The path to your GCP service account key file.
+
+**Using the SDK directly**
+```csharp
+  ClientSettings settings = new ClientSettings
+  {
+    Auth = new AuthenticationOptions
+    {
+      GcpIam = new GcpIamAuthMethod
+      {
+        IdentityId = "your-machine-identity-id",
+        ServiceAccountKeyFilePath = "./path/to/your/service-account-key.json"
+      }
+    }
+  };
+
+
+  var infisicalClient = new InfisicalClient(settings);
+```
+
+#### AWS IAM Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on AWS.
+  Please [read more](/documentation/platform/identities/aws-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_AWS_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```csharp
+  ClientSettings settings = new ClientSettings
+  {
+    Auth = new AuthenticationOptions
+    {
+      AwsIam = new AwsIamAuthMethod
+      {
+        IdentityId = "your-machine-identity-id",
+      }
+    }
+  };
+
+
+  var infisicalClient = new InfisicalClient(settings);
+```
+
+
+#### Azure Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Azure.
+  Please [read more](/documentation/platform/identities/azure-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```csharp
+  ClientSettings settings = new ClientSettings
+  {
+    Auth = new AuthenticationOptions
+    {
+      Azure = new AzureAuthMethod
+      {
+        IdentityId = "YOUR_IDENTITY_ID",
+      }
+    }
+  };
+
+  var infisicalClient = new InfisicalClient(settings);
+```
+
+#### Kubernetes Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Kubernetes.
+  Please [read more](/documentation/platform/identities/kubernetes-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_KUBERNETES_IDENTITY_ID` - Your Infisical Machine Identity ID.
+- `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+
+**Using the SDK directly**
+```csharp
+  ClientSettings settings = new ClientSettings
+  {
+    Auth = new AuthenticationOptions
+    {
+      Kubernetes = new KubernetesAuthMethod
+      {
+        ServiceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token", // Optional
+        IdentityId = "YOUR_IDENTITY_ID",
+      }
+    }
+  };
+
+  var infisicalClient = new InfisicalClient(settings);
+```
+
+
 
 ### Caching
 
@@ -154,6 +327,14 @@ Retrieve all secrets within the Infisical project and environment that client is
 
         <ParamField query="IncludeImports" type="boolean" default="false" optional>
              Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+        </ParamField>
+
+        <ParamField query="Recursive" type="boolean" default="false" optional>
+            Whether or not to fetch secrets recursively from the specified path. Please note that there's a 20-depth limit for recursive fetching.
+        </ParamField>
+
+        <ParamField query="ExpandSecretReferences" type="boolean" default="true" optional>
+            Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
         </ParamField>
     </Expandable>
 

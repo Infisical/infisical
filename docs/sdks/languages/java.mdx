@@ -19,12 +19,19 @@ import com.infisical.sdk.schema.*;
 
 public class Example {
     public static void main(String[] args) {
-        // Create a new Infisical Client
+       
+        // Create the authentication settings for the client
         ClientSettings settings = new ClientSettings();
-        settings.setClientID("MACHINE_IDENTITY_CLIENT_ID");
-        settings.setClientSecret("MACHINE_IDENTITY_CLIENT_SECRET");
-        settings.setCacheTTL(Long.valueOf(300)); // 300 seconds, 5 minutes
+        AuthenticationOptions authOptions = new AuthenticationOptions();
+        UniversalAuthMethod authMethod = new UniversalAuthMethod();
 
+        authMethod.setClientID("YOUR_IDENTITY_ID");
+        authMethod.setClientSecret("YOUR_CLIENT_SECRET");
+
+        authOptions.setUniversalAuth(authMethod);
+        settings.setAuth(authOptions);
+
+        // Create a new Infisical Client
         InfisicalClient client = new InfisicalClient(settings);
 
         // Create the options for fetching the secret
@@ -68,11 +75,18 @@ import com.infisical.sdk.schema.*;
 
 public class App {
     public static void main(String[] args) {
-
+        // Create the authentication settings for the client
         ClientSettings settings = new ClientSettings();
-        settings.setClientID("MACHINE_IDENTITY_CLIENT_ID");
-        settings.setClientSecret("MACHINE_IDENTITY_CLIENT_SECRET");
+        AuthenticationOptions authOptions = new AuthenticationOptions();
+        UniversalAuthMethod authMethod = new UniversalAuthMethod();
 
+        authMethod.setClientID("YOUR_IDENTITY_ID");
+        authMethod.setClientSecret("YOUR_CLIENT_SECRET");
+
+        authOptions.setUniversalAuth(authMethod);
+        settings.setAuth(authOptions);
+
+        // Create a new Infisical Client
         InfisicalClient client = new InfisicalClient(settings); // Your client!
     }
 }
@@ -82,15 +96,21 @@ public class App {
 
 <ParamField query="options" type="object">
     <Expandable title="properties">
-        <ParamField query="setClientID()" type="string" optional>
+        <ParamField query="setClientID()" type="string" deprecated optional>
             Your machine identity client ID.
+
+            **This field is deprecated and will be removed in future versions.** Please use the `setAuth()` method on the client settings instead.
         </ParamField>
-          <ParamField query="setClientSecret()" type="string" optional>
+          <ParamField query="setClientSecret()" deprecated type="string" optional>
             Your machine identity client secret.
+
+            **This field is deprecated and will be removed in future versions.** Please use the `setAuth()` method on the client settings instead.
         </ParamField>
 
-         <ParamField query="setAccessToken()" type="string" optional>
+         <ParamField query="setAccessToken()" deprecatedtype="string" optional>
             An access token obtained from the machine identity login endpoint.
+
+            **This field is deprecated and will be removed in future versions.** Please use the `setAuth()` method on the client settings instead.
         </ParamField>
 
         <ParamField query="setCacheTTL()" type="number" default="300" optional>
@@ -101,9 +121,154 @@ public class App {
         <ParamField query="setSiteURL()" type="string" default="https://app.infisical.com" optional>
             Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`)
         </ParamField>
+
+        <ParamField query="setAuth()" type="AuthenticationOptions">
+          The authentication object to use for the client. This is required unless you're using environment variables.
+      </ParamField>
     </Expandable>
 
 </ParamField>
+
+### Authentication
+
+The SDK supports a variety of authentication methods. The most common authentication method is Universal Auth, which uses a client ID and client secret to authenticate.
+
+#### Universal Auth
+
+**Using environment variables**
+- `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` - Your machine identity client ID.
+- `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` - Your machine identity client secret.
+
+**Using the SDK directly**
+```java
+  ClientSettings settings = new ClientSettings();
+  AuthenticationOptions authOptions = new AuthenticationOptions();
+  UniversalAuthMethod authMethod = new UniversalAuthMethod();
+
+  authMethod.setClientID("YOUR_IDENTITY_ID");
+  authMethod.setClientSecret("YOUR_CLIENT_SECRET");
+
+  authOptions.setUniversalAuth(authMethod);
+  settings.setAuth(authOptions);
+
+  InfisicalClient client = new InfisicalClient(settings);
+```
+
+#### GCP ID Token Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Google Cloud Platform.
+  Please [read more](/documentation/platform/identities/gcp-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_GCP_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```java
+  ClientSettings settings = new ClientSettings();
+  AuthenticationOptions authOptions = new AuthenticationOptions();
+  GCPIDTokenAuthMethod authMethod = new GCPIDTokenAuthMethod();
+
+  authMethod.setIdentityID("YOUR_MACHINE_IDENTITY_ID");
+
+  authOptions.setGcpIDToken(authMethod);
+  settings.setAuth(authOptions);
+
+  InfisicalClient client = new InfisicalClient(settings);
+```
+
+#### GCP IAM Auth
+
+**Using environment variables**
+- `INFISICAL_GCP_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+- `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` - The path to your GCP service account key file.
+
+**Using the SDK directly**
+```java
+  ClientSettings settings = new ClientSettings();
+  AuthenticationOptions authOptions = new AuthenticationOptions();
+  GCPIamAuthMethod authMethod = new GCPIamAuthMethod();
+
+  authMethod.setIdentityID("YOUR_MACHINE_IDENTITY_ID");
+  authMethod.setServiceAccountKeyFilePath("./path/to/your/service-account-key.json");
+
+  authOptions.setGcpIam(authMethod);
+  settings.setAuth(authOptions);
+
+  InfisicalClient client = new InfisicalClient(settings);
+```
+
+#### AWS IAM Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on AWS.
+  Please [read more](/documentation/platform/identities/aws-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_AWS_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```java
+  ClientSettings settings = new ClientSettings();
+  AuthenticationOptions authOptions = new AuthenticationOptions();
+  AWSIamAuthMethod authMethod = new AWSIamAuthMethod();
+
+  authMethod.setIdentityID("YOUR_MACHINE_IDENTITY_ID");
+
+  authOptions.setAwsIam(authMethod);
+  settings.setAuth(authOptions);
+
+  InfisicalClient client = new InfisicalClient(settings);
+```
+
+#### Azure Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Azure.
+  Please [read more](/documentation/platform/identities/azure-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```java
+  ClientSettings settings = new ClientSettings();
+  AuthenticationOptions authOptions = new AuthenticationOptions();
+  AzureAuthMethod authMethod = new AzureAuthMethod();
+  
+  authMethod.setIdentityID("YOUR_IDENTITY_ID");
+
+  authOptions.setAzure(authMethod);
+  settings.setAuth(authOptions);
+
+  InfisicalClient client = new InfisicalClient(settings);
+```
+
+#### Kubernetes Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Kubernetes.
+  Please [read more](/documentation/platform/identities/kubernetes-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+- `INFISICAL_KUBERNETES_IDENTITY_ID` - Your Infisical Machine Identity ID.
+- `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+
+**Using the SDK directly**
+```java
+  ClientSettings settings = new ClientSettings();
+  AuthenticationOptions authOptions = new AuthenticationOptions();
+  KubernetesAuthMethod authMethod = new KubernetesAuthMethod();
+
+  authMethod.setIdentityID("YOUR_IDENTITY_ID");
+  authMethod.setServiceAccountTokenPath("/var/run/secrets/kubernetes.io/serviceaccount/token"); // Optional
+
+  authOptions.setKubernetes(authMethod);
+  settings.setAuth(authOptions);
+
+  InfisicalClient client = new InfisicalClient(settings);
+```
+
 
 ### Caching
 
@@ -119,6 +284,8 @@ options.setEnvironment("dev");
 options.setProjectID("PROJECT_ID");
 options.setPath("/foo/bar");
 options.setIncludeImports(false);
+options.setRecursive(false);
+options.setExpandSecretReferences(true);
 
 SecretElement[] secrets = client.listSecrets(options);
 ```
@@ -147,6 +314,14 @@ Retrieve all secrets within the Infisical project and environment that client is
 
         <ParamField query="setIncludeImports()" type="boolean" default="false" optional>
              Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+        </ParamField>
+
+         <ParamField query="setRecursive()" type="boolean" default="false" optional>
+            Whether or not to fetch secrets recursively from the specified path. Please note that there's a 20-depth limit for recursive fetching.
+        </ParamField>
+
+        <ParamField query="setExpandSecretReferences()" type="boolean" default="true" optional>
+            Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
         </ParamField>
     </Expandable>
 
