@@ -70,12 +70,12 @@
   border-color: #ebebeb;
 }
 
-#content-area:hover .mt-8 .block:hover{
+/* #content-area:hover .mt-8 .block:hover{
   border-radius: 0;
   border-width: 1px;
   background-color: #FDFFE5;
   border-color: #EFFF33;
-}
+} */
 
 #content-area .mt-8 .rounded-xl{
   border-radius: 0;
