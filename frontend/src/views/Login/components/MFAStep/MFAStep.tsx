@@ -184,7 +184,7 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
       if (triesLeft) {
         setTriesLeft((left) => {
           if (triesLeft === 1) {
-            window.location.reload();
+            router.push("/");
           }
           return (left as number) - 1;
         });
