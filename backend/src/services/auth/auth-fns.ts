@@ -56,12 +56,15 @@ export const enforceUserLockStatus = (isLocked: boolean, temporaryLockDateEnd?: 
 
   if (temporaryLockDateEnd) {
     const timeDiff = new Date().getTime() - temporaryLockDateEnd.getTime();
-    if (timeDiff < 0)
+    if (timeDiff < 0) {
+      const secondsDiff = (-1 * timeDiff) / 1000;
+      const timeDisplay =
+        secondsDiff > 60 ? `${Math.ceil(secondsDiff / 60)} minutes` : `${Math.ceil(secondsDiff)} seconds`;
+
       throw new UnauthorizedError({
         name: "User Locked",
-        message: `User is locked due to multiple failed login attempts. Try again after ${Math.round(
-          (-1 * timeDiff) / 1000
-        )} seconds.`
+        message: `User is temporary locked due to multiple failed login attempts. Try again after ${timeDisplay}. You can also reset your password now to proceed.`
       });
+    }
   }
 };
