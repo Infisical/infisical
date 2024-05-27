@@ -314,7 +314,7 @@ export const authLoginServiceFactory = ({
     try {
       const updatedUser = await userDAL.transaction(async (tx) => {
         const PROGRESSIVE_DELAY_INTERVAL = 3;
-        const user = await userDAL.incrementFailedMfaAttempt(userId, tx);
+        const user = await userDAL.updateById(userId, { $incr: { consecutiveFailedMfaAttempts: 1 } }, tx);
 
         if (!user) {
           throw new Error("User not found");

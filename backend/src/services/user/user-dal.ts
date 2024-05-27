@@ -143,19 +143,6 @@ export const userDALFactory = (db: TDbClient) => {
     }
   };
 
-  const incrementFailedMfaAttempt = async (userId: string, tx?: Knex) => {
-    try {
-      const [user] = await (tx || db)(TableName.Users)
-        .where("id", userId)
-        .increment("consecutiveFailedMfaAttempts", 1)
-        .returning("*");
-
-      return user;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Increment Failed MFA Attempt" });
-    }
-  };
-
   return {
     ...userOrm,
     findUserByUsername,
@@ -168,7 +155,6 @@ export const userDALFactory = (db: TDbClient) => {
     upsertUserEncryptionKey,
     createUserEncryption,
     findOneUserAction,
-    createUserAction,
-    incrementFailedMfaAttempt
+    createUserAction
   };
 };
