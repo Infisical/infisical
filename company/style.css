@@ -37,6 +37,13 @@
   padding: 0px;
 }
 
+#sidebar li > a.text-primary {
+  border-radius: 0;
+  background-color: #FBFFCC;
+  border-left: 4px solid #EFFF33;
+  padding: 5px;
+}
+
 /* #sidebar ul > div.mt-12 {
   padding-top: 30px;
   position: relative;
