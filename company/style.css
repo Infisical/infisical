@@ -49,10 +49,10 @@
 } */
 
 #header {
-  border-left: 1px solid #26272b;
+  border-left: 4px solid #EFFF33;
   padding-left: 16px;
   padding-right: 16px;
-  background-color: #f5f5f5;
+  background-color: #FDFFE5;
   padding-bottom: 10px;
   padding-top: 10px;
 }
@@ -61,6 +61,13 @@
   border-radius: 0;
   border-width: 1px;
   border-color: #ebebeb;
+}
+
+#content-area:hover .mt-8 .block:hover{
+  border-radius: 0;
+  border-width: 1px;
+  background-color: #FDFFE5;
+  border-color: #EFFF33;
 }
 
 #content-area .mt-8 .rounded-xl{
