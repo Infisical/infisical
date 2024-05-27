@@ -115,6 +115,7 @@ import { projectMembershipServiceFactory } from "@app/services/project-membershi
 import { projectUserMembershipRoleDALFactory } from "@app/services/project-membership/project-user-membership-role-dal";
 import { projectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
+import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-cleanup/resource-cleanup-queue";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
 import { secretQueueFactory } from "@app/services/secret/secret-queue";
 import { secretServiceFactory } from "@app/services/secret/secret-service";
@@ -769,14 +770,19 @@ export const registerRoutes = async (
     folderDAL,
     licenseService
   });
+  const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
+    auditLogDAL,
+    queueService,
+    identityAccessTokenDAL
+  });
 
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
   await licenseService.init();
 
-  await auditLogQueue.startAuditLogPruneJob();
   await telemetryQueue.startTelemetryCheck();
+  await dailyResourceCleanUp.startCleanUp();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {

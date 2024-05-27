@@ -1,6 +1,5 @@
 {
   "name": "Infisical",
-  "openapi": "https://app.infisical.com/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
@@ -44,33 +43,20 @@
     "name": "Start for Free",
     "url": "https://app.infisical.com/signup"
   },
-  "tabs": [
-    {
-      "name": "Integrations",
-      "url": "integrations"
-    },
-    {
-      "name": "CLI",
-      "url": "cli"
-    },
-    {
-      "name": "API Reference",
-      "url": "api-reference"
-    },
-    {
-      "name": "SDKs",
-      "url": "sdks"
-    },
-    {
-      "name": "Changelog",
-      "url": "changelog"
-    }
-  ],
+  "primaryTab": {
+    "name": "About"
+  },
   "navigation": [
     {
-      "group": "Getting Started",
+      "group": "Handbook",
       "pages": [
-        "documentation/getting-started/introduction"
+        "handbook/overview"
+      ]
+    }, 
+    {
+      "group": "How we work",
+      "pages": [
+        "handbook/onboarding"
       ]
     }
   ],

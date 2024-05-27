@@ -12,7 +12,9 @@ export enum QueueName {
   SecretRotation = "secret-rotation",
   SecretReminder = "secret-reminder",
   AuditLog = "audit-log",
+  // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune",
+  DailyResourceCleanUp = "daily-resource-cleanup",
   TelemetryInstanceStats = "telemtry-self-hosted-stats",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
@@ -26,7 +28,9 @@ export enum QueueJobs {
   SecretReminder = "secret-reminder-job",
   SecretRotation = "secret-rotation-job",
   AuditLog = "audit-log-job",
+  // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
+  DailyResourceCleanUp = "daily-resource-cleanup-job",
   SecWebhook = "secret-webhook-trigger",
   TelemetryInstanceStats = "telemetry-self-hosted-stats",
   IntegrationSync = "secret-integration-pull",
@@ -54,6 +58,10 @@ export type TQueueJobTypes = {
   [QueueName.AuditLog]: {
     name: QueueJobs.AuditLog;
     payload: TCreateAuditLogDTO;
+  };
+  [QueueName.DailyResourceCleanUp]: {
+    name: QueueJobs.DailyResourceCleanUp;
+    payload: undefined;
   };
   [QueueName.AuditLogPrune]: {
     name: QueueJobs.AuditLogPrune;
@@ -172,7 +180,9 @@ export const queueServiceFactory = (redisUrl: string) => {
     jobId?: string
   ) => {
     const q = queueContainer[name];
-    return q.removeRepeatable(job, repeatOpt, jobId);
+    if (q) {
+      return q.removeRepeatable(job, repeatOpt, jobId);
+    }
   };
 
   const stopRepeatableJobByJobId = async <T extends QueueName>(name: T, jobId: string) => {

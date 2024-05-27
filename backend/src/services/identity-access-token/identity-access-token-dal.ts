@@ -70,5 +70,48 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...identityAccessTokenOrm, findOne };
+  const removeExpiredTokens = async (tx?: Knex) => {
+    try {
+      const docs = (tx || db)(TableName.IdentityAccessToken)
+        .where({
+          isAccessTokenRevoked: true
+        })
+        .orWhere((qb) => {
+          void qb
+            .where("accessTokenNumUsesLimit", ">", 0)
+            .andWhere(
+              "accessTokenNumUses",
+              ">=",
+              db.ref("accessTokenNumUsesLimit").withSchema(TableName.IdentityAccessToken)
+            );
+        })
+        .orWhere((qb) => {
+          void qb.where("accessTokenTTL", ">", 0).andWhere((qb2) => {
+            void qb2
+              .where((qb3) => {
+                void qb3
+                  .whereNotNull("accessTokenLastRenewedAt")
+                  // accessTokenLastRenewedAt + convert_integer_to_seconds(accessTokenTTL) < present_date
+                  .andWhereRaw(
+                    `"${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt" + make_interval(secs => "${TableName.IdentityAccessToken}"."accessTokenTTL") < NOW()`
+                  );
+              })
+              .orWhere((qb3) => {
+                void qb3
+                  .whereNull("accessTokenLastRenewedAt")
+                  // created + convert_integer_to_seconds(accessTokenTTL) < present_date
+                  .andWhereRaw(
+                    `"${TableName.IdentityAccessToken}"."createdAt" + make_interval(secs => "${TableName.IdentityAccessToken}"."accessTokenTTL") < NOW()`
+                  );
+              });
+          });
+        })
+        .delete();
+      return await docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "IdentityAccessTokenPrune" });
+    }
+  };
+
+  return { ...identityAccessTokenOrm, findOne, removeExpiredTokens };
 };
