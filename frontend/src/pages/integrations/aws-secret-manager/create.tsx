@@ -169,12 +169,12 @@ export default function AWSSecretManagerCreateIntegrationPage() {
           mappingBehavior: selectedMappingBehavior
         }
       });
-
       setIsLoading(false);
       setTargetSecretNameErrorText("");
 
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
+      setIsLoading(false);
       console.error(err);
     }
   };
