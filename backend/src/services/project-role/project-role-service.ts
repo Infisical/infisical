@@ -45,7 +45,7 @@ const getPredefinedRoles = (projectId: string, roleFilter?: ProjectMembershipRol
       name: "Admin",
       slug: ProjectMembershipRole.Admin,
       permissions: projectAdminPermissions,
-      description: "Complete administration access over the project",
+      description: "Full administrative access over a project",
       createdAt: new Date(),
       updatedAt: new Date()
     },
@@ -55,7 +55,7 @@ const getPredefinedRoles = (projectId: string, roleFilter?: ProjectMembershipRol
       name: "Developer",
       slug: ProjectMembershipRole.Member,
       permissions: projectMemberPermissions,
-      description: "Non-administrative role in an project",
+      description: "Limited read/write role in a project",
       createdAt: new Date(),
       updatedAt: new Date()
     },
@@ -65,7 +65,7 @@ const getPredefinedRoles = (projectId: string, roleFilter?: ProjectMembershipRol
       name: "Viewer",
       slug: ProjectMembershipRole.Viewer,
       permissions: projectViewerPermission,
-      description: "Non-administrative role in an project",
+      description: "Only read role in a project",
       createdAt: new Date(),
       updatedAt: new Date()
     },

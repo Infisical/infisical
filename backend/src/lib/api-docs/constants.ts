@@ -722,14 +722,14 @@ export const AUDIT_LOG_STREAMS = {
 
 export const PROJECT_ROLE = {
   CREATE: {
-    projectSlug: "The slug of the project to create role.",
+    projectSlug: "Slug of the project to create the role for.",
     slug: "The slug of the role.",
     name: "The name of the role.",
     description: "The description for the role.",
     permissions: "The permissions assigned to the role."
   },
   UPDATE: {
-    projectSlug: "The slug of the project to update role.",
+    projectSlug: "Slug of the project to update the role for.",
     roleId: "The ID of the role to update",
     slug: "The slug of the role.",
     name: "The name of the role.",
@@ -737,7 +737,7 @@ export const PROJECT_ROLE = {
     permissions: "The permissions assigned to the role."
   },
   DELETE: {
-    projectSlug: "The slug of the project to delete role.",
+    projectSlug: "Slug of the project to delete the role for.",
     roleId: "The ID of the role to update"
   },
   GET_ROLE_BY_SLUG: {
@@ -745,6 +745,6 @@ export const PROJECT_ROLE = {
     roleSlug: "The slug of the role to get details"
   },
   LIST: {
-    projectSlug: "The slug of the project to list roles."
+    projectSlug: "The slug of the project to list the roles for."
   }
 };
