@@ -174,6 +174,12 @@ export const authPaswordServiceFactory = ({
       salt,
       verifier
     });
+
+    await userDAL.updateById(userId, {
+      isLocked: false,
+      temporaryLockDateEnd: null,
+      consecutiveFailedMfaAttempts: 0
+    });
   };
 
   /*

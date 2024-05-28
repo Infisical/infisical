@@ -46,20 +46,7 @@ type Props = {
   callbackPort?: string | null;
 };
 
-interface VerifyMfaTokenError {
-  response: {
-    data: {
-      context: {
-        code: string;
-        triesLeft: number;
-      };
-    };
-    status: number;
-  };
-}
-
 export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
-  
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingResend, setIsLoadingResend] = useState(false);
@@ -178,20 +165,31 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
           });
         }
       }
-    } catch (err) {
-      const error = err as VerifyMfaTokenError;
+    } catch (err: any) {
+      if (err.response.data.error === "User Locked") {
+        createNotification({
+          title: err.response.data.error,
+          text: err.response.data.message,
+          type: "error"
+        });
+        setIsLoading(false);
+        return;
+      }
+
       createNotification({
         text: "Failed to log in",
         type: "error"
       });
 
-      if (error?.response?.status === 500) {
-        window.location.reload();
-      } else if (error?.response?.data?.context?.triesLeft) {
-        setTriesLeft(error?.response?.data?.context?.triesLeft);
-        if (error.response.data.context.triesLeft === 0) {
-          window.location.reload();
-        }
+      if (triesLeft) {
+        setTriesLeft((left) => {
+          if (triesLeft === 1) {
+            router.push("/");
+          }
+          return (left as number) - 1;
+        });
+      } else {
+        setTriesLeft(2);
       }
 
       setIsLoading(false);

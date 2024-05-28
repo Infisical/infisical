@@ -21,6 +21,7 @@ export enum SmtpTemplates {
   EmailVerification = "emailVerification.handlebars",
   SecretReminder = "secretReminder.handlebars",
   EmailMfa = "emailMfa.handlebars",
+  UnlockAccount = "unlockAccount.handlebars",
   AccessApprovalRequest = "accessApprovalRequest.handlebars",
   HistoricalSecretList = "historicalSecretLeakIncident.handlebars",
   NewDeviceJoin = "newDevice.handlebars",
