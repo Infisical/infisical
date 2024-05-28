@@ -737,7 +737,7 @@ export const PROJECT_ROLE = {
     permissions: "The permissions assigned to the role."
   },
   DELETE: {
-    projectSlug: "Slug of the project to delete the role for.",
+    projectSlug: "Slug of the project to delete this role for.",
     roleId: "The ID of the role to update"
   },
   GET_ROLE_BY_SLUG: {
@@ -745,6 +745,6 @@ export const PROJECT_ROLE = {
     roleSlug: "The slug of the role to get details"
   },
   LIST: {
-    projectSlug: "The slug of the project to list the roles for."
+    projectSlug: "The slug of the project to list the roles of."
   }
 };
