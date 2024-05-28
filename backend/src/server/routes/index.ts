@@ -130,6 +130,8 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
+import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
+import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
@@ -198,6 +200,8 @@ export const registerRoutes = async (
   const secretVersionDAL = secretVersionDALFactory(db);
   const secretVersionTagDAL = secretVersionTagDALFactory(db);
   const secretBlindIndexDAL = secretBlindIndexDALFactory(db);
+
+  const secretSharingDAL = secretSharingDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
@@ -612,6 +616,12 @@ export const registerRoutes = async (
     projectEnvDAL,
     projectBotService
   });
+
+  const secretSharingService = secretSharingServiceFactory({
+    permissionService,
+    secretSharingDAL
+  });
+
   const sarService = secretApprovalRequestServiceFactory({
     permissionService,
     projectBotService,
@@ -851,7 +861,8 @@ export const registerRoutes = async (
     secretBlindIndex: secretBlindIndexService,
     telemetry: telemetryService,
     projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService,
-    identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService
+    identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
+    secretSharing: secretSharingService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

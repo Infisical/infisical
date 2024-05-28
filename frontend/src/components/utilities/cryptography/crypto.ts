@@ -224,6 +224,76 @@ const decryptSymmetric = ({ ciphertext, iv, tag, key }: DecryptSymmetricProps): 
   return plaintext;
 };
 
+/**
+ * Return new base64, NaCl, public-secret key pair for signing.
+ * @returns {Object} obj
+ * @returns {String} obj.publicKey - base64, NaCl, public key
+ * @returns {String} obj.secretKey - base64, NaCl, secret key
+ */
+const generateSignKeyPair = (): {
+  publicKey: string;
+  secretKey: string;
+} => {
+  const pair = nacl.sign.keyPair();
+
+  return {
+    publicKey: nacl.util.encodeBase64(pair.publicKey),
+    secretKey: nacl.util.encodeBase64(pair.secretKey)
+  };
+};
+
+type SignAsymmetricProps = {
+  message: string;
+  privateKey: string;
+};
+
+/**
+ * Returns asymmetrically signed [message] using [privateKey]
+ * @param {Object} obj
+ * @param {String} obj.message - message to sign
+ * @param {String} obj.privateKey - base64-encoded private key
+ * @returns {String} signedMessage - base64-encoded signed message
+ */
+const signAssymmetric = ({ message, privateKey }: SignAsymmetricProps): string => {
+  let signedMessage;
+  try {
+    signedMessage = nacl.sign(nacl.util.decodeUTF8(message), nacl.util.decodeBase64(privateKey));
+  } catch (err) {
+    console.log("Failed to sign message", err);
+    process.exit(1);
+  }
+  return nacl.util.encodeBase64(signedMessage);
+};
+
+type OpenSignedAsymmetricProps = {
+  signedMessage: string;
+  publicKey: string;
+};
+
+/**
+ * Returns asymmetrically decrypted [message] using [publicKey]
+ * @param {Object} obj
+ * @param {String} obj.signedMessage - signed message to decrypt
+ * @param {String} obj.publicKey - base64-encoded public key
+ * @returns {String} signedMessage - base64-encoded decrypted message
+ */
+const openSignedAssymmetric = ({ signedMessage, publicKey }: OpenSignedAsymmetricProps): string => {
+  let originalMessage;
+  try {
+    originalMessage = nacl.sign.open(
+      nacl.util.decodeBase64(signedMessage),
+      nacl.util.decodeBase64(publicKey)
+    );
+    if (!originalMessage) {
+      throw new Error("Signature verification failed");
+    }
+    originalMessage = nacl.util.encodeUTF8(originalMessage);
+  } catch (err) {
+    console.log("Failed to verify signature", err);
+  }
+  return originalMessage;
+};
+
 export {
   decryptAssymmetric,
   decryptSymmetric,
@@ -231,5 +301,8 @@ export {
   encryptAssymmetric,
   encryptSymmetric,
   generateKeyPair,
+  generateSignKeyPair,
+  openSignedAssymmetric,
+  signAssymmetric,
   verifyPrivateKey
 };

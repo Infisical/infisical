@@ -66,3 +66,11 @@ export const creationLimit: RateLimitOptions = {
   max: 30,
   keyGenerator: (req) => req.realIp
 };
+
+// Public endpoints to avoid brute force attacks
+export const publicEndpointLimit: RateLimitOptions = {
+  // Shared Secrets
+  timeWindow: 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => req.realIp
+};
