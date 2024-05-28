@@ -30,7 +30,7 @@ export type HerokuPipelineCoupling = {
 
 export type Team = {
   name: string;
-  teamId: string;
+  id: string;
 };
 
 export type Environment = {
