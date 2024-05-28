@@ -1,7 +1,7 @@
 #navbar .max-w-8xl {
   max-width: 100%;
   border-bottom: 1px solid #ebebeb;
-  background-color: #fcfcfc;
+  background-color: #F4F3EF;
 }
 
 .max-w-8xl {
@@ -14,7 +14,7 @@
   padding-right: 30px;
   border-right: 1px;
   border-color: #cdd64b;
-  background-color: #fcfcfc;
+  background-color: #F4F3EF;
   border-right: 1px solid #ebebeb;
 }
 
@@ -67,6 +67,7 @@
 #content-area .mt-8 .block{
   border-radius: 0;
   border-width: 1px;
+  background-color: #FCFBFA;
   border-color: #ebebeb;
 }
 
