@@ -27,16 +27,6 @@ const timeAgo = (inputDate: Date, currentDate: Date): string => {
   const elapsedMonths = Math.abs(Math.floor(elapsedDays / 30));
   const elapsedYears = Math.abs(Math.floor(elapsedDays / 365));
 
-  console.log(
-    elapsedYears,
-    elapsedMonths,
-    elapsedWeeks,
-    elapsedDays,
-    elapsedHours,
-    elapsedMinutes,
-    elapsedSeconds
-  );
-
   if (elapsedYears > 0) {
     return `${elapsedYears} year${elapsedYears === 1 ? "" : "s"} ${
       elapsedMilliseconds >= 0 ? "ago" : "from now"
