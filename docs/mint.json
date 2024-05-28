@@ -477,6 +477,16 @@
           ]
         },
         {
+          "group": "Project Roles",
+          "pages": [
+            "api-reference/endpoints/project-roles/create",
+            "api-reference/endpoints/project-roles/update",
+            "api-reference/endpoints/project-roles/delete",
+            "api-reference/endpoints/project-roles/get-by-slug",
+            "api-reference/endpoints/project-roles/list"
+          ]
+        },
+        {
           "group": "Environments",
           "pages": [
             "api-reference/endpoints/environments/create",

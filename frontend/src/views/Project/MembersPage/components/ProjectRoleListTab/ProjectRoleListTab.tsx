@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
-import { TProjectRole } from "@app/hooks/api/roles/types";
 
 import { ProjectRoleList } from "./components/ProjectRoleList";
 import { ProjectRoleModifySection } from "./components/ProjectRoleModifySection";
@@ -21,7 +20,7 @@ export const ProjectRoleListTab = withProjectPermission(
         exit={{ opacity: 0, translateX: 30 }}
       >
         <ProjectRoleModifySection
-          role={popUp.editRole.data as TProjectRole}
+          roleSlug={popUp.editRole.data as string}
           onGoBack={() => handlePopUpClose("editRole")}
         />
       </motion.div>
@@ -33,7 +32,7 @@ export const ProjectRoleListTab = withProjectPermission(
         animate={{ opacity: 1, translateX: 0 }}
         exit={{ opacity: 0, translateX: -30 }}
       >
-        <ProjectRoleList onSelectRole={(role) => handlePopUpOpen("editRole", role)} />
+        <ProjectRoleList onSelectRole={(slug) => handlePopUpOpen("editRole", slug)} />
       </motion.div>
     );
   },

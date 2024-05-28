@@ -71,7 +71,7 @@ export type TDeleteOrgRoleDTO = {
 };
 
 export type TCreateProjectRoleDTO = {
-  projectId: string;
+  projectSlug: string;
   name: string;
   description?: string;
   slug: string;
@@ -79,11 +79,11 @@ export type TCreateProjectRoleDTO = {
 };
 
 export type TUpdateProjectRoleDTO = {
-  projectId: string;
+  projectSlug: string;
   id: string;
 } & Partial<Omit<TCreateProjectRoleDTO, "orgId">>;
 
 export type TDeleteProjectRoleDTO = {
-  projectId: string;
+  projectSlug: string;
   id: string;
 };

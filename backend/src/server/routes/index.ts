@@ -523,7 +523,8 @@ export const registerRoutes = async (
     permissionService,
     projectRoleDAL,
     projectUserMembershipRoleDAL,
-    identityProjectMembershipRoleDAL
+    identityProjectMembershipRoleDAL,
+    projectDAL
   });
 
   const snapshotService = secretSnapshotServiceFactory({

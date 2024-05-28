@@ -95,10 +95,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
   const formVal: Record<string, any> = {};
 
   permissions.forEach((permission) => {
-    const {
-      subject: [subject],
-      action
-    } = permission;
+    const { subject: caslSub, action } = permission;
+    const subject = typeof caslSub === "string" ? caslSub : caslSub[0];
     if (!formVal?.[subject]) formVal[subject] = {};
 
     if (subject === "secrets") {
@@ -123,7 +121,7 @@ const multiEnvForm2Api = (
   const isFullAccess = PERMISSION_ACTIONS.every((action) => formVal?.all?.[action]);
   // if any of them is set in all push it without any  condition
   PERMISSION_ACTIONS.forEach((action) => {
-    if (formVal?.all?.[action]) permissions.push({ action, subject: [subject] });
+    if (formVal?.all?.[action]) permissions.push({ action, subject });
   });
 
   if (!isFullAccess) {
@@ -144,7 +142,7 @@ const multiEnvForm2Api = (
             if (formVal[slug]?.secretPath)
               conditions.secretPath = { $glob: formVal?.[slug]?.secretPath };
 
-            permissions.push({ action, subject: [subject], conditions });
+            permissions.push({ action, subject, conditions });
           }
         });
       });
@@ -161,7 +159,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
     } else {
       Object.entries(actions).forEach(([action, isAllowed]) => {
         if (isAllowed) {
-          permissions.push({ subject: [rule], action });
+          permissions.push({ subject: rule, action });
         }
       });
     }
