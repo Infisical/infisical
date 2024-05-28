@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import axios from "axios";
 import jwt_decode from "jwt-decode";
 
-import Error from "@app/components/basic/Error"; // which to notification
+import Error from "@app/components/basic/Error";
 import { createNotification } from "@app/components/notifications";
 import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa";
 import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
@@ -234,7 +234,7 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
         />
       </div>
       {typeof triesLeft === "number" && (
-        <Error text={`${t("mfa.step2-code-error")} ${triesLeft}`} />
+        <Error text={`Invalid code. You have ${triesLeft} attempt(s) remaining.`} />
       )}
       <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
         <div className="text-l w-full py-1 text-lg">
