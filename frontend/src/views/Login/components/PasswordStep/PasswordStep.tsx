@@ -155,7 +155,6 @@ export const PasswordStep = ({
           text: err.response.data.message,
           type: "error"
         });
-        setIsLoading(false);
         return;
       }
 
