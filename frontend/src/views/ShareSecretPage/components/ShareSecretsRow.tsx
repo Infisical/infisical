@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCan } from "@app/components/permissions";
 import { IconButton, Td, Tr } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { TSharedSecret } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -110,9 +110,9 @@ export const ShareSecretsRow = ({
         <p className="text-xs text-gray-500">{formatDate(row.expiresAt)}</p>
       </Td>
       <Td>
-        <ProjectPermissionCan
-          I={ProjectPermissionActions.Delete}
-          a={ProjectPermissionSub.SecretSharing}
+        <OrgPermissionCan
+          I={OrgPermissionActions.Delete}
+          a={OrgPermissionSubjects.SecretSharing}
         >
           {(isAllowed) => (
             <IconButton
@@ -129,7 +129,7 @@ export const ShareSecretsRow = ({
               <FontAwesomeIcon icon={faTrashCan} />
             </IconButton>
           )}
-        </ProjectPermissionCan>
+        </OrgPermissionCan>
       </Td>
     </Tr>
   );

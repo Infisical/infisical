@@ -5,7 +5,7 @@ export type TSharedSecretPermission = {
   actorId: string;
   actorAuthMethod: ActorAuthMethod;
   actorOrgId: string;
-  projectId: string;
+  orgId: string;
 };
 
 export type TCreateSharedSecretDTO = {

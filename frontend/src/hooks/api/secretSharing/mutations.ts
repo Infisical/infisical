@@ -20,11 +20,11 @@ export const useDeleteSharedSecret = () => {
   return useMutation<
     TSharedSecret,
     { message: string },
-    { sharedSecretId: string; workspaceId: string }
+    { sharedSecretId: string }
   >({
-    mutationFn: async ({ sharedSecretId, workspaceId }: TDeleteSharedSecretRequest) => {
+    mutationFn: async ({ sharedSecretId }: TDeleteSharedSecretRequest) => {
       const { data } = await apiRequest.delete<TSharedSecret>(
-        `/api/v1/secret-sharing/${workspaceId}/${sharedSecretId}`
+        `/api/v1/secret-sharing/${sharedSecretId}`
       );
       return data;
     },

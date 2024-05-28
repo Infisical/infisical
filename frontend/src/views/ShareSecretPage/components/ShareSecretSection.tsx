@@ -3,10 +3,10 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, Checkbox, DeleteActionModal } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { withProjectPermission } from "@app/hoc";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSharedSecret } from "@app/hooks/api/secretSharing";
 
@@ -15,9 +15,8 @@ import { ShareSecretsTable } from "./ShareSecretsTable";
 
 type DeleteModalData = { name: string; id: string };
 
-export const ShareSecretSection = withProjectPermission(
+export const ShareSecretSection = withPermission(
   () => {
-    const { currentWorkspace } = useWorkspace();
     const deleteSharedSecret = useDeleteSharedSecret();
     const [showExpiredSharedSecrets, setShowExpiredSharedSecrets] = useState(false);
 
@@ -28,10 +27,8 @@ export const ShareSecretSection = withProjectPermission(
 
     const onDeleteApproved = async () => {
       try {
-        if (!currentWorkspace?.id) return;
         deleteSharedSecret.mutateAsync({
           sharedSecretId: (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.id,
-          workspaceId: currentWorkspace.id
         });
         createNotification({
           text: "Successfully deleted shared secret",
@@ -52,9 +49,9 @@ export const ShareSecretSection = withProjectPermission(
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-2 flex justify-between">
           <p className="text-xl font-semibold text-mineshaft-100">Shared Secrets</p>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.SecretSharing}
+          <OrgPermissionCan
+            I={OrgPermissionActions.Create}
+            a={OrgPermissionSubjects.SecretSharing}
           >
             {(isAllowed) => (
               <Button
@@ -68,7 +65,7 @@ export const ShareSecretSection = withProjectPermission(
                 Share Secret
               </Button>
             )}
-          </ProjectPermissionCan>
+          </OrgPermissionCan>
         </div>
         <div className="mb-8 flex items-center justify-between">
           <p className="flex-grow text-gray-400">
@@ -93,9 +90,8 @@ export const ShareSecretSection = withProjectPermission(
         <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteSharedSecretConfirmation.isOpen}
-          title={`Delete ${
-            (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name || " "
-          } shared secret?`}
+          title={`Delete ${(popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name || " "
+            } shared secret?`}
           onChange={(isOpen) => handlePopUpToggle("deleteSharedSecretConfirmation", isOpen)}
           deleteKey={(popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name}
           onClose={() => handlePopUpClose("deleteSharedSecretConfirmation")}
@@ -104,5 +100,5 @@ export const ShareSecretSection = withProjectPermission(
       </div>
     );
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretSharing }
+  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.SecretSharing }
 );

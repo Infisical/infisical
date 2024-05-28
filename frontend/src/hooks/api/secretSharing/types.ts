@@ -12,7 +12,6 @@ export type TCreateSharedSecretRequest = {
   name: string;
   signedValue: string;
   expiresAt: Date;
-  workspaceId: string;
 };
 
 export type TViewSharedSecretResponse = {
@@ -23,5 +22,4 @@ export type TViewSharedSecretResponse = {
 
 export type TDeleteSharedSecretRequest = {
   sharedSecretId: string;
-  workspaceId: string;
 };

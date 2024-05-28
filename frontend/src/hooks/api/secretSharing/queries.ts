@@ -4,12 +4,12 @@ import { apiRequest } from "@app/config/request";
 
 import { TSharedSecret, TViewSharedSecretResponse } from "./types";
 
-export const useGetSharedSecrets = (workspaceId: string) => {
+export const useGetSharedSecrets = () => {
   return useQuery({
     queryKey: ["sharedSecrets"],
     queryFn: async () => {
       const { data } = await apiRequest.get<TSharedSecret[]>(
-        `/api/v1/secret-sharing/${workspaceId}`
+        "/api/v1/secret-sharing/"
       );
       return data;
     }

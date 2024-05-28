@@ -12,7 +12,6 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
 import { TSharedSecret, useGetSharedSecrets } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -34,9 +33,7 @@ type Props = {
 
 export const ShareSecretsTable = ({ handlePopUpOpen, showExpiredSharedSecrets }: Props) => {
   const [tableData, setTableData] = useState<TSharedSecret[]>([]);
-  const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
-  const { isLoading, data = [] } = useGetSharedSecrets(workspaceId);
+  const { isLoading, data = [] } = useGetSharedSecrets(); 
 
   useEffect(() => {
     if (!isLoading) {

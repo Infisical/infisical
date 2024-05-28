@@ -26,7 +26,6 @@ export enum ProjectPermissionSub {
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretRotation = "secret-rotation",
-  SecretSharing = "secret-sharing",
   Identity = "identity"
 }
 
@@ -53,7 +52,6 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
-  | [ProjectPermissionActions, ProjectPermissionSub.SecretSharing]
   | [ProjectPermissionActions, ProjectPermissionSub.Identity]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
@@ -72,10 +70,6 @@ const buildAdminPermissionRules = () => {
   can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretApproval);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretSharing);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretSharing);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretSharing);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRotation);
@@ -164,10 +158,6 @@ const buildMemberPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretSharing);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretSharing);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretSharing);
-
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback);
 
@@ -227,7 +217,6 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretSharing);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);

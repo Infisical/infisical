@@ -22,7 +22,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useCreateSharedSecret } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -87,7 +87,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
     resolver: yupResolver(schema)
   });
   const createSharedSecret = useCreateSharedSecret();
-  const { currentWorkspace } = useWorkspace();
+  const { currentOrg } = useOrganization();
   const [newSharedSecret, setnewSharedSecret] = useState("");
   const [isUrlCopied, setIsUrlCopied] = useToggle(false);
   const hasSharedSecret = Boolean(newSharedSecret);
@@ -108,7 +108,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({ name, value, expiresInValue, expiresInUnit }: FormData) => {
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentOrg?.id) return;
 
       const signingKeyPair = generateSignKeyPair();
       const signedMessage = signAssymmetric({
@@ -128,7 +128,6 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
         name,
         signedValue: signedMessage,
         expiresAt,
-        workspaceId: currentWorkspace.id
       });
       setnewSharedSecret(
         `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(
