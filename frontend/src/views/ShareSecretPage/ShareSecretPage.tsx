@@ -13,8 +13,7 @@ export const ShareSecretPage = () => {
           <p className="text-bunker-300">Share secrets with anybody securely and efficiently</p>
         </div>
         <div className="flex w-max justify-center">
-          {/* Add docs here */}
-          <Link href="https://infisical.com/docs/documentation/platform/pr-workflows">
+          <Link href="https://infisical.com/docs/documentation/platform/secret-sharing">
             <span className="w-max cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
               Documentation{" "}
               <FontAwesomeIcon

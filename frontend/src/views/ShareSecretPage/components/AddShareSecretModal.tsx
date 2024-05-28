@@ -212,7 +212,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
-                      <Input {...field} placeholder="Type your secret value" />
+                      <Input {...field} type="number" min={0} />
                     </FormControl>
                   )}
                 />
