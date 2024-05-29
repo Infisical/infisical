@@ -24,7 +24,6 @@ export enum ProjectPermissionSub {
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretRotation = "secret-rotation",
-  SecretSharing = "secret-sharing",
   Identity = "identity"
 }
 
@@ -52,7 +51,6 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
-  | [ProjectPermissionActions, ProjectPermissionSub.SecretSharing]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
