@@ -111,41 +111,45 @@ export const CertificateContent = ({
       <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
         <p className="mr-4 whitespace-pre-wrap break-all">{certificate}</p>
       </div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2>Certificate Chain</h2>
-        <div className="flex">
-          <IconButton
-            ariaLabel="copy icon"
-            colorSchema="secondary"
-            className="group relative"
-            onClick={() => {
-              navigator.clipboard.writeText(certificateChain);
-              setIsCertificateChainCopied.on();
-            }}
-          >
-            <FontAwesomeIcon icon={isCertificateChainCopied ? faCheck : faCopy} />
-            <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
-              Copy
-            </span>
-          </IconButton>
-          <IconButton
-            ariaLabel="copy icon"
-            colorSchema="secondary"
-            className="group relative ml-2"
-            onClick={() => {
-              downloadTxtFile("certificate_chain.txt", certificate);
-            }}
-          >
-            <FontAwesomeIcon icon={faDownload} />
-            <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
-              Download
-            </span>
-          </IconButton>
-        </div>
-      </div>
-      <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-        <p className="mr-4 whitespace-pre-wrap break-all">{certificateChain}</p>
-      </div>
+      {certificateChain && (
+        <>
+          <div className="mb-4 flex items-center justify-between">
+            <h2>Certificate Chain</h2>
+            <div className="flex">
+              <IconButton
+                ariaLabel="copy icon"
+                colorSchema="secondary"
+                className="group relative"
+                onClick={() => {
+                  navigator.clipboard.writeText(certificateChain);
+                  setIsCertificateChainCopied.on();
+                }}
+              >
+                <FontAwesomeIcon icon={isCertificateChainCopied ? faCheck : faCopy} />
+                <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
+                  Copy
+                </span>
+              </IconButton>
+              <IconButton
+                ariaLabel="copy icon"
+                colorSchema="secondary"
+                className="group relative ml-2"
+                onClick={() => {
+                  downloadTxtFile("certificate_chain.txt", certificateChain);
+                }}
+              >
+                <FontAwesomeIcon icon={faDownload} />
+                <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
+                  Download
+                </span>
+              </IconButton>
+            </div>
+          </div>
+          <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+            <p className="mr-4 whitespace-pre-wrap break-all">{certificateChain}</p>
+          </div>
+        </>
+      )}
       {privateKey && (
         <>
           <div className="mb-4 flex items-center justify-between">

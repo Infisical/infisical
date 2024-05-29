@@ -1,13 +1,22 @@
 import { TProjectPermission } from "@app/lib/types";
 
+export enum TCertStatus {
+  ACTIVE = "active",
+  REVOKED = "revoked"
+}
+
 export type TGetCertDTO = {
-  certId: string;
+  serialNumber: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteCertDTO = {
-  certId: string;
+  serialNumber: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TRevokeCertDTO = {
+  serialNumber: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCertCertDTO = {
-  certId: string;
+  serialNumber: string;
 } & Omit<TProjectPermission, "projectId">;

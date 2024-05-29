@@ -16,7 +16,7 @@ export const useGetCaById = (caId: string) => {
     queryFn: async () => {
       const {
         data: { ca }
-      } = await apiRequest.get<{ ca: TCertificateAuthority }>(`/api/v1/ca/${caId}`);
+      } = await apiRequest.get<{ ca: TCertificateAuthority }>(`/api/v1/pki/ca/${caId}`);
       return ca;
     },
     enabled: Boolean(caId)
@@ -31,7 +31,7 @@ export const useGetCaCert = (caId: string) => {
         certificate: string;
         certificateChain: string;
         serialNumber: string;
-      }>(`/api/v1/ca/${caId}/certificate`);
+      }>(`/api/v1/pki/ca/${caId}/certificate`);
       return data;
     },
     enabled: Boolean(caId)
@@ -46,7 +46,7 @@ export const useGetCaCsr = (caId: string) => {
         data: { csr }
       } = await apiRequest.get<{
         csr: string;
-      }>(`/api/v1/ca/${caId}/csr`);
+      }>(`/api/v1/pki/ca/${caId}/csr`);
       return csr;
     },
     enabled: Boolean(caId)

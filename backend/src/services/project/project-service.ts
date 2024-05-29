@@ -67,7 +67,7 @@ type TProjectServiceFactoryDep = {
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
-  certificateDAL: TCertificateDALFactory;
+  certificateDAL: Pick<TCertificateDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;

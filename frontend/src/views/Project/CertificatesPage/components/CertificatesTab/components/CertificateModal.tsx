@@ -15,12 +15,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import {
-  CaStatus,
-  useCreateCertificate,
-  useGetCertById,
-  useListWorkspaceCas
-} from "@app/hooks/api";
+import { CaStatus, useCreateCertificate, useGetCert, useListWorkspaceCas } from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -60,8 +55,8 @@ type TCertificateDetails = {
 export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
   const { currentWorkspace } = useWorkspace();
-  const { data: cert } = useGetCertById(
-    (popUp?.certificate?.data as { certId: string })?.certId || ""
+  const { data: cert } = useGetCert(
+    (popUp?.certificate?.data as { serialNumber: string })?.serialNumber || ""
   );
 
   const { data: cas } = useListWorkspaceCas({

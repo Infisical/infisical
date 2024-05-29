@@ -11,8 +11,6 @@ export enum CaStatus {
   PENDING_CERTIFICATE = "pending-certificate"
 }
 
-// TODO: attach permissions after draft impl
-
 export type TCreateCaDTO = {
   projectSlug: string;
   type: CaType;

@@ -11,7 +11,7 @@ type Props = {
 
 export const CertificateCertModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data } = useGetCertCert(
-    (popUp?.certificateCert?.data as { certId: string })?.certId || ""
+    (popUp?.certificateCert?.data as { serialNumber: string })?.serialNumber || ""
   );
 
   return (

@@ -5,34 +5,36 @@ import { apiRequest } from "@app/config/request";
 import { TCertificate } from "./types";
 
 export const certKeys = {
-  getCertById: (certId: string) => [{ certId }, "cert"],
-  getCertCert: (certId: string) => [{ certId }, "certCert"]
+  getCertById: (serialNumber: string) => [{ serialNumber }, "cert"],
+  getCertCert: (serialNumber: string) => [{ serialNumber }, "certCert"]
 };
 
-export const useGetCertById = (certId: string) => {
+export const useGetCert = (serialNumber: string) => {
   return useQuery({
-    queryKey: certKeys.getCertById(certId),
+    queryKey: certKeys.getCertById(serialNumber),
     queryFn: async () => {
       const {
         data: { certificate }
-      } = await apiRequest.get<{ certificate: TCertificate }>(`/api/v1/certificates/${certId}`);
+      } = await apiRequest.get<{ certificate: TCertificate }>(
+        `/api/v1/pki/certificates/${serialNumber}`
+      );
       return certificate;
     },
-    enabled: Boolean(certId)
+    enabled: Boolean(serialNumber)
   });
 };
 
-export const useGetCertCert = (certId: string) => {
+export const useGetCertCert = (serialNumber: string) => {
   return useQuery({
-    queryKey: certKeys.getCertCert(certId),
+    queryKey: certKeys.getCertCert(serialNumber),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificate: string;
         certificateChain: string;
         serialNumber: string;
-      }>(`/api/v1/certificates/${certId}/certificate`);
+      }>(`/api/v1/pki/certificates/${serialNumber}/certificate`);
       return data;
     },
-    enabled: Boolean(certId)
+    enabled: Boolean(serialNumber)
   });
 };

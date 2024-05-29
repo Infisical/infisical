@@ -23,6 +23,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("commonName").notNullable();
       t.string("dn").notNullable();
       t.unique(["dn", "projectId"]);
+      t.string("serialNumber").nullable().unique();
       t.integer("maxPathLength").nullable();
       t.datetime("notBefore").nullable();
       t.datetime("notAfter").nullable();
@@ -54,12 +55,14 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   if (!(await knex.schema.hasTable(TableName.Certificate))) {
-    // TODO: consider adding name
+    // TODO: consider adding serialNumber
     await knex.schema.createTable(TableName.Certificate, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
       t.uuid("caId").notNullable();
       t.foreign("caId").references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
+      t.string("status").notNullable(); // active / pending-certificate
+      t.string("serialNumber").notNullable().unique();
       t.string("commonName").notNullable();
       t.datetime("notBefore").notNullable();
       t.datetime("notAfter").notNullable();

@@ -1,3 +1,4 @@
+/* eslint-disable no-bitwise */
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import crypto, { KeyObject } from "crypto";
@@ -9,6 +10,7 @@ import { TCertificateCertDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import { TCertStatus } from "../certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { createDistinguishedName } from "./certificate-authority-fns";
@@ -118,6 +120,7 @@ export const certificateAuthorityServiceFactory = ({
         ? new Date(notAfter)
         : new Date(new Date().setFullYear(new Date().getFullYear() + 10));
 
+      const serialNumber = crypto.randomBytes(32).toString("hex");
       const ca = await certificateAuthorityDAL.create(
         {
           projectId: project.id,
@@ -130,7 +133,7 @@ export const certificateAuthorityServiceFactory = ({
           commonName,
           status: type === CaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
           dn,
-          ...(type === CaType.ROOT && { maxPathLength, notBefore: notBeforeDate, notAfter: notAfterDate })
+          ...(type === CaType.ROOT && { maxPathLength, notBefore: notBeforeDate, notAfter: notAfterDate, serialNumber })
         },
         tx
       );
@@ -140,6 +143,7 @@ export const certificateAuthorityServiceFactory = ({
 
         const cert = await x509.X509CertificateGenerator.createSelfSigned({
           name: dn,
+          serialNumber,
           notBefore: notBeforeDate,
           notAfter: notAfterDate,
           signingAlgorithm: alg,
@@ -291,7 +295,12 @@ export const certificateAuthorityServiceFactory = ({
       signingAlgorithm: alg,
       extensions: [
         // eslint-disable-next-line no-bitwise
-        new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment)
+        new x509.KeyUsagesExtension(
+          x509.KeyUsageFlags.keyCertSign |
+            x509.KeyUsageFlags.cRLSign |
+            x509.KeyUsageFlags.digitalSignature |
+            x509.KeyUsageFlags.keyEncipherment
+        )
       ],
       attributes: [new x509.ChallengePasswordAttribute("password")]
     });
@@ -411,8 +420,9 @@ export const certificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
+    const serialNumber = crypto.randomBytes(32).toString("hex");
     const intermediateCert = await x509.X509CertificateGenerator.create({
-      // serialNumber: "03",
+      serialNumber,
       subject: csrObj.subject,
       issuer: certObj.subject,
       notBefore: notBeforeDate,
@@ -421,7 +431,13 @@ export const certificateAuthorityServiceFactory = ({
       publicKey: csrObj.publicKey,
       signingAlgorithm: alg,
       extensions: [
-        new x509.KeyUsagesExtension(x509.KeyUsageFlags.dataEncipherment, true),
+        new x509.KeyUsagesExtension(
+          x509.KeyUsageFlags.keyCertSign |
+            x509.KeyUsageFlags.cRLSign |
+            x509.KeyUsageFlags.digitalSignature |
+            x509.KeyUsageFlags.keyEncipherment,
+          true
+        ),
         new x509.BasicConstraintsExtension(true, maxPathLength === -1 ? undefined : maxPathLength, true),
         await x509.AuthorityKeyIdentifierExtension.create(certObj, false),
         await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
@@ -511,6 +527,7 @@ export const certificateAuthorityServiceFactory = ({
           maxPathLength: maxPathLength === undefined ? -1 : maxPathLength,
           notBefore: new Date(certObj.notBefore),
           notAfter: new Date(certObj.notAfter),
+          serialNumber: certObj.serialNumber,
           parentCaId: parentCa?.id
         },
         tx
@@ -601,8 +618,9 @@ export const certificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
+    const serialNumber = crypto.randomBytes(32).toString("hex");
     const leafCert = await x509.X509CertificateGenerator.create({
-      // serialNumber: "03",
+      serialNumber,
       subject: csrObj.subject,
       issuer: caCertObj.subject,
       notBefore: notBeforeDate,
@@ -611,7 +629,7 @@ export const certificateAuthorityServiceFactory = ({
       publicKey: csrObj.publicKey,
       signingAlgorithm: alg,
       extensions: [
-        new x509.KeyUsagesExtension(x509.KeyUsageFlags.dataEncipherment, true),
+        new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
         new x509.BasicConstraintsExtension(false),
         await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
         await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
@@ -627,7 +645,9 @@ export const certificateAuthorityServiceFactory = ({
       const cert = await certificateDAL.create(
         {
           caId: ca.id,
+          status: TCertStatus.ACTIVE,
           commonName,
+          serialNumber,
           notBefore: notBeforeDate,
           notAfter: notAfterDate
         },
@@ -651,7 +671,7 @@ export const certificateAuthorityServiceFactory = ({
       certificateChain: chain.join("\n"),
       issuingCaCertificate: caCert.certificate,
       privateKey: skLeaf,
-      serialNumber: leafCert.serialNumber
+      serialNumber
     };
   };
 

@@ -12,6 +12,8 @@ export const CertificatesSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   caId: z.string().uuid(),
+  status: z.string(),
+  serialNumber: z.string(),
   commonName: z.string(),
   notBefore: z.date(),
   notAfter: z.date()

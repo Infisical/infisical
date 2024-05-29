@@ -1,4 +1,5 @@
 import {
+  faBan,
   faCertificate,
   faEllipsis,
   faEye,
@@ -24,16 +25,20 @@ import {
   Th,
   THead,
   Tooltip,
-  Tr} from "@app/components/v2";
+  Tr
+} from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useListWorkspaceCertificates } from "@app/hooks/api";
+import { certStatusToNameMap } from "@app/hooks/api/certificates/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["certificate", "deleteCertificate", "certificateCert"]>,
+    popUpName: keyof UsePopUpState<
+      ["certificate", "deleteCertificate", "revokeCertificate", "certificateCert"]
+    >,
     data?: {
-      certId?: string;
+      serialNumber?: string;
       commonName?: string;
     }
   ) => void;
@@ -48,8 +53,8 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
         <Table>
           <THead>
             <Tr>
-              <Th>Certificate ID</Th>
               <Th>Common Name</Th>
+              <Th>Status</Th>
               <Th>Valid Until</Th>
               <Th />
             </Tr>
@@ -62,8 +67,8 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
               data.map((certificate) => {
                 return (
                   <Tr className="h-10" key={`certificate-${certificate.id}`}>
-                    <Td>{certificate.id}</Td>
                     <Td>{certificate.commonName}</Td>
+                    <Td>{certStatusToNameMap[certificate.status]}</Td>
                     <Td>
                       {certificate.notAfter
                         ? format(new Date(certificate.notAfter), "yyyy-MM-dd")
@@ -90,7 +95,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                 )}
                                 onClick={async () =>
                                   handlePopUpOpen("certificateCert", {
-                                    certId: certificate.id
+                                    serialNumber: certificate.serialNumber
                                   })
                                 }
                                 disabled={!isAllowed}
@@ -111,7 +116,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                 )}
                                 onClick={async () =>
                                   handlePopUpOpen("certificate", {
-                                    certId: certificate.id
+                                    serialNumber: certificate.serialNumber
                                   })
                                 }
                                 disabled={!isAllowed}
@@ -131,8 +136,29 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                   !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
                                 onClick={async () =>
+                                  handlePopUpOpen("revokeCertificate", {
+                                    serialNumber: certificate.serialNumber
+                                  })
+                                }
+                                disabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faBan} />}
+                              >
+                                Revoke Certificate
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Delete}
+                            a={ProjectPermissionSub.Certificates}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={async () =>
                                   handlePopUpOpen("deleteCertificate", {
-                                    certId: certificate.id,
+                                    serialNumber: certificate.serialNumber,
                                     commonName: certificate.commonName
                                   })
                                 }

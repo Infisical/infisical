@@ -1,2 +1,2 @@
-export { useDeleteCert } from "./mutations";
-export { useGetCertById, useGetCertCert } from "./queries";
+export { useDeleteCert, useRevokeCert } from "./mutations";
+export { useGetCert, useGetCertCert } from "./queries";

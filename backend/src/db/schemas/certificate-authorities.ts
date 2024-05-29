@@ -22,6 +22,7 @@ export const CertificateAuthoritiesSchema = z.object({
   locality: z.string(),
   commonName: z.string(),
   dn: z.string(),
+  serialNumber: z.string().nullable().optional(),
   maxPathLength: z.number().nullable().optional(),
   notBefore: z.date().nullable().optional(),
   notAfter: z.date().nullable().optional()

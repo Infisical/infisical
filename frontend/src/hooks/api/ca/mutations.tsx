@@ -13,7 +13,8 @@ import {
   TImportCaCertificateResponse,
   TSignIntermediateDTO,
   TSignIntermediateResponse,
-  TUpdateCaDTO} from "./types";
+  TUpdateCaDTO
+} from "./types";
 
 export const useCreateCa = () => {
   const queryClient = useQueryClient();
@@ -21,7 +22,7 @@ export const useCreateCa = () => {
     mutationFn: async (body) => {
       const {
         data: { ca }
-      } = await apiRequest.post<{ ca: TCertificateAuthority }>("/api/v1/ca/", body);
+      } = await apiRequest.post<{ ca: TCertificateAuthority }>("/api/v1/pki/ca/", body);
       return ca;
     },
     onSuccess: (_, { projectSlug }) => {
@@ -36,7 +37,7 @@ export const useUpdateCa = () => {
     mutationFn: async ({ caId, projectSlug, ...body }) => {
       const {
         data: { ca }
-      } = await apiRequest.patch<{ ca: TCertificateAuthority }>(`/api/v1/ca/${caId}`, body);
+      } = await apiRequest.patch<{ ca: TCertificateAuthority }>(`/api/v1/pki/ca/${caId}`, body);
       return ca;
     },
     onSuccess: (_, { projectSlug }) => {
@@ -51,7 +52,7 @@ export const useDeleteCa = () => {
     mutationFn: async ({ caId }) => {
       const {
         data: { ca }
-      } = await apiRequest.delete<{ ca: TCertificateAuthority }>(`/api/v1/ca/${caId}`);
+      } = await apiRequest.delete<{ ca: TCertificateAuthority }>(`/api/v1/pki/ca/${caId}`);
       return ca;
     },
     onSuccess: (_, { projectSlug }) => {
@@ -65,7 +66,7 @@ export const useSignIntermediate = () => {
   return useMutation<TSignIntermediateResponse, {}, TSignIntermediateDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TSignIntermediateResponse>(
-        `/api/v1/ca/${body.caId}/sign-intermediate`,
+        `/api/v1/pki/ca/${body.caId}/sign-intermediate`,
         body
       );
       return data;
@@ -78,7 +79,7 @@ export const useImportCaCertificate = () => {
   return useMutation<TImportCaCertificateResponse, {}, TImportCaCertificateDTO>({
     mutationFn: async ({ caId, ...body }) => {
       const { data } = await apiRequest.post<TImportCaCertificateResponse>(
-        `/api/v1/ca/${caId}/import-certificate`,
+        `/api/v1/pki/ca/${caId}/import-certificate`,
         body
       );
       return data;
@@ -95,7 +96,7 @@ export const useCreateCertificate = () => {
   return useMutation<TCreateCertificateResponse, {}, TCreateCertificateDTO>({
     mutationFn: async ({ caId, ...body }) => {
       const { data } = await apiRequest.post<TCreateCertificateResponse>(
-        `/api/v1/ca/${caId}/issue-certificate`,
+        `/api/v1/pki/ca/${caId}/issue-certificate`,
         body
       );
       return data;
