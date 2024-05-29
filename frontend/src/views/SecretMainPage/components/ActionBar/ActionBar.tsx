@@ -482,6 +482,7 @@ export const ActionBar = ({
         environment={environment}
         workspaceId={workspaceId}
         secretPath={secretPath}
+        onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
         isOpen={popUp.addSecretImport.isOpen}
         onClose={() => handlePopUpClose("addSecretImport")}
         onTogglePopUp={(isOpen) => handlePopUpToggle("addSecretImport", isOpen)}

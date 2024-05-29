@@ -14,7 +14,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { useWorkspace } from "@app/context";
+import { useSubscription, useWorkspace } from "@app/context";
 import { useCreateSecretImport } from "@app/hooks/api";
 
 const typeSchema = z.object({
@@ -38,6 +38,7 @@ type Props = {
   isOpen?: boolean;
   onClose: () => void;
   onTogglePopUp: (isOpen: boolean) => void;
+  onUpgradePlan: () => void;
 };
 
 export const CreateSecretImportForm = ({
@@ -46,7 +47,8 @@ export const CreateSecretImportForm = ({
   secretPath = "/",
   isOpen,
   onClose,
-  onTogglePopUp
+  onTogglePopUp,
+  onUpgradePlan
 }: Props) => {
   const {
     handleSubmit,
@@ -58,6 +60,7 @@ export const CreateSecretImportForm = ({
   const { currentWorkspace } = useWorkspace();
   const environments = currentWorkspace?.environments || [];
   const selectedEnvironment = watch("environment");
+  const { subscription } = useSubscription();
 
   const { mutateAsync: createSecretImport } = useCreateSecretImport();
 
@@ -67,6 +70,11 @@ export const CreateSecretImportForm = ({
     isReplication
   }: TFormSchema) => {
     try {
+      if (isReplication && !subscription?.secretReplication) {
+        onUpgradePlan();
+        return;
+      }
+
       await createSecretImport({
         environment,
         projectId: workspaceId,

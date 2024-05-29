@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { TableName } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
@@ -30,6 +31,7 @@ type TSecretImportServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
@@ -43,7 +45,8 @@ export const secretImportServiceFactory = ({
   folderDAL,
   projectDAL,
   secretDAL,
-  secretQueueService
+  secretQueueService,
+  licenseService
 }: TSecretImportServiceFactoryDep) => {
   const createImport = async ({
     environment,
@@ -78,6 +81,14 @@ export const secretImportServiceFactory = ({
         secretPath: data.path
       })
     );
+    if (isReplication) {
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!plan.secretReplication) {
+        throw new BadRequestError({
+          message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
+        });
+      }
+    }
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
@@ -272,6 +283,13 @@ export const secretImportServiceFactory = ({
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretReplication) {
+      throw new BadRequestError({
+        message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
+      });
+    }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Update import" });

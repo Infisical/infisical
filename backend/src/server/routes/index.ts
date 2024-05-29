@@ -590,6 +590,7 @@ export const registerRoutes = async (
     secretVersionTagDAL
   });
   const secretImportService = secretImportServiceFactory({
+    licenseService,
     projectEnvDAL,
     folderDAL,
     permissionService,
