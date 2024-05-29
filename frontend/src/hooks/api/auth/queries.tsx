@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { setAuthToken } from "@app/reactQuery";
 
 import { organizationKeys } from "../organization/queries";
+import { workspaceKeys } from "../workspace/queries";
 import {
   ChangePasswordDTO,
   CompleteAccountDTO,
@@ -79,6 +80,7 @@ export const useSelectOrganization = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
   });
 };
