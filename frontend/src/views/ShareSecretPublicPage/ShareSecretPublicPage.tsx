@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/router";
 
 import { decryptSymmetric } from "@app/components/utilities/cryptography/crypto";
@@ -90,7 +89,7 @@ export const ShareSecretPublicPage = () => {
         <Image src="/images/biglogo.png" height={180} width={240} alt="Infisical logo" />
       </div>
       <p className="mb-6 px-8 text-center text-xl md:px-0 md:text-3xl">
-        You’ve been shared a secret securely with Infisical.
+        A secret has been shared with you securely via Infisical
       </p>
       <div className="flex min-h-screen w-full flex-col md:flex-row">
         <DragonMainImage />
@@ -108,11 +107,6 @@ export const ShareSecretPublicPage = () => {
               copyUrlToClipboard={copyUrlToClipboard}
             />
           </div>
-          <Link href="/">
-            <a className="mt-4 cursor-pointer rounded-md bg-mineshaft-500 py-2 px-4 text-lg font-semibold duration-200 hover:bg-primary hover:text-black">
-              Check Infisical out now!
-            </a>
-          </Link>
         </div>
       </div>
     </div>

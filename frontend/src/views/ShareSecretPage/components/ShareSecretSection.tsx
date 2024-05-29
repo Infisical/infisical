@@ -60,12 +60,6 @@ export const ShareSecretSection = () => {
           Share Secret
         </Button>
       </div>
-      <div className="mb-8 flex items-center justify-between">
-        <p className="flex-grow text-gray-400">
-          Every secret shared can be accessed with the URL (shown during creation) before its
-          expiry.
-        </p>
-      </div>
       <ShareSecretsTable
         handlePopUpOpen={handlePopUpOpen}
       />

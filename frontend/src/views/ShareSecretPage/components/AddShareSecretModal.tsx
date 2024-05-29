@@ -168,10 +168,10 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
         setnewSharedSecret("");
       }}
     >
-      <ModalContent
-        title="Share a secret with anybody on the internet"
-        subTitle="When a secret is shared, you will only see the public share URL once before it disappears. Make sure to save it somewhere."
-      >
+        <ModalContent
+          title="Share a Secret"
+          subTitle="This link is only accessible once. Please share this link with intended recipients. "
+        >
         {!hasSharedSecret ? (
           <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller

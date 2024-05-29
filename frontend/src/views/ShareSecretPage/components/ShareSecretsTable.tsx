@@ -61,7 +61,7 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
           {!isLoading && tableData && tableData?.length === 0 && (
             <Tr>
               <Td colSpan={4} className="bg-mineshaft-800 text-center text-bunker-400">
-                <EmptyState title="No secrets shared currently" icon={faKey} />
+                <EmptyState title="No secrets shared yet" icon={faKey} />
               </Td>
             </Tr>
           )}
