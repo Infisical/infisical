@@ -237,7 +237,7 @@ func NewDomainPrompt() (string, error) {
 		return "", err
 	}
 
-	return domain, nil
+	return util.AppendAPIEndpoint(domain), nil
 }
 
 func LoggedInUsersPrompt(profiles []string) (string, error) {

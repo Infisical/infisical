@@ -15,7 +15,6 @@ import (
 	"path"
 	"runtime"
 	"slices"
-	"strings"
 	"sync"
 	"syscall"
 	"text/template"
@@ -257,19 +256,6 @@ func WriteBytesToFile(data *bytes.Buffer, outputPath string) error {
 	return err
 }
 
-func appendAPIEndpoint(address string) string {
-	// Ensure the address does not already end with "/api"
-	if strings.HasSuffix(address, "/api") {
-		return address
-	}
-
-	// Check if the address ends with a slash and append accordingly
-	if address[len(address)-1] == '/' {
-		return address + "api"
-	}
-	return address + "/api"
-}
-
 func ParseAgentConfig(configFile []byte) (*Config, error) {
 	var rawConfig struct {
 		Infisical InfisicalConfig `yaml:"infisical"`
@@ -290,7 +276,7 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 		rawConfig.Infisical.Address = DEFAULT_INFISICAL_CLOUD_URL
 	}
 
-	config.INFISICAL_URL = appendAPIEndpoint(rawConfig.Infisical.Address)
+	config.INFISICAL_URL = util.AppendAPIEndpoint(rawConfig.Infisical.Address)
 
 	log.Info().Msgf("Infisical instance address set to %s", rawConfig.Infisical.Address)
 
