@@ -79,8 +79,10 @@ export const useSelectOrganization = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+      queryClient.invalidateQueries([
+        organizationKeys.getUserOrganizations,
+        workspaceKeys.getAllUserWorkspace
+      ]);
     }
   });
 };
