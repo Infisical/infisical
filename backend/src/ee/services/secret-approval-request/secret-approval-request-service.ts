@@ -15,13 +15,13 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
-import { getAllNestedSecretReferences } from "@app/services/secret/secret-fns";
 import {
   fnSecretBlindIndexCheck,
   fnSecretBlindIndexCheckV2,
   fnSecretBulkDelete,
   fnSecretBulkInsert,
-  fnSecretBulkUpdate
+  fnSecretBulkUpdate,
+  getAllNestedSecretReferences
 } from "@app/services/secret/secret-fns";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretOperations } from "@app/services/secret/secret-types";
@@ -51,6 +51,7 @@ import {
 
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretApprovalRequestDAL: TSecretApprovalRequestDALFactory;
   secretApprovalRequestSecretDAL: TSecretApprovalRequestSecretDALFactory;
   secretApprovalRequestReviewerDAL: TSecretApprovalRequestReviewerDALFactory;
@@ -356,7 +357,7 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const secretDeletionCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Delete);
-
+    const botKey = await projectBotService.getBotKey(projectId).catch(() => null);
     const mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
       const newSecrets = secretCreationCommits.length
         ? await fnSecretBulkInsert({

@@ -7,7 +7,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
@@ -25,7 +25,10 @@ import { TSecretReplicationDALFactory } from "./secret-replication-dal";
 
 type TSecretReplicationServiceFactoryDep = {
   secretReplicationDAL: TSecretReplicationDALFactory;
-  secretDAL: Pick<TSecretDALFactory, "find" | "findByBlindIndexes" | "insertMany" | "bulkUpdate" | "delete">;
+  secretDAL: Pick<
+    TSecretDALFactory,
+    "find" | "findByBlindIndexes" | "insertMany" | "bulkUpdate" | "delete" | "upsertSecretReferences"
+  >;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "find" | "insertMany" | "update" | "findLatestVersionMany">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPath">;
@@ -48,6 +51,7 @@ type TSecretReplicationServiceFactoryDep = {
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
 const SECRET_IMPORT_SUCCESS_LOCK = 10;
 const keystoreReplicationSuccessKey = (jobId: string, secretImportId: string) => `${jobId}-${secretImportId}`;
+const getReplicationKeyLockPrefix = (keyName: string) => `REPLICATION_SECRET_${keyName}`;
 
 export const secretReplicationServiceFactory = ({
   secretReplicationDAL,
@@ -68,7 +72,20 @@ export const secretReplicationServiceFactory = ({
 }: TSecretReplicationServiceFactoryDep) => {
   queueService.start(QueueName.SecretReplication, async (job) => {
     logger.info(job.data, "Replication started");
-    const { secrets, folderId, secretPath, environmentId, projectId, actorId, actor, pickOnlyImportIds } = job.data;
+    const {
+      secrets,
+      folderId,
+      secretPath,
+      environmentId,
+      projectId,
+      actorId,
+      actor,
+      pickOnlyImportIds,
+      _deDupeReplicationQueue: deDupeReplicationQueue,
+      _deDupeQueue: deDupeQueue
+    } = job.data;
+
+    // filter for  initial filling
     let secretImports = await secretImportDAL.find({
       importPath: secretPath,
       importEnv: environmentId,
@@ -91,7 +108,7 @@ export const secretReplicationServiceFactory = ({
     if (!sanitizedSecrets.length) return;
 
     const lock = await keyStore.acquireLock(
-      replicatedSecrets.map(({ id }) => id),
+      replicatedSecrets.map(({ id }) => getReplicationKeyLockPrefix(id)),
       5000
     );
 
@@ -301,28 +318,26 @@ export const secretReplicationServiceFactory = ({
             }
           });
 
-          await queueService.queue(QueueName.SecretReplication, QueueJobs.SecretReplication, {
-            folderId: importedFolder.id,
-            projectId,
-            secrets: nestedImportSecrets,
-            secretPath: importedFolder.path,
-            environmentId: importedFolder.envId,
-            actorId,
-            actor
-          });
           const folderLock = await keyStore
             .acquireLock([`secret-replication-${importFolderId}`], 5000)
             .catch(() => null);
           if (folderLock) {
             await snapshotService.performSnapshot(importFolderId);
             await folderLock.release();
-            await secretQueueService.syncSecrets({
-              excludeReplication: true,
-              projectId,
-              secretPath: importedFolder.path,
-              environmentSlug: importedFolder.environmentSlug
-            });
           }
+
+          await secretQueueService.syncSecrets({
+            projectId,
+            secretPath: importedFolder.path,
+            _deDupeReplicationQueue: deDupeReplicationQueue,
+            _deDupeQueue: deDupeQueue,
+            environmentSlug: importedFolder.environmentSlug,
+            actorId,
+            actor,
+            secrets: nestedImportSecrets,
+            folderId: importedFolder.id,
+            environmentId: importedFolder.envId
+          });
         }
 
         await keyStore.setItemWithExpiry(

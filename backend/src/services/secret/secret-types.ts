@@ -378,8 +378,8 @@ export enum SecretOperations {
 }
 
 export type TSyncSecretsDTO<T extends boolean = false> = {
-  _depth?: number;
   _deDupeQueue?: Record<string, boolean>;
+  _deDupeReplicationQueue?: Record<string, boolean>;
   secretPath: string;
   projectId: string;
   environmentSlug: string;

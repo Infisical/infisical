@@ -1251,7 +1251,9 @@ export const secretServiceFactory = ({
       })
     });
 
-    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+    return secrets.map((secret) =>
+      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+    );
   };
 
   const updateManySecretsRaw = async ({
@@ -1300,7 +1302,9 @@ export const secretServiceFactory = ({
       })
     });
 
-    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+    return secrets.map((secret) =>
+      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+    );
   };
 
   const deleteManySecretsRaw = async ({
@@ -1331,7 +1335,9 @@ export const secretServiceFactory = ({
       secrets: inputSecrets.map(({ secretKey }) => ({ secretName: secretKey, type: SecretType.Shared }))
     });
 
-    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+    return secrets.map((secret) =>
+      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+    );
   };
 
   const getSecretVersions = async ({
@@ -1637,6 +1643,7 @@ export const secretServiceFactory = ({
     createManySecretsRaw,
     updateManySecretsRaw,
     deleteManySecretsRaw,
-    getSecretVersions
+    getSecretVersions,
+    backfillSecretReferences
   };
 };
