@@ -2,19 +2,31 @@ import { useEffect } from "react";
 import { subject } from "@casl/ability";
 import { useSortable } from "@dnd-kit/sortable";
 import {
+  faCalendarCheck,
   faClose,
   faFileImport,
   faFolder,
+  faInfoCircle,
   faKey,
   faRotate,
-  faUpDown
+  faUpDown,
+  faWarning,
+  faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { EmptyState, IconButton, SecretInput, TableContainer, Tag } from "@app/components/v2";
+import {
+  EmptyState,
+  IconButton,
+  SecretInput,
+  TableContainer,
+  Tag,
+  Tooltip
+} from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useResyncSecretReplication } from "@app/hooks/api";
@@ -24,6 +36,9 @@ type Props = {
   environment: string;
   secretPath?: string;
   isReplication?: boolean;
+  isReplicationSuccess?: boolean;
+  replicationStatus?: string;
+  lastReplicated?: string;
   importEnvName: string;
   importEnvPath: string;
   importedSecrets: { key: string; value: string; overriden: { env: string; secretPath: string } }[];
@@ -62,7 +77,10 @@ export const SecretImportItem = ({
   importedSecrets = [],
   searchTerm = "",
   secretPath,
-  environment
+  environment,
+  isReplicationSuccess,
+  replicationStatus,
+  lastReplicated
 }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const [isExpanded, setIsExpanded] = useToggle();
@@ -137,7 +155,44 @@ export const SecretImportItem = ({
             isReplication={isReplication}
           />
         </div>
-        <div className="flex items-center space-x-2 px-4 py-2">
+        <div className="flex items-center space-x-4 px-4 py-2">
+          {lastReplicated && (
+            <Tooltip
+              position="left"
+              className="max-w-md whitespace-normal break-words"
+              content={
+                <div className="flex max-h-[10rem] flex-col overflow-auto ">
+                  <div className="flex self-start">
+                    <FontAwesomeIcon icon={faCalendarCheck} className="pt-0.5 pr-2 text-sm" />
+                    <div className="text-sm">Last Replication</div>
+                  </div>
+                  <div className="pl-5 text-left text-xs">
+                    {lastReplicated
+                      ? format(new Date(lastReplicated), "yyyy-MM-dd, hh:mm aaa")
+                      : "-"}
+                  </div>
+                  {!isReplicationSuccess && (
+                    <>
+                      <div className="mt-2 flex self-start">
+                        <FontAwesomeIcon icon={faXmark} className="pt-1 pr-2 text-sm" />
+                        <div className="text-sm">Fail reason</div>
+                      </div>
+                      <div className="pl-5 text-left text-xs">{replicationStatus}</div>
+                    </>
+                  )}
+                </div>
+              }
+            >
+              <div
+                className={twMerge(
+                  "opacity-0 group-hover:opacity-100",
+                  !isReplicationSuccess && "text-red-600"
+                )}
+              >
+                <FontAwesomeIcon icon={isReplicationSuccess ? faInfoCircle : faWarning} />
+              </div>
+            </Tooltip>
+          )}
           <ProjectPermissionCan
             I={ProjectPermissionActions.Edit}
             a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}

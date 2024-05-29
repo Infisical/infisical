@@ -159,7 +159,15 @@ export const SecretImportListView = ({
       >
         <SortableContext items={items} strategy={verticalListSortingStrategy}>
           {items?.map((item) => {
-            const { importPath, importEnv, id, isReplication } = item;
+            const {
+              importPath,
+              importEnv,
+              id,
+              isReplication,
+              replicationStatus,
+              lastReplicated,
+              isReplicationSuccess
+            } = item;
             return (
               <SecretImportItem
                 searchTerm={searchTerm}
@@ -168,6 +176,9 @@ export const SecretImportListView = ({
                 isReplication={isReplication}
                 importEnvPath={importPath}
                 importEnvName={importEnv.name}
+                lastReplicated={lastReplicated}
+                replicationStatus={replicationStatus}
+                isReplicationSuccess={isReplicationSuccess}
                 importedSecrets={computeImportedSecretRows(
                   importEnv.slug,
                   importPath,

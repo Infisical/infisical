@@ -11,6 +11,9 @@ export type TSecretImport = {
   createdAt: string;
   updatedAt: string;
   isReplication?: boolean;
+  isReplicationSuccess?: boolean;
+  replicationStatus?: string;
+  lastReplicated?: string;
 };
 
 export type TGetImportedFoldersByEnvDTO = {

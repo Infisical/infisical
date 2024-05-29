@@ -6,6 +6,9 @@ export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.SecretImport)) {
     await knex.schema.alterTable(TableName.SecretImport, (t) => {
       t.boolean("isReplication").defaultTo(false);
+      t.boolean("isReplicationSuccess").nullable();
+      t.text("replicationStatus").nullable();
+      t.datetime("lastReplicated").nullable();
     });
   }
 
@@ -38,6 +41,9 @@ export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.SecretImport)) {
     await knex.schema.alterTable(TableName.SecretImport, (t) => {
       t.dropColumns("isReplication");
+      t.dropColumns("isReplicationSuccess");
+      t.dropColumns("replicationStatus");
+      t.dropColumns("lastReplicated");
     });
   }
 

@@ -30,7 +30,7 @@ type TSecretReplicationServiceFactoryDep = {
     "find" | "findByBlindIndexes" | "insertMany" | "bulkUpdate" | "delete" | "upsertSecretReferences"
   >;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "find" | "insertMany" | "update" | "findLatestVersionMany">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "updateById">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPath">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "find" | "insertMany">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
@@ -115,131 +115,92 @@ export const secretReplicationServiceFactory = ({
     try {
       /*  eslint-disable no-await-in-loop */
       for (const secretImport of secretImports) {
-        const hasJobCompleted = await keyStore.getItem(
-          keystoreReplicationSuccessKey(job.id as string, secretImport.id),
-          KeyStorePrefixes.SecretReplication
-        );
-        if (hasJobCompleted) {
-          logger.info(
-            { jobId: job.id, importId: secretImport.id },
-            "Skipping this job as this has been successfully replicated."
+        try {
+          const hasJobCompleted = await keyStore.getItem(
+            keystoreReplicationSuccessKey(job.id as string, secretImport.id),
+            KeyStorePrefixes.SecretReplication
           );
-          // eslint-disable-next-line
-          continue;
-        }
-
-        const [importedFolder] = await folderDAL.findSecretPathByFolderIds(projectId, [secretImport.folderId]);
-        if (!importedFolder) throw new BadRequestError({ message: "Imported folder not found" });
-        const importFolderId = importedFolder.id;
-
-        const localSecrets = await secretDAL.find({
-          $in: { secretBlindIndex: replicatedSecrets.map(({ secretBlindIndex }) => secretBlindIndex) },
-          folderId: importFolderId
-        });
-        const localSecretsGroupedByBlindIndex = groupBy(localSecrets, (i) => i.secretBlindIndex as string);
-
-        const locallyCreatedSecrets = sanitizedSecrets.filter(({ operation, id }) => {
-          return (
-            (operation === SecretOperations.Create || operation === SecretOperations.Update) &&
-            !localSecretsGroupedByBlindIndex[replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string]?.[0]
-          );
-        });
-
-        const locallyUpdatedSecrets = sanitizedSecrets.filter(
-          ({ operation, id }) =>
-            (operation === SecretOperations.Create || operation === SecretOperations.Update) &&
-            localSecretsGroupedByBlindIndex[replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string]?.[0]
-        );
-
-        const locallyDeletedSecrets = sanitizedSecrets.filter(
-          ({ operation, id }) =>
-            operation === SecretOperations.Delete &&
-            Boolean(replicatedSecretsGroupBySecretId[id]?.[0]?.secretBlindIndex) &&
-            localSecretsGroupedByBlindIndex[replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string]?.[0]
-        );
-
-        const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
-          projectId,
-          importedFolder.environmentSlug,
-          importedFolder.path
-        );
-        // this means it should be a approval request rather than direct replication
-        if (policy && actor === ActorType.USER) {
-          const membership = await projectMembershipDAL.findOne({ projectId, userId: actorId });
-          if (!membership) {
-            logger.error("Project membership not found in %s for user %s", projectId, actorId);
-            return;
+          if (hasJobCompleted) {
+            logger.info(
+              { jobId: job.id, importId: secretImport.id },
+              "Skipping this job as this has been successfully replicated."
+            );
+            // eslint-disable-next-line
+            continue;
           }
 
-          const localSecretsLatestVersions = localSecrets.map(({ id }) => id);
-          const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
-            importFolderId,
-            localSecretsLatestVersions
-          );
-          await secretApprovalRequestDAL.transaction(async (tx) => {
-            const approvalRequestDoc = await secretApprovalRequestDAL.create(
-              {
-                folderId: importFolderId,
-                slug: alphaNumericNanoId(),
-                policyId: policy.id,
-                status: "open",
-                hasMerged: false,
-                committerId: membership.id,
-                isReplicated: true
-              },
-              tx
-            );
-            const commits = locallyCreatedSecrets
-              .concat(locallyUpdatedSecrets)
-              .concat(locallyDeletedSecrets)
-              .map(({ id, operation }) => {
-                const doc = replicatedSecretsGroupBySecretId[id][0];
-                const localSecret = localSecretsGroupedByBlindIndex[doc.secretBlindIndex as string]?.[0];
-                return {
-                  op: operation,
-                  keyEncoding: doc.keyEncoding,
-                  algorithm: doc.algorithm,
-                  requestId: approvalRequestDoc.id,
-                  metadata: doc.metadata,
-                  secretKeyIV: doc.secretKeyIV,
-                  secretKeyTag: doc.secretKeyTag,
-                  secretKeyCiphertext: doc.secretKeyCiphertext,
-                  secretValueIV: doc.secretValueIV,
-                  secretValueTag: doc.secretValueTag,
-                  secretValueCiphertext: doc.secretValueCiphertext,
-                  secretBlindIndex: doc.secretBlindIndex,
-                  secretCommentIV: doc.secretCommentIV,
-                  secretCommentTag: doc.secretCommentTag,
-                  secretCommentCiphertext: doc.secretCommentCiphertext,
-                  isReplicated: true,
-                  skipMultilineEncoding: doc.skipMultilineEncoding,
-                  // except create operation other two needs the secret id and version id
-                  ...(operation !== SecretOperations.Create
-                    ? { secretId: localSecret.id, secretVersion: latestSecretVersions[localSecret.id].id }
-                    : {})
-                };
-              });
-            const approvalCommits = await secretApprovalRequestSecretDAL.insertMany(commits, tx);
+          const [importedFolder] = await folderDAL.findSecretPathByFolderIds(projectId, [secretImport.folderId]);
+          if (!importedFolder) throw new BadRequestError({ message: "Imported folder not found" });
+          const importFolderId = importedFolder.id;
 
-            return { ...approvalRequestDoc, commits: approvalCommits };
+          const localSecrets = await secretDAL.find({
+            $in: { secretBlindIndex: replicatedSecrets.map(({ secretBlindIndex }) => secretBlindIndex) },
+            folderId: importFolderId
           });
-        } else {
-          let nestedImportSecrets: TSyncSecretsDTO["secrets"] = [];
-          await secretReplicationDAL.transaction(async (tx) => {
-            if (locallyCreatedSecrets.length) {
-              const newSecrets = await fnSecretBulkInsert({
-                folderId: importFolderId,
-                secretVersionDAL,
-                secretDAL,
-                tx,
-                secretTagDAL,
-                secretVersionTagDAL,
-                inputSecrets: locallyCreatedSecrets.map(({ id }) => {
+          const localSecretsGroupedByBlindIndex = groupBy(localSecrets, (i) => i.secretBlindIndex as string);
+
+          const locallyCreatedSecrets = sanitizedSecrets.filter(({ operation, id }) => {
+            return (
+              (operation === SecretOperations.Create || operation === SecretOperations.Update) &&
+              !localSecretsGroupedByBlindIndex[replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string]?.[0]
+            );
+          });
+
+          const locallyUpdatedSecrets = sanitizedSecrets.filter(
+            ({ operation, id }) =>
+              (operation === SecretOperations.Create || operation === SecretOperations.Update) &&
+              localSecretsGroupedByBlindIndex[replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string]?.[0]
+          );
+
+          const locallyDeletedSecrets = sanitizedSecrets.filter(
+            ({ operation, id }) =>
+              operation === SecretOperations.Delete &&
+              Boolean(replicatedSecretsGroupBySecretId[id]?.[0]?.secretBlindIndex) &&
+              localSecretsGroupedByBlindIndex[replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string]?.[0]
+          );
+
+          const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+            projectId,
+            importedFolder.environmentSlug,
+            importedFolder.path
+          );
+          // this means it should be a approval request rather than direct replication
+          if (policy && actor === ActorType.USER) {
+            const membership = await projectMembershipDAL.findOne({ projectId, userId: actorId });
+            if (!membership) {
+              logger.error("Project membership not found in %s for user %s", projectId, actorId);
+              return;
+            }
+
+            const localSecretsLatestVersions = localSecrets.map(({ id }) => id);
+            const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
+              importFolderId,
+              localSecretsLatestVersions
+            );
+            await secretApprovalRequestDAL.transaction(async (tx) => {
+              const approvalRequestDoc = await secretApprovalRequestDAL.create(
+                {
+                  folderId: importFolderId,
+                  slug: alphaNumericNanoId(),
+                  policyId: policy.id,
+                  status: "open",
+                  hasMerged: false,
+                  committerId: membership.id,
+                  isReplicated: true
+                },
+                tx
+              );
+              const commits = locallyCreatedSecrets
+                .concat(locallyUpdatedSecrets)
+                .concat(locallyDeletedSecrets)
+                .map(({ id, operation }) => {
                   const doc = replicatedSecretsGroupBySecretId[id][0];
+                  const localSecret = localSecretsGroupedByBlindIndex[doc.secretBlindIndex as string]?.[0];
                   return {
+                    op: operation,
                     keyEncoding: doc.keyEncoding,
                     algorithm: doc.algorithm,
-                    type: doc.type,
+                    requestId: approvalRequestDoc.id,
                     metadata: doc.metadata,
                     secretKeyIV: doc.secretKeyIV,
                     secretKeyTag: doc.secretKeyTag,
@@ -252,31 +213,31 @@ export const secretReplicationServiceFactory = ({
                     secretCommentTag: doc.secretCommentTag,
                     secretCommentCiphertext: doc.secretCommentCiphertext,
                     isReplicated: true,
-                    skipMultilineEncoding: doc.skipMultilineEncoding
+                    skipMultilineEncoding: doc.skipMultilineEncoding,
+                    // except create operation other two needs the secret id and version id
+                    ...(operation !== SecretOperations.Create
+                      ? { secretId: localSecret.id, secretVersion: latestSecretVersions[localSecret.id].id }
+                      : {})
                   };
-                })
-              });
-              nestedImportSecrets = nestedImportSecrets.concat(
-                newSecrets.map(({ id, version }) => ({ operation: SecretOperations.Create, version, id }))
-              );
-            }
-            if (locallyUpdatedSecrets.length) {
-              const newSecrets = await fnSecretBulkUpdate({
-                projectId,
-                folderId: importFolderId,
-                secretVersionDAL,
-                secretDAL,
-                tx,
-                secretTagDAL,
-                secretVersionTagDAL,
-                inputSecrets: locallyUpdatedSecrets.map(({ id }) => {
-                  const doc = replicatedSecretsGroupBySecretId[id][0];
-                  return {
-                    filter: {
-                      folderId: importFolderId,
-                      id: localSecretsGroupedByBlindIndex[doc.secretBlindIndex as string][0].id
-                    },
-                    data: {
+                });
+              const approvalCommits = await secretApprovalRequestSecretDAL.insertMany(commits, tx);
+
+              return { ...approvalRequestDoc, commits: approvalCommits };
+            });
+          } else {
+            let nestedImportSecrets: TSyncSecretsDTO["secrets"] = [];
+            await secretReplicationDAL.transaction(async (tx) => {
+              if (locallyCreatedSecrets.length) {
+                const newSecrets = await fnSecretBulkInsert({
+                  folderId: importFolderId,
+                  secretVersionDAL,
+                  secretDAL,
+                  tx,
+                  secretTagDAL,
+                  secretVersionTagDAL,
+                  inputSecrets: locallyCreatedSecrets.map(({ id }) => {
+                    const doc = replicatedSecretsGroupBySecretId[id][0];
+                    return {
                       keyEncoding: doc.keyEncoding,
                       algorithm: doc.algorithm,
                       type: doc.type,
@@ -293,60 +254,119 @@ export const secretReplicationServiceFactory = ({
                       secretCommentCiphertext: doc.secretCommentCiphertext,
                       isReplicated: true,
                       skipMultilineEncoding: doc.skipMultilineEncoding
-                    }
-                  };
-                })
-              });
-              nestedImportSecrets = nestedImportSecrets.concat(
-                newSecrets.map(({ id, version }) => ({ operation: SecretOperations.Update, version, id }))
-              );
-            }
-            if (locallyDeletedSecrets.length) {
-              const newSecrets = await secretDAL.delete(
-                {
-                  $in: {
-                    id: locallyDeletedSecrets.map(({ id }) => id)
+                    };
+                  })
+                });
+                nestedImportSecrets = nestedImportSecrets.concat(
+                  newSecrets.map(({ id, version }) => ({ operation: SecretOperations.Create, version, id }))
+                );
+              }
+              if (locallyUpdatedSecrets.length) {
+                const newSecrets = await fnSecretBulkUpdate({
+                  projectId,
+                  folderId: importFolderId,
+                  secretVersionDAL,
+                  secretDAL,
+                  tx,
+                  secretTagDAL,
+                  secretVersionTagDAL,
+                  inputSecrets: locallyUpdatedSecrets.map(({ id }) => {
+                    const doc = replicatedSecretsGroupBySecretId[id][0];
+                    return {
+                      filter: {
+                        folderId: importFolderId,
+                        id: localSecretsGroupedByBlindIndex[doc.secretBlindIndex as string][0].id
+                      },
+                      data: {
+                        keyEncoding: doc.keyEncoding,
+                        algorithm: doc.algorithm,
+                        type: doc.type,
+                        metadata: doc.metadata,
+                        secretKeyIV: doc.secretKeyIV,
+                        secretKeyTag: doc.secretKeyTag,
+                        secretKeyCiphertext: doc.secretKeyCiphertext,
+                        secretValueIV: doc.secretValueIV,
+                        secretValueTag: doc.secretValueTag,
+                        secretValueCiphertext: doc.secretValueCiphertext,
+                        secretBlindIndex: doc.secretBlindIndex,
+                        secretCommentIV: doc.secretCommentIV,
+                        secretCommentTag: doc.secretCommentTag,
+                        secretCommentCiphertext: doc.secretCommentCiphertext,
+                        isReplicated: true,
+                        skipMultilineEncoding: doc.skipMultilineEncoding
+                      }
+                    };
+                  })
+                });
+                nestedImportSecrets = nestedImportSecrets.concat(
+                  newSecrets.map(({ id, version }) => ({ operation: SecretOperations.Update, version, id }))
+                );
+              }
+              if (locallyDeletedSecrets.length) {
+                const newSecrets = await secretDAL.delete(
+                  {
+                    $in: {
+                      id: locallyDeletedSecrets.map(({ id }) => id)
+                    },
+                    isReplicated: true,
+                    folderId: importFolderId
                   },
-                  isReplicated: true,
-                  folderId: importFolderId
-                },
-                tx
-              );
-              nestedImportSecrets = nestedImportSecrets.concat(
-                newSecrets.map(({ id, version }) => ({ operation: SecretOperations.Delete, version, id }))
-              );
-            }
-          });
+                  tx
+                );
+                nestedImportSecrets = nestedImportSecrets.concat(
+                  newSecrets.map(({ id, version }) => ({ operation: SecretOperations.Delete, version, id }))
+                );
+              }
+            });
 
-          const folderLock = await keyStore
-            .acquireLock([`secret-replication-${importFolderId}`], 5000)
-            .catch(() => null);
-          if (folderLock) {
-            await snapshotService.performSnapshot(importFolderId);
-            await folderLock.release();
+            const folderLock = await keyStore
+              .acquireLock([`secret-replication-${importFolderId}`], 5000)
+              .catch(() => null);
+            if (folderLock) {
+              await snapshotService.performSnapshot(importFolderId);
+              await folderLock.release();
+            }
+
+            await secretQueueService.syncSecrets({
+              projectId,
+              secretPath: importedFolder.path,
+              _deDupeReplicationQueue: deDupeReplicationQueue,
+              _deDupeQueue: deDupeQueue,
+              environmentSlug: importedFolder.environmentSlug,
+              actorId,
+              actor,
+              secrets: nestedImportSecrets,
+              folderId: importedFolder.id,
+              environmentId: importedFolder.envId
+            });
           }
 
-          await secretQueueService.syncSecrets({
-            projectId,
-            secretPath: importedFolder.path,
-            _deDupeReplicationQueue: deDupeReplicationQueue,
-            _deDupeQueue: deDupeQueue,
-            environmentSlug: importedFolder.environmentSlug,
-            actorId,
-            actor,
-            secrets: nestedImportSecrets,
-            folderId: importedFolder.id,
-            environmentId: importedFolder.envId
+          // this is used to avoid multiple times generating secret approval by failed one
+          await keyStore.setItemWithExpiry(
+            keystoreReplicationSuccessKey(job.id as string, secretImport.id),
+            SECRET_IMPORT_SUCCESS_LOCK,
+            1,
+            KeyStorePrefixes.SecretReplication
+          );
+
+          await secretImportDAL.updateById(secretImport.id, {
+            lastReplicated: new Date(),
+            replicationStatus: null,
+            isReplicationSuccess: true
+          });
+        } catch (err) {
+          logger.error(
+            err,
+            `Failed to replicate secret with import id=[${secretImport.id}] env=[${secretImport.importEnv.slug}] path=[${secretImport.importPath}]`
+          );
+          await secretImportDAL.updateById(secretImport.id, {
+            lastReplicated: new Date(),
+            replicationStatus: (err as Error)?.message.slice(0, 500),
+            isReplicationSuccess: false
           });
         }
-
-        await keyStore.setItemWithExpiry(
-          keystoreReplicationSuccessKey(job.id as string, secretImport.id),
-          SECRET_IMPORT_SUCCESS_LOCK,
-          1,
-          KeyStorePrefixes.SecretReplication
-        );
       }
+
       await secretVersionDAL.update({ $in: { id: replicatedSecrets.map(({ id }) => id) } }, { isReplicated: true });
       /*  eslint-enable no-await-in-loop */
     } finally {
