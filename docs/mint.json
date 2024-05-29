@@ -124,7 +124,9 @@
             "documentation/platform/access-controls/temporary-access",
             "documentation/platform/access-controls/access-requests",
             "documentation/platform/pr-workflows",
-            "documentation/platform/audit-logs"
+            "documentation/platform/audit-logs",
+            "documentation/platform/audit-log-streams",
+            "documentation/platform/groups"
           ]
         },
         {
@@ -137,7 +139,6 @@
             "documentation/platform/secret-rotation/aws-iam"
           ]
         },
-        "documentation/platform/secret-sharing",
         {
           "group": "Dynamic Secrets",
           "pages": [
@@ -149,8 +150,7 @@
             "documentation/platform/dynamic-secrets/aws-iam"
           ]
         },
-        "documentation/platform/groups",
-        "documentation/platform/audit-log-streams"
+        "documentation/platform/secret-sharing"
       ]
     },
     {
