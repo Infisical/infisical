@@ -36,6 +36,7 @@ export type TIntegration = {
   metadata?: {
     secretSuffix?: string;
     syncBehavior?: IntegrationSyncBehavior;
+    mappingBehavior?: IntegrationMappingBehavior;
     scope: string;
     org: string;
     project: string;
@@ -47,4 +48,9 @@ export enum IntegrationSyncBehavior {
   OVERWRITE_TARGET = "overwrite-target",
   PREFER_TARGET = "prefer-target",
   PREFER_SOURCE = "prefer-source"
+}
+
+export enum IntegrationMappingBehavior {
+  ONE_TO_ONE = "one-to-one",
+  MANY_TO_ONE = "many-to-one"
 }

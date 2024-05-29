@@ -52,8 +52,24 @@ export const inviteUserRateLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
+export const mfaRateLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  max: 20,
+  keyGenerator: (req) => {
+    return req.headers.authorization?.split(" ")[1] || req.realIp;
+  }
+};
+
 export const creationLimit: RateLimitOptions = {
   // identity, project, org
+  timeWindow: 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => req.realIp
+};
+
+// Public endpoints to avoid brute force attacks
+export const publicEndpointLimit: RateLimitOptions = {
+  // Shared Secrets
   timeWindow: 60 * 1000,
   max: 30,
   keyGenerator: (req) => req.realIp

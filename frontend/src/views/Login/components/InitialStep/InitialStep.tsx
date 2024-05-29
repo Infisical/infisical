@@ -105,8 +105,18 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           });
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      if (err.response.data.error === "User Locked") {
+        createNotification({
+          title: err.response.data.error,
+          text: err.response.data.message,
+          type: "error"
+        });
+        setIsLoading(false);
+        return;
+      }
+
       setLoginError(true);
       createNotification({
         text: "Login unsuccessful. Double-check your credentials and try again.",

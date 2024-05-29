@@ -98,7 +98,7 @@ export const decryptSecrets = (
   return secrets;
 };
 
-const fetchProjectEncryptedSecrets = async ({
+export const fetchProjectEncryptedSecrets = async ({
   workspaceId,
   environment,
   secretPath

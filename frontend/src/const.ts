@@ -23,7 +23,8 @@ export const publicPaths = [
   "/login/provider/success", // TODO: change
   "/login/provider/error", // TODO: change
   "/login/sso",
-  "/admin/signup"
+  "/admin/signup",
+  "/shared/secret/[id]"
 ];
 
 export const languageMap = {

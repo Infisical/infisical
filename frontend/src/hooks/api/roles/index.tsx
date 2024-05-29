@@ -8,6 +8,7 @@ export {
 } from "./mutation";
 export {
   useGetOrgRoles,
+  useGetProjectRoleBySlug,
   useGetProjectRoles,
   useGetUserOrgPermissions,
   useGetUserProjectPermissions

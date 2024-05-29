@@ -87,6 +87,8 @@ import { identityAccessTokenDALFactory } from "@app/services/identity-access-tok
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { identityAwsAuthDALFactory } from "@app/services/identity-aws-auth/identity-aws-auth-dal";
 import { identityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
+import { identityAzureAuthDALFactory } from "@app/services/identity-azure-auth/identity-azure-auth-dal";
+import { identityAzureAuthServiceFactory } from "@app/services/identity-azure-auth/identity-azure-auth-service";
 import { identityGcpAuthDALFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-dal";
 import { identityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
 import { identityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
@@ -122,6 +124,7 @@ import { projectMembershipServiceFactory } from "@app/services/project-membershi
 import { projectUserMembershipRoleDALFactory } from "@app/services/project-membership/project-user-membership-role-dal";
 import { projectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
+import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-cleanup/resource-cleanup-queue";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
 import { secretQueueFactory } from "@app/services/secret/secret-queue";
 import { secretServiceFactory } from "@app/services/secret/secret-service";
@@ -134,6 +137,8 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
+import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
+import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
@@ -219,8 +224,8 @@ export const registerRoutes = async (
   const identityKubernetesAuthDAL = identityKubernetesAuthDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
   const identityAwsAuthDAL = identityAwsAuthDALFactory(db);
-
   const identityGcpAuthDAL = identityGcpAuthDALFactory(db);
+  const identityAzureAuthDAL = identityAzureAuthDALFactory(db);
 
   const auditLogDAL = auditLogDALFactory(db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
@@ -257,6 +262,7 @@ export const registerRoutes = async (
   const groupProjectMembershipRoleDAL = groupProjectMembershipRoleDALFactory(db);
   const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
+  const secretSharingDAL = secretSharingDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
@@ -553,7 +559,8 @@ export const registerRoutes = async (
     permissionService,
     projectRoleDAL,
     projectUserMembershipRoleDAL,
-    identityProjectMembershipRoleDAL
+    identityProjectMembershipRoleDAL,
+    projectDAL
   });
 
   const snapshotService = secretSnapshotServiceFactory({
@@ -641,6 +648,12 @@ export const registerRoutes = async (
     projectEnvDAL,
     projectBotService
   });
+
+  const secretSharingService = secretSharingServiceFactory({
+    permissionService,
+    secretSharingDAL
+  });
+
   const sarService = secretApprovalRequestServiceFactory({
     permissionService,
     projectBotService,
@@ -775,6 +788,15 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const identityAzureAuthService = identityAzureAuthServiceFactory({
+    identityAzureAuthDAL,
+    identityOrgMembershipDAL,
+    identityAccessTokenDAL,
+    identityDAL,
+    permissionService,
+    licenseService
+  });
+
   const dynamicSecretProviders = buildDynamicSecretProviders();
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
     queueService,
@@ -802,14 +824,20 @@ export const registerRoutes = async (
     folderDAL,
     licenseService
   });
+  const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
+    auditLogDAL,
+    queueService,
+    identityAccessTokenDAL,
+    secretSharingDAL
+  });
 
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
   await licenseService.init();
 
-  await auditLogQueue.startAuditLogPruneJob();
   await telemetryQueue.startTelemetryCheck();
+  await dailyResourceCleanUp.startCleanUp();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
@@ -846,6 +874,7 @@ export const registerRoutes = async (
     identityKubernetesAuth: identityKubernetesAuthService,
     identityGcpAuth: identityGcpAuthService,
     identityAwsAuth: identityAwsAuthService,
+    identityAzureAuth: identityAzureAuthService,
     secretApprovalPolicy: sapService,
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,
@@ -867,7 +896,8 @@ export const registerRoutes = async (
     secretBlindIndex: secretBlindIndexService,
     telemetry: telemetryService,
     projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService,
-    identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService
+    identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
+    secretSharing: secretSharingService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

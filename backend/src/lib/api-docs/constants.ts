@@ -225,7 +225,8 @@ export const PROJECT_IDENTITIES = {
     roles: {
       description: "A list of role slugs to assign to the identity project membership.",
       role: "The role slug to assign to the newly created identity project membership.",
-      isTemporary: "Whether the assigned role is temporary.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
       temporaryMode: "Type of temporary expiry.",
       temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s,2m,3h",
       temporaryAccessStartTime: "Time to which the temporary access starts"
@@ -242,7 +243,8 @@ export const PROJECT_IDENTITIES = {
     roles: {
       description: "A list of role slugs to assign to the newly created identity project membership.",
       role: "The role slug to assign to the newly created identity project membership.",
-      isTemporary: "Whether the assigned role is temporary.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
       temporaryMode: "Type of temporary expiry.",
       temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s,2m,3h",
       temporaryAccessStartTime: "Time to which the temporary access starts"
@@ -519,7 +521,8 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     projectSlug: "The slug of the project of the identity in.",
     identityId: "The ID of the identity to create.",
     slug: "The slug of the privilege to create.",
-    permissions: `The permission object for the privilege.
+    permissions: `@deprecated - use privilegePermission
+The permission object for the privilege.
 - Read secrets
 \`\`\`
 { "permissions": [{"action": "read", "subject": "secrets"]}
@@ -533,6 +536,7 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
 - { "permissions": [{"action": "read", "subject": "secrets", "conditions": { "environment": "dev", "secretPath": { "$glob": "/" } }}] }
 \`\`\`
 `,
+    privilegePermission: "The permission object for the privilege.",
     isPackPermission: "Whether the server should pack(compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
     temporaryMode: "Type of temporary access given. Types: relative",
@@ -544,7 +548,8 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     identityId: "The ID of the identity to update.",
     slug: "The slug of the privilege to update.",
     newSlug: "The new slug of the privilege to update.",
-    permissions: `The permission object for the privilege.
+    permissions: `@deprecated - use privilegePermission
+The permission object for the privilege.
 - Read secrets
 \`\`\`
 { "permissions": [{"action": "read", "subject": "secrets"]}
@@ -558,6 +563,7 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
 - { "permissions": [{"action": "read", "subject": "secrets", "conditions": { "environment": "dev", "secretPath": { "$glob": "/" } }}] }
 \`\`\`
 `,
+    privilegePermission: "The permission object for the privilege.",
     isTemporary: "Whether the privilege is temporary.",
     temporaryMode: "Type of temporary access given. Types: relative",
     temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
@@ -662,6 +668,7 @@ export const INTEGRATION = {
       secretPrefix: "The prefix for the saved secret. Used by GCP.",
       secretSuffix: "The suffix for the saved secret. Used by GCP.",
       initialSyncBehavoir: "Type of syncing behavoir with the integration.",
+      mappingBehavior: "The mapping behavior of the integration.",
       shouldAutoRedeploy: "Used by Render to trigger auto deploy.",
       secretGCPLabel: "The label for GCP secrets.",
       secretAWSTag: "The tags for AWS secrets.",
@@ -712,5 +719,34 @@ export const AUDIT_LOG_STREAMS = {
   },
   GET_BY_ID: {
     id: "The ID of the audit log stream to get details."
+  }
+};
+
+export const PROJECT_ROLE = {
+  CREATE: {
+    projectSlug: "Slug of the project to create the role for.",
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  UPDATE: {
+    projectSlug: "Slug of the project to update the role for.",
+    roleId: "The ID of the role to update",
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  DELETE: {
+    projectSlug: "Slug of the project to delete this role for.",
+    roleId: "The ID of the role to update"
+  },
+  GET_ROLE_BY_SLUG: {
+    projectSlug: "The slug of the project.",
+    roleSlug: "The slug of the role to get details"
+  },
+  LIST: {
+    projectSlug: "The slug of the project to list the roles of."
   }
 };

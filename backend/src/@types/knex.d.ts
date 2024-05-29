@@ -80,6 +80,9 @@ import {
   TIdentityAwsAuths,
   TIdentityAwsAuthsInsert,
   TIdentityAwsAuthsUpdate,
+  TIdentityAzureAuths,
+  TIdentityAzureAuthsInsert,
+  TIdentityAzureAuthsUpdate,
   TIdentityGcpAuths,
   TIdentityGcpAuthsInsert,
   TIdentityGcpAuthsUpdate,
@@ -201,6 +204,9 @@ import {
   TSecretScanningGitRisks,
   TSecretScanningGitRisksInsert,
   TSecretScanningGitRisksUpdate,
+  TSecretSharing,
+  TSecretSharingInsert,
+  TSecretSharingUpdate,
   TSecretsInsert,
   TSecretSnapshotFolders,
   TSecretSnapshotFoldersInsert,
@@ -369,6 +375,7 @@ declare module "knex/types/tables" {
       TSecretFolderVersionsInsert,
       TSecretFolderVersionsUpdate
     >;
+    [TableName.SecretSharing]: Knex.CompositeTableType<TSecretSharing, TSecretSharingInsert, TSecretSharingUpdate>;
     [TableName.SecretTag]: Knex.CompositeTableType<TSecretTags, TSecretTagsInsert, TSecretTagsUpdate>;
     [TableName.SecretImport]: Knex.CompositeTableType<TSecretImports, TSecretImportsInsert, TSecretImportsUpdate>;
     [TableName.Integration]: Knex.CompositeTableType<TIntegrations, TIntegrationsInsert, TIntegrationsUpdate>;
@@ -399,6 +406,11 @@ declare module "knex/types/tables" {
       TIdentityAwsAuths,
       TIdentityAwsAuthsInsert,
       TIdentityAwsAuthsUpdate
+    >;
+    [TableName.IdentityAzureAuth]: Knex.CompositeTableType<
+      TIdentityAzureAuths,
+      TIdentityAzureAuthsInsert,
+      TIdentityAzureAuthsUpdate
     >;
     [TableName.IdentityUaClientSecret]: Knex.CompositeTableType<
       TIdentityUaClientSecrets,

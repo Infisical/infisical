@@ -31,7 +31,6 @@ export const PasswordStep = ({
   setPassword,
   setStep
 }: Props) => {
-  
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
   const router = useRouter();
@@ -146,13 +145,23 @@ export const PasswordStep = ({
           }
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       setIsLoading(false);
+      console.error(err);
+
+      if (err.response.data.error === "User Locked") {
+        createNotification({
+          title: err.response.data.error,
+          text: err.response.data.message,
+          type: "error"
+        });
+        return;
+      }
+
       createNotification({
         text: "Login unsuccessful. Double-check your master password and try again.",
         type: "error"
       });
-      console.error(err);
     }
   };
 

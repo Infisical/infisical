@@ -8,6 +8,7 @@ import { writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { IntegrationMappingBehavior } from "@app/services/integration-auth/integration-list";
 import { PostHogEventTypes, TIntegrationCreatedEvent } from "@app/services/telemetry/telemetry-types";
 
 export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
@@ -49,6 +50,10 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             secretPrefix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretPrefix),
             secretSuffix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretSuffix),
             initialSyncBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.initialSyncBehavoir),
+            mappingBehavior: z
+              .nativeEnum(IntegrationMappingBehavior)
+              .optional()
+              .describe(INTEGRATION.CREATE.metadata.mappingBehavior),
             shouldAutoRedeploy: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldAutoRedeploy),
             secretGCPLabel: z
               .object({
@@ -160,6 +165,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             secretPrefix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretPrefix),
             secretSuffix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretSuffix),
             initialSyncBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.initialSyncBehavoir),
+            mappingBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.mappingBehavior),
             shouldAutoRedeploy: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldAutoRedeploy),
             secretGCPLabel: z
               .object({

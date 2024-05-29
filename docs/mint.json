@@ -124,7 +124,9 @@
             "documentation/platform/access-controls/temporary-access",
             "documentation/platform/access-controls/access-requests",
             "documentation/platform/pr-workflows",
-            "documentation/platform/audit-logs"
+            "documentation/platform/audit-logs",
+            "documentation/platform/audit-log-streams",
+            "documentation/platform/groups"
           ]
         },
         {
@@ -148,8 +150,7 @@
             "documentation/platform/dynamic-secrets/aws-iam"
           ]
         },
-        "documentation/platform/groups",
-        "documentation/platform/audit-log-streams"
+        "documentation/platform/secret-sharing"
       ]
     },
     {
@@ -160,6 +161,7 @@
         "documentation/platform/identities/universal-auth",
         "documentation/platform/identities/kubernetes-auth",
         "documentation/platform/identities/gcp-auth",
+        "documentation/platform/identities/azure-auth",
         "documentation/platform/identities/aws-auth",
         "documentation/platform/mfa",
         {
@@ -473,6 +475,16 @@
             "api-reference/endpoints/project-identities/get-by-id",
             "api-reference/endpoints/project-identities/update-identity-membership",
             "api-reference/endpoints/project-identities/delete-identity-membership"
+          ]
+        },
+        {
+          "group": "Project Roles",
+          "pages": [
+            "api-reference/endpoints/project-roles/create",
+            "api-reference/endpoints/project-roles/update",
+            "api-reference/endpoints/project-roles/delete",
+            "api-reference/endpoints/project-roles/get-by-slug",
+            "api-reference/endpoints/project-roles/list"
           ]
         },
         {

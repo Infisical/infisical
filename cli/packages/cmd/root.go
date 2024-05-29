@@ -43,6 +43,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("silent", false, "Disable output of tip/info messages. Useful when running in scripts or CI/CD pipelines.")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		silent, err := cmd.Flags().GetBool("silent")
+		config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL)
 		if err != nil {
 			util.HandleError(err)
 		}

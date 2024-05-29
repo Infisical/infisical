@@ -15,6 +15,7 @@ import queryString from "query-string";
 
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
+import { IntegrationMappingBehavior } from "@app/hooks/api/integrations/types";
 
 import {
   Button,
@@ -70,6 +71,17 @@ const awsRegions = [
   { name: "AWS GovCloud (US-West)", slug: "us-gov-west-1" }
 ];
 
+const mappingBehaviors = [
+  {
+    label: "Many to One (All Infisical secrets will be mapped to a single AWS secret)",
+    value: IntegrationMappingBehavior.MANY_TO_ONE
+  },
+  {
+    label: "One to One - (Each Infisical secret will be mapped to its own AWS secret)",
+    value: IntegrationMappingBehavior.ONE_TO_ONE
+  }
+];
+
 export default function AWSSecretManagerCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
@@ -84,6 +96,9 @@ export default function AWSSecretManagerCreateIntegrationPage() {
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
   const [selectedAWSRegion, setSelectedAWSRegion] = useState("");
+  const [selectedMappingBehavior, setSelectedMappingBehavior] = useState(
+    IntegrationMappingBehavior.MANY_TO_ONE
+  );
   const [targetSecretName, setTargetSecretName] = useState("");
   const [targetSecretNameErrorText, setTargetSecretNameErrorText] = useState("");
   const [tagKey, setTagKey] = useState("");
@@ -116,7 +131,14 @@ export default function AWSSecretManagerCreateIntegrationPage() {
 
   const handleButtonClick = async () => {
     try {
-      if (targetSecretName.trim() === "") {
+      if (!selectedMappingBehavior) {
+        return;
+      }
+
+      if (
+        selectedMappingBehavior === IntegrationMappingBehavior.MANY_TO_ONE &&
+        targetSecretName.trim() === ""
+      ) {
         setTargetSecretName("Secret name cannot be blank");
         return;
       }
@@ -143,15 +165,16 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                 ]
               }
             : {}),
-          ...(kmsKeyId && { kmsKeyId })
+          ...(kmsKeyId && { kmsKeyId }),
+          mappingBehavior: selectedMappingBehavior
         }
       });
-
       setIsLoading(false);
       setTargetSecretNameErrorText("");
 
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
+      setIsLoading(false);
       console.error(err);
     }
   };
@@ -248,19 +271,40 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                   ))}
                 </Select>
               </FormControl>
-              <FormControl
-                label="AWS SM Secret Name"
-                errorText={targetSecretNameErrorText}
-                isError={targetSecretNameErrorText !== "" ?? false}
-              >
-                <Input
-                  placeholder={`${workspace.name
-                    .toLowerCase()
-                    .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
-                  value={targetSecretName}
-                  onChange={(e) => setTargetSecretName(e.target.value)}
-                />
+              <FormControl label="Mapping Behavior">
+                <Select
+                  value={selectedMappingBehavior}
+                  onValueChange={(val) => {
+                    setSelectedMappingBehavior(val as IntegrationMappingBehavior);
+                  }}
+                  className="w-full border border-mineshaft-500 text-left"
+                >
+                  {mappingBehaviors.map((option) => (
+                    <SelectItem
+                      value={option.value}
+                      className="text-left"
+                      key={`aws-environment-${option.value}`}
+                    >
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </Select>
               </FormControl>
+              {selectedMappingBehavior === IntegrationMappingBehavior.MANY_TO_ONE && (
+                <FormControl
+                  label="AWS SM Secret Name"
+                  errorText={targetSecretNameErrorText}
+                  isError={targetSecretNameErrorText !== "" ?? false}
+                >
+                  <Input
+                    placeholder={`${workspace.name
+                      .toLowerCase()
+                      .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
+                    value={targetSecretName}
+                    onChange={(e) => setTargetSecretName(e.target.value)}
+                  />
+                </FormControl>
+              )}
             </motion.div>
           </TabPanel>
           <TabPanel value={TabSections.Options}>

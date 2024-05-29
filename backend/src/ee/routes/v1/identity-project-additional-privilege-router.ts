@@ -5,10 +5,15 @@ import { z } from "zod";
 
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-types";
 import { IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
+import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ProjectPermissionSchema, SanitizedIdentityPrivilegeSchema } from "@app/server/routes/sanitizedSchemas";
+import {
+  ProjectPermissionSchema,
+  ProjectSpecificPrivilegePermissionSchema,
+  SanitizedIdentityPrivilegeSchema
+} from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
@@ -39,7 +44,12 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           })
           .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
-        permissions: ProjectPermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions)
+        permissions: ProjectPermissionSchema.array()
+          .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions)
+          .optional(),
+        privilegePermission: ProjectSpecificPrivilegePermissionSchema.describe(
+          IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.privilegePermission
+        ).optional()
       }),
       response: {
         200: z.object({
@@ -49,6 +59,18 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { permissions, privilegePermission } = req.body;
+      if (!permissions && !privilegePermission) {
+        throw new BadRequestError({ message: "Permission or privilegePermission must be provided" });
+      }
+
+      const permission = privilegePermission
+        ? privilegePermission.actions.map((action) => ({
+            action,
+            subject: privilegePermission.subject,
+            conditions: privilegePermission.conditions
+          }))
+        : permissions!;
       const privilege = await server.services.identityProjectAdditionalPrivilege.create({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -57,7 +79,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         ...req.body,
         slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
         isTemporary: false,
-        permissions: JSON.stringify(packRules(req.body.permissions))
+        permissions: JSON.stringify(packRules(permission))
       });
       return { privilege };
     }
@@ -90,7 +112,12 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           })
           .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.slug),
-        permissions: ProjectPermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions),
+        permissions: ProjectPermissionSchema.array()
+          .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.permissions)
+          .optional(),
+        privilegePermission: ProjectSpecificPrivilegePermissionSchema.describe(
+          IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.privilegePermission
+        ).optional(),
         temporaryMode: z
           .nativeEnum(IdentityProjectAdditionalPrivilegeTemporaryMode)
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.temporaryMode),
@@ -111,6 +138,19 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { permissions, privilegePermission } = req.body;
+      if (!permissions && !privilegePermission) {
+        throw new BadRequestError({ message: "Permission or privilegePermission must be provided" });
+      }
+
+      const permission = privilegePermission
+        ? privilegePermission.actions.map((action) => ({
+            action,
+            subject: privilegePermission.subject,
+            conditions: privilegePermission.conditions
+          }))
+        : permissions!;
+
       const privilege = await server.services.identityProjectAdditionalPrivilege.create({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -119,7 +159,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         ...req.body,
         slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
         isTemporary: true,
-        permissions: JSON.stringify(packRules(req.body.permissions))
+        permissions: JSON.stringify(packRules(permission))
       });
       return { privilege };
     }
@@ -156,13 +196,16 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
               })
               .describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.newSlug),
             permissions: ProjectPermissionSchema.array().describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.permissions),
+            privilegePermission: ProjectSpecificPrivilegePermissionSchema.describe(
+              IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.privilegePermission
+            ).optional(),
             isTemporary: z.boolean().describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.isTemporary),
             temporaryMode: z
               .nativeEnum(IdentityProjectAdditionalPrivilegeTemporaryMode)
               .describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.temporaryMode),
             temporaryRange: z
               .string()
-              .refine((val) => ms(val) > 0, "Temporary range must be a positive number")
+              .refine((val) => typeof val === "undefined" || ms(val) > 0, "Temporary range must be a positive number")
               .describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.temporaryRange),
             temporaryAccessStartTime: z
               .string()
@@ -179,7 +222,18 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const updatedInfo = req.body.privilegeDetails;
+      const { permissions, privilegePermission, ...updatedInfo } = req.body.privilegeDetails;
+      if (!permissions && !privilegePermission) {
+        throw new BadRequestError({ message: "Permission or privilegePermission must be provided" });
+      }
+
+      const permission = privilegePermission
+        ? privilegePermission.actions.map((action) => ({
+            action,
+            subject: privilegePermission.subject,
+            conditions: privilegePermission.conditions
+          }))
+        : permissions!;
       const privilege = await server.services.identityProjectAdditionalPrivilege.updateBySlug({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -190,7 +244,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         projectSlug: req.body.projectSlug,
         data: {
           ...updatedInfo,
-          permissions: updatedInfo?.permissions ? JSON.stringify(packRules(updatedInfo.permissions)) : undefined
+          permissions: permission ? JSON.stringify(packRules(permission)) : undefined
         }
       });
       return { privilege };

@@ -330,7 +330,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
           teams: z
             .object({
               name: z.string(),
-              id: z.string().optional()
+              id: z.string()
             })
             .array()
         })

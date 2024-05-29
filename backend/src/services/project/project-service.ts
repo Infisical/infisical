@@ -348,7 +348,7 @@ export const projectServiceFactory = ({
 
     const deletedProject = await projectDAL.transaction(async (tx) => {
       const delProject = await projectDAL.deleteById(project.id, tx);
-      const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(project.id).catch(() => null);
+      const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(project.id, tx).catch(() => null);
 
       // Delete the org membership for the ghost user if it's found.
       if (projectGhostUser) {

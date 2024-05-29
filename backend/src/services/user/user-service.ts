@@ -207,6 +207,19 @@ export const userServiceFactory = ({
     return userAction;
   };
 
+  const unlockUser = async (userId: string, token: string) => {
+    await tokenService.validateTokenForUser({
+      userId,
+      code: token,
+      type: TokenType.TOKEN_USER_UNLOCK
+    });
+
+    await userDAL.update(
+      { id: userId },
+      { consecutiveFailedMfaAttempts: 0, isLocked: false, temporaryLockDateEnd: null }
+    );
+  };
+
   return {
     sendEmailVerificationCode,
     verifyEmailVerificationCode,
@@ -216,6 +229,7 @@ export const userServiceFactory = ({
     deleteMe,
     getMe,
     createUserAction,
-    getUserAction
+    getUserAction,
+    unlockUser
   };
 };

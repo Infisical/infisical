@@ -65,7 +65,8 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
-  const { data: projectRoles, isLoading: isRolesLoading } = useGetProjectRoles(workspaceId);
+  const projectSlug = currentWorkspace?.slug || "";
+  const { data: projectRoles, isLoading: isRolesLoading } = useGetProjectRoles(projectSlug);
   const { permission } = useProjectPermission();
   const isMemberEditDisabled = permission.cannot(
     ProjectPermissionActions.Edit,
@@ -79,14 +80,14 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
         slug: customRoleSlug || role,
         temporaryAccess: dto.isTemporary
           ? {
-            isTemporary: true,
-            temporaryRange: dto.temporaryRange,
-            temporaryAccessEndTime: dto.temporaryAccessEndTime,
-            temporaryAccessStartTime: dto.temporaryAccessStartTime
-          }
+              isTemporary: true,
+              temporaryRange: dto.temporaryRange,
+              temporaryAccessEndTime: dto.temporaryAccessEndTime,
+              temporaryAccessStartTime: dto.temporaryAccessStartTime
+            }
           : {
-            isTemporary: dto.isTemporary
-          }
+              isTemporary: dto.isTemporary
+            }
       }))
     }
   });
@@ -191,9 +192,9 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
                               ? isExpired
                                 ? "Timed Access Expired"
                                 : `Until ${format(
-                                  new Date(temporaryAccess.temporaryAccessEndTime || ""),
-                                  "yyyy-MM-dd HH:mm:ss"
-                                )}`
+                                    new Date(temporaryAccess.temporaryAccessEndTime || ""),
+                                    "yyyy-MM-dd HH:mm:ss"
+                                  )}`
                               : "Non expiry access"
                           }
                         >
@@ -212,9 +213,9 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
                               ? isExpired
                                 ? "Access Expired"
                                 : formatDistance(
-                                  new Date(temporaryAccess.temporaryAccessEndTime || ""),
-                                  new Date()
-                                )
+                                    new Date(temporaryAccess.temporaryAccessEndTime || ""),
+                                    new Date()
+                                  )
                               : "Permanent"}
                           </Button>
                         </Tooltip>
@@ -338,7 +339,7 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
               type="submit"
               className={twMerge(
                 "transition-all",
-                "opacity-0 cursor-default",
+                "cursor-default opacity-0",
                 roleForm.formState.isDirty && "cursor-pointer opacity-100"
               )}
               isDisabled={!roleForm.formState.isDirty}
