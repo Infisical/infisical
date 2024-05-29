@@ -8,19 +8,19 @@ import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
+import { ActorType } from "@app/services/auth/auth-type";
+import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
+import { TSecretDALFactory } from "@app/services/secret/secret-dal";
+import { fnSecretBulkInsert, fnSecretBulkUpdate } from "@app/services/secret/secret-fns";
+import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
+import { SecretOperations, TSyncSecretsDTO } from "@app/services/secret/secret-types";
+import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
+import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
+import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
-import { ActorType } from "../auth/auth-type";
-import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TSecretDALFactory } from "../secret/secret-dal";
-import { fnSecretBulkInsert, fnSecretBulkUpdate } from "../secret/secret-fns";
-import { TSecretQueueFactory } from "../secret/secret-queue";
-import { SecretOperations, TSyncSecretsDTO } from "../secret/secret-types";
-import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
-import { TSecretVersionTagDALFactory } from "../secret/secret-version-tag-dal";
-import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
-import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
-import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretReplicationDALFactory } from "./secret-replication-dal";
 
 type TSecretReplicationServiceFactoryDep = {

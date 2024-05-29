@@ -44,6 +44,8 @@ import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approva
 import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-reviewer-dal";
 import { secretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { secretReplicationDALFactory } from "@app/ee/services/secret-replication/secret-replication-dal";
+import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { secretRotationQueueFactory } from "@app/ee/services/secret-rotation/secret-rotation-queue";
 import { secretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
@@ -130,8 +132,6 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
-import { secretReplicationDALFactory } from "@app/services/secret-replication/secret-replication-dal";
-import { secretReplicationServiceFactory } from "@app/services/secret-replication/secret-replication-service";
 import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
 import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";

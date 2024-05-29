@@ -153,8 +153,8 @@ export const CreateSecretImportForm = ({
             defaultValue={false}
             render={({ field }) => (
               <Checkbox isChecked={field.value} onCheckedChange={field.onChange} id="isReplication">
-                Enable replication to synchronize changes. Warning: this will overwrite any existing
-                secrets with the same name.
+                Enable replication to synchronize changes. <br /> Warning: This will overwrite any
+                existing secrets with the same name.
               </Checkbox>
             )}
           />
