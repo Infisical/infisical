@@ -16,6 +16,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
@@ -51,6 +52,7 @@ export const DEFAULT_PROJECT_ENVS = [
 ];
 
 type TProjectServiceFactoryDep = {
+  // TODO: Pick
   projectDAL: TProjectDALFactory;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
@@ -65,6 +67,7 @@ type TProjectServiceFactoryDep = {
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
+  certificateDAL: TCertificateDALFactory;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -93,6 +96,7 @@ export const projectServiceFactory = ({
   projectUserMembershipRoleDAL,
   identityProjectMembershipRoleDAL,
   certificateAuthorityDAL,
+  certificateDAL,
   keyStore
 }: TProjectServiceFactoryDep) => {
   /*
@@ -500,24 +504,66 @@ export const projectServiceFactory = ({
    * Return list of CAs for project
    */
   const listProjectCas = async ({
-    // actorId,
-    // actorOrgId,
-    // actorAuthMethod,
-    filter // actor
+    status,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    filter,
+    actor
   }: TListProjectCasDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
-    // const { permission } = await permissionService.getProjectPermission(
-    //   actor,
-    //   actorId,
-    //   project.id,
-    //   actorAuthMethod,
-    //   actorOrgId
-    // );
-    // TODO: add permissioning
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    const cas = await certificateAuthorityDAL.find({
+      projectId: project.id,
+      ...(status && { status })
+    });
+
+    return cas;
+  };
+
+  /**
+   * Return list of certificates for project
+   */
+  const listProjectCertificates = async ({
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    filter,
+    actor
+  }: TListProjectCasDTO) => {
+    const project = await projectDAL.findProjectByFilter(filter);
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 
     const cas = await certificateAuthorityDAL.find({ projectId: project.id });
-    return cas;
+
+    const certificates = await certificateDAL.find({
+      $in: {
+        caId: cas.map((ca) => ca.id)
+      }
+    });
+    return certificates;
   };
 
   return {
@@ -530,6 +576,7 @@ export const projectServiceFactory = ({
     toggleAutoCapitalization,
     updateName,
     upgradeProject,
-    listProjectCas
+    listProjectCas,
+    listProjectCertificates
   };
 };

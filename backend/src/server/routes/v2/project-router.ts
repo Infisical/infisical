@@ -1,13 +1,14 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { CertificateAuthoritiesSchema, ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
+import { CertificateAuthoritiesSchema, CertificatesSchema, ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -312,11 +313,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:slug/cas",
     config: {
-      rateLimit: writeLimit
+      rateLimit: readLimit
     },
     schema: {
       params: z.object({
         slug: slugSchema.describe("The slug of the project to list CAs.")
+      }),
+      querystring: z.object({
+        status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional()
       }),
       response: {
         200: z.object({
@@ -324,10 +328,43 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const cas = await server.services.project.listProjectCas({
+        filter: {
+          slug: req.params.slug,
+          orgId: req.permission.orgId,
+          type: ProjectFilterType.SLUG
+        },
+        status: req.query.status,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+      return { cas };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:slug/certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        slug: slugSchema.describe("The slug of the project to list certificates.")
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(CertificatesSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const certificates = await server.services.project.listProjectCertificates({
         filter: {
           slug: req.params.slug,
           orgId: req.permission.orgId,
@@ -338,7 +375,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
-      return { cas };
+      return { certificates };
     }
   });
 };

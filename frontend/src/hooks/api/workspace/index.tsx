@@ -22,6 +22,7 @@ export {
   useGetWorkspaceSecrets,
   useGetWorkspaceUsers,
   useListWorkspaceCas,
+  useListWorkspaceCertificates,
   useListWorkspaceGroups,
   useNameWorkspaceSecrets,
   useRenameWorkspace,

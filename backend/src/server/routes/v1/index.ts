@@ -2,6 +2,7 @@ import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
+import { registerCertRouter } from "./certificate-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
 import { registerIdentityGcpAuthRouter } from "./identity-gcp-auth-router";
@@ -59,12 +60,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     { prefix: "/workspace" }
   );
 
-  await server.register(
-    async (certRouter) => {
-      await certRouter.register(registerCaRouter);
-    },
-    { prefix: "/ca" }
-  );
+  await server.register(registerCaRouter, { prefix: "/ca" });
+  await server.register(registerCertRouter, { prefix: "/certificates" });
 
   await server.register(registerProjectBotRouter, { prefix: "/bot" });
   await server.register(registerIntegrationRouter, { prefix: "/integration" });

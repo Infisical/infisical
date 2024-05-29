@@ -14,7 +14,17 @@ export const CertificateAuthoritiesSchema = z.object({
   parentCaId: z.string().uuid().nullable().optional(),
   projectId: z.string(),
   type: z.string(),
-  dn: z.string()
+  status: z.string(),
+  organization: z.string(),
+  ou: z.string(),
+  country: z.string(),
+  province: z.string(),
+  locality: z.string(),
+  commonName: z.string(),
+  dn: z.string(),
+  maxPathLength: z.number().nullable().optional(),
+  notBefore: z.date().nullable().optional(),
+  notAfter: z.date().nullable().optional()
 });
 
 export type TCertificateAuthorities = z.infer<typeof CertificateAuthoritiesSchema>;

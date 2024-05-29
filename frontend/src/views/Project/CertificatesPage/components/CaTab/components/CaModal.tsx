@@ -1,8 +1,7 @@
-// import { useEffect } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-// import { yupResolver } from "@hookform/resolvers/yup";
-// import * as yup from "yup";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -14,21 +13,34 @@ import {
   ModalContent,
   Select,
   SelectItem
+  // DatePicker
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { CertificateAuthorityType, useCreateCa } from "@app/hooks/api/ca";
-// import { useCreateIdentity, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
+import { CaType, useCreateCa, useGetCaById } from "@app/hooks/api/ca";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+
+const isValidDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return !Number.isNaN(date.getTime());
+};
+
+const getDateTenYearsFromToday = () => {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() + 10);
+  return format(date, "yyyy-MM-dd");
+};
 
 const schema = z
   .object({
-    type: z.enum(["root", "intermediate"]), // move to ref enum of hooks/api
+    type: z.enum([CaType.ROOT, CaType.INTERMEDIATE]),
     organization: z.string(),
     ou: z.string(),
     country: z.string(),
     province: z.string(),
     locality: z.string(),
-    commonName: z.string()
+    commonName: z.string(),
+    notAfter: z.string().trim().refine(isValidDate, { message: "Invalid date format" }),
+    maxPathLength: z.string()
   })
   .required();
 
@@ -36,75 +48,71 @@ export type FormData = z.infer<typeof schema>;
 
 type Props = {
   popUp: UsePopUpState<["ca"]>;
-  //   handlePopUpOpen: (
-  //     popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
-  //     data: {
-  //       identityId: string;
-  //       name: string;
-  //       authMethod?: IdentityAuthMethod;
-  //     }
-  //   ) => void;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["ca"]>, state?: boolean) => void;
 };
 
 const caTypes = [
-  { label: "Root", value: CertificateAuthorityType.ROOT },
-  { label: "intermediate", value: CertificateAuthorityType.INTERMEDIATE }
+  { label: "Root", value: CaType.ROOT },
+  { label: "Intermediate", value: CaType.INTERMEDIATE }
 ];
 
 export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  console.log("CaModal currentWorkspace: ", currentWorkspace);
+  // const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
 
+  const { data: ca } = useGetCaById((popUp?.ca?.data as { caId: string })?.caId || "");
   const { mutateAsync: createMutateAsync } = useCreateCa();
-  //   const { data: roles } = useGetOrgRoles(orgId);
-  //   const { mutateAsync: createMutateAsync } = useCreateIdentity();
-  //   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
-  // const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
 
   const {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting }
+    formState: { isSubmitting },
+    watch
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      type: CertificateAuthorityType.ROOT,
+      type: CaType.ROOT,
       organization: "",
       ou: "",
       country: "",
       province: "",
       locality: "",
-      commonName: ""
+      commonName: "",
+      notAfter: getDateTenYearsFromToday(),
+      maxPathLength: "-1"
     }
   });
 
-  //   useEffect(() => {
-  //     const identity = popUp?.identity?.data as {
-  //       identityId: string;
-  //       name: string;
-  //       role: string;
-  //       customRole: {
-  //         name: string;
-  //         slug: string;
-  //       };
-  //     };
+  const caType = watch("type");
 
-  //     if (!roles?.length) return;
-
-  //     if (identity) {
-  //       reset({
-  //         name: identity.name,
-  //         role: identity?.customRole?.slug ?? identity.role
-  //       });
-  //     } else {
-  //       reset({
-  //         name: "",
-  //         role: roles[0].slug
-  //       });
-  //     }
-  //   }, [popUp?.identity?.data, roles]);
+  useEffect(() => {
+    if (ca) {
+      reset({
+        type: ca.type,
+        organization: ca.organization,
+        ou: ca.ou,
+        country: ca.country,
+        province: ca.province,
+        locality: ca.locality,
+        commonName: ca.commonName,
+        notAfter: ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "",
+        maxPathLength: ca.maxPathLength ? String(ca.maxPathLength) : ""
+      });
+    } else {
+      reset({
+        type: CaType.ROOT,
+        organization: "",
+        ou: "",
+        country: "",
+        province: "",
+        locality: "",
+        commonName: "",
+        notAfter: getDateTenYearsFromToday(),
+        maxPathLength: "-1"
+      });
+    }
+  }, [ca]);
 
   const onFormSubmit = async ({
     type,
@@ -113,18 +121,11 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     ou,
     country,
     locality,
-    province
+    province,
+    notAfter,
+    maxPathLength
   }: FormData) => {
     try {
-      console.log("onFormSubmit args: ", {
-        commonName,
-        organization,
-        ou,
-        country,
-        locality,
-        province
-      });
-
       if (!currentWorkspace?.slug) return;
 
       await createMutateAsync({
@@ -135,90 +136,47 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         ou,
         country,
         province,
-        locality
-      });
-
-      //   const identity = popUp?.identity?.data as {
-      //     identityId: string;
-      //     name: string;
-      //     role: string;
-      //   };
-
-      //   if (identity) {
-      //     // update
-
-      //     await updateMutateAsync({
-      //       identityId: identity.identityId,
-      //       name,
-      //       role: role || undefined,
-      //       organizationId: orgId
-      //     });
-
-      //     handlePopUpToggle("identity", false);
-      //   } else {
-      //     // create
-
-      //     const {
-      //       id: createdId,
-      //       name: createdName,
-      //       authMethod
-      //     } = await createMutateAsync({
-      //       name,
-      //       role: role || undefined,
-      //       organizationId: orgId
-      //     });
-
-      //     await addMutateAsync({
-      //       organizationId: orgId,
-      //       identityId: createdId,
-      //       clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-      //       accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-      //       accessTokenTTL: 2592000,
-      //       accessTokenMaxTTL: 2592000,
-      //       accessTokenNumUsesLimit: 0
-      //     });
-
-      //     handlePopUpToggle("identity", false);
-      //     handlePopUpOpen("identityAuthMethod", {
-      //       identityId: createdId,
-      //       name: createdName,
-      //       authMethod
-      //     });
-      //   }
-
-      createNotification({
-        text: `Successfully ${popUp?.ca?.data ? "updated" : "created"} CA`,
-        type: "success"
+        locality,
+        notAfter,
+        maxPathLength: Number(maxPathLength)
       });
 
       reset();
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text =
-        error?.response?.data?.message ?? `Failed to ${popUp?.ca?.data ? "update" : "create"} CA`;
+      handlePopUpToggle("ca", false);
 
       createNotification({
-        text,
+        text: "Successfully created CA",
+        type: "success"
+      });
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to create CA",
         type: "error"
       });
     }
   };
 
+  // const getDefaultNotAfterDate = () => {
+  //   const date = new Date();
+  //   date.setFullYear(date.getFullYear() + 10);
+  //   return date;
+  // };
+
   return (
     <Modal
       isOpen={popUp?.ca?.isOpen}
       onOpenChange={(isOpen) => {
-        handlePopUpToggle("ca", isOpen);
         reset();
+        handlePopUpToggle("ca", isOpen);
       }}
     >
-      <ModalContent title={`${popUp?.ca?.data ? "Update" : "Create"} CA`}>
+      <ModalContent title={`${ca ? "View" : "Create"} Private CA`}>
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <Controller
             control={control}
             name="type"
-            defaultValue={CertificateAuthorityType.ROOT}
+            defaultValue={CaType.ROOT}
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl label="CA Type" errorText={error?.message} isError={Boolean(error)}>
                 <Select
@@ -226,7 +184,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   {...field}
                   onValueChange={(e) => onChange(e)}
                   className="w-full"
-                  //   isDisabled={!!identityAuthMethodData?.authMethod}
+                  isDisabled={Boolean(ca)}
                 >
                   {caTypes.map(({ label, value }) => (
                     <SelectItem value={String(value || "")} key={label}>
@@ -237,6 +195,80 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
               </FormControl>
             )}
           />
+          {caType === CaType.ROOT && (
+            <>
+              {/* <Controller
+                name="notAfter"
+                control={control}
+                defaultValue={getDefaultNotAfterDate()}
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+                  return (
+                    <FormControl
+                      label="Validity"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      className="mr-4"
+                    >
+                      <DatePicker
+                        value={field.value || undefined}
+                        onChange={(date) => {
+                          onChange(date);
+                          setIsStartDatePickerOpen(false);
+                        }}
+                        popUpProps={{
+                          open: isStartDatePickerOpen,
+                          onOpenChange: setIsStartDatePickerOpen
+                        }}
+                        popUpContentProps={{}}
+                      />
+                    </FormControl>
+                  );
+                }}
+              /> */}
+              <Controller
+                control={control}
+                defaultValue=""
+                name="notAfter"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Valid Until"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isRequired
+                  >
+                    <Input {...field} placeholder="YYYY-MM-DD" isDisabled={Boolean(ca)} />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="maxPathLength"
+                defaultValue="-1"
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Path Length"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                    className="mt-4"
+                  >
+                    <Select
+                      defaultValue={field.value}
+                      {...field}
+                      onValueChange={(e) => onChange(e)}
+                      className="w-full"
+                      isDisabled={Boolean(ca)}
+                    >
+                      {[-1, 0, 1, 2, 3, 4].map((value) => (
+                        <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
+                          {`${value}`}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+            </>
+          )}
           <Controller
             control={control}
             defaultValue=""
@@ -247,7 +279,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="Acme Corp" />
+                <Input {...field} placeholder="Acme Corp" isDisabled={Boolean(ca)} />
               </FormControl>
             )}
           />
@@ -261,7 +293,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="Engineering" />
+                <Input {...field} placeholder="Engineering" isDisabled={Boolean(ca)} />
               </FormControl>
             )}
           />
@@ -275,7 +307,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="United States (US)" />
+                <Input {...field} placeholder="United States (US)" isDisabled={Boolean(ca)} />
               </FormControl>
             )}
           />
@@ -289,7 +321,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="California" />
+                <Input {...field} placeholder="California" isDisabled={Boolean(ca)} />
               </FormControl>
             )}
           />
@@ -303,7 +335,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="San Francisco" />
+                <Input {...field} placeholder="San Francisco" isDisabled={Boolean(ca)} />
               </FormControl>
             )}
           />
@@ -317,28 +349,30 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="Example CA" />
+                <Input {...field} placeholder="Example CA" isDisabled={Boolean(ca)} />
               </FormControl>
             )}
           />
-          <div className="flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >
-              {popUp?.ca?.data ? "Update" : "Create"}
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("ca", false)}
-            >
-              Cancel
-            </Button>
-          </div>
+          {!ca && (
+            <div className="flex items-center">
+              <Button
+                className="mr-4"
+                size="sm"
+                type="submit"
+                isLoading={isSubmitting}
+                isDisabled={isSubmitting}
+              >
+                {popUp?.ca?.data ? "Update" : "Create"}
+              </Button>
+              <Button
+                colorSchema="secondary"
+                variant="plain"
+                onClick={() => handlePopUpToggle("ca", false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
         </form>
       </ModalContent>
     </Modal>

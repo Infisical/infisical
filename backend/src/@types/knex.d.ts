@@ -41,6 +41,15 @@ import {
   TCertificateAuthoritySk,
   TCertificateAuthoritySkInsert,
   TCertificateAuthoritySkUpdate,
+  TCertificateCerts,
+  TCertificateCertsInsert,
+  TCertificateCertsUpdate,
+  TCertificates,
+  TCertificateSecrets,
+  TCertificateSecretsInsert,
+  TCertificateSecretsUpdate,
+  TCertificatesInsert,
+  TCertificatesUpdate,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
@@ -263,6 +272,17 @@ declare module "knex/types/tables" {
       TCertificateAuthoritySk,
       TCertificateAuthoritySkInsert,
       TCertificateAuthoritySkUpdate
+    >;
+    [TableName.Certificate]: Knex.CompositeTableType<TCertificates, TCertificatesInsert, TCertificatesUpdate>;
+    [TableName.CertificateCert]: Knex.CompositeTableType<
+      TCertificateCerts,
+      TCertificateCertsInsert,
+      TCertificateCertsUpdate
+    >;
+    [TableName.CertificateSecret]: Knex.CompositeTableType<
+      TCertificateSecrets,
+      TCertificateSecretsInsert,
+      TCertificateSecretsUpdate
     >;
     [TableName.UserGroupMembership]: Knex.CompositeTableType<
       TUserGroupMembership,

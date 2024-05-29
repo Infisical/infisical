@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { CaStatus } from "../ca/enums";
 import { TCertificateAuthority } from "../ca/types";
+import { TCertificate } from "../certificates/types";
 import { TGroupMembership } from "../groups/types";
 import { IdentityMembership } from "../identities/types";
 import { IntegrationAuth } from "../integrationAuth/types";
@@ -41,7 +43,12 @@ export const workspaceKeys = {
     [{ workspaceId }, "workspace-identity-memberships"] as const,
   getWorkspaceGroupMemberships: (workspaceId: string) =>
     [{ workspaceId }, "workspace-groups"] as const,
-  getWorkspaceCas: (workspaceId: string) => [{ workspaceId }, "workspace-cas"] as const
+  getWorkspaceCas: ({ projectSlug }: { projectSlug: string }) =>
+    [{ projectSlug }, "workspace-cas"] as const,
+  specificWorkspaceCas: ({ projectSlug, status }: { projectSlug: string; status?: CaStatus }) =>
+    [...workspaceKeys.getWorkspaceCas({ projectSlug }), { status }] as const,
+  getWorkspaceCertificates: (projectSlug: string) =>
+    [{ projectSlug }, "workspace-certificates"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -472,16 +479,47 @@ export const useListWorkspaceGroups = (projectSlug: string) => {
   });
 };
 
-export const useListWorkspaceCas = (projectSlug: string) => {
+export const useListWorkspaceCas = ({
+  projectSlug,
+  status
+}: {
+  projectSlug: string;
+  status?: CaStatus;
+}) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceCas(projectSlug),
+    queryKey: workspaceKeys.specificWorkspaceCas({
+      projectSlug,
+      status
+    }),
     queryFn: async () => {
+      const params = new URLSearchParams({
+        ...(status && { status })
+      });
+
       const {
         data: { cas }
       } = await apiRequest.get<{ cas: TCertificateAuthority[] }>(
-        `/api/v2/workspace/${projectSlug}/cas`
+        `/api/v2/workspace/${projectSlug}/cas`,
+        {
+          params
+        }
       );
       return cas;
+    },
+    enabled: Boolean(projectSlug)
+  });
+};
+
+export const useListWorkspaceCertificates = (projectSlug: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceCertificates(projectSlug),
+    queryFn: async () => {
+      const {
+        data: { certificates }
+      } = await apiRequest.get<{ certificates: TCertificate[] }>(
+        `/api/v2/workspace/${projectSlug}/certificates`
+      );
+      return certificates;
     },
     enabled: Boolean(projectSlug)
   });

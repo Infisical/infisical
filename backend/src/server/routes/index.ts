@@ -71,8 +71,11 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { certificateCertDALFactory } from "@app/services/certificate/certificate-cert-dal";
+import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { certificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
+import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
-// ca / certs
 import { certificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { certificateAuthoritySkDALFactory } from "@app/services/certificate-authority/certificate-authority-sk-dal";
@@ -225,16 +228,6 @@ export const registerRoutes = async (
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
-
-  const certificateAuthorityDAL = certificateAuthorityDALFactory(db);
-  const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
-  const certificateAuthoritySkDAL = certificateAuthoritySkDALFactory(db);
-  const certificateAuthorityService = certificateAuthorityServiceFactory({
-    certificateAuthorityDAL,
-    certificateAuthorityCertDAL,
-    certificateAuthoritySkDAL,
-    projectDAL
-  });
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -503,6 +496,34 @@ export const registerRoutes = async (
     projectUserMembershipRoleDAL
   });
 
+  const certificateAuthorityDAL = certificateAuthorityDALFactory(db);
+  const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
+  const certificateAuthoritySkDAL = certificateAuthoritySkDALFactory(db);
+
+  const certificateDAL = certificateDALFactory(db);
+  const certificateCertDAL = certificateCertDALFactory(db);
+  const certificateSecretDAL = certificateSecretDALFactory(db);
+
+  const certificateService = certificateServiceFactory({
+    certificateDAL,
+    certificateCertDAL,
+    certificateSecretDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    permissionService
+  });
+
+  const certificateAuthorityService = certificateAuthorityServiceFactory({
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySkDAL,
+    certificateDAL,
+    certificateCertDAL,
+    certificateSecretDAL,
+    projectDAL,
+    permissionService
+  });
+
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
@@ -520,6 +541,7 @@ export const registerRoutes = async (
     folderDAL,
     licenseService,
     certificateAuthorityDAL,
+    certificateDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore
@@ -842,6 +864,7 @@ export const registerRoutes = async (
     ldap: ldapService,
     auditLog: auditLogService,
     auditLogStream: auditLogStreamService,
+    certificate: certificateService,
     certificateAuthority: certificateAuthorityService,
     secretScanning: secretScanningService,
     license: licenseService,
