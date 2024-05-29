@@ -229,8 +229,16 @@ var secretsSetCmd = &cobra.Command{
 		secretsToModify := []api.Secret{}
 		secretOperations := []SecretSetOperation{}
 
-		secretByKey := getSecretsByKeys(secrets)
-		personalSecretByKey := getPersonalSecretsByKeys(secrets)
+		sharedSecretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
+		personalSecretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
+	
+		for _, secret := range secrets {
+			if secret.Type == util.SECRET_TYPE_PERSONAL {
+				personalSecretMapByName[secret.Key] = secret
+			} else {
+				sharedSecretMapByName[secret.Key] = secret
+			}
+		}
 
 		for _, arg := range args {
 			splitKeyValueFromArg := strings.SplitN(arg, "=", 2)
@@ -262,9 +270,9 @@ var secretsSetCmd = &cobra.Command{
 			var doesSecretExist bool
 
 			if secretType == util.SECRET_TYPE_SHARED {
-				existingSecret, doesSecretExist = secretByKey[key]
+				existingSecret, doesSecretExist = sharedSecretMapByName[key]
 			} else {
-				existingSecret, doesSecretExist = personalSecretByKey[key]
+				existingSecret, doesSecretExist = personalSecretMapByName[key]
 			}
 
 			if doesSecretExist {
@@ -775,19 +783,6 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 
 	for _, secret := range secrets {
 		secretMapByName[secret.Key] = secret
-	}
-
-	return secretMapByName
-}
-
-func getPersonalSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]models.SingleEnvironmentVariable {
-	secretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
-
-	for _, secret := range secrets {
-		if secret.Type == util.SECRET_TYPE_PERSONAL {
-		secretMapByName[secret.Key] = secret
-
-		}
 	}
 
 	return secretMapByName
