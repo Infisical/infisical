@@ -362,6 +362,7 @@ export const secretServiceFactory = ({
                 "secretReminderRepeatDays",
                 "tags"
               ]),
+              isReplicated: false,
               secretBlindIndex: newSecretNameBlindIndex || keyName2BlindIndex[secretName],
               references: references({
                 ciphertext: inputSecret.secretValueCiphertext,
@@ -850,6 +851,7 @@ export const secretServiceFactory = ({
             ...el,
             folderId,
             type: SecretType.Shared,
+            isReplicated: false,
             secretBlindIndex:
               newSecretName && newKeyName2BlindIndex[newSecretName]
                 ? newKeyName2BlindIndex[newSecretName]
