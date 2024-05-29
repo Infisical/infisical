@@ -16,13 +16,16 @@ export const secretSharingServiceFactory = ({
   secretSharingDAL
 }: TSecretSharingServiceFactoryDep) => {
   const createSharedSecret = async (createSharedSecretInput: TCreateSharedSecretDTO) => {
-    const { actor, actorId, orgId, actorAuthMethod, actorOrgId, name, signedValue, expiresAt } =
+    const { actor, actorId, orgId, actorAuthMethod, actorOrgId, name, encryptedValue, iv, tag, hashedHex, expiresAt } =
       createSharedSecretInput;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     if (!permission) throw new UnauthorizedError({ name: "User not in org" });
     const newSharedSecret = await secretSharingDAL.create({
       name,
-      signedValue,
+      encryptedValue,
+      iv,
+      tag,
+      hashedHex,
       expiresAt,
       userId: actorId,
       orgId
@@ -38,8 +41,8 @@ export const secretSharingServiceFactory = ({
     return userSharedSecrets;
   };
 
-  const getActiveSharedSecretById = async (sharedSecretId: string) => {
-    const sharedSecret = await secretSharingDAL.findById(sharedSecretId);
+  const getActiveSharedSecretByIdAndHashedHex = async (sharedSecretId: string, hashedHex: string) => {
+    const sharedSecret = await secretSharingDAL.findOne({ id: sharedSecretId, hashedHex });
     if (sharedSecret && sharedSecret.expiresAt < new Date()) {
       return;
     }
@@ -58,6 +61,6 @@ export const secretSharingServiceFactory = ({
     createSharedSecret,
     getSharedSecrets,
     deleteSharedSecretById,
-    getActiveSharedSecretById
+    getActiveSharedSecretByIdAndHashedHex
   };
 };

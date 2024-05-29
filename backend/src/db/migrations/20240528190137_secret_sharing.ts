@@ -8,7 +8,10 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.SecretSharing, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
-      t.text("signedValue").notNullable();
+      t.text("encryptedValue").notNullable();
+      t.text("iv").notNullable();
+      t.text("tag").notNullable();
+      t.text("hashedHex").notNullable();
       t.timestamp("expiresAt").notNullable();
       t.uuid("userId").notNullable();
       t.uuid("orgId").notNullable();

@@ -1,7 +1,10 @@
 export type TSharedSecret = {
   id: string;
   name: string;
-  signedValue: string;
+  encryptedValue: string;
+  iv: string;
+  tag: string;
+  hashedHex: string;
   userId: string;
   expiresAt: Date;
   createdAt: Date;
@@ -10,13 +13,18 @@ export type TSharedSecret = {
 
 export type TCreateSharedSecretRequest = {
   name: string;
-  signedValue: string;
+  encryptedValue: string;
+  iv: string;
+  tag: string;
+  hashedHex: string;
   expiresAt: Date;
 };
 
 export type TViewSharedSecretResponse = {
   name: string;
-  signedValue: string;
+  encryptedValue: string;
+  iv: string;
+  tag: string;
   expiresAt: Date;
 };
 

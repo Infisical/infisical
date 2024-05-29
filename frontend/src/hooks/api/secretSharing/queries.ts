@@ -16,15 +16,17 @@ export const useGetSharedSecrets = () => {
   });
 };
 
-export const useGetActiveSharedSecretById = (id: string) => {
+export const useGetActiveSharedSecretByIdAndHashedHex = (id: string, hashedHex: string) => {
   return useQuery<TViewSharedSecretResponse, [string]>({
     queryFn: async () => {
       const { data } = await apiRequest.get<TViewSharedSecretResponse>(
-        `/api/v1/secret-sharing/public/${id}`
+        `/api/v1/secret-sharing/public/${id}?hashedHex=${hashedHex}`
       );
       return {
         name: data.name,
-        signedValue: data.signedValue,
+        encryptedValue: data.encryptedValue,
+        iv: data.iv,
+        tag: data.tag,
         expiresAt: data.expiresAt
       };
     }

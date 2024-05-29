@@ -41,16 +41,24 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       params: z.object({
         id: z.string().uuid()
       }),
+      querystring: z.object({
+        hashedHex: z.string()
+      }),
       response: {
-        200: SecretSharingSchema.pick({ name: true, signedValue: true, expiresAt: true })
+        200: SecretSharingSchema.pick({ name: true, encryptedValue: true, iv: true, tag: true, expiresAt: true })
       }
     },
     handler: async (req) => {
-      const sharedSecret = await req.server.services.secretSharing.getActiveSharedSecretById(req.params.id);
+      const sharedSecret = await req.server.services.secretSharing.getActiveSharedSecretByIdAndHashedHex(
+        req.params.id,
+        req.query.hashedHex
+      );
       if (!sharedSecret) return undefined;
       return {
         name: sharedSecret.name,
-        signedValue: sharedSecret.signedValue,
+        encryptedValue: sharedSecret.encryptedValue,
+        iv: sharedSecret.iv,
+        tag: sharedSecret.tag,
         expiresAt: sharedSecret.expiresAt
       };
     }
@@ -65,7 +73,10 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     schema: {
       body: z.object({
         name: z.string(),
-        signedValue: z.string(),
+        encryptedValue: z.string(),
+        iv: z.string(),
+        tag: z.string(),
+        hashedHex: z.string(),
         expiresAt: z.string().refine((date) => new Date(date) > new Date(), {
           message: "Expires at should be a future date"
         })
@@ -78,7 +89,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { name, signedValue, expiresAt } = req.body;
+      const { name, encryptedValue, iv, tag, hashedHex, expiresAt } = req.body;
       const sharedSecret = await req.server.services.secretSharing.createSharedSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -86,7 +97,10 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         name,
-        signedValue,
+        encryptedValue,
+        iv,
+        tag,
+        hashedHex,
         expiresAt: new Date(expiresAt)
       });
       return { id: sharedSecret.id };

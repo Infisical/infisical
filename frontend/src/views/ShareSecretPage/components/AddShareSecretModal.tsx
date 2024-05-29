@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
@@ -8,8 +10,7 @@ import * as yup from "yup";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  generateSignKeyPair,
-  signAssymmetric
+  encryptSymmetric,
 } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
@@ -91,7 +92,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
   const [newSharedSecret, setnewSharedSecret] = useState("");
   const hasSharedSecret = Boolean(newSharedSecret);
-  const [isUrlCopied,, setIsUrlCopied] = useTimedReset<boolean>({
+  const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
     initialState: false,
   });
 
@@ -109,11 +110,13 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
     try {
       if (!currentOrg?.id) return;
 
-      const signingKeyPair = generateSignKeyPair();
-      const signedMessage = signAssymmetric({
-        message: value,
-        privateKey: signingKeyPair.secretKey
+      const key = crypto.randomBytes(16).toString("hex");
+      const hashedHex = crypto.createHash("sha256").update(key).digest("hex");
+      const { ciphertext, iv, tag } = encryptSymmetric({
+        plaintext: value,
+        key
       });
+
 
       const expiresAt = new Date();
       const updateExpiresAt = expirationUnitsAndActions.find(
@@ -125,13 +128,14 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       const { id } = await createSharedSecret.mutateAsync({
         name,
-        signedValue: signedMessage,
+        encryptedValue: ciphertext,
+        iv,
+        tag,
+        hashedHex,
         expiresAt,
       });
       setnewSharedSecret(
-        `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(
-          signingKeyPair.publicKey
-        )}`
+        `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(hashedHex)}-${encodeURIComponent(key)}`
       );
 
       createNotification({
@@ -195,10 +199,10 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
                   errorText={error?.message}
                 >
                   <SecretInput
-                        isVisible
-                        {...field}
-                        containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2 text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2"
-                      />
+                    isVisible
+                    {...field}
+                    containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2 text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2"
+                  />
                 </FormControl>
               )}
             />

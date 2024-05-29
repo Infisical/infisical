@@ -4,15 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 
-import { openSignedAssymmetric } from "@app/components/utilities/cryptography/crypto";
+import { decryptSymmetric } from "@app/components/utilities/cryptography/crypto";
 import { useTimedReset } from "@app/hooks";
-import { useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
+import { useGetActiveSharedSecretByIdAndHashedHex } from "@app/hooks/api/secretSharing";
 
 import { DragonMainImage, SecretTable } from "./components";
 
 export const ShareSecretPublicPage = () => {
   const router = useRouter();
   const { id, key: urlEncodedPublicKey } = router.query;
+  const [hashedHex, key] = urlEncodedPublicKey!.toString().split("-");
 
   const publicKey = decodeURIComponent(urlEncodedPublicKey as string);
   useEffect(() => {
@@ -21,12 +22,14 @@ export const ShareSecretPublicPage = () => {
     }
   }, [id, publicKey]);
 
-  const { isLoading, data } = useGetActiveSharedSecretById(id as string);
+  const { isLoading, data } = useGetActiveSharedSecretByIdAndHashedHex(id as string, hashedHex as string );  
   const decryptedSecret = useMemo(() => {
-    if (data && data.signedValue && publicKey) {
-      const res = openSignedAssymmetric({
-        signedMessage: data.signedValue,
-        publicKey: publicKey as string
+    if (data && data.encryptedValue && publicKey) {
+      const res = decryptSymmetric({
+        ciphertext: data.encryptedValue,
+        iv: data.iv,
+        tag: data.tag,
+        key,
       });
       return res;
     }
@@ -34,7 +37,7 @@ export const ShareSecretPublicPage = () => {
   }, [data, publicKey]);
 
   const [timeLeft, setTimeLeft] = useState("");
-  const [isUrlCopied,, setIsUrlCopied] = useTimedReset<boolean>({
+  const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
     initialState: false,
   });
 
@@ -44,11 +47,11 @@ export const ShareSecretPublicPage = () => {
 
   useEffect(() => {
     const updateTimer = () => {
-      if (data && data.expiresAt) {    
+      if (data && data.expiresAt) {
         const expirationTime = new Date(data.expiresAt).getTime();
         const currentTime = new Date().getTime();
         const timeDifference = expirationTime - currentTime;
-    
+
         if (timeDifference < 0) {
           setTimeLeft("Expired");
         } else {
@@ -59,7 +62,7 @@ export const ShareSecretPublicPage = () => {
         }
       }
     };
-    
+
     const timer = setInterval(updateTimer, 1000);
     return () => clearInterval(timer);
   }, [data?.expiresAt]);

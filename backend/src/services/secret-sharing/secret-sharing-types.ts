@@ -10,7 +10,10 @@ export type TSharedSecretPermission = {
 
 export type TCreateSharedSecretDTO = {
   name: string;
-  signedValue: string;
+  encryptedValue: string;
+  iv: string;
+  tag: string;
+  hashedHex: string;
   expiresAt: Date;
 } & TSharedSecretPermission;
 
