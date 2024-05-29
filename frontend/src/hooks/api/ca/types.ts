@@ -1,4 +1,4 @@
-import { CaStatus,CaType } from "./enums";
+import { CaStatus, CaType } from "./enums";
 
 export type TCertificateAuthority = {
   id: string;
@@ -85,6 +85,6 @@ export type TCreateCertificateResponse = {
   certificate: string;
   issuingCertificate: string;
   certificateChain: string;
-  sk: string;
+  privateKey: string;
   serialNumber: string;
 };

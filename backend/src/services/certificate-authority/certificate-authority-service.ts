@@ -7,7 +7,6 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { BadRequestError } from "@app/lib/errors";
 import { TCertificateCertDALFactory } from "@app/services/certificate/certificate-cert-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
@@ -29,15 +28,16 @@ import {
 } from "./certificate-authority-types";
 
 type TCertificateAuthorityServiceFactoryDep = {
-  // TODO: Pick
-  certificateAuthorityDAL: TCertificateAuthorityDALFactory;
-  certificateAuthorityCertDAL: TCertificateAuthorityCertDALFactory;
-  certificateAuthoritySkDAL: TCertificateAuthoritySkDALFactory;
-  certificateDAL: TCertificateDALFactory;
-  certificateCertDAL: TCertificateCertDALFactory;
-  certificateSecretDAL: TCertificateSecretDALFactory;
-  projectDAL: TProjectDALFactory;
-  permissionService: TPermissionServiceFactory;
+  certificateAuthorityDAL: Pick<
+    TCertificateAuthorityDALFactory,
+    "transaction" | "create" | "findById" | "updateById" | "deleteById" | "findOne" | "buildCertificateChain"
+  >;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "create" | "findOne" | "transaction">;
+  certificateAuthoritySkDAL: Pick<TCertificateAuthoritySkDALFactory, "create" | "findOne">;
+  certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create">;
+  certificateCertDAL: Pick<TCertificateCertDALFactory, "create">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -48,7 +48,6 @@ export const certificateAuthorityServiceFactory = ({
   certificateAuthoritySkDAL,
   certificateDAL,
   certificateCertDAL,
-  certificateSecretDAL,
   projectDAL,
   permissionService
 }: TCertificateAuthorityServiceFactoryDep) => {
@@ -624,12 +623,6 @@ export const certificateAuthorityServiceFactory = ({
 
     const chain = await certificateAuthorityDAL.buildCertificateChain(caId);
 
-    // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
-    const skObj = KeyObject.from(leafKeys.privateKey);
-    const sk = skObj.export({ format: "pem", type: "pkcs8" }) as string;
-    const pkObj = KeyObject.from(leafKeys.publicKey);
-    const pk = pkObj.export({ format: "pem", type: "spki" }) as string;
-
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
@@ -646,15 +639,6 @@ export const certificateAuthorityServiceFactory = ({
           certId: cert.id,
           certificate: leafCert.toString("pem"), // TODO: encrypt
           certificateChain: chain.join("\n") // TODO: encrypt
-        },
-        tx
-      );
-
-      await certificateSecretDAL.create(
-        {
-          certId: cert.id,
-          pk, // TODO: encrypt
-          sk // TODO: encrypt
         },
         tx
       );

@@ -29,8 +29,6 @@ export const useGetCertCert = (certId: string) => {
       const { data } = await apiRequest.get<{
         certificate: string;
         certificateChain: string;
-        issuingCaCertificate: string;
-        privateKey: string;
         serialNumber: string;
       }>(`/api/v1/certificates/${certId}/certificate`);
       return data;

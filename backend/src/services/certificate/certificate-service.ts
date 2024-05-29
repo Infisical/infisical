@@ -5,20 +5,15 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TCertificateCertDALFactory } from "@app/services/certificate/certificate-cert-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
-import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 
 import { TDeleteCertDTO, TGetCertCertDTO, TGetCertDTO } from "./certificate-types";
 
 type TCertificateServiceFactoryDep = {
-  // TODO: Pick
-  certificateDAL: TCertificateDALFactory;
-  certificateCertDAL: TCertificateCertDALFactory;
-  certificateSecretDAL: TCertificateSecretDALFactory;
-  certificateAuthorityDAL: TCertificateAuthorityDALFactory;
-  certificateAuthorityCertDAL: TCertificateAuthorityCertDALFactory;
-  permissionService: TPermissionServiceFactory;
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "deleteById">;
+  certificateCertDAL: Pick<TCertificateCertDALFactory, "findOne">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -26,9 +21,7 @@ export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFac
 export const certificateServiceFactory = ({
   certificateDAL,
   certificateCertDAL,
-  certificateSecretDAL,
   certificateAuthorityDAL,
-  certificateAuthorityCertDAL,
   permissionService
 }: TCertificateServiceFactoryDep) => {
   const getCertById = async ({ certId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
@@ -77,19 +70,15 @@ export const certificateServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    // TODO: re-evaluate this permission
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
 
-    const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+
     const certCert = await certificateCertDAL.findOne({ certId });
-    const certSecret = await certificateSecretDAL.findOne({ certId });
     const certObj = new x509.X509Certificate(certCert.certificate);
 
     return {
       certificate: certCert.certificate,
       certificateChain: certCert.certificateChain,
-      issuingCaCertificate: caCert.certificate,
-      privateKey: certSecret.sk,
       serialNumber: certObj.serialNumber
     };
   };

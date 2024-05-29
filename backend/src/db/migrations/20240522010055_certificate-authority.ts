@@ -5,7 +5,7 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.CertificateAuthority))) {
-    // TODO: consider adding algo details
+    // TODO: add algo deets
     await knex.schema.createTable(TableName.CertificateAuthority, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -77,30 +77,15 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.CertificateSecret))) {
-    await knex.schema.createTable(TableName.CertificateSecret, (t) => {
-      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.timestamps(true, true, true);
-      t.uuid("certId").notNullable().unique();
-      t.foreign("certId").references("id").inTable(TableName.Certificate).onDelete("CASCADE");
-      t.text("pk").notNullable(); // TODO: encrypt
-      t.text("sk").notNullable(); // TODO: encrypt
-    });
-  }
-
   await createOnUpdateTrigger(knex, TableName.CertificateAuthority);
   await createOnUpdateTrigger(knex, TableName.CertificateAuthorityCert);
   await createOnUpdateTrigger(knex, TableName.CertificateAuthoritySk);
   await createOnUpdateTrigger(knex, TableName.Certificate);
   await createOnUpdateTrigger(knex, TableName.CertificateCert);
-  await createOnUpdateTrigger(knex, TableName.CertificateSecret);
 }
 
 export async function down(knex: Knex): Promise<void> {
   // certificates
-  await knex.schema.dropTableIfExists(TableName.CertificateSecret);
-  await dropOnUpdateTrigger(knex, TableName.CertificateSecret);
-
   await knex.schema.dropTableIfExists(TableName.CertificateCert);
   await dropOnUpdateTrigger(knex, TableName.CertificateCert);
 

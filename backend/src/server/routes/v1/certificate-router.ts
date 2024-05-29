@@ -86,26 +86,21 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           certificate: z.string().trim(),
           certificateChain: z.string().trim(),
-          issuingCaCertificate: z.string().trim(),
-          privateKey: z.string().trim(),
           serialNumber: z.string().trim()
         })
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber } =
-        await server.services.certificate.getCertCert({
-          certId: req.params.certId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
-        });
+      const { certificate, certificateChain, serialNumber } = await server.services.certificate.getCertCert({
+        certId: req.params.certId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
       return {
         certificate,
         certificateChain,
-        issuingCaCertificate,
-        privateKey,
         serialNumber
       };
     }
