@@ -101,8 +101,6 @@ export const ShareSecretsRow = ({
         <p className="text-xs text-gray-500">{formatDate(row.expiresAt)}</p>
       </Td>
       <Td>
-
-
         <IconButton
           onClick={() =>
             handlePopUpOpen("deleteSharedSecretConfirmation", {

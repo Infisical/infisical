@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { faKey } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -12,7 +11,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { TSharedSecret, useGetSharedSecrets } from "@app/hooks/api/secretSharing";
+import { useGetSharedSecrets } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { ShareSecretsRow } from "./ShareSecretsRow";
@@ -31,19 +30,11 @@ type Props = {
 };
 
 export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
-  const [tableData, setTableData] = useState<TSharedSecret[]>([]);
   const { isLoading, data = [] } = useGetSharedSecrets();
 
-  useEffect(() => {
-    if (!isLoading) {
-      setTableData(data);
-    }
-  }, [isLoading, data]);
-
+  let tableData = data.filter((secret) => !secret.expiresAt || new Date(secret.expiresAt) > new Date())
   const handleSecretExpiration = () => {
-    setTableData(
-      data.filter((secret) => !secret.expiresAt || new Date(secret.expiresAt) > new Date())
-    );
+    tableData = data.filter((secret) => !secret.expiresAt || new Date(secret.expiresAt) > new Date());
   };
 
   return (
