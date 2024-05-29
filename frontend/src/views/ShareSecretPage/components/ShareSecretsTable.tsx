@@ -28,29 +28,22 @@ type Props = {
       id: string;
     }
   ) => void;
-  showExpiredSharedSecrets: boolean;
 };
 
-export const ShareSecretsTable = ({ handlePopUpOpen, showExpiredSharedSecrets }: Props) => {
+export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
   const [tableData, setTableData] = useState<TSharedSecret[]>([]);
-  const { isLoading, data = [] } = useGetSharedSecrets(); 
+  const { isLoading, data = [] } = useGetSharedSecrets();
 
   useEffect(() => {
     if (!isLoading) {
-      if (!showExpiredSharedSecrets) {
-        setTableData(data.filter((secret) => new Date(secret.expiresAt) > new Date()));
-      } else {
-        setTableData(data);
-      }
+      setTableData(data);
     }
-  }, [isLoading, data, showExpiredSharedSecrets]);
+  }, [isLoading, data]);
 
   const handleSecretExpiration = () => {
-    if (!showExpiredSharedSecrets) {
-      setTableData(
-        data.filter((secret) => !secret.expiresAt || new Date(secret.expiresAt) > new Date())
-      );
-    }
+    setTableData(
+      data.filter((secret) => !secret.expiresAt || new Date(secret.expiresAt) > new Date())
+    );
   };
 
   return (
@@ -77,7 +70,7 @@ export const ShareSecretsTable = ({ handlePopUpOpen, showExpiredSharedSecrets }:
           {!isLoading && tableData && tableData?.length === 0 && (
             <Tr>
               <Td colSpan={4} className="bg-mineshaft-800 text-center text-bunker-400">
-                <EmptyState title="No secrets shared yet!" icon={faKey} />
+                <EmptyState title="No secrets shared currently" icon={faKey} />
               </Td>
             </Tr>
           )}

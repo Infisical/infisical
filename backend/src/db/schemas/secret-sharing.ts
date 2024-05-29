@@ -13,6 +13,7 @@ export const SecretSharingSchema = z.object({
   signedValue: z.string(),
   expiresAt: z.date(),
   userId: z.string().uuid(),
+  orgId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

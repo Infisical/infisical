@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 
 import { openSignedAssymmetric } from "@app/components/utilities/cryptography/crypto";
-import { useToggle } from "@app/hooks";
+import { useTimedReset } from "@app/hooks";
 import { useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
 
 import { DragonMainImage, SecretTable } from "./components";
@@ -34,42 +34,46 @@ export const ShareSecretPublicPage = () => {
   }, [data, publicKey]);
 
   const [timeLeft, setTimeLeft] = useState("");
-  const [isUrlCopied, setIsUrlCopied] = useToggle(false);
+  const [isUrlCopied,, setIsUrlCopied] = useTimedReset<boolean>({
+    initialState: false,
+  });
+
+  const millisecondsPerDay = 1000 * 60 * 60 * 24;
+  const millisecondsPerHour = 1000 * 60 * 60;
+  const millisecondsPerMinute = 1000 * 60;
 
   useEffect(() => {
     const updateTimer = () => {
-      if (data && data.expiresAt) {
-        const expiryDate = new Date(data.expiresAt).getTime();
-        const now = new Date().getTime();
-        const distance = expiryDate - now;
-
-        if (distance < 0) {
+      if (data && data.expiresAt) {    
+        const expirationTime = new Date(data.expiresAt).getTime();
+        const currentTime = new Date().getTime();
+        const timeDifference = expirationTime - currentTime;
+    
+        if (timeDifference < 0) {
           setTimeLeft("Expired");
         } else {
-          const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-          const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-          const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-          setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+          const hoursRemaining = Math.floor((timeDifference % millisecondsPerDay) / millisecondsPerHour);
+          const minutesRemaining = Math.floor((timeDifference % millisecondsPerHour) / millisecondsPerMinute);
+          const secondsRemaining = Math.floor((timeDifference % millisecondsPerMinute) / 1000);
+          setTimeLeft(`${hoursRemaining}h ${minutesRemaining}m ${secondsRemaining}s`);
         }
       }
     };
-
+    
     const timer = setInterval(updateTimer, 1000);
     return () => clearInterval(timer);
   }, [data?.expiresAt]);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
     if (isUrlCopied) {
-      timer = setTimeout(() => setIsUrlCopied.off(), 2000);
+      setTimeout(() => setIsUrlCopied(false), 2000);
     }
-
-    return () => clearTimeout(timer);
   }, [isUrlCopied]);
 
+
   const copyUrlToClipboard = () => {
-    navigator.clipboard.writeText(decryptedSecret as string);
-    setIsUrlCopied.on();
+    navigator.clipboard.writeText(decryptedSecret);
+    setIsUrlCopied(true);
   };
 
   return (

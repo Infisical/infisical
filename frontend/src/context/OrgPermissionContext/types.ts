@@ -19,7 +19,6 @@ export enum OrgPermissionSubjects {
   Groups = "groups",
   Billing = "billing",
   SecretScanning = "secret-scanning",
-  SecretSharing = "secret-sharing",
   Identity = "identity"
 }
 
@@ -35,7 +34,6 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
   | [OrgPermissionActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
-  | [OrgPermissionActions, OrgPermissionSubjects.SecretSharing]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionActions, OrgPermissionSubjects.Identity];
 

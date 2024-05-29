@@ -11,7 +11,9 @@ export async function up(knex: Knex): Promise<void> {
       t.text("signedValue").notNullable();
       t.timestamp("expiresAt").notNullable();
       t.uuid("userId").notNullable();
+      t.uuid("orgId").notNullable();
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
 

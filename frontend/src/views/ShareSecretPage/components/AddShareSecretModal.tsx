@@ -19,11 +19,12 @@ import {
   Modal,
   ModalClose,
   ModalContent,
+  SecretInput,
   Select,
   SelectItem
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { useToggle } from "@app/hooks";
+import { useTimedReset } from "@app/hooks";
 import { useCreateSharedSecret } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -89,22 +90,20 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
   const createSharedSecret = useCreateSharedSecret();
   const { currentOrg } = useOrganization();
   const [newSharedSecret, setnewSharedSecret] = useState("");
-  const [isUrlCopied, setIsUrlCopied] = useToggle(false);
   const hasSharedSecret = Boolean(newSharedSecret);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isUrlCopied) {
-      timer = setTimeout(() => setIsUrlCopied.off(), 2000);
-    }
-
-    return () => clearTimeout(timer);
-  }, [isUrlCopied]);
+  const [isUrlCopied,, setIsUrlCopied] = useTimedReset<boolean>({
+    initialState: false,
+  });
 
   const copyUrlToClipboard = () => {
     navigator.clipboard.writeText(newSharedSecret);
-    setIsUrlCopied.on();
+    setIsUrlCopied(true);
   };
+  useEffect(() => {
+    if (isUrlCopied) {
+      setTimeout(() => setIsUrlCopied(false), 2000);
+    }
+  }, [isUrlCopied]);
 
   const onFormSubmit = async ({ name, value, expiresInValue, expiresInUnit }: FormData) => {
     try {
@@ -195,7 +194,11 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
                   isError={Boolean(error)}
                   errorText={error?.message}
                 >
-                  <Input {...field} placeholder="Type your secret value" />
+                  <SecretInput
+                        isVisible
+                        {...field}
+                        containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2 text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2"
+                      />
                 </FormControl>
               )}
             />

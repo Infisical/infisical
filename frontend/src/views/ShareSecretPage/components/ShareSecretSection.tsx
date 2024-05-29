@@ -1,12 +1,8 @@
-import { useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Checkbox, DeleteActionModal } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-import { withPermission } from "@app/hoc";
+import { Button, DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSharedSecret } from "@app/hooks/api/secretSharing";
 
@@ -15,90 +11,67 @@ import { ShareSecretsTable } from "./ShareSecretsTable";
 
 type DeleteModalData = { name: string; id: string };
 
-export const ShareSecretSection = withPermission(
-  () => {
-    const deleteSharedSecret = useDeleteSharedSecret();
-    const [showExpiredSharedSecrets, setShowExpiredSharedSecrets] = useState(false);
+export const ShareSecretSection = () => {
+  const deleteSharedSecret = useDeleteSharedSecret();
+  const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
+    "createSharedSecret",
+    "deleteSharedSecretConfirmation"
+  ] as const);
 
-    const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
-      "createSharedSecret",
-      "deleteSharedSecretConfirmation"
-    ] as const);
+  const onDeleteApproved = async () => {
+    try {
+      deleteSharedSecret.mutateAsync({
+        sharedSecretId: (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.id,
+      });
+      createNotification({
+        text: "Successfully deleted shared secret",
+        type: "success"
+      });
 
-    const onDeleteApproved = async () => {
-      try {
-        deleteSharedSecret.mutateAsync({
-          sharedSecretId: (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.id,
-        });
-        createNotification({
-          text: "Successfully deleted shared secret",
-          type: "success"
-        });
+      handlePopUpClose("deleteSharedSecretConfirmation");
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to delete shared secret",
+        type: "error"
+      });
+    }
+  };
 
-        handlePopUpClose("deleteSharedSecretConfirmation");
-      } catch (err) {
-        console.error(err);
-        createNotification({
-          text: "Failed to delete shared secret",
-          type: "error"
-        });
-      }
-    };
+  return (
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-2 flex justify-between">
+        <p className="text-xl font-semibold text-mineshaft-100">Shared Secrets</p>
 
-    return (
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-2 flex justify-between">
-          <p className="text-xl font-semibold text-mineshaft-100">Shared Secrets</p>
-          <OrgPermissionCan
-            I={OrgPermissionActions.Create}
-            a={OrgPermissionSubjects.SecretSharing}
-          >
-            {(isAllowed) => (
-              <Button
-                colorSchema="primary"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => {
-                  handlePopUpOpen("createSharedSecret");
-                }}
-                isDisabled={!isAllowed}
-              >
-                Share Secret
-              </Button>
-            )}
-          </OrgPermissionCan>
-        </div>
-        <div className="mb-8 flex items-center justify-between">
-          <p className="flex-grow text-gray-400">
-            Every secret shared can be accessed with the URL (shown during creation) before its
-            expiry.
-          </p>
-          <Checkbox
-            className="shrink-0 data-[state=checked]:bg-primary"
-            id="showInactive"
-            isChecked={showExpiredSharedSecrets}
-            onCheckedChange={(state) => {
-              setShowExpiredSharedSecrets(state as boolean);
-            }}
-          >
-            Show expired shared secrets too
-          </Checkbox>
-        </div>
-        <ShareSecretsTable
-          handlePopUpOpen={handlePopUpOpen}
-          showExpiredSharedSecrets={showExpiredSharedSecrets}
-        />
-        <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <DeleteActionModal
-          isOpen={popUp.deleteSharedSecretConfirmation.isOpen}
-          title={`Delete ${(popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name || " "
-            } shared secret?`}
-          onChange={(isOpen) => handlePopUpToggle("deleteSharedSecretConfirmation", isOpen)}
-          deleteKey={(popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name}
-          onClose={() => handlePopUpClose("deleteSharedSecretConfirmation")}
-          onDeleteApproved={onDeleteApproved}
-        />
+        <Button
+          colorSchema="primary"
+          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+          onClick={() => {
+            handlePopUpOpen("createSharedSecret");
+          }}
+        >
+          Share Secret
+        </Button>
       </div>
-    );
-  },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.SecretSharing }
-);
+      <div className="mb-8 flex items-center justify-between">
+        <p className="flex-grow text-gray-400">
+          Every secret shared can be accessed with the URL (shown during creation) before its
+          expiry.
+        </p>
+      </div>
+      <ShareSecretsTable
+        handlePopUpOpen={handlePopUpOpen}
+      />
+      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <DeleteActionModal
+        isOpen={popUp.deleteSharedSecretConfirmation.isOpen}
+        title={`Delete ${(popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name || " "
+          } shared secret?`}
+        onChange={(isOpen) => handlePopUpToggle("deleteSharedSecretConfirmation", isOpen)}
+        deleteKey={(popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name}
+        onClose={() => handlePopUpClose("deleteSharedSecretConfirmation")}
+        onDeleteApproved={onDeleteApproved}
+      />
+    </div>
+  );
+};

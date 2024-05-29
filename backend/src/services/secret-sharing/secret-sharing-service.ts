@@ -1,7 +1,5 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { UnauthorizedError } from "@app/lib/errors";
 
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
 import { TCreateSharedSecretDTO, TDeleteSharedSecretDTO, TSharedSecretPermission } from "./secret-sharing-types";
@@ -21,12 +19,13 @@ export const secretSharingServiceFactory = ({
     const { actor, actorId, orgId, actorAuthMethod, actorOrgId, name, signedValue, expiresAt } =
       createSharedSecretInput;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SecretSharing);
+    if (!permission) throw new UnauthorizedError({ name: "User not in org" });
     const newSharedSecret = await secretSharingDAL.create({
       name,
       signedValue,
       expiresAt,
-      userId: actorId
+      userId: actorId,
+      orgId
     });
     return { id: newSharedSecret.id };
   };
@@ -34,8 +33,8 @@ export const secretSharingServiceFactory = ({
   const getSharedSecrets = async (getSharedSecretsInput: TSharedSecretPermission) => {
     const { actor, actorId, orgId, actorAuthMethod, actorOrgId } = getSharedSecretsInput;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.SecretSharing);
-    const userSharedSecrets = await secretSharingDAL.find({ userId: actorId }, { sort: [["expiresAt", "asc"]] });
+    if (!permission) throw new UnauthorizedError({ name: "User not in org" });
+    const userSharedSecrets = await secretSharingDAL.find({ userId: actorId, orgId }, { sort: [["expiresAt", "asc"]] });
     return userSharedSecrets;
   };
 
@@ -50,7 +49,7 @@ export const secretSharingServiceFactory = ({
   const deleteSharedSecretById = async (deleteSharedSecretInput: TDeleteSharedSecretDTO) => {
     const { actor, actorId, orgId, actorAuthMethod, actorOrgId, sharedSecretId } = deleteSharedSecretInput;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.SecretSharing);
+    if (!permission) throw new UnauthorizedError({ name: "User not in org" });
     const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
     return deletedSharedSecret;
   };

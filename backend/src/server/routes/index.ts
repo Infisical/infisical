@@ -794,7 +794,8 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,
     queueService,
-    identityAccessTokenDAL
+    identityAccessTokenDAL,
+    secretSharingDAL
   });
 
   await superAdminService.initServerCfg();

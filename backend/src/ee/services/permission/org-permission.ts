@@ -21,7 +21,6 @@ export enum OrgPermissionSubjects {
   Groups = "groups",
   Billing = "billing",
   SecretScanning = "secret-scanning",
-  SecretSharing = "secret-sharing",
   Identity = "identity"
 }
 
@@ -37,7 +36,6 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
   | [OrgPermissionActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
-  | [OrgPermissionActions, OrgPermissionSubjects.SecretSharing]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionActions, OrgPermissionSubjects.Identity];
 
@@ -61,10 +59,6 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.SecretScanning);
-
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.SecretSharing);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.SecretSharing);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.SecretSharing);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
@@ -129,10 +123,6 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.SecretScanning);
-
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.SecretSharing);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.SecretSharing);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.SecretSharing);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);

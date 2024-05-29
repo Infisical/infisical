@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   EmptyState,
   IconButton,
+  SecretInput,
   Table,
   TableContainer,
   TBody,
@@ -47,7 +48,13 @@ export const SecretTable = ({
               <Td>{sharedSecret.name}</Td>
               <Td>
                 <div className="flex items-center md:space-x-2">
-                  <div className="max-w-[20rem] flex-1 break-words">{decryptedSecret}</div>
+                  <div className="max-w-[20rem] flex-1 break-words">
+                  <SecretInput
+                        isVisible
+                        value={decryptedSecret}
+                        readOnly
+                      />
+                  </div>
                   <IconButton
                     ariaLabel="copy to clipboard"
                     onClick={copyUrlToClipboard}

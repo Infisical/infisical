@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { OrgPermissionCan } from "@app/components/permissions";
 import { IconButton, Td, Tr } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { TSharedSecret } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -28,38 +26,31 @@ const timeAgo = (inputDate: Date, currentDate: Date): string => {
   const elapsedYears = Math.abs(Math.floor(elapsedDays / 365));
 
   if (elapsedYears > 0) {
-    return `${elapsedYears} year${elapsedYears === 1 ? "" : "s"} ${
-      elapsedMilliseconds >= 0 ? "ago" : "from now"
-    }`;
+    return `${elapsedYears} year${elapsedYears === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
+      }`;
   }
   if (elapsedMonths > 0) {
-    return `${elapsedMonths} month${elapsedMonths === 1 ? "" : "s"} ${
-      elapsedMilliseconds >= 0 ? "ago" : "from now"
-    }`;
+    return `${elapsedMonths} month${elapsedMonths === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
+      }`;
   }
   if (elapsedWeeks > 0) {
-    return `${elapsedWeeks} week${elapsedWeeks === 1 ? "" : "s"} ${
-      elapsedMilliseconds >= 0 ? "ago" : "from now"
-    }`;
+    return `${elapsedWeeks} week${elapsedWeeks === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
+      }`;
   }
   if (elapsedDays > 0) {
-    return `${elapsedDays} day${elapsedDays === 1 ? "" : "s"} ${
-      elapsedMilliseconds >= 0 ? "ago" : "from now"
-    }`;
+    return `${elapsedDays} day${elapsedDays === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
+      }`;
   }
   if (elapsedHours > 0) {
-    return `${elapsedHours} hour${elapsedHours === 1 ? "" : "s"} ${
-      elapsedMilliseconds >= 0 ? "ago" : "from now"
-    }`;
+    return `${elapsedHours} hour${elapsedHours === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
+      }`;
   }
   if (elapsedMinutes > 0) {
-    return `${elapsedMinutes} minute${elapsedMinutes === 1 ? "" : "s"} ${
-      elapsedMilliseconds >= 0 ? "ago" : "from now"
-    }`;
+    return `${elapsedMinutes} minute${elapsedMinutes === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
+      }`;
   }
-  return `${elapsedSeconds} second${elapsedSeconds === 1 ? "" : "s"} ${
-    elapsedMilliseconds >= 0 ? "ago" : "from now"
-  }`;
+  return `${elapsedSeconds} second${elapsedSeconds === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
+    }`;
 };
 
 export const ShareSecretsRow = ({
@@ -110,26 +101,20 @@ export const ShareSecretsRow = ({
         <p className="text-xs text-gray-500">{formatDate(row.expiresAt)}</p>
       </Td>
       <Td>
-        <OrgPermissionCan
-          I={OrgPermissionActions.Delete}
-          a={OrgPermissionSubjects.SecretSharing}
+
+
+        <IconButton
+          onClick={() =>
+            handlePopUpOpen("deleteSharedSecretConfirmation", {
+              name: row.name,
+              id: row.id
+            })
+          }
+          colorSchema="danger"
+          ariaLabel="delete"
         >
-          {(isAllowed) => (
-            <IconButton
-              onClick={() =>
-                handlePopUpOpen("deleteSharedSecretConfirmation", {
-                  name: row.name,
-                  id: row.id
-                })
-              }
-              colorSchema="danger"
-              ariaLabel="delete"
-              isDisabled={!isAllowed}
-            >
-              <FontAwesomeIcon icon={faTrashCan} />
-            </IconButton>
-          )}
-        </OrgPermissionCan>
+          <FontAwesomeIcon icon={faTrashCan} />
+        </IconButton>
       </Td>
     </Tr>
   );
