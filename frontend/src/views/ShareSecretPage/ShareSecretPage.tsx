@@ -10,7 +10,7 @@ export const ShareSecretPage = () => {
       <div className="flex items-center justify-between py-6">
         <div className="flex w-full flex-col">
           <h2 className="text-3xl font-semibold text-gray-200">Secret Sharing</h2>
-          <p className="text-bunker-300">Share secrets securely with your teammates using a shareable link</p>
+          <p className="text-bunker-300">Share secrets securely using a shareable link</p>
         </div>
         <div className="flex w-max justify-center">
           <Link href="https://infisical.com/docs/documentation/platform/secret-sharing">
