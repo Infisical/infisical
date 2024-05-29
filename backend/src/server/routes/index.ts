@@ -130,6 +130,8 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
+import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
+import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
@@ -253,6 +255,7 @@ export const registerRoutes = async (
   const groupProjectMembershipRoleDAL = groupProjectMembershipRoleDALFactory(db);
   const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
+  const secretSharingDAL = secretSharingDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
@@ -612,6 +615,12 @@ export const registerRoutes = async (
     projectEnvDAL,
     projectBotService
   });
+
+  const secretSharingService = secretSharingServiceFactory({
+    permissionService,
+    secretSharingDAL
+  });
+
   const sarService = secretApprovalRequestServiceFactory({
     permissionService,
     projectBotService,
@@ -785,7 +794,8 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,
     queueService,
-    identityAccessTokenDAL
+    identityAccessTokenDAL,
+    secretSharingDAL
   });
 
   await superAdminService.initServerCfg();
@@ -851,7 +861,8 @@ export const registerRoutes = async (
     secretBlindIndex: secretBlindIndexService,
     telemetry: telemetryService,
     projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService,
-    identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService
+    identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
+    secretSharing: secretSharingService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

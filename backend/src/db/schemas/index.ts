@@ -60,6 +60,7 @@ export * from "./secret-imports";
 export * from "./secret-rotation-outputs";
 export * from "./secret-rotations";
 export * from "./secret-scanning-git-risks";
+export * from "./secret-sharing";
 export * from "./secret-snapshot-folders";
 export * from "./secret-snapshot-secrets";
 export * from "./secret-snapshots";

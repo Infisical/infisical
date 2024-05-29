@@ -137,6 +137,7 @@
             "documentation/platform/secret-rotation/aws-iam"
           ]
         },
+        "documentation/platform/secret-sharing",
         {
           "group": "Dynamic Secrets",
           "pages": [

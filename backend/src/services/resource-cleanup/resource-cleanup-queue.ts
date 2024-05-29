@@ -3,10 +3,12 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
+import { TSecretSharingDALFactory } from "../secret-sharing/secret-sharing-dal";
 
 type TDailyResourceCleanUpQueueServiceFactoryDep = {
   auditLogDAL: Pick<TAuditLogDALFactory, "pruneAuditLog">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "removeExpiredTokens">;
+  secretSharingDAL: Pick<TSecretSharingDALFactory, "pruneExpiredSharedSecrets">;
   queueService: TQueueServiceFactory;
 };
 
@@ -15,12 +17,14 @@ export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyRe
 export const dailyResourceCleanUpQueueServiceFactory = ({
   auditLogDAL,
   queueService,
-  identityAccessTokenDAL
+  identityAccessTokenDAL,
+  secretSharingDAL
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   queueService.start(QueueName.DailyResourceCleanUp, async () => {
     logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
     await auditLogDAL.pruneAuditLog();
     await identityAccessTokenDAL.removeExpiredTokens();
+    await secretSharingDAL.pruneExpiredSharedSecrets();
     logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
   });
 
