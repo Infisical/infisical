@@ -3,6 +3,7 @@ import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faCheck,
   faClock,
+  faClone,
   faClose,
   faCodeBranch,
   faComment,
@@ -64,7 +65,8 @@ export enum FontAwesomeSpriteName {
   More = "more",
   Override = "secret-override",
   Close = "close",
-  CheckedCircle = "check-circle"
+  CheckedCircle = "check-circle",
+  ReplicatedSecretKey = "secret-replicated"
 }
 
 // this is an optimization technique
@@ -79,5 +81,6 @@ export const FontAwesomeSpriteSymbols = [
   { icon: faEllipsis, symbol: FontAwesomeSpriteName.More },
   { icon: faCodeBranch, symbol: FontAwesomeSpriteName.Override },
   { icon: faClose, symbol: FontAwesomeSpriteName.Close },
-  { icon: faCheckCircle, symbol: FontAwesomeSpriteName.CheckedCircle }
+  { icon: faCheckCircle, symbol: FontAwesomeSpriteName.CheckedCircle },
+  { icon: faClone, symbol: FontAwesomeSpriteName.ReplicatedSecretKey }
 ];
