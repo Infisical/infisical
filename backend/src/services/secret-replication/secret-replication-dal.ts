@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TSecretVersions } from "@app/db/schemas";
+import { SecretType, TableName, TSecretVersions } from "@app/db/schemas";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TSecretReplicationDALFactory = ReturnType<typeof secretReplicationDALFactory>;
@@ -9,7 +9,10 @@ export type TSecretReplicationDALFactory = ReturnType<typeof secretReplicationDA
 export const secretReplicationDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.SecretVersion);
 
-  const findSecrets = async (filter: { folderId: string; secrets: { id: string; version: number }[] }, tx?: Knex) => {
+  const findSecretVersions = async (
+    filter: { folderId: string; secrets: { id: string; version: number }[] },
+    tx?: Knex
+  ) => {
     if (!filter.secrets) return [];
 
     const sqlRawDocs = await (tx || db)(TableName.SecretVersion)
@@ -18,7 +21,8 @@ export const secretReplicationDALFactory = (db: TDbClient) => {
         filter.secrets.forEach((el) => {
           void bd.orWhere({
             [`${TableName.SecretVersion}.secretId` as "secretId"]: el.id,
-            [`${TableName.SecretVersion}.version` as "version"]: el.version
+            [`${TableName.SecretVersion}.version` as "version"]: el.version,
+            [`${TableName.SecretVersion}.type` as "type"]: SecretType.Shared
           });
         });
       })
@@ -39,7 +43,7 @@ export const secretReplicationDALFactory = (db: TDbClient) => {
   };
 
   return {
-    findSecrets,
+    findSecretVersions,
     ...orm
   };
 };

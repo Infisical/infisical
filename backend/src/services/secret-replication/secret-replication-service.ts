@@ -80,13 +80,16 @@ export const secretReplicationServiceFactory = ({
     if (!secretImports.length || !secrets.length) return;
 
     // unfiltered secrets to be replicated
-    const toBeReplicatedSecrets = await secretReplicationDAL.findSecrets({ folderId, secrets });
+    const toBeReplicatedSecrets = await secretReplicationDAL.findSecretVersions({ folderId, secrets });
     const replicatedSecrets = toBeReplicatedSecrets.filter(
       ({ version, latestReplicatedVersion, secretBlindIndex }) =>
         secretBlindIndex && (version === 1 || latestReplicatedVersion <= version)
     );
-
     const replicatedSecretsGroupBySecretId = groupBy(replicatedSecrets, (i) => i.secretId);
+    // this is to filter out personal secrets
+    const sanitizedSecrets = secrets.filter(({ id }) => Object.hasOwn(replicatedSecretsGroupBySecretId, id));
+    if (!sanitizedSecrets.length) return;
+
     const lock = await keyStore.acquireLock(
       replicatedSecrets.map(({ id }) => id),
       5000
@@ -118,20 +121,20 @@ export const secretReplicationServiceFactory = ({
         });
         const localSecretsGroupedByBlindIndex = groupBy(localSecrets, (i) => i.secretBlindIndex as string);
 
-        const locallyCreatedSecrets = secrets.filter(({ operation, id }) => {
+        const locallyCreatedSecrets = sanitizedSecrets.filter(({ operation, id }) => {
           return (
             (operation === SecretOperations.Create || operation === SecretOperations.Update) &&
             !localSecretsGroupedByBlindIndex[replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string]?.[0]
           );
         });
 
-        const locallyUpdatedSecrets = secrets.filter(
+        const locallyUpdatedSecrets = sanitizedSecrets.filter(
           ({ operation, id }) =>
             (operation === SecretOperations.Create || operation === SecretOperations.Update) &&
             localSecretsGroupedByBlindIndex[replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string]?.[0]
         );
 
-        const locallyDeletedSecrets = secrets.filter(
+        const locallyDeletedSecrets = sanitizedSecrets.filter(
           ({ operation, id }) =>
             operation === SecretOperations.Delete &&
             Boolean(replicatedSecretsGroupBySecretId[id]?.[0]?.secretBlindIndex) &&
@@ -333,6 +336,7 @@ export const secretReplicationServiceFactory = ({
       /*  eslint-enable no-await-in-loop */
     } finally {
       await lock.release();
+      logger.info(job.data, "Replication finished");
     }
   });
 
