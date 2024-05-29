@@ -8,7 +8,6 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { PROJECTS } from "@app/lib/api-docs";
-import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -193,19 +192,18 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async () => {
-      // const workspace = await server.services.project.deleteProject({
-      //   filter: {
-      //     type: ProjectFilterType.ID,
-      //     projectId: req.params.workspaceId
-      //   },
-      //   actorId: req.permission.id,
-      //   actorAuthMethod: req.permission.authMethod,
-      //   actor: req.permission.type,
-      //   actorOrgId: req.permission.orgId
-      // });
-      // return { workspace };
-      throw new BadRequestError({ message: "Project delete has been paused temporarily, please try again later" });
+    handler: async (req) => {
+      const workspace = await server.services.project.deleteProject({
+        filter: {
+          type: ProjectFilterType.ID,
+          projectId: req.params.workspaceId
+        },
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
+      });
+      return { workspace };
     }
   });
 
