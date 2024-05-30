@@ -84,7 +84,7 @@ export const secretReplicationServiceFactory = ({
       pickOnlyImportIds,
       _deDupeReplicationQueue: deDupeReplicationQueue,
       _deDupeQueue: deDupeQueue
-    } = job.data;
+    } = job.data; // source import details (this is where the secrets are to be synced from)
 
     // filter for  initial filling
     let secretImports = await secretImportDAL.find({
@@ -97,8 +97,10 @@ export const secretReplicationServiceFactory = ({
       : secretImports;
     if (!secretImports.length || !secrets.length) return;
 
-    // unfiltered secrets to be replicated
+    // unfiltered secrets to be replicated (will fetch the latest versions in case another queue already processed this request)
     const toBeReplicatedSecrets = await secretReplicationDAL.findSecretVersions({ folderId, secrets });
+
+    // case: https://www.notion.so/infisical/Secret-Replication-6907fbe3130c4124976f7cba1b9fc4c7
     const replicatedSecrets = toBeReplicatedSecrets.filter(
       ({ version, latestReplicatedVersion, secretBlindIndex }) =>
         secretBlindIndex && (version === 1 || latestReplicatedVersion <= version)

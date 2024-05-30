@@ -9,6 +9,16 @@ export type TSecretReplicationDALFactory = ReturnType<typeof secretReplicationDA
 export const secretReplicationDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.SecretVersion);
 
+  /**
+   *  Retrieves secret versions based on the specified filter criteria.
+   *
+   * @param {Object} filter - The filter criteria for querying secret versions.
+   * @param {string} filter.folderId - The ID of the folder containing the secrets.
+   * @param {Array<Object>} filter.secrets - An array of secret objects containing the ID and version of each secret.
+   * @param {Knex} [tx] - An optional Knex transaction object. If provided, the query will be executed within this transaction.
+   *
+   * @returns {Promise<Array<Object>>} A promise that resolves to an array of secret version documents that match the filter criteria.
+   */
   const findSecretVersions = async (
     filter: { folderId: string; secrets: { id: string; version: number }[] },
     tx?: Knex

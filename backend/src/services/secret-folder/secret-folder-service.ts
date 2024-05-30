@@ -253,7 +253,7 @@ export const secretFolderServiceFactory = ({
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new BadRequestError({ message: "Environment not found", name: "Update folder" });
     const folder = await folderDAL
-      .findOne({ envId: env.id, id, parentId: parentFolder.id })
+      .findOne({ envId: env.id, id, parentId: parentFolder.id, isReserved: false })
       // now folder api accepts id based change
       // this is for cli backward compatiability and when cli removes this, we will remove this logic
       .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }));
@@ -328,7 +328,12 @@ export const secretFolderServiceFactory = ({
       if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
 
       const [doc] = await folderDAL.delete(
-        { envId: env.id, [uuidValidate(idOrName) ? "id" : "name"]: idOrName, parentId: parentFolder.id },
+        {
+          envId: env.id,
+          [uuidValidate(idOrName) ? "id" : "name"]: idOrName,
+          parentId: parentFolder.id,
+          isReserved: false
+        },
         tx
       );
       if (!doc) throw new BadRequestError({ message: "Folder not found", name: "Delete folder" });

@@ -156,8 +156,8 @@ export const CreateSecretImportForm = ({
                 errorText={error?.message}
                 helperText={
                   value
-                    ? "Manual control over when updates propagate in approval mode, giving you the flexibility to push changes as needed."
-                    : "Instantaneous updates from the linked source on approval mode, ensuring real-time synchronization."
+                    ? "Secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately."
+                    : "Secrets from the source location will be imported to the selected destination immediately, ignoring any approval policies at the destination."
                 }
               >
                 <Select
@@ -165,8 +165,8 @@ export const CreateSecretImportForm = ({
                   onValueChange={(val) => onChange(val === "true")}
                   className="w-full border border-mineshaft-500"
                 >
-                  <SelectItem value="false">Linked Mode</SelectItem>
-                  <SelectItem value="true">Replication Mode</SelectItem>
+                  <SelectItem value="false">Ignore secret approval polices</SelectItem>
+                  <SelectItem value="true">Respect secret approval polices</SelectItem>
                 </Select>
               </FormControl>
             )}

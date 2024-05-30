@@ -24,7 +24,6 @@ import {
   IconButton,
   SecretInput,
   TableContainer,
-  Tag,
   Tooltip
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
@@ -47,17 +46,17 @@ type Props = {
 export const EnvFolderIcon = ({
   env,
   secretPath,
-  isReplication
+  // isReplication 
 }: {
   env: string;
   secretPath: string;
-  isReplication?: boolean;
+  // isReplication?: boolean;
 }) => (
   <div className="inline-flex items-center space-x-2">
     <div style={{ minWidth: "96px" }}>{env || "-"}</div>
     {secretPath && (
       <div className="inline-flex items-center space-x-2 border-l border-mineshaft-600 pl-2">
-        {isReplication && <Tag size="xs">Replication Mode</Tag>}
+        {/* {isReplication && <Tag size="xs">Replication Mode</Tag>} */}
         <FontAwesomeIcon icon={faFolder} className="text-md text-green-700" />
         <span>{secretPath}</span>
       </div>
@@ -168,7 +167,7 @@ export const SecretImportItem = ({
           <EnvFolderIcon
             env={importEnv.slug || ""}
             secretPath={secretImport?.importPath || ""}
-            isReplication={isReplication}
+            // isReplication={isReplication}
           />
         </div>
         <div className="flex items-center space-x-4 px-4 py-2">
