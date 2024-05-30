@@ -34,10 +34,12 @@ var AuthStrategy = struct {
 	SERVICE_TOKEN              AuthStrategyType
 	SERVICE_ACCOUNT            AuthStrategyType
 	UNIVERSAL_MACHINE_IDENTITY AuthStrategyType
+	KUBERNETES                 AuthStrategyType
 }{
 	SERVICE_TOKEN:              "SERVICE_TOKEN",
 	SERVICE_ACCOUNT:            "SERVICE_ACCOUNT",
 	UNIVERSAL_MACHINE_IDENTITY: "UNIVERSAL_MACHINE_IDENTITY",
+	KUBERNETES:                 "KUBERNETES",
 }
 
 var machineIdentityTokenInstance *util.MachineIdentityToken
@@ -135,7 +137,6 @@ func (r *InfisicalSecretReconciler) GetInfisicalUniversalAuthFromKubeSecret(ctx 
 	clientSecretFromSecret := universalAuthCredsFromKubeSecret.Data[INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET]
 
 	return model.MachineIdentityDetails{ClientId: string(clientIdFromSecret), ClientSecret: string(clientSecretFromSecret)}, nil
-
 }
 
 // Fetches service account credentials from a Kubernetes secret specified in the infisicalSecret object, extracts the access key, public key, and private key from the secret, and returns them as a ServiceAccountCredentials object.
@@ -268,6 +269,8 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		authStrategy = AuthStrategy.SERVICE_TOKEN
 	} else if infisicalMachineIdentityCreds.ClientId != "" && infisicalMachineIdentityCreds.ClientSecret != "" {
 		authStrategy = AuthStrategy.UNIVERSAL_MACHINE_IDENTITY
+	} else if infisicalSecret.Spec.Authentication.Kubernetes.IdentityId != "" {
+		authStrategy = AuthStrategy.KUBERNETES
 	} else {
 		return fmt.Errorf("no authentication method provided. You must provide either a valid service token or a service account details to fetch secrets\n")
 	}
@@ -296,6 +299,13 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	if authStrategy == AuthStrategy.UNIVERSAL_MACHINE_IDENTITY && machineIdentityTokenInstance == nil {
 		// Create new machine identity token instance
 		machineIdentityTokenInstance = util.NewMachineIdentityToken(infisicalMachineIdentityCreds.ClientId, infisicalMachineIdentityCreds.ClientSecret)
+	} else if authStrategy == AuthStrategy.KUBERNETES && machineIdentityTokenInstance == nil {
+		// Create new machine identity token instance
+		machineIdentityTokenInstance, err = util.NewMachineIdentityKubernetesToken(infisicalSecret.Spec.Authentication.Kubernetes.IdentityId, infisicalSecret.Spec.Authentication.Kubernetes.ServiceAccountTokenPath)
+
+		if err != nil {
+			return fmt.Errorf("ReconcileInfisicalSecret: unable to create machine identity token instance from kubernetes auth [err=%s]", err)
+		}
 	}
 
 	var plainTextSecretsFromApi []model.SingleEnvironmentVariable
@@ -320,20 +330,29 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		}
 
 		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via service token")
-	} else if authStrategy == AuthStrategy.UNIVERSAL_MACHINE_IDENTITY { // Machine Identity
+	} else if authStrategy == AuthStrategy.UNIVERSAL_MACHINE_IDENTITY || authStrategy == AuthStrategy.KUBERNETES { // Machine Identity
 
 		accessToken, err := machineIdentityTokenInstance.GetToken()
-
 		if err != nil {
 			return fmt.Errorf("%s", "Waiting for access token to become available")
 		}
-		scope := infisicalSecret.Spec.Authentication.UniversalAuth.SecretsScope
+
+		var scope v1alpha1.MachineIdentityScopeInWorkspace
+		var formattedStrategy string
+		if authStrategy == AuthStrategy.UNIVERSAL_MACHINE_IDENTITY {
+			scope = infisicalSecret.Spec.Authentication.UniversalAuth.SecretsScope
+			formattedStrategy = "universal auth"
+		} else {
+			scope = infisicalSecret.Spec.Authentication.Kubernetes.SecretsScope
+			formattedStrategy = "kubernetes auth"
+		}
+
 		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaUniversalAuth(accessToken, secretVersionBasedOnETag, scope)
 
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
-		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via universal auth")
+		fmt.Printf("ReconcileInfisicalSecret: Fetched secrets via %s\n", formattedStrategy)
 
 	} else {
 		return fmt.Errorf("no authentication method provided. You must provide either a valid service token or a service account details to fetch secrets")
