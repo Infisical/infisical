@@ -1,0 +1,68 @@
+---
+title: "Certificates"
+sidebarTitle: "Certificates"
+description: "Learn how to issue X.509 certificates with Infisical."
+---
+
+## Concept
+
+Assuming that you've created a Private CA hierarchy with a root CA and an intermediate CA, you can now issue X.509 certificates using the intermediate CA.
+
+<div align="center">
+
+```mermaid
+graph TD
+    A[Root CA]
+    A --> B[Intermediate CA]
+    A --> C[Intermediate CA]
+    B --> D[Leaf Certificate]
+    C --> E[Leaf Certificate]
+```
+
+</div>
+
+## Workflow
+
+The typical workflow for issuing certificates consists of the following steps:
+
+1. Issuing a certificate under an intermediate CA with details like name and validity period.
+2. Managing certificate lifecycle events such as certificate renewal, revocation, and reissuance.
+
+<Note>
+  Note that this workflow can be executed via the Infisical UI or manually such
+  as via API.
+</Note>
+
+## Guide
+
+In the following steps, we explore how to issue a X.509 certificate under a CA using the Infisical UI.
+
+<Steps>
+  <Step title="Creating a certificate">
+    To create a certificate, head to your Project > Internal PKI > Certificates and press **Create Certificate**.
+
+    ![pki issue certificate](/images/platform/pki/cert-issue.png)
+
+    Here, set the **CA** to the CA you want to issue the certificate under and fill out details for the certificate.
+
+    ![pki issue certificate modal](/images/platform/pki/cert-issue-modal.png)
+
+    Here's some guidance on each field:
+
+    - Issuing CA: The CA under which to issue the certificate.
+    - Common Name (CN): The (common) name of the certificate.
+    - TTL: The lifetime of the certificate in seconds.
+    - Valid Until: The date until which the certificate is valid in the date time string format specified [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format). For example, the following formats would be valid: `YYYY`, `YYYY-MM`, `YYYY-MM-DD`, `YYYY-MM-DDTHH:mm:ss.sssZ`.
+
+  </Step>
+  <Step title="Copying the certificate details">
+    Once you have created the certificate from step 1, you'll be presented with the certificate details including the **Certificate Body**, **Certificate Chain**, and **Private Key**.
+    
+    ![pki certificate body](/images/platform/pki/cert-body.png)
+    
+    <Note>
+        Make sure to download and store the **Private Key** in a secure location as it will only be displayed once at the time of certificate issuance.
+        The **Certificate Body** and **Certificate Chain** will remain accessible and can be copied at any time.
+    </Note>
+  </Step>
+</Steps>

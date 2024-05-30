@@ -186,7 +186,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                   errorText={error?.message}
                   isRequired
                 >
-                  <Input {...field} placeholder="Acme Corp" isDisabled={Boolean(cert)} />
+                  <Input {...field} placeholder="service.acme.com" isDisabled={Boolean(cert)} />
                 </FormControl>
               )}
             />
