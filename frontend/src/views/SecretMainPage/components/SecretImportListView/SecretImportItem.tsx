@@ -122,7 +122,7 @@ export const SecretImportItem = ({
         projectId: currentWorkspace?.id || ""
       });
       createNotification({
-        text: "Kindly refresh the board to see changes.",
+        text: "Please refresh the dashboard to view changes",
         type: "success"
       });
     } catch (error) {

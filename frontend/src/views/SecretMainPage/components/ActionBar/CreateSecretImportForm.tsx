@@ -89,7 +89,7 @@ export const CreateSecretImportForm = ({
       reset();
       createNotification({
         type: "success",
-        text: `Successfully linked.${isReplication ? " Kindly refresh the board to see changes." : ""
+        text: `Successfully linked. ${isReplication ? "Please refresh the dashboard to view changes" : ""
           }`
       });
     } catch (err) {
