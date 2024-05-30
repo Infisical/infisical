@@ -37,23 +37,17 @@ export const SecretTable = ({
       <Table>
         <THead>
           <Tr>
-            <Th>Name</Th>
-            <Th>Value</Th>
+            <Th>Secret</Th>
             <Th>Valid Until</Th>
           </Tr>
         </THead>
         <TBody>
           {!isLoading && sharedSecret && decryptedSecret && (
-            <Tr key={sharedSecret.name}>
-              <Td>{sharedSecret.name}</Td>
+            <Tr key={sharedSecret.encryptedValue}>
               <Td>
                 <div className="flex items-center md:space-x-2">
                   <div className="max-w-[20rem] flex-1 break-words">
-                  <SecretInput
-                        isVisible
-                        value={decryptedSecret}
-                        readOnly
-                      />
+                    <SecretInput isVisible value={decryptedSecret} readOnly />
                   </div>
                   <IconButton
                     ariaLabel="copy to clipboard"

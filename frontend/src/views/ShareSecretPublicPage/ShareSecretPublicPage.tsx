@@ -21,14 +21,18 @@ export const ShareSecretPublicPage = () => {
     }
   }, [id, publicKey]);
 
-  const { isLoading, data } = useGetActiveSharedSecretByIdAndHashedHex(id as string, hashedHex as string );  
+  const { isLoading, data } = useGetActiveSharedSecretByIdAndHashedHex(
+    id as string,
+    hashedHex as string
+  );
+
   const decryptedSecret = useMemo(() => {
     if (data && data.encryptedValue && publicKey) {
       const res = decryptSymmetric({
         ciphertext: data.encryptedValue,
         iv: data.iv,
         tag: data.tag,
-        key,
+        key
       });
       return res;
     }
@@ -37,7 +41,7 @@ export const ShareSecretPublicPage = () => {
 
   const [timeLeft, setTimeLeft] = useState("");
   const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
-    initialState: false,
+    initialState: false
   });
 
   const millisecondsPerDay = 1000 * 60 * 60 * 24;
@@ -46,18 +50,26 @@ export const ShareSecretPublicPage = () => {
 
   useEffect(() => {
     const updateTimer = () => {
-      if (data && data.expiresAt) {
-        const expirationTime = new Date(data.expiresAt).getTime();
-        const currentTime = new Date().getTime();
-        const timeDifference = expirationTime - currentTime;
+      if (data) {
+        if (data.expiresAt) {
+          const expirationTime = new Date(data.expiresAt).getTime();
+          const currentTime = new Date().getTime();
+          const timeDifference = expirationTime - currentTime;
 
-        if (timeDifference < 0) {
-          setTimeLeft("Expired");
-        } else {
-          const hoursRemaining = Math.floor((timeDifference % millisecondsPerDay) / millisecondsPerHour);
-          const minutesRemaining = Math.floor((timeDifference % millisecondsPerHour) / millisecondsPerMinute);
-          const secondsRemaining = Math.floor((timeDifference % millisecondsPerMinute) / 1000);
-          setTimeLeft(`${hoursRemaining}h ${minutesRemaining}m ${secondsRemaining}s`);
+          if (timeDifference < 0) {
+            setTimeLeft("Expired");
+          } else {
+            const hoursRemaining = Math.floor(
+              (timeDifference % millisecondsPerDay) / millisecondsPerHour
+            );
+            const minutesRemaining = Math.floor(
+              (timeDifference % millisecondsPerHour) / millisecondsPerMinute
+            );
+            const secondsRemaining = Math.floor((timeDifference % millisecondsPerMinute) / 1000);
+            setTimeLeft(`${hoursRemaining}h ${minutesRemaining}m ${secondsRemaining}s`);
+          }
+        } else if (data.expiresAfterViews) {
+          setTimeLeft(`${data.expiresAfterViews - 1} more views`);
         }
       }
     };
@@ -71,7 +83,6 @@ export const ShareSecretPublicPage = () => {
       setTimeout(() => setIsUrlCopied(false), 2000);
     }
   }, [isUrlCopied]);
-
 
   const copyUrlToClipboard = () => {
     navigator.clipboard.writeText(decryptedSecret);
