@@ -16,17 +16,28 @@ export const secretSharingServiceFactory = ({
   secretSharingDAL
 }: TSecretSharingServiceFactoryDep) => {
   const createSharedSecret = async (createSharedSecretInput: TCreateSharedSecretDTO) => {
-    const { actor, actorId, orgId, actorAuthMethod, actorOrgId, name, encryptedValue, iv, tag, hashedHex, expiresAt } =
-      createSharedSecretInput;
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    if (!permission) throw new UnauthorizedError({ name: "User not in org" });
-    const newSharedSecret = await secretSharingDAL.create({
-      name,
+    const {
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId,
       encryptedValue,
       iv,
       tag,
       hashedHex,
       expiresAt,
+      expiresAfterViews
+    } = createSharedSecretInput;
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    if (!permission) throw new UnauthorizedError({ name: "User not in org" });
+    const newSharedSecret = await secretSharingDAL.create({
+      encryptedValue,
+      iv,
+      tag,
+      hashedHex,
+      expiresAt,
+      expiresAfterViews,
       userId: actorId,
       orgId
     });
@@ -43,8 +54,17 @@ export const secretSharingServiceFactory = ({
 
   const getActiveSharedSecretByIdAndHashedHex = async (sharedSecretId: string, hashedHex: string) => {
     const sharedSecret = await secretSharingDAL.findOne({ id: sharedSecretId, hashedHex });
-    if (sharedSecret && sharedSecret.expiresAt < new Date()) {
+    if (sharedSecret.expiresAt && sharedSecret.expiresAt < new Date()) {
       return;
+    }
+    if (sharedSecret.expiresAfterViews != null && sharedSecret.expiresAfterViews >= 0) {
+      if (sharedSecret.expiresAfterViews === 0) {
+        await secretSharingDAL.deleteById(sharedSecretId);
+        return;
+      }
+      await secretSharingDAL.updateById(sharedSecretId, {
+        expiresAfterViews: sharedSecret.expiresAfterViews - 1
+      });
     }
     return sharedSecret;
   };

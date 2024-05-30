@@ -9,16 +9,16 @@ import { TImmutableDBKeys } from "./models";
 
 export const SecretSharingSchema = z.object({
   id: z.string().uuid(),
-  name: z.string(),
   encryptedValue: z.string(),
   iv: z.string(),
   tag: z.string(),
   hashedHex: z.string(),
-  expiresAt: z.date(),
+  expiresAt: z.date().nullable().optional(),
   userId: z.string().uuid(),
   orgId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  expiresAfterViews: z.number().nullable().optional()
 });
 
 export type TSecretSharing = z.infer<typeof SecretSharingSchema>;

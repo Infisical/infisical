@@ -8,7 +8,15 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const formatDate = (date: Date): string => (date ? new Date(date).toUTCString() : "");
 
-const isExpired = (expiresAt: Date): boolean => new Date(expiresAt) < new Date();
+const isExpired = (expiresAt: Date | number | undefined): boolean => {
+  if (typeof expiresAt === "number") {
+    return expiresAt <= 0;
+  }
+  if (expiresAt instanceof Date) {
+    return new Date(expiresAt) < new Date();
+  }
+  return false;
+};
 
 const getValidityStatusText = (expiresAt: Date): string =>
   isExpired(expiresAt) ? "Expired " : "Valid for ";
@@ -26,31 +34,38 @@ const timeAgo = (inputDate: Date, currentDate: Date): string => {
   const elapsedYears = Math.abs(Math.floor(elapsedDays / 365));
 
   if (elapsedYears > 0) {
-    return `${elapsedYears} year${elapsedYears === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
-      }`;
+    return `${elapsedYears} year${elapsedYears === 1 ? "" : "s"} ${
+      elapsedMilliseconds >= 0 ? "ago" : "from now"
+    }`;
   }
   if (elapsedMonths > 0) {
-    return `${elapsedMonths} month${elapsedMonths === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
-      }`;
+    return `${elapsedMonths} month${elapsedMonths === 1 ? "" : "s"} ${
+      elapsedMilliseconds >= 0 ? "ago" : "from now"
+    }`;
   }
   if (elapsedWeeks > 0) {
-    return `${elapsedWeeks} week${elapsedWeeks === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
-      }`;
+    return `${elapsedWeeks} week${elapsedWeeks === 1 ? "" : "s"} ${
+      elapsedMilliseconds >= 0 ? "ago" : "from now"
+    }`;
   }
   if (elapsedDays > 0) {
-    return `${elapsedDays} day${elapsedDays === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
-      }`;
+    return `${elapsedDays} day${elapsedDays === 1 ? "" : "s"} ${
+      elapsedMilliseconds >= 0 ? "ago" : "from now"
+    }`;
   }
   if (elapsedHours > 0) {
-    return `${elapsedHours} hour${elapsedHours === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
-      }`;
+    return `${elapsedHours} hour${elapsedHours === 1 ? "" : "s"} ${
+      elapsedMilliseconds >= 0 ? "ago" : "from now"
+    }`;
   }
   if (elapsedMinutes > 0) {
-    return `${elapsedMinutes} minute${elapsedMinutes === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
-      }`;
-  }
-  return `${elapsedSeconds} second${elapsedSeconds === 1 ? "" : "s"} ${elapsedMilliseconds >= 0 ? "ago" : "from now"
+    return `${elapsedMinutes} minute${elapsedMinutes === 1 ? "" : "s"} ${
+      elapsedMilliseconds >= 0 ? "ago" : "from now"
     }`;
+  }
+  return `${elapsedSeconds} second${elapsedSeconds === 1 ? "" : "s"} ${
+    elapsedMilliseconds >= 0 ? "ago" : "from now"
+  }`;
 };
 
 export const ShareSecretsRow = ({
@@ -82,29 +97,41 @@ export const ShareSecretsRow = ({
   }, []);
 
   useEffect(() => {
-    if (isExpired(row.expiresAt)) {
+    if (isExpired(row.expiresAt || row.expiresAfterViews)) {
       onSecretExpiration(row.id);
     }
-  }, [isExpired(row.expiresAt)]);
+  }, [isExpired(row.expiresAt || row.expiresAfterViews)]);
 
   return (
     <Tr key={row.id}>
-      <Td>{row.name}</Td>
+      <Td>{`${row.encryptedValue.substring(0, 5)}...`}</Td>
       <Td>
         <p className="text-sm text-yellow-400">{timeAgo(row.createdAt, currentTime)}</p>
         <p className="text-xs text-gray-500">{formatDate(row.createdAt)}</p>
       </Td>
       <Td>
-        <p className={`text-sm ${isExpired(row.expiresAt) ? "text-red-500" : "text-green-500"}`}>
-          {getValidityStatusText(row.expiresAt) + timeAgo(row.expiresAt, currentTime)}
-        </p>
-        <p className="text-xs text-gray-500">{formatDate(row.expiresAt)}</p>
+        {row.expiresAfterViews ? (
+          <p
+            className={`text-sm ${row.expiresAfterViews <= 0 ? "text-red-500" : "text-green-500"}`}
+          >
+            Valid for {row.expiresAfterViews} more views
+          </p>
+        ) : (
+          <>
+            <p
+              className={`text-sm ${isExpired(row.expiresAt) ? "text-red-500" : "text-green-500"}`}
+            >
+              {getValidityStatusText(row.expiresAt!) + timeAgo(row.expiresAt!, currentTime)}
+            </p>
+            <p className="text-xs text-gray-500">{formatDate(row.expiresAt!)}</p>
+          </>
+        )}
       </Td>
       <Td>
         <IconButton
           onClick={() =>
             handlePopUpOpen("deleteSharedSecretConfirmation", {
-              name: row.name,
+              name: "delete",
               id: row.id
             })
           }

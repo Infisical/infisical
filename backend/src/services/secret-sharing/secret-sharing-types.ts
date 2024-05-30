@@ -9,12 +9,12 @@ export type TSharedSecretPermission = {
 };
 
 export type TCreateSharedSecretDTO = {
-  name: string;
   encryptedValue: string;
   iv: string;
   tag: string;
   hashedHex: string;
-  expiresAt: Date;
+  expiresAt?: Date;
+  expiresAfterViews?: number;
 } & TSharedSecretPermission;
 
 export type TDeleteSharedSecretDTO = {
