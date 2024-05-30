@@ -30,20 +30,17 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useResyncSecretReplication } from "@app/hooks/api";
+import { TSecretImport } from "@app/hooks/api/types";
 
 type Props = {
   onDelete: () => void;
   environment: string;
   secretPath?: string;
-  isReplication?: boolean;
-  isReplicationSuccess?: boolean;
-  replicationStatus?: string;
-  lastReplicated?: string;
-  importEnvName: string;
-  importEnvPath: string;
+  secretImport?: TSecretImport;
+  isReplicationExpand?: boolean;
   importedSecrets: { key: string; value: string; overriden: { env: string; secretPath: string } }[];
   searchTerm: string;
-  id: string;
+  onExpandReplicateSecrets: (id: string) => void;
 };
 
 // to show the environment and folder icon
@@ -70,25 +67,29 @@ export const EnvFolderIcon = ({
 
 export const SecretImportItem = ({
   onDelete,
-  id,
-  importEnvName,
-  importEnvPath,
-  isReplication,
+  isReplicationExpand,
   importedSecrets = [],
   searchTerm = "",
   secretPath,
   environment,
-  isReplicationSuccess,
-  replicationStatus,
-  lastReplicated
+  secretImport,
+  onExpandReplicateSecrets: onExpandReplicate
 }: Props) => {
+  const {
+    isReserved,
+    id,
+    isReplication,
+    isReplicationSuccess,
+    replicationStatus,
+    lastReplicated,
+    importEnv
+  } = secretImport as TSecretImport;
   const { currentWorkspace } = useWorkspace();
   const [isExpanded, setIsExpanded] = useToggle();
   const { attributes, listeners, transform, transition, setNodeRef, isDragging } = useSortable({
     id
   });
   const resyncSecretReplication = useResyncSecretReplication();
-
   useEffect(() => {
     const filteredSecrets = importedSecrets.filter((secret) =>
       secret.key.toUpperCase().includes(searchTerm.toUpperCase())
@@ -134,24 +135,39 @@ export const SecretImportItem = ({
     }
   };
 
+  const handleRowClick = () => {
+    if (isReplication) {
+      onExpandReplicate(id);
+    } else {
+      setIsExpanded.toggle();
+    }
+  };
+
   return (
     <>
       <div
-        className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
+        className={twMerge(
+          "group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700",
+          isReserved && "hidden"
+        )}
         role="button"
         ref={setNodeRef}
         tabIndex={0}
         style={style}
-        onClick={() => setIsExpanded.toggle()}
-        onKeyDown={() => setIsExpanded.toggle()}
+        onClick={handleRowClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleRowClick();
+          }
+        }}
       >
         <div className="flex w-12 items-center px-4 py-2 text-green-700">
           <FontAwesomeIcon icon={faFileImport} />
         </div>
         <div className="flex flex-grow items-center px-4 py-2">
           <EnvFolderIcon
-            env={importEnvName || ""}
-            secretPath={importEnvPath}
+            env={importEnv.slug || ""}
+            secretPath={secretImport?.importPath || ""}
             isReplication={isReplication}
           />
         </div>
@@ -193,29 +209,31 @@ export const SecretImportItem = ({
               </div>
             </Tooltip>
           )}
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Edit}
-            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
-            renderTooltip
-            allowedLabel="Resync replicated secrets"
-          >
-            {(isAllowed) => (
-              <IconButton
-                size="md"
-                colorSchema="primary"
-                variant="plain"
-                ariaLabel="expand"
-                className={twMerge(
-                  "p-0 opacity-0 group-hover:opacity-100",
-                  resyncSecretReplication.isLoading && "animate-spin opacity-100"
-                )}
-                isDisabled={!isAllowed}
-                onClick={handleResyncSecretReplication}
-              >
-                <FontAwesomeIcon icon={faRotate} />
-              </IconButton>
-            )}
-          </ProjectPermissionCan>
+          {isReplication && (
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Edit}
+              a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+              renderTooltip
+              allowedLabel="Resync replicated secrets"
+            >
+              {(isAllowed) => (
+                <IconButton
+                  size="md"
+                  colorSchema="primary"
+                  variant="plain"
+                  ariaLabel="expand"
+                  className={twMerge(
+                    "p-0 opacity-0 group-hover:opacity-100",
+                    resyncSecretReplication.isLoading && "animate-spin opacity-100"
+                  )}
+                  isDisabled={!isAllowed}
+                  onClick={handleResyncSecretReplication}
+                >
+                  <FontAwesomeIcon icon={faRotate} />
+                </IconButton>
+              )}
+            </ProjectPermissionCan>
+          )}
         </div>
         <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-4 py-2">
           <ProjectPermissionCan
@@ -264,7 +282,7 @@ export const SecretImportItem = ({
           </ProjectPermissionCan>
         </div>
       </div>
-      {!isReplication && isExpanded && !isDragging && (
+      {!isReplication && (isReplicationExpand || isExpanded) && !isDragging && (
         <td
           colSpan={3}
           className={`bg-bunker-800 ${isExpanded && "border-b-2 border-mineshaft-500"}`}

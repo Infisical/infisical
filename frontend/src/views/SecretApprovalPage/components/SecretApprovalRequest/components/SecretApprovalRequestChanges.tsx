@@ -20,6 +20,7 @@ import {
   useUpdateSecretApprovalReviewStatus
 } from "@app/hooks/api";
 import { ApprovalStatus, CommitType, TWorkspaceUser } from "@app/hooks/api/types";
+import { formatReservedPaths } from "@app/lib/fn/string";
 
 import { SecretApprovalRequestAction } from "./SecretApprovalRequestAction";
 import { SecretApprovalRequestChangeItem } from "./SecretApprovalRequestChangeItem";
@@ -200,7 +201,9 @@ export const SecretApprovalRequestChanges = ({
                 <div className="border-r border-mineshaft-500 pr-1">
                   <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
                 </div>
-                <div className="pl-2 pb-0.5 text-sm">{secretApprovalRequestDetails.secretPath}</div>
+                <div className="pl-2 pb-0.5 text-sm">
+                  {formatReservedPaths(secretApprovalRequestDetails.secretPath)}
+                </div>
               </div>
             </div>
           </div>

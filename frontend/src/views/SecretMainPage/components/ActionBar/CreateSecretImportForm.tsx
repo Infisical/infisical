@@ -6,7 +6,6 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  Checkbox,
   FormControl,
   Modal,
   ModalContent,
@@ -151,11 +150,25 @@ export const CreateSecretImportForm = ({
             name="isReplication"
             control={control}
             defaultValue={false}
-            render={({ field }) => (
-              <Checkbox isChecked={field.value} onCheckedChange={field.onChange} id="isReplication">
-                Enable replication to synchronize changes. <br /> Warning: This will overwrite any
-                existing secrets with the same name.
-              </Checkbox>
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                isError={Boolean(error?.message)}
+                errorText={error?.message}
+                helperText={
+                  value
+                    ? "Manual control over when updates propagate in approval mode, giving you the flexibility to push changes as needed."
+                    : "Instantaneous updates from the linked source on approval mode, ensuring real-time synchronization."
+                }
+              >
+                <Select
+                  value={value ? "true" : "false"}
+                  onValueChange={(val) => onChange(val === "true")}
+                  className="w-full border border-mineshaft-500"
+                >
+                  <SelectItem value="false">Linked Mode</SelectItem>
+                  <SelectItem value="true">Replication Mode</SelectItem>
+                </Select>
+              </FormControl>
             )}
           />
           <div className="mt-7 flex items-center">

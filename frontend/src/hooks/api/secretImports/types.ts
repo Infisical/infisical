@@ -10,6 +10,7 @@ export type TSecretImport = {
   position: string;
   createdAt: string;
   updatedAt: string;
+  isReserved?: boolean;
   isReplication?: boolean;
   isReplicationSuccess?: boolean;
   replicationStatus?: string;
