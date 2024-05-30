@@ -86,7 +86,7 @@ export const secretImportServiceFactory = ({
     );
     if (isReplication) {
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.secretReplication) {
+      if (!plan.secretApproval) {
         throw new BadRequestError({
           message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
         });
@@ -338,7 +338,7 @@ export const secretImportServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretReplication) {
+    if (!plan.secretApproval) {
       throw new BadRequestError({
         message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
       });

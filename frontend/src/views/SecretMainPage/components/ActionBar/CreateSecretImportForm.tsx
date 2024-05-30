@@ -69,7 +69,7 @@ export const CreateSecretImportForm = ({
     isReplication
   }: TFormSchema) => {
     try {
-      if (isReplication && !subscription?.secretReplication) {
+      if (isReplication && !subscription?.secretApproval) {
         onUpgradePlan();
         return;
       }

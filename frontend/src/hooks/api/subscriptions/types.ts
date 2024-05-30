@@ -24,7 +24,6 @@ export type SubscriptionPlan = {
   scim: boolean;
   ldap: boolean;
   groups: boolean;
-  secretReplication: boolean;
   status:
   | "incomplete"
   | "incomplete_expired"
