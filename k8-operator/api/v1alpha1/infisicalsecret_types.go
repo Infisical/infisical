@@ -11,11 +11,23 @@ type Authentication struct {
 	ServiceToken ServiceTokenDetails `json:"serviceToken"`
 	// +kubebuilder:validation:Optional
 	UniversalAuth UniversalAuthDetails `json:"universalAuth"`
+	// +kubebuilder:validation:Optional
+	Kubernetes KubernetesAuthDetails `json:"kubernetes"`
 }
 
 type UniversalAuthDetails struct {
 	// +kubebuilder:validation:Required
 	CredentialsRef KubeSecretReference `json:"credentialsRef"`
+	// +kubebuilder:validation:Required
+	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
+}
+
+type KubernetesAuthDetails struct {
+	// +kubebuilder:validation:Required
+	IdentityId string `json:"identityId"`
+	// +kubebuilder:validation:Optional
+	ServiceAccountTokenPath string `json:"serviceAccountTokenPath"`
+
 	// +kubebuilder:validation:Required
 	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
 }
