@@ -11,6 +11,13 @@ export enum CaStatus {
   PENDING_CERTIFICATE = "pending-certificate"
 }
 
+export enum CertKeyAlgorithm {
+  RSA_2048 = "RSA_2048",
+  RSA_4096 = "RSA_4096",
+  ECDSA_P256 = "EC_prime256v1",
+  ECDSA_P384 = "EC_secp384r1"
+}
+
 export type TCreateCaDTO = {
   projectSlug: string;
   type: CaType;
@@ -22,7 +29,8 @@ export type TCreateCaDTO = {
   locality: string;
   notBefore?: string;
   notAfter?: string;
-  maxPathLength?: number;
+  maxPathLength: number;
+  keyAlgorithm: CertKeyAlgorithm;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCaDTO = {

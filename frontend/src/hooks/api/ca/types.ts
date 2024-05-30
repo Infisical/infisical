@@ -1,3 +1,4 @@
+import { CertKeyAlgorithm } from "../certificates/enums";
 import { CaStatus, CaType } from "./enums";
 
 export type TCertificateAuthority = {
@@ -16,6 +17,7 @@ export type TCertificateAuthority = {
   maxPathLength?: number;
   notAfter?: string;
   notBefore?: string;
+  keyAlgorithm: CertKeyAlgorithm;
   createdAt: string;
   updatedAt: string;
 };
@@ -31,6 +33,7 @@ export type TCreateCaDTO = {
   commonName: string;
   notAfter?: string;
   maxPathLength: number;
+  keyAlgorithm: CertKeyAlgorithm;
 };
 
 export type TUpdateCaDTO = {

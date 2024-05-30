@@ -17,6 +17,8 @@ import {
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { CaType, useCreateCa, useGetCaById } from "@app/hooks/api/ca";
+import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
+import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const isValidDate = (dateString: string) => {
@@ -40,7 +42,13 @@ const schema = z
     locality: z.string(),
     commonName: z.string(),
     notAfter: z.string().trim().refine(isValidDate, { message: "Invalid date format" }),
-    maxPathLength: z.string()
+    maxPathLength: z.string(),
+    keyAlgorithm: z.enum([
+      CertKeyAlgorithm.RSA_2048,
+      CertKeyAlgorithm.RSA_4096,
+      CertKeyAlgorithm.ECDSA_P256,
+      CertKeyAlgorithm.ECDSA_P384
+    ])
   })
   .required();
 
@@ -80,7 +88,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
       locality: "",
       commonName: "",
       notAfter: getDateTenYearsFromToday(),
-      maxPathLength: "-1"
+      maxPathLength: "-1",
+      keyAlgorithm: CertKeyAlgorithm.RSA_2048
     }
   });
 
@@ -97,7 +106,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         locality: ca.locality,
         commonName: ca.commonName,
         notAfter: ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "",
-        maxPathLength: ca.maxPathLength ? String(ca.maxPathLength) : ""
+        maxPathLength: ca.maxPathLength ? String(ca.maxPathLength) : "",
+        keyAlgorithm: ca.keyAlgorithm
       });
     } else {
       reset({
@@ -109,7 +119,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         locality: "",
         commonName: "",
         notAfter: getDateTenYearsFromToday(),
-        maxPathLength: "-1"
+        maxPathLength: "-1",
+        keyAlgorithm: CertKeyAlgorithm.RSA_2048
       });
     }
   }, [ca]);
@@ -123,7 +134,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     locality,
     province,
     notAfter,
-    maxPathLength
+    maxPathLength,
+    keyAlgorithm
   }: FormData) => {
     try {
       if (!currentWorkspace?.slug) return;
@@ -138,7 +150,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         province,
         locality,
         notAfter,
-        maxPathLength: Number(maxPathLength)
+        maxPathLength: Number(maxPathLength),
+        keyAlgorithm
       });
 
       reset();
@@ -269,6 +282,32 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
               />
             </>
           )}
+          <Controller
+            control={control}
+            name="keyAlgorithm"
+            defaultValue={CertKeyAlgorithm.RSA_2048}
+            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <FormControl
+                label="Key Algorithm"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
+                <Select
+                  defaultValue={field.value}
+                  {...field}
+                  onValueChange={(e) => onChange(e)}
+                  className="w-full"
+                  isDisabled={Boolean(ca)}
+                >
+                  {certKeyAlgorithms.map(({ label, value }) => (
+                    <SelectItem value={String(value || "")} key={label}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          />
           <Controller
             control={control}
             defaultValue=""

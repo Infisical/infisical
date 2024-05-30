@@ -13,11 +13,12 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TCertStatus } from "../certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
-import { createDistinguishedName } from "./certificate-authority-fns";
+import { createDistinguishedName, keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { TCertificateAuthoritySkDALFactory } from "./certificate-authority-sk-dal";
 import {
   CaStatus,
   CaType,
+  CertKeyAlgorithm,
   TCreateCaDTO,
   TDeleteCaDTO,
   TGetCaCertDTO,
@@ -68,6 +69,7 @@ export const certificateAuthorityServiceFactory = ({
     notBefore,
     notAfter,
     maxPathLength,
+    keyAlgorithm,
     actorId,
     actorAuthMethod,
     actor,
@@ -98,12 +100,7 @@ export const certificateAuthorityServiceFactory = ({
       locality
     });
 
-    const alg = {
-      name: "RSASSA-PKCS1-v1_5",
-      hash: "SHA-256",
-      publicExponent: new Uint8Array([1, 0, 1]),
-      modulusLength: 2048
-    };
+    const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
     const keys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
@@ -133,7 +130,13 @@ export const certificateAuthorityServiceFactory = ({
           commonName,
           status: type === CaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
           dn,
-          ...(type === CaType.ROOT && { maxPathLength, notBefore: notBeforeDate, notAfter: notAfterDate, serialNumber })
+          keyAlgorithm,
+          ...(type === CaType.ROOT && {
+            maxPathLength,
+            notBefore: notBeforeDate,
+            notAfter: notAfterDate,
+            serialNumber
+          })
         },
         tx
       );
@@ -272,12 +275,7 @@ export const certificateAuthorityServiceFactory = ({
 
     const caKeys = await certificateAuthoritySkDAL.findOne({ caId: ca.id });
 
-    const alg = {
-      name: "RSASSA-PKCS1-v1_5",
-      hash: "SHA-256",
-      publicExponent: new Uint8Array([1, 0, 1]),
-      modulusLength: 2048
-    };
+    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
 
     const skObj = crypto.createPrivateKey({ key: caKeys.sk, format: "pem", type: "pkcs8" });
     const pkObj = crypto.createPublicKey({ key: caKeys.pk, format: "pem", type: "spki" });
@@ -371,12 +369,7 @@ export const certificateAuthorityServiceFactory = ({
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
 
-    const alg = {
-      name: "RSASSA-PKCS1-v1_5",
-      hash: "SHA-256",
-      publicExponent: new Uint8Array([1, 0, 1]),
-      modulusLength: 2048
-    };
+    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
 
     const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
     const caKeys = await certificateAuthoritySkDAL.findOne({ caId: ca.id });
@@ -566,12 +559,7 @@ export const certificateAuthorityServiceFactory = ({
 
     const caCertObj = new x509.X509Certificate(caCert.certificate);
 
-    const alg = {
-      name: "RSASSA-PKCS1-v1_5",
-      hash: "SHA-256",
-      publicExponent: new Uint8Array([1, 0, 1]),
-      modulusLength: 2048
-    };
+    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
 
     const caKeys = await certificateAuthoritySkDAL.findOne({ caId: ca.id });
 

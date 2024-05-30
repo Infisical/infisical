@@ -55,6 +55,7 @@ consisting of a root CA and an intermediate CA using the Infisical UI.
 
         - Valid Until: The date until which the CA is valid in the date time string format specified [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format). For example, the following formats would be valid: `YYYY`, `YYYY-MM`, `YYYY-MM-DD`, `YYYY-MM-DDTHH:mm:ss.sssZ`.
         - Path Length: The maximum number of intermediate CAs that can be chained to this CA. A path of `-1` implies no limit; a path of `0` implies no intermediate CAs can be chained.
+        - Key Algorithm: The type of public key algorithm and size, in bits, of the key pair that the CA creates when it issues a certificate. Supported key algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384` with the default being `RSA 2048`.
         - Organization (O): The organization name.
         - Country (C): The country code.
         - State or Province Name: The state or province.
@@ -98,9 +99,8 @@ consisting of a root CA and an intermediate CA using the Infisical UI.
 ## FAQ
 
 <AccordionGroup>
-  <Accordion title="What algorithms are supported as part of private key generation and certificate signing?">
-    Infisical currently only supports `RSA_2048` and `SHA256WITHRSA` for the
-    private key and signing algorithm. We are working to add support for more
-    algorithms in the future.
+  <Accordion title="What key algorithms are supported as part of private key generation and certificate signing?">
+    Infisical supports `RSA 2048`, `RSA 4096`, `ECDSA P-256`, `ECDSA P-384` key
+    algorithms specified at the time of creating a CA.
   </Accordion>
 </AccordionGroup>

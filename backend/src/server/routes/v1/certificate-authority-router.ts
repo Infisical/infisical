@@ -4,7 +4,7 @@ import { CertificateAuthoritiesSchema } from "@app/db/schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-types";
+import { CaStatus, CaType, CertKeyAlgorithm } from "@app/services/certificate-authority/certificate-authority-types";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 
 export const registerCaRouter = async (server: FastifyZodProvider) => {
@@ -30,7 +30,15 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           // format: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional(),
-          maxPathLength: z.number().min(-1).optional()
+          maxPathLength: z.number().min(-1).default(-1),
+          keyAlgorithm: z
+            .enum([
+              CertKeyAlgorithm.RSA_2048,
+              CertKeyAlgorithm.RSA_4096,
+              CertKeyAlgorithm.ECDSA_P256,
+              CertKeyAlgorithm.ECDSA_P384
+            ])
+            .default(CertKeyAlgorithm.RSA_2048)
         })
         .refine(
           (data) => {

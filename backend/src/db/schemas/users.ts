@@ -23,8 +23,8 @@ export const UsersSchema = z.object({
   isGhost: z.boolean().default(false),
   username: z.string(),
   isEmailVerified: z.boolean().default(false).nullable().optional(),
-  consecutiveFailedMfaAttempts: z.number().optional(),
-  isLocked: z.boolean().optional(),
+  consecutiveFailedMfaAttempts: z.number().default(0).nullable().optional(),
+  isLocked: z.boolean().default(false).nullable().optional(),
   temporaryLockDateEnd: z.date().nullable().optional()
 });
 

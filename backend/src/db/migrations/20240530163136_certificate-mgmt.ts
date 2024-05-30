@@ -25,6 +25,7 @@ export async function up(knex: Knex): Promise<void> {
       t.unique(["dn", "projectId"]);
       t.string("serialNumber").nullable().unique();
       t.integer("maxPathLength").nullable();
+      t.string("keyAlgorithm").notNullable();
       t.datetime("notBefore").nullable();
       t.datetime("notAfter").nullable();
     });
