@@ -276,7 +276,11 @@ export const secretFolderServiceFactory = ({
     }
 
     const newFolder = await folderDAL.transaction(async (tx) => {
-      const [doc] = await folderDAL.update({ envId: env.id, id: folder.id, parentId: parentFolder.id }, { name }, tx);
+      const [doc] = await folderDAL.update(
+        { envId: env.id, id: folder.id, parentId: parentFolder.id, isReserved: false },
+        { name },
+        tx
+      );
       await folderVersionDAL.create(
         {
           name: doc.name,
@@ -354,7 +358,7 @@ export const secretFolderServiceFactory = ({
     const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!parentFolder) return [];
 
-    const folders = await folderDAL.find({ envId: env.id, parentId: parentFolder.id });
+    const folders = await folderDAL.find({ envId: env.id, parentId: parentFolder.id, isReserved: false });
 
     return folders;
   };

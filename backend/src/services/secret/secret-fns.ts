@@ -151,7 +151,8 @@ export const recursivelyGetSecretPaths = ({
 
     // Fetch all folders in env once with a single query
     const folders = await folderDAL.find({
-      envId: env.id
+      envId: env.id,
+      isReserved: false
     });
 
     // Build the folder hierarchy map

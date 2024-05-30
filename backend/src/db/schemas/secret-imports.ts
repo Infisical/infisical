@@ -19,7 +19,8 @@ export const SecretImportsSchema = z.object({
   isReplication: z.boolean().default(false).nullable().optional(),
   isReplicationSuccess: z.boolean().nullable().optional(),
   replicationStatus: z.string().nullable().optional(),
-  lastReplicated: z.date().nullable().optional()
+  lastReplicated: z.date().nullable().optional(),
+  isReserved: z.boolean().default(false).nullable().optional()
 });
 
 export type TSecretImports = z.infer<typeof SecretImportsSchema>;

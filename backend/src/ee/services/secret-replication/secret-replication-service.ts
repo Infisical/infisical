@@ -18,6 +18,7 @@ import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-da
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { ReservedFolders } from "@app/services/secret-folder/secret-folder-types";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
@@ -31,7 +32,7 @@ type TSecretReplicationServiceFactoryDep = {
   >;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "find" | "insertMany" | "update" | "findLatestVersionMany">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "updateById">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPath">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPath" | "create" | "findOne">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "find" | "insertMany">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
@@ -52,6 +53,7 @@ export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicati
 const SECRET_IMPORT_SUCCESS_LOCK = 10;
 const keystoreReplicationSuccessKey = (jobId: string, secretImportId: string) => `${jobId}-${secretImportId}`;
 const getReplicationKeyLockPrefix = (keyName: string) => `REPLICATION_SECRET_${keyName}`;
+export const getReplicationFolderName = (importId: string) => `${ReservedFolders.SecretReplication}${importId}`;
 
 export const secretReplicationServiceFactory = ({
   secretReplicationDAL,
@@ -67,7 +69,6 @@ export const secretReplicationServiceFactory = ({
   secretApprovalRequestSecretDAL,
   secretApprovalRequestDAL,
   secretQueueService,
-  snapshotService,
   projectMembershipDAL
 }: TSecretReplicationServiceFactoryDep) => {
   queueService.start(QueueName.SecretReplication, async (job) => {
@@ -131,11 +132,25 @@ export const secretReplicationServiceFactory = ({
 
           const [importedFolder] = await folderDAL.findSecretPathByFolderIds(projectId, [secretImport.folderId]);
           if (!importedFolder) throw new BadRequestError({ message: "Imported folder not found" });
-          const importFolderId = importedFolder.id;
+
+          let replicationFolder = await folderDAL.findOne({
+            parentId: importedFolder.id,
+            name: getReplicationFolderName(secretImport.id),
+            isReserved: true
+          });
+          if (!replicationFolder) {
+            replicationFolder = await folderDAL.create({
+              parentId: importedFolder.id,
+              name: getReplicationFolderName(secretImport.id),
+              envId: importedFolder.envId,
+              isReserved: true
+            });
+          }
+          const replicationFolderId = replicationFolder.id;
 
           const localSecrets = await secretDAL.find({
             $in: { secretBlindIndex: replicatedSecrets.map(({ secretBlindIndex }) => secretBlindIndex) },
-            folderId: importFolderId
+            folderId: replicationFolderId
           });
           const localSecretsGroupedByBlindIndex = groupBy(localSecrets, (i) => i.secretBlindIndex as string);
 
@@ -181,13 +196,13 @@ export const secretReplicationServiceFactory = ({
 
             const localSecretsLatestVersions = localSecrets.map(({ id }) => id);
             const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
-              importFolderId,
+              replicationFolderId,
               localSecretsLatestVersions
             );
             await secretApprovalRequestDAL.transaction(async (tx) => {
               const approvalRequestDoc = await secretApprovalRequestDAL.create(
                 {
-                  folderId: importFolderId,
+                  folderId: replicationFolderId,
                   slug: alphaNumericNanoId(),
                   policyId: policy.id,
                   status: "open",
@@ -237,7 +252,7 @@ export const secretReplicationServiceFactory = ({
             await secretReplicationDAL.transaction(async (tx) => {
               if (locallyCreatedSecrets.length) {
                 const newSecrets = await fnSecretBulkInsert({
-                  folderId: importFolderId,
+                  folderId: replicationFolderId,
                   secretVersionDAL,
                   secretDAL,
                   tx,
@@ -272,7 +287,7 @@ export const secretReplicationServiceFactory = ({
               if (locallyUpdatedSecrets.length) {
                 const newSecrets = await fnSecretBulkUpdate({
                   projectId,
-                  folderId: importFolderId,
+                  folderId: replicationFolderId,
                   secretVersionDAL,
                   secretDAL,
                   tx,
@@ -282,7 +297,7 @@ export const secretReplicationServiceFactory = ({
                     const doc = replicatedSecretsGroupBySecretId[id][0];
                     return {
                       filter: {
-                        folderId: importFolderId,
+                        folderId: replicationFolderId,
                         id: localSecretsGroupedByBlindIndex[doc.secretBlindIndex as string][0].id
                       },
                       data: {
@@ -317,7 +332,7 @@ export const secretReplicationServiceFactory = ({
                       id: locallyDeletedSecrets.map(({ id }) => id)
                     },
                     isReplicated: true,
-                    folderId: importFolderId
+                    folderId: replicationFolderId
                   },
                   tx
                 );
@@ -326,14 +341,6 @@ export const secretReplicationServiceFactory = ({
                 );
               }
             });
-
-            const folderLock = await keyStore
-              .acquireLock([`secret-replication-${importFolderId}`], 5000)
-              .catch(() => null);
-            if (folderLock) {
-              await snapshotService.performSnapshot(importFolderId);
-              await folderLock.release();
-            }
 
             await secretQueueService.syncSecrets({
               projectId,

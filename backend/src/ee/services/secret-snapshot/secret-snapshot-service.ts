@@ -220,7 +220,7 @@ export const secretSnapshotServiceFactory = ({
       const deletedTopLevelSecsGroupById = groupBy(deletedTopLevelSecs, (item) => item.id);
       // this will remove all secrets and folders on child
       // due to sql foreign key and link list connection removing the folders removes everything below too
-      const deletedFolders = await folderDAL.delete({ parentId: snapshot.folderId }, tx);
+      const deletedFolders = await folderDAL.delete({ parentId: snapshot.folderId, isReserved: false }, tx);
       const deletedTopLevelFolders = groupBy(
         deletedFolders.filter(({ parentId }) => parentId === snapshot.folderId),
         (item) => item.id

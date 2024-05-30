@@ -601,7 +601,7 @@ export const secretApprovalRequestServiceFactory = ({
       // same process as above
       const nameUpdatedSecrets = updatedSecrets.filter(({ newSecretName }) => Boolean(newSecretName));
       const { keyName2BlindIndex: newKeyName2BlindIndex } = await fnSecretBlindIndexCheck({
-        inputSecrets: nameUpdatedSecrets,
+        inputSecrets: nameUpdatedSecrets.map(({ newSecretName }) => ({ secretName: newSecretName as string })),
         folderId,
         isNew: true,
         blindIndexCfg,
@@ -618,7 +618,7 @@ export const secretApprovalRequestServiceFactory = ({
           const secretId = secsGroupedByBlindIndex[keyName2BlindIndex[secretName]][0].id;
           const secretBlindIndex =
             newSecretName && newKeyName2BlindIndex[newSecretName]
-              ? newKeyName2BlindIndex?.[secretName]
+              ? newKeyName2BlindIndex?.[newSecretName]
               : keyName2BlindIndex[secretName];
           // add tags
           if (tagIds?.length) commitTagIds[keyName2BlindIndex[secretName]] = tagIds;
