@@ -139,18 +139,25 @@ export const secretReplicationServiceFactory = ({
           });
           const localSecretsGroupedByBlindIndex = groupBy(localSecrets, (i) => i.secretBlindIndex as string);
 
-          const locallyCreatedSecrets = sanitizedSecrets.filter(({ operation, id }) => {
-            return (
-              (operation === SecretOperations.Create || operation === SecretOperations.Update) &&
-              !localSecretsGroupedByBlindIndex[replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string]?.[0]
-            );
-          });
+          const locallyCreatedSecrets = sanitizedSecrets
+            .filter(
+              ({ operation, id }) =>
+                // upsert: irrespective of create or update its a create if not  found in dashboard
+                (operation === SecretOperations.Create || operation === SecretOperations.Update) &&
+                !localSecretsGroupedByBlindIndex[
+                  replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string
+                ]?.[0]
+            )
+            .map((el) => ({ ...el, operation: SecretOperations.Create })); // rewrite update ops to create
 
-          const locallyUpdatedSecrets = sanitizedSecrets.filter(
-            ({ operation, id }) =>
-              (operation === SecretOperations.Create || operation === SecretOperations.Update) &&
-              localSecretsGroupedByBlindIndex[replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string]?.[0]
-          );
+          const locallyUpdatedSecrets = sanitizedSecrets
+            .filter(
+              ({ operation, id }) =>
+                // upsert: irrespective of create or update its an update if not  found in dashboard
+                (operation === SecretOperations.Create || operation === SecretOperations.Update) &&
+                localSecretsGroupedByBlindIndex[replicatedSecretsGroupBySecretId[id][0].secretBlindIndex as string]?.[0]
+            )
+            .map((el) => ({ ...el, operation: SecretOperations.Update })); // rewrite create ops to update
 
           const locallyDeletedSecrets = sanitizedSecrets.filter(
             ({ operation, id }) =>
@@ -196,6 +203,7 @@ export const secretReplicationServiceFactory = ({
                 .map(({ id, operation }) => {
                   const doc = replicatedSecretsGroupBySecretId[id][0];
                   const localSecret = localSecretsGroupedByBlindIndex[doc.secretBlindIndex as string]?.[0];
+
                   return {
                     op: operation,
                     keyEncoding: doc.keyEncoding,
