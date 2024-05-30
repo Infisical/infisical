@@ -21,6 +21,14 @@ spec:
                 secretsPath: <secrets-path> # Root is "/"
                 recursive: true # Wether or not to use recursive mode (Fetches all secrets in an environment from a given secret path, and all folders inside the path) / defaults to false
 
+            kubernetes:
+                identityId: 2345b5b9-054b-4e88-9c33-a61802bba2c1
+                secretsScope:
+                    projectSlug: test-arou
+                    envSlug: dev # "dev", "staging", "prod", etc..
+                    secretsPath: "/" # Root is "/"
+                    recursive: true # Wether or not to use recursive mode (Fetches all secrets in an environment from a given secret path, and all folders inside the path) / defaults to false
+
         universalAuth:
             secretsScope:
                 projectSlug: <project-slug>
