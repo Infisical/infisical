@@ -4,7 +4,8 @@ import { CertificateAuthoritiesSchema } from "@app/db/schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CaStatus, CaType, CertKeyAlgorithm } from "@app/services/certificate-authority/certificate-authority-types";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-types";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 
 export const registerCaRouter = async (server: FastifyZodProvider) => {
@@ -383,6 +384,38 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         issuingCaCertificate,
         privateKey,
         serialNumber
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:caId/crl",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Get CRL of the CA",
+      params: z.object({
+        caId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          crl: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { crl } = await server.services.certificateAuthority.getCaCrl({
+        caId: req.params.caId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return {
+        crl
       };
     }
   });

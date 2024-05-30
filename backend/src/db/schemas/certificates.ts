@@ -16,7 +16,9 @@ export const CertificatesSchema = z.object({
   serialNumber: z.string(),
   commonName: z.string(),
   notBefore: z.date(),
-  notAfter: z.date()
+  notAfter: z.date(),
+  revokedAt: z.date().nullable().optional(),
+  revocationReason: z.number().nullable().optional()
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

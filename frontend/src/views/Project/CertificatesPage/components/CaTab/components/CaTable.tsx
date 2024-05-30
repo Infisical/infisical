@@ -3,6 +3,7 @@ import {
   faCertificate,
   faEllipsis,
   faEye,
+  faFile,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -24,15 +25,18 @@ import {
   Th,
   THead,
   Tooltip,
-  Tr} from "@app/components/v2";
+  Tr
+} from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { CaStatus, useListWorkspaceCas } from "@app/hooks/api";
-import { caStatusToNameMap,caTypeToNameMap } from "@app/hooks/api/ca/constants";
+import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["installCaCert", "caCert", "ca", "deleteCa", "caStatus"]>,
+    popUpName: keyof UsePopUpState<
+      ["installCaCert", "caCert", "ca", "deleteCa", "caStatus", "caCrl"]
+    >,
     data?: {
       caId?: string;
       dn?: string;
@@ -129,6 +133,27 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                               )}
                             </ProjectPermissionCan>
                           )}
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Read}
+                            a={ProjectPermissionSub.CertificateAuthorities}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={async () =>
+                                  handlePopUpOpen("caCrl", {
+                                    caId: ca.id
+                                  })
+                                }
+                                disabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faFile} />}
+                              >
+                                View CRL
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Read}
                             a={ProjectPermissionSub.CertificateAuthorities}

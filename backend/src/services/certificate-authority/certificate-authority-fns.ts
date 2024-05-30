@@ -1,4 +1,5 @@
-import { CertKeyAlgorithm, TDNParts } from "./certificate-authority-types";
+import { CertKeyAlgorithm } from "../certificate/certificate-types";
+import { TDNParts } from "./certificate-authority-types";
 
 export const createDistinguishedName = (parts: TDNParts) => {
   const dnParts = [];

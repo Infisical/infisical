@@ -5,10 +5,11 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { CaStatus,useDeleteCa, useUpdateCa } from "@app/hooks/api";
+import { CaStatus, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CaCertModal } from "./CaCertModal";
+import { CaCrlModal } from "./CaCrlModal";
 import { CaInstallCertModal } from "./CaInstallCertModal";
 import { CaModal } from "./CaModal";
 import { CaTable } from "./CaTable";
@@ -23,7 +24,8 @@ export const CaSection = () => {
     "caCert",
     "installCaCert",
     "deleteCa",
-    "caStatus" // enable / disable
+    "caStatus", // enable / disable
+    "caCrl" // enable / disable
   ] as const);
 
   const onRemoveCaSubmit = async (caId: string) => {
@@ -92,6 +94,7 @@ export const CaSection = () => {
       <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CaCrlModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.deleteCa.isOpen}

@@ -5,17 +5,17 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useDeleteCert, useRevokeCert } from "@app/hooks/api";
+import { useDeleteCert } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CertificateCertModal } from "./CertificateCertModal";
 import { CertificateModal } from "./CertificateModal";
+import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
 
 export const CertificatesSection = () => {
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync: deleteCert } = useDeleteCert();
-  const { mutateAsync: revokeCert } = useRevokeCert();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "certificate",
@@ -45,27 +45,6 @@ export const CertificatesSection = () => {
     }
   };
 
-  const onRevokeCertificateSubmit = async (serialNumber: string) => {
-    try {
-      if (!currentWorkspace?.slug) return;
-
-      await revokeCert({ serialNumber, projectSlug: currentWorkspace.slug });
-
-      await createNotification({
-        text: "Successfully revoked certificate",
-        type: "success"
-      });
-
-      handlePopUpClose("revokeCertificate");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to revoke certificate",
-        type: "error"
-      });
-    }
-  };
-
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
@@ -90,6 +69,7 @@ export const CertificatesSection = () => {
       <CertificatesTable handlePopUpOpen={handlePopUpOpen} />
       <CertificateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteCertificate.isOpen}
         title={`Are you sure want to remove the certificate ${
@@ -100,20 +80,6 @@ export const CertificatesSection = () => {
         onDeleteApproved={() =>
           onRemoveCertificateSubmit(
             (popUp?.deleteCertificate?.data as { serialNumber: string })?.serialNumber
-          )
-        }
-      />
-      <DeleteActionModal
-        isOpen={popUp.revokeCertificate.isOpen}
-        title={`Are you sure want to revoke the certificate ${
-          (popUp?.revokeCertificate?.data as { commonName: string })?.commonName || ""
-        } from the project?`}
-        subTitle="This action is irreversible and will add the certificate to the CRL"
-        onChange={(isOpen) => handlePopUpToggle("revokeCertificate", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
-          onRevokeCertificateSubmit(
-            (popUp?.revokeCertificate?.data as { serialNumber: string }).serialNumber
           )
         }
       />

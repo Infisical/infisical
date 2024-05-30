@@ -1,5 +1,7 @@
 import { TProjectPermission } from "@app/lib/types";
 
+import { CertKeyAlgorithm } from "../certificate/certificate-types";
+
 export enum CaType {
   ROOT = "root",
   INTERMEDIATE = "intermediate"
@@ -9,13 +11,6 @@ export enum CaStatus {
   ACTIVE = "active",
   DISABLED = "disabled",
   PENDING_CERTIFICATE = "pending-certificate"
-}
-
-export enum CertKeyAlgorithm {
-  RSA_2048 = "RSA_2048",
-  RSA_4096 = "RSA_4096",
-  ECDSA_P256 = "EC_prime256v1",
-  ECDSA_P384 = "EC_secp384r1"
 }
 
 export type TCreateCaDTO = {
@@ -74,6 +69,10 @@ export type TIssueCertFromCaDTO = {
   ttl?: number;
   notBefore?: string;
   notAfter?: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetCrl = {
+  caId: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDNParts = {

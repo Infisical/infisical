@@ -4,6 +4,7 @@ import { CertificatesSchema } from "@app/db/schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CrlReason } from "@app/services/certificate/certificate-types";
 
 export const registerCertRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -50,6 +51,19 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         serialNumber: z.string().trim()
       }),
+      body: z.object({
+        revocationReason: z.enum([
+          CrlReason.UNSPECIFIED,
+          CrlReason.KEY_COMPROMISE,
+          CrlReason.CA_COMPROMISE,
+          CrlReason.AFFILIATION_CHANGED,
+          CrlReason.SUPERSEDED,
+          CrlReason.CESSATION_OF_OPERATION,
+          CrlReason.CERTIFICATE_HOLD,
+          CrlReason.PRIVILEGE_WITHDRAWN,
+          CrlReason.A_A_COMPROMISE
+        ])
+      }),
       response: {
         200: z.object({
           message: z.string().trim(),
@@ -59,17 +73,18 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      await server.services.certificate.revokeCert({
+      const { revokedAt } = await server.services.certificate.revokeCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        ...req.body
       });
       return {
         message: "Successfully revoked certificate",
         serialNumber: req.params.serialNumber,
-        revokedAt: new Date()
+        revokedAt
       };
     }
   });

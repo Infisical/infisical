@@ -25,11 +25,14 @@ export const useDeleteCert = () => {
 export const useRevokeCert = () => {
   const queryClient = useQueryClient();
   return useMutation<TCertificate, {}, TRevokeCertDTO>({
-    mutationFn: async ({ serialNumber }) => {
+    mutationFn: async ({ serialNumber, revocationReason }) => {
       const {
         data: { certificate }
       } = await apiRequest.post<{ certificate: TCertificate }>(
-        `/api/v1/pki/certificates/${serialNumber}/revoke`
+        `/api/v1/pki/certificates/${serialNumber}/revoke`,
+        {
+          revocationReason
+        }
       );
       return certificate;
     },

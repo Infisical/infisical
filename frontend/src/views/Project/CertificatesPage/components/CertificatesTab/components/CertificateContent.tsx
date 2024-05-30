@@ -98,7 +98,7 @@ export const CertificateContent = ({
             colorSchema="secondary"
             className="group relative ml-2"
             onClick={() => {
-              downloadTxtFile("certificate.txt", certificate);
+              downloadTxtFile("certificate.pem", certificate);
             }}
           >
             <FontAwesomeIcon icon={faDownload} />
@@ -135,7 +135,7 @@ export const CertificateContent = ({
                 colorSchema="secondary"
                 className="group relative ml-2"
                 onClick={() => {
-                  downloadTxtFile("certificate_chain.txt", certificateChain);
+                  downloadTxtFile("chain.pem", certificateChain);
                 }}
               >
                 <FontAwesomeIcon icon={faDownload} />

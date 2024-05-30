@@ -86,6 +86,7 @@
     "@node-saml/passport-saml": "^4.0.4",
     "@octokit/rest": "^20.0.2",
     "@octokit/webhooks-types": "^7.3.1",
+    "@peculiar/asn1-schema": "^2.3.8",
     "@peculiar/x509": "^1.10.0",
     "@serdnam/pino-cloudwatch-transport": "^1.0.4",
     "@sindresorhus/slugify": "^2.2.1",

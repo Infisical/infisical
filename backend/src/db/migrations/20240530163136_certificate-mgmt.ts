@@ -5,7 +5,6 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.CertificateAuthority))) {
-    // TODO: add algo deets
     await knex.schema.createTable(TableName.CertificateAuthority, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -56,7 +55,6 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   if (!(await knex.schema.hasTable(TableName.Certificate))) {
-    // TODO: consider adding serialNumber
     await knex.schema.createTable(TableName.Certificate, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
@@ -67,6 +65,8 @@ export async function up(knex: Knex): Promise<void> {
       t.string("commonName").notNullable();
       t.datetime("notBefore").notNullable();
       t.datetime("notAfter").notNullable();
+      t.datetime("revokedAt").nullable();
+      t.integer("revocationReason").nullable(); // integer based on crl reason in RFC 5280
     });
   }
 

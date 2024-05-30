@@ -7,10 +7,11 @@ import { TCertificateCertDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 
-import { TDeleteCertDTO, TGetCertCertDTO, TGetCertDTO, TRevokeCertDTO } from "./certificate-types";
+import { revocationReasonToCrlCode } from "./certificate-fns";
+import { CertStatus, TDeleteCertDTO, TGetCertCertDTO, TGetCertDTO, TRevokeCertDTO } from "./certificate-types";
 
 type TCertificateServiceFactoryDep = {
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById">;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update">;
   certificateCertDAL: Pick<TCertificateCertDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -59,7 +60,14 @@ export const certificateServiceFactory = ({
     return deletedCert;
   };
 
-  const revokeCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TRevokeCertDTO) => {
+  const revokeCert = async ({
+    serialNumber,
+    revocationReason,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TRevokeCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
     const ca = await certificateAuthorityDAL.findById(cert.caId);
 
@@ -72,14 +80,22 @@ export const certificateServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
-    // WIP
 
-    // const revocationDate = new Date();
+    if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
 
-    // const serialNumber2 = crypto.randomBytes(16).toString("hex");
-    // const crlEntry = new x509.X509CrlEntry(serialNumber2, new Date(), []);
+    const revokedAt = new Date();
+    await certificateDAL.update(
+      {
+        id: cert.id
+      },
+      {
+        status: CertStatus.REVOKED,
+        revokedAt,
+        revocationReason: revocationReasonToCrlCode(revocationReason)
+      }
+    );
 
-    return {};
+    return { revokedAt };
   };
 
   const getCertCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertCertDTO) => {

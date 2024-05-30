@@ -66,3 +66,14 @@ In the following steps, we explore how to issue a X.509 certificate under a CA u
     </Note>
   </Step>
 </Steps>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="What is the workflow for renewing a certificate?">
+    To renew a certificate, you have to issue a new certificate from the same CA
+    with the same common name as the old certificate. The original certificate
+    will continue to be valid through its original TTL unless explicitly
+    revoked.
+  </Accordion>
+</AccordionGroup>

@@ -18,4 +18,5 @@ export type TDeleteCertDTO = {
 export type TRevokeCertDTO = {
   projectSlug: string;
   serialNumber: string;
+  revocationReason: string;
 };
