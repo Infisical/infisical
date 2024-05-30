@@ -218,3 +218,23 @@ func CallGetServiceAccountKeysV2(httpClient *resty.Client, request GetServiceAcc
 
 	return serviceAccountKeysResponse, nil
 }
+
+func CallKubernetesAuthLogin(request KubernetesAuthLoginRequest) (KubernetesAuthLoginResponse, error) {
+	var kubernetesAuthLoginResponse KubernetesAuthLoginResponse
+
+	response, err := resty.New().
+		R().
+		SetResult(&kubernetesAuthLoginResponse).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v1/auth/kubernetes-auth/login", API_HOST_URL))
+
+	if err != nil {
+		return KubernetesAuthLoginResponse{}, fmt.Errorf("CallKubernetesAuthLogin: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return KubernetesAuthLoginResponse{}, fmt.Errorf("CallKubernetesAuthLogin: Unsuccessful response: [response=%s]", response)
+	}
+
+	return kubernetesAuthLoginResponse, nil
+}

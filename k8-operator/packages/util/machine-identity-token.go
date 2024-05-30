@@ -35,6 +35,38 @@ func NewMachineIdentityToken(clientId string, clientSecret string) *MachineIdent
 	return &token
 }
 
+func NewMachineIdentityKubernetesToken(identityId string, serviceAccountTokenPath string) (*MachineIdentityToken, error) {
+
+	if serviceAccountTokenPath == "" {
+		serviceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	}
+
+	// Get the token from the service account token path using the os package
+	kubernetesJwtToken, err := os.ReadFile(serviceAccountTokenPath)
+	if err != nil {
+		return nil, fmt.Errorf("NewMachineIdentityKubernetesToken: Unable to read service account token file [err=%s]", err)
+	}
+
+	res, err := api.CallKubernetesAuthLogin(api.KubernetesAuthLoginRequest{
+		IdentityId: identityId,
+		Jwt:        string(kubernetesJwtToken),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// We don't handle token lifecycle for kubernetes tokens.
+	// We re-use the same structure for kubernetes tokens to keep the code simple and to have a place to store the token.
+
+	// Now we can call the GetToken method to get the token from within the operator.
+	token := MachineIdentityToken{
+		accessToken: res.AccessToken,
+	}
+
+	return &token, nil
+}
+
 func (t *MachineIdentityToken) HandleTokenLifecycle() error {
 
 	for {

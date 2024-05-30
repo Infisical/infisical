@@ -170,6 +170,15 @@ type MachineIdentityUniversalAuthRefreshRequest struct {
 	AccessToken string `json:"accessToken"`
 }
 
+type KubernetesAuthLoginRequest struct {
+	IdentityId string `json:"identityId"`
+	Jwt        string `json:"jwt"`
+}
+
+type KubernetesAuthLoginResponse struct {
+	AccessToken string `json:"accessToken"`
+}
+
 type ServiceAccountKey struct {
 	ID             string    `json:"_id"`
 	EncryptedKey   string    `json:"encryptedKey"`
