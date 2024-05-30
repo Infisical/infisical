@@ -83,6 +83,14 @@ spec:
         secretName: universal-auth-credentials
         secretNamespace: default
 
+    kubernetes:
+      identityId: <your-machine-identity-id>
+      secretsScope:
+        projectSlug: test-arou
+        envSlug: dev # "dev", "staging", "prod", etc..
+        secretsPath: "/" # Root is "/"
+        recursive: true # Wether or not to use recursive mode (Fetches all secrets in an environment from a given secret path, and all folders inside the path) / defaults to false
+
       # Service tokens are deprecated and will be removed in the near future. Please use Machine Identities for authenticating with Infisical.
     serviceToken:
       serviceTokenSecretReference:
@@ -136,8 +144,8 @@ When `hostAPI` is not defined the operator fetches secrets from Infisical Cloud.
   The universal machine identity authentication method is used to authenticate with Infisical. The client ID and client secret needs to be stored in a Kubernetes secret. This block defines the reference to the name and namespace of secret that stores these credentials.
 
   <Steps>
-    <Step title="Create a machine identity">
-      You need to create a machine identity, and give it access to the project(s) you want to interact with. You can [read more about machine identities here](/documentation/platform/identities/universal-auth).
+    <Step title="Create a universal auth machine identity">
+      You need to create a machine identity that uses the Universal Auth method, and give it access to the project(s) you want to interact with. You can [read more about machine identities here](/documentation/platform/identities/universal-auth).
     </Step>
     <Step title="Create Kubernetes secret containing machine identity credentials">
       Once you have created your machine identity and added it to your project(s), you will need to create a Kubernetes secret containing the identity credentials.
@@ -186,6 +194,40 @@ spec:
 ```
 
 </Accordion>
+
+<Accordion title="authentication.kubernetes">
+  The native kubernetes machine identity auth method is used to authenticate with Infisical. The identity ID is used to authenticate with Infisical. [Read more about native kubernetes auth](/documentation/platform/identities/kubernetes-auth).
+
+  <Steps>
+    <Step title="Create a universal auth machine identity">
+      You need to create a machine identity that uses the Kuberenetes Auth method, and give it access to the project(s) you want to interact with. You can [read more about kubernetes auth here](/documentation/platform/identities/kubernetes-auth).
+    </Step>
+
+    <Step title="Add the identity ID to the InfisicalSecret CRD">
+      Once you have created your machine identity and added it to your project(s), you will need to add the identity ID to the InfisicalSecret CRD.
+      Make sure you replace `<your-identity-id>` with the identity ID.
+
+      ```yaml
+      apiVersion: secrets.infisical.com/v1alpha1
+      kind: InfisicalSecret
+      metadata:
+        name: infisicalsecret-sample-crd
+      spec:
+        authentication:
+          kubernetes:
+            identityId: <your-identity-id> # <-- identity ID
+            secretsScope:
+              projectSlug: <project-slug> # <-- project slug
+              envSlug: <env-slug> # "dev", "staging", "prod", etc..
+              secretsPath: "<secrets-path>" # Root is "/"
+      ...
+      ```
+    </Step>
+  </Steps>
+</Accordion>
+
+
+
 
 <Accordion title="authentication.serviceToken">
   <Warning>
