@@ -20,6 +20,7 @@ import {
   TUpdateWorkspaceIdentityRoleDTO,
   TUpdateWorkspaceUserRoleDTO,
   UpdateEnvironmentDTO,
+  UpdatePitVersionLimitDTO,
   Workspace
 } from "./types";
 
@@ -243,6 +244,21 @@ export const useToggleAutoCapitalization = () => {
       apiRequest.post(`/api/v1/workspace/${workspaceID}/auto-capitalization`, {
         autoCapitalization: state
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+    }
+  });
+};
+
+export const useUpdateWorkspaceVersionLimit = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, UpdatePitVersionLimitDTO>({
+    mutationFn: ({ projectSlug, pitVersionLimit }) => {
+      return apiRequest.put(`/api/v1/workspace/${projectSlug}/version-limit`, {
+        pitVersionLimit
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
