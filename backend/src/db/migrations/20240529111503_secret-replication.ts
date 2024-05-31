@@ -32,30 +32,6 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  const doesSecretIsReplicatedExist = await knex.schema.hasColumn(TableName.Secret, "isReplicated");
-  if (await knex.schema.hasTable(TableName.Secret)) {
-    await knex.schema.alterTable(TableName.Secret, (t) => {
-      if (!doesSecretIsReplicatedExist) t.boolean("isReplicated");
-    });
-  }
-
-  const doesSecretVersionIsReplicatedExist = await knex.schema.hasColumn(TableName.SecretVersion, "isReplicated");
-  if (await knex.schema.hasTable(TableName.SecretVersion)) {
-    await knex.schema.alterTable(TableName.SecretVersion, (t) => {
-      if (!doesSecretVersionIsReplicatedExist) t.boolean("isReplicated");
-    });
-  }
-
-  const doesSecretApprovalRequestSecretIsReplicatedExist = await knex.schema.hasColumn(
-    TableName.SecretApprovalRequestSecret,
-    "isReplicated"
-  );
-  if (await knex.schema.hasTable(TableName.SecretApprovalRequestSecret)) {
-    await knex.schema.alterTable(TableName.SecretApprovalRequestSecret, (t) => {
-      if (!doesSecretApprovalRequestSecretIsReplicatedExist) t.boolean("isReplicated");
-    });
-  }
-
   const doesSecretApprovalRequestIsReplicatedExist = await knex.schema.hasColumn(
     TableName.SecretApprovalRequest,
     "isReplicated"
@@ -94,30 +70,6 @@ export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.SecretFolder)) {
     await knex.schema.alterTable(TableName.SecretFolder, (t) => {
       if (doesSecretFolderReservedExist) t.dropColumn("isReserved");
-    });
-  }
-
-  const doesSecretIsReplicatedExist = await knex.schema.hasColumn(TableName.Secret, "isReplicated");
-  if (await knex.schema.hasTable(TableName.Secret)) {
-    await knex.schema.alterTable(TableName.Secret, (t) => {
-      if (doesSecretIsReplicatedExist) t.dropColumns("isReplicated");
-    });
-  }
-
-  const doesSecretVersionIsReplicatedExist = await knex.schema.hasColumn(TableName.SecretVersion, "isReplicated");
-  if (await knex.schema.hasTable(TableName.SecretVersion)) {
-    await knex.schema.alterTable(TableName.SecretVersion, (t) => {
-      if (doesSecretVersionIsReplicatedExist) t.dropColumns("isReplicated");
-    });
-  }
-
-  const doesSecretApprovalRequestSecretIsReplicatedExist = await knex.schema.hasColumn(
-    TableName.SecretApprovalRequestSecret,
-    "isReplicated"
-  );
-  if (await knex.schema.hasTable(TableName.SecretApprovalRequestSecret)) {
-    await knex.schema.alterTable(TableName.SecretApprovalRequestSecret, (t) => {
-      if (doesSecretApprovalRequestSecretIsReplicatedExist) t.dropColumns("isReplicated");
     });
   }
 

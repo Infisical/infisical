@@ -31,8 +31,7 @@ export const SecretApprovalRequestsSecretsSchema = z.object({
   requestId: z.string().uuid(),
   op: z.string(),
   secretId: z.string().uuid().nullable().optional(),
-  secretVersion: z.string().uuid().nullable().optional(),
-  isReplicated: z.boolean().nullable().optional()
+  secretVersion: z.string().uuid().nullable().optional()
 });
 
 export type TSecretApprovalRequestsSecrets = z.infer<typeof SecretApprovalRequestsSecretsSchema>;

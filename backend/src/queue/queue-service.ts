@@ -123,7 +123,7 @@ export type TQueueJobTypes = {
       };
   [QueueName.SecretReplication]: {
     name: QueueJobs.SecretReplication;
-    payload: Omit<TSyncSecretsDTO, "environmentSlug">;
+    payload: TSyncSecretsDTO;
   };
   [QueueName.SecretSync]: {
     name: QueueJobs.SecretSync;

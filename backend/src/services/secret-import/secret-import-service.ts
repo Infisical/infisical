@@ -13,7 +13,6 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
-import { SecretOperations } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { fnSecretsFromImports } from "./secret-import-fns";
@@ -139,24 +138,21 @@ export const secretImportServiceFactory = ({
     });
 
     if (secImport.isReplication && sourceFolder) {
-      const importedSecrets = await secretDAL.find({ folderId: sourceFolder?.id });
       await secretQueueService.replicateSecrets({
         secretPath: secImport.importPath,
         projectId,
         environmentSlug: importEnv.slug,
         pickOnlyImportIds: [secImport.id],
-        folderId: sourceFolder.id,
-        secrets: importedSecrets.map(({ id, version }) => ({ operation: SecretOperations.Create, version, id })),
         actorId,
-        actor,
-        environmentId: importEnv.id
+        actor
       });
     } else {
       await secretQueueService.syncSecrets({
-        secretPath: secImport.importPath,
+        secretPath,
         projectId,
-        environmentSlug: importEnv.slug,
-        excludeReplication: true
+        environmentSlug: environment,
+        actorId,
+        actor
       });
     }
 
@@ -307,7 +303,8 @@ export const secretImportServiceFactory = ({
       secretPath,
       projectId,
       environmentSlug: environment,
-      excludeReplication: true
+      actor,
+      actorId
     });
 
     return secImport;
@@ -372,18 +369,14 @@ export const secretImportServiceFactory = ({
       secretImportDoc.importPath
     );
 
-    const importedSecrets = await secretDAL.find({ folderId: sourceFolder?.id });
     if (membership && sourceFolder) {
       await secretQueueService.replicateSecrets({
         secretPath: secretImportDoc.importPath,
         projectId,
         environmentSlug: secretImportDoc.importEnv.slug,
         pickOnlyImportIds: [secretImportDoc.id],
-        folderId: sourceFolder.id,
-        secrets: importedSecrets.map(({ id, version }) => ({ operation: SecretOperations.Create, version, id })),
         actorId,
-        actor,
-        environmentId: secretImportDoc.importEnv.id
+        actor
       });
     }
 

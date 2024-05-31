@@ -44,7 +44,6 @@ import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approva
 import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-reviewer-dal";
 import { secretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
-import { secretReplicationDALFactory } from "@app/ee/services/secret-replication/secret-replication-dal";
 import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { secretRotationQueueFactory } from "@app/ee/services/secret-rotation/secret-rotation-queue";
@@ -195,7 +194,6 @@ export const registerRoutes = async (
   const projectBotDAL = projectBotDALFactory(db);
 
   const secretDAL = secretDALFactory(db);
-  const secretReplicationDAL = secretReplicationDALFactory(db);
   const secretTagDAL = secretTagDALFactory(db);
   const folderDAL = secretFolderDALFactory(db);
   const folderVersionDAL = secretFolderVersionDALFactory(db);
@@ -673,15 +671,14 @@ export const registerRoutes = async (
     secretImportDAL,
     keyStore,
     queueService,
-    secretReplicationDAL,
     folderDAL,
     secretApprovalPolicyService,
     secretBlindIndexDAL,
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
     secretQueueService,
-    snapshotService,
-    projectMembershipDAL
+    projectMembershipDAL,
+    projectBotService
   });
   const secretRotationQueue = secretRotationQueueFactory({
     telemetryService,

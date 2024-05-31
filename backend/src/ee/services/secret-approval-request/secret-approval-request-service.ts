@@ -380,8 +380,7 @@ export const secretApprovalRequestServiceFactory = ({
                 "secretReminderRepeatDays",
                 "algorithm",
                 "keyEncoding",
-                "secretBlindIndex",
-                "isReplicated"
+                "secretBlindIndex"
               ]),
               tags: el?.tags.map(({ id }) => id),
               version: 1,
@@ -426,7 +425,6 @@ export const secretApprovalRequestServiceFactory = ({
                   "secretKeyTag",
                   "secretKeyIV",
                   "metadata",
-                  "isReplicated",
                   "skipMultilineEncoding",
                   "secretReminderNote",
                   "secretReminderRepeatDays",
@@ -490,28 +488,8 @@ export const secretApprovalRequestServiceFactory = ({
       projectId,
       secretPath: folder.path,
       environmentSlug: folder.environmentSlug,
-      folderId: folder.id,
       actorId,
-      actor,
-      environmentId: folder.envId,
-      secrets: mergeStatus.secrets.created
-        .map(({ id, version }) => ({
-          operation: SecretOperations.Create,
-          version,
-          id
-        }))
-        .concat(
-          mergeStatus.secrets.updated.map(({ id, version }) => ({
-            operation: SecretOperations.Update,
-            version,
-            id
-          })),
-          mergeStatus.secrets.deleted.map(({ id, version }) => ({
-            operation: SecretOperations.Delete,
-            version,
-            id
-          }))
-        )
+      actor
     });
     return mergeStatus;
   };

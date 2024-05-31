@@ -32,8 +32,7 @@ export const SecretVersionsSchema = z.object({
   folderId: z.string().uuid(),
   userId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  isReplicated: z.boolean().nullable().optional()
+  updatedAt: z.date()
 });
 
 export type TSecretVersions = z.infer<typeof SecretVersionsSchema>;

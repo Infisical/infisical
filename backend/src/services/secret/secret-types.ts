@@ -380,6 +380,7 @@ export enum SecretOperations {
 export type TSyncSecretsDTO<T extends boolean = false> = {
   _deDupeQueue?: Record<string, boolean>;
   _deDupeReplicationQueue?: Record<string, boolean>;
+  _depth?: number;
   secretPath: string;
   projectId: string;
   environmentSlug: string;
@@ -388,15 +389,8 @@ export type TSyncSecretsDTO<T extends boolean = false> = {
 } & (T extends true
   ? object
   : {
-      environmentId: string;
-      folderId: string;
       actor: ActorType;
       actorId: string;
       // used for import creation to trigger replication
       pickOnlyImportIds?: string[];
-      secrets: {
-        operation: SecretOperations;
-        id: string;
-        version: number;
-      }[];
     });

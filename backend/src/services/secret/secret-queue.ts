@@ -64,7 +64,7 @@ export type TGetSecrets = {
 };
 
 const MAX_SYNC_SECRET_DEPTH = 5;
-const uniqueSecretQueueKey = (environment: string, secretPath: string) =>
+export const uniqueSecretQueueKey = (environment: string, secretPath: string) =>
   `secret-queue-dedupe-${environment}-${secretPath}`;
 
 type TIntegrationSecret = Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }>;
@@ -325,6 +325,7 @@ export const secretQueueFactory = ({
   const syncSecrets = async <T extends boolean = false>({
     // seperate de-dupe queue for integration sync and replication sync
     _deDupeQueue: deDupeQueue = {},
+    _depth: depth = 0,
     _deDupeReplicationQueue: deDupeReplicationQueue = {},
     ...dto
   }: TSyncSecretsDTO<T>) => {
@@ -332,7 +333,11 @@ export const secretQueueFactory = ({
       `syncSecrets: syncing project secrets where [projectId=${dto.projectId}]  [environment=${dto.environmentSlug}] [path=${dto.secretPath}]`
     );
     const deDuplicationKey = uniqueSecretQueueKey(dto.environmentSlug, dto.secretPath);
-    if (!dto.excludeReplication ? deDupeReplicationQueue?.[deDuplicationKey] : deDupeQueue?.[deDuplicationKey]) {
+    if (
+      !dto.excludeReplication
+        ? deDupeReplicationQueue?.[deDuplicationKey]
+        : deDupeQueue?.[deDuplicationKey] || depth > MAX_SYNC_SECRET_DEPTH
+    ) {
       return;
     }
     // eslint-disable-next-line
@@ -342,7 +347,12 @@ export const secretQueueFactory = ({
     await queueService.queue(
       QueueName.SecretSync,
       QueueJobs.SecretSync,
-      { ...dto, _deDupeQueue: deDupeQueue, _deDupeReplicationQueue: deDupeReplicationQueue } as TSyncSecretsDTO,
+      {
+        ...dto,
+        _deDupeQueue: deDupeQueue,
+        _deDupeReplicationQueue: deDupeReplicationQueue,
+        _depth: depth
+      } as TSyncSecretsDTO,
       {
         removeOnFail: true,
         removeOnComplete: true,
@@ -360,22 +370,21 @@ export const secretQueueFactory = ({
     const {
       _deDupeQueue: deDupeQueue,
       _deDupeReplicationQueue: deDupeReplicationQueue,
+      _depth: depth,
       secretPath,
-      environmentId,
       projectId,
       environmentSlug: environment,
-      secrets,
-      folderId,
       excludeReplication,
       actorId,
       actor
     } = job.data;
+
     await queueService.queue(
       QueueName.SecretWebhook,
       QueueJobs.SecWebhook,
       { environment, projectId, secretPath },
       {
-        jobId: `secret-webhook-${environmentId}-${projectId}-${secretPath}`,
+        jobId: `secret-webhook-${environment}-${projectId}-${secretPath}`,
         removeOnFail: { count: 5 },
         removeOnComplete: true,
         delay: 1000,
@@ -390,11 +399,9 @@ export const secretQueueFactory = ({
     if (!excludeReplication) {
       await replicateSecrets({
         _deDupeReplicationQueue: deDupeReplicationQueue,
-        environmentId,
+        _depth: depth,
         projectId,
         secretPath,
-        folderId,
-        secrets,
         actorId,
         actor,
         excludeReplication,
@@ -405,6 +412,7 @@ export const secretQueueFactory = ({
 
   queueService.start(QueueName.IntegrationSync, async (job) => {
     const { environment, projectId, secretPath, depth = 1, deDupeQueue = {} } = job.data;
+    if (depth > MAX_SYNC_SECRET_DEPTH) return;
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) {
@@ -450,6 +458,7 @@ export const secretQueueFactory = ({
                 secretPath: foldersGroupedById[folderId][0]?.path as string,
                 environmentSlug: foldersGroupedById[folderId][0]?.environmentSlug as string,
                 _deDupeQueue: deDupeQueue,
+                _depth: depth + 1,
                 excludeReplication: true
               })
             )
@@ -487,6 +496,7 @@ export const secretQueueFactory = ({
                 secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
                 environmentSlug: referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
                 _deDupeQueue: deDupeQueue,
+                _depth: depth + 1,
                 excludeReplication: true
               })
             )

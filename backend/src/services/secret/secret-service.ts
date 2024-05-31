@@ -44,7 +44,6 @@ import {
 } from "./secret-fns";
 import { TSecretQueueFactory } from "./secret-queue";
 import {
-  SecretOperations,
   TAttachSecretTagsDTO,
   TBackFillSecretReferencesDTO,
   TCreateBulkSecretDTO,
@@ -238,19 +237,10 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       secretPath: path,
-      folderId: folder.id,
       actorId,
       actor,
       projectId,
-      environmentSlug: folder.environment.slug,
-      environmentId: folder.envId,
-      secrets: [
-        {
-          operation: SecretOperations.Create,
-          id: secret[0].id,
-          version: 1
-        }
-      ]
+      environmentSlug: folder.environment.slug
     });
     return { ...secret[0], environment, workspace: projectId, tags, secretPath: path };
   };
@@ -362,7 +352,6 @@ export const secretServiceFactory = ({
                 "secretReminderRepeatDays",
                 "tags"
               ]),
-              isReplicated: false,
               secretBlindIndex: newSecretNameBlindIndex || keyName2BlindIndex[secretName],
               references: references({
                 ciphertext: inputSecret.secretValueCiphertext,
@@ -385,17 +374,8 @@ export const secretServiceFactory = ({
       actor,
       actorId,
       secretPath: path,
-      folderId: folder.id,
       projectId,
-      environmentSlug: folder.environment.slug,
-      environmentId: folder.envId,
-      secrets: [
-        {
-          operation: SecretOperations.Update,
-          id: updatedSecret[0].id,
-          version: updatedSecret[0].version
-        }
-      ]
+      environmentSlug: folder.environment.slug
     });
     return { ...updatedSecret[0], workspace: projectId, environment, secretPath: path };
   };
@@ -469,17 +449,8 @@ export const secretServiceFactory = ({
       actor,
       actorId,
       secretPath: path,
-      folderId: folder.id,
       projectId,
-      environmentSlug: folder.environment.slug,
-      environmentId: folder.envId,
-      secrets: [
-        {
-          operation: SecretOperations.Delete,
-          id: deletedSecret[0].id,
-          version: deletedSecret[0].version
-        }
-      ]
+      environmentSlug: folder.environment.slug
     });
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
     return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment, secretPath: path };
@@ -770,11 +741,8 @@ export const secretServiceFactory = ({
       actor,
       actorId,
       secretPath: path,
-      folderId: folder.id,
       projectId,
-      environmentSlug: folder.environment.slug,
-      environmentId: folder.envId,
-      secrets: newSecrets.map(({ id, version }) => ({ id, version, operation: SecretOperations.Create }))
+      environmentSlug: folder.environment.slug
     });
 
     return newSecrets;
@@ -851,7 +819,6 @@ export const secretServiceFactory = ({
             ...el,
             folderId,
             type: SecretType.Shared,
-            isReplicated: false,
             secretBlindIndex:
               newSecretName && newKeyName2BlindIndex[newSecretName]
                 ? newKeyName2BlindIndex[newSecretName]
@@ -880,11 +847,8 @@ export const secretServiceFactory = ({
       actor,
       actorId,
       secretPath: path,
-      folderId: folder.id,
       projectId,
-      environmentSlug: folder.environment.slug,
-      environmentId: folder.envId,
-      secrets: secrets.map(({ id, version }) => ({ id, version, operation: SecretOperations.Update }))
+      environmentSlug: folder.environment.slug
     });
 
     return secrets;
@@ -953,11 +917,8 @@ export const secretServiceFactory = ({
       actor,
       actorId,
       secretPath: path,
-      folderId: folder.id,
       projectId,
-      environmentSlug: folder.environment.slug,
-      environmentId: folder.envId,
-      secrets: secretsDeleted.map(({ id, version }) => ({ id, version, operation: SecretOperations.Delete }))
+      environmentSlug: folder.environment.slug
     });
 
     return secretsDeleted;
