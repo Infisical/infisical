@@ -158,7 +158,9 @@ export const SecretImportListView = ({
       ({ isReserved, importPath, importEnv }) =>
         importEnv.slug === environment &&
         isReserved &&
-        importPath === `/${ReservedFolders.SecretReplication}${replicationImportId}`
+        importPath ===
+        `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication
+        }${replicationImportId}`
     );
     if (reservedImport) {
       setReplicationSecrets((state) => ({
