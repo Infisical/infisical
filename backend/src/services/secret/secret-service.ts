@@ -72,7 +72,7 @@ type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
@@ -1354,7 +1354,16 @@ export const secretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
-    const secretVersions = await secretVersionDAL.find({ secretId }, { offset, limit, sort: [["createdAt", "desc"]] });
+    const { pitVersionLimit } = await projectDAL.findById(folder.projectId);
+    const computedQueryLimit = Math.min(pitVersionLimit - offset, limit);
+    if (offset > pitVersionLimit || computedQueryLimit <= 0) {
+      return [];
+    }
+
+    const secretVersions = await secretVersionDAL.find(
+      { secretId },
+      { offset, limit: computedQueryLimit, sort: [["createdAt", "desc"]] }
+    );
     return secretVersions;
   };
 

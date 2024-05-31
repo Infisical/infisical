@@ -325,12 +325,62 @@ export const snapshotDALFactory = (db: TDbClient) => {
     }
   };
 
+  const pruneExcessSnapshots = async (tx?: Knex) => {
+    try {
+      const folders = await (tx || db)(TableName.SecretFolder).select("id");
+      const folderIds = folders.map((folder) => folder.id);
+      const PRUNE_FOLDER_BATCH_SIZE = 500;
+
+      const pruneBatches = [];
+      for (let x = 0; x < folderIds.length; x += PRUNE_FOLDER_BATCH_SIZE) {
+        const batch = folderIds.slice(x, x + PRUNE_FOLDER_BATCH_SIZE);
+        pruneBatches.push(batch);
+      }
+
+      for await (const folderBatch of pruneBatches) {
+        const rankedSnapshots = (tx || db)(TableName.Snapshot)
+          .whereIn(`${TableName.Snapshot}.folderId`, folderBatch)
+          .select(
+            "folderId",
+            "id",
+            (tx || db).raw(
+              `ROW_NUMBER() OVER (PARTITION BY ${TableName.Snapshot}."folderId" ORDER BY ${TableName.Snapshot}."createdAt" DESC) AS row_num`
+            )
+          )
+          .as("ranked_snapshots");
+
+        const snapshotsToKeep = (tx || db)
+          .select("id")
+          .from(rankedSnapshots)
+          .where(
+            "row_num",
+            "<=",
+            (tx || db)
+              .select(`${TableName.Project}.pitVersionLimit`)
+              .from(TableName.Project)
+              .join(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+              .join(TableName.Snapshot, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
+              .join(rankedSnapshots, "ranked_snapshots.folderId", `${TableName.Snapshot}.folderId`)
+              .limit(1)
+          );
+
+        await (tx || db)(TableName.Snapshot)
+          .whereIn("folderId", folderBatch)
+          .whereNotIn("id", snapshotsToKeep)
+          .delete();
+      }
+    } catch (error) {
+      throw new DatabaseError({ error, name: "SnapshotPrune" });
+    }
+  };
+
   return {
     ...secretSnapshotOrm,
     findById,
     findLatestSnapshotByFolderId,
     findRecursivelySnapshots,
     countOfSnapshotsByFolderId,
-    findSecretSnapshotDataById
+    findSecretSnapshotDataById,
+    pruneExcessSnapshots
   };
 };

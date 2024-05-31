@@ -133,7 +133,8 @@ export const projectServiceFactory = ({
           name: workspaceName,
           orgId: organization.id,
           slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
-          version: ProjectVersion.V2
+          version: ProjectVersion.V2,
+          pitVersionLimit: 10
         },
         tx
       );

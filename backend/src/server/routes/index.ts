@@ -535,6 +535,7 @@ export const registerRoutes = async (
     licenseService,
     folderDAL,
     secretDAL,
+    projectDAL,
     snapshotDAL,
     snapshotFolderDAL,
     snapshotSecretDAL,

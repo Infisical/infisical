@@ -110,8 +110,45 @@ export const secretVersionDALFactory = (db: TDbClient) => {
     }
   };
 
+  const pruneExcessVersions = async (tx?: Knex) => {
+    try {
+      const rankedSecretVersions = (tx || db)(TableName.SecretVersion)
+        .select(
+          "id",
+          "secretId",
+          "folderId",
+          (tx || db).raw(
+            `ROW_NUMBER() OVER (PARTITION BY ${TableName.SecretVersion}."secretId" ORDER BY ${TableName.SecretVersion}."createdAt" DESC) AS row_num`
+          )
+        )
+        .as("ranked_secret_versions");
+
+      const versionsToKeep = (tx || db)(rankedSecretVersions)
+        .select("id")
+        .where(
+          "row_num",
+          "<=",
+          (tx || db)
+            .select(`${TableName.Project}.pitVersionLimit`)
+            .from(TableName.Project)
+            .join(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+            .join(TableName.SecretFolder, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+            .join(rankedSecretVersions, "ranked_secret_versions.folderId", `${TableName.SecretFolder}.id`)
+            .limit(1)
+        );
+
+      await (tx || db)(TableName.SecretVersion).whereNotIn("id", versionsToKeep).delete();
+    } catch (error) {
+      throw new DatabaseError({
+        error,
+        name: "Secret Version Prune"
+      });
+    }
+  };
+
   return {
     ...secretVersionOrm,
+    pruneExcessVersions,
     findLatestVersionMany,
     bulkUpdate,
     findLatestVersionByFolderId,
