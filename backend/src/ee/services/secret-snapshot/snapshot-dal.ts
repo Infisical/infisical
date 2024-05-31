@@ -349,20 +349,19 @@ export const snapshotDALFactory = (db: TDbClient) => {
           )
           .as("ranked_snapshots");
 
+        const folderLimits = (tx || db)(TableName.Snapshot)
+          .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.Snapshot}.envId`)
+          .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
+          .whereIn(`${TableName.Snapshot}.folderId`, folderBatch)
+          .groupBy(`${TableName.Snapshot}.folderId`, `${TableName.Project}.pitVersionLimit`)
+          .select("folderId", "pitVersionLimit")
+          .as("folder_limits");
+
         const snapshotsToKeep = (tx || db)
           .select("id")
           .from(rankedSnapshots)
-          .where(
-            "row_num",
-            "<=",
-            (tx || db)
-              .select(`${TableName.Project}.pitVersionLimit`)
-              .from(TableName.Project)
-              .join(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
-              .join(TableName.Snapshot, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
-              .join(rankedSnapshots, "ranked_snapshots.folderId", `${TableName.Snapshot}.folderId`)
-              .limit(1)
-          );
+          .join(folderLimits, "folder_limits.folderId", "ranked_snapshots.folderId")
+          .whereRaw(`ranked_snapshots.row_num <= folder_limits."pitVersionLimit"`);
 
         await (tx || db)(TableName.Snapshot)
           .whereIn("folderId", folderBatch)

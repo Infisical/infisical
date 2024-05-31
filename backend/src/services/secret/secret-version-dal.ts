@@ -123,19 +123,19 @@ export const secretVersionDALFactory = (db: TDbClient) => {
         )
         .as("ranked_secret_versions");
 
+      const folderLimits = (tx || db)(TableName.SecretVersion)
+        .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretVersion}.folderId`)
+        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
+        .groupBy(`${TableName.SecretVersion}.folderId`, `${TableName.Project}.pitVersionLimit`)
+        .select("folderId", "pitVersionLimit")
+        .as("folder_limits");
+
       const versionsToKeep = (tx || db)(rankedSecretVersions)
         .select("id")
-        .where(
-          "row_num",
-          "<=",
-          (tx || db)
-            .select(`${TableName.Project}.pitVersionLimit`)
-            .from(TableName.Project)
-            .join(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
-            .join(TableName.SecretFolder, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-            .join(rankedSecretVersions, "ranked_secret_versions.folderId", `${TableName.SecretFolder}.id`)
-            .limit(1)
-        );
+        .from(rankedSecretVersions)
+        .join(folderLimits, "folder_limits.folderId", "ranked_secret_versions.folderId")
+        .whereRaw(`ranked_secret_versions.row_num <= folder_limits."pitVersionLimit"`);
 
       await (tx || db)(TableName.SecretVersion).whereNotIn("id", versionsToKeep).delete();
     } catch (error) {

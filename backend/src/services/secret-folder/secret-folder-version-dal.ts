@@ -62,5 +62,39 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...secretFolderVerOrm, findLatestFolderVersions, findLatestVersionByFolderId };
+  const pruneExcessVersions = async (tx?: Knex) => {
+    try {
+      const rankedFolderVersions = (tx || db)(TableName.SecretFolderVersion)
+        .select(
+          "id",
+          "folderId",
+          (tx || db).raw(
+            `ROW_NUMBER() OVER (PARTITION BY ${TableName.SecretFolderVersion}."folderId" ORDER BY ${TableName.SecretFolderVersion}."createdAt" DESC) AS row_num`
+          )
+        )
+        .as("ranked_folder_versions");
+
+      const folderLimits = (tx || db)(TableName.SecretFolderVersion)
+        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolderVersion}.envId`)
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
+        .groupBy(`${TableName.SecretFolderVersion}.folderId`, `${TableName.Project}.pitVersionLimit`)
+        .select("folderId", "pitVersionLimit")
+        .as("folder_limits");
+
+      const versionsToKeep = (tx || db)(rankedFolderVersions)
+        .select("id")
+        .from(rankedFolderVersions)
+        .join(folderLimits, "folder_limits.folderId", "ranked_folder_versions.folderId")
+        .whereRaw(`ranked_folder_versions.row_num <= folder_limits."pitVersionLimit"`);
+
+      await (tx || db)(TableName.SecretFolderVersion).whereNotIn("id", versionsToKeep).delete();
+    } catch (error) {
+      throw new DatabaseError({
+        error,
+        name: "Secret Version Prune"
+      });
+    }
+  };
+
+  return { ...secretFolderVerOrm, findLatestFolderVersions, findLatestVersionByFolderId, pruneExcessVersions };
 };
