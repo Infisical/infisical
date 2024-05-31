@@ -81,7 +81,13 @@ func GetPlainTextSecretsViaUniversalAuth(accessToken string, etag string, secret
 		})
 	}
 
-	return secrets, model.RequestUpdateUpdateDetails{
+	// No need to do expansion for Machine Identity auth as this is handled on server-side.
+	mergedSecrets := MergeRawImportedSecrets(secrets, secretsResponse.Imports)
+	if err != nil {
+		return nil, model.RequestUpdateUpdateDetails{}, err
+	}
+
+	return mergedSecrets, model.RequestUpdateUpdateDetails{
 		Modified: secretsResponse.Modified,
 		ETag:     secretsResponse.ETag,
 	}, nil
@@ -435,4 +441,33 @@ func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []model.SingleEn
 	}
 
 	return secrets, nil
+}
+
+func MergeRawImportedSecrets(secrets []model.SingleEnvironmentVariable, importedSecrets []api.ImportedRawSecretV3) []model.SingleEnvironmentVariable {
+	if importedSecrets == nil {
+		return secrets
+	}
+
+	hasOverriden := make(map[string]bool)
+	for _, sec := range secrets {
+		hasOverriden[sec.Key] = true
+	}
+
+	for i := len(importedSecrets) - 1; i >= 0; i-- {
+		importSec := importedSecrets[i]
+
+		for _, sec := range importSec.Secrets {
+			if _, ok := hasOverriden[sec.SecretKey]; !ok {
+				secrets = append(secrets, model.SingleEnvironmentVariable{
+					Key:   sec.SecretKey,
+					Value: sec.SecretValue,
+					Type:  sec.Type,
+					ID:    sec.ID,
+				})
+				hasOverriden[sec.SecretKey] = true
+			}
+		}
+	}
+
+	return secrets
 }
