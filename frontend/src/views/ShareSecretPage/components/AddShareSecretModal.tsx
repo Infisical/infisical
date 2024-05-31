@@ -47,16 +47,6 @@ const expirationUnitsAndActions = [
     unit: "Weeks",
     action: (expiresAt: Date, expiresInValue: number) =>
       expiresAt.setDate(expiresAt.getDate() + expiresInValue * 7)
-  },
-  {
-    unit: "Months",
-    action: (expiresAt: Date, expiresInValue: number) =>
-      expiresAt.setMonth(expiresAt.getMonth() + expiresInValue)
-  },
-  {
-    unit: "Years",
-    action: (expiresAt: Date, expiresInValue: number) =>
-      expiresAt.setFullYear(expiresAt.getFullYear() + expiresInValue)
   }
 ];
 
@@ -200,13 +190,13 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <Controller
                   control={control}
                   name="expiresAfterViews"
-                  defaultValue={1}
+                  defaultValue={6}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       className="mb-4 w-full"
                       label="Expires After Views"
                       isError={Boolean(error)}
-                      errorText={error?.message}
+                      errorText="Please enter a valid number of views"
                     >
                       <Input {...field} type="number" min={1} />
                     </FormControl>
@@ -222,12 +212,12 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
                     <Controller
                       control={control}
                       name="expiresInValue"
-                      defaultValue={1}
+                      defaultValue={6}
                       render={({ field, fieldState: { error } }) => (
                         <FormControl
                           label="Expires after Time"
                           isError={Boolean(error)}
-                          errorText={error?.message}
+                          errorText="Please enter a valid time duration"
                         >
                           <Input {...field} type="number" min={0} />
                         </FormControl>
