@@ -15,7 +15,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db)(TableName.SecretFolderVersion)
         .join(TableName.SecretFolder, `${TableName.SecretFolderVersion}.folderId`, `${TableName.SecretFolder}.id`)
-        .where({ parentId: folderId })
+        .where({ parentId: folderId, isReserved: false })
         .join<TSecretFolderVersions>(
           (tx || db)(TableName.SecretFolderVersion)
             .groupBy("envId", "folderId")

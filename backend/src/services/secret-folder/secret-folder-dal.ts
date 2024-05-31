@@ -169,6 +169,7 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
           // this is for root condition
           //  if the given folder id is root folder id then intial path is set as / instead of /root
           //  if not root folder the path here will be /<folder name>
+          depth: 1,
           path: db.raw(`CONCAT('/', (CASE WHEN "parentId" is NULL THEN '' ELSE ${TableName.SecretFolder}.name END))`),
           child: db.raw("NULL::uuid"),
           environmentSlug: `${TableName.Environment}.slug`
@@ -185,6 +186,7 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
               .select({
                 // then we join join this folder name behind previous as we are going from child to parent
                 // the root folder check is used to avoid last / and also root name in folders
+                depth: db.raw("parent.depth + 1"),
                 path: db.raw(
                   `CONCAT( CASE 
                   WHEN  ${TableName.SecretFolder}."parentId" is NULL THEN '' 
@@ -199,7 +201,7 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
         );
     })
     .select("*")
-    .from<TSecretFolders & { child: string | null; path: string; environmentSlug: string }>("parent");
+    .from<TSecretFolders & { child: string | null; path: string; environmentSlug: string; depth: number }>("parent");
 
 export type TSecretFolderDALFactory = ReturnType<typeof secretFolderDALFactory>;
 // never change this. If u do write a migration for it
@@ -260,12 +262,23 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     try {
       const folders = await sqlFindSecretPathByFolderId(tx || db, projectId, folderIds);
 
+      //  travelling all the way from leaf node to root contains real path
       const rootFolders = groupBy(
         folders.filter(({ parentId }) => parentId === null),
         (i) => i.child || i.id // root condition then child and parent will null
       );
+      const actualFolders = groupBy(
+        folders.filter(({ depth }) => depth === 1),
+        (i) => i.id // root condition then child and parent will null
+      );
 
-      return folderIds.map((folderId) => rootFolders[folderId]?.[0]);
+      return folderIds.map((folderId) => {
+        if (!rootFolders[folderId]?.[0]) return;
+
+        const actualId = rootFolders[folderId][0].child || rootFolders[folderId][0].id;
+        const folder = actualFolders[actualId][0];
+        return { ...folder, path: rootFolders[folderId]?.[0].path };
+      });
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by secret path" });
     }

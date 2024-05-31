@@ -44,6 +44,7 @@ import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approva
 import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-reviewer-dal";
 import { secretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { secretRotationQueueFactory } from "@app/ee/services/secret-rotation/secret-rotation-queue";
 import { secretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
@@ -240,8 +241,8 @@ export const registerRoutes = async (
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
   const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
   const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
-  const sarReviewerDAL = secretApprovalRequestReviewerDALFactory(db);
-  const sarSecretDAL = secretApprovalRequestSecretDALFactory(db);
+  const secretApprovalRequestReviewerDAL = secretApprovalRequestReviewerDALFactory(db);
+  const secretApprovalRequestSecretDAL = secretApprovalRequestSecretDALFactory(db);
 
   const secretRotationDAL = secretRotationDALFactory(db);
   const snapshotDAL = snapshotDALFactory(db);
@@ -288,7 +289,7 @@ export const registerRoutes = async (
     permissionService,
     auditLogStreamDAL
   });
-  const sapService = secretApprovalPolicyServiceFactory({
+  const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectMembershipDAL,
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
@@ -489,7 +490,7 @@ export const registerRoutes = async (
     projectBotDAL,
     projectMembershipDAL,
     secretApprovalRequestDAL,
-    secretApprovalSecretDAL: sarSecretDAL,
+    secretApprovalSecretDAL: secretApprovalRequestSecretDAL,
     projectUserMembershipRoleDAL
   });
 
@@ -587,6 +588,7 @@ export const registerRoutes = async (
     secretVersionTagDAL
   });
   const secretImportService = secretImportServiceFactory({
+    licenseService,
     projectEnvDAL,
     folderDAL,
     permissionService,
@@ -621,19 +623,18 @@ export const registerRoutes = async (
     secretSharingDAL
   });
 
-  const sarService = secretApprovalRequestServiceFactory({
+  const secretApprovalRequestService = secretApprovalRequestServiceFactory({
     permissionService,
     projectBotService,
     folderDAL,
     secretDAL,
     secretTagDAL,
-    secretApprovalRequestSecretDAL: sarSecretDAL,
-    secretApprovalRequestReviewerDAL: sarReviewerDAL,
+    secretApprovalRequestSecretDAL,
+    secretApprovalRequestReviewerDAL,
     projectDAL,
     secretVersionDAL,
     secretBlindIndexDAL,
     secretApprovalRequestDAL,
-    secretService,
     snapshotService,
     secretVersionTagDAL,
     secretQueueService
@@ -662,6 +663,23 @@ export const registerRoutes = async (
     accessApprovalPolicyApproverDAL
   });
 
+  const secretReplicationService = secretReplicationServiceFactory({
+    secretTagDAL,
+    secretVersionTagDAL,
+    secretDAL,
+    secretVersionDAL,
+    secretImportDAL,
+    keyStore,
+    queueService,
+    folderDAL,
+    secretApprovalPolicyService,
+    secretBlindIndexDAL,
+    secretApprovalRequestDAL,
+    secretApprovalRequestSecretDAL,
+    secretQueueService,
+    projectMembershipDAL,
+    projectBotService
+  });
   const secretRotationQueue = secretRotationQueueFactory({
     telemetryService,
     secretRotationDAL,
@@ -826,6 +844,7 @@ export const registerRoutes = async (
     projectEnv: projectEnvService,
     projectRole: projectRoleService,
     secret: secretService,
+    secretReplication: secretReplicationService,
     secretTag: secretTagService,
     folder: folderService,
     secretImport: secretImportService,
@@ -842,10 +861,10 @@ export const registerRoutes = async (
     identityGcpAuth: identityGcpAuthService,
     identityAwsAuth: identityAwsAuthService,
     identityAzureAuth: identityAzureAuthService,
-    secretApprovalPolicy: sapService,
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,
-    secretApprovalRequest: sarService,
+    secretApprovalPolicy: secretApprovalPolicyService,
+    secretApprovalRequest: secretApprovalRequestService,
     secretRotation: secretRotationService,
     dynamicSecret: dynamicSecretService,
     dynamicSecretLease: dynamicSecretLeaseService,

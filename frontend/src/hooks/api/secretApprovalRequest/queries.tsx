@@ -220,6 +220,7 @@ export const useGetSecretApprovalRequestCount = ({
 }) =>
   useQuery({
     queryKey: secretApprovalRequestKeys.count({ workspaceId }),
+    refetchInterval: 5000,
     queryFn: () => fetchSecretApprovalRequestCount({ workspaceId }),
     enabled: Boolean(workspaceId) && (options?.enabled ?? true)
   });
