@@ -27,7 +27,7 @@ export const SecretTable = ({
     )}
     {!isLoading && decryptedSecret && (
       <>
-        <div className="max-w-[20rem] flex-1 break-words pr-4">
+        <div className="min-w-[12rem] max-w-[20rem] flex-1 break-words pr-4">
           <SecretInput isVisible value={decryptedSecret} readOnly />
         </div>
         <IconButton

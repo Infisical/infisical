@@ -20,7 +20,7 @@ import {
   ModalContent,
   SecretInput,
   Select,
-  SelectItem,
+  SelectItem
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -62,10 +62,9 @@ const expirationUnitsAndActions = [
 
 const schema = yup.object({
   value: yup.string().max(10000).required().label("Shared Secret Value"),
-  expiryOption: yup.string().optional().label("Expiration Option").default("Time"),
-  expiresAfterViews: yup.number().min(1).optional().label("Expires After Views"),
-  expiresInValue: yup.number().min(1).optional().label("Expiration Value"),
-  expiresInUnit: yup.string().optional().label("Expiration Unit")
+  expiresAfterViews: yup.number().min(1).required().label("Expires After Views"),
+  expiresInValue: yup.number().min(1).required().label("Expiration Value"),
+  expiresInUnit: yup.string().required().label("Expiration Unit")
 });
 
 export type FormData = yup.InferType<typeof schema>;
@@ -90,7 +89,6 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
   const createSharedSecret = useCreateSharedSecret();
   const { currentOrg } = useOrganization();
   const [newSharedSecret, setnewSharedSecret] = useState("");
-  const [expiryOption, setExpiryOption] = useState<"Time" | "Views">("Time");
   const hasSharedSecret = Boolean(newSharedSecret);
   const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
     initialState: false
@@ -134,8 +132,8 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
         iv,
         tag,
         hashedHex,
-        expiresAt: expiryOption === "Time" ? expiresAt : undefined,
-        expiresAfterViews: expiryOption === "Views" ? expiresAfterViews : undefined
+        expiresAt,
+        expiresAfterViews
       });
       setnewSharedSecret(
         `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(
@@ -198,98 +196,72 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
               )}
             />
             <div className="flex w-full flex-row">
-              <div className="flex w-1/5">
+              <div className="w-2/7 flex">
                 <Controller
                   control={control}
-                  name="expiryOption"
-                  defaultValue="Time"
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  name="expiresAfterViews"
+                  defaultValue={1}
+                  render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Expire On"
-                      errorText={error?.message}
+                      className="mb-4 w-full"
+                      label="Expires After Views"
                       isError={Boolean(error)}
+                      errorText={error?.message}
                     >
-                      <Select
-                        defaultValue={field.value}
-                        {...field}
-                        onValueChange={(e: "Time" | "Views") => setExpiryOption(e)}
-                        value={expiryOption}
-                        className="w-full"
-                      >
-                        {["Time", "Views"].map((unit) => (
-                          <SelectItem value={unit} key={unit}>
-                            {unit}
-                          </SelectItem>
-                        ))}
-                      </Select>
+                      <Input {...field} type="number" min={1} />
                     </FormControl>
                   )}
                 />
               </div>
-              <div className="flex w-4/5">
-                {expiryOption === "Views" ? (
-                  <Controller
-                    control={control}
-                    name="expiresAfterViews"
-                    defaultValue={1}
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        className="mb-4 w-full"
-                        label="Expires After Views"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <Input {...field} type="number" min={1} />
-                      </FormControl>
-                    )}
-                  />
-                ) : (
-                  <div className="flex w-full">
-                    <div className="w-3/5">
-                      <Controller
-                        control={control}
-                        name="expiresInValue"
-                        defaultValue={1}
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Expiration Value"
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                          >
-                            <Input {...field} type="number" min={0} />
-                          </FormControl>
-                        )}
-                      />
-                    </div>
-                    <div className="w-2/5 pl-4">
-                      <Controller
-                        control={control}
-                        name="expiresInUnit"
-                        defaultValue={expirationUnitsAndActions[0].unit}
-                        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                          <FormControl
-                            label="Expiration Unit"
-                            errorText={error?.message}
-                            isError={Boolean(error)}
-                          >
-                            <Select
-                              defaultValue={field.value}
-                              {...field}
-                              onValueChange={(e) => onChange(e)}
-                              className="w-full"
-                            >
-                              {expirationUnitsAndActions.map(({ unit }) => (
-                                <SelectItem value={unit} key={unit}>
-                                  {unit}
-                                </SelectItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        )}
-                      />
-                    </div>
+              <div className="w-1/7 flex items-center justify-center px-2">
+                <p className="px-4 text-sm text-gray-400">OR</p>
+              </div>
+              <div className="w-4/7 flex">
+                <div className="flex w-full">
+                  <div className="flex w-2/5 w-full justify-center">
+                    <Controller
+                      control={control}
+                      name="expiresInValue"
+                      defaultValue={1}
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Expires after Time"
+                          isError={Boolean(error)}
+                          errorText={error?.message}
+                        >
+                          <Input {...field} type="number" min={0} />
+                        </FormControl>
+                      )}
+                    />
                   </div>
-                )}
+                  <div className="flex w-3/5 w-full justify-center">
+                    <Controller
+                      control={control}
+                      name="expiresInUnit"
+                      defaultValue={expirationUnitsAndActions[0].unit}
+                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                        <FormControl
+                          label="Unit"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                        >
+                          <Select
+                            defaultValue={field.value}
+                            {...field}
+                            onValueChange={(e) => onChange(e)}
+                            className="w-full"
+                          >
+                            {expirationUnitsAndActions.map(({ unit }) => (
+                              <SelectItem value={unit} key={unit}>
+                                {unit}
+                              </SelectItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      )}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
             <div className="flex items-center">

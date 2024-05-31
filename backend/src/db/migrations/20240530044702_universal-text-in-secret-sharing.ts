@@ -8,8 +8,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await knex.schema.alterTable(TableName.SecretSharing, (t) => {
     if (!hasExpiresAfterViewsColumn) {
-      t.integer("expiresAfterViews").nullable();
-      t.timestamp("expiresAt").nullable().alter();
+      t.integer("expiresAfterViews");
     }
 
     if (hasSecretNameColumn) {
@@ -25,7 +24,6 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.SecretSharing, (t) => {
     if (hasExpiresAfterViewsColumn) {
       t.dropColumn("expiresAfterViews");
-      t.timestamp("expiresAt").notNullable().alter();
     }
 
     if (!hasSecretNameColumn) {

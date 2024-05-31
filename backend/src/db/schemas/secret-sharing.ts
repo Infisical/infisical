@@ -13,7 +13,7 @@ export const SecretSharingSchema = z.object({
   iv: z.string(),
   tag: z.string(),
   hashedHex: z.string(),
-  expiresAt: z.date().nullable().optional(),
+  expiresAt: z.date(),
   userId: z.string().uuid(),
   orgId: z.string().uuid(),
   createdAt: z.date(),

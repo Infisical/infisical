@@ -11,8 +11,8 @@ export type TCreateSharedSecretRequest = {
   iv: string;
   tag: string;
   hashedHex: string;
-  expiresAt?: Date;
-  expiresAfterViews?: number;
+  expiresAt: Date;
+  expiresAfterViews: number;
 };
 
 export type TViewSharedSecretResponse = {

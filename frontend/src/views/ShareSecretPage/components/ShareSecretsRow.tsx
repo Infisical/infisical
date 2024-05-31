@@ -110,22 +110,17 @@ export const ShareSecretsRow = ({
         <p className="text-xs text-gray-500">{formatDate(row.createdAt)}</p>
       </Td>
       <Td>
-        {row.expiresAfterViews ? (
-          <p
-            className={`text-sm ${row.expiresAfterViews <= 0 ? "text-red-500" : "text-green-500"}`}
-          >
-            Valid for {row.expiresAfterViews} more views
+        <>
+          <p className={`text-sm ${isExpired(row.expiresAt) ? "text-red-500" : "text-green-500"}`}>
+            {getValidityStatusText(row.expiresAt!) + timeAgo(row.expiresAt!, currentTime)}
           </p>
-        ) : (
-          <>
-            <p
-              className={`text-sm ${isExpired(row.expiresAt) ? "text-red-500" : "text-green-500"}`}
-            >
-              {getValidityStatusText(row.expiresAt!) + timeAgo(row.expiresAt!, currentTime)}
-            </p>
-            <p className="text-xs text-gray-500">{formatDate(row.expiresAt!)}</p>
-          </>
-        )}
+          <p className="text-xs text-gray-500">{formatDate(row.expiresAt!)}</p>
+        </>
+      </Td>
+      <Td>
+        <p className={`text-sm ${row.expiresAfterViews <= 0 ? "text-red-500" : "text-green-500"}`}>
+          {row.expiresAfterViews}
+        </p>
       </Td>
       <Td>
         <IconButton

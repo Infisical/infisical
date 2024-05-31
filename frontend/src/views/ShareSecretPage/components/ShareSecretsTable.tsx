@@ -33,15 +33,11 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
   const { isLoading, data = [] } = useGetSharedSecrets();
 
   let tableData = data.filter(
-    (secret) =>
-      (secret.expiresAt && new Date(secret.expiresAt) > new Date()) ||
-      (secret.expiresAfterViews && secret.expiresAfterViews > 0)
+    (secret) => new Date(secret.expiresAt) > new Date() && secret.expiresAfterViews > 0
   );
   const handleSecretExpiration = () => {
     tableData = data.filter(
-      (secret) =>
-        (secret.expiresAt && new Date(secret.expiresAt) > new Date()) ||
-        (secret.expiresAfterViews && secret.expiresAfterViews > 0)
+      (secret) => new Date(secret.expiresAt) > new Date() && secret.expiresAfterViews > 0
     );
   };
 
@@ -50,7 +46,7 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
       <Table>
         <THead>
           <Tr>
-            <Th>Encrypted Secret</Th> <Th>Created</Th> <Th>Valid Until</Th>
+            <Th>Encrypted Secret</Th> <Th>Created</Th> <Th>Valid Until</Th> <Th>Views Left</Th>
             <Th aria-label="button" />
           </Tr>
         </THead>

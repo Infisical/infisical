@@ -84,9 +84,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         hashedHex: z.string(),
         expiresAt: z
           .string()
-          .optional()
           .refine((date) => date === undefined || new Date(date) > new Date(), "Expires at should be a future date"),
-        expiresAfterViews: z.number().optional()
+        expiresAfterViews: z.number()
       }),
       response: {
         200: z.object({
@@ -107,7 +106,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         iv,
         tag,
         hashedHex,
-        expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+        expiresAt: new Date(expiresAt),
         expiresAfterViews
       });
       return { id: sharedSecret.id };

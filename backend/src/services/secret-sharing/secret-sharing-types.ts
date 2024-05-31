@@ -13,8 +13,8 @@ export type TCreateSharedSecretDTO = {
   iv: string;
   tag: string;
   hashedHex: string;
-  expiresAt?: Date;
-  expiresAfterViews?: number;
+  expiresAt: Date;
+  expiresAfterViews: number;
 } & TSharedSecretPermission;
 
 export type TDeleteSharedSecretDTO = {
