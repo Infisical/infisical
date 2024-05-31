@@ -19,8 +19,6 @@ export type TViewSharedSecretResponse = {
   encryptedValue: string;
   iv: string;
   tag: string;
-  expiresAt?: Date;
-  expiresAfterViews?: number;
 };
 
 export type TDeleteSharedSecretRequest = {

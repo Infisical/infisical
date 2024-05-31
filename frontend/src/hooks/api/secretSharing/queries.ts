@@ -24,8 +24,6 @@ export const useGetActiveSharedSecretByIdAndHashedHex = (id: string, hashedHex: 
         encryptedValue: data.encryptedValue,
         iv: data.iv,
         tag: data.tag,
-        expiresAt: data.expiresAt,
-        expiresAfterViews: data.expiresAfterViews
       };
     }
   });

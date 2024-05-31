@@ -62,9 +62,7 @@ export const secretSharingServiceFactory = ({
         await secretSharingDAL.deleteById(sharedSecretId);
         return;
       }
-      await secretSharingDAL.updateById(sharedSecretId, {
-        expiresAfterViews: sharedSecret.expiresAfterViews - 1
-      });
+      await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
     }
     return sharedSecret;
   };
