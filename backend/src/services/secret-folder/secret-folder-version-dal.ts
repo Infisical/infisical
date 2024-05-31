@@ -91,7 +91,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
     } catch (error) {
       throw new DatabaseError({
         error,
-        name: "Secret Version Prune"
+        name: "Secret Folder Version Prune"
       });
     }
   };
