@@ -325,9 +325,9 @@ export const snapshotDALFactory = (db: TDbClient) => {
     }
   };
 
-  const pruneExcessSnapshots = async (tx?: Knex) => {
+  const pruneExcessSnapshots = async () => {
     try {
-      const folders = await (tx || db)(TableName.SecretFolder).select("id");
+      const folders = await db(TableName.SecretFolder).select("id");
       const folderIds = folders.map((folder) => folder.id);
       const PRUNE_FOLDER_BATCH_SIZE = 500;
 
@@ -338,35 +338,27 @@ export const snapshotDALFactory = (db: TDbClient) => {
       }
 
       for await (const folderBatch of pruneBatches) {
-        const rankedSnapshots = (tx || db)(TableName.Snapshot)
-          .whereIn(`${TableName.Snapshot}.folderId`, folderBatch)
-          .select(
-            "folderId",
-            "id",
-            (tx || db).raw(
-              `ROW_NUMBER() OVER (PARTITION BY ${TableName.Snapshot}."folderId" ORDER BY ${TableName.Snapshot}."createdAt" DESC) AS row_num`
-            )
-          )
-          .as("ranked_snapshots");
-
-        const folderLimits = (tx || db)(TableName.Snapshot)
-          .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.Snapshot}.envId`)
-          .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
-          .whereIn(`${TableName.Snapshot}.folderId`, folderBatch)
-          .groupBy(`${TableName.Snapshot}.folderId`, `${TableName.Project}.pitVersionLimit`)
-          .select("folderId", "pitVersionLimit")
-          .as("folder_limits");
-
-        const snapshotsToKeep = (tx || db)
-          .select("id")
-          .from(rankedSnapshots)
-          .join(folderLimits, "folder_limits.folderId", "ranked_snapshots.folderId")
-          .whereRaw(`ranked_snapshots.row_num <= folder_limits."pitVersionLimit"`);
-
-        await (tx || db)(TableName.Snapshot)
-          .whereIn("folderId", folderBatch)
-          .whereNotIn("id", snapshotsToKeep)
-          .delete();
+        await secretSnapshotOrm.transaction(async (txn) => {
+          return txn(TableName.Snapshot)
+            .with("snapshot_cte", (qb) => {
+              void qb
+                .from(TableName.Snapshot)
+                .whereIn(`${TableName.Snapshot}.folderId`, folderBatch)
+                .select(
+                  "folderId",
+                  `${TableName.Snapshot}.id as id`,
+                  txn.raw(
+                    `ROW_NUMBER() OVER (PARTITION BY ${TableName.Snapshot}."folderId" ORDER BY ${TableName.Snapshot}."createdAt" DESC) AS row_num`
+                  )
+                );
+            })
+            .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Snapshot}.folderId`)
+            .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+            .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
+            .join("snapshot_cte", "snapshot_cte.id", `${TableName.Snapshot}.id`)
+            .whereRaw(`snapshot_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+            .delete();
+        });
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "SnapshotPrune" });
