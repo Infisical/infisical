@@ -67,7 +67,6 @@ export const decryptSecrets = (
       env: encSecret.environment,
       key: secretKey,
       value: secretValue,
-      isReplicated: encSecret.isReplicated,
       tags: encSecret.tags,
       comment: secretComment,
       reminderRepeatDays: encSecret.secretReminderRepeatDays,

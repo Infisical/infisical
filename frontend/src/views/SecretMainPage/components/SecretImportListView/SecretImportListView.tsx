@@ -154,7 +154,6 @@ export const SecretImportListView = ({
   };
 
   const handleOpenReplicationSecrets = (replicationImportId: string) => {
-    console.log(secretImports);
     const reservedImport = secretImports.find(
       ({ isReserved, importPath, importEnv }) =>
         importEnv.slug === environment &&

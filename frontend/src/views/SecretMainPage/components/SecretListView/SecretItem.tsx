@@ -224,11 +224,7 @@ export const SecretItem = memo(
                     "ml-3 block h-3.5 w-3.5 group-hover:hidden",
                     isSelected && "hidden"
                   )}
-                  symbolName={
-                    secret.isReplicated
-                      ? FontAwesomeSpriteName.ReplicatedSecretKey
-                      : FontAwesomeSpriteName.SecretKey
-                  }
+                  symbolName={FontAwesomeSpriteName.SecretKey}
                 />
               </div>
               <div className="flex h-11 w-80 flex-shrink-0 items-center px-4 py-2">
@@ -424,9 +420,8 @@ export const SecretItem = memo(
                       <Tooltip
                         content={
                           secretReminderRepeatDays && secretReminderRepeatDays > 0
-                            ? `Every ${secretReminderRepeatDays} day${
-                                Number(secretReminderRepeatDays) > 1 ? "s" : ""
-                              }
+                            ? `Every ${secretReminderRepeatDays} day${Number(secretReminderRepeatDays) > 1 ? "s" : ""
+                            }
                           `
                             : "Reminder"
                         }
