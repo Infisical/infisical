@@ -1,31 +1,24 @@
 export type TSharedSecret = {
   id: string;
-  name: string;
-  encryptedValue: string;
-  iv: string;
-  tag: string;
-  hashedHex: string;
   userId: string;
-  expiresAt: Date;
+  orgId: string;
   createdAt: Date;
   updatedAt: Date;
-};
+} & TCreateSharedSecretRequest;
 
 export type TCreateSharedSecretRequest = {
-  name: string;
   encryptedValue: string;
   iv: string;
   tag: string;
   hashedHex: string;
   expiresAt: Date;
+  expiresAfterViews: number;
 };
 
 export type TViewSharedSecretResponse = {
-  name: string;
   encryptedValue: string;
   iv: string;
   tag: string;
-  expiresAt: Date;
 };
 
 export type TDeleteSharedSecretRequest = {

@@ -9,9 +9,7 @@ import { AxiosError } from "axios";
 import * as yup from "yup";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  encryptSymmetric,
-} from "@app/components/utilities/cryptography/crypto";
+import { encryptSymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   FormControl,
@@ -49,22 +47,12 @@ const expirationUnitsAndActions = [
     unit: "Weeks",
     action: (expiresAt: Date, expiresInValue: number) =>
       expiresAt.setDate(expiresAt.getDate() + expiresInValue * 7)
-  },
-  {
-    unit: "Months",
-    action: (expiresAt: Date, expiresInValue: number) =>
-      expiresAt.setMonth(expiresAt.getMonth() + expiresInValue)
-  },
-  {
-    unit: "Years",
-    action: (expiresAt: Date, expiresInValue: number) =>
-      expiresAt.setFullYear(expiresAt.getFullYear() + expiresInValue)
   }
 ];
 
 const schema = yup.object({
-  name: yup.string().max(100).required().label("Shared Secret Name"),
-  value: yup.string().max(1000).required().label("Shared Secret Value"),
+  value: yup.string().max(10000).required().label("Shared Secret Value"),
+  expiresAfterViews: yup.number().min(1).required().label("Expires After Views"),
   expiresInValue: yup.number().min(1).required().label("Expiration Value"),
   expiresInUnit: yup.string().required().label("Expiration Unit")
 });
@@ -93,7 +81,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [newSharedSecret, setnewSharedSecret] = useState("");
   const hasSharedSecret = Boolean(newSharedSecret);
   const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
-    initialState: false,
+    initialState: false
   });
 
   const copyUrlToClipboard = () => {
@@ -106,10 +94,14 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   }, [isUrlCopied]);
 
-  const onFormSubmit = async ({ name, value, expiresInValue, expiresInUnit }: FormData) => {
+  const onFormSubmit = async ({
+    value,
+    expiresInValue,
+    expiresInUnit,
+    expiresAfterViews
+  }: FormData) => {
     try {
       if (!currentOrg?.id) return;
-
       const key = crypto.randomBytes(16).toString("hex");
       const hashedHex = crypto.createHash("sha256").update(key).digest("hex");
       const { ciphertext, iv, tag } = encryptSymmetric({
@@ -117,25 +109,26 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
         key
       });
 
-
       const expiresAt = new Date();
       const updateExpiresAt = expirationUnitsAndActions.find(
         (item) => item.unit === expiresInUnit
       )?.action;
-      if (updateExpiresAt) {
+      if (updateExpiresAt && expiresInValue) {
         updateExpiresAt(expiresAt, expiresInValue);
       }
 
       const { id } = await createSharedSecret.mutateAsync({
-        name,
         encryptedValue: ciphertext,
         iv,
         tag,
         hashedHex,
         expiresAt,
+        expiresAfterViews
       });
       setnewSharedSecret(
-        `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(hashedHex)}-${encodeURIComponent(key)}`
+        `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(
+          hashedHex
+        )}-${encodeURIComponent(key)}`
       );
 
       createNotification({
@@ -168,90 +161,100 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
         setnewSharedSecret("");
       }}
     >
-        <ModalContent
-          title="Share a Secret"
-          subTitle="This link is only accessible once. Please share this link with intended recipients. "
-        >
+      <ModalContent
+        title="Share a Secret"
+        subTitle="This link is only accessible once. Please share this link with intended recipients. "
+      >
         {!hasSharedSecret ? (
           <form onSubmit={handleSubmit(onFormSubmit)}>
-            <Controller
-              control={control}
-              name="name"
-              defaultValue=""
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Shared Secret Name"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="Type your secret identifier" />
-                </FormControl>
-              )}
-            />
             <Controller
               control={control}
               name="value"
               defaultValue=""
               render={({ field, fieldState: { error } }) => (
                 <FormControl
-                  label="Shared Secret Value"
+                  label="Shared Secret"
                   isError={Boolean(error)}
                   errorText={error?.message}
                 >
                   <SecretInput
                     isVisible
                     {...field}
-                    containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2 text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2"
+                    containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2 text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 min-h-[100px]"
                   />
                 </FormControl>
               )}
             />
-            <div className="flex w-full flex-row justify-end">
-              <div className="w-3/5">
+            <div className="flex w-full flex-row">
+              <div className="w-2/7 flex">
                 <Controller
                   control={control}
-                  name="expiresInValue"
-                  defaultValue={1}
+                  name="expiresAfterViews"
+                  defaultValue={6}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Expiration Value"
+                      className="mb-4 w-full"
+                      label="Expires After Views"
                       isError={Boolean(error)}
-                      errorText={error?.message}
+                      errorText="Please enter a valid number of views"
                     >
-                      <Input {...field} type="number" min={0} />
+                      <Input {...field} type="number" min={1} />
                     </FormControl>
                   )}
                 />
               </div>
-              <div className="w-2/5 pl-4">
-                <Controller
-                  control={control}
-                  name="expiresInUnit"
-                  defaultValue={expirationUnitsAndActions[0].unit}
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                    <FormControl
-                      label="Expiration Unit"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
-                      <Select
-                        defaultValue={field.value}
-                        {...field}
-                        onValueChange={(e) => onChange(e)}
-                        className="w-full"
-                      >
-                        {expirationUnitsAndActions.map(({ unit }) => (
-                          <SelectItem value={unit} key={unit}>
-                            {unit}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
-                />
+              <div className="w-1/7 flex items-center justify-center px-2">
+                <p className="px-4 text-sm text-gray-400">OR</p>
+              </div>
+              <div className="w-4/7 flex">
+                <div className="flex w-full">
+                  <div className="flex w-2/5 w-full justify-center">
+                    <Controller
+                      control={control}
+                      name="expiresInValue"
+                      defaultValue={6}
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Expires after Time"
+                          isError={Boolean(error)}
+                          errorText="Please enter a valid time duration"
+                        >
+                          <Input {...field} type="number" min={0} />
+                        </FormControl>
+                      )}
+                    />
+                  </div>
+                  <div className="flex w-3/5 w-full justify-center">
+                    <Controller
+                      control={control}
+                      name="expiresInUnit"
+                      defaultValue={expirationUnitsAndActions[0].unit}
+                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                        <FormControl
+                          label="Unit"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                        >
+                          <Select
+                            defaultValue={field.value}
+                            {...field}
+                            onValueChange={(e) => onChange(e)}
+                            className="w-full"
+                          >
+                            {expirationUnitsAndActions.map(({ unit }) => (
+                              <SelectItem value={unit} key={unit}>
+                                {unit}
+                              </SelectItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      )}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="mt-8 flex items-center">
+            <div className="flex items-center">
               <Button
                 className="mr-4"
                 type="submit"
