@@ -58,11 +58,12 @@ func GetPlainTextSecretsViaUniversalAuth(accessToken string, etag string, secret
 	httpClient.SetAuthToken(accessToken)
 
 	secretsResponse, err := api.CallGetDecryptedSecretsV3(httpClient, api.GetDecryptedSecretsV3Request{
-		ProjectSlug: secretScope.ProjectSlug,
-		Environment: secretScope.EnvSlug,
-		Recursive:   secretScope.Recursive,
-		SecretPath:  secretScope.SecretsPath,
-		ETag:        etag,
+		ProjectSlug:            secretScope.ProjectSlug,
+		Environment:            secretScope.EnvSlug,
+		Recursive:              secretScope.Recursive,
+		SecretPath:             secretScope.SecretsPath,
+		ExpandSecretReferences: true,
+		ETag:                   etag,
 	})
 
 	if err != nil {

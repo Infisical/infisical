@@ -98,11 +98,12 @@ type GetDecryptedSecretsV3Response struct {
 }
 
 type GetDecryptedSecretsV3Request struct {
-	ProjectSlug string `json:"workspaceSlug"`
-	Environment string `json:"environment"`
-	SecretPath  string `json:"secretPath"`
-	Recursive   bool   `json:"recursive"`
-	ETag        string `json:"etag,omitempty"`
+	ProjectSlug            string `json:"workspaceSlug"`
+	Environment            string `json:"environment"`
+	SecretPath             string `json:"secretPath"`
+	Recursive              bool   `json:"recursive"`
+	ExpandSecretReferences bool   `json:"expandSecretReferences"`
+	ETag                   string `json:"etag,omitempty"`
 }
 
 type GetServiceTokenDetailsResponse struct {

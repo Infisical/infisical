@@ -163,6 +163,9 @@ func CallGetDecryptedSecretsV3(httpClient *resty.Client, request GetDecryptedSec
 	if request.Recursive {
 		req.SetQueryParam("recursive", "true")
 	}
+	if request.ExpandSecretReferences {
+		req.SetQueryParam("expandSecretReferences", "true")
+	}
 
 	response, err := req.Get(fmt.Sprintf("%v/v3/secrets/raw", API_HOST_URL))
 
