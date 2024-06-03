@@ -640,19 +640,19 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      {/* {(window.location.origin.includes("https://app.infisical.com") ||
-                        window.location.origin.includes("https://gamma.infisical.com")) && ( */}
-                      <Link href={`/org/${currentOrg?.id}/billing`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?.id}/billing`}
-                            icon="system-outline-103-coin-cash-monetization"
-                          >
-                            Usage & Billing
-                          </MenuItem>
-                        </a>
-                      </Link>
-                      {/* )} */}
+                      {(window.location.origin.includes("https://app.infisical.com") ||
+                        window.location.origin.includes("https://gamma.infisical.com")) && (
+                        <Link href={`/org/${currentOrg?.id}/billing`} passHref>
+                          <a>
+                            <MenuItem
+                              isSelected={router.asPath === `/org/${currentOrg?.id}/billing`}
+                              icon="system-outline-103-coin-cash-monetization"
+                            >
+                              Usage & Billing
+                            </MenuItem>
+                          </a>
+                        </Link>
+                      )}
                       <Link href={`/org/${currentOrg?.id}/settings`} passHref>
                         <a>
                           <MenuItem
