@@ -11,7 +11,7 @@ type TDeleteOrgMembership = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "delete" | "findProjectMembershipsByUserId">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgIdentitiesCount">;
 };
 
 export const deleteOrgMembershipFn = async ({
@@ -27,7 +27,7 @@ export const deleteOrgMembershipFn = async ({
     const orgMembership = await orgDAL.deleteMembershipById(orgMembershipId, orgId, tx);
 
     if (!orgMembership.userId) {
-      await licenseService.updateSubscriptionOrgMemberCount(orgId);
+      await licenseService.updateSubscriptionOrgIdentitiesCount(orgId);
       return orgMembership;
     }
 
@@ -70,7 +70,7 @@ export const deleteOrgMembershipFn = async ({
       tx
     );
 
-    await licenseService.updateSubscriptionOrgMemberCount(orgId);
+    await licenseService.updateSubscriptionOrgIdentitiesCount(orgId);
     return orgMembership;
   });
 

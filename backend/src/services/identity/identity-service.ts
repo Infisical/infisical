@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
@@ -16,6 +17,7 @@ type TIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
+  licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgIdentitiesCount" | "getPlan">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -23,7 +25,8 @@ export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
 export const identityServiceFactory = ({
   identityDAL,
   identityOrgMembershipDAL,
-  permissionService
+  permissionService,
+  licenseService
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -45,6 +48,15 @@ export const identityServiceFactory = ({
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
     if (!hasRequiredPriviledges) throw new BadRequestError({ message: "Failed to create a more privileged identity" });
 
+    const plan = await licenseService.getPlan(orgId);
+    if (plan.memberLimit !== null && plan.membersUsed >= plan.memberLimit) {
+      // case: limit imposed on number of identities allowed
+      // case: number of identities used exceeds the number of identities allowed
+      throw new BadRequestError({
+        message: "Failed to add identity due to identiy limit reached. Upgrade plan to add more identities."
+      });
+    }
+
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity = await identityDAL.create({ name }, tx);
       await identityOrgMembershipDAL.create(
@@ -58,7 +70,7 @@ export const identityServiceFactory = ({
       );
       return newIdentity;
     });
-
+    await licenseService.updateSubscriptionOrgIdentitiesCount(orgId);
     return identity;
   };
 
@@ -150,6 +162,7 @@ export const identityServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
 
     const deletedIdentity = await identityDAL.deleteById(id);
+    await licenseService.updateSubscriptionOrgIdentitiesCount(identityOrgMembership.orgId);
     return { ...deletedIdentity, orgId: identityOrgMembership.orgId };
   };
 

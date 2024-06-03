@@ -61,7 +61,7 @@ type TOrgServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<
     TLicenseServiceFactory,
-    "getPlan" | "updateSubscriptionOrgMemberCount" | "generateOrgCustomerId" | "removeOrgCustomer"
+    "getPlan" | "updateSubscriptionOrgIdentitiesCount" | "generateOrgCustomerId" | "removeOrgCustomer"
   >;
 };
 
@@ -513,7 +513,7 @@ export const orgServiceFactory = ({
       }
     });
 
-    await licenseService.updateSubscriptionOrgMemberCount(orgId);
+    await licenseService.updateSubscriptionOrgIdentitiesCount(orgId);
     if (!appCfg.isSmtpConfigured) {
       return `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${inviteeEmail}&organization_id=${org?.id}`;
     }
@@ -557,7 +557,7 @@ export const orgServiceFactory = ({
         orgId,
         status: OrgMembershipStatus.Accepted
       });
-      await licenseService.updateSubscriptionOrgMemberCount(orgId);
+      await licenseService.updateSubscriptionOrgIdentitiesCount(orgId);
       return { user };
     }
 

@@ -15,7 +15,8 @@ export const OrganizationsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   authEnforced: z.boolean().default(false).nullable().optional(),
-  scimEnabled: z.boolean().default(false).nullable().optional()
+  scimEnabled: z.boolean().default(false).nullable().optional(),
+  billingVersion: z.string().default("v1").nullable().optional() // v0 -> User-only billing, v1 -> Universal Identity billing
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

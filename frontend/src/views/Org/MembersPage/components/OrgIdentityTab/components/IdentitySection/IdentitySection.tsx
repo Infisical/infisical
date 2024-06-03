@@ -4,8 +4,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { Button, DeleteActionModal, UpgradePlanModal } from "@app/components/v2";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription
+} from "@app/context";
 import { withPermission } from "@app/hoc";
 import { useDeleteIdentity } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -17,10 +22,10 @@ import { IdentityUniversalAuthClientSecretModal } from "./IdentityUniversalAuthC
 
 export const IdentitySection = withPermission(
   () => {
+    const { subscription } = useSubscription();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
 
-    
     const { mutateAsync: deleteMutateAsync } = useDeleteIdentity();
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "identity",
@@ -56,6 +61,20 @@ export const IdentitySection = withPermission(
       }
     };
 
+    const isMoreUsersNotAllowed = subscription?.memberLimit
+      ? subscription.membersUsed >= subscription.memberLimit
+      : false;
+
+    const handleAddMachineIdentityModal = () => {
+      if (isMoreUsersNotAllowed) {
+        handlePopUpOpen("upgradePlan", {
+          description: "You can add more identities if you upgrade your Infisical plan."
+        });
+      } else {
+        handlePopUpOpen("identity");
+      }
+    };
+
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex justify-between">
@@ -81,7 +100,7 @@ export const IdentitySection = withPermission(
                 colorSchema="primary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("identity")}
+                onClick={() => handleAddMachineIdentityModal()}
                 isDisabled={!isAllowed}
               >
                 Create identity
@@ -104,6 +123,11 @@ export const IdentitySection = withPermission(
           popUp={popUp}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
+        />
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text={(popUp.upgradePlan?.data as { description: string })?.description}
         />
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}

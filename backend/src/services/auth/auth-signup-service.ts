@@ -39,7 +39,7 @@ type TAuthSignupDep = {
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
-  licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgIdentitiesCount">;
 };
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
@@ -209,7 +209,7 @@ export const authSignupServiceFactory = ({
       { userId: user.id, status: OrgMembershipStatus.Accepted }
     );
     const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
-    await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
+    await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgIdentitiesCount(orgId)));
 
     await convertPendingGroupAdditionsToGroupMemberships({
       userIds: [user.id],
@@ -321,7 +321,7 @@ export const authSignupServiceFactory = ({
         tx
       );
       const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
-      await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
+      await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgIdentitiesCount(orgId)));
 
       await convertPendingGroupAdditionsToGroupMemberships({
         userIds: [user.id],

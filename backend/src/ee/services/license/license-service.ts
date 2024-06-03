@@ -199,12 +199,12 @@ export const licenseServiceFactory = ({
     await licenseServerCloudApi.request.delete(`/api/license-server/v1/customers/${customerId}`);
   };
 
-  const updateSubscriptionOrgMemberCount = async (orgId: string) => {
+  const updateSubscriptionOrgIdentitiesCount = async (orgId: string): Promise<void> => {
     if (instanceType === InstanceType.Cloud) {
       const org = await orgDAL.findOrgById(orgId);
       if (!org) throw new BadRequestError({ message: "Org not found" });
 
-      const count = await licenseDAL.countOfOrgMembers(orgId);
+      const count = await licenseDAL.countOfOrgIdentities(orgId, org.billingVersion);
       if (org?.customerId) {
         await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
           quantity: count
@@ -212,7 +212,7 @@ export const licenseServiceFactory = ({
       }
       await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
-      const usedSeats = await licenseDAL.countOfOrgMembers(null);
+      const usedSeats = await licenseDAL.countOfOrgIdentities(null, null);
       await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, { usedSeats });
     }
     await refreshPlan(orgId);
@@ -576,7 +576,7 @@ export const licenseServiceFactory = ({
       return instanceType;
     },
     getPlan,
-    updateSubscriptionOrgMemberCount,
+    updateSubscriptionOrgIdentitiesCount,
     refreshPlan,
     getOrgPlan,
     getOrgPlansTableByBillCycle,
