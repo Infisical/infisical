@@ -21,7 +21,8 @@ export enum QueueName {
   SecretFullRepoScan = "secret-full-repo-scan",
   SecretPushEventScan = "secret-push-event-scan",
   UpgradeProjectToGhost = "upgrade-project-to-ghost",
-  DynamicSecretRevocation = "dynamic-secret-revocation"
+  DynamicSecretRevocation = "dynamic-secret-revocation",
+  CaCrlRotation = "ca-crl-rotation"
 }
 
 export enum QueueJobs {
@@ -37,7 +38,8 @@ export enum QueueJobs {
   SecretScan = "secret-scan",
   UpgradeProjectToGhost = "upgrade-project-to-ghost-job",
   DynamicSecretRevocation = "dynamic-secret-revocation",
-  DynamicSecretPruning = "dynamic-secret-pruning"
+  DynamicSecretPruning = "dynamic-secret-pruning",
+  CaCrlRotation = "ca-crl-rotation-job"
 }
 
 export type TQueueJobTypes = {
@@ -50,7 +52,6 @@ export type TQueueJobTypes = {
     };
     name: QueueJobs.SecretReminder;
   };
-
   [QueueName.SecretRotation]: {
     payload: { rotationId: string };
     name: QueueJobs.SecretRotation;
@@ -116,6 +117,12 @@ export type TQueueJobTypes = {
           dynamicSecretCfgId: string;
         };
       };
+  [QueueName.CaCrlRotation]: {
+    name: QueueJobs.CaCrlRotation;
+    payload: {
+      caId: string;
+    };
+  };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;

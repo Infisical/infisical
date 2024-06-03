@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { IconButton,Modal, ModalContent } from "@app/components/v2";
+import { IconButton, Modal, ModalContent } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { useGetCaCrl } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -48,8 +48,22 @@ export const CaCrlModal = ({ popUp, handlePopUpToggle }: Props) => {
         <div>
           {crl && (
             <>
+              {/* <div className="mb-4 flex items-center justify-between">
+                <h2>Manual CRL Rotation</h2>
+                <Button
+                  // isLoading={isLoading}
+                  // isDisabled={!isAllowed}
+                  colorSchema="primary"
+                  variant="outline_bg"
+                  type="submit"
+                  // onClick={() => handleAssignment(username, !isPartOfGroup)}
+                  onClick={() => {}}
+                >
+                  Rotate
+                </Button>
+              </div> */}
               <div className="mb-4 flex items-center justify-between">
-                <h2>CA CRL</h2>
+                <h2>Certificate Revocation List</h2>
                 <div className="flex">
                   <IconButton
                     ariaLabel="copy icon"

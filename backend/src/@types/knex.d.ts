@@ -38,6 +38,9 @@ import {
   TCertificateAuthorityCerts,
   TCertificateAuthorityCertsInsert,
   TCertificateAuthorityCertsUpdate,
+  TCertificateAuthorityCrl,
+  TCertificateAuthorityCrlInsert,
+  TCertificateAuthorityCrlUpdate,
   TCertificateAuthoritySk,
   TCertificateAuthoritySkInsert,
   TCertificateAuthoritySkUpdate,
@@ -278,6 +281,11 @@ declare module "knex/types/tables" {
       TCertificateAuthoritySk,
       TCertificateAuthoritySkInsert,
       TCertificateAuthoritySkUpdate
+    >;
+    [TableName.CertificateAuthorityCrl]: Knex.CompositeTableType<
+      TCertificateAuthorityCrl,
+      TCertificateAuthorityCrlInsert,
+      TCertificateAuthorityCrlUpdate
     >;
     [TableName.Certificate]: Knex.CompositeTableType<TCertificates, TCertificatesInsert, TCertificatesUpdate>;
     [TableName.CertificateCert]: Knex.CompositeTableType<

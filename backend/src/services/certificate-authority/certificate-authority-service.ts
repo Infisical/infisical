@@ -12,8 +12,10 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
+import { TCertificateAuthorityCrlDALFactory } from "./certificate-authority-crl-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { createDistinguishedName, keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
+import { TCertificateAuthorityQueueFactory } from "./certificate-authority-queue";
 import { TCertificateAuthoritySkDALFactory } from "./certificate-authority-sk-dal";
 import {
   CaStatus,
@@ -26,6 +28,7 @@ import {
   TGetCrl,
   TImportCertToCaDTO,
   TIssueCertFromCaDTO,
+  TRotateCrlDTO,
   TSignIntermediateDTO,
   TUpdateCaDTO
 } from "./certificate-authority-types";
@@ -37,6 +40,8 @@ type TCertificateAuthorityServiceFactoryDep = {
   >;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "create" | "findOne" | "transaction">;
   certificateAuthoritySkDAL: Pick<TCertificateAuthoritySkDALFactory, "create" | "findOne">;
+  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
+  certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
   certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
   certificateCertDAL: Pick<TCertificateCertDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
@@ -49,6 +54,7 @@ export const certificateAuthorityServiceFactory = ({
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
   certificateAuthoritySkDAL,
+  certificateAuthorityCrlDAL,
   certificateDAL,
   certificateCertDAL,
   projectDAL,
@@ -141,6 +147,8 @@ export const certificateAuthorityServiceFactory = ({
         tx
       );
 
+      // TODO: create CRL
+
       if (type === CaType.ROOT) {
         // note: self-signed cert only applicable for root CA
 
@@ -165,6 +173,15 @@ export const certificateAuthorityServiceFactory = ({
             caId: ca.id,
             certificate, // TODO: encrypt
             certificateChain: "" // TODO: encrypt
+          },
+          tx
+        );
+
+        await certificateAuthorityCrlDAL.create(
+          {
+            caId: ca.id,
+            crl: "", // TODO: encrypt
+            ttl: 60 // in minutes
           },
           tx
         );
@@ -721,6 +738,70 @@ export const certificateAuthorityServiceFactory = ({
     };
   };
 
+  const rotateCaCrl = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TRotateCrlDTO) => {
+    const ca = await certificateAuthorityDAL.findById(caId);
+    if (!ca) throw new BadRequestError({ message: "CA not found" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      ca.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    const caKeys = await certificateAuthoritySkDAL.findOne({ caId: ca.id });
+
+    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+    const skObj = crypto.createPrivateKey({ key: caKeys.sk, format: "pem", type: "pkcs8" });
+    const sk = await crypto.subtle.importKey("pkcs8", skObj.export({ format: "der", type: "pkcs8" }), alg, true, [
+      "sign"
+    ]);
+
+    const revokedCerts = await certificateDAL.find({
+      caId: ca.id,
+      status: CertStatus.REVOKED
+    });
+
+    const crl = await x509.X509CrlGenerator.create({
+      issuer: ca.dn,
+      thisUpdate: new Date(),
+      nextUpdate: new Date("2025/12/12"),
+      entries: revokedCerts.map((revokedCert) => {
+        return {
+          serialNumber: revokedCert.serialNumber,
+          revocationDate: new Date(revokedCert.revokedAt as Date),
+          reason: revokedCert.revocationReason as number,
+          invalidity: new Date("2022/01/01"),
+          issuer: ca.dn
+        };
+      }),
+      signingAlgorithm: alg,
+      signingKey: sk
+    });
+
+    const base64crl = crl.toString("base64");
+    const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
+
+    await certificateAuthorityCrlDAL.update(
+      {
+        caId: ca.id
+      },
+      {
+        crl: crlPem // TODO: encrypt
+      }
+    );
+
+    return {
+      crl: crlPem
+    };
+  };
+
   return {
     createCa,
     getCaById,
@@ -731,6 +812,7 @@ export const certificateAuthorityServiceFactory = ({
     signIntermediate,
     importCertToCa,
     issueCertFromCa,
-    getCaCrl
+    getCaCrl,
+    rotateCaCrl
   };
 };

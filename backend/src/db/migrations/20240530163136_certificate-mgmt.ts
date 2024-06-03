@@ -54,6 +54,19 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
+  if (!(await knex.schema.hasTable(TableName.CertificateAuthorityCrl))) {
+    await knex.schema.createTable(TableName.CertificateAuthorityCrl, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.timestamps(true, true, true);
+      t.uuid("caId").notNullable().unique();
+      t.foreign("caId").references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
+      t.text("crl").notNullable(); // TODO: encrypt
+      t.integer("ttl").notNullable(); // in minutes
+      // TODO: consider type (crl or delta)
+      // TODO: rebuild interval
+    });
+  }
+
   if (!(await knex.schema.hasTable(TableName.Certificate))) {
     await knex.schema.createTable(TableName.Certificate, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -99,6 +112,9 @@ export async function down(knex: Knex): Promise<void> {
   // certificate authorities
   await knex.schema.dropTableIfExists(TableName.CertificateAuthoritySk);
   await dropOnUpdateTrigger(knex, TableName.CertificateAuthoritySk);
+
+  await knex.schema.dropTableIfExists(TableName.CertificateAuthorityCrl);
+  await dropOnUpdateTrigger(knex, TableName.CertificateAuthorityCrl);
 
   await knex.schema.dropTableIfExists(TableName.CertificateAuthorityCert);
   await dropOnUpdateTrigger(knex, TableName.CertificateAuthorityCert);

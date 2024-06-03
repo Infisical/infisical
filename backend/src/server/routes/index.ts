@@ -74,7 +74,9 @@ import { certificateCertDALFactory } from "@app/services/certificate/certificate
 import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
+import { certificateAuthorityCrlDALFactory } from "@app/services/certificate-authority/certificate-authority-crl-dal";
 import { certificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
 import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { certificateAuthoritySkDALFactory } from "@app/services/certificate-authority/certificate-authority-sk-dal";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
@@ -503,6 +505,7 @@ export const registerRoutes = async (
   const certificateAuthorityDAL = certificateAuthorityDALFactory(db);
   const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
   const certificateAuthoritySkDAL = certificateAuthoritySkDALFactory(db);
+  const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
 
   const certificateDAL = certificateDALFactory(db);
   const certificateCertDAL = certificateCertDALFactory(db);
@@ -514,10 +517,20 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const certificateAuthorityQueue = certificateAuthorityQueueFactory({
+    certificateAuthorityCrlDAL,
+    certificateAuthorityDAL,
+    certificateAuthoritySkDAL,
+    certificateDAL,
+    queueService
+  });
+
   const certificateAuthorityService = certificateAuthorityServiceFactory({
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     certificateAuthoritySkDAL,
+    certificateAuthorityCrlDAL,
+    certificateAuthorityQueue,
     certificateDAL,
     certificateCertDAL,
     projectDAL,

@@ -75,6 +75,10 @@ export type TGetCrl = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TRotateCrlDTO = {
+  caId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TDNParts = {
   commonName?: string;
   organization?: string;
@@ -82,4 +86,9 @@ export type TDNParts = {
   country?: string;
   province?: string;
   locality?: string;
+};
+
+export type TRotateCaCrlTriggerDTO = {
+  caId: string;
+  rotationIntervalDays: number;
 };

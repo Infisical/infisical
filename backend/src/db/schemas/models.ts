@@ -5,6 +5,7 @@ export enum TableName {
   CertificateAuthority = "certificate_authorities",
   CertificateAuthorityCert = "certificate_authority_certs",
   CertificateAuthoritySk = "certificate_authority_sk",
+  CertificateAuthorityCrl = "certificate_authority_crl",
   Certificate = "certificates",
   CertificateCert = "certificate_certs",
   CertificateSecret = "certificate_secrets",
