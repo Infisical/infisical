@@ -64,25 +64,23 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
 
   const pruneExcessVersions = async () => {
     try {
-      await secretFolderVerOrm.transaction((txn) => {
-        return txn(TableName.SecretFolderVersion)
-          .with("folder_cte", (qb) => {
-            void qb
-              .from(TableName.SecretFolderVersion)
-              .select(
-                "id",
-                "folderId",
-                txn.raw(
-                  `ROW_NUMBER() OVER (PARTITION BY ${TableName.SecretFolderVersion}."folderId" ORDER BY ${TableName.SecretFolderVersion}."createdAt" DESC) AS row_num`
-                )
-              );
-          })
-          .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolderVersion}.envId`)
-          .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
-          .join("folder_cte", "folder_cte.id", `${TableName.SecretFolderVersion}.id`)
-          .whereRaw(`folder_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
-          .delete();
-      });
+      await db(TableName.SecretFolderVersion)
+        .with("folder_cte", (qb) => {
+          void qb
+            .from(TableName.SecretFolderVersion)
+            .select(
+              "id",
+              "folderId",
+              db.raw(
+                `ROW_NUMBER() OVER (PARTITION BY ${TableName.SecretFolderVersion}."folderId" ORDER BY ${TableName.SecretFolderVersion}."createdAt" DESC) AS row_num`
+              )
+            );
+        })
+        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolderVersion}.envId`)
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
+        .join("folder_cte", "folder_cte.id", `${TableName.SecretFolderVersion}.id`)
+        .whereRaw(`folder_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+        .delete();
     } catch (error) {
       throw new DatabaseError({
         error,
