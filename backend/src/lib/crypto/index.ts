@@ -9,7 +9,8 @@ export {
   encryptAsymmetric,
   encryptSymmetric,
   encryptSymmetric128BitHexKeyUTF8,
-  generateAsymmetricKeyPair
+  generateAsymmetricKeyPair,
+  randomSecureBytes
 } from "./encryption";
 export {
   decryptIntegrationAuths,

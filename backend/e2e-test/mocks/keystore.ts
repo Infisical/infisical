@@ -28,6 +28,7 @@ export const mockKeyStore = (): TKeyStoreFactory => {
     },
     acquireLock: () => {
       throw new Error("Not implemented");
-    }
+    },
+    waitTillReady: async () => {}
   };
 };
