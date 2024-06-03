@@ -62,32 +62,27 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
     }
   };
 
-  const pruneExcessVersions = async (tx?: Knex) => {
+  const pruneExcessVersions = async () => {
     try {
-      const rankedFolderVersions = (tx || db)(TableName.SecretFolderVersion)
-        .select(
-          "id",
-          "folderId",
-          (tx || db).raw(
-            `ROW_NUMBER() OVER (PARTITION BY ${TableName.SecretFolderVersion}."folderId" ORDER BY ${TableName.SecretFolderVersion}."createdAt" DESC) AS row_num`
-          )
-        )
-        .as("ranked_folder_versions");
-
-      const folderLimits = (tx || db)(TableName.SecretFolderVersion)
-        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolderVersion}.envId`)
-        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
-        .groupBy(`${TableName.SecretFolderVersion}.folderId`, `${TableName.Project}.pitVersionLimit`)
-        .select("folderId", "pitVersionLimit")
-        .as("folder_limits");
-
-      const versionsToKeep = (tx || db)(rankedFolderVersions)
-        .select("id")
-        .from(rankedFolderVersions)
-        .join(folderLimits, "folder_limits.folderId", "ranked_folder_versions.folderId")
-        .whereRaw(`ranked_folder_versions.row_num <= folder_limits."pitVersionLimit"`);
-
-      await (tx || db)(TableName.SecretFolderVersion).whereNotIn("id", versionsToKeep).delete();
+      await secretFolderVerOrm.transaction((txn) => {
+        return txn(TableName.SecretFolderVersion)
+          .with("folder_cte", (qb) => {
+            void qb
+              .from(TableName.SecretFolderVersion)
+              .select(
+                "id",
+                "folderId",
+                txn.raw(
+                  `ROW_NUMBER() OVER (PARTITION BY ${TableName.SecretFolderVersion}."folderId" ORDER BY ${TableName.SecretFolderVersion}."createdAt" DESC) AS row_num`
+                )
+              );
+          })
+          .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolderVersion}.envId`)
+          .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
+          .join("folder_cte", "folder_cte.id", `${TableName.SecretFolderVersion}.id`)
+          .whereRaw(`folder_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+          .delete();
+      });
     } catch (error) {
       throw new DatabaseError({
         error,
