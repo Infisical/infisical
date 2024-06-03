@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
@@ -11,6 +12,7 @@ import {
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { logger } from "@app/lib/logger";
 
 export type TSnapshotDALFactory = ReturnType<typeof snapshotDALFactory>;
 
@@ -326,28 +328,32 @@ export const snapshotDALFactory = (db: TDbClient) => {
   };
 
   const pruneExcessSnapshots = async () => {
-    try {
-      const folders = await db(TableName.SecretFolder).select("id");
-      const folderIds = folders.map((folder) => folder.id);
-      const PRUNE_FOLDER_BATCH_SIZE = 500;
+    const PRUNE_FOLDER_BATCH_SIZE = 10000;
+    let uuidOffset = "00000000-0000-0000-0000-000000000000";
 
-      const pruneBatches = [];
-      for (let x = 0; x < folderIds.length; x += PRUNE_FOLDER_BATCH_SIZE) {
-        const batch = folderIds.slice(x, x + PRUNE_FOLDER_BATCH_SIZE);
-        pruneBatches.push(batch);
-      }
+    // eslint-disable-next-line no-constant-condition, no-unreachable-loop
+    while (true) {
+      const folderBatch = await db(TableName.SecretFolder)
+        .where("id", ">", uuidOffset)
+        .orderBy("id", "asc")
+        .limit(PRUNE_FOLDER_BATCH_SIZE)
+        .select("id");
 
-      for await (const folderBatch of pruneBatches) {
-        await secretSnapshotOrm.transaction(async (txn) => {
-          return txn(TableName.Snapshot)
+      const batchEntries = folderBatch.map((folder) => folder.id);
+      logger.info("UUID offset:", uuidOffset);
+
+      if (folderBatch.length) {
+        try {
+          logger.info(`Pruning snapshots in range ${batchEntries[0]}:${batchEntries[batchEntries.length - 1]}`);
+          await db(TableName.Snapshot)
             .with("snapshot_cte", (qb) => {
               void qb
                 .from(TableName.Snapshot)
-                .whereIn(`${TableName.Snapshot}.folderId`, folderBatch)
+                .whereIn(`${TableName.Snapshot}.folderId`, batchEntries)
                 .select(
                   "folderId",
                   `${TableName.Snapshot}.id as id`,
-                  txn.raw(
+                  db.raw(
                     `ROW_NUMBER() OVER (PARTITION BY ${TableName.Snapshot}."folderId" ORDER BY ${TableName.Snapshot}."createdAt" DESC) AS row_num`
                   )
                 );
@@ -358,10 +364,16 @@ export const snapshotDALFactory = (db: TDbClient) => {
             .join("snapshot_cte", "snapshot_cte.id", `${TableName.Snapshot}.id`)
             .whereRaw(`snapshot_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
             .delete();
-        });
+        } catch (err) {
+          logger.error(
+            `Failed to prune snapshots in range ${batchEntries[0]}:${batchEntries[batchEntries.length - 1]}`
+          );
+        } finally {
+          uuidOffset = batchEntries[batchEntries.length - 1];
+        }
+      } else {
+        return;
       }
-    } catch (error) {
-      throw new DatabaseError({ error, name: "SnapshotPrune" });
     }
   };
 
