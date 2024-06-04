@@ -1,7 +1,6 @@
 export type TEncryptWithKmsDTO = {
   kmsId: string;
-  // utf8 encoded
-  plainText: string;
+  plainText: Buffer;
 };
 
 export type TDecryptWithKmsDTO = {

@@ -49,7 +49,7 @@ export const kmsServiceFactory = ({ kmsDAL, kmsRootConfigDAL, keyStore }: TKmsSe
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
 
     const kmsKey = cipher.decrypt(kmsDoc.encryptedKey, ROOT_ENCRYPTION_KEY);
-    const encryptedPlainTextBlob = cipher.encrypt(Buffer.from(plainText, "utf8"), kmsKey);
+    const encryptedPlainTextBlob = cipher.encrypt(plainText, kmsKey);
 
     // Buffer#1 encrypted text + Buffer#2 version number
     const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
@@ -65,8 +65,8 @@ export const kmsServiceFactory = ({ kmsDAL, kmsRootConfigDAL, keyStore }: TKmsSe
     const kmsKey = cipher.decrypt(kmsDoc.encryptedKey, ROOT_ENCRYPTION_KEY);
 
     const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
-    const decryptedKmsDataString = cipher.decrypt(cipherTextBlob, kmsKey);
-    return decryptedKmsDataString;
+    const decryptedBlob = cipher.decrypt(cipherTextBlob, kmsKey);
+    return decryptedBlob;
   };
 
   const startService = async () => {
@@ -91,10 +91,10 @@ export const kmsServiceFactory = ({ kmsDAL, kmsRootConfigDAL, keyStore }: TKmsSe
       if (lock) await lock.release();
       logger.info("KMS: Encrypted ROOT Key found from DB. Decrypting.");
       const decryptedRootKey = cipher.decrypt(kmsRootConfig.encryptedRootKey, Buffer.from(encryptionKey, "utf8"));
+      // set the flag so that other instancen nodes can start
       await keyStore.setItemWithExpiry(KMS_ROOT_CREATION_WAIT_KEY, KMS_ROOT_CREATION_WAIT_TIME, "true");
       logger.info("KMS: Loading ROOT Key into Memory.");
       ROOT_ENCRYPTION_KEY = decryptedRootKey;
-
       return;
     }
 
@@ -103,6 +103,8 @@ export const kmsServiceFactory = ({ kmsDAL, kmsRootConfigDAL, keyStore }: TKmsSe
     const encryptedRootKey = cipher.encrypt(newRootKey, Buffer.from(encryptionKey, "utf8"));
     // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
     await kmsRootConfigDAL.create({ encryptedRootKey, id: KMS_ROOT_CONFIG_UUID });
+
+    // set the flag so that other instancen nodes can start
     await keyStore.setItemWithExpiry(KMS_ROOT_CREATION_WAIT_KEY, KMS_ROOT_CREATION_WAIT_TIME, "true");
     logger.info("KMS: Saved and loaded ROOT Key into memory");
     if (lock) await lock.release();
