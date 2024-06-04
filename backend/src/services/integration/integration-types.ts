@@ -12,6 +12,7 @@ export type TCreateIntegrationDTO = {
   targetService?: string;
   targetServiceId?: string;
   owner?: string;
+  url?: string;
   path?: string;
   region?: string;
   scope?: string;

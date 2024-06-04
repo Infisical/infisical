@@ -38,7 +38,10 @@ export default function RundeckCreateIntegrationPage() {
     watch,
     formState: { isSubmitting }
   } = useForm<TFormSchema>({
-    resolver: zodResolver(schema)
+    resolver: zodResolver(schema),
+    defaultValues: {
+      secretPath: "/"
+    }
   });
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
@@ -60,6 +63,7 @@ export default function RundeckCreateIntegrationPage() {
         isActive: true,
         path: keyStoragePath,
         sourceEnvironment,
+        url: integrationAuth.url,
         secretPath
       });
 
@@ -158,7 +162,7 @@ export default function RundeckCreateIntegrationPage() {
                   placeholder={`keys/project/${workspace.name
                     .toLowerCase()
                     .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
-                  value={field.value}
+                  {...field}
                 />
               </FormControl>
             )}
