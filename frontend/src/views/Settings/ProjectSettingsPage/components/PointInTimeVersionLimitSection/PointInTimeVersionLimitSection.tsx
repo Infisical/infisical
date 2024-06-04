@@ -22,7 +22,7 @@ export const PointInTimeVersionLimitSection = () => {
 
   const {
     control,
-    formState: { isSubmitting },
+    formState: { isSubmitting, isDirty },
     handleSubmit
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
@@ -79,7 +79,12 @@ export const PointInTimeVersionLimitSection = () => {
             )}
           />
         </div>
-        <Button colorSchema="secondary" type="submit" isLoading={isSubmitting} disabled={!isAdmin}>
+        <Button
+          colorSchema="secondary"
+          type="submit"
+          isLoading={isSubmitting}
+          disabled={!isAdmin || !isDirty}
+        >
           Save
         </Button>
       </form>

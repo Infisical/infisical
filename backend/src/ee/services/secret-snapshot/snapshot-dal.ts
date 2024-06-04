@@ -341,7 +341,6 @@ export const snapshotDALFactory = (db: TDbClient) => {
           .select("id");
 
         const batchEntries = folderBatch.map((folder) => folder.id);
-        logger.info("UUID offset:", uuidOffset);
 
         if (folderBatch.length) {
           try {

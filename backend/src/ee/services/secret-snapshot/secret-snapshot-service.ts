@@ -4,7 +4,6 @@ import { TableName, TSecretTagJunctionInsert } from "@app/db/schemas";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
@@ -38,7 +37,6 @@ type TSecretSnapshotServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findById" | "findBySecretPath" | "delete" | "insertMany" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "isValidLicense">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TSecretSnapshotServiceFactory = ReturnType<typeof secretSnapshotServiceFactory>;
@@ -50,7 +48,6 @@ export const secretSnapshotServiceFactory = ({
   snapshotSecretDAL,
   snapshotFolderDAL,
   folderDAL,
-  projectDAL,
   secretDAL,
   permissionService,
   licenseService,
@@ -84,9 +81,7 @@ export const secretSnapshotServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-    const project = await projectDAL.findById(projectId);
-    const count = await snapshotDAL.countOfSnapshotsByFolderId(folder.id);
-    return Math.min(count, project.pitVersionLimit);
+    return snapshotDAL.countOfSnapshotsByFolderId(folder.id);
   };
 
   const listSnapshots = async ({
@@ -118,16 +113,7 @@ export const secretSnapshotServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-    const { pitVersionLimit } = await projectDAL.findById(projectId);
-    const computedQueryLimit = Math.min(pitVersionLimit - offset, limit);
-    if (offset > pitVersionLimit || computedQueryLimit <= 0) {
-      return [];
-    }
-
-    const snapshots = await snapshotDAL.find(
-      { folderId: folder.id },
-      { limit: computedQueryLimit, offset, sort: [["createdAt", "desc"]] }
-    );
+    const snapshots = await snapshotDAL.find({ folderId: folder.id }, { limit, offset, sort: [["createdAt", "desc"]] });
     return snapshots;
   };
 
