@@ -3396,14 +3396,14 @@ const syncSecretsRundeck = async ({
 
   for await (const [key, value] of Object.entries(secrets)) {
     if (existingRundeckSecrets.includes(key)) {
-      await request.put(`${integration.url}/api/44/storage/${integration.path}/${key}`, value, {
+      await request.put(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
         headers: {
           "X-Rundeck-Auth-Token": accessToken,
           "Content-Type": "application/x-rundeck-data-password"
         }
       });
     } else {
-      await request.post(`${integration.url}/api/44/storage/${integration.path}/${key}`, value, {
+      await request.post(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
         headers: {
           "X-Rundeck-Auth-Token": accessToken,
           "Content-Type": "application/x-rundeck-data-password"
