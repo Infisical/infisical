@@ -60,7 +60,8 @@ export const PointInTimeVersionLimitSection = () => {
       </div>
       <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">
         This defines the maximum number of folder snapshots, secret versions, and folder versions
-        that are retained by the system
+        that are retained by the system. The cleanup of excess snapshots and versions happens once a
+        day on midnight of UTC.
       </p>
       <form onSubmit={handleSubmit(handleVersionLimitSubmit)} autoComplete="off">
         <div className="max-w-xs">
