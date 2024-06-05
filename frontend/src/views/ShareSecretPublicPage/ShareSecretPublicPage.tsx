@@ -17,15 +17,11 @@ import { SecretTable } from "./components";
 export const ShareSecretPublicPage = () => {
   const router = useRouter();
   const { id, key: urlEncodedPublicKey } = router.query;
-  const [hashedHex, key] = urlEncodedPublicKey!.toString().split("-");
+  const [hashedHex, key] = urlEncodedPublicKey
+    ? urlEncodedPublicKey.toString().split("-")
+    : ["", ""];
 
   const publicKey = decodeURIComponent(urlEncodedPublicKey as string);
-  useEffect(() => {
-    if (!id || !publicKey) {
-      router.push("/404");
-    }
-  }, [id, publicKey]);
-
   const { isLoading, data } = useGetActiveSharedSecretByIdAndHashedHex(
     id as string,
     hashedHex as string
@@ -82,7 +78,7 @@ export const ShareSecretPublicPage = () => {
       <div className="flex flex-1 flex-col items-center justify-center px-4">
         <div className="flex w-full max-w-4xl flex-col items-center gap-4 md:gap-20">
           <p className="text-center text-xl font-semibold text-gray-200 md:text-3xl">
-            Secret Shared via Infisical
+            {id ? "Secret Shared via Infisical" : "Share Secrets with Infisical"}
           </p>
           <div className="flex w-full flex-grow flex-col gap-6 md:flex-row md:gap-12">
             <div className="flex-1 self-center pt-4 text-center md:pt-0 md:text-left">
@@ -95,12 +91,14 @@ export const ShareSecretPublicPage = () => {
               </p>
             </div>
             <div className="flex-1 rounded-lg p-2">
-              <SecretTable
-                isLoading={isLoading}
-                decryptedSecret={decryptedSecret}
-                isUrlCopied={isUrlCopied}
-                copyUrlToClipboard={copyUrlToClipboard}
-              />
+              {id && (
+                <SecretTable
+                  isLoading={isLoading}
+                  decryptedSecret={decryptedSecret}
+                  isUrlCopied={isUrlCopied}
+                  copyUrlToClipboard={copyUrlToClipboard}
+                />
+              )}
             </div>
             <div className="flex-1 self-center text-center md:text-right">
               <p className="pb-2 font-semibold text-mineshaft-100 md:pb-4 md:text-xl">
