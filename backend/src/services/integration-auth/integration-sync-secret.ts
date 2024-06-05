@@ -3394,32 +3394,40 @@ const syncSecretsRundeck = async ({
     logger.info("No existing rundeck secrets");
   }
 
-  for await (const [key, value] of Object.entries(secrets)) {
-    if (existingRundeckSecrets.includes(key)) {
-      await request.put(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
-        headers: {
-          "X-Rundeck-Auth-Token": accessToken,
-          "Content-Type": "application/x-rundeck-data-password"
-        }
-      });
-    } else {
-      await request.post(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
-        headers: {
-          "X-Rundeck-Auth-Token": accessToken,
-          "Content-Type": "application/x-rundeck-data-password"
-        }
-      });
+  try {
+    for await (const [key, value] of Object.entries(secrets)) {
+      if (existingRundeckSecrets.includes(key)) {
+        await request.put(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken,
+            "Content-Type": "application/x-rundeck-data-password"
+          }
+        });
+      } else {
+        await request.post(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken,
+            "Content-Type": "application/x-rundeck-data-password"
+          }
+        });
+      }
     }
-  }
 
-  for await (const existingSecret of existingRundeckSecrets) {
-    if (!(existingSecret in secrets)) {
-      await request.delete(`${integration.url}/api/44/storage/${integration.path}/${existingSecret}`, {
-        headers: {
-          "X-Rundeck-Auth-Token": accessToken
-        }
-      });
+    for await (const existingSecret of existingRundeckSecrets) {
+      if (!(existingSecret in secrets)) {
+        await request.delete(`${integration.url}/api/44/storage/${integration.path}/${existingSecret}`, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken
+          }
+        });
+      }
     }
+  } catch (err: unknown) {
+    throw new Error(
+      `Ensure that the provided Rundeck URL is accessible by Infisical and that the linked API token has sufficient permissions.\n\n${
+        (err as Error).message
+      }`
+    );
   }
 };
 
