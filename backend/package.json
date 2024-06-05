@@ -89,6 +89,7 @@
     "@opentelemetry/api": "^1.8.0",
     "@opentelemetry/auto-instrumentations-node": "^0.46.1",
     "@opentelemetry/exporter-metrics-otlp-proto": "^0.51.1",
+    "@opentelemetry/exporter-prometheus": "^0.51.1",
     "@opentelemetry/instrumentation": "^0.51.1",
     "@opentelemetry/resources": "^1.24.1",
     "@opentelemetry/sdk-metrics": "^1.24.1",

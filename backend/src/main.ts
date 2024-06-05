@@ -15,9 +15,7 @@ const run = async () => {
   const logger = await initLogger();
   const appCfg = initEnvConfig(logger);
 
-  if (appCfg.TELEMETRY_EXPORT_URL) {
-    initTelemetry(appCfg.TELEMETRY_EXPORT_URL);
-  }
+  await initTelemetry({ otlpURL: appCfg.OTEL_COLLECTOR_OTLP_URL });
 
   const db = initDbConnection({
     dbConnectionUri: appCfg.DB_CONNECTION_URI,

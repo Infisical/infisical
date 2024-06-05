@@ -120,7 +120,7 @@ const envSchema = z
       .optional(),
     INFISICAL_CLOUD: zodStrBool.default("false"),
     MAINTENANCE_MODE: zodStrBool.default("false"),
-    TELEMETRY_EXPORT_URL: zpStr(z.string().optional())
+    OTEL_COLLECTOR_OTLP_URL: zpStr(z.string().optional())
   })
   .transform((data) => ({
     ...data,
