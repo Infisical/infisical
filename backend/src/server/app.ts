@@ -63,7 +63,11 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
     });
     // pull ip based on various proxy headers
     await server.register(fastifyIp);
-    await server.register(apiMetrics);
+
+    if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+      await server.register(apiMetrics);
+    }
+
     await server.register(fastifySwagger);
     await server.register(fastifyFormBody);
     await server.register(fastifyErrHandler);
