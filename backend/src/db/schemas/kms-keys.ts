@@ -15,7 +15,10 @@ export const KmsKeysSchema = z.object({
   encryptionAlgorithm: z.string(),
   version: z.number().default(1),
   description: z.string().nullable().optional(),
-  isDisabled: z.boolean().default(false).nullable().optional()
+  isDisabled: z.boolean().default(false).nullable().optional(),
+  isReserved: z.boolean().default(true).nullable().optional(),
+  projectId: z.string().nullable().optional(),
+  orgId: z.string().uuid().nullable().optional()
 });
 
 export type TKmsKeys = z.infer<typeof KmsKeysSchema>;

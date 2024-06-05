@@ -21,6 +21,11 @@ export async function up(knex: Knex): Promise<void> {
       t.integer("version").defaultTo(1).notNullable();
       t.string("description");
       t.boolean("isDisabled").defaultTo(false);
+      t.boolean("isReserved").defaultTo(true);
+      t.string("projectId");
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      t.uuid("orgId");
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
     });
   }
 

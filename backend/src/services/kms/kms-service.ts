@@ -7,7 +7,7 @@ import { logger } from "@app/lib/logger";
 
 import { TKmsDALFactory } from "./kms-dal";
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
-import { TDecryptWithKmsDTO, TEncryptWithKmsDTO } from "./kms-types";
+import { TDecryptWithKmsDTO, TEncryptWithKmsDTO, TGenerateKMSDTO } from "./kms-types";
 
 type TKmsServiceFactoryDep = {
   kmsDAL: TKmsDALFactory;
@@ -29,7 +29,7 @@ export const kmsServiceFactory = ({ kmsDAL, kmsRootConfigDAL, keyStore }: TKmsSe
   let ROOT_ENCRYPTION_KEY = Buffer.alloc(0);
 
   // this is used symmetric encryption
-  const generateKmsKey = async () => {
+  const generateKmsKey = async ({ scopeId, scopeType, isReserved = true }: TGenerateKMSDTO) => {
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
     const kmsKeyMaterial = randomSecureBytes(32);
     const encryptedKeyMaterial = cipher.encrypt(kmsKeyMaterial, ROOT_ENCRYPTION_KEY);
@@ -37,7 +37,10 @@ export const kmsServiceFactory = ({ kmsDAL, kmsRootConfigDAL, keyStore }: TKmsSe
     const { encryptedKey, ...doc } = await kmsDAL.create({
       version: 1,
       encryptedKey: encryptedKeyMaterial,
-      encryptionAlgorithm: SymmetricEncryption.AES_GCM_256
+      encryptionAlgorithm: SymmetricEncryption.AES_GCM_256,
+      isReserved,
+      orgId: scopeType === "org" ? scopeId : undefined,
+      projectId: scopeType === "project" ? scopeId : undefined
     });
     return doc;
   };
@@ -73,7 +76,10 @@ export const kmsServiceFactory = ({ kmsDAL, kmsRootConfigDAL, keyStore }: TKmsSe
     const appCfg = getConfig();
     // This will switch to a seal process and HMS flow in future
     const encryptionKey = appCfg.ENCRYPTION_KEY || appCfg.ROOT_ENCRYPTION_KEY;
+    // if root key its base64 encoded
+    const isBase64 = Boolean(appCfg.ROOT_ENCRYPTION_KEY);
     if (!encryptionKey) throw new Error("Root encryption key not found for KMS service.");
+    const encryptionKeyBuffer = Buffer.from(encryptionKey, isBase64 ? "base64" : "utf8");
 
     const lock = await keyStore.acquireLock([`KMS_ROOT_CFG_LOCK`], 3000, { retryCount: 3 }).catch(() => null);
     if (!lock) {
@@ -90,7 +96,7 @@ export const kmsServiceFactory = ({ kmsDAL, kmsRootConfigDAL, keyStore }: TKmsSe
     if (kmsRootConfig) {
       if (lock) await lock.release();
       logger.info("KMS: Encrypted ROOT Key found from DB. Decrypting.");
-      const decryptedRootKey = cipher.decrypt(kmsRootConfig.encryptedRootKey, Buffer.from(encryptionKey, "utf8"));
+      const decryptedRootKey = cipher.decrypt(kmsRootConfig.encryptedRootKey, encryptionKeyBuffer);
       // set the flag so that other instancen nodes can start
       await keyStore.setItemWithExpiry(KMS_ROOT_CREATION_WAIT_KEY, KMS_ROOT_CREATION_WAIT_TIME, "true");
       logger.info("KMS: Loading ROOT Key into Memory.");
@@ -100,7 +106,7 @@ export const kmsServiceFactory = ({ kmsDAL, kmsRootConfigDAL, keyStore }: TKmsSe
 
     logger.info("KMS: Generating ROOT Key");
     const newRootKey = randomSecureBytes(32);
-    const encryptedRootKey = cipher.encrypt(newRootKey, Buffer.from(encryptionKey, "utf8"));
+    const encryptedRootKey = cipher.encrypt(newRootKey, encryptionKeyBuffer);
     // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
     await kmsRootConfigDAL.create({ encryptedRootKey, id: KMS_ROOT_CONFIG_UUID });
 
