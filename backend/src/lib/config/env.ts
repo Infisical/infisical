@@ -119,7 +119,8 @@ const envSchema = z
       .transform((val) => val === "true")
       .optional(),
     INFISICAL_CLOUD: zodStrBool.default("false"),
-    MAINTENANCE_MODE: zodStrBool.default("false")
+    MAINTENANCE_MODE: zodStrBool.default("false"),
+    TELEMETRY_EXPORT_URL: zpStr(z.string().optional())
   })
   .transform((data) => ({
     ...data,

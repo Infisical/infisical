@@ -20,6 +20,7 @@ import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
+import { apiMetrics } from "./plugins/api-metrics";
 import { fastifyErrHandler } from "./plugins/error-handler";
 import { registerExternalNextjs } from "./plugins/external-nextjs";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
@@ -62,7 +63,7 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
     });
     // pull ip based on various proxy headers
     await server.register(fastifyIp);
-
+    await server.register(apiMetrics);
     await server.register(fastifySwagger);
     await server.register(fastifyFormBody);
     await server.register(fastifyErrHandler);

@@ -4,6 +4,7 @@ import { initDbConnection } from "./db";
 import { keyStoreFactory } from "./keystore/keystore";
 import { formatSmtpConfig, initEnvConfig } from "./lib/config/env";
 import { initLogger } from "./lib/logger";
+import { initTelemetry } from "./lib/telemetry/instrumentation";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
@@ -13,6 +14,11 @@ dotenv.config();
 const run = async () => {
   const logger = await initLogger();
   const appCfg = initEnvConfig(logger);
+
+  if (appCfg.TELEMETRY_EXPORT_URL) {
+    initTelemetry(appCfg.TELEMETRY_EXPORT_URL);
+  }
+
   const db = initDbConnection({
     dbConnectionUri: appCfg.DB_CONNECTION_URI,
     dbRootCert: appCfg.DB_ROOT_CERT
