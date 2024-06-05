@@ -22,9 +22,8 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
 import { useTimedReset } from "@app/hooks";
-import { useCreateSharedSecret } from "@app/hooks/api/secretSharing";
+import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const expirationUnitsAndActions = [
@@ -65,9 +64,10 @@ type Props = {
     popUpName: keyof UsePopUpState<["createSharedSecret"]>,
     state?: boolean
   ) => void;
+  isPublic: boolean;
 };
 
-export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const AddShareSecretModal = ({ popUp, handlePopUpToggle, isPublic }: Props) => {
   const {
     control,
     reset,
@@ -76,8 +76,10 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
   } = useForm<FormData>({
     resolver: yupResolver(schema)
   });
-  const createSharedSecret = useCreateSharedSecret();
-  const { currentOrg } = useOrganization();
+  const publicSharedSecretCreator = useCreatePublicSharedSecret();
+  const privateSharedSecretCreator = useCreateSharedSecret();
+  const createSharedSecret = isPublic ? publicSharedSecretCreator : privateSharedSecretCreator;
+
   const [newSharedSecret, setnewSharedSecret] = useState("");
   const hasSharedSecret = Boolean(newSharedSecret);
   const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
@@ -101,7 +103,6 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
     expiresAfterViews
   }: FormData) => {
     try {
-      if (!currentOrg?.id) return;
       const key = crypto.randomBytes(16).toString("hex");
       const hashedHex = crypto.createHash("sha256").update(key).digest("hex");
       const { ciphertext, iv, tag } = encryptSymmetric({
@@ -180,7 +181,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
                   <SecretInput
                     isVisible={false}
                     {...field}
-                    containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2 text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 min-h-[100px]"
+                    containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2 text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 min-h-[70px]"
                   />
                 </FormControl>
               )}

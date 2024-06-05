@@ -1,13 +1,18 @@
 import { useEffect, useMemo } from "react";
 import Head from "next/head";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { decryptSymmetric } from "@app/components/utilities/cryptography/crypto";
-import { useTimedReset } from "@app/hooks";
+import { Button } from "@app/components/v2";
+import { usePopUp, useTimedReset } from "@app/hooks";
 import { useGetActiveSharedSecretByIdAndHashedHex } from "@app/hooks/api/secretSharing";
 
-import { DragonMainImage, SecretTable } from "./components";
+import { AddShareSecretModal } from "../ShareSecretPage/components/AddShareSecretModal";
+import { SecretTable } from "./components";
 
 export const ShareSecretPublicPage = () => {
   const router = useRouter();
@@ -53,35 +58,91 @@ export const ShareSecretPublicPage = () => {
     navigator.clipboard.writeText(decryptedSecret);
     setIsUrlCopied(true);
   };
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["createSharedSecret"] as const);
 
   return (
-    <div className="flex flex-col justify-between bg-bunker-800 text-gray-200 md:h-screen">
+    <div className="flex h-screen flex-col bg-bunker-800 text-gray-200">
       <Head>
         <title>Secret Shared | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
 
-      <div className="my-4 flex justify-center md:my-8">
-        <Image src="/images/biglogo.png" height={180} width={240} alt="Infisical logo" />
+      <div className="flex items-center justify-center p-4">
+        <Link href="https://infisical.com">
+          <Image
+            src="/images/biglogo.png"
+            height={60}
+            width={80}
+            alt="Infisical logo"
+            className="cursor-pointer"
+          />
+        </Link>
       </div>
-      <p className="mb-6 px-8 text-center text-xl md:px-0 md:text-3xl">
-        A secret has been shared with you securely via Infisical
-      </p>
-      <div className="flex min-h-screen w-full flex-col md:flex-row">
-        <DragonMainImage />
-        <div className="m-4 flex flex-1 flex-col items-center justify-start md:m-0">
-          <p className="mt-8 mb-2 text-xl font-semibold text-mineshaft-100 md:mt-20">
-            Shared Secret
+
+      <div className="flex flex-1 flex-col items-center justify-center px-4">
+        <div className="flex w-full max-w-4xl flex-col items-center gap-4 md:gap-20">
+          <p className="text-center text-xl font-semibold text-gray-200 md:text-3xl">
+            Secret Shared via Infisical
           </p>
-          <div className="mb-4 rounded-lg md:p-2">
-            <SecretTable
-              isLoading={isLoading}
-              decryptedSecret={decryptedSecret}
-              isUrlCopied={isUrlCopied}
-              copyUrlToClipboard={copyUrlToClipboard}
-            />
+          <div className="flex w-full flex-grow flex-col gap-6 md:flex-row md:gap-12">
+            <div className="flex-1 self-center pt-4 text-center md:pt-0 md:text-left">
+              <p className="pb-2 font-semibold text-mineshaft-100 md:pb-4 md:text-xl">
+                Safe & Secure
+              </p>
+              <p className="md:text-md text-sm">
+                Infisical uses <span className="text-primary">Zero Knowledge</span> to ensure that
+                your secrets are truly private (even from us).
+              </p>
+            </div>
+            <div className="flex-1 rounded-lg p-2">
+              <SecretTable
+                isLoading={isLoading}
+                decryptedSecret={decryptedSecret}
+                isUrlCopied={isUrlCopied}
+                copyUrlToClipboard={copyUrlToClipboard}
+              />
+            </div>
+            <div className="flex-1 self-center text-center md:text-right">
+              <p className="pb-2 font-semibold text-mineshaft-100 md:pb-4 md:text-xl">
+                Open Source
+              </p>
+              <p className="md:text-md text-sm">
+                Infisical is open source. <br className="hidden md:inline" />
+                Check us out on{" "}
+                <a
+                  href="https://github.com/infisical/infisical"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary"
+                >
+                  GitHub
+                </a>
+                .
+              </p>
+            </div>
           </div>
+          <Button
+            className="mt-4 max-w-[600px] md:mt-0"
+            colorSchema="primary"
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+            onClick={() => {
+              handlePopUpOpen("createSharedSecret");
+            }}
+          >
+            Share your own Secret
+          </Button>
         </div>
+      </div>
+      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} isPublic />
+      <div className="flex items-center justify-center p-4">
+        <p className="text-center text-sm text-gray-200">
+          Developed by{" "}
+          <a className="text-primary" href="https://infisical.com">
+            Infisical
+          </a>
+          <br />
+          Open Source Secret Management{" "}
+        </p>
       </div>
     </div>
   );

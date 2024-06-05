@@ -2,7 +2,12 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { UnauthorizedError } from "@app/lib/errors";
 
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
-import { TCreateSharedSecretDTO, TDeleteSharedSecretDTO, TSharedSecretPermission } from "./secret-sharing-types";
+import {
+  TCreatePublicSharedSecretDTO,
+  TCreateSharedSecretDTO,
+  TDeleteSharedSecretDTO,
+  TSharedSecretPermission
+} from "./secret-sharing-types";
 
 type TSecretSharingServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -44,6 +49,19 @@ export const secretSharingServiceFactory = ({
     return { id: newSharedSecret.id };
   };
 
+  const createPublicSharedSecret = async (createSharedSecretInput: TCreatePublicSharedSecretDTO) => {
+    const { encryptedValue, iv, tag, hashedHex, expiresAt, expiresAfterViews } = createSharedSecretInput;
+    const newSharedSecret = await secretSharingDAL.create({
+      encryptedValue,
+      iv,
+      tag,
+      hashedHex,
+      expiresAt,
+      expiresAfterViews
+    });
+    return { id: newSharedSecret.id };
+  };
+
   const getSharedSecrets = async (getSharedSecretsInput: TSharedSecretPermission) => {
     const { actor, actorId, orgId, actorAuthMethod, actorOrgId } = getSharedSecretsInput;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
@@ -77,6 +95,7 @@ export const secretSharingServiceFactory = ({
 
   return {
     createSharedSecret,
+    createPublicSharedSecret,
     getSharedSecrets,
     deleteSharedSecretById,
     getActiveSharedSecretByIdAndHashedHex
