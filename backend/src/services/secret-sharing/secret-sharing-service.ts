@@ -1,5 +1,5 @@
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
 import {
@@ -36,6 +36,10 @@ export const secretSharingServiceFactory = ({
     } = createSharedSecretInput;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     if (!permission) throw new UnauthorizedError({ name: "User not in org" });
+
+    if (new Date(expiresAt) < new Date()) {
+      throw new BadRequestError({ message: "Expiration date cannot be in the past" });
+    }
     const newSharedSecret = await secretSharingDAL.create({
       encryptedValue,
       iv,
@@ -51,6 +55,10 @@ export const secretSharingServiceFactory = ({
 
   const createPublicSharedSecret = async (createSharedSecretInput: TCreatePublicSharedSecretDTO) => {
     const { encryptedValue, iv, tag, hashedHex, expiresAt, expiresAfterViews } = createSharedSecretInput;
+    if (new Date(expiresAt) < new Date()) {
+      throw new BadRequestError({ message: "Expiration date cannot be in the past" });
+    }
+
     const newSharedSecret = await secretSharingDAL.create({
       encryptedValue,
       iv,

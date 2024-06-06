@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 import { SecretSharingSchema } from "@app/db/schemas";
-import { publicEndpointLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import {
+  publicEndpointLimit,
+  publicSecretShareCreationLimit,
+  readLimit,
+  writeLimit
+} from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -82,9 +87,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         iv: z.string(),
         tag: z.string(),
         hashedHex: z.string(),
-        expiresAt: z
-          .string()
-          .refine((date) => date === undefined || new Date(date) > new Date(), "Expires at should be a future date"),
+        expiresAt: z.string(),
         expiresAfterViews: z.number()
       }),
       response: {
@@ -111,7 +114,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     method: "POST",
     url: "/",
     config: {
-      rateLimit: writeLimit
+      rateLimit: publicSecretShareCreationLimit
     },
     schema: {
       body: z.object({
@@ -119,9 +122,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         iv: z.string(),
         tag: z.string(),
         hashedHex: z.string(),
-        expiresAt: z
-          .string()
-          .refine((date) => date === undefined || new Date(date) > new Date(), "Expires at should be a future date"),
+        expiresAt: z.string(),
         expiresAfterViews: z.number()
       }),
       response: {
