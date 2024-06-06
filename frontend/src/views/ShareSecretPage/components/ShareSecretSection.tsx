@@ -60,7 +60,12 @@ export const ShareSecretSection = () => {
         </Button>
       </div>
       <ShareSecretsTable handlePopUpOpen={handlePopUpOpen} />
-      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} isPublic={false} />
+      <AddShareSecretModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        isPublic={false}
+        inModal
+      />
       <DeleteActionModal
         isOpen={popUp.deleteSharedSecretConfirmation.isOpen}
         title={`Delete ${

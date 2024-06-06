@@ -3,11 +3,8 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { decryptSymmetric } from "@app/components/utilities/cryptography/crypto";
-import { Button } from "@app/components/v2";
 import { usePopUp, useTimedReset } from "@app/hooks";
 import { useGetActiveSharedSecretByIdAndHashedHex } from "@app/hooks/api/secretSharing";
 
@@ -54,7 +51,7 @@ export const ShareSecretPublicPage = () => {
     navigator.clipboard.writeText(decryptedSecret);
     setIsUrlCopied(true);
   };
-  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["createSharedSecret"] as const);
+  const { popUp, handlePopUpToggle } = usePopUp(["createSharedSecret"] as const);
 
   return (
     <div className="flex h-screen flex-col bg-bunker-800 text-gray-200">
@@ -119,19 +116,16 @@ export const ShareSecretPublicPage = () => {
               </p>
             </div>
           </div>
-          <Button
-            className="mt-4 max-w-[600px] md:mt-0"
-            colorSchema="primary"
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={() => {
-              handlePopUpOpen("createSharedSecret");
-            }}
-          >
-            Share your own Secret
-          </Button>
+        </div>
+        <div className="pt-20">
+          <AddShareSecretModal
+            popUp={popUp}
+            handlePopUpToggle={handlePopUpToggle}
+            isPublic
+            inModal={false}
+          />
         </div>
       </div>
-      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} isPublic />
       <div className="flex items-center justify-center p-4">
         <p className="text-center text-sm text-gray-200">
           Developed by{" "}
