@@ -180,6 +180,7 @@ export const PasswordStep = ({
     if (captchaRef.current) {
       captchaRef.current.resetCaptcha();
     }
+    setCaptchaToken("");
   };
 
   return (
@@ -223,6 +224,7 @@ export const PasswordStep = ({
       )}
       <div className="mx-auto mt-4 flex w-1/4 w-full min-w-[22rem] items-center justify-center rounded-md text-center lg:w-1/6">
         <Button
+          disabled={shouldShowCaptcha && captchaToken === ""}
           type="submit"
           colorSchema="primary"
           variant="outline_bg"

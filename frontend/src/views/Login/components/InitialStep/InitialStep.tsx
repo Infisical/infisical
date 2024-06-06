@@ -141,6 +141,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
       captchaRef.current.resetCaptcha();
     }
 
+    setCaptchaToken("");
     setIsLoading(false);
   };
 
@@ -274,6 +275,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
       )}
       <div className="mt-3 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
         <Button
+          disabled={shouldShowCaptcha && captchaToken === ""}
           type="submit"
           size="sm"
           isFullWidth

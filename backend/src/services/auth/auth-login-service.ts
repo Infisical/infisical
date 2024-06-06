@@ -236,7 +236,7 @@ export const authLoginServiceFactory = ({
 
     if (!isValidClientProof) {
       await userDAL.update(
-        { id: userEnc.id },
+        { id: userEnc.userId },
         {
           $incr: {
             consecutiveFailedPasswordAttempts: 1
@@ -251,6 +251,11 @@ export const authLoginServiceFactory = ({
       serverPrivateKey: null,
       clientPublicKey: null
     });
+
+    await userDAL.updateById(userEnc.userId, {
+      consecutiveFailedPasswordAttempts: 0
+    });
+
     // send multi factor auth token if they it enabled
     if (userEnc.isMfaEnabled && userEnc.email) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
