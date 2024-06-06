@@ -208,7 +208,8 @@ export const authLoginServiceFactory = ({
     ) {
       if (!captchaToken) {
         throw new BadRequestError({
-          name: "Captcha Required"
+          name: "Captcha Required",
+          message: "Accomplish the required captcha by logging in via Web"
         });
       }
 
