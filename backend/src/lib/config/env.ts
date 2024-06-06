@@ -119,7 +119,11 @@ const envSchema = z
       .transform((val) => val === "true")
       .optional(),
     INFISICAL_CLOUD: zodStrBool.default("false"),
-    MAINTENANCE_MODE: zodStrBool.default("false")
+    MAINTENANCE_MODE: zodStrBool.default("false"),
+
+    // CAPTCHA
+    CAPTCHA_SECRET: zpStr(z.string().optional()),
+    CAPTCHA_ENABLED: zodStrBool.default("false")
   })
   .transform((data) => ({
     ...data,

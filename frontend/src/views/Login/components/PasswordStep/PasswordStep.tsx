@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 import axios from "axios";
 import jwt_decode from "jwt-decode";
 
 import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
+import { CAPTCHA_SITE_KEY } from "@app/components/utilities/config";
 import { Button, Input } from "@app/components/v2";
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
@@ -41,6 +43,10 @@ export const PasswordStep = ({
     providerAuthToken
   ) as any;
 
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [shouldShowCaptcha, setShouldShowCaptcha] = useState(false);
+  const captchaRef = useRef<HCaptcha>(null);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -51,7 +57,8 @@ export const PasswordStep = ({
         const isCliLoginSuccessful = await attemptCliLogin({
           email,
           password,
-          providerAuthToken
+          providerAuthToken,
+          captchaToken
         });
 
         if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
@@ -99,7 +106,8 @@ export const PasswordStep = ({
         const loginAttempt = await attemptLogin({
           email,
           password,
-          providerAuthToken
+          providerAuthToken,
+          captchaToken
         });
 
         if (loginAttempt && loginAttempt.success) {
@@ -158,10 +166,19 @@ export const PasswordStep = ({
         return;
       }
 
+      if (err.response.data.error === "Captcha Required") {
+        setShouldShowCaptcha(true);
+        return;
+      }
+
       createNotification({
         text: "Login unsuccessful. Double-check your master password and try again.",
         type: "error"
       });
+    }
+
+    if (captchaRef.current) {
+      captchaRef.current.resetCaptcha();
     }
   };
 
@@ -194,6 +211,16 @@ export const PasswordStep = ({
           />
         </div>
       </div>
+      {shouldShowCaptcha && (
+        <div className="mx-auto mt-4 flex w-full min-w-[22rem] items-center justify-center lg:w-1/6">
+          <HCaptcha
+            theme="dark"
+            sitekey={CAPTCHA_SITE_KEY}
+            onVerify={(token) => setCaptchaToken(token)}
+            ref={captchaRef}
+          />
+        </div>
+      )}
       <div className="mx-auto mt-4 flex w-1/4 w-full min-w-[22rem] items-center justify-center rounded-md text-center lg:w-1/6">
         <Button
           type="submit"

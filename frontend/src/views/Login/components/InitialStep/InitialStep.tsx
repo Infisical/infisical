@@ -1,15 +1,17 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 
 import Error from "@app/components/basic/Error";
 import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
+import { CAPTCHA_SITE_KEY } from "@app/components/utilities/config";
 import { Button, Input } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
 
@@ -31,6 +33,9 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
   const [loginError, setLoginError] = useState(false);
   const { config } = useServerConfig();
   const queryParams = new URLSearchParams(window.location.search);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [shouldShowCaptcha, setShouldShowCaptcha] = useState(false);
+  const captchaRef = useRef<HCaptcha>(null);
 
   useEffect(() => {
     if (
@@ -61,7 +66,8 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
         // attemptCliLogin
         const isCliLoginSuccessful = await attemptCliLogin({
           email: email.toLowerCase(),
-          password
+          password,
+          captchaToken
         });
 
         if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
@@ -83,7 +89,8 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
       } else {
         const isLoginSuccessful = await attemptLogin({
           email: email.toLowerCase(),
-          password
+          password,
+          captchaToken
         });
 
         if (isLoginSuccessful && isLoginSuccessful.success) {
@@ -117,11 +124,21 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
         return;
       }
 
+      if (err.response.data.error === "Captcha Required") {
+        setShouldShowCaptcha(true);
+        setIsLoading(false);
+        return;
+      }
+
       setLoginError(true);
       createNotification({
         text: "Login unsuccessful. Double-check your credentials and try again.",
         type: "error"
       });
+    }
+
+    if (captchaRef.current) {
+      captchaRef.current.resetCaptcha();
     }
 
     setIsLoading(false);
@@ -245,6 +262,16 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           className="select:-webkit-autofill:focus h-10"
         />
       </div>
+      {shouldShowCaptcha && (
+        <div className="mt-4">
+          <HCaptcha
+            theme="dark"
+            sitekey={CAPTCHA_SITE_KEY}
+            onVerify={(token) => setCaptchaToken(token)}
+            ref={captchaRef}
+          />
+        </div>
+      )}
       <div className="mt-3 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
         <Button
           type="submit"
