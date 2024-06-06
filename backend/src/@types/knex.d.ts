@@ -98,6 +98,15 @@ import {
   TIntegrations,
   TIntegrationsInsert,
   TIntegrationsUpdate,
+  TKmsKeys,
+  TKmsKeysInsert,
+  TKmsKeysUpdate,
+  TKmsKeyVersions,
+  TKmsKeyVersionsInsert,
+  TKmsKeyVersionsUpdate,
+  TKmsRootConfig,
+  TKmsRootConfigInsert,
+  TKmsRootConfigUpdate,
   TLdapConfigs,
   TLdapConfigsInsert,
   TLdapConfigsUpdate,
@@ -176,6 +185,9 @@ import {
   TSecretImports,
   TSecretImportsInsert,
   TSecretImportsUpdate,
+  TSecretReferences,
+  TSecretReferencesInsert,
+  TSecretReferencesUpdate,
   TSecretRotationOutputs,
   TSecretRotationOutputsInsert,
   TSecretRotationOutputsUpdate,
@@ -240,7 +252,6 @@ import {
   TWebhooksInsert,
   TWebhooksUpdate
 } from "@app/db/schemas";
-import { TSecretReferences, TSecretReferencesInsert, TSecretReferencesUpdate } from "@app/db/schemas/secret-references";
 
 declare module "knex/types/tables" {
   interface Tables {
@@ -514,5 +525,13 @@ declare module "knex/types/tables" {
       TSecretVersionTagJunctionInsert,
       TSecretVersionTagJunctionUpdate
     >;
+    // KMS service
+    [TableName.KmsServerRootConfig]: Knex.CompositeTableType<
+      TKmsRootConfig,
+      TKmsRootConfigInsert,
+      TKmsRootConfigUpdate
+    >;
+    [TableName.KmsKey]: Knex.CompositeTableType<TKmsKeys, TKmsKeysInsert, TKmsKeysUpdate>;
+    [TableName.KmsKeyVersion]: Knex.CompositeTableType<TKmsKeyVersions, TKmsKeyVersionsInsert, TKmsKeyVersionsUpdate>;
   }
 }

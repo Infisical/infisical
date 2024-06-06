@@ -35,6 +35,8 @@ const getZodPrimitiveType = (type: string) => {
       return "z.coerce.number()";
     case "text":
       return "z.string()";
+    case "bytea":
+      return "zodBuffer";
     default:
       throw new Error(`Invalid type: ${type}`);
   }
@@ -96,10 +98,15 @@ const main = async () => {
     const columnNames = Object.keys(columns);
 
     let schema = "";
+    const zodImportSet = new Set<string>();
     for (let colNum = 0; colNum < columnNames.length; colNum++) {
       const columnName = columnNames[colNum];
       const colInfo = columns[columnName];
       let ztype = getZodPrimitiveType(colInfo.type);
+      if (["zodBuffer"].includes(ztype)) {
+        zodImportSet.add(ztype);
+      }
+
       // don't put optional on id
       if (colInfo.defaultValue && columnName !== "id") {
         const { defaultValue } = colInfo;
@@ -121,6 +128,8 @@ const main = async () => {
       .split("_")
       .reduce((prev, curr) => prev + `${curr.at(0)?.toUpperCase()}${curr.slice(1).toLowerCase()}`, "");
 
+    const zodImports = Array.from(zodImportSet);
+
     // the insert and update are changed to zod input type to use default cases
     writeFileSync(
       path.join(__dirname, "../src/db/schemas", `${dashcase}.ts`),
@@ -130,6 +139,8 @@ const main = async () => {
 // Written by akhilmhdh.
 
 import { z } from "zod";
+
+${zodImports.length ? `import { ${zodImports.join(",")} } from \"@app/lib/zod\";` : ""}
 
 import { TImmutableDBKeys } from "./models";
 

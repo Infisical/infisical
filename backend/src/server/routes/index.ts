@@ -97,6 +97,9 @@ import { integrationDALFactory } from "@app/services/integration/integration-dal
 import { integrationServiceFactory } from "@app/services/integration/integration-service";
 import { integrationAuthDALFactory } from "@app/services/integration-auth/integration-auth-dal";
 import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
+import { kmsDALFactory } from "@app/services/kms/kms-dal";
+import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
+import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
 import { orgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
@@ -261,6 +264,9 @@ export const registerRoutes = async (
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
 
+  const kmsDAL = kmsDALFactory(db);
+  const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
+
   const permissionService = permissionServiceFactory({
     permissionDAL,
     orgRoleDAL,
@@ -269,6 +275,12 @@ export const registerRoutes = async (
     projectDAL
   });
   const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL, keyStore });
+  const kmsService = kmsServiceFactory({
+    kmsRootConfigDAL,
+    keyStore,
+    kmsDAL
+  });
+
   const trustedIpService = trustedIpServiceFactory({
     licenseService,
     projectDAL,
@@ -823,6 +835,7 @@ export const registerRoutes = async (
 
   await telemetryQueue.startTelemetryCheck();
   await dailyResourceCleanUp.startCleanUp();
+  await kmsService.startService();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {

@@ -9,6 +9,15 @@ export enum KeyStorePrefixes {
   SecretReplication = "secret-replication-import-lock"
 }
 
+type TWaitTillReady = {
+  key: string;
+  waitingCb?: () => void;
+  keyCheckCb: (val: string | null) => boolean;
+  waitIteration?: number;
+  delay?: number;
+  jitter?: number;
+};
+
 export const keyStoreFactory = (redisUrl: string) => {
   const redis = new Redis(redisUrl);
   const redisLock = new Redlock([redis], { retryCount: 2, retryDelay: 200 });
@@ -29,6 +38,29 @@ export const keyStoreFactory = (redisUrl: string) => {
 
   const incrementBy = async (key: string, value: number) => redis.incrby(key, value);
 
+  const waitTillReady = async ({
+    key,
+    waitingCb,
+    keyCheckCb,
+    waitIteration = 10,
+    delay = 1000,
+    jitter = 200
+  }: TWaitTillReady) => {
+    let attempts = 0;
+    let isReady = keyCheckCb(await getItem(key));
+    while (!isReady) {
+      if (attempts > waitIteration) return;
+      // eslint-disable-next-line
+      await new Promise((resolve) => {
+        waitingCb?.();
+        setTimeout(resolve, Math.max(0, delay + Math.floor((Math.random() * 2 - 1) * jitter)));
+      });
+      attempts += 1;
+      // eslint-disable-next-line
+      isReady = keyCheckCb(await getItem(key, "wait_till_ready"));
+    }
+  };
+
   return {
     setItem,
     getItem,
@@ -37,6 +69,7 @@ export const keyStoreFactory = (redisUrl: string) => {
     incrementBy,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);
-    }
+    },
+    waitTillReady
   };
 };
