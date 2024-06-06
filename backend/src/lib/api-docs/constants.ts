@@ -661,6 +661,7 @@ export const INTEGRATION = {
     targetServiceId:
       "The service based grouping identifier ID of the external provider. Used in Terraform cloud, Checkly, Railway and NorthFlank",
     owner: "External integration providers service entity owner. Used in Github.",
+    url: "The self-hosted URL of the platform to integrate with",
     path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault",
     region: "AWS region to sync secrets to.",
     scope: "Scope of the provider. Used by Github, Qovery",
