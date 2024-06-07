@@ -73,6 +73,7 @@ export const useCreateIntegration = () => {
         }[];
         kmsKeyId?: string;
         shouldDisableDelete?: boolean;
+        shouldEnableDelete?: boolean;
       };
     }) => {
       const {

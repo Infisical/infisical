@@ -1364,7 +1364,7 @@ const syncSecretsGitHub = async ({
   }
 
   const metadata = z.record(z.any()).parse(integration.metadata);
-  if (!metadata.shouldDisableDelete) {
+  if (metadata.shouldEnableDelete) {
     for await (const encryptedSecret of encryptedSecrets) {
       if (
         !(encryptedSecret.name in secrets) &&

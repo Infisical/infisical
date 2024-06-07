@@ -60,7 +60,7 @@ const schema = yup.object({
   selectedSourceEnvironment: yup.string().trim().required("Project Environment is required"),
   secretPath: yup.string().trim().required("Secrets Path is required"),
   secretSuffix: yup.string().trim().optional(),
-  shouldDisableDelete: yup.boolean().optional(),
+  shouldEnableDelete: yup.boolean().optional(),
   scope: yup.mixed<TargetEnv>().oneOf(targetEnv.slice()).required(),
 
   repoIds: yup.mixed().when("scope", {
@@ -121,7 +121,7 @@ export default function GitHubCreateIntegrationPage() {
       secretPath: "/",
       scope: "github-repo",
       repoIds: [],
-      shouldDisableDelete: false
+      shouldEnableDelete: false
     }
   });
 
@@ -179,7 +179,7 @@ export default function GitHubCreateIntegrationPage() {
                 owner: targetApp.owner, // repo owner
                 metadata: {
                   secretSuffix: data.secretSuffix,
-                  shouldDisableDelete: data.shouldDisableDelete
+                  shouldEnableDelete: data.shouldEnableDelete
                 }
               });
             })
@@ -197,7 +197,7 @@ export default function GitHubCreateIntegrationPage() {
             owner: integrationAuthOrgs?.find((e) => e.orgId === data.orgId)?.name,
             metadata: {
               secretSuffix: data.secretSuffix,
-              shouldDisableDelete: data.shouldDisableDelete
+              shouldEnableDelete: data.shouldEnableDelete
             }
           });
           break;
@@ -215,7 +215,7 @@ export default function GitHubCreateIntegrationPage() {
             targetEnvironmentId: data.envId,
             metadata: {
               secretSuffix: data.secretSuffix,
-              shouldDisableDelete: data.shouldDisableDelete
+              shouldEnableDelete: data.shouldEnableDelete
             }
           });
           break;
@@ -553,14 +553,14 @@ export default function GitHubCreateIntegrationPage() {
                 <div className="ml-1 mb-5">
                   <Controller
                     control={control}
-                    name="shouldDisableDelete"
+                    name="shouldEnableDelete"
                     render={({ field: { onChange, value } }) => (
                       <Switch
                         id="delete-github-option"
                         onCheckedChange={(isChecked) => onChange(isChecked)}
                         isChecked={value}
                       >
-                        Disable secrets deletion on Github
+                        Delete secrets not in Infisical
                       </Switch>
                     )}
                   />
