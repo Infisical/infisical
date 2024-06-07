@@ -1363,38 +1363,41 @@ const syncSecretsGitHub = async ({
     }
   }
 
-  for await (const encryptedSecret of encryptedSecrets) {
-    if (
-      !(encryptedSecret.name in secrets) &&
-      !(appendices?.prefix !== undefined && !encryptedSecret.name.startsWith(appendices?.prefix)) &&
-      !(appendices?.suffix !== undefined && !encryptedSecret.name.endsWith(appendices?.suffix))
-    ) {
-      switch (integration.scope) {
-        case GithubScope.Org: {
-          await octokit.request("DELETE /orgs/{org}/actions/secrets/{secret_name}", {
-            org: integration.owner as string,
-            secret_name: encryptedSecret.name
-          });
-          break;
-        }
-        case GithubScope.Env: {
-          await octokit.request(
-            "DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
-            {
-              repository_id: Number(integration.appId),
-              environment_name: integration.targetEnvironmentId as string,
+  const metadata = z.record(z.any()).parse(integration.metadata);
+  if (!metadata.shouldDisableDelete) {
+    for await (const encryptedSecret of encryptedSecrets) {
+      if (
+        !(encryptedSecret.name in secrets) &&
+        !(appendices?.prefix !== undefined && !encryptedSecret.name.startsWith(appendices?.prefix)) &&
+        !(appendices?.suffix !== undefined && !encryptedSecret.name.endsWith(appendices?.suffix))
+      ) {
+        switch (integration.scope) {
+          case GithubScope.Org: {
+            await octokit.request("DELETE /orgs/{org}/actions/secrets/{secret_name}", {
+              org: integration.owner as string,
               secret_name: encryptedSecret.name
-            }
-          );
-          break;
-        }
-        default: {
-          await octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
-            owner: integration.owner as string,
-            repo: integration.app as string,
-            secret_name: encryptedSecret.name
-          });
-          break;
+            });
+            break;
+          }
+          case GithubScope.Env: {
+            await octokit.request(
+              "DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
+              {
+                repository_id: Number(integration.appId),
+                environment_name: integration.targetEnvironmentId as string,
+                secret_name: encryptedSecret.name
+              }
+            );
+            break;
+          }
+          default: {
+            await octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+              owner: integration.owner as string,
+              repo: integration.app as string,
+              secret_name: encryptedSecret.name
+            });
+            break;
+          }
         }
       }
     }
