@@ -67,7 +67,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle, isPublic, inModa
     >
       <ModalContent
         title="Share a Secret"
-        subTitle="This link is only accessible once. Please share this link with intended recipients. "
+        subTitle="Once you share a secret, the share link is only accessible once."
       >
         {!hasSharedSecret ? (
           <AddShareSecretForm

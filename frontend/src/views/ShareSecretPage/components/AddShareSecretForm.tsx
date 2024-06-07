@@ -211,9 +211,9 @@ export const AddShareSecretForm = ({
             </div>
           </div>
         </div>
-        <div className={`flex items-center ${!inModal && "justify-center pt-1"}`}>
+        <div className={`flex items-center ${!inModal && "justify-left pt-1"}`}>
           <Button className="mr-4" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
-            {inModal ? "Create" : "Share your own Secret"}
+            {inModal ? "Create" : "Share Secret"}
           </Button>
           {inModal && (
             <ModalClose asChild>

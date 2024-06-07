@@ -123,7 +123,7 @@ export const ShareSecretPublicPage = ({ isNewSession }: { isNewSession: boolean 
               Safe, Secure, & Open Source
             </p>
             <p className="md:text-md text-sm">
-              Infisical is the{" "}
+              Infisical is the #1 {" "}
               <a
                 href="https://github.com/infisical/infisical"
                 target="_blank"
@@ -134,8 +134,7 @@ export const ShareSecretPublicPage = ({ isNewSession }: { isNewSession: boolean 
               </a>{" "}
               secrets management platform for developers. <br className="hidden md:inline" />
               <div className="pb-2" />
-              Infisical Secret Sharing uses end-to-end encrypted architecture to ensure that your
-              secrets are truly private (even from us).
+              Infisical Secret Sharing uses end-to-end encrypted architecture to ensure that your secrets are truly private, even from our servers.
             </p>
             <Link href="https://infisical.com">
               <span className="mt-4 cursor-pointer duration-200 hover:text-primary">
