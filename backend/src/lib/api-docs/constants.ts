@@ -674,7 +674,9 @@ export const INTEGRATION = {
       secretGCPLabel: "The label for GCP secrets.",
       secretAWSTag: "The tags for AWS secrets.",
       kmsKeyId: "The ID of the encryption key from AWS KMS.",
-      shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store."
+      shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store.",
+      shouldMaskSecrets: "The flag to determine the visibility of secrets to sync. Used by Gitlab",
+      shouldProtectSecrets: "The flag to determine usage rules of secrets to sync. Used by Gitlab"
     }
   },
   UPDATE: {

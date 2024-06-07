@@ -1917,13 +1917,13 @@ const syncSecretsGitLab = async ({
     return allEnvVariables;
   };
 
+  const metadata = z.record(z.any()).parse(integration.metadata);
   const allEnvVariables = await getAllEnvVariables(integration?.appId as string, accessToken);
   const getSecretsRes: GitLabSecret[] = allEnvVariables
     .filter((secret: GitLabSecret) => secret.environment_scope === integration.targetEnvironment)
     .filter((gitLabSecret) => {
       let isValid = true;
 
-      const metadata = z.record(z.any()).parse(integration.metadata);
       if (metadata.secretPrefix && !gitLabSecret.key.startsWith(metadata.secretPrefix)) {
         isValid = false;
       }
@@ -1943,8 +1943,8 @@ const syncSecretsGitLab = async ({
         {
           key,
           value: secrets[key].value,
-          protected: false,
-          masked: false,
+          protected: Boolean(metadata.shouldProtectSecrets),
+          masked: Boolean(metadata.shouldMaskSecrets),
           raw: false,
           environment_scope: integration.targetEnvironment
         },
@@ -1961,7 +1961,9 @@ const syncSecretsGitLab = async ({
         `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables/${existingSecret.key}?filter[environment_scope]=${integration.targetEnvironment}`,
         {
           ...existingSecret,
-          value: secrets[existingSecret.key].value
+          value: secrets[existingSecret.key].value,
+          protected: Boolean(metadata.shouldProtectSecrets),
+          masked: Boolean(metadata.shouldMaskSecrets)
         },
         {
           headers: {

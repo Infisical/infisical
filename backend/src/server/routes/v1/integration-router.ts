@@ -73,7 +73,9 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
               .optional()
               .describe(INTEGRATION.CREATE.metadata.secretAWSTag),
             kmsKeyId: z.string().optional().describe(INTEGRATION.CREATE.metadata.kmsKeyId),
-            shouldDisableDelete: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldDisableDelete)
+            shouldDisableDelete: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldDisableDelete),
+            shouldMaskSecrets: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldMaskSecrets),
+            shouldProtectSecrets: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldProtectSecrets)
           })
           .default({})
       }),
