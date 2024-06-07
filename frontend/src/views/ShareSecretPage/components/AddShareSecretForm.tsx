@@ -125,11 +125,7 @@ export const AddShareSecretForm = ({
   };
   return (
     <form className="flex w-full flex-col items-center" onSubmit={handleSubmit(onFormSubmit)}>
-      <div
-        className={`w-[${inModal ? "33rem" : "36rem"}] ${
-          !inModal && "border border-mineshaft-600 bg-mineshaft-800 p-4"
-        }`}
-      >
+      <div className={`${!inModal && "border border-mineshaft-600 bg-mineshaft-800 p-4"}`}>
         <div className="mb-4">
           <Controller
             control={control}
@@ -215,7 +211,7 @@ export const AddShareSecretForm = ({
             </div>
           </div>
         </div>
-        <div className={`flex items-center ${!inModal && "justify-center"}`}>
+        <div className={`flex items-center ${!inModal && "justify-center pt-1"}`}>
           <Button className="mr-4" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
             {inModal ? "Create" : "Share your own Secret"}
           </Button>

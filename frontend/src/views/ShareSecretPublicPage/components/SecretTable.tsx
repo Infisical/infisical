@@ -16,7 +16,7 @@ export const SecretTable = ({
   isUrlCopied,
   copyUrlToClipboard
 }: Props) => (
-  <div className="flex items-center w-full h-full rounded border border-solid border-mineshaft-700 bg-mineshaft-800 p-2">
+  <div className="flex w-full items-center justify-center rounded border border-solid border-mineshaft-700 bg-mineshaft-800 p-2">
     {isLoading && <div className="bg-mineshaft-800 text-center text-bunker-400">Loading...</div>}
     {!isLoading && !decryptedSecret && (
       <Tr>
@@ -26,16 +26,18 @@ export const SecretTable = ({
       </Tr>
     )}
     {!isLoading && decryptedSecret && (
-      <div className="relative h-full w-full p-2 border border-mineshaft-700 bg-mineshaft-900 overflow-y-auto dark">
-        <div className="w-full h-full flex-1 break-words pr-4 overflow-y-scroll max-h-60 dark:[color-scheme:dark] thin-scrollbar">
-          <div className="whitespace-pre-line w-full min-w-full">{decryptedSecret}</div>
+      <div className="dark relative flex h-full w-full items-center overflow-y-auto border border-mineshaft-700 bg-mineshaft-900 p-2">
+        <div className="thin-scrollbar flex h-full max-h-44 w-full flex-1 overflow-y-scroll break-words pr-4 dark:[color-scheme:dark]">
+          <div className="align-center flex w-full min-w-full whitespace-pre-line">
+            {decryptedSecret}
+          </div>
         </div>
         <IconButton
           variant="outline_bg"
           colorSchema="primary"
           ariaLabel="copy to clipboard"
           onClick={copyUrlToClipboard}
-          className="absolute right-6 top-2 rounded"
+          className="mx-1 flex max-h-8 items-center rounded"
           size="xs"
         >
           <FontAwesomeIcon className="pr-2" icon={isUrlCopied ? faCheck : faCopy} /> Copy

@@ -80,6 +80,7 @@ export const secretSharingServiceFactory = ({
 
   const getActiveSharedSecretByIdAndHashedHex = async (sharedSecretId: string, hashedHex: string) => {
     const sharedSecret = await secretSharingDAL.findOne({ id: sharedSecretId, hashedHex });
+    if (!sharedSecret) return;
     if (sharedSecret.expiresAt && sharedSecret.expiresAt < new Date()) {
       return;
     }
