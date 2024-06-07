@@ -7,7 +7,15 @@ import { createNotification } from "@app/components/notifications";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useCreateIntegration, useGetWorkspaceById } from "@app/hooks/api";
 
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "../../../components/v2";
+import {
+  Button,
+  Card,
+  CardTitle,
+  FormControl,
+  Select,
+  SelectItem,
+  Switch
+} from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
@@ -34,6 +42,7 @@ export default function CloudflarePagesIntegrationPage() {
   const [targetApp, setTargetApp] = useState("");
   const [targetAppId, setTargetAppId] = useState("");
   const [targetEnvironment, setTargetEnvironment] = useState("");
+  const [shouldAutoRedeploy, setShouldAutoRedeploy] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -69,7 +78,10 @@ export default function CloudflarePagesIntegrationPage() {
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment,
-        secretPath
+        secretPath,
+        metadata: {
+          shouldAutoRedeploy
+        }
       });
 
       setIsLoading(false);
@@ -169,6 +181,15 @@ export default function CloudflarePagesIntegrationPage() {
             ))}
           </Select>
         </FormControl>
+        <div className="mb-[2.36rem] ml-1 px-6">
+          <Switch
+            id="redeploy-cloudflare-pages"
+            onCheckedChange={(isChecked: boolean) => setShouldAutoRedeploy(isChecked)}
+            isChecked={shouldAutoRedeploy}
+          >
+            Auto-redeploy service upon secret change
+          </Switch>
+        </div>
         <Button
           onClick={handleButtonClick}
           color="mineshaft"
