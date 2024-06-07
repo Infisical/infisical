@@ -496,7 +496,6 @@ To enable auto redeployment you simply have to add the following annotation to t
 ```yaml
 secrets.infisical.com/auto-reload: "true"
 ```
-
 <Accordion title="Deployment example with auto redeploy enabled">
 ```yaml
 apiVersion: apps/v1
@@ -527,7 +526,11 @@ spec:
         - containerPort: 80
 ```
 </Accordion>
-
+<Info>
+  #### How it works 
+  When a secret change occurs, the operator will check to see which deployments are using the operator-managed Kubernetes secret that received the update. 
+  For each deployment that has this annotation present, a rolling update will be triggered.
+</Info>
 ## Global configuration
 
 To configure global settings that will apply to all instances of `InfisicalSecret`, you can define these configurations in a Kubernetes ConfigMap.
