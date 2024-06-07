@@ -97,11 +97,27 @@ export const ShareSecretPublicPage = ({ isNewSession }: { isNewSession: boolean 
           />
         )}
 
-        <div className="m-auto my-6 flex w-full max-w-xl justify-center px-8 px-4 sm:my-10">
+        <div className="m-auto my-6 flex w-full max-w-xl justify-center px-8 px-4 sm:my-8">
           <div className="w-full border-t border-mineshaft-600" />
         </div>
 
         <div className="m-auto max-w-xl px-4">
+          {!isNewSession && (
+            <div className="flex flex-1 flex-col items-center justify-center px-4 pb-4">
+              <Button
+                className="bg-mineshaft-700 text-bunker-200"
+                colorSchema="primary"
+                variant="outline_bg"
+                size="sm"
+                onClick={() => {
+                  handlePopUpOpen("createSharedSecret");
+                }}
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              >
+                Share your own Secret
+              </Button>
+            </div>
+          )}
           <div className="m-auto mb-8 flex flex max-w-xl flex-col justify-center gap-2 rounded-md border border-primary-500/30 bg-primary/5 p-6">
             <p className="pb-2 font-semibold text-mineshaft-100 md:pb-4 md:text-xl">
               Safe, Secure, & Open Source
@@ -127,22 +143,6 @@ export const ShareSecretPublicPage = ({ isNewSession }: { isNewSession: boolean 
               </span>
             </Link>
           </div>
-          {!isNewSession && (
-            <div className="flex flex-1 flex-col items-center justify-center px-4">
-              <Button
-                className="bg-mineshaft-700 text-bunker-200"
-                colorSchema="primary"
-                variant="outline_bg"
-                size="sm"
-                onClick={() => {
-                  handlePopUpOpen("createSharedSecret");
-                }}
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              >
-                Share your own Secret
-              </Button>
-            </div>
-          )}
         </div>
         <div className="bottom-0 flex w-full items-center justify-center bg-mineshaft-600 p-2 sm:absolute">
           <p className="text-center text-sm text-mineshaft-300">
