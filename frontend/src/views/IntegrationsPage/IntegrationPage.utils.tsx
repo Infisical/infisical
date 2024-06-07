@@ -128,6 +128,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "hasura-cloud":
         link = `${window.location.origin}/integrations/hasura-cloud/authorize`;
         break;
+      case "rundeck":
+        link = `${window.location.origin}/integrations/rundeck/authorize`;
+        break;
       default:
         break;
     }

@@ -141,7 +141,8 @@ export const IntegrationsSection = ({
                       label={
                         (integration.integration === "qovery" && integration?.scope) ||
                         (integration.integration === "aws-secret-manager" && "Secret") ||
-                        (integration.integration === "aws-parameter-store" && "Path") ||
+                        (["aws-parameter-store", "rundeck"].includes(integration.integration) &&
+                          "Path") ||
                         (integration?.integration === "terraform-cloud" && "Project") ||
                         (integration?.scope === "github-org" && "Organization") ||
                         (["github-repo", "github-env"].includes(integration?.scope as string) &&
@@ -153,7 +154,7 @@ export const IntegrationsSection = ({
                       {(integration.integration === "hashicorp-vault" &&
                         `${integration.app} - path: ${integration.path}`) ||
                         (integration.scope === "github-org" && `${integration.owner}`) ||
-                        (integration.integration === "aws-parameter-store" &&
+                        (["aws-parameter-store", "rundeck"].includes(integration.integration) &&
                           `${integration.path}`) ||
                         (integration.scope?.startsWith("github-") &&
                           `${integration.owner}/${integration.app}`) ||

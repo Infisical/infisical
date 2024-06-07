@@ -41,6 +41,7 @@ export const useCreateIntegration = () => {
       owner,
       path,
       region,
+      url,
       scope,
       secretPath,
       metadata
@@ -56,6 +57,7 @@ export const useCreateIntegration = () => {
       targetService?: string;
       targetServiceId?: string;
       owner?: string;
+      url?: string;
       path?: string;
       region?: string;
       scope?: string;
@@ -85,6 +87,7 @@ export const useCreateIntegration = () => {
         targetEnvironmentId,
         targetService,
         targetServiceId,
+        url,
         owner,
         path,
         scope,

@@ -344,6 +344,7 @@
           "pages": [
             "integrations/cicd/circleci",
             "integrations/cicd/travisci",
+            "integrations/cicd/rundeck",
             "integrations/cicd/codefresh",
             "integrations/cloud/checkly"
           ]

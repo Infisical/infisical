@@ -3355,6 +3355,82 @@ const syncSecretsHasuraCloud = async ({
   }
 };
 
+/** Sync/push [secrets] to Rundeck
+ * @param {Object} obj
+ * @param {TIntegrations} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Rundeck integration
+ */
+const syncSecretsRundeck = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: TIntegrations;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  interface RundeckSecretResource {
+    name: string;
+  }
+  interface RundeckSecretsGetRes {
+    resources: RundeckSecretResource[];
+  }
+
+  let existingRundeckSecrets: string[] = [];
+
+  try {
+    const listResult = await request.get<RundeckSecretsGetRes>(
+      `${integration.url}/api/44/storage/${integration.path}`,
+      {
+        headers: {
+          "X-Rundeck-Auth-Token": accessToken
+        }
+      }
+    );
+
+    existingRundeckSecrets = listResult.data.resources.map((res) => res.name);
+  } catch (err) {
+    logger.info("No existing rundeck secrets");
+  }
+
+  try {
+    for await (const [key, value] of Object.entries(secrets)) {
+      if (existingRundeckSecrets.includes(key)) {
+        await request.put(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken,
+            "Content-Type": "application/x-rundeck-data-password"
+          }
+        });
+      } else {
+        await request.post(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken,
+            "Content-Type": "application/x-rundeck-data-password"
+          }
+        });
+      }
+    }
+
+    for await (const existingSecret of existingRundeckSecrets) {
+      if (!(existingSecret in secrets)) {
+        await request.delete(`${integration.url}/api/44/storage/${integration.path}/${existingSecret}`, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken
+          }
+        });
+      }
+    }
+  } catch (err: unknown) {
+    throw new Error(
+      `Ensure that the provided Rundeck URL is accessible by Infisical and that the linked API token has sufficient permissions.\n\n${
+        (err as Error).message
+      }`
+    );
+  }
+};
+
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
  *
@@ -3616,6 +3692,13 @@ export const syncIntegrationSecrets = async ({
 
     case Integrations.HASURA_CLOUD:
       await syncSecretsHasuraCloud({
+        integration,
+        secrets,
+        accessToken
+      });
+      break;
+    case Integrations.RUNDECK:
+      await syncSecretsRundeck({
         integration,
         secrets,
         accessToken
