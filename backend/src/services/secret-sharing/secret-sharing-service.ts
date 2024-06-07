@@ -59,6 +59,14 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Expiration date cannot be in the past" });
     }
 
+    // Limit Expiry Time to 1 month
+    const expiryTime = new Date(expiresAt).getTime();
+    const currentTime = new Date().getTime();
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    if (expiryTime - currentTime > thirtyDays) {
+      throw new BadRequestError({ message: "Expiration date cannot be more than 30 days currently." });
+    }
+
     const newSharedSecret = await secretSharingDAL.create({
       encryptedValue,
       iv,
