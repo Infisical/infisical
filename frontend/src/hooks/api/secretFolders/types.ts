@@ -1,3 +1,7 @@
+export enum ReservedFolders {
+  SecretReplication = "__reserve_replication_"
+}
+
 export type TSecretFolder = {
   id: string;
   name: string;

@@ -420,9 +420,8 @@ export const SecretItem = memo(
                       <Tooltip
                         content={
                           secretReminderRepeatDays && secretReminderRepeatDays > 0
-                            ? `Every ${secretReminderRepeatDays} day${
-                                Number(secretReminderRepeatDays) > 1 ? "s" : ""
-                              }
+                            ? `Every ${secretReminderRepeatDays} day${Number(secretReminderRepeatDays) > 1 ? "s" : ""
+                            }
                           `
                             : "Reminder"
                         }
@@ -492,7 +491,7 @@ export const SecretItem = memo(
                         ariaLabel="more"
                         variant="plain"
                         size="md"
-                        className="p-0 opacity-0 group-hover:opacity-100 h-5 w-4"
+                        className="h-5 w-4 p-0 opacity-0 group-hover:opacity-100"
                         onClick={() => onDetailViewSecret(secret)}
                       >
                         <FontAwesomeSymbol

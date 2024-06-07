@@ -15,9 +15,16 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
-import { getAllNestedSecretReferences } from "@app/services/secret/secret-fns";
+import {
+  fnSecretBlindIndexCheck,
+  fnSecretBlindIndexCheckV2,
+  fnSecretBulkDelete,
+  fnSecretBulkInsert,
+  fnSecretBulkUpdate,
+  getAllNestedSecretReferences
+} from "@app/services/secret/secret-fns";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
-import { TSecretServiceFactory } from "@app/services/secret/secret-service";
+import { SecretOperations } from "@app/services/secret/secret-types";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
@@ -32,7 +39,6 @@ import { TSecretApprovalRequestReviewerDALFactory } from "./secret-approval-requ
 import { TSecretApprovalRequestSecretDALFactory } from "./secret-approval-request-secret-dal";
 import {
   ApprovalStatus,
-  CommitType,
   RequestState,
   TApprovalRequestCountDTO,
   TGenerateSecretApprovalRequestDTO,
@@ -45,10 +51,11 @@ import {
 
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretApprovalRequestDAL: TSecretApprovalRequestDALFactory;
   secretApprovalRequestSecretDAL: TSecretApprovalRequestSecretDALFactory;
   secretApprovalRequestReviewerDAL: TSecretApprovalRequestReviewerDALFactory;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findById" | "findSecretPathByFolderIds">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   secretDAL: TSecretDALFactory;
   secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById" | "saveTagsToSecret" | "deleteTagsManySecret">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
@@ -56,16 +63,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany" | "insertMany">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
-  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  secretService: Pick<
-    TSecretServiceFactory,
-    | "fnSecretBulkInsert"
-    | "fnSecretBulkUpdate"
-    | "fnSecretBlindIndexCheck"
-    | "fnSecretBulkDelete"
-    | "fnSecretBlindIndexCheckV2"
-  >;
-  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -82,7 +80,6 @@ export const secretApprovalRequestServiceFactory = ({
   projectDAL,
   permissionService,
   snapshotService,
-  secretService,
   secretVersionDAL,
   secretQueueService,
   projectBotService
@@ -302,11 +299,12 @@ export const secretApprovalRequestServiceFactory = ({
     const secretApprovalSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
     if (!secretApprovalSecrets) throw new BadRequestError({ message: "No secrets found" });
 
-    const conflicts: Array<{ secretId: string; op: CommitType }> = [];
-    let secretCreationCommits = secretApprovalSecrets.filter(({ op }) => op === CommitType.Create);
+    const conflicts: Array<{ secretId: string; op: SecretOperations }> = [];
+    let secretCreationCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Create);
     if (secretCreationCommits.length) {
-      const { secsGroupedByBlindIndex: conflictGroupByBlindIndex } = await secretService.fnSecretBlindIndexCheckV2({
+      const { secsGroupedByBlindIndex: conflictGroupByBlindIndex } = await fnSecretBlindIndexCheckV2({
         folderId,
+        secretDAL,
         inputSecrets: secretCreationCommits.map(({ secretBlindIndex }) => {
           if (!secretBlindIndex) {
             throw new BadRequestError({
@@ -319,17 +317,19 @@ export const secretApprovalRequestServiceFactory = ({
       secretCreationCommits
         .filter(({ secretBlindIndex }) => conflictGroupByBlindIndex[secretBlindIndex || ""])
         .forEach((el) => {
-          conflicts.push({ op: CommitType.Create, secretId: el.id });
+          conflicts.push({ op: SecretOperations.Create, secretId: el.id });
         });
       secretCreationCommits = secretCreationCommits.filter(
         ({ secretBlindIndex }) => !conflictGroupByBlindIndex[secretBlindIndex || ""]
       );
     }
 
-    let secretUpdationCommits = secretApprovalSecrets.filter(({ op }) => op === CommitType.Update);
+    let secretUpdationCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Update);
     if (secretUpdationCommits.length) {
-      const { secsGroupedByBlindIndex: conflictGroupByBlindIndex } = await secretService.fnSecretBlindIndexCheckV2({
+      const { secsGroupedByBlindIndex: conflictGroupByBlindIndex } = await fnSecretBlindIndexCheckV2({
         folderId,
+        secretDAL,
+        userId: "",
         inputSecrets: secretUpdationCommits
           .filter(({ secretBlindIndex, secret }) => secret && secret.secretBlindIndex !== secretBlindIndex)
           .map(({ secretBlindIndex }) => {
@@ -347,7 +347,7 @@ export const secretApprovalRequestServiceFactory = ({
             (secretBlindIndex && conflictGroupByBlindIndex[secretBlindIndex]) || !secretId
         )
         .forEach((el) => {
-          conflicts.push({ op: CommitType.Update, secretId: el.id });
+          conflicts.push({ op: SecretOperations.Update, secretId: el.id });
         });
 
       secretUpdationCommits = secretUpdationCommits.filter(
@@ -356,11 +356,11 @@ export const secretApprovalRequestServiceFactory = ({
       );
     }
 
-    const secretDeletionCommits = secretApprovalSecrets.filter(({ op }) => op === CommitType.Delete);
+    const secretDeletionCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Delete);
     const botKey = await projectBotService.getBotKey(projectId).catch(() => null);
     const mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
       const newSecrets = secretCreationCommits.length
-        ? await secretService.fnSecretBulkInsert({
+        ? await fnSecretBulkInsert({
             tx,
             folderId,
             inputSecrets: secretCreationCommits.map((el) => ({
@@ -403,7 +403,7 @@ export const secretApprovalRequestServiceFactory = ({
           })
         : [];
       const updatedSecrets = secretUpdationCommits.length
-        ? await secretService.fnSecretBulkUpdate({
+        ? await fnSecretBulkUpdate({
             folderId,
             projectId,
             tx,
@@ -449,11 +449,13 @@ export const secretApprovalRequestServiceFactory = ({
           })
         : [];
       const deletedSecret = secretDeletionCommits.length
-        ? await secretService.fnSecretBulkDelete({
+        ? await fnSecretBulkDelete({
             projectId,
             folderId,
             tx,
             actorId: "",
+            secretDAL,
+            secretQueueService,
             inputSecrets: secretDeletionCommits.map(({ secretBlindIndex }) => {
               if (!secretBlindIndex) {
                 throw new BadRequestError({
@@ -480,12 +482,14 @@ export const secretApprovalRequestServiceFactory = ({
       };
     });
     await snapshotService.performSnapshot(folderId);
-    const folder = await folderDAL.findById(folderId);
-    // TODO(akhilmhdh-pg):  change query to do secret path from folder
+    const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
+    if (!folder) throw new BadRequestError({ message: "Folder not found" });
     await secretQueueService.syncSecrets({
       projectId,
-      secretPath: "/",
-      environment: folder?.environment.envSlug as string
+      secretPath: folder.path,
+      environmentSlug: folder.environmentSlug,
+      actorId,
+      actor
     });
     return mergeStatus;
   };
@@ -533,9 +537,9 @@ export const secretApprovalRequestServiceFactory = ({
     const commits: Omit<TSecretApprovalRequestsSecretsInsert, "requestId">[] = [];
     const commitTagIds: Record<string, string[]> = {};
     // for created secret approval change
-    const createdSecrets = data[CommitType.Create];
+    const createdSecrets = data[SecretOperations.Create];
     if (createdSecrets && createdSecrets?.length) {
-      const { keyName2BlindIndex } = await secretService.fnSecretBlindIndexCheck({
+      const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
         inputSecrets: createdSecrets,
         folderId,
         isNew: true,
@@ -546,7 +550,7 @@ export const secretApprovalRequestServiceFactory = ({
       commits.push(
         ...createdSecrets.map(({ secretName, ...el }) => ({
           ...el,
-          op: CommitType.Create as const,
+          op: SecretOperations.Create as const,
           version: 1,
           secretBlindIndex: keyName2BlindIndex[secretName],
           algorithm: SecretEncryptionAlgo.AES_256_GCM,
@@ -558,12 +562,12 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
     // not secret approval for update operations
-    const updatedSecrets = data[CommitType.Update];
+    const updatedSecrets = data[SecretOperations.Update];
     if (updatedSecrets && updatedSecrets?.length) {
       // get all blind index
       // Find all those secrets
       // if not throw not found
-      const { keyName2BlindIndex, secrets: secretsToBeUpdated } = await secretService.fnSecretBlindIndexCheck({
+      const { keyName2BlindIndex, secrets: secretsToBeUpdated } = await fnSecretBlindIndexCheck({
         inputSecrets: updatedSecrets,
         folderId,
         isNew: false,
@@ -574,8 +578,8 @@ export const secretApprovalRequestServiceFactory = ({
       // now find any secret that needs to update its name
       // same process as above
       const nameUpdatedSecrets = updatedSecrets.filter(({ newSecretName }) => Boolean(newSecretName));
-      const { keyName2BlindIndex: newKeyName2BlindIndex } = await secretService.fnSecretBlindIndexCheck({
-        inputSecrets: nameUpdatedSecrets,
+      const { keyName2BlindIndex: newKeyName2BlindIndex } = await fnSecretBlindIndexCheck({
+        inputSecrets: nameUpdatedSecrets.map(({ newSecretName }) => ({ secretName: newSecretName as string })),
         folderId,
         isNew: true,
         blindIndexCfg,
@@ -592,14 +596,14 @@ export const secretApprovalRequestServiceFactory = ({
           const secretId = secsGroupedByBlindIndex[keyName2BlindIndex[secretName]][0].id;
           const secretBlindIndex =
             newSecretName && newKeyName2BlindIndex[newSecretName]
-              ? newKeyName2BlindIndex?.[secretName]
+              ? newKeyName2BlindIndex?.[newSecretName]
               : keyName2BlindIndex[secretName];
           // add tags
           if (tagIds?.length) commitTagIds[keyName2BlindIndex[secretName]] = tagIds;
           return {
             ...latestSecretVersions[secretId],
             ...el,
-            op: CommitType.Update as const,
+            op: SecretOperations.Update as const,
             secret: secretId,
             secretVersion: latestSecretVersions[secretId].id,
             secretBlindIndex,
@@ -609,12 +613,12 @@ export const secretApprovalRequestServiceFactory = ({
       );
     }
     // deleted secrets
-    const deletedSecrets = data[CommitType.Delete];
+    const deletedSecrets = data[SecretOperations.Delete];
     if (deletedSecrets && deletedSecrets.length) {
       // get all blind index
       // Find all those secrets
       // if not throw not found
-      const { keyName2BlindIndex, secrets } = await secretService.fnSecretBlindIndexCheck({
+      const { keyName2BlindIndex, secrets } = await fnSecretBlindIndexCheck({
         inputSecrets: deletedSecrets,
         folderId,
         isNew: false,
@@ -635,7 +639,7 @@ export const secretApprovalRequestServiceFactory = ({
           if (!latestSecretVersions[secretId].secretBlindIndex)
             throw new BadRequestError({ message: "Failed to find secret blind index" });
           return {
-            op: CommitType.Delete as const,
+            op: SecretOperations.Delete as const,
             ...latestSecretVersions[secretId],
             secretBlindIndex: latestSecretVersions[secretId].secretBlindIndex as string,
             secret: secretId,

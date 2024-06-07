@@ -18,7 +18,8 @@ export const SecretApprovalRequestsSchema = z.object({
   statusChangeBy: z.string().uuid().nullable().optional(),
   committerId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  isReplicated: z.boolean().nullable().optional()
 });
 
 export type TSecretApprovalRequests = z.infer<typeof SecretApprovalRequestsSchema>;
