@@ -16,8 +16,7 @@ export const ProjectsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   version: z.number().default(1),
-  upgradeStatus: z.string().nullable().optional(),
-  pitVersionLimit: z.number().default(10)
+  upgradeStatus: z.string().nullable().optional()
 });
 
 export type TProjects = z.infer<typeof ProjectsSchema>;
