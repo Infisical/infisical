@@ -128,7 +128,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
       }
       if ($decr) {
         Object.entries($decr).forEach(([incrementField, incrementValue]) => {
-          void query.increment(incrementField, incrementValue);
+          void query.decrement(incrementField, incrementValue);
         });
       }
       const [docs] = await query;

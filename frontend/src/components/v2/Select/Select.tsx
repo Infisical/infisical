@@ -62,6 +62,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           <SelectPrimitive.Content
             className={twMerge(
               "relative top-1 z-[100] overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md",
+              position === "popper" && "max-h-72",
               dropdownContainerClassName
             )}
             position={position}
@@ -113,7 +114,7 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
           outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-700/80`,
           isSelected && "bg-primary",
           isDisabled &&
-            "cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600",
+          "cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600",
           className
         )}
         ref={forwardedRef}

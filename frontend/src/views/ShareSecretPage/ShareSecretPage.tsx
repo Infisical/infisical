@@ -13,14 +13,16 @@ export const ShareSecretPage = () => {
           <p className="text-bunker-300">Share secrets securely using a shareable link</p>
         </div>
         <div className="flex w-max justify-center">
-          <Link href="https://infisical.com/docs/documentation/platform/secret-sharing">
-            <span className="w-max cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
+          <Link href="https://infisical.com/docs/documentation/platform/secret-sharing" passHref>
+          <a target="_blank" rel="noopener noreferrer">
+            <div className="w-max cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
               Documentation{" "}
               <FontAwesomeIcon
                 icon={faArrowUpRightFromSquare}
                 className="mb-[0.06rem] ml-1 text-xs"
               />
-            </span>
+            </div>
+            </a>
           </Link>
         </div>
       </div>

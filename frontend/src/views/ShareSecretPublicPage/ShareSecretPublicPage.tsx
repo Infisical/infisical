@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import { useRouter } from "next/router";
@@ -21,57 +21,33 @@ export const ShareSecretPublicPage = () => {
     }
   }, [id, publicKey]);
 
-  const { isLoading, data } = useGetActiveSharedSecretByIdAndHashedHex(id as string, hashedHex as string );  
+  const { isLoading, data } = useGetActiveSharedSecretByIdAndHashedHex(
+    id as string,
+    hashedHex as string
+  );
+
   const decryptedSecret = useMemo(() => {
     if (data && data.encryptedValue && publicKey) {
       const res = decryptSymmetric({
         ciphertext: data.encryptedValue,
         iv: data.iv,
         tag: data.tag,
-        key,
+        key
       });
       return res;
     }
     return "";
   }, [data, publicKey]);
 
-  const [timeLeft, setTimeLeft] = useState("");
   const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
-    initialState: false,
+    initialState: false
   });
-
-  const millisecondsPerDay = 1000 * 60 * 60 * 24;
-  const millisecondsPerHour = 1000 * 60 * 60;
-  const millisecondsPerMinute = 1000 * 60;
-
-  useEffect(() => {
-    const updateTimer = () => {
-      if (data && data.expiresAt) {
-        const expirationTime = new Date(data.expiresAt).getTime();
-        const currentTime = new Date().getTime();
-        const timeDifference = expirationTime - currentTime;
-
-        if (timeDifference < 0) {
-          setTimeLeft("Expired");
-        } else {
-          const hoursRemaining = Math.floor((timeDifference % millisecondsPerDay) / millisecondsPerHour);
-          const minutesRemaining = Math.floor((timeDifference % millisecondsPerHour) / millisecondsPerMinute);
-          const secondsRemaining = Math.floor((timeDifference % millisecondsPerMinute) / 1000);
-          setTimeLeft(`${hoursRemaining}h ${minutesRemaining}m ${secondsRemaining}s`);
-        }
-      }
-    };
-
-    const timer = setInterval(updateTimer, 1000);
-    return () => clearInterval(timer);
-  }, [data?.expiresAt]);
 
   useEffect(() => {
     if (isUrlCopied) {
       setTimeout(() => setIsUrlCopied(false), 2000);
     }
   }, [isUrlCopied]);
-
 
   const copyUrlToClipboard = () => {
     navigator.clipboard.writeText(decryptedSecret);
@@ -95,14 +71,12 @@ export const ShareSecretPublicPage = () => {
         <DragonMainImage />
         <div className="m-4 flex flex-1 flex-col items-center justify-start md:m-0">
           <p className="mt-8 mb-2 text-xl font-semibold text-mineshaft-100 md:mt-20">
-            Secret Details
+            Shared Secret
           </p>
-          <div className="mb-16 rounded-lg border border-mineshaft-600 bg-mineshaft-900 md:p-8">
+          <div className="mb-4 rounded-lg md:p-2">
             <SecretTable
               isLoading={isLoading}
-              sharedSecret={data}
               decryptedSecret={decryptedSecret}
-              timeLeft={timeLeft}
               isUrlCopied={isUrlCopied}
               copyUrlToClipboard={copyUrlToClipboard}
             />

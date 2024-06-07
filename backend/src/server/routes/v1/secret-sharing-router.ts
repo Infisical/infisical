@@ -45,7 +45,13 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         hashedHex: z.string()
       }),
       response: {
-        200: SecretSharingSchema.pick({ name: true, encryptedValue: true, iv: true, tag: true, expiresAt: true })
+        200: SecretSharingSchema.pick({
+          encryptedValue: true,
+          iv: true,
+          tag: true,
+          expiresAt: true,
+          expiresAfterViews: true
+        })
       }
     },
     handler: async (req) => {
@@ -55,11 +61,11 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       );
       if (!sharedSecret) return undefined;
       return {
-        name: sharedSecret.name,
         encryptedValue: sharedSecret.encryptedValue,
         iv: sharedSecret.iv,
         tag: sharedSecret.tag,
-        expiresAt: sharedSecret.expiresAt
+        expiresAt: sharedSecret.expiresAt,
+        expiresAfterViews: sharedSecret.expiresAfterViews
       };
     }
   });
@@ -72,14 +78,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       body: z.object({
-        name: z.string(),
         encryptedValue: z.string(),
         iv: z.string(),
         tag: z.string(),
         hashedHex: z.string(),
-        expiresAt: z.string().refine((date) => new Date(date) > new Date(), {
-          message: "Expires at should be a future date"
-        })
+        expiresAt: z
+          .string()
+          .refine((date) => date === undefined || new Date(date) > new Date(), "Expires at should be a future date"),
+        expiresAfterViews: z.number()
       }),
       response: {
         200: z.object({
@@ -89,19 +95,19 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { name, encryptedValue, iv, tag, hashedHex, expiresAt } = req.body;
+      const { encryptedValue, iv, tag, hashedHex, expiresAt, expiresAfterViews } = req.body;
       const sharedSecret = await req.server.services.secretSharing.createSharedSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        name,
         encryptedValue,
         iv,
         tag,
         hashedHex,
-        expiresAt: new Date(expiresAt)
+        expiresAt: new Date(expiresAt),
+        expiresAfterViews
       });
       return { id: sharedSecret.id };
     }

@@ -28,7 +28,7 @@ export const readLimit: RateLimitOptions = {
 // POST, PATCH, PUT, DELETE endpoints
 export const writeLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 50,
+  max: 200, // (too low, FA having issues so increasing it - maidul)
   keyGenerator: (req) => req.realIp
 };
 

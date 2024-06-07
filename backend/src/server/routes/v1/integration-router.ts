@@ -42,6 +42,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         targetService: z.string().trim().optional().describe(INTEGRATION.CREATE.targetService),
         targetServiceId: z.string().trim().optional().describe(INTEGRATION.CREATE.targetServiceId),
         owner: z.string().trim().optional().describe(INTEGRATION.CREATE.owner),
+        url: z.string().trim().optional().describe(INTEGRATION.CREATE.url),
         path: z.string().trim().optional().describe(INTEGRATION.CREATE.path),
         region: z.string().trim().optional().describe(INTEGRATION.CREATE.region),
         scope: z.string().trim().optional().describe(INTEGRATION.CREATE.scope),

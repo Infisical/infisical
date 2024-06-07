@@ -32,6 +32,8 @@ import {
   TCreateManySecretsRawFn,
   TCreateManySecretsRawFnFactory,
   TFnSecretBlindIndexCheck,
+  TFnSecretBlindIndexCheckV2,
+  TFnSecretBulkDelete,
   TFnSecretBulkInsert,
   TFnSecretBulkUpdate,
   TUpdateManySecretsRawFn,
@@ -149,7 +151,8 @@ export const recursivelyGetSecretPaths = ({
 
     // Fetch all folders in env once with a single query
     const folders = await folderDAL.find({
-      envId: env.id
+      envId: env.id,
+      isReserved: false
     });
 
     // Build the folder hierarchy map
@@ -396,6 +399,30 @@ export const decryptSecretRaw = (
   };
 };
 
+// this is used when secret blind index already exist
+// mainly for secret approval
+export const fnSecretBlindIndexCheckV2 = async ({
+  inputSecrets,
+  folderId,
+  userId,
+  secretDAL
+}: TFnSecretBlindIndexCheckV2) => {
+  if (inputSecrets.some(({ type }) => type === SecretType.Personal) && !userId) {
+    throw new BadRequestError({ message: "Missing user id for personal secret" });
+  }
+  const secrets = await secretDAL.findByBlindIndexes(
+    folderId,
+    inputSecrets.map(({ secretBlindIndex, type }) => ({
+      blindIndex: secretBlindIndex,
+      type: type || SecretType.Shared
+    })),
+    userId
+  );
+  const secsGroupedByBlindIndex = groupBy(secrets, (i) => i.secretBlindIndex as string);
+
+  return { secsGroupedByBlindIndex, secrets };
+};
+
 /**
  * Grabs and processes nested secret references from a string
  *
@@ -596,6 +623,35 @@ export const fnSecretBulkUpdate = async ({
   }
 
   return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
+};
+
+export const fnSecretBulkDelete = async ({
+  folderId,
+  inputSecrets,
+  tx,
+  actorId,
+  secretDAL,
+  secretQueueService
+}: TFnSecretBulkDelete) => {
+  const deletedSecrets = await secretDAL.deleteMany(
+    inputSecrets.map(({ type, secretBlindIndex }) => ({
+      blindIndex: secretBlindIndex,
+      type
+    })),
+    folderId,
+    actorId,
+    tx
+  );
+
+  await Promise.allSettled(
+    deletedSecrets
+      .filter(({ secretReminderRepeatDays }) => Boolean(secretReminderRepeatDays))
+      .map(({ id, secretReminderRepeatDays }) =>
+        secretQueueService.removeSecretReminder({ secretId: id, repeatDays: secretReminderRepeatDays as number })
+      )
+  );
+
+  return deletedSecrets;
 };
 
 export const createManySecretsRawFnFactory = ({

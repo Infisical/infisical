@@ -89,6 +89,7 @@ export const secretVersionDALFactory = (db: TDbClient) => {
 
   const findLatestVersionMany = async (folderId: string, secretIds: string[], tx?: Knex) => {
     try {
+      if (!secretIds.length) return {};
       const docs: Array<TSecretVersions & { max: number }> = await (tx || db)(TableName.SecretVersion)
         .where("folderId", folderId)
         .whereIn(`${TableName.SecretVersion}.secretId`, secretIds)

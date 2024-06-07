@@ -199,6 +199,7 @@ export const integrationAuthServiceFactory = ({
       projectId,
       namespace,
       integration,
+      url,
       algorithm: SecretEncryptionAlgo.AES_256_GCM,
       keyEncoding: SecretKeyEncoding.UTF8,
       ...(integration === Integrations.GCP_SECRET_MANAGER

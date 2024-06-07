@@ -10,6 +10,11 @@ export type TSecretImport = {
   position: string;
   createdAt: string;
   updatedAt: string;
+  isReserved?: boolean;
+  isReplication?: boolean;
+  isReplicationSuccess?: boolean;
+  replicationStatus?: string;
+  lastReplicated?: string;
 };
 
 export type TGetImportedFoldersByEnvDTO = {
@@ -60,6 +65,7 @@ export type TCreateSecretImportDTO = {
     environment: string;
     path: string;
   };
+  isReplication?: boolean;
 };
 
 export type TUpdateSecretImportDTO = {
@@ -72,6 +78,13 @@ export type TUpdateSecretImportDTO = {
     path: string;
     position: number;
   }>;
+};
+
+export type TResyncSecretReplicationDTO = {
+  id: string;
+  projectId: string;
+  environment: string;
+  path?: string;
 };
 
 export type TDeleteSecretImportDTO = {

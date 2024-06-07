@@ -27,6 +27,7 @@ import { z } from "zod";
 import { SecretType, TIntegrationAuths, TIntegrations, TSecrets } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
@@ -521,18 +522,42 @@ const syncSecretsAWSParameterStore = async ({
             .promise();
         }
         // case: secret exists in AWS parameter store
-      } else if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
-        // case: secret value doesn't match one in AWS parameter store
+      } else {
         // -> update secret
-        await ssm
-          .putParameter({
-            Name: `${integration.path}${key}`,
-            Type: "SecureString",
-            Value: secrets[key].value,
-            Overwrite: true
-            // Tags: metadata.secretAWSTag ? [{ Key: metadata.secretAWSTag.key, Value: metadata.secretAWSTag.value }] : []
-          })
-          .promise();
+        if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
+          await ssm
+            .putParameter({
+              Name: `${integration.path}${key}`,
+              Type: "SecureString",
+              Value: secrets[key].value,
+              Overwrite: true
+            })
+            .promise();
+        }
+
+        if (awsParameterStoreSecretsObj[key].Name) {
+          try {
+            await ssm
+              .addTagsToResource({
+                ResourceType: "Parameter",
+                ResourceId: awsParameterStoreSecretsObj[key].Name as string,
+                Tags: metadata.secretAWSTag
+                  ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+                      Key: tag.key,
+                      Value: tag.value
+                    }))
+                  : []
+              })
+              .promise();
+          } catch (err) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((err as any).code === "AccessDeniedException") {
+              logger.error(
+                `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
+              );
+            }
+          }
+        }
       }
 
       await new Promise((resolve) => {
@@ -2725,6 +2750,20 @@ const syncSecretsCloudflarePages = async ({
       }
     }
   );
+
+  const metadata = z.record(z.any()).parse(integration.metadata);
+  if (metadata.shouldAutoRedeploy) {
+    await request.post(
+      `${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}/deployments`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        }
+      }
+    );
+  }
 };
 
 /**
@@ -3330,6 +3369,82 @@ const syncSecretsHasuraCloud = async ({
   }
 };
 
+/** Sync/push [secrets] to Rundeck
+ * @param {Object} obj
+ * @param {TIntegrations} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Rundeck integration
+ */
+const syncSecretsRundeck = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: TIntegrations;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  interface RundeckSecretResource {
+    name: string;
+  }
+  interface RundeckSecretsGetRes {
+    resources: RundeckSecretResource[];
+  }
+
+  let existingRundeckSecrets: string[] = [];
+
+  try {
+    const listResult = await request.get<RundeckSecretsGetRes>(
+      `${integration.url}/api/44/storage/${integration.path}`,
+      {
+        headers: {
+          "X-Rundeck-Auth-Token": accessToken
+        }
+      }
+    );
+
+    existingRundeckSecrets = listResult.data.resources.map((res) => res.name);
+  } catch (err) {
+    logger.info("No existing rundeck secrets");
+  }
+
+  try {
+    for await (const [key, value] of Object.entries(secrets)) {
+      if (existingRundeckSecrets.includes(key)) {
+        await request.put(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken,
+            "Content-Type": "application/x-rundeck-data-password"
+          }
+        });
+      } else {
+        await request.post(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken,
+            "Content-Type": "application/x-rundeck-data-password"
+          }
+        });
+      }
+    }
+
+    for await (const existingSecret of existingRundeckSecrets) {
+      if (!(existingSecret in secrets)) {
+        await request.delete(`${integration.url}/api/44/storage/${integration.path}/${existingSecret}`, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken
+          }
+        });
+      }
+    }
+  } catch (err: unknown) {
+    throw new Error(
+      `Ensure that the provided Rundeck URL is accessible by Infisical and that the linked API token has sufficient permissions.\n\n${
+        (err as Error).message
+      }`
+    );
+  }
+};
+
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
  *
@@ -3591,6 +3706,13 @@ export const syncIntegrationSecrets = async ({
 
     case Integrations.HASURA_CLOUD:
       await syncSecretsHasuraCloud({
+        integration,
+        secrets,
+        accessToken
+      });
+      break;
+    case Integrations.RUNDECK:
+      await syncSecretsRundeck({
         integration,
         secrets,
         accessToken

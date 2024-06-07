@@ -4,9 +4,16 @@ import { AxiosError } from "axios";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  Modal,
+  ModalContent,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { useWorkspace } from "@app/context";
+import { useSubscription, useWorkspace } from "@app/context";
 import { useCreateSecretImport } from "@app/hooks/api";
 
 const typeSchema = z.object({
@@ -16,7 +23,8 @@ const typeSchema = z.object({
     .trim()
     .transform((val) =>
       typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
-    )
+    ),
+  isReplication: z.boolean().default(false)
 });
 
 type TFormSchema = z.infer<typeof typeSchema>;
@@ -29,6 +37,7 @@ type Props = {
   isOpen?: boolean;
   onClose: () => void;
   onTogglePopUp: (isOpen: boolean) => void;
+  onUpgradePlan: () => void;
 };
 
 export const CreateSecretImportForm = ({
@@ -37,7 +46,8 @@ export const CreateSecretImportForm = ({
   secretPath = "/",
   isOpen,
   onClose,
-  onTogglePopUp
+  onTogglePopUp,
+  onUpgradePlan
 }: Props) => {
   const {
     handleSubmit,
@@ -49,18 +59,26 @@ export const CreateSecretImportForm = ({
   const { currentWorkspace } = useWorkspace();
   const environments = currentWorkspace?.environments || [];
   const selectedEnvironment = watch("environment");
+  const { subscription } = useSubscription();
 
   const { mutateAsync: createSecretImport } = useCreateSecretImport();
 
   const handleFormSubmit = async ({
     environment: importedEnv,
-    secretPath: importedSecPath
+    secretPath: importedSecPath,
+    isReplication
   }: TFormSchema) => {
     try {
+      if (isReplication && !subscription?.secretApproval) {
+        onUpgradePlan();
+        return;
+      }
+
       await createSecretImport({
         environment,
         projectId: workspaceId,
         path: secretPath,
+        isReplication,
         import: {
           environment: importedEnv,
           path: importedSecPath
@@ -70,7 +88,8 @@ export const CreateSecretImportForm = ({
       reset();
       createNotification({
         type: "success",
-        text: "Successfully linked"
+        text: `Successfully linked. ${isReplication ? "Please refresh the dashboard to view changes" : ""
+          }`
       });
     } catch (err) {
       console.error(err);
@@ -127,7 +146,31 @@ export const CreateSecretImportForm = ({
               </FormControl>
             )}
           />
-
+          <Controller
+            name="isReplication"
+            control={control}
+            defaultValue={false}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                isError={Boolean(error?.message)}
+                errorText={error?.message}
+                helperText={
+                  value
+                    ? "Secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately."
+                    : "Secrets from the source location will be imported to the selected destination immediately, ignoring any approval policies at the destination."
+                }
+              >
+                <Select
+                  value={value ? "true" : "false"}
+                  onValueChange={(val) => onChange(val === "true")}
+                  className="w-full border border-mineshaft-500"
+                >
+                  <SelectItem value="false">Ignore secret approval polices</SelectItem>
+                  <SelectItem value="true">Respect secret approval polices</SelectItem>
+                </Select>
+              </FormControl>
+            )}
+          />
           <div className="mt-7 flex items-center">
             <Button
               isDisabled={isSubmitting}

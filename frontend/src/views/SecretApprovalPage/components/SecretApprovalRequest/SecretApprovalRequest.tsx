@@ -212,7 +212,8 @@ export const SecretApprovalRequest = () => {
                     createdAt,
                     policy,
                     reviewers,
-                    status
+                    status,
+                    isReplicated: isReplication
                   } = secretApproval;
                   const isApprover = policy?.approvers?.indexOf(myMembershipId || "") !== -1;
                   const isReviewed =
@@ -240,8 +241,9 @@ export const SecretApprovalRequest = () => {
                         Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
                         {membersGroupById?.[committerId]?.user?.firstName}{" "}
                         {membersGroupById?.[committerId]?.user?.lastName} (
-                        {membersGroupById?.[committerId]?.user?.email}){" "}
-                        {isApprover && !isReviewed && status === "open" && "- Review required"}
+                        {membersGroupById?.[committerId]?.user?.email})
+                        {isReplication && " via replication"}
+                        {isApprover && !isReviewed && status === "open" && " - Review required"}
                       </span>
                     </div>
                   );
