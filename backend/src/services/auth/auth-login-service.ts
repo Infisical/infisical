@@ -203,7 +203,7 @@ export const authLoginServiceFactory = ({
 
     if (
       user.consecutiveFailedPasswordAttempts &&
-      user.consecutiveFailedPasswordAttempts > 10 &&
+      user.consecutiveFailedPasswordAttempts >= 10 &&
       appCfg.CAPTCHA_ENABLED
     ) {
       if (!captchaToken) {
