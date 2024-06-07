@@ -1,7 +1,7 @@
 import { faCheck, faCopy, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { EmptyState, IconButton, SecretInput, Td, Tr } from "@app/components/v2";
+import { EmptyState, IconButton, Td, Tr } from "@app/components/v2";
 
 type Props = {
   isLoading: boolean;
@@ -16,7 +16,7 @@ export const SecretTable = ({
   isUrlCopied,
   copyUrlToClipboard
 }: Props) => (
-  <div className="flex items-center rounded border border-solid border-mineshaft-700 bg-mineshaft-800 p-4">
+  <div className="flex items-center w-full h-full rounded border border-solid border-mineshaft-700 bg-mineshaft-800 p-2">
     {isLoading && <div className="bg-mineshaft-800 text-center text-bunker-400">Loading...</div>}
     {!isLoading && !decryptedSecret && (
       <Tr>
@@ -26,19 +26,21 @@ export const SecretTable = ({
       </Tr>
     )}
     {!isLoading && decryptedSecret && (
-      <>
-        <div className="min-w-[12rem] max-w-[20rem] flex-1 break-words pr-4">
-          <SecretInput isVisible value={decryptedSecret} readOnly />
+      <div className="relative h-full w-full p-2 border border-mineshaft-700 bg-mineshaft-900 overflow-y-auto dark">
+        <div className="w-full h-full flex-1 break-words pr-4 overflow-y-scroll max-h-60 dark:[color-scheme:dark] thin-scrollbar">
+          <div className="whitespace-pre-line w-full min-w-full">{decryptedSecret}</div>
         </div>
         <IconButton
+          variant="outline_bg"
+          colorSchema="primary"
           ariaLabel="copy to clipboard"
           onClick={copyUrlToClipboard}
-          className="rounded p-2 hover:bg-gray-700"
+          className="absolute right-6 top-2 rounded"
           size="xs"
         >
-          <FontAwesomeIcon icon={isUrlCopied ? faCheck : faCopy} />
+          <FontAwesomeIcon className="pr-2" icon={isUrlCopied ? faCheck : faCopy} /> Copy
         </IconButton>
-      </>
+      </div>
     )}
   </div>
 );

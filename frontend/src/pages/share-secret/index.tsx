@@ -12,7 +12,7 @@ const SecretApproval = () => {
         <meta property="og:title" content="" />
         <meta name="og:description" content="" />
       </Head>
-      <div className="h-full">
+      <div className="h-full dark">
         <ShareSecretPublicPage />
       </div>
     </>
