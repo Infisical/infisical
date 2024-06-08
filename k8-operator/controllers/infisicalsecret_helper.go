@@ -232,7 +232,6 @@ func (r *InfisicalSecretReconciler) UpdateInfisicalManagedKubeSecret(ctx context
 	}
 
 	managedKubeSecret.Data = plainProcessedSecrets
-	managedKubeSecret.ObjectMeta.Annotations = map[string]string{}
 	managedKubeSecret.ObjectMeta.Annotations[SECRET_VERSION_ANNOTATION] = ETag
 
 	err := r.Client.Update(ctx, &managedKubeSecret)
