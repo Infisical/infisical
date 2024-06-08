@@ -96,12 +96,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             }}
             disabled={isDisabled}
             spellCheck={false}
-            onKeyDown={(evt) => {
-              if (evt.key === "Tab") {
-                setIsSecretFocused.off();
-              }
-            }}
-            onBlur={() => {
+            onBlur={(evt) => {
+              onBlur?.(evt);
               setIsSecretFocused.off();
             }}
             value={value || ""}
