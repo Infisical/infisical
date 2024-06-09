@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const CertificateAuthorityCrlSchema = z.object({
@@ -12,7 +14,7 @@ export const CertificateAuthorityCrlSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   caId: z.string().uuid(),
-  crl: z.string(),
+  encryptedCrl: zodBuffer,
   ttl: z.number()
 });
 

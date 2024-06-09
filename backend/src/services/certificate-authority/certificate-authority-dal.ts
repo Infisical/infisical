@@ -13,17 +13,17 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
       const result: {
         caId: string;
         parentCaId?: string;
-        certificate: Buffer;
+        encryptedCertificate: Buffer;
       }[] = await db
         .withRecursive("cte", (cte) => {
           void cte
-            .select("ca.id as caId", "ca.parentCaId", "cert.certificate")
+            .select("ca.id as caId", "ca.parentCaId", "cert.encryptedCertificate")
             .from({ ca: TableName.CertificateAuthority })
             .leftJoin({ cert: TableName.CertificateAuthorityCert }, "ca.id", "cert.caId")
             .where("ca.id", caId)
             .unionAll((builder) => {
               void builder
-                .select("ca.id as caId", "ca.parentCaId", "cert.certificate")
+                .select("ca.id as caId", "ca.parentCaId", "cert.encryptedCertificate")
                 .from({ ca: TableName.CertificateAuthority })
                 .leftJoin({ cert: TableName.CertificateAuthorityCert }, "ca.id", "cert.caId")
                 .innerJoin("cte", "cte.parentCaId", "ca.id");
@@ -33,7 +33,7 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         .from("cte");
 
       // Extract certificates and reverse the order to have the root CA at the end
-      const certChain: Buffer[] = result.map((row) => row.certificate);
+      const certChain: Buffer[] = result.map((row) => row.encryptedCertificate);
       return certChain;
     } catch (error) {
       throw new DatabaseError({ error, name: "BuildCertificateChain" });

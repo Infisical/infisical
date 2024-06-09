@@ -193,10 +193,15 @@ export const certificateAuthorityServiceFactory = ({
           tx
         );
 
+        const { cipherTextBlob: encryptedCrl } = await kmsService.encrypt({
+          kmsId: keyId,
+          plainText: Buffer.alloc(0)
+        });
+
         await certificateAuthorityCrlDAL.create(
           {
             caId: ca.id,
-            crl: "", // TODO: encrypt
+            encryptedCrl,
             ttl: 60 // in minutes
           },
           tx
@@ -944,17 +949,22 @@ export const certificateAuthorityServiceFactory = ({
       signingKey: sk
     });
 
-    const base64crl = crl.toString("base64");
-    const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
+    const { cipherTextBlob: encryptedCrl } = await kmsService.encrypt({
+      kmsId: keyId,
+      plainText: Buffer.from(new Uint8Array(crl.rawData))
+    });
 
     await certificateAuthorityCrlDAL.update(
       {
         caId: ca.id
       },
       {
-        crl: crlPem // TODO: encrypt
+        encryptedCrl
       }
     );
+
+    const base64crl = crl.toString("base64");
+    const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
 
     return {
       crl: crlPem
