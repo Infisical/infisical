@@ -11,7 +11,7 @@ export * from "./backup-private-key";
 export * from "./certificate-authorities";
 export * from "./certificate-authority-certs";
 export * from "./certificate-authority-crl";
-export * from "./certificate-authority-sk";
+export * from "./certificate-authority-secret";
 export * from "./certificate-certs";
 export * from "./certificate-secrets";
 export * from "./certificates";

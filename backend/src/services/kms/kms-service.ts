@@ -29,19 +29,22 @@ export const kmsServiceFactory = ({ kmsDAL, kmsRootConfigDAL, keyStore }: TKmsSe
   let ROOT_ENCRYPTION_KEY = Buffer.alloc(0);
 
   // this is used symmetric encryption
-  const generateKmsKey = async ({ scopeId, scopeType, isReserved = true }: TGenerateKMSDTO) => {
+  const generateKmsKey = async ({ scopeId, scopeType, isReserved = true, tx }: TGenerateKMSDTO) => {
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
     const kmsKeyMaterial = randomSecureBytes(32);
     const encryptedKeyMaterial = cipher.encrypt(kmsKeyMaterial, ROOT_ENCRYPTION_KEY);
 
-    const { encryptedKey, ...doc } = await kmsDAL.create({
-      version: 1,
-      encryptedKey: encryptedKeyMaterial,
-      encryptionAlgorithm: SymmetricEncryption.AES_GCM_256,
-      isReserved,
-      orgId: scopeType === "org" ? scopeId : undefined,
-      projectId: scopeType === "project" ? scopeId : undefined
-    });
+    const { encryptedKey, ...doc } = await kmsDAL.create(
+      {
+        version: 1,
+        encryptedKey: encryptedKeyMaterial,
+        encryptionAlgorithm: SymmetricEncryption.AES_GCM_256,
+        isReserved,
+        orgId: scopeType === "org" ? scopeId : undefined,
+        projectId: scopeType === "project" ? scopeId : undefined
+      },
+      tx
+    );
     return doc;
   };
 

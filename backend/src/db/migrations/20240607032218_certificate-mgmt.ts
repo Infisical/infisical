@@ -4,6 +4,16 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
+  if (await knex.schema.hasTable(TableName.Project)) {
+    const doesProjectCertificateKeyIdExist = await knex.schema.hasColumn(TableName.Project, "kmsCertificateKeyId");
+    await knex.schema.alterTable(TableName.Project, (t) => {
+      if (!doesProjectCertificateKeyIdExist) {
+        t.uuid("kmsCertificateKeyId").nullable();
+        t.foreign("kmsCertificateKeyId").references("id").inTable(TableName.KmsKey);
+      }
+    });
+  }
+
   if (!(await knex.schema.hasTable(TableName.CertificateAuthority))) {
     await knex.schema.createTable(TableName.CertificateAuthority, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -35,22 +45,20 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.CertificateAuthorityCert, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
-      t.uuid("caId").notNullable().unique(); // TODO: consider that cert can be rotated so may be multiple / non-unique
+      t.uuid("caId").notNullable().unique();
       t.foreign("caId").references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
-      t.text("certificate").notNullable(); // TODO: encrypt
-      t.text("certificateChain").notNullable(); // TODO: encrypt
+      t.binary("encryptedCertificate").notNullable();
+      t.binary("encryptedCertificateChain").notNullable();
     });
   }
 
-  // TODO: consider renaming this to CertificateAuthoritySecret
-  if (!(await knex.schema.hasTable(TableName.CertificateAuthoritySk))) {
-    await knex.schema.createTable(TableName.CertificateAuthoritySk, (t) => {
+  if (!(await knex.schema.hasTable(TableName.CertificateAuthoritySecret))) {
+    await knex.schema.createTable(TableName.CertificateAuthoritySecret, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
       t.uuid("caId").notNullable().unique();
       t.foreign("caId").references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
-      t.text("pk").notNullable(); // TODO: encrypt
-      t.text("sk").notNullable(); // TODO: encrypt
+      t.binary("encryptedPrivateKey").notNullable();
     });
   }
 
@@ -89,19 +97,27 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
       t.uuid("certId").notNullable().unique();
       t.foreign("certId").references("id").inTable(TableName.Certificate).onDelete("CASCADE");
-      t.text("certificate").notNullable(); // TODO: encrypt
-      t.text("certificateChain").notNullable(); // TODO: encrypt
+      t.binary("encryptedCertificate").notNullable();
+      t.binary("encryptedCertificateChain").notNullable();
     });
   }
 
   await createOnUpdateTrigger(knex, TableName.CertificateAuthority);
   await createOnUpdateTrigger(knex, TableName.CertificateAuthorityCert);
-  await createOnUpdateTrigger(knex, TableName.CertificateAuthoritySk);
+  await createOnUpdateTrigger(knex, TableName.CertificateAuthoritySecret);
   await createOnUpdateTrigger(knex, TableName.Certificate);
   await createOnUpdateTrigger(knex, TableName.CertificateCert);
 }
 
 export async function down(knex: Knex): Promise<void> {
+  // project
+  if (await knex.schema.hasTable(TableName.Project)) {
+    const doesProjectCertificateKeyIdExist = await knex.schema.hasColumn(TableName.Project, "kmsCertificateKeyId");
+    await knex.schema.alterTable(TableName.Project, (t) => {
+      if (doesProjectCertificateKeyIdExist) t.dropColumn("kmsCertificateKeyId");
+    });
+  }
+
   // certificates
   await knex.schema.dropTableIfExists(TableName.CertificateCert);
   await dropOnUpdateTrigger(knex, TableName.CertificateCert);
@@ -110,8 +126,8 @@ export async function down(knex: Knex): Promise<void> {
   await dropOnUpdateTrigger(knex, TableName.Certificate);
 
   // certificate authorities
-  await knex.schema.dropTableIfExists(TableName.CertificateAuthoritySk);
-  await dropOnUpdateTrigger(knex, TableName.CertificateAuthoritySk);
+  await knex.schema.dropTableIfExists(TableName.CertificateAuthoritySecret);
+  await dropOnUpdateTrigger(knex, TableName.CertificateAuthoritySecret);
 
   await knex.schema.dropTableIfExists(TableName.CertificateAuthorityCrl);
   await dropOnUpdateTrigger(knex, TableName.CertificateAuthorityCrl);

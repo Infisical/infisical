@@ -6,6 +6,9 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { TCertificateCertDALFactory } from "@app/services/certificate/certificate-cert-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { revocationReasonToCrlCode } from "./certificate-fns";
 import { CertStatus, TDeleteCertDTO, TGetCertCertDTO, TGetCertDTO, TRevokeCertDTO } from "./certificate-types";
@@ -14,6 +17,8 @@ type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update">;
   certificateCertDAL: Pick<TCertificateCertDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction">;
+  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encrypt" | "decrypt">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
@@ -23,6 +28,8 @@ export const certificateServiceFactory = ({
   certificateDAL,
   certificateCertDAL,
   certificateAuthorityDAL,
+  projectDAL,
+  kmsService,
   permissionService
 }: TCertificateServiceFactoryDep) => {
   const getCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
@@ -113,11 +120,28 @@ export const certificateServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 
     const certCert = await certificateCertDAL.findOne({ certId: cert.id });
-    const certObj = new x509.X509Certificate(certCert.certificate);
+
+    const keyId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const decryptedCert = await kmsService.decrypt({
+      kmsId: keyId,
+      cipherTextBlob: certCert.encryptedCertificate
+    });
+
+    const decryptedChain = await kmsService.decrypt({
+      kmsId: keyId,
+      cipherTextBlob: certCert.encryptedCertificateChain
+    });
+
+    const certObj = new x509.X509Certificate(decryptedCert);
 
     return {
-      certificate: certCert.certificate,
-      certificateChain: certCert.certificateChain,
+      certificate: certObj.toString("pem"),
+      certificateChain: decryptedChain.toString("utf-8"),
       serialNumber: certObj.serialNumber
     };
   };

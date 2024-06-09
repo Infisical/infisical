@@ -13,7 +13,7 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
       const result: {
         caId: string;
         parentCaId?: string;
-        certificate: string;
+        certificate: Buffer;
       }[] = await db
         .withRecursive("cte", (cte) => {
           void cte
@@ -33,7 +33,7 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         .from("cte");
 
       // Extract certificates and reverse the order to have the root CA at the end
-      const certChain: string[] = result.map((row) => row.certificate);
+      const certChain: Buffer[] = result.map((row) => row.certificate);
       return certChain;
     } catch (error) {
       throw new DatabaseError({ error, name: "BuildCertificateChain" });
