@@ -369,9 +369,9 @@ To login into Infisical with OAuth providers such as Google, configure the assoc
   information.
 </Accordion>
 
-<ParamField query="NEXT_PUBLIC_SAML_ORG_SLUG" type="string">
-  Configure SAML organization slug to automatically redirect all users of your
-  Infisical instance to the identity provider.
+<ParamField query="DEFAULT_SAML_ORG_SLUG" type="string">
+
+  When set, all visits to the Infisical login page will automatically redirect users of your Infisical instance to the SAML identity provider associated with the specified organization slug.
 </ParamField>
 
 ## Native secret integrations
