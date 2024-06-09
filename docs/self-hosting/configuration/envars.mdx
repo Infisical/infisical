@@ -318,6 +318,11 @@ SMTP_FROM_NAME=Infisical
 By default, users can only login via email/password based login method.
 To login into Infisical with OAuth providers such as Google, configure the associated variables.
 
+<ParamField query="DEFAULT_SAML_ORG_SLUG" type="string">
+
+  When set, all visits to the Infisical login page will automatically redirect users of your Infisical instance to the SAML identity provider associated with the specified organization slug.
+</ParamField>
+
 <Accordion title="Google">
   Follow detailed guide to configure [Google SSO](/documentation/platform/sso/google)
 
@@ -368,11 +373,6 @@ To login into Infisical with OAuth providers such as Google, configure the assoc
   Requires enterprise license. Please contact team@infisical.com to get more
   information.
 </Accordion>
-
-<ParamField query="DEFAULT_SAML_ORG_SLUG" type="string">
-
-  When set, all visits to the Infisical login page will automatically redirect users of your Infisical instance to the SAML identity provider associated with the specified organization slug.
-</ParamField>
 
 ## Native secret integrations
 
