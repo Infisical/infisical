@@ -98,7 +98,6 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("certId").notNullable().unique();
       t.foreign("certId").references("id").inTable(TableName.Certificate).onDelete("CASCADE");
       t.binary("encryptedCertificate").notNullable();
-      t.binary("encryptedCertificateChain").notNullable();
     });
   }
 

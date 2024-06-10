@@ -8,6 +8,7 @@ export type TCertificateAuthorityDALFactory = ReturnType<typeof certificateAutho
 export const certificateAuthorityDALFactory = (db: TDbClient) => {
   const caOrm = ormify(db, TableName.CertificateAuthority);
 
+  // note: not used
   const buildCertificateChain = async (caId: string) => {
     try {
       const result: {

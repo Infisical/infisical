@@ -38,7 +38,7 @@ import {
 type TCertificateAuthorityServiceFactoryDep = {
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
-    "transaction" | "create" | "findById" | "updateById" | "deleteById" | "findOne" | "buildCertificateChain"
+    "transaction" | "create" | "findById" | "updateById" | "deleteById" | "findOne"
   >;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "create" | "findOne" | "transaction">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne">;
@@ -52,8 +52,6 @@ type TCertificateAuthorityServiceFactoryDep = {
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
-
-// TODO: reconsider build cert chain due to imported chains
 
 export const certificateAuthorityServiceFactory = ({
   certificateAuthorityDAL,
@@ -321,9 +319,7 @@ export const certificateAuthorityServiceFactory = ({
     const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
     if (caCert) throw new BadRequestError({ message: "CA already has a certificate installed" });
 
-    const caKeys = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
-
-    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+    const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 
     const keyId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -333,9 +329,10 @@ export const certificateAuthorityServiceFactory = ({
 
     const privateKey = await kmsService.decrypt({
       kmsId: keyId,
-      cipherTextBlob: caKeys.encryptedPrivateKey
+      cipherTextBlob: caSecret.encryptedPrivateKey
     });
 
+    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
     const skObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
     const sk = await crypto.subtle.importKey("pkcs8", skObj.export({ format: "der", type: "pkcs8" }), alg, true, [
       "sign"
@@ -414,7 +411,6 @@ export const certificateAuthorityServiceFactory = ({
 
   /**
    * Issue certificate to be imported back in for intermediate CA
-   * TODO: cannot chain to self
    */
   const signIntermediate = async ({
     caId,
@@ -454,11 +450,11 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
-    const caKeys = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
+    const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 
     const privateKey = await kmsService.decrypt({
       kmsId: keyId,
-      cipherTextBlob: caKeys.encryptedPrivateKey
+      cipherTextBlob: caSecret.encryptedPrivateKey
     });
 
     const skObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
@@ -471,11 +467,11 @@ export const certificateAuthorityServiceFactory = ({
       cipherTextBlob: caCert.encryptedCertificate
     });
 
-    const certObj = new x509.X509Certificate(decryptedCaCert);
+    const caCertObj = new x509.X509Certificate(decryptedCaCert);
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
 
     // check path length constraint
-    const caPathLength = certObj.getExtension(x509.BasicConstraintsExtension)?.pathLength;
+    const caPathLength = caCertObj.getExtension(x509.BasicConstraintsExtension)?.pathLength;
     if (caPathLength !== undefined) {
       if (caPathLength === 0)
         throw new BadRequestError({
@@ -490,8 +486,8 @@ export const certificateAuthorityServiceFactory = ({
     const notBeforeDate = notBefore ? new Date(notBefore) : new Date();
     const notAfterDate = new Date(notAfter);
 
-    const caCertNotBeforeDate = new Date(certObj.notBefore);
-    const caCertNotAfterDate = new Date(certObj.notAfter);
+    const caCertNotBeforeDate = new Date(caCertObj.notBefore);
+    const caCertNotAfterDate = new Date(caCertObj.notAfter);
 
     // check not before constraint
     if (notBeforeDate < caCertNotBeforeDate) {
@@ -509,7 +505,7 @@ export const certificateAuthorityServiceFactory = ({
     const intermediateCert = await x509.X509CertificateGenerator.create({
       serialNumber,
       subject: csrObj.subject,
-      issuer: certObj.subject,
+      issuer: caCertObj.subject,
       notBefore: notBeforeDate,
       notAfter: notAfterDate,
       signingKey: sk,
@@ -524,28 +520,22 @@ export const certificateAuthorityServiceFactory = ({
           true
         ),
         new x509.BasicConstraintsExtension(true, maxPathLength === -1 ? undefined : maxPathLength, true),
-        await x509.AuthorityKeyIdentifierExtension.create(certObj, false),
+        await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
         await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
       ]
     });
 
-    const chain = await certificateAuthorityDAL.buildCertificateChain(caId);
-    const decryptedChain = await Promise.all(
-      chain.map(async (c) => {
-        const decryptedCaChainCert = await kmsService.decrypt({
-          kmsId: keyId,
-          cipherTextBlob: c
-        });
+    const caCertChain = await kmsService.decrypt({
+      kmsId: keyId,
+      cipherTextBlob: caCert.encryptedCertificateChain
+    });
 
-        const chainCertObj = new x509.X509Certificate(decryptedCaChainCert);
-        return chainCertObj.toString("pem");
-      })
-    );
+    const certificateChain = `${caCertObj.toString("pem")}\n${caCertChain.toString("utf-8")}`.trim();
 
     return {
       certificate: intermediateCert.toString("pem"),
-      issuingCaCertificate: certObj.toString("pem"),
-      certificateChain: decryptedChain.join("\n"),
+      issuingCaCertificate: caCertObj.toString("pem"),
+      certificateChain,
       serialNumber: intermediateCert.serialNumber
     };
   };
@@ -689,14 +679,14 @@ export const certificateAuthorityServiceFactory = ({
 
     const caCertObj = new x509.X509Certificate(decryptedCaCert);
 
-    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
-
-    const caKeys = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
+    const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 
     const privateKey = await kmsService.decrypt({
       kmsId: keyId,
-      cipherTextBlob: caKeys.encryptedPrivateKey
+      cipherTextBlob: caSecret.encryptedPrivateKey
     });
+
+    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
 
     const caSkObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
     const caSk = await crypto.subtle.importKey("pkcs8", caSkObj.export({ format: "der", type: "pkcs8" }), alg, true, [
@@ -762,28 +752,14 @@ export const certificateAuthorityServiceFactory = ({
     const skLeafObj = KeyObject.from(leafKeys.privateKey);
     const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
-    const chain = await certificateAuthorityDAL.buildCertificateChain(caId);
-
     const { cipherTextBlob: encryptedCertificate } = await kmsService.encrypt({
       kmsId: keyId,
       plainText: Buffer.from(new Uint8Array(leafCert.rawData))
     });
 
-    const decryptedChain = await Promise.all(
-      chain.map(async (c) => {
-        const decryptedCaChainCert = await kmsService.decrypt({
-          kmsId: keyId,
-          cipherTextBlob: c
-        });
-
-        const certObj = new x509.X509Certificate(decryptedCaChainCert);
-        return certObj.toString("pem");
-      })
-    );
-
-    const { cipherTextBlob: encryptedCertificateChain } = await kmsService.encrypt({
+    const caCertChain = await kmsService.decrypt({
       kmsId: keyId,
-      plainText: Buffer.from(decryptedChain.join("\n"))
+      cipherTextBlob: caCert.encryptedCertificateChain
     });
 
     await certificateDAL.transaction(async (tx) => {
@@ -802,8 +778,7 @@ export const certificateAuthorityServiceFactory = ({
       await certificateCertDAL.create(
         {
           certId: cert.id,
-          encryptedCertificate,
-          encryptedCertificateChain
+          encryptedCertificate
         },
         tx
       );
@@ -811,9 +786,11 @@ export const certificateAuthorityServiceFactory = ({
       return cert;
     });
 
+    const certificateChain = `${caCertObj.toString("pem")}\n${caCertChain.toString("utf-8")}`.trim();
+
     return {
       certificate: leafCert.toString("pem"),
-      certificateChain: decryptedChain.join("\n"),
+      certificateChain,
       issuingCaCertificate: caCertObj.toString("pem"),
       privateKey: skLeaf,
       serialNumber
@@ -840,7 +817,7 @@ export const certificateAuthorityServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    const caKeys = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
+    const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 
     const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
 
@@ -852,7 +829,7 @@ export const certificateAuthorityServiceFactory = ({
 
     const privateKey = await kmsService.decrypt({
       kmsId: keyId,
-      cipherTextBlob: caKeys.encryptedPrivateKey
+      cipherTextBlob: caSecret.encryptedPrivateKey
     });
 
     const skObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
@@ -907,7 +884,7 @@ export const certificateAuthorityServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    const caKeys = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
+    const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 
     const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
 
@@ -919,7 +896,7 @@ export const certificateAuthorityServiceFactory = ({
 
     const privateKey = await kmsService.decrypt({
       kmsId: keyId,
-      cipherTextBlob: caKeys.encryptedPrivateKey
+      cipherTextBlob: caSecret.encryptedPrivateKey
     });
 
     const skObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });

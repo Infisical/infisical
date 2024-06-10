@@ -5,6 +5,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TCertificateCertDALFactory } from "@app/services/certificate/certificate-cert-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -17,6 +18,7 @@ type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update">;
   certificateCertDAL: Pick<TCertificateCertDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encrypt" | "decrypt">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -28,6 +30,7 @@ export const certificateServiceFactory = ({
   certificateDAL,
   certificateCertDAL,
   certificateAuthorityDAL,
+  certificateAuthorityCertDAL,
   projectDAL,
   kmsService,
   permissionService
@@ -108,6 +111,7 @@ export const certificateServiceFactory = ({
   const getCertCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
     const ca = await certificateAuthorityDAL.findById(cert.caId);
+    const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -132,16 +136,25 @@ export const certificateServiceFactory = ({
       cipherTextBlob: certCert.encryptedCertificate
     });
 
-    const decryptedChain = await kmsService.decrypt({
+    const caCertChain = await kmsService.decrypt({
       kmsId: keyId,
-      cipherTextBlob: certCert.encryptedCertificateChain
+      cipherTextBlob: caCert.encryptedCertificateChain
     });
 
     const certObj = new x509.X509Certificate(decryptedCert);
 
+    const decryptedCaCert = await kmsService.decrypt({
+      kmsId: keyId,
+      cipherTextBlob: caCert.encryptedCertificate
+    });
+
+    const caCertObj = new x509.X509Certificate(decryptedCaCert);
+
+    const certificateChain = `${caCertObj.toString("pem")}\n${caCertChain.toString("utf-8")}`.trim();
+
     return {
       certificate: certObj.toString("pem"),
-      certificateChain: decryptedChain.toString("utf-8"),
+      certificateChain,
       serialNumber: certObj.serialNumber
     };
   };

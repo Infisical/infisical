@@ -78,7 +78,7 @@ export const certificateAuthorityQueueFactory = ({
     const ca = await certificateAuthorityDAL.findById(caId);
     if (!ca) throw new BadRequestError({ message: "CA not found" });
 
-    const caKeys = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
+    const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 
     const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
 
@@ -90,7 +90,7 @@ export const certificateAuthorityQueueFactory = ({
 
     const privateKey = await kmsService.decrypt({
       kmsId: keyId,
-      cipherTextBlob: caKeys.encryptedPrivateKey
+      cipherTextBlob: caSecret.encryptedPrivateKey
     });
 
     const skObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
