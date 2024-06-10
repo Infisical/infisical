@@ -1,4 +1,17 @@
 /* eslint-disable no-nested-ternary */
+import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
+import {
+  faCheck,
+  faClock,
+  faClone,
+  faClose,
+  faCodeBranch,
+  faComment,
+  faCopy,
+  faEllipsis,
+  faKey,
+  faTags
+} from "@fortawesome/free-solid-svg-icons";
 import { z } from "zod";
 
 export enum SecretActionType {
@@ -41,3 +54,33 @@ export const formSchema = z.object({
 });
 
 export type TFormSchema = z.infer<typeof formSchema>;
+
+export enum FontAwesomeSpriteName {
+  SecretKey = "secret-key",
+  Check = "check",
+  ClipboardCopy = "clipboard-copy",
+  Tags = "secret-tags",
+  Clock = "reminder-clock",
+  Comment = "comment",
+  More = "more",
+  Override = "secret-override",
+  Close = "close",
+  CheckedCircle = "check-circle",
+  ReplicatedSecretKey = "secret-replicated"
+}
+
+// this is an optimization technique
+// https://docs.fontawesome.com/web/add-icons/svg-symbols
+export const FontAwesomeSpriteSymbols = [
+  { icon: faKey, symbol: FontAwesomeSpriteName.SecretKey },
+  { icon: faCheck, symbol: FontAwesomeSpriteName.Check },
+  { icon: faCopy, symbol: FontAwesomeSpriteName.ClipboardCopy },
+  { icon: faTags, symbol: FontAwesomeSpriteName.Tags },
+  { icon: faClock, symbol: FontAwesomeSpriteName.Clock },
+  { icon: faComment, symbol: FontAwesomeSpriteName.Comment },
+  { icon: faEllipsis, symbol: FontAwesomeSpriteName.More },
+  { icon: faCodeBranch, symbol: FontAwesomeSpriteName.Override },
+  { icon: faClose, symbol: FontAwesomeSpriteName.Close },
+  { icon: faCheckCircle, symbol: FontAwesomeSpriteName.CheckedCircle },
+  { icon: faClone, symbol: FontAwesomeSpriteName.ReplicatedSecretKey }
+];

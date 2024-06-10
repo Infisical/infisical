@@ -262,13 +262,19 @@ export const orgDALFactory = (db: TDbClient) => {
         .where(buildFindFilter(filter))
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
         .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
+        .leftJoin(TableName.UserAliases, function joinUserAlias() {
+          this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.OrgMembership}.userId`)
+            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.OrgMembership}.orgId`)
+            .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
+        })
         .select(
           selectAllTableCols(TableName.OrgMembership),
           db.ref("email").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
-          db.ref("scimEnabled").withSchema(TableName.Organization)
+          db.ref("scimEnabled").withSchema(TableName.Organization),
+          db.ref("externalId").withSchema(TableName.UserAliases)
         )
         .where({ isGhost: false });
 

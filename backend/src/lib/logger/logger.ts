@@ -30,6 +30,37 @@ const loggerConfig = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("production")
 });
 
+const redactedKeys = [
+  "accessToken",
+  "authToken",
+  "serviceToken",
+  "identityAccessToken",
+  "token",
+  "privateKey",
+  "serverPrivateKey",
+  "plainPrivateKey",
+  "plainProjectKey",
+  "encryptedPrivateKey",
+  "userPrivateKey",
+  "protectedKey",
+  "decryptKey",
+  "encryptedProjectKey",
+  "encryptedSymmetricKey",
+  "encryptedPrivateKey",
+  "backupPrivateKey",
+  "secretKey",
+  "SecretKey",
+  "botPrivateKey",
+  "encryptedKey",
+  "plaintextProjectKey",
+  "accessKey",
+  "botKey",
+  "decryptedSecret",
+  "secrets",
+  "key",
+  "password"
+];
+
 export const initLogger = async () => {
   const cfg = loggerConfig.parse(process.env);
   const targets: pino.TransportMultiOptions["targets"][number][] = [
@@ -74,7 +105,9 @@ export const initLogger = async () => {
           hostname: bindings.hostname
           // node_version: process.version
         })
-      }
+      },
+      // redact until depth of three
+      redact: [...redactedKeys, ...redactedKeys.map((key) => `*.${key}`), ...redactedKeys.map((key) => `*.*.${key}`)]
     },
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     transport

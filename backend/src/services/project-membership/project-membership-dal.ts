@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -9,11 +11,19 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
   const projectMemberOrm = ormify(db, TableName.ProjectMembership);
 
   // special query
-  const findAllProjectMembers = async (projectId: string) => {
+  const findAllProjectMembers = async (projectId: string, filter: { usernames?: string[]; username?: string } = {}) => {
     try {
       const docs = await db(TableName.ProjectMembership)
         .where({ [`${TableName.ProjectMembership}.projectId` as "projectId"]: projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .where((qb) => {
+          if (filter.usernames) {
+            void qb.whereIn("username", filter.usernames);
+          }
+          if (filter.username) {
+            void qb.where("username", filter.username);
+          }
+        })
         .join<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
@@ -96,9 +106,9 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectGhostUser = async (projectId: string) => {
+  const findProjectGhostUser = async (projectId: string, tx?: Knex) => {
     try {
-      const ghostUser = await db(TableName.ProjectMembership)
+      const ghostUser = await (tx || db)(TableName.ProjectMembership)
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.Users))

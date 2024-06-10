@@ -1,13 +1,20 @@
-import { logger } from "@app/lib/logger";
+import { RawAxiosRequestHeaders } from "axios";
+
+import { SecretKeyEncoding } from "@app/db/schemas";
+import { request } from "@app/lib/config/request";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import { TAuditLogStreamDALFactory } from "../audit-log-stream/audit-log-stream-dal";
+import { LogStreamHeaders } from "../audit-log-stream/audit-log-stream-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TCreateAuditLogDTO } from "./audit-log-types";
 
 type TAuditLogQueueServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
+  auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find">;
   queueService: TQueueServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -15,11 +22,15 @@ type TAuditLogQueueServiceFactoryDep = {
 
 export type TAuditLogQueueServiceFactory = ReturnType<typeof auditLogQueueServiceFactory>;
 
+// keep this timeout 5s it must be fast because else the queue will take time to finish
+// audit log is a crowded queue thus needs to be fast
+export const AUDIT_LOG_STREAM_TIMEOUT = 5 * 1000;
 export const auditLogQueueServiceFactory = ({
   auditLogDAL,
   queueService,
   projectDAL,
-  licenseService
+  licenseService,
+  auditLogStreamDAL
 }: TAuditLogQueueServiceFactoryDep) => {
   const pushToLog = async (data: TCreateAuditLogDTO) => {
     await queueService.queue(QueueName.AuditLog, QueueJobs.AuditLog, data, {
@@ -47,7 +58,7 @@ export const auditLogQueueServiceFactory = ({
     // skip inserting if audit log retention is 0 meaning its not supported
     if (ttl === 0) return;
 
-    await auditLogDAL.create({
+    const auditLog = await auditLogDAL.create({
       actor: actor.type,
       actorMetadata: actor.metadata,
       userAgent,
@@ -59,37 +70,49 @@ export const auditLogQueueServiceFactory = ({
       eventMetadata: event.metadata,
       userAgentType
     });
-  });
 
-  queueService.start(QueueName.AuditLogPrune, async () => {
-    logger.info(`${QueueName.AuditLogPrune}: queue task started`);
-    await auditLogDAL.pruneAuditLog();
-    logger.info(`${QueueName.AuditLogPrune}: queue task completed`);
-  });
+    const logStreams = orgId ? await auditLogStreamDAL.find({ orgId }) : [];
+    await Promise.allSettled(
+      logStreams.map(
+        async ({
+          url,
+          encryptedHeadersTag,
+          encryptedHeadersIV,
+          encryptedHeadersKeyEncoding,
+          encryptedHeadersCiphertext
+        }) => {
+          const streamHeaders =
+            encryptedHeadersIV && encryptedHeadersCiphertext && encryptedHeadersTag
+              ? (JSON.parse(
+                  infisicalSymmetricDecrypt({
+                    keyEncoding: encryptedHeadersKeyEncoding as SecretKeyEncoding,
+                    iv: encryptedHeadersIV,
+                    tag: encryptedHeadersTag,
+                    ciphertext: encryptedHeadersCiphertext
+                  })
+                ) as LogStreamHeaders[])
+              : [];
 
-  // we do a repeat cron job in utc timezone at 12 Midnight each day
-  const startAuditLogPruneJob = async () => {
-    // clear previous job
-    await queueService.stopRepeatableJob(
-      QueueName.AuditLogPrune,
-      QueueJobs.AuditLogPrune,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.AuditLogPrune // just a job id
+          const headers: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
+
+          if (streamHeaders.length)
+            streamHeaders.forEach(({ key, value }) => {
+              headers[key] = value;
+            });
+
+          return request.post(url, auditLog, {
+            headers,
+            // request timeout
+            timeout: AUDIT_LOG_STREAM_TIMEOUT,
+            // connection timeout
+            signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+          });
+        }
+      )
     );
-
-    await queueService.queue(QueueName.AuditLogPrune, QueueJobs.AuditLogPrune, undefined, {
-      delay: 5000,
-      jobId: QueueName.AuditLogPrune,
-      repeat: { pattern: "0 0 * * *", utc: true }
-    });
-  };
-
-  queueService.listen(QueueName.AuditLogPrune, "failed", (err) => {
-    logger.error(err?.failedReason, `${QueueName.AuditLogPrune}: log pruning failed`);
   });
 
   return {
-    pushToLog,
-    startAuditLogPruneJob
+    pushToLog
   };
 };

@@ -20,6 +20,7 @@ import {
   useUpdateSecretApprovalReviewStatus
 } from "@app/hooks/api";
 import { ApprovalStatus, CommitType, TWorkspaceUser } from "@app/hooks/api/types";
+import { formatReservedPaths } from "@app/lib/fn/string";
 
 import { SecretApprovalRequestAction } from "./SecretApprovalRequestAction";
 import { SecretApprovalRequestChangeItem } from "./SecretApprovalRequestChangeItem";
@@ -83,7 +84,6 @@ export const SecretApprovalRequestChanges = ({
   workspaceId,
   members = {}
 }: Props) => {
-  
   const { user } = useUser();
   const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
   const {
@@ -94,7 +94,6 @@ export const SecretApprovalRequestChanges = ({
     id: approvalRequestId,
     decryptKey: decryptFileKey!
   });
-  console.log(secretApprovalRequestDetails);
 
   const {
     mutateAsync: updateSecretApprovalRequestStatus,
@@ -187,6 +186,9 @@ export const SecretApprovalRequestChanges = ({
           <div className="flex flex-grow flex-col">
             <div className="mb-1 text-lg">
               {generateCommitText(secretApprovalRequestDetails.commits)}
+              {secretApprovalRequestDetails.isReplicated && (
+                <span className="text-sm text-bunker-300"> (replication)</span>
+              )}
             </div>
             <div className="flex items-center text-sm text-bunker-300">
               {committer?.user?.firstName}
@@ -199,7 +201,11 @@ export const SecretApprovalRequestChanges = ({
                 <div className="border-r border-mineshaft-500 pr-1">
                   <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
                 </div>
-                <div className="pl-2 pb-0.5 text-sm">{secretApprovalRequestDetails.secretPath}</div>
+                <Tooltip content={formatReservedPaths(secretApprovalRequestDetails.secretPath)}>
+                  <div className="truncate pl-2 pb-0.5 text-sm" style={{ maxWidth: "10rem" }}>
+                    {formatReservedPaths(secretApprovalRequestDetails.secretPath)}
+                  </div>
+                </Tooltip>
               </div>
             </div>
           </div>

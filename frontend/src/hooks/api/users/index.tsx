@@ -1,4 +1,9 @@
-export { useAddUserToWsE2EE, useAddUserToWsNonE2EE } from "./mutation";
+export {
+  useAddUserToWsE2EE,
+  useAddUserToWsNonE2EE,
+  useSendEmailVerificationCode,
+  useVerifyEmailVerificationCode
+} from "./mutation";
 export {
   fetchOrgUsers,
   useAddUserToOrg,

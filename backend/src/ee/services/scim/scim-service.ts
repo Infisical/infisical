@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import jwt from "jsonwebtoken";
 
-import { OrgMembershipRole, OrgMembershipStatus, TableName, TGroups } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, TableName, TGroups, TOrgMemberships, TUsers } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -11,16 +11,21 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TOrgPermission } from "@app/lib/types";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { deleteOrgMembership } from "@app/services/org/org-fns";
+import { deleteOrgMembershipFn } from "@app/services/org/org-fns";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { normalizeUsername } from "@app/services/user/user-fns";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -47,24 +52,32 @@ import {
 
 type TScimServiceFactoryDep = {
   scimDAL: Pick<TScimDALFactory, "create" | "find" | "findById" | "deleteById">;
-  userDAL: Pick<TUserDALFactory, "find" | "findOne" | "create" | "transaction" | "findUserEncKeyByUserIdsBatch">;
+  userDAL: Pick<
+    TUserDALFactory,
+    "find" | "findOne" | "create" | "transaction" | "findUserEncKeyByUserIdsBatch" | "findById"
+  >;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "delete">;
   orgDAL: Pick<
     TOrgDALFactory,
-    "createMembership" | "findById" | "findMembership" | "deleteMembershipById" | "transaction"
+    "createMembership" | "findById" | "findMembership" | "deleteMembershipById" | "transaction" | "updateMembershipById"
   >;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "findOne" | "create" | "updateById">;
   projectDAL: Pick<TProjectDALFactory, "find" | "findProjectGhostUser">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete" | "findProjectMembershipsByUserId">;
   groupDAL: Pick<
     TGroupDALFactory,
     "create" | "findOne" | "findAllGroupMembers" | "update" | "delete" | "findGroups" | "transaction"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
-  userGroupMembershipDAL: TUserGroupMembershipDALFactory; // TODO: Pick
+  userGroupMembershipDAL: Pick<
+    TUserGroupMembershipDALFactory,
+    "find" | "transaction" | "insertMany" | "filterProjectsByUserMembership" | "delete"
+  >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  smtpService: TSmtpService;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TScimServiceFactory = ReturnType<typeof scimServiceFactory>;
@@ -73,7 +86,9 @@ export const scimServiceFactory = ({
   licenseService,
   scimDAL,
   userDAL,
+  userAliasDAL,
   orgDAL,
+  orgMembershipDAL,
   projectDAL,
   projectMembershipDAL,
   groupDAL,
@@ -160,7 +175,7 @@ export const scimServiceFactory = ({
   };
 
   // SCIM server endpoints
-  const listScimUsers = async ({ offset, limit, filter, orgId }: TListScimUsersDTO): Promise<TListScimUsers> => {
+  const listScimUsers = async ({ startIndex, limit, filter, orgId }: TListScimUsersDTO): Promise<TListScimUsers> => {
     const org = await orgDAL.findById(orgId);
 
     if (!org.scimEnabled)
@@ -178,11 +193,11 @@ export const scimServiceFactory = ({
         attributeName = "email";
       }
 
-      return { [attributeName]: parsedValue };
+      return { [attributeName]: parsedValue.replace(/"/g, "") };
     };
 
     const findOpts = {
-      ...(offset && { offset }),
+      ...(startIndex && { offset: startIndex - 1 }),
       ...(limit && { limit })
     };
 
@@ -194,10 +209,10 @@ export const scimServiceFactory = ({
       findOpts
     );
 
-    const scimUsers = users.map(({ userId, username, firstName, lastName, email }) =>
+    const scimUsers = users.map(({ id, externalId, username, firstName, lastName, email }) =>
       buildScimUser({
-        userId: userId ?? "",
-        username,
+        orgMembershipId: id ?? "",
+        username: externalId ?? username,
         firstName: firstName ?? "",
         lastName: lastName ?? "",
         email,
@@ -207,16 +222,16 @@ export const scimServiceFactory = ({
 
     return buildScimUserList({
       scimUsers,
-      offset,
+      startIndex,
       limit
     });
   };
 
-  const getScimUser = async ({ userId, orgId }: TGetScimUserDTO) => {
+  const getScimUser = async ({ orgMembershipId, orgId }: TGetScimUserDTO) => {
     const [membership] = await orgDAL
       .findMembership({
-        userId,
-        [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+        [`${TableName.OrgMembership}.id` as "id"]: orgMembershipId,
+        [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId
       })
       .catch(() => {
         throw new ScimRequestError({
@@ -238,8 +253,8 @@ export const scimServiceFactory = ({
       });
 
     return buildScimUser({
-      userId: membership.userId as string,
-      username: membership.username,
+      orgMembershipId: membership.id,
+      username: membership.externalId ?? membership.username,
       email: membership.email ?? "",
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
@@ -247,7 +262,9 @@ export const scimServiceFactory = ({
     });
   };
 
-  const createScimUser = async ({ username, email, firstName, lastName, orgId }: TCreateScimUserDTO) => {
+  const createScimUser = async ({ externalId, email, firstName, lastName, orgId }: TCreateScimUserDTO) => {
+    if (!email) throw new ScimRequestError({ detail: "Invalid request. Missing email.", status: 400 });
+
     const org = await orgDAL.findById(orgId);
 
     if (!org)
@@ -262,67 +279,121 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    let user = await userDAL.findOne({
-      username
+    const appCfg = getConfig();
+    const serverCfg = await getServerCfg();
+
+    const userAlias = await userAliasDAL.findOne({
+      externalId,
+      orgId,
+      aliasType: UserAliasType.SAML
     });
 
-    if (user) {
-      await userDAL.transaction(async (tx) => {
-        const [orgMembership] = await orgDAL.findMembership(
+    const { user: createdUser, orgMembership: createdOrgMembership } = await userDAL.transaction(async (tx) => {
+      let user: TUsers | undefined;
+      let orgMembership: TOrgMemberships;
+      if (userAlias) {
+        user = await userDAL.findById(userAlias.userId, tx);
+        orgMembership = await orgMembershipDAL.findOne(
           {
             userId: user.id,
-            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+            orgId
           },
-          { tx }
+          tx
         );
-        if (orgMembership)
-          throw new ScimRequestError({
-            detail: "User already exists in the database",
-            status: 409
-          });
 
         if (!orgMembership) {
-          await orgDAL.createMembership(
+          orgMembership = await orgMembershipDAL.create(
             {
-              userId: user.id,
-              orgId,
+              userId: userAlias.userId,
               inviteEmail: email,
+              orgId,
               role: OrgMembershipRole.Member,
-              status: OrgMembershipStatus.Invited
+              status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+            },
+            tx
+          );
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
+          orgMembership = await orgMembershipDAL.updateById(
+            orgMembership.id,
+            {
+              status: OrgMembershipStatus.Accepted
             },
             tx
           );
         }
-      });
-    } else {
-      user = await userDAL.transaction(async (tx) => {
-        const newUser = await userDAL.create(
+      } else {
+        if (serverCfg.trustSamlEmails) {
+          user = await userDAL.findOne(
+            {
+              email,
+              isEmailVerified: true
+            },
+            tx
+          );
+        }
+
+        if (!user) {
+          const uniqueUsername = await normalizeUsername(`${firstName}-${lastName}`, userDAL);
+          user = await userDAL.create(
+            {
+              username: serverCfg.trustSamlEmails ? email : uniqueUsername,
+              email,
+              isEmailVerified: serverCfg.trustSamlEmails,
+              firstName,
+              lastName,
+              authMethods: [],
+              isGhost: false
+            },
+            tx
+          );
+        }
+
+        await userAliasDAL.create(
           {
-            username,
-            email,
-            firstName,
-            lastName,
-            authMethods: [AuthMethod.EMAIL],
-            isGhost: false
+            userId: user.id,
+            aliasType: UserAliasType.SAML,
+            externalId,
+            emails: email ? [email] : [],
+            orgId
           },
           tx
         );
 
-        await orgDAL.createMembership(
+        const [foundOrgMembership] = await orgDAL.findMembership(
           {
-            inviteEmail: email,
-            orgId,
-            userId: newUser.id,
-            role: OrgMembershipRole.Member,
-            status: OrgMembershipStatus.Invited
+            [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
+            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
           },
-          tx
+          { tx }
         );
-        return newUser;
-      });
-    }
 
-    const appCfg = getConfig();
+        orgMembership = foundOrgMembership;
+
+        if (!orgMembership) {
+          orgMembership = await orgMembershipDAL.create(
+            {
+              userId: user.id,
+              inviteEmail: email,
+              orgId,
+              role: OrgMembershipRole.Member,
+              status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+            },
+            tx
+          );
+          // Only update the membership to Accepted if the user account is already completed.
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
+          orgMembership = await orgDAL.updateMembershipById(
+            orgMembership.id,
+            {
+              status: OrgMembershipStatus.Accepted
+            },
+            tx
+          );
+        }
+      }
+
+      return { user, orgMembership };
+    });
 
     if (email) {
       await smtpService.sendMail({
@@ -337,20 +408,20 @@ export const scimServiceFactory = ({
     }
 
     return buildScimUser({
-      userId: user.id,
-      username: user.username,
-      firstName: user.firstName as string,
-      lastName: user.lastName as string,
-      email: user.email ?? "",
+      orgMembershipId: createdOrgMembership.id,
+      username: externalId,
+      firstName: createdUser.firstName as string,
+      lastName: createdUser.lastName as string,
+      email: createdUser.email ?? "",
       active: true
     });
   };
 
-  const updateScimUser = async ({ userId, orgId, operations }: TUpdateScimUserDTO) => {
+  const updateScimUser = async ({ orgMembershipId, orgId, operations }: TUpdateScimUserDTO) => {
     const [membership] = await orgDAL
       .findMembership({
-        userId,
-        [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+        [`${TableName.OrgMembership}.id` as "id"]: orgMembershipId,
+        [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId
       })
       .catch(() => {
         throw new ScimRequestError({
@@ -386,18 +457,20 @@ export const scimServiceFactory = ({
     });
 
     if (!active) {
-      await deleteOrgMembership({
+      await deleteOrgMembershipFn({
         orgMembershipId: membership.id,
         orgId: membership.orgId,
         orgDAL,
-        projectDAL,
-        projectMembershipDAL
+        projectMembershipDAL,
+        projectKeyDAL,
+        userAliasDAL,
+        licenseService
       });
     }
 
     return buildScimUser({
-      userId: membership.userId as string,
-      username: membership.username,
+      orgMembershipId: membership.id,
+      username: membership.externalId ?? membership.username,
       email: membership.email,
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
@@ -405,11 +478,11 @@ export const scimServiceFactory = ({
     });
   };
 
-  const replaceScimUser = async ({ userId, active, orgId }: TReplaceScimUserDTO) => {
+  const replaceScimUser = async ({ orgMembershipId, active, orgId }: TReplaceScimUserDTO) => {
     const [membership] = await orgDAL
       .findMembership({
-        userId,
-        [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+        [`${TableName.OrgMembership}.id` as "id"]: orgMembershipId,
+        [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId
       })
       .catch(() => {
         throw new ScimRequestError({
@@ -431,19 +504,20 @@ export const scimServiceFactory = ({
       });
 
     if (!active) {
-      // tx
-      await deleteOrgMembership({
+      await deleteOrgMembershipFn({
         orgMembershipId: membership.id,
         orgId: membership.orgId,
         orgDAL,
-        projectDAL,
-        projectMembershipDAL
+        projectMembershipDAL,
+        projectKeyDAL,
+        userAliasDAL,
+        licenseService
       });
     }
 
     return buildScimUser({
-      userId: membership.userId as string,
-      username: membership.username,
+      orgMembershipId: membership.id,
+      username: membership.externalId ?? membership.username,
       email: membership.email,
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
@@ -451,18 +525,11 @@ export const scimServiceFactory = ({
     });
   };
 
-  const deleteScimUser = async ({ userId, orgId }: TDeleteScimUserDTO) => {
-    const [membership] = await orgDAL
-      .findMembership({
-        userId,
-        [`${TableName.OrgMembership}.orgId` as "id"]: orgId
-      })
-      .catch(() => {
-        throw new ScimRequestError({
-          detail: "User not found",
-          status: 404
-        });
-      });
+  const deleteScimUser = async ({ orgMembershipId, orgId }: TDeleteScimUserDTO) => {
+    const [membership] = await orgDAL.findMembership({
+      [`${TableName.OrgMembership}.id` as "id"]: orgMembershipId,
+      [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId
+    });
 
     if (!membership)
       throw new ScimRequestError({
@@ -477,18 +544,20 @@ export const scimServiceFactory = ({
       });
     }
 
-    await deleteOrgMembership({
+    await deleteOrgMembershipFn({
       orgMembershipId: membership.id,
       orgId: membership.orgId,
       orgDAL,
-      projectDAL,
-      projectMembershipDAL
+      projectMembershipDAL,
+      projectKeyDAL,
+      userAliasDAL,
+      licenseService
     });
 
     return {}; // intentionally return empty object upon success
   };
 
-  const listScimGroups = async ({ orgId, offset, limit }: TListScimGroupsDTO) => {
+  const listScimGroups = async ({ orgId, startIndex, limit }: TListScimGroupsDTO) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
       throw new BadRequestError({
@@ -509,21 +578,27 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const groups = await groupDAL.findGroups({
-      orgId
-    });
+    const groups = await groupDAL.findGroups(
+      {
+        orgId
+      },
+      {
+        offset: startIndex - 1,
+        limit
+      }
+    );
 
     const scimGroups = groups.map((group) =>
       buildScimGroup({
         groupId: group.id,
         name: group.name,
-        members: []
+        members: [] // does this need to be populated?
       })
     );
 
     return buildScimGroupList({
       scimGroups,
-      offset,
+      startIndex,
       limit
     });
   };
@@ -562,9 +637,15 @@ export const scimServiceFactory = ({
       );
 
       if (members && members.length) {
+        const orgMemberships = await orgMembershipDAL.find({
+          $in: {
+            id: members.map((member) => member.value)
+          }
+        });
+
         const newMembers = await addUsersToGroupByUserIds({
           group,
-          userIds: members.map((member) => member.value),
+          userIds: orgMemberships.map((membership) => membership.userId as string),
           userDAL,
           userGroupMembershipDAL,
           orgDAL,
@@ -581,12 +662,19 @@ export const scimServiceFactory = ({
       return { group, newMembers: [] };
     });
 
+    const orgMemberships = await orgDAL.findMembership({
+      [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
+      $in: {
+        [`${TableName.OrgMembership}.userId` as "userId"]: newGroup.newMembers.map((member) => member.id)
+      }
+    });
+
     return buildScimGroup({
       groupId: newGroup.group.id,
       name: newGroup.group.name,
-      members: newGroup.newMembers.map((member) => ({
-        value: member.id,
-        display: `${member.firstName} ${member.lastName}`
+      members: orgMemberships.map(({ id, firstName, lastName }) => ({
+        value: id,
+        display: `${firstName} ${lastName}`
       }))
     });
   };
@@ -615,15 +703,22 @@ export const scimServiceFactory = ({
       groupId: group.id
     });
 
+    const orgMemberships = await orgDAL.findMembership({
+      [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
+      $in: {
+        [`${TableName.OrgMembership}.userId` as "userId"]: users
+          .filter((user) => user.isPartOfGroup)
+          .map((user) => user.id)
+      }
+    });
+
     return buildScimGroup({
       groupId: group.id,
       name: group.name,
-      members: users
-        .filter((user) => user.isPartOfGroup)
-        .map((user) => ({
-          value: user.id,
-          display: `${user.firstName} ${user.lastName}`
-        }))
+      members: orgMemberships.map(({ id, firstName, lastName }) => ({
+        value: id,
+        display: `${firstName} ${lastName}`
+      }))
     });
   };
 
@@ -667,7 +762,13 @@ export const scimServiceFactory = ({
       }
 
       if (members) {
-        const membersIdsSet = new Set(members.map((member) => member.value));
+        const orgMemberships = await orgMembershipDAL.find({
+          $in: {
+            id: members.map((member) => member.value)
+          }
+        });
+
+        const membersIdsSet = new Set(orgMemberships.map((orgMembership) => orgMembership.userId));
 
         const directMemberUserIds = (
           await userGroupMembershipDAL.find({
@@ -686,13 +787,13 @@ export const scimServiceFactory = ({
         const allMembersUserIds = directMemberUserIds.concat(pendingGroupAdditionsUserIds);
         const allMembersUserIdsSet = new Set(allMembersUserIds);
 
-        const toAddUserIds = members.filter((member) => !allMembersUserIdsSet.has(member.value));
+        const toAddUserIds = orgMemberships.filter((member) => !allMembersUserIdsSet.has(member.userId as string));
         const toRemoveUserIds = allMembersUserIds.filter((userId) => !membersIdsSet.has(userId));
 
         if (toAddUserIds.length) {
           await addUsersToGroupByUserIds({
             group,
-            userIds: toAddUserIds.map((member) => member.value),
+            userIds: toAddUserIds.map((member) => member.userId as string),
             userDAL,
             userGroupMembershipDAL,
             orgDAL,

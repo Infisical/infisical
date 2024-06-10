@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { setAuthToken } from "@app/reactQuery";
 
 import { organizationKeys } from "../organization/queries";
+import { workspaceKeys } from "../workspace/queries";
 import {
   ChangePasswordDTO,
   CompleteAccountDTO,
@@ -78,7 +79,10 @@ export const useSelectOrganization = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      queryClient.invalidateQueries([
+        organizationKeys.getUserOrganizations,
+        workspaceKeys.getAllUserWorkspace
+      ]);
     }
   });
 };
@@ -164,7 +168,7 @@ export const useSendVerificationEmail = () => {
   });
 };
 
-export const useVerifyEmailVerificationCode = () => {
+export const useVerifySignupEmailVerificationCode = () => {
   return useMutation({
     mutationFn: async ({ email, code }: { email: string; code: string }) => {
       const { data } = await apiRequest.post("/api/v3/signup/email/verify", {

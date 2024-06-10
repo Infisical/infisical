@@ -101,7 +101,7 @@ var loginCmd = &cobra.Command{
 				//set domainQuery to false
 				if !overrideDomain {
 					domainQuery = false
-					config.INFISICAL_URL = config.INFISICAL_URL_MANUAL_OVERRIDE
+					config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL_MANUAL_OVERRIDE)
 				}
 
 			}

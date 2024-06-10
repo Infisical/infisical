@@ -5,7 +5,7 @@ import { Integrations, IntegrationUrls } from "./integration-list";
 
 type Team = {
   name: string;
-  teamId: string;
+  id: string;
 };
 const getTeamsGitLab = async ({ url, accessToken }: { url: string; accessToken: string }) => {
   const gitLabApiUrl = url ? `${url}/api` : IntegrationUrls.GITLAB_API_URL;
@@ -22,7 +22,7 @@ const getTeamsGitLab = async ({ url, accessToken }: { url: string; accessToken: 
 
   teams = res.map((t) => ({
     name: t.name,
-    teamId: t.id
+    id: t.id.toString()
   }));
 
   return teams;

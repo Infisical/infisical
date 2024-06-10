@@ -38,6 +38,16 @@ jobs:
           rm added_files.txt
           git commit -m "chore: renamed new migration files to latest timestamp (gh-action)"
 
+      - name: Get PR details
+        id: pr_details
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          PR_MERGER=$(curl -s "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" | jq -r '.merged_by.login')
+          
+          echo "PR Number: $PR_NUMBER"
+          echo "PR Merger: $PR_MERGER"
+          echo "pr_merger=$PR_MERGER" >> $GITHUB_OUTPUT
+
       - name: Create Pull Request
         if: env.SKIP_RENAME != 'true'
         uses: peter-evans/create-pull-request@v6
@@ -46,3 +56,4 @@ jobs:
           commit-message: 'chore: renamed new migration files to latest UTC (gh-action)'
           title: 'GH Action: rename new migration file timestamp'
           branch-suffix: timestamp
+          reviewers: ${{ steps.pr_details.outputs.pr_merger }}

@@ -28,6 +28,8 @@ export enum TableName {
   ProjectUserMembershipRole = "project_user_membership_roles",
   ProjectKeys = "project_keys",
   Secret = "secrets",
+  SecretReference = "secret_references",
+  SecretSharing = "secret_sharing",
   SecretBlindIndex = "secret_blind_indexes",
   SecretVersion = "secret_versions",
   SecretFolder = "secret_folders",
@@ -44,12 +46,20 @@ export enum TableName {
   Identity = "identities",
   IdentityAccessToken = "identity_access_tokens",
   IdentityUniversalAuth = "identity_universal_auths",
+  IdentityKubernetesAuth = "identity_kubernetes_auths",
+  IdentityGcpAuth = "identity_gcp_auths",
+  IdentityAzureAuth = "identity_azure_auths",
   IdentityUaClientSecret = "identity_ua_client_secrets",
+  IdentityAwsAuth = "identity_aws_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
   IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
   ScimToken = "scim_tokens",
+  AccessApprovalPolicy = "access_approval_policies",
+  AccessApprovalPolicyApprover = "access_approval_policies_approvers",
+  AccessApprovalRequest = "access_approval_requests",
+  AccessApprovalRequestReviewer = "access_approval_requests_reviewers",
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
   SecretApprovalRequest = "secret_approval_requests",
@@ -62,6 +72,7 @@ export enum TableName {
   LdapConfig = "ldap_configs",
   LdapGroupMap = "ldap_group_maps",
   AuditLog = "audit_logs",
+  AuditLogStream = "audit_log_streams",
   GitAppInstallSession = "git_app_install_sessions",
   GitAppOrg = "git_app_org",
   SecretScanningGitRisk = "secret_scanning_git_risks",
@@ -70,7 +81,11 @@ export enum TableName {
   DynamicSecretLease = "dynamic_secret_leases",
   // junction tables with tags
   JnSecretTag = "secret_tag_junction",
-  SecretVersionTag = "secret_version_tag_junction"
+  SecretVersionTag = "secret_version_tag_junction",
+  // KMS Service
+  KmsServerRootConfig = "kms_root_config",
+  KmsKey = "kms_keys",
+  KmsKeyVersion = "kms_key_versions"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
@@ -137,5 +152,9 @@ export enum ProjectUpgradeStatus {
 }
 
 export enum IdentityAuthMethod {
-  Univeral = "universal-auth"
+  Univeral = "universal-auth",
+  KUBERNETES_AUTH = "kubernetes-auth",
+  GCP_AUTH = "gcp-auth",
+  AWS_AUTH = "aws-auth",
+  AZURE_AUTH = "azure-auth"
 }

@@ -45,8 +45,8 @@ export type TGetSamlCfgDTO =
     };
 
 export type TSamlLoginDTO = {
-  username: string;
-  email?: string;
+  externalId: string;
+  email: string;
   firstName: string;
   lastName?: string;
   authProvider: string;

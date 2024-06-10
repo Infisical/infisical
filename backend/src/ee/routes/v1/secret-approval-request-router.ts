@@ -32,22 +32,20 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       }),
       response: {
         200: z.object({
-          approvals: SecretApprovalRequestsSchema.merge(
-            z.object({
-              // secretPath: z.string(),
-              policy: z.object({
-                id: z.string(),
-                name: z.string(),
-                approvals: z.number(),
-                approvers: z.string().array(),
-                secretPath: z.string().optional().nullable()
-              }),
-              commits: z.object({ op: z.string(), secretId: z.string().nullable().optional() }).array(),
-              environment: z.string(),
-              reviewers: z.object({ member: z.string(), status: z.string() }).array(),
-              approvers: z.string().array()
-            })
-          ).array()
+          approvals: SecretApprovalRequestsSchema.extend({
+            // secretPath: z.string(),
+            policy: z.object({
+              id: z.string(),
+              name: z.string(),
+              approvals: z.number(),
+              approvers: z.string().array(),
+              secretPath: z.string().optional().nullable()
+            }),
+            commits: z.object({ op: z.string(), secretId: z.string().nullable().optional() }).array(),
+            environment: z.string(),
+            reviewers: z.object({ member: z.string(), status: z.string() }).array(),
+            approvers: z.string().array()
+          }).array()
         })
       }
     },

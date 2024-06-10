@@ -1,5 +1,9 @@
 import { TProjectPermission } from "@app/lib/types";
 
+export enum ReservedFolders {
+  SecretReplication = "__reserve_replication_"
+}
+
 export type TCreateFolderDTO = {
   environment: string;
   path: string;
@@ -12,6 +16,16 @@ export type TUpdateFolderDTO = {
   id: string;
   name: string;
 } & TProjectPermission;
+
+export type TUpdateManyFoldersDTO = {
+  projectSlug: string;
+  folders: {
+    environment: string;
+    path: string;
+    id: string;
+    name: string;
+  }[];
+} & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteFolderDTO = {
   environment: string;

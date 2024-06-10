@@ -121,7 +121,7 @@ export default function GitLabCreateIntegrationPage() {
       if (integrationAuthTeams) {
         if (integrationAuthTeams.length > 0) {
           // case: user is part of at least 1 group in GitLab
-          setValue("targetTeamId", String(integrationAuthTeams[0].teamId));
+          setValue("targetTeamId", String(integrationAuthTeams[0].id));
         } else {
           // case: user is not part of any groups in GitLab
           setValue("targetTeamId", "none");
@@ -312,8 +312,8 @@ export default function GitLabCreateIntegrationPage() {
                         {integrationAuthTeams.length > 0 ? (
                           integrationAuthTeams.map((integrationAuthTeam) => (
                             <SelectItem
-                              value={String(integrationAuthTeam.teamId as string)}
-                              key={`target-team-${String(integrationAuthTeam.teamId)}`}
+                              value={String(integrationAuthTeam.id as string)}
+                              key={`target-team-${String(integrationAuthTeam.id)}`}
                             >
                               {integrationAuthTeam.name}
                             </SelectItem>

@@ -34,6 +34,7 @@ import {
   TAddUsersToWorkspaceNonE2EEDTO,
   TDeleteProjectMembershipOldDTO,
   TDeleteProjectMembershipsDTO,
+  TGetProjectMembershipByUsernameDTO,
   TGetProjectMembershipDTO,
   TUpdateProjectMembershipDTO
 } from "./project-membership-types";
@@ -89,6 +90,28 @@ export const projectMembershipServiceFactory = ({
     return projectMembershipDAL.findAllProjectMembers(projectId);
   };
 
+  const getProjectMembershipByUsername = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    username
+  }: TGetProjectMembershipByUsernameDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+
+    const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { username });
+    if (!membership) throw new BadRequestError({ message: `Project membership not found for user ${username}` });
+    return membership;
+  };
+
   const addUsersToProject = async ({
     projectId,
     actorId,
@@ -110,7 +133,7 @@ export const projectMembershipServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
     const orgMembers = await orgDAL.findMembership({
-      orgId: project.orgId,
+      [`${TableName.OrgMembership}.orgId` as "orgId"]: project.orgId,
       $in: {
         [`${TableName.OrgMembership}.id` as "id"]: members.map(({ orgMembershipId }) => orgMembershipId)
       }
@@ -119,7 +142,7 @@ export const projectMembershipServiceFactory = ({
 
     const existingMembers = await projectMembershipDAL.find({
       projectId,
-      $in: { userId: orgMembers.map(({ userId }) => userId).filter(Boolean) as string[] }
+      $in: { userId: orgMembers.map(({ userId }) => userId).filter(Boolean) }
     });
     if (existingMembers.length) throw new BadRequestError({ message: "Some users are already part of project" });
 
@@ -134,7 +157,7 @@ export const projectMembershipServiceFactory = ({
       const projectMemberships = await projectMembershipDAL.insertMany(
         orgMembers.map(({ userId }) => ({
           projectId,
-          userId: userId as string
+          userId
         })),
         tx
       );
@@ -145,12 +168,12 @@ export const projectMembershipServiceFactory = ({
       const encKeyGroupByOrgMembId = groupBy(members, (i) => i.orgMembershipId);
       await projectKeyDAL.insertMany(
         orgMembers
-          .filter(({ userId }) => !userIdsToExcludeForProjectKeyAddition.has(userId as string))
+          .filter(({ userId }) => !userIdsToExcludeForProjectKeyAddition.has(userId))
           .map(({ userId, id }) => ({
             encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
             nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
             senderId: actorId,
-            receiverId: userId as string,
+            receiverId: userId,
             projectId
           })),
         tx
@@ -510,6 +533,7 @@ export const projectMembershipServiceFactory = ({
 
   return {
     getProjectMemberships,
+    getProjectMembershipByUsername,
     updateProjectMembership,
     addUsersToProjectNonE2EE,
     deleteProjectMemberships,

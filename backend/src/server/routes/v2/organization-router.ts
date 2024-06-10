@@ -76,6 +76,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             .object({
               id: z.string(),
               name: z.string(),
+              slug: z.string(),
               organization: z.string(),
               environments: z
                 .object({

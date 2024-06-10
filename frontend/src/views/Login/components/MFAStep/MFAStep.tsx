@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import axios from "axios";
 import jwt_decode from "jwt-decode";
 
-import Error from "@app/components/basic/Error"; // which to notification
+import Error from "@app/components/basic/Error";
 import { createNotification } from "@app/components/notifications";
 import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa";
 import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
@@ -46,20 +46,7 @@ type Props = {
   callbackPort?: string | null;
 };
 
-interface VerifyMfaTokenError {
-  response: {
-    data: {
-      context: {
-        code: string;
-        triesLeft: number;
-      };
-    };
-    status: number;
-  };
-}
-
 export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
-  
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingResend, setIsLoadingResend] = useState(false);
@@ -178,20 +165,31 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
           });
         }
       }
-    } catch (err) {
-      const error = err as VerifyMfaTokenError;
+    } catch (err: any) {
+      if (err.response.data.error === "User Locked") {
+        createNotification({
+          title: err.response.data.error,
+          text: err.response.data.message,
+          type: "error"
+        });
+        setIsLoading(false);
+        return;
+      }
+
       createNotification({
         text: "Failed to log in",
         type: "error"
       });
 
-      if (error?.response?.status === 500) {
-        window.location.reload();
-      } else if (error?.response?.data?.context?.triesLeft) {
-        setTriesLeft(error?.response?.data?.context?.triesLeft);
-        if (error.response.data.context.triesLeft === 0) {
-          window.location.reload();
-        }
+      if (triesLeft) {
+        setTriesLeft((left) => {
+          if (triesLeft === 1) {
+            router.push("/");
+          }
+          return (left as number) - 1;
+        });
+      } else {
+        setTriesLeft(2);
       }
 
       setIsLoading(false);
@@ -236,7 +234,7 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
         />
       </div>
       {typeof triesLeft === "number" && (
-        <Error text={`${t("mfa.step2-code-error")} ${triesLeft}`} />
+        <Error text={`Invalid code. You have ${triesLeft} attempt(s) remaining.`} />
       )}
       <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
         <div className="text-l w-full py-1 text-lg">

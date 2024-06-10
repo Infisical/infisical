@@ -7,33 +7,42 @@ import {
   TScanFullRepoEventPayload,
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
+import { TSyncSecretsDTO } from "@app/services/secret/secret-types";
 
 export enum QueueName {
   SecretRotation = "secret-rotation",
   SecretReminder = "secret-reminder",
   AuditLog = "audit-log",
+  // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune",
+  DailyResourceCleanUp = "daily-resource-cleanup",
   TelemetryInstanceStats = "telemtry-self-hosted-stats",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
   SecretFullRepoScan = "secret-full-repo-scan",
   SecretPushEventScan = "secret-push-event-scan",
   UpgradeProjectToGhost = "upgrade-project-to-ghost",
-  DynamicSecretRevocation = "dynamic-secret-revocation"
+  DynamicSecretRevocation = "dynamic-secret-revocation",
+  SecretReplication = "secret-replication",
+  SecretSync = "secret-sync" // parent queue to push integration sync, webhook, and secret replication
 }
 
 export enum QueueJobs {
   SecretReminder = "secret-reminder-job",
   SecretRotation = "secret-rotation-job",
   AuditLog = "audit-log-job",
+  // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
+  DailyResourceCleanUp = "daily-resource-cleanup-job",
   SecWebhook = "secret-webhook-trigger",
   TelemetryInstanceStats = "telemetry-self-hosted-stats",
   IntegrationSync = "secret-integration-pull",
   SecretScan = "secret-scan",
   UpgradeProjectToGhost = "upgrade-project-to-ghost-job",
   DynamicSecretRevocation = "dynamic-secret-revocation",
-  DynamicSecretPruning = "dynamic-secret-pruning"
+  DynamicSecretPruning = "dynamic-secret-pruning",
+  SecretReplication = "secret-replication",
+  SecretSync = "secret-sync" // parent queue to push integration sync, webhook, and secret replication
 }
 
 export type TQueueJobTypes = {
@@ -55,6 +64,10 @@ export type TQueueJobTypes = {
     name: QueueJobs.AuditLog;
     payload: TCreateAuditLogDTO;
   };
+  [QueueName.DailyResourceCleanUp]: {
+    name: QueueJobs.DailyResourceCleanUp;
+    payload: undefined;
+  };
   [QueueName.AuditLogPrune]: {
     name: QueueJobs.AuditLogPrune;
     payload: undefined;
@@ -65,7 +78,13 @@ export type TQueueJobTypes = {
   };
   [QueueName.IntegrationSync]: {
     name: QueueJobs.IntegrationSync;
-    payload: { projectId: string; environment: string; secretPath: string; depth?: number };
+    payload: {
+      projectId: string;
+      environment: string;
+      secretPath: string;
+      depth?: number;
+      deDupeQueue?: Record<string, boolean>;
+    };
   };
   [QueueName.SecretFullRepoScan]: {
     name: QueueJobs.SecretScan;
@@ -102,6 +121,14 @@ export type TQueueJobTypes = {
           dynamicSecretCfgId: string;
         };
       };
+  [QueueName.SecretReplication]: {
+    name: QueueJobs.SecretReplication;
+    payload: TSyncSecretsDTO;
+  };
+  [QueueName.SecretSync]: {
+    name: QueueJobs.SecretSync;
+    payload: TSyncSecretsDTO;
+  };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
@@ -118,7 +145,7 @@ export const queueServiceFactory = (redisUrl: string) => {
 
   const start = <T extends QueueName>(
     name: T,
-    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>) => Promise<void>,
+    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => Promise<void>,
     queueSettings: Omit<QueueOptions, "connection"> = {}
   ) => {
     if (queueContainer[name]) {
@@ -152,7 +179,7 @@ export const queueServiceFactory = (redisUrl: string) => {
     name: T,
     job: TQueueJobTypes[T]["name"],
     data: TQueueJobTypes[T]["payload"],
-    opts: JobsOptions & { jobId?: string }
+    opts?: JobsOptions & { jobId?: string }
   ) => {
     const q = queueContainer[name];
 
@@ -166,7 +193,9 @@ export const queueServiceFactory = (redisUrl: string) => {
     jobId?: string
   ) => {
     const q = queueContainer[name];
-    return q.removeRepeatable(job, repeatOpt, jobId);
+    if (q) {
+      return q.removeRepeatable(job, repeatOpt, jobId);
+    }
   };
 
   const stopRepeatableJobByJobId = async <T extends QueueName>(name: T, jobId: string) => {

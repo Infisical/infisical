@@ -89,6 +89,7 @@ export default function AWSParameterStoreCreateIntegrationPage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [shouldTag, setShouldTag] = useState(false);
+  const [shouldDisableDelete, setShouldDisableDelete] = useState(false);
   const [tagKey, setTagKey] = useState("");
   const [tagValue, setTagValue] = useState("");
   const [kmsKeyId, setKmsKeyId] = useState("");
@@ -100,18 +101,11 @@ export default function AWSParameterStoreCreateIntegrationPage() {
     }
   }, [workspace]);
 
-
   const { data: integrationAuthAwsKmsKeys, isLoading: isIntegrationAuthAwsKmsKeysLoading } =
     useGetIntegrationAuthAwsKmsKeys({
-      integrationAuthId: String(integrationAuthId), 
+      integrationAuthId: String(integrationAuthId),
       region: selectedAWSRegion
     });
-
-  useEffect(() => {
-    if (integrationAuthAwsKmsKeys) {
-      setKmsKeyId(String(integrationAuthAwsKmsKeys?.filter(key => key.alias === "default")[0]?.id))
-    }
-  }, [integrationAuthAwsKmsKeys])
 
   const isValidAWSParameterStorePath = (awsStorePath: string) => {
     const pattern = /^\/([\w-]+\/)*[\w-]+\/$/;
@@ -143,16 +137,16 @@ export default function AWSParameterStoreCreateIntegrationPage() {
         metadata: {
           ...(shouldTag
             ? {
-                secretAWSTag: [{
-                  key: tagKey,
-                  value: tagValue
-                }]
+                secretAWSTag: [
+                  {
+                    key: tagKey,
+                    value: tagValue
+                  }
+                ]
               }
             : {}),
-            ...((kmsKeyId && integrationAuthAwsKmsKeys?.filter(key => key.id === kmsKeyId)[0]?.alias !== "default") ? 
-                {
-                  kmsKeyId
-                }: {})
+          ...(kmsKeyId && { kmsKeyId }),
+          ...(shouldDisableDelete && { shouldDisableDelete })
         }
       });
 
@@ -165,7 +159,10 @@ export default function AWSParameterStoreCreateIntegrationPage() {
     }
   };
 
-  return (integrationAuth && workspace && selectedSourceEnvironment && !isIntegrationAuthAwsKmsKeysLoading) ? (
+  return integrationAuth &&
+    workspace &&
+    selectedSourceEnvironment &&
+    !isIntegrationAuthAwsKmsKeysLoading ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
       <Head>
         <title>Set Up AWS Parameter Integration</title>
@@ -241,7 +238,10 @@ export default function AWSParameterStoreCreateIntegrationPage() {
               <FormControl label="AWS Region">
                 <Select
                   value={selectedAWSRegion}
-                  onValueChange={(val) => setSelectedAWSRegion(val)}
+                  onValueChange={(val) => {
+                    setSelectedAWSRegion(val);
+                    setKmsKeyId("");
+                  }}
                   className="w-full border border-mineshaft-500"
                 >
                   {awsRegions.map((awsRegion) => (
@@ -276,6 +276,15 @@ export default function AWSParameterStoreCreateIntegrationPage() {
             >
               <div className="mt-2 ml-1">
                 <Switch
+                  id="delete-aws"
+                  onCheckedChange={() => setShouldDisableDelete(!shouldDisableDelete)}
+                  isChecked={shouldDisableDelete}
+                >
+                  Disable deleting secrets in AWS Parameter Store
+                </Switch>
+              </div>
+              <div className="mt-4 ml-1">
+                <Switch
                   id="tag-aws"
                   onCheckedChange={() => setShouldTag(!shouldTag)}
                   isChecked={shouldTag}
@@ -285,20 +294,16 @@ export default function AWSParameterStoreCreateIntegrationPage() {
               </div>
               {shouldTag && (
                 <div className="mt-4">
-                  <FormControl
-                    label="Tag Key"
-                  >
-                    <Input 
-                      placeholder="managed-by" 
+                  <FormControl label="Tag Key">
+                    <Input
+                      placeholder="managed-by"
                       value={tagKey}
                       onChange={(e) => setTagKey(e.target.value)}
                     />
                   </FormControl>
-                  <FormControl
-                    label="Tag Value"
-                  >
-                    <Input 
-                      placeholder="infisical" 
+                  <FormControl label="Tag Value">
+                    <Input
+                      placeholder="infisical"
                       value={tagValue}
                       onChange={(e) => setTagValue(e.target.value)}
                     />
@@ -309,7 +314,7 @@ export default function AWSParameterStoreCreateIntegrationPage() {
                 <Select
                   value={kmsKeyId}
                   onValueChange={(e) => {
-                    setKmsKeyId(e)
+                    setKmsKeyId(e);
                   }}
                   className="w-full border border-mineshaft-500"
                 >
@@ -362,7 +367,7 @@ export default function AWSParameterStoreCreateIntegrationPage() {
         <title>Set Up AWS Parameter Store Integration</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      {(isintegrationAuthLoading || isIntegrationAuthAwsKmsKeysLoading) ? (
+      {isintegrationAuthLoading || isIntegrationAuthAwsKmsKeysLoading ? (
         <img
           src="/images/loading/loading.gif"
           height={70}

@@ -196,6 +196,11 @@ var secretsSetCmd = &cobra.Command{
 			util.HandleError(err, "Unable to get your local config details")
 		}
 
+		secretType, err := cmd.Flags().GetString("type")
+		if err != nil || (secretType != util.SECRET_TYPE_SHARED && secretType != util.SECRET_TYPE_PERSONAL) {
+			util.HandleError(err, "Unable to parse secret type")
+		}
+
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		if err != nil {
 			util.HandleError(err, "Unable to authenticate")
@@ -204,6 +209,7 @@ var secretsSetCmd = &cobra.Command{
 		if loggedInUserDetails.LoginExpired {
 			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
 		}
+
 
 		httpClient := resty.New().
 			SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
@@ -249,7 +255,16 @@ var secretsSetCmd = &cobra.Command{
 		secretsToModify := []api.Secret{}
 		secretOperations := []SecretSetOperation{}
 
-		secretByKey := getSecretsByKeys(secrets)
+		sharedSecretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
+		personalSecretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
+	
+		for _, secret := range secrets {
+			if secret.Type == util.SECRET_TYPE_PERSONAL {
+				personalSecretMapByName[secret.Key] = secret
+			} else {
+				sharedSecretMapByName[secret.Key] = secret
+			}
+		}
 
 		for _, arg := range args {
 			splitKeyValueFromArg := strings.SplitN(arg, "=", 2)
@@ -277,7 +292,16 @@ var secretsSetCmd = &cobra.Command{
 				util.HandleError(err, "unable to encrypt your secrets")
 			}
 
-			if existingSecret, ok := secretByKey[key]; ok {
+			var existingSecret models.SingleEnvironmentVariable
+			var doesSecretExist bool
+
+			if secretType == util.SECRET_TYPE_SHARED {
+				existingSecret, doesSecretExist = sharedSecretMapByName[key]
+			} else {
+				existingSecret, doesSecretExist = personalSecretMapByName[key]
+			}
+
+			if doesSecretExist {
 				// case: secret exists in project so it needs to be modified
 				encryptedSecretDetails := api.Secret{
 					ID:                    existingSecret.ID,
@@ -317,7 +341,7 @@ var secretsSetCmd = &cobra.Command{
 					SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
 					SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
 					SecretValueHash:       hashedValue,
-					Type:                  util.SECRET_TYPE_SHARED,
+					Type:                  secretType,
 					PlainTextKey:          key,
 				}
 				secretsToCreate = append(secretsToCreate, encryptedSecretDetails)
@@ -807,6 +831,7 @@ func init() {
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
 	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
+	secretsSetCmd.Flags().String("type", util.SECRET_TYPE_SHARED, "the type of secret to create: personal or shared")
 
 	// Only supports logged in users (JWT auth)
 	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {

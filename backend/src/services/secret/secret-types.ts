@@ -11,6 +11,8 @@ import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/se
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
+import { ActorType } from "../auth/auth-type";
+
 type TPartialSecret = Pick<TSecrets, "id" | "secretReminderRepeatDays" | "secretReminderNote">;
 
 type TPartialInputSecret = Pick<TSecrets, "type" | "secretReminderNote" | "secretReminderRepeatDays" | "id">;
@@ -138,6 +140,7 @@ export type TDeleteBulkSecretDTO = {
 } & TProjectPermission;
 
 export type TGetSecretsRawDTO = {
+  expandSecretReferences?: boolean;
   path: string;
   environment: string;
   includeImports?: boolean;
@@ -151,7 +154,9 @@ export type TGetASecretRawDTO = {
   type: "shared" | "personal";
   includeImports?: boolean;
   version?: number;
-} & TProjectPermission;
+  projectSlug?: string;
+  projectId?: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSecretRawDTO = TProjectPermission & {
   secretPath: string;
@@ -220,11 +225,13 @@ export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
   secretId: string;
 };
 
+export type TSecretReference = { environment: string; secretPath: string };
+
 export type TFnSecretBulkInsert = {
   folderId: string;
   tx?: Knex;
-  inputSecrets: Array<Omit<TSecretsInsert, "folderId"> & { tags?: string[] }>;
-  secretDAL: Pick<TSecretDALFactory, "insertMany">;
+  inputSecrets: Array<Omit<TSecretsInsert, "folderId"> & { tags?: string[]; references?: TSecretReference[] }>;
+  secretDAL: Pick<TSecretDALFactory, "insertMany" | "upsertSecretReferences">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
@@ -233,8 +240,11 @@ export type TFnSecretBulkInsert = {
 export type TFnSecretBulkUpdate = {
   folderId: string;
   projectId: string;
-  inputSecrets: { filter: Partial<TSecrets>; data: TSecretsUpdate & { tags?: string[] } }[];
-  secretDAL: Pick<TSecretDALFactory, "bulkUpdate">;
+  inputSecrets: {
+    filter: Partial<TSecrets>;
+    data: TSecretsUpdate & { tags?: string[]; references?: TSecretReference[] };
+  }[];
+  secretDAL: Pick<TSecretDALFactory, "bulkUpdate" | "upsertSecretReferences">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret" | "deleteTagsManySecret">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
@@ -256,6 +266,10 @@ export type TFnSecretBulkDelete = {
   inputSecrets: Array<{ type: SecretType; secretBlindIndex: string }>;
   actorId: string;
   tx?: Knex;
+  secretDAL: Pick<TSecretDALFactory, "deleteMany">;
+  secretQueueService: {
+    removeSecretReminder: (data: TRemoveSecretReminderDTO) => Promise<void>;
+  };
 };
 
 export type TFnSecretBlindIndexCheck = {
@@ -269,6 +283,7 @@ export type TFnSecretBlindIndexCheck = {
 
 // when blind index is already present
 export type TFnSecretBlindIndexCheckV2 = {
+  secretDAL: Pick<TSecretDALFactory, "findByBlindIndexes">;
   folderId: string;
   userId?: string;
   inputSecrets: Array<{ secretBlindIndex: string; type?: SecretType }>;
@@ -290,6 +305,8 @@ export type TRemoveSecretReminderDTO = {
   secretId: string;
   repeatDays: number;
 };
+
+export type TBackFillSecretReferencesDTO = TProjectPermission;
 
 // ---
 
@@ -353,3 +370,27 @@ export type TUpdateManySecretsRawFn = {
   }[];
   userId?: string;
 };
+
+export enum SecretOperations {
+  Create = "create",
+  Update = "update",
+  Delete = "delete"
+}
+
+export type TSyncSecretsDTO<T extends boolean = false> = {
+  _deDupeQueue?: Record<string, boolean>;
+  _deDupeReplicationQueue?: Record<string, boolean>;
+  _depth?: number;
+  secretPath: string;
+  projectId: string;
+  environmentSlug: string;
+  // cases for just doing sync integration and webhook
+  excludeReplication?: T;
+} & (T extends true
+  ? object
+  : {
+      actor: ActorType;
+      actorId: string;
+      // used for import creation to trigger replication
+      pickOnlyImportIds?: string[];
+    });

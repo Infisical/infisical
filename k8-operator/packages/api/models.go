@@ -31,6 +31,7 @@ type GetEncryptedWorkspaceKeyResponse struct {
 type GetEncryptedSecretsV3Request struct {
 	Environment   string `json:"environment"`
 	WorkspaceId   string `json:"workspaceId"`
+	Recursive     bool   `json:"recursive"`
 	SecretPath    string `json:"secretPath"`
 	IncludeImport bool   `json:"include_imports"`
 	ETag          string `json:"etag,omitempty"`
@@ -83,6 +84,13 @@ type ImportedSecretV3 struct {
 	Secrets     []EncryptedSecretV3 `json:"secrets"`
 }
 
+type ImportedRawSecretV3 struct {
+	Environment string              `json:"environment"`
+	FolderId    string              `json:"folderId"`
+	SecretPath  string              `json:"secretPath"`
+	Secrets     []DecryptedSecretV3 `json:"secrets"`
+}
+
 type GetEncryptedSecretsV3Response struct {
 	Secrets         []EncryptedSecretV3 `json:"secrets"`
 	ImportedSecrets []ImportedSecretV3  `json:"imports,omitempty"`
@@ -91,16 +99,19 @@ type GetEncryptedSecretsV3Response struct {
 }
 
 type GetDecryptedSecretsV3Response struct {
-	Secrets  []DecryptedSecretV3 `json:"secrets"`
-	ETag     string              `json:"ETag,omitempty"`
-	Modified bool                `json:"modified,omitempty"`
+	Secrets  []DecryptedSecretV3   `json:"secrets"`
+	ETag     string                `json:"ETag,omitempty"`
+	Modified bool                  `json:"modified,omitempty"`
+	Imports  []ImportedRawSecretV3 `json:"imports,omitempty"`
 }
 
 type GetDecryptedSecretsV3Request struct {
-	ProjectSlug string `json:"workspaceSlug"`
-	Environment string `json:"environment"`
-	SecretPath  string `json:"secretPath"`
-	ETag        string `json:"etag,omitempty"`
+	ProjectSlug            string `json:"workspaceSlug"`
+	Environment            string `json:"environment"`
+	SecretPath             string `json:"secretPath"`
+	Recursive              bool   `json:"recursive"`
+	ExpandSecretReferences bool   `json:"expandSecretReferences"`
+	ETag                   string `json:"etag,omitempty"`
 }
 
 type GetServiceTokenDetailsResponse struct {

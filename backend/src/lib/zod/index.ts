@@ -7,3 +7,7 @@ export const zpStr = <T extends ZodTypeAny>(schema: T, opt: { stripNull: boolean
     if (typeof val !== "string") return val;
     return val.trim() || undefined;
   }, schema);
+
+export const zodBuffer = z.custom<Buffer>((data) => Buffer.isBuffer(data) || data instanceof Uint8Array, {
+  message: "Expected binary data (Buffer Or Uint8Array)"
+});

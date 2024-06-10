@@ -35,8 +35,6 @@ export default function LoginPage() {
   const selectOrg = useSelectOrganization();
   const { user, isLoading: userLoading } = useUser();
 
-  
-
   const queryParams = new URLSearchParams(window.location.search);
 
   const logout = useLogoutUser(true);
@@ -123,6 +121,14 @@ export default function LoginPage() {
     }
   }, [router]);
 
+  // Case: User has no organizations.
+  // This can happen if the user was previously a member, but the organization was deleted or the user was removed.
+  useEffect(() => {
+    if (!organizations.isLoading && organizations.data?.length === 0) {
+      router.push("/org/none");
+    }
+  }, [organizations.isLoading, organizations.data]);
+
   if (userLoading || !user) {
     return <LoadingScreen />;
   }
@@ -153,7 +159,7 @@ export default function LoginPage() {
 
             <div className="space-y-1">
               <p className="text-md text-center text-gray-500">
-                You&lsquo;re currently logged in as <strong>{user.email}</strong>
+                You&lsquo;re currently logged in as <strong>{user.username}</strong>
               </p>
               <p className="text-md text-center text-gray-500">
                 Not you?{" "}

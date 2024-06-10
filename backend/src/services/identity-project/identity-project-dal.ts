@@ -10,11 +10,16 @@ export type TIdentityProjectDALFactory = ReturnType<typeof identityProjectDALFac
 export const identityProjectDALFactory = (db: TDbClient) => {
   const identityProjectOrm = ormify(db, TableName.IdentityProjectMembership);
 
-  const findByProjectId = async (projectId: string, tx?: Knex) => {
+  const findByProjectId = async (projectId: string, filter: { identityId?: string } = {}, tx?: Knex) => {
     try {
       const docs = await (tx || db)(TableName.IdentityProjectMembership)
         .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
         .join(TableName.Identity, `${TableName.IdentityProjectMembership}.identityId`, `${TableName.Identity}.id`)
+        .where((qb) => {
+          if (filter.identityId) {
+            void qb.where("identityId", filter.identityId);
+          }
+        })
         .join(
           TableName.IdentityProjectMembershipRole,
           `${TableName.IdentityProjectMembershipRole}.projectMembershipId`,

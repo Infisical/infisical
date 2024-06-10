@@ -233,3 +233,16 @@ func getCurrentBranch() (string, error) {
 	}
 	return path.Base(strings.TrimSpace(out.String())), nil
 }
+
+func AppendAPIEndpoint(address string) string {
+	// Ensure the address does not already end with "/api"
+	if strings.HasSuffix(address, "/api") {
+		return address
+	}
+
+	// Check if the address ends with a slash and append accordingly
+	if address[len(address)-1] == '/' {
+		return address + "api"
+	}
+	return address + "/api"
+}

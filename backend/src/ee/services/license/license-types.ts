@@ -3,6 +3,7 @@ import { TOrgPermission } from "@app/lib/types";
 export enum InstanceType {
   OnPrem = "self-hosted",
   EnterpriseOnPrem = "enterprise-self-hosted",
+  EnterpriseOnPremOffline = "enterprise-self-hosted-offline",
   Cloud = "cloud"
 }
 
@@ -40,6 +41,8 @@ export type TFeatureSet = {
   customAlerts: false;
   auditLogs: false;
   auditLogsRetentionDays: 0;
+  auditLogStreams: false;
+  auditLogStreamLimit: 3;
   samlSSO: false;
   scim: false;
   ldap: false;

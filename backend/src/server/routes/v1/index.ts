@@ -2,6 +2,10 @@ import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
+import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
+import { registerIdentityAzureAuthRouter } from "./identity-azure-auth-router";
+import { registerIdentityGcpAuthRouter } from "./identity-gcp-auth-router";
+import { registerIdentityKubernetesRouter } from "./identity-kubernetes-auth-router";
 import { registerIdentityRouter } from "./identity-router";
 import { registerIdentityUaRouter } from "./identity-ua";
 import { registerIntegrationAuthRouter } from "./integration-auth-router";
@@ -15,6 +19,7 @@ import { registerProjectMembershipRouter } from "./project-membership-router";
 import { registerProjectRouter } from "./project-router";
 import { registerSecretFolderRouter } from "./secret-folder-router";
 import { registerSecretImportRouter } from "./secret-import-router";
+import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
 import { registerSsoRouter } from "./sso-router";
 import { registerUserActionRouter } from "./user-action-router";
@@ -27,7 +32,11 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     async (authRouter) => {
       await authRouter.register(registerAuthRoutes);
       await authRouter.register(registerIdentityUaRouter);
+      await authRouter.register(registerIdentityKubernetesRouter);
+      await authRouter.register(registerIdentityGcpAuthRouter);
       await authRouter.register(registerIdentityAccessTokenRouter);
+      await authRouter.register(registerIdentityAwsAuthRouter);
+      await authRouter.register(registerIdentityAzureAuthRouter);
     },
     { prefix: "/auth" }
   );
@@ -57,4 +66,5 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerIntegrationAuthRouter, { prefix: "/integration-auth" });
   await server.register(registerWebhookRouter, { prefix: "/webhooks" });
   await server.register(registerIdentityRouter, { prefix: "/identities" });
+  await server.register(registerSecretSharingRouter, { prefix: "/secret-sharing" });
 };

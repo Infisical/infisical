@@ -79,7 +79,7 @@ export const fnSecretsFromImports = async ({
   let secretsFromDeeperImports: TSecretImportSecrets[] = [];
   if (deeperImports.length) {
     secretsFromDeeperImports = await fnSecretsFromImports({
-      allowedImports: deeperImports,
+      allowedImports: deeperImports.filter(({ isReplication }) => !isReplication),
       secretImportDAL,
       folderDAL,
       secretDAL,

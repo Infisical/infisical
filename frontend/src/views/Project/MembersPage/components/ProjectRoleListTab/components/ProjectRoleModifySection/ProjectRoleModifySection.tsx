@@ -19,9 +19,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { Button, FormControl, Input, Spinner } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useCreateProjectRole, useUpdateProjectRole } from "@app/hooks/api";
+import {
+  useCreateProjectRole,
+  useGetProjectRoleBySlug,
+  useUpdateProjectRole
+} from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 
 import { MultiEnvProjectPermission } from "./MultiEnvProjectPermission";
@@ -117,17 +121,20 @@ const SINGLE_PERMISSION_LIST = [
 ] as const;
 
 type Props = {
-  role?: TProjectRole;
+  roleSlug?: string;
   onGoBack: VoidFunction;
 };
 
-export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
-  const isNonEditable = ["admin", "member", "viewer", "no-access"].includes(role?.slug || "");
-  const isNewRole = !role?.slug;
+export const ProjectRoleModifySection = ({ roleSlug, onGoBack }: Props) => {
+  const isNonEditable = ["admin", "member", "viewer", "no-access"].includes(roleSlug || "");
+  const isNewRole = !roleSlug;
 
-  
   const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
+  const projectSlug = currentWorkspace?.slug || "";
+  const { data: roleDetails, isLoading: isRoleDetailsLoading } = useGetProjectRoleBySlug(
+    currentWorkspace?.slug || "",
+    roleSlug as string
+  );
 
   const {
     handleSubmit,
@@ -137,19 +144,21 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
     getValues,
     control
   } = useForm<TFormSchema>({
-    defaultValues: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : {},
+    values: roleDetails
+      ? { ...roleDetails, permissions: rolePermission2Form(roleDetails.permissions) }
+      : ({} as TProjectRole),
     resolver: zodResolver(formSchema)
   });
   const { mutateAsync: createRole } = useCreateProjectRole();
   const { mutateAsync: updateRole } = useUpdateProjectRole();
 
   const handleRoleUpdate = async (el: TFormSchema) => {
-    if (!role?.id) return;
+    if (!roleDetails?.id) return;
 
     try {
       await updateRole({
-        id: role?.id,
-        projectId: workspaceId,
+        id: roleDetails?.id as string,
+        projectSlug,
         ...el,
         permissions: formRolePermission2API(el.permissions)
       });
@@ -169,7 +178,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
 
     try {
       await createRole({
-        projectId: workspaceId,
+        projectSlug,
         ...el,
         permissions: formRolePermission2API(el.permissions)
       });
@@ -180,6 +189,14 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
       createNotification({ type: "error", text: "Failed to create role" });
     }
   };
+
+  if (!isNewRole && isRoleDetailsLoading) {
+    return (
+      <div className="flex w-full items-center justify-center p-8">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <div>

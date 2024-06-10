@@ -8,16 +8,19 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  FontAwesomeSymbol,
   FormControl,
   IconButton,
   Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
+  SecretInput,
   Spinner,
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -28,29 +31,19 @@ import { useToggle } from "@app/hooks";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 import { WsTag } from "@app/hooks/api/types";
 import { subject } from "@casl/ability";
-import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
-import {
-  faCheck,
-  faClock,
-  faClose,
-  faCodeBranch,
-  faComment,
-  faCopy,
-  faEllipsis,
-  faKey,
-  faTag,
-  faTags
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { memo, useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
 
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { CreateReminderForm } from "./CreateReminderForm";
-import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
+import {
+  FontAwesomeSpriteName,
+  formSchema,
+  SecretActionType,
+  TFormSchema
+} from "./SecretListView.utils";
 
 type Props = {
   secret: DecryptedSecret;
@@ -206,7 +199,6 @@ export const SecretItem = memo(
             }
           }}
         />
-
         <form onSubmit={handleSubmit(handleFormSubmit)}>
           <div
             className={twMerge(
@@ -227,9 +219,12 @@ export const SecretItem = memo(
                   onCheckedChange={() => onToggleSecretSelect(secret.id)}
                   className={twMerge("ml-3 hidden group-hover:flex", isSelected && "flex")}
                 />
-                <FontAwesomeIcon
-                  icon={faKey}
-                  className={twMerge("ml-3 block group-hover:hidden", isSelected && "hidden")}
+                <FontAwesomeSymbol
+                  className={twMerge(
+                    "ml-3 block h-3.5 w-3.5 group-hover:hidden",
+                    isSelected && "hidden"
+                  )}
+                  symbolName={FontAwesomeSpriteName.SecretKey}
                 />
               </div>
               <div className="flex h-11 w-80 flex-shrink-0 items-center px-4 py-2">
@@ -263,12 +258,10 @@ export const SecretItem = memo(
                     key="value-overriden"
                     control={control}
                     render={({ field }) => (
-                      <InfisicalSecretInput
+                      <SecretInput
                         key="value-overriden"
                         isVisible={isVisible}
                         isReadOnly={isReadOnly}
-                        environment={environment}
-                        secretPath={secretPath}
                         {...field}
                         containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2"
                       />
@@ -301,7 +294,14 @@ export const SecretItem = memo(
                       className="w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5"
                       onClick={copyTokenToClipboard}
                     >
-                      <FontAwesomeIcon icon={isSecValueCopied ? faCheck : faCopy} />
+                      <FontAwesomeSymbol
+                        className="h-3.5 w-3"
+                        symbolName={
+                          isSecValueCopied
+                            ? FontAwesomeSpriteName.Check
+                            : FontAwesomeSpriteName.ClipboardCopy
+                        }
+                      />
                     </IconButton>
                   </Tooltip>
                   <DropdownMenu>
@@ -322,7 +322,10 @@ export const SecretItem = memo(
                             isDisabled={!isAllowed}
                           >
                             <Tooltip content="Tags">
-                              <FontAwesomeIcon icon={faTags} />
+                              <FontAwesomeSymbol
+                                className="h-3.5 w-3.5"
+                                symbolName={FontAwesomeSpriteName.Tags}
+                              />
                             </Tooltip>
                           </IconButton>
                         </DropdownMenuTrigger>
@@ -338,7 +341,14 @@ export const SecretItem = memo(
                           <DropdownMenuItem
                             onClick={() => handleTagSelect(tag)}
                             key={`${secret.id}-${tagId}`}
-                            icon={isTagSelected && <FontAwesomeIcon icon={faCheckCircle} />}
+                            icon={
+                              isTagSelected && (
+                                <FontAwesomeSymbol
+                                  symbolName={FontAwesomeSpriteName.CheckedCircle}
+                                  className="h-3 w-3"
+                                />
+                              )
+                            }
                             iconPos="right"
                           >
                             <div className="flex items-center">
@@ -357,7 +367,12 @@ export const SecretItem = memo(
                           className="w-full"
                           colorSchema="primary"
                           variant="outline_bg"
-                          leftIcon={<FontAwesomeIcon icon={faTag} />}
+                          leftIcon={
+                            <FontAwesomeSymbol
+                              symbolName={FontAwesomeSpriteName.Tags}
+                              className="h-3 w-3"
+                            />
+                          }
                           onClick={onCreateTag}
                         >
                           Create a tag
@@ -383,7 +398,10 @@ export const SecretItem = memo(
                           isOverriden && "w-5 text-primary"
                         )}
                       >
-                        <FontAwesomeIcon icon={faCodeBranch} />
+                        <FontAwesomeSymbol
+                          symbolName={FontAwesomeSpriteName.Override}
+                          className="h-3.5 w-3.5"
+                        />
                       </IconButton>
                     )}
                   </ProjectPermissionCan>
@@ -397,20 +415,20 @@ export const SecretItem = memo(
                       variant="plain"
                       size="md"
                       ariaLabel="add-reminder"
+                      onClick={() => setCreateReminderFormOpen.on()}
                     >
                       <Tooltip
                         content={
                           secretReminderRepeatDays && secretReminderRepeatDays > 0
-                            ? `Every ${secretReminderRepeatDays} day${
-                                Number(secretReminderRepeatDays) > 1 ? "s" : ""
-                              }
+                            ? `Every ${secretReminderRepeatDays} day${Number(secretReminderRepeatDays) > 1 ? "s" : ""
+                            }
                           `
                             : "Reminder"
                         }
                       >
-                        <FontAwesomeIcon
-                          onClick={() => setCreateReminderFormOpen.on()}
-                          icon={faClock}
+                        <FontAwesomeSymbol
+                          className="h-3.5 w-3.5"
+                          symbolName={FontAwesomeSpriteName.Clock}
                         />
                       </Tooltip>
                     </IconButton>
@@ -434,7 +452,10 @@ export const SecretItem = memo(
                             isDisabled={!isAllowed}
                           >
                             <Tooltip content="Comment">
-                              <FontAwesomeIcon icon={faComment} />
+                              <FontAwesomeSymbol
+                                className="h-3.5 w-3.5"
+                                symbolName={FontAwesomeSpriteName.Comment}
+                              />
                             </Tooltip>
                           </IconButton>
                         </PopoverTrigger>
@@ -470,10 +491,13 @@ export const SecretItem = memo(
                         ariaLabel="more"
                         variant="plain"
                         size="md"
-                        className="p-0 opacity-0 group-hover:opacity-100"
+                        className="h-5 w-4 p-0 opacity-0 group-hover:opacity-100"
                         onClick={() => onDetailViewSecret(secret)}
                       >
-                        <FontAwesomeIcon icon={faEllipsis} size="lg" />
+                        <FontAwesomeSymbol
+                          symbolName={FontAwesomeSpriteName.More}
+                          className="h-5 w-4"
+                        />
                       </IconButton>
                     </Tooltip>
                     <ProjectPermissionCan
@@ -492,7 +516,10 @@ export const SecretItem = memo(
                           onClick={() => onDeleteSecret(secret)}
                           isDisabled={!isAllowed}
                         >
-                          <FontAwesomeIcon icon={faClose} size="lg" />
+                          <FontAwesomeSymbol
+                            symbolName={FontAwesomeSpriteName.Close}
+                            className="h-5 w-4"
+                          />
                         </IconButton>
                       )}
                     </ProjectPermissionCan>
@@ -520,10 +547,12 @@ export const SecretItem = memo(
                         {isSubmitting ? (
                           <Spinner className="m-0 h-4 w-4 p-0" />
                         ) : (
-                          <FontAwesomeIcon
-                            icon={faCheck}
-                            size="lg"
-                            className={twMerge("text-primary", errors.key && "text-mineshaft-300")}
+                          <FontAwesomeSymbol
+                            symbolName={FontAwesomeSpriteName.Check}
+                            className={twMerge(
+                              "h-4 w-4 text-primary",
+                              errors.key && "text-mineshaft-300"
+                            )}
                           />
                         )}
                       </IconButton>
@@ -540,7 +569,10 @@ export const SecretItem = memo(
                         onClick={() => reset()}
                         isDisabled={isSubmitting}
                       >
-                        <FontAwesomeIcon icon={faClose} size="lg" />
+                        <FontAwesomeSymbol
+                          symbolName={FontAwesomeSpriteName.Close}
+                          className="h-4 w-4 text-primary"
+                        />
                       </IconButton>
                     </Tooltip>
                   </motion.div>

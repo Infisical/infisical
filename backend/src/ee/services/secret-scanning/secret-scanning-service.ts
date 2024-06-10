@@ -90,15 +90,17 @@ export const secretScanningServiceFactory = ({
     const {
       data: { repositories }
     } = await octokit.apps.listReposAccessibleToInstallation();
-    await Promise.all(
-      repositories.map(({ id, full_name }) =>
-        secretScanningQueue.startFullRepoScan({
-          organizationId: session.orgId,
-          installationId,
-          repository: { id, fullName: full_name }
-        })
-      )
-    );
+    if (!appCfg.DISABLE_SECRET_SCANNING) {
+      await Promise.all(
+        repositories.map(({ id, full_name }) =>
+          secretScanningQueue.startFullRepoScan({
+            organizationId: session.orgId,
+            installationId,
+            repository: { id, fullName: full_name }
+          })
+        )
+      );
+    }
     return { installatedApp };
   };
 
@@ -151,6 +153,7 @@ export const secretScanningServiceFactory = ({
   };
 
   const handleRepoPushEvent = async (payload: WebhookEventMap["push"]) => {
+    const appCfg = getConfig();
     const { commits, repository, installation, pusher } = payload;
     if (!commits || !repository || !installation || !pusher) {
       return;
@@ -161,13 +164,15 @@ export const secretScanningServiceFactory = ({
     });
     if (!installationLink) return;
 
-    await secretScanningQueue.startPushEventScan({
-      commits,
-      pusher: { name: pusher.name, email: pusher.email },
-      repository: { fullName: repository.full_name, id: repository.id },
-      organizationId: installationLink.orgId,
-      installationId: String(installation?.id)
-    });
+    if (!appCfg.DISABLE_SECRET_SCANNING) {
+      await secretScanningQueue.startPushEventScan({
+        commits,
+        pusher: { name: pusher.name, email: pusher.email },
+        repository: { fullName: repository.full_name, id: repository.id },
+        organizationId: installationLink.orgId,
+        installationId: String(installation?.id)
+      });
+    }
   };
 
   const handleRepoDeleteEvent = async (installationId: string, repositoryIds: string[]) => {

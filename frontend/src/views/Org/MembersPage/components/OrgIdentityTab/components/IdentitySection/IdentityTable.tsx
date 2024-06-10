@@ -1,9 +1,22 @@
-import { faKey, faLock, faPencil, faServer, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCopy,
+  faEllipsis,
+  faKey,
+  faLock,
+  faPencil,
+  faServer,
+  faXmark
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyState,
   IconButton,
   Select,
@@ -22,8 +35,6 @@ import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@a
 import { useGetIdentityMembershipOrgs, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-
-// TODO: some kind of map
 
 type Props = {
   handlePopUpOpen: (
@@ -44,7 +55,6 @@ type Props = {
 };
 
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
-  
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -83,7 +93,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
         <THead>
           <Tr>
             <Th>Name</Th>
-            <Th>ID</Th>
             <Th>Role</Th>
             <Th>Auth Method</Th>
             <Th className="w-5" />
@@ -98,7 +107,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               return (
                 <Tr className="h-10" key={`identity-${id}`}>
                   <Td>{name}</Td>
-                  <Td>{id}</Td>
                   <Td>
                     <OrgPermissionCan
                       I={OrgPermissionActions.Edit}
@@ -130,7 +138,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   </Td>
                   <Td>{authMethod ? identityAuthToNameMap[authMethod] : "Not configured"}</Td>
                   <Td>
-                    <div className="flex items-center justify-end">
+                    <div className="flex items-center justify-end space-x-4">
                       {authMethod === IdentityAuthMethod.UNIVERSAL_AUTH && (
                         <Tooltip content="Manage client ID/secrets">
                           <IconButton
@@ -144,7 +152,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                             colorSchema="primary"
                             variant="plain"
                             ariaLabel="update"
-                            // isDisabled={!isAllowed}
                           >
                             <FontAwesomeIcon icon={faKey} />
                           </IconButton>
@@ -168,7 +175,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                               colorSchema="primary"
                               variant="plain"
                               ariaLabel="update"
-                              className="ml-4"
                               isDisabled={!isAllowed}
                             >
                               <FontAwesomeIcon icon={faLock} />
@@ -176,54 +182,78 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           </Tooltip>
                         )}
                       </OrgPermissionCan>
-                      <OrgPermissionCan
-                        I={OrgPermissionActions.Edit}
-                        a={OrgPermissionSubjects.Identity}
-                      >
-                        {(isAllowed) => (
-                          <IconButton
-                            onClick={async () => {
-                              handlePopUpOpen("identity", {
-                                identityId: id,
-                                name,
-                                role,
-                                customRole
-                              });
-                            }}
-                            size="lg"
-                            colorSchema="primary"
-                            variant="plain"
-                            ariaLabel="update"
-                            className="ml-4"
-                            isDisabled={!isAllowed}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild className="rounded-lg">
+                          <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                            <Tooltip content="More options">
+                              <FontAwesomeIcon size="lg" icon={faEllipsis} />
+                            </Tooltip>
+                          </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="p-1">
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Edit}
+                            a={OrgPermissionSubjects.Identity}
                           >
-                            <FontAwesomeIcon icon={faPencil} />
-                          </IconButton>
-                        )}
-                      </OrgPermissionCan>
-                      <OrgPermissionCan
-                        I={OrgPermissionActions.Delete}
-                        a={OrgPermissionSubjects.Identity}
-                      >
-                        {(isAllowed) => (
-                          <IconButton
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={async () => {
+                                  if (!isAllowed) return;
+                                  handlePopUpOpen("identity", {
+                                    identityId: id,
+                                    name,
+                                    role,
+                                    customRole
+                                  });
+                                }}
+                                disabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faPencil} />}
+                              >
+                                Update identity
+                              </DropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Delete}
+                            a={OrgPermissionSubjects.Identity}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                className={twMerge(
+                                  isAllowed
+                                    ? "hover:!bg-red-500 hover:!text-white"
+                                    : "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={() => {
+                                  if (!isAllowed) return;
+                                  handlePopUpOpen("deleteIdentity", {
+                                    identityId: id,
+                                    name
+                                  });
+                                }}
+                                icon={<FontAwesomeIcon icon={faXmark} />}
+                              >
+                                Delete identity
+                              </DropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
+                          <DropdownMenuItem
                             onClick={() => {
-                              handlePopUpOpen("deleteIdentity", {
-                                identityId: id,
-                                name
+                              navigator.clipboard.writeText(id);
+                              createNotification({
+                                text: "Copied identity internal ID to clipboard",
+                                type: "success"
                               });
                             }}
-                            size="lg"
-                            colorSchema="danger"
-                            variant="plain"
-                            ariaLabel="update"
-                            className="ml-4"
-                            isDisabled={!isAllowed}
+                            icon={<FontAwesomeIcon icon={faCopy} />}
                           >
-                            <FontAwesomeIcon icon={faXmark} />
-                          </IconButton>
-                        )}
-                      </OrgPermissionCan>
+                            Copy Identity ID
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </Td>
                 </Tr>

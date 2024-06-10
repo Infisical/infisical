@@ -49,7 +49,6 @@ type Props = {
 };
 
 export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Props) => {
-  
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const { user } = useUser();
@@ -218,7 +217,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     variant="outline_bg"
                                     onClick={() => onResendInvite(email)}
                                   >
-                                    Resend Invite
+                                    Resend invite
                                   </Button>
                                 )}
                             </>

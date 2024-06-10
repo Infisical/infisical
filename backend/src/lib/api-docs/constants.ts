@@ -89,6 +89,21 @@ export const UNIVERSAL_AUTH = {
   },
   RENEW_ACCESS_TOKEN: {
     accessToken: "The access token to renew."
+  },
+  REVOKE_ACCESS_TOKEN: {
+    accessToken: "The access token to revoke."
+  }
+} as const;
+
+export const AWS_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login.",
+    iamHttpRequestMethod: "The HTTP request method used in the signed request.",
+    iamRequestUrl:
+      "The base64-encoded HTTP URL used in the signed request. Most likely, the base64-encoding of https://sts.amazonaws.com/",
+    iamRequestBody:
+      "The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.",
+    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request."
   }
 } as const;
 
@@ -133,36 +148,6 @@ export const PROJECTS = {
     name: "The new name of the project.",
     autoCapitalization: "Disable or enable auto-capitalization for the project."
   },
-  INVITE_MEMBER: {
-    projectId: "The ID of the project to invite the member to.",
-    emails: "A list of organization member emails to invite to the project.",
-    usernames: "A list of usernames to invite to the project."
-  },
-  REMOVE_MEMBER: {
-    projectId: "The ID of the project to remove the member from.",
-    emails: "A list of organization member emails to remove from the project.",
-    usernames: "A list of usernames to remove from the project."
-  },
-  GET_USER_MEMBERSHIPS: {
-    workspaceId: "The ID of the project to get memberships from."
-  },
-  UPDATE_USER_MEMBERSHIP: {
-    workspaceId: "The ID of the project to update the membership for.",
-    membershipId: "The ID of the membership to update.",
-    roles: "A list of roles to update the membership to."
-  },
-  LIST_IDENTITY_MEMBERSHIPS: {
-    projectId: "The ID of the project to get identity memberships from."
-  },
-  UPDATE_IDENTITY_MEMBERSHIP: {
-    projectId: "The ID of the project to update the identity membership for.",
-    identityId: "The ID of the identity to update the membership for.",
-    roles: "A list of roles to update the membership to."
-  },
-  DELETE_IDENTITY_MEMBERSHIP: {
-    projectId: "The ID of the project to delete the identity membership from.",
-    identityId: "The ID of the identity to delete the membership from."
-  },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
   },
@@ -200,6 +185,72 @@ export const PROJECTS = {
     workspaceId: "The ID of the project to list integration auths for."
   }
 } as const;
+
+export const PROJECT_USERS = {
+  INVITE_MEMBER: {
+    projectId: "The ID of the project to invite the member to.",
+    emails: "A list of organization member emails to invite to the project.",
+    usernames: "A list of usernames to invite to the project."
+  },
+  REMOVE_MEMBER: {
+    projectId: "The ID of the project to remove the member from.",
+    emails: "A list of organization member emails to remove from the project.",
+    usernames: "A list of usernames to remove from the project."
+  },
+  GET_USER_MEMBERSHIPS: {
+    workspaceId: "The ID of the project to get memberships from."
+  },
+  GET_USER_MEMBERSHIP: {
+    workspaceId: "The ID of the project to get memberships from.",
+    username: "The username to get project membership of. Email is the default username."
+  },
+  UPDATE_USER_MEMBERSHIP: {
+    workspaceId: "The ID of the project to update the membership for.",
+    membershipId: "The ID of the membership to update.",
+    roles: "A list of roles to update the membership to."
+  }
+};
+
+export const PROJECT_IDENTITIES = {
+  LIST_IDENTITY_MEMBERSHIPS: {
+    projectId: "The ID of the project to get identity memberships from."
+  },
+  GET_IDENTITY_MEMBERSHIP_BY_ID: {
+    identityId: "The ID of the identity to get the membership for.",
+    projectId: "The ID of the project to get the identity membership for."
+  },
+  UPDATE_IDENTITY_MEMBERSHIP: {
+    projectId: "The ID of the project to update the identity membership for.",
+    identityId: "The ID of the identity to update the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the identity project membership.",
+      role: "The role slug to assign to the newly created identity project membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s,2m,3h",
+      temporaryAccessStartTime: "Time to which the temporary access starts"
+    }
+  },
+  DELETE_IDENTITY_MEMBERSHIP: {
+    projectId: "The ID of the project to delete the identity membership from.",
+    identityId: "The ID of the identity to delete the membership from."
+  },
+  CREATE_IDENTITY_MEMBERSHIP: {
+    projectId: "The ID of the project to create the identity membership from.",
+    identityId: "The ID of the identity to create the membership from.",
+    role: "The role slug to assign to the newly created identity project membership.",
+    roles: {
+      description: "A list of role slugs to assign to the newly created identity project membership.",
+      role: "The role slug to assign to the newly created identity project membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s,2m,3h",
+      temporaryAccessStartTime: "Time to which the temporary access starts"
+    }
+  }
+};
 
 export const ENVIRONMENTS = {
   CREATE: {
@@ -240,6 +291,7 @@ export const FOLDERS = {
     name: "The new name of the folder.",
     path: "The path of the folder to update.",
     directory: "The new directory of the folder to update. (Deprecated in favor of path)",
+    projectSlug: "The slug of the project where the folder is located.",
     workspaceId: "The ID of the project where the folder is located."
   },
   DELETE: {
@@ -272,10 +324,12 @@ export const SECRETS = {
 
 export const RAW_SECRETS = {
   LIST: {
+    expand: "Whether or not to expand secret references",
     recursive:
       "Whether or not to fetch all secrets from the specified base path, and all of its subdirectories. Note, the max depth is 20 deep.",
     workspaceId: "The ID of the project to list secrets from.",
-    workspaceSlug: "The slug of the project to list secrets from. This parameter is only usable by machine identities.",
+    workspaceSlug:
+      "The slug of the project to list secrets from. This parameter is only applicable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
     includeImports: "Weather to include imported secrets or not."
@@ -294,6 +348,7 @@ export const RAW_SECRETS = {
   GET: {
     secretName: "The name of the secret to get.",
     workspaceId: "The ID of the project to get the secret from.",
+    workspaceSlug: "The slug of the project to get the secret from.",
     environment: "The slug of the environment to get the secret from.",
     secretPath: "The path of the secret to get.",
     version: "The version of the secret to get.",
@@ -464,13 +519,24 @@ export const SECRET_TAGS = {
 export const IDENTITY_ADDITIONAL_PRIVILEGE = {
   CREATE: {
     projectSlug: "The slug of the project of the identity in.",
-    identityId: "The ID of the identity to delete.",
+    identityId: "The ID of the identity to create.",
     slug: "The slug of the privilege to create.",
-    permissions: `The permission object for the privilege.
-1. [["read", "secrets", {environment: "dev", secretPath: {$glob: "/"}}]]
-2. [["read", "secrets", {environment: "dev"}], ["create", "secrets", {environment: "dev"}]]
-2. [["read", "secrets", {environment: "dev"}]]
+    permissions: `@deprecated - use privilegePermission
+The permission object for the privilege.
+- Read secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"]}
+\`\`\`
+- Read and Write secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"], {"action": "write", "subject": "secrets"]}
+\`\`\`
+- Read secrets scoped to an environment and secret path
+\`\`\`
+- { "permissions": [{"action": "read", "subject": "secrets", "conditions": { "environment": "dev", "secretPath": { "$glob": "/" } }}] }
+\`\`\`
 `,
+    privilegePermission: "The permission object for the privilege.",
     isPackPermission: "Whether the server should pack(compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
     temporaryMode: "Type of temporary access given. Types: relative",
@@ -482,12 +548,22 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     identityId: "The ID of the identity to update.",
     slug: "The slug of the privilege to update.",
     newSlug: "The new slug of the privilege to update.",
-    permissions: `The permission object for the privilege.
-1. [["read", "secrets", {environment: "dev", secretPath: {$glob: "/"}}]]
-2. [["read", "secrets", {environment: "dev"}], ["create", "secrets", {environment: "dev"}]]
-2. [["read", "secrets", {environment: "dev"}]]
+    permissions: `@deprecated - use privilegePermission
+The permission object for the privilege.
+- Read secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"]}
+\`\`\`
+- Read and Write secrets
+\`\`\`
+{ "permissions": [{"action": "read", "subject": "secrets"], {"action": "write", "subject": "secrets"]}
+\`\`\`
+- Read secrets scoped to an environment and secret path
+\`\`\`
+- { "permissions": [{"action": "read", "subject": "secrets", "conditions": { "environment": "dev", "secretPath": { "$glob": "/" } }}] }
+\`\`\`
 `,
-    isPackPermission: "Whether the server should pack(compact) the permission object.",
+    privilegePermission: "The permission object for the privilege.",
     isTemporary: "Whether the privilege is temporary.",
     temporaryMode: "Type of temporary access given. Types: relative",
     temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
@@ -585,6 +661,7 @@ export const INTEGRATION = {
     targetServiceId:
       "The service based grouping identifier ID of the external provider. Used in Terraform cloud, Checkly, Railway and NorthFlank",
     owner: "External integration providers service entity owner. Used in Github.",
+    url: "The self-hosted URL of the platform to integrate with",
     path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault",
     region: "AWS region to sync secrets to.",
     scope: "Scope of the provider. Used by Github, Qovery",
@@ -592,10 +669,12 @@ export const INTEGRATION = {
       secretPrefix: "The prefix for the saved secret. Used by GCP.",
       secretSuffix: "The suffix for the saved secret. Used by GCP.",
       initialSyncBehavoir: "Type of syncing behavoir with the integration.",
+      mappingBehavior: "The mapping behavior of the integration.",
       shouldAutoRedeploy: "Used by Render to trigger auto deploy.",
       secretGCPLabel: "The label for GCP secrets.",
       secretAWSTag: "The tags for AWS secrets.",
-      kmsKeyId: "The ID of the encryption key from AWS KMS."
+      kmsKeyId: "The ID of the encryption key from AWS KMS.",
+      shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store."
     }
   },
   UPDATE: {
@@ -612,5 +691,63 @@ export const INTEGRATION = {
   },
   DELETE: {
     integrationId: "The ID of the integration object."
+  },
+  SYNC: {
+    integrationId: "The ID of the integration object to manually sync"
+  }
+};
+
+export const AUDIT_LOG_STREAMS = {
+  CREATE: {
+    url: "The HTTP URL to push logs to.",
+    headers: {
+      desc: "The HTTP headers attached for the external prrovider requests.",
+      key: "The HTTP header key name.",
+      value: "The HTTP header value."
+    }
+  },
+  UPDATE: {
+    id: "The ID of the audit log stream to update.",
+    url: "The HTTP URL to push logs to.",
+    headers: {
+      desc: "The HTTP headers attached for the external prrovider requests.",
+      key: "The HTTP header key name.",
+      value: "The HTTP header value."
+    }
+  },
+  DELETE: {
+    id: "The ID of the audit log stream to delete."
+  },
+  GET_BY_ID: {
+    id: "The ID of the audit log stream to get details."
+  }
+};
+
+export const PROJECT_ROLE = {
+  CREATE: {
+    projectSlug: "Slug of the project to create the role for.",
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  UPDATE: {
+    projectSlug: "Slug of the project to update the role for.",
+    roleId: "The ID of the role to update",
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  DELETE: {
+    projectSlug: "Slug of the project to delete this role for.",
+    roleId: "The ID of the role to update"
+  },
+  GET_ROLE_BY_SLUG: {
+    projectSlug: "The slug of the project.",
+    roleSlug: "The slug of the role to get details"
+  },
+  LIST: {
+    projectSlug: "The slug of the project to list the roles of."
   }
 };

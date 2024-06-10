@@ -32,6 +32,8 @@ import {
   TCreateManySecretsRawFn,
   TCreateManySecretsRawFnFactory,
   TFnSecretBlindIndexCheck,
+  TFnSecretBlindIndexCheckV2,
+  TFnSecretBulkDelete,
   TFnSecretBulkInsert,
   TFnSecretBulkUpdate,
   TUpdateManySecretsRawFn,
@@ -149,7 +151,8 @@ export const recursivelyGetSecretPaths = ({
 
     // Fetch all folders in env once with a single query
     const folders = await folderDAL.find({
-      envId: env.id
+      envId: env.id,
+      isReserved: false
     });
 
     // Build the folder hierarchy map
@@ -194,6 +197,7 @@ type TInterpolateSecretArg = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
 };
 
+const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/g;
 export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderDAL }: TInterpolateSecretArg) => {
   const fetchSecretsCrossEnv = () => {
     const fetchCache: Record<string, Record<string, string>> = {};
@@ -235,7 +239,6 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
     };
   };
 
-  const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/g;
   const recursivelyExpandSecret = async (
     expandedSec: Record<string, string>,
     interpolatedSec: Record<string, string>,
@@ -353,7 +356,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
 };
 
 export const decryptSecretRaw = (
-  secret: TSecrets & { workspace: string; environment: string; secretPath?: string },
+  secret: TSecrets & { workspace: string; environment: string; secretPath: string },
   key: string
 ) => {
   const secretKey = decryptSymmetric128BitHexKeyUTF8({
@@ -394,6 +397,61 @@ export const decryptSecretRaw = (
     id: secret.id,
     user: secret.userId
   };
+};
+
+// this is used when secret blind index already exist
+// mainly for secret approval
+export const fnSecretBlindIndexCheckV2 = async ({
+  inputSecrets,
+  folderId,
+  userId,
+  secretDAL
+}: TFnSecretBlindIndexCheckV2) => {
+  if (inputSecrets.some(({ type }) => type === SecretType.Personal) && !userId) {
+    throw new BadRequestError({ message: "Missing user id for personal secret" });
+  }
+  const secrets = await secretDAL.findByBlindIndexes(
+    folderId,
+    inputSecrets.map(({ secretBlindIndex, type }) => ({
+      blindIndex: secretBlindIndex,
+      type: type || SecretType.Shared
+    })),
+    userId
+  );
+  const secsGroupedByBlindIndex = groupBy(secrets, (i) => i.secretBlindIndex as string);
+
+  return { secsGroupedByBlindIndex, secrets };
+};
+
+/**
+ * Grabs and processes nested secret references from a string
+ *
+ * This function looks for patterns that match the interpolation syntax in the input string.
+ * It filters out references that include nested paths, splits them into environment and
+ * secret path parts, and then returns an array of objects with the environment and the
+ * joined secret path.
+ *
+ * @param {string} maybeSecretReference - The string that has the potential secret references.
+ * @returns {Array<{ environment: string, secretPath: string }>} - An array of objects
+ * with the environment and joined secret path.
+ *
+ * @example
+ * const value = "Hello ${dev.someFolder.OtherFolder.SECRET_NAME} and ${prod.anotherFolder.SECRET_NAME}";
+ * const result = getAllNestedSecretReferences(value);
+ * // result will be:
+ * // [
+ * //   { environment: 'dev', secretPath: '/someFolder/OtherFolder' },
+ * //   { environment: 'prod', secretPath: '/anotherFolder' }
+ * // ]
+ */
+export const getAllNestedSecretReferences = (maybeSecretReference: string) => {
+  const references = Array.from(maybeSecretReference.matchAll(INTERPOLATION_SYNTAX_REG), (m) => m[1]);
+  return references
+    .filter((el) => el.includes("."))
+    .map((el) => {
+      const [environment, ...secretPathList] = el.split(".");
+      return { environment, secretPath: path.join("/", ...secretPathList.slice(0, -1)) };
+    });
 };
 
 /**
@@ -467,7 +525,7 @@ export const fnSecretBulkInsert = async ({
   tx
 }: TFnSecretBulkInsert) => {
   const newSecrets = await secretDAL.insertMany(
-    inputSecrets.map(({ tags, ...el }) => ({ ...el, folderId })),
+    inputSecrets.map(({ tags, references, ...el }) => ({ ...el, folderId })),
     tx
   );
   const newSecretGroupByBlindIndex = groupBy(newSecrets, (item) => item.secretBlindIndex as string);
@@ -478,10 +536,17 @@ export const fnSecretBulkInsert = async ({
     }))
   );
   const secretVersions = await secretVersionDAL.insertMany(
-    inputSecrets.map(({ tags, ...el }) => ({
+    inputSecrets.map(({ tags, references, ...el }) => ({
       ...el,
       folderId,
       secretId: newSecretGroupByBlindIndex[el.secretBlindIndex as string][0].id
+    })),
+    tx
+  );
+  await secretDAL.upsertSecretReferences(
+    inputSecrets.map(({ references = [], secretBlindIndex }) => ({
+      secretId: newSecretGroupByBlindIndex[secretBlindIndex as string][0].id,
+      references
     })),
     tx
   );
@@ -509,7 +574,7 @@ export const fnSecretBulkUpdate = async ({
   secretVersionTagDAL
 }: TFnSecretBulkUpdate) => {
   const newSecrets = await secretDAL.bulkUpdate(
-    inputSecrets.map(({ filter, data: { tags, ...data } }) => ({
+    inputSecrets.map(({ filter, data: { tags, references, ...data } }) => ({
       filter: { ...filter, folderId },
       data
     })),
@@ -520,6 +585,15 @@ export const fnSecretBulkUpdate = async ({
       ...el,
       secretId: id
     })),
+    tx
+  );
+  await secretDAL.upsertSecretReferences(
+    inputSecrets
+      .filter(({ data: { references } }) => Boolean(references))
+      .map(({ data: { references = [] } }, i) => ({
+        secretId: newSecrets[i].id,
+        references
+      })),
     tx
   );
   const secsUpdatedTag = inputSecrets.flatMap(({ data: { tags } }, i) =>
@@ -551,6 +625,35 @@ export const fnSecretBulkUpdate = async ({
   return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
+export const fnSecretBulkDelete = async ({
+  folderId,
+  inputSecrets,
+  tx,
+  actorId,
+  secretDAL,
+  secretQueueService
+}: TFnSecretBulkDelete) => {
+  const deletedSecrets = await secretDAL.deleteMany(
+    inputSecrets.map(({ type, secretBlindIndex }) => ({
+      blindIndex: secretBlindIndex,
+      type
+    })),
+    folderId,
+    actorId,
+    tx
+  );
+
+  await Promise.allSettled(
+    deletedSecrets
+      .filter(({ secretReminderRepeatDays }) => Boolean(secretReminderRepeatDays))
+      .map(({ id, secretReminderRepeatDays }) =>
+        secretQueueService.removeSecretReminder({ secretId: id, repeatDays: secretReminderRepeatDays as number })
+      )
+  );
+
+  return deletedSecrets;
+};
+
 export const createManySecretsRawFnFactory = ({
   projectDAL,
   projectBotDAL,
@@ -561,7 +664,7 @@ export const createManySecretsRawFnFactory = ({
   secretVersionTagDAL,
   folderDAL
 }: TCreateManySecretsRawFnFactory) => {
-  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL);
+  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const createManySecretsRawFn = async ({
     projectId,
     environment,
@@ -591,50 +694,39 @@ export const createManySecretsRawFnFactory = ({
       folderId,
       isNew: true,
       blindIndexCfg,
+      userId,
       secretDAL
     });
 
-    const inputSecrets = await Promise.all(
-      secrets.map(async (secret) => {
-        const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
-        const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
-        const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretComment || "", botKey);
+    const inputSecrets = secrets.map((secret) => {
+      const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
+      const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
+      const secretReferences = getAllNestedSecretReferences(secret.secretValue || "");
+      const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretComment || "", botKey);
 
-        if (secret.type === SecretType.Personal) {
-          if (!userId) throw new BadRequestError({ message: "Missing user id for personal secret" });
-          const sharedExist = await secretDAL.findOne({
-            secretBlindIndex: keyName2BlindIndex[secret.secretName],
-            folderId,
-            type: SecretType.Shared
-          });
+      return {
+        type: secret.type,
+        userId: secret.type === SecretType.Personal ? userId : null,
+        secretName: secret.secretName,
+        secretKeyCiphertext: secretKeyEncrypted.ciphertext,
+        secretKeyIV: secretKeyEncrypted.iv,
+        secretKeyTag: secretKeyEncrypted.tag,
+        secretValueCiphertext: secretValueEncrypted.ciphertext,
+        secretValueIV: secretValueEncrypted.iv,
+        secretValueTag: secretValueEncrypted.tag,
+        secretCommentCiphertext: secretCommentEncrypted.ciphertext,
+        secretCommentIV: secretCommentEncrypted.iv,
+        secretCommentTag: secretCommentEncrypted.tag,
+        skipMultilineEncoding: secret.skipMultilineEncoding,
+        tags: secret.tags,
+        references: secretReferences
+      };
+    });
 
-          if (!sharedExist)
-            throw new BadRequestError({
-              message: "Failed to create personal secret override for no corresponding shared secret"
-            });
-        }
-
-        const tags = secret.tags ? await secretTagDAL.findManyTagsById(projectId, secret.tags) : [];
-        if ((secret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
-
-        return {
-          type: secret.type,
-          userId: secret.type === SecretType.Personal ? userId : null,
-          secretName: secret.secretName,
-          secretKeyCiphertext: secretKeyEncrypted.ciphertext,
-          secretKeyIV: secretKeyEncrypted.iv,
-          secretKeyTag: secretKeyEncrypted.tag,
-          secretValueCiphertext: secretValueEncrypted.ciphertext,
-          secretValueIV: secretValueEncrypted.iv,
-          secretValueTag: secretValueEncrypted.tag,
-          secretCommentCiphertext: secretCommentEncrypted.ciphertext,
-          secretCommentIV: secretCommentEncrypted.iv,
-          secretCommentTag: secretCommentEncrypted.tag,
-          skipMultilineEncoding: secret.skipMultilineEncoding,
-          tags: secret.tags
-        };
-      })
-    );
+    // get all tags
+    const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
+    const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
+    if (tags.length !== tagIds.length) throw new BadRequestError({ message: "Tag not found" });
 
     const newSecrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkInsert({
@@ -670,7 +762,7 @@ export const updateManySecretsRawFnFactory = ({
   secretVersionTagDAL,
   folderDAL
 }: TUpdateManySecretsRawFnFactory) => {
-  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL);
+  const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const updateManySecretsRawFn = async ({
     projectId,
     environment,
@@ -703,56 +795,35 @@ export const updateManySecretsRawFnFactory = ({
       userId
     });
 
-    const inputSecrets = await Promise.all(
-      secrets.map(async (secret) => {
-        if (secret.newSecretName === "") {
-          throw new BadRequestError({ message: "New secret name cannot be empty" });
-        }
+    const inputSecrets = secrets.map((secret) => {
+      if (secret.newSecretName === "") {
+        throw new BadRequestError({ message: "New secret name cannot be empty" });
+      }
 
-        const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
-        const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
-        const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretComment || "", botKey);
+      const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
+      const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
+      const secretReferences = getAllNestedSecretReferences(secret.secretValue || "");
+      const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretComment || "", botKey);
 
-        if (secret.type === SecretType.Personal) {
-          if (!userId) throw new BadRequestError({ message: "Missing user id for personal secret" });
-
-          const sharedExist = await secretDAL.findOne({
-            secretBlindIndex: keyName2BlindIndex[secret.secretName],
-            folderId,
-            type: SecretType.Shared
-          });
-
-          if (!sharedExist)
-            throw new BadRequestError({
-              message: "Failed to update personal secret override for no corresponding shared secret"
-            });
-
-          if (secret.newSecretName)
-            throw new BadRequestError({ message: "Personal secret cannot change the key name" });
-        }
-
-        const tags = secret.tags ? await secretTagDAL.findManyTagsById(projectId, secret.tags) : [];
-        if ((secret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
-
-        return {
-          type: secret.type,
-          userId: secret.type === SecretType.Personal ? userId : null,
-          secretName: secret.secretName,
-          newSecretName: secret.newSecretName,
-          secretKeyCiphertext: secretKeyEncrypted.ciphertext,
-          secretKeyIV: secretKeyEncrypted.iv,
-          secretKeyTag: secretKeyEncrypted.tag,
-          secretValueCiphertext: secretValueEncrypted.ciphertext,
-          secretValueIV: secretValueEncrypted.iv,
-          secretValueTag: secretValueEncrypted.tag,
-          secretCommentCiphertext: secretCommentEncrypted.ciphertext,
-          secretCommentIV: secretCommentEncrypted.iv,
-          secretCommentTag: secretCommentEncrypted.tag,
-          skipMultilineEncoding: secret.skipMultilineEncoding,
-          tags: secret.tags
-        };
-      })
-    );
+      return {
+        type: secret.type,
+        userId: secret.type === SecretType.Personal ? userId : null,
+        secretName: secret.secretName,
+        newSecretName: secret.newSecretName,
+        secretKeyCiphertext: secretKeyEncrypted.ciphertext,
+        secretKeyIV: secretKeyEncrypted.iv,
+        secretKeyTag: secretKeyEncrypted.tag,
+        secretValueCiphertext: secretValueEncrypted.ciphertext,
+        secretValueIV: secretValueEncrypted.iv,
+        secretValueTag: secretValueEncrypted.tag,
+        secretCommentCiphertext: secretCommentEncrypted.ciphertext,
+        secretCommentIV: secretCommentEncrypted.iv,
+        secretCommentTag: secretCommentEncrypted.tag,
+        skipMultilineEncoding: secret.skipMultilineEncoding,
+        tags: secret.tags,
+        references: secretReferences
+      };
+    });
 
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];

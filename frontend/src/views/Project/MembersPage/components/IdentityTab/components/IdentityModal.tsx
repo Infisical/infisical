@@ -30,17 +30,17 @@ type Props = {
 };
 
 export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
-  
   const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
 
   const orgId = currentOrg?.id || "";
   const workspaceId = currentWorkspace?.id || "";
+  const projectSlug = currentWorkspace?.slug || "";
 
   const { data: identityMembershipOrgs } = useGetIdentityMembershipOrgs(orgId);
   const { data: identityMemberships } = useGetWorkspaceIdentityMemberships(workspaceId);
 
-  const { data: roles } = useGetProjectRoles(workspaceId);
+  const { data: roles } = useGetProjectRoles(projectSlug);
 
   const { mutateAsync: addIdentityToWorkspaceMutateAsync } = useAddIdentityToWorkspace();
 

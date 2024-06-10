@@ -58,10 +58,12 @@ func GetPlainTextSecretsViaUniversalAuth(accessToken string, etag string, secret
 	httpClient.SetAuthToken(accessToken)
 
 	secretsResponse, err := api.CallGetDecryptedSecretsV3(httpClient, api.GetDecryptedSecretsV3Request{
-		ProjectSlug: secretScope.ProjectSlug,
-		Environment: secretScope.EnvSlug,
-		SecretPath:  secretScope.SecretsPath,
-		ETag:        etag,
+		ProjectSlug:            secretScope.ProjectSlug,
+		Environment:            secretScope.EnvSlug,
+		Recursive:              secretScope.Recursive,
+		SecretPath:             secretScope.SecretsPath,
+		ExpandSecretReferences: true,
+		ETag:                   etag,
 	})
 
 	if err != nil {
@@ -79,13 +81,19 @@ func GetPlainTextSecretsViaUniversalAuth(accessToken string, etag string, secret
 		})
 	}
 
-	return secrets, model.RequestUpdateUpdateDetails{
+	// No need to do expansion for Machine Identity auth as this is handled on server-side.
+	mergedSecrets := MergeRawImportedSecrets(secrets, secretsResponse.Imports)
+	if err != nil {
+		return nil, model.RequestUpdateUpdateDetails{}, err
+	}
+
+	return mergedSecrets, model.RequestUpdateUpdateDetails{
 		Modified: secretsResponse.Modified,
 		ETag:     secretsResponse.ETag,
 	}, nil
 }
 
-func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string, envSlug string, secretPath string) ([]model.SingleEnvironmentVariable, model.RequestUpdateUpdateDetails, error) {
+func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string, envSlug string, secretPath string, recursive bool) ([]model.SingleEnvironmentVariable, model.RequestUpdateUpdateDetails, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
 		return nil, model.RequestUpdateUpdateDetails{}, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
@@ -106,6 +114,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string, en
 	encryptedSecretsResponse, err := api.CallGetSecretsV3(httpClient, api.GetEncryptedSecretsV3Request{
 		WorkspaceId: serviceTokenDetails.Workspace,
 		Environment: envSlug,
+		Recursive:   recursive,
 		ETag:        etag,
 		SecretPath:  secretPath,
 	})
@@ -376,7 +385,7 @@ func ExpandSecrets(secrets []model.SingleEnvironmentVariable, infisicalToken str
 
 			if crossRefSec, ok := crossEnvRefSecs[uniqKey]; !ok {
 				// if not in cross reference cache, fetch it from server
-				refSecs, _, err := GetPlainTextSecretsViaServiceToken(infisicalToken, "", env, secPath)
+				refSecs, _, err := GetPlainTextSecretsViaServiceToken(infisicalToken, "", env, secPath, false)
 				if err != nil {
 					fmt.Printf("Could not fetch secrets in environment: %s secret-path: %s", env, secPath)
 					// HandleError(err, fmt.Sprintf("Could not fetch secrets in environment: %s secret-path: %s", env, secPath), "If you are using a service token to fetch secrets, please ensure it is valid")
@@ -432,4 +441,33 @@ func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []model.SingleEn
 	}
 
 	return secrets, nil
+}
+
+func MergeRawImportedSecrets(secrets []model.SingleEnvironmentVariable, importedSecrets []api.ImportedRawSecretV3) []model.SingleEnvironmentVariable {
+	if importedSecrets == nil {
+		return secrets
+	}
+
+	hasOverriden := make(map[string]bool)
+	for _, sec := range secrets {
+		hasOverriden[sec.Key] = true
+	}
+
+	for i := len(importedSecrets) - 1; i >= 0; i-- {
+		importSec := importedSecrets[i]
+
+		for _, sec := range importSec.Secrets {
+			if _, ok := hasOverriden[sec.SecretKey]; !ok {
+				secrets = append(secrets, model.SingleEnvironmentVariable{
+					Key:   sec.SecretKey,
+					Value: sec.SecretValue,
+					Type:  sec.Type,
+					ID:    sec.ID,
+				})
+				hasOverriden[sec.SecretKey] = true
+			}
+		}
+	}
+
+	return secrets
 }

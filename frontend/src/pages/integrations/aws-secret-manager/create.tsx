@@ -15,6 +15,7 @@ import queryString from "query-string";
 
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
+import { IntegrationMappingBehavior } from "@app/hooks/api/integrations/types";
 
 import {
   Button,
@@ -70,6 +71,17 @@ const awsRegions = [
   { name: "AWS GovCloud (US-West)", slug: "us-gov-west-1" }
 ];
 
+const mappingBehaviors = [
+  {
+    label: "Many to One (All Infisical secrets will be mapped to a single AWS secret)",
+    value: IntegrationMappingBehavior.MANY_TO_ONE
+  },
+  {
+    label: "One to One - (Each Infisical secret will be mapped to its own AWS secret)",
+    value: IntegrationMappingBehavior.ONE_TO_ONE
+  }
+];
+
 export default function AWSSecretManagerCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
@@ -84,6 +96,9 @@ export default function AWSSecretManagerCreateIntegrationPage() {
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
   const [selectedAWSRegion, setSelectedAWSRegion] = useState("");
+  const [selectedMappingBehavior, setSelectedMappingBehavior] = useState(
+    IntegrationMappingBehavior.MANY_TO_ONE
+  );
   const [targetSecretName, setTargetSecretName] = useState("");
   const [targetSecretNameErrorText, setTargetSecretNameErrorText] = useState("");
   const [tagKey, setTagKey] = useState("");
@@ -96,18 +111,11 @@ export default function AWSSecretManagerCreateIntegrationPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [shouldTag, setShouldTag] = useState(false);
 
-
   const { data: integrationAuthAwsKmsKeys, isLoading: isIntegrationAuthAwsKmsKeysLoading } =
     useGetIntegrationAuthAwsKmsKeys({
-      integrationAuthId: String(integrationAuthId), 
+      integrationAuthId: String(integrationAuthId),
       region: selectedAWSRegion
     });
-
-  useEffect(() => {
-    if (integrationAuthAwsKmsKeys) {
-      setKmsKeyId(String(integrationAuthAwsKmsKeys?.filter(key => key.alias === "alias/aws/secretsmanager")[0]?.id))
-    }
-  }, [integrationAuthAwsKmsKeys])
 
   useEffect(() => {
     if (workspace) {
@@ -123,7 +131,14 @@ export default function AWSSecretManagerCreateIntegrationPage() {
 
   const handleButtonClick = async () => {
     try {
-      if (targetSecretName.trim() === "") {
+      if (!selectedMappingBehavior) {
+        return;
+      }
+
+      if (
+        selectedMappingBehavior === IntegrationMappingBehavior.MANY_TO_ONE &&
+        targetSecretName.trim() === ""
+      ) {
         setTargetSecretName("Secret name cannot be blank");
         return;
       }
@@ -142,29 +157,32 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         metadata: {
           ...(shouldTag
             ? {
-                secretAWSTag: [{
-                  key: tagKey,
-                  value: tagValue
-                }]
+                secretAWSTag: [
+                  {
+                    key: tagKey,
+                    value: tagValue
+                  }
+                ]
               }
             : {}),
-          ...((kmsKeyId && integrationAuthAwsKmsKeys?.filter(key => key.id === kmsKeyId)[0]?.alias !== "default") ? 
-              {
-                kmsKeyId
-              }: {})
+          ...(kmsKeyId && { kmsKeyId }),
+          mappingBehavior: selectedMappingBehavior
         }
       });
-
       setIsLoading(false);
       setTargetSecretNameErrorText("");
 
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
+      setIsLoading(false);
       console.error(err);
     }
   };
 
-  return (integrationAuth && workspace && selectedSourceEnvironment && !isIntegrationAuthAwsKmsKeysLoading) ? (
+  return integrationAuth &&
+    workspace &&
+    selectedSourceEnvironment &&
+    !isIntegrationAuthAwsKmsKeysLoading ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
       <Head>
         <title>Set Up AWS Secrets Manager Integration</title>
@@ -240,7 +258,10 @@ export default function AWSSecretManagerCreateIntegrationPage() {
               <FormControl label="AWS Region">
                 <Select
                   value={selectedAWSRegion}
-                  onValueChange={(val) => setSelectedAWSRegion(val)}
+                  onValueChange={(val) => {
+                    setSelectedAWSRegion(val);
+                    setKmsKeyId("");
+                  }}
                   className="w-full border border-mineshaft-500"
                 >
                   {awsRegions.map((awsRegion) => (
@@ -250,19 +271,40 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                   ))}
                 </Select>
               </FormControl>
-              <FormControl
-                label="AWS SM Secret Name"
-                errorText={targetSecretNameErrorText}
-                isError={targetSecretNameErrorText !== "" ?? false}
-              >
-                <Input
-                  placeholder={`${workspace.name
-                    .toLowerCase()
-                    .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
-                  value={targetSecretName}
-                  onChange={(e) => setTargetSecretName(e.target.value)}
-                />
+              <FormControl label="Mapping Behavior">
+                <Select
+                  value={selectedMappingBehavior}
+                  onValueChange={(val) => {
+                    setSelectedMappingBehavior(val as IntegrationMappingBehavior);
+                  }}
+                  className="w-full border border-mineshaft-500 text-left"
+                >
+                  {mappingBehaviors.map((option) => (
+                    <SelectItem
+                      value={option.value}
+                      className="text-left"
+                      key={`aws-environment-${option.value}`}
+                    >
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </Select>
               </FormControl>
+              {selectedMappingBehavior === IntegrationMappingBehavior.MANY_TO_ONE && (
+                <FormControl
+                  label="AWS SM Secret Name"
+                  errorText={targetSecretNameErrorText}
+                  isError={targetSecretNameErrorText !== "" ?? false}
+                >
+                  <Input
+                    placeholder={`${workspace.name
+                      .toLowerCase()
+                      .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
+                    value={targetSecretName}
+                    onChange={(e) => setTargetSecretName(e.target.value)}
+                  />
+                </FormControl>
+              )}
             </motion.div>
           </TabPanel>
           <TabPanel value={TabSections.Options}>
@@ -284,20 +326,16 @@ export default function AWSSecretManagerCreateIntegrationPage() {
               </div>
               {shouldTag && (
                 <div className="mt-4">
-                  <FormControl
-                    label="Tag Key"
-                  >
-                    <Input 
-                      placeholder="managed-by" 
+                  <FormControl label="Tag Key">
+                    <Input
+                      placeholder="managed-by"
                       value={tagKey}
                       onChange={(e) => setTagKey(e.target.value)}
                     />
                   </FormControl>
-                  <FormControl
-                    label="Tag Value"
-                  >
-                    <Input 
-                      placeholder="infisical" 
+                  <FormControl label="Tag Value">
+                    <Input
+                      placeholder="infisical"
                       value={tagValue}
                       onChange={(e) => setTagValue(e.target.value)}
                     />
@@ -308,7 +346,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                 <Select
                   value={kmsKeyId}
                   onValueChange={(e) => {
-                    setKmsKeyId(e)
+                    setKmsKeyId(e);
                   }}
                   className="w-full border border-mineshaft-500"
                 >
@@ -361,7 +399,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         <title>Set Up AWS Secrets Manager Integration</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      {(isintegrationAuthLoading || isIntegrationAuthAwsKmsKeysLoading) ? (
+      {isintegrationAuthLoading || isIntegrationAuthAwsKmsKeysLoading ? (
         <img
           src="/images/loading/loading.gif"
           height={70}

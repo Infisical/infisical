@@ -131,20 +131,17 @@ const SpecificPrivilegeSecretForm = ({
         { action: ProjectPermissionActions.Delete, allowed: data.delete },
         { action: ProjectPermissionActions.Edit, allowed: data.edit }
       ];
-      const conditions: Record<string, any> = { environment: data.environmentSlug };
-      if (data.secretPath) {
-        conditions.secretPath = { $glob: data.secretPath };
-      }
       await updateIdentityPrivilege.mutateAsync({
         privilegeDetails: {
           ...data.temporaryAccess,
-          permissions: actions
-            .filter(({ allowed }) => allowed)
-            .map(({ action }) => ({
-              action,
-              subject: [ProjectPermissionSub.Secrets],
-              conditions
-            }))
+          privilegePermission: {
+            actions: actions.filter(({ allowed }) => allowed).map(({ action }) => action),
+            subject: ProjectPermissionSub.Secrets,
+            conditions: {
+              environment: data.environmentSlug,
+              ...(data.secretPath ? { secretPath: { $glob: data.secretPath } } : {})
+            }
+          }
         },
         privilegeSlug: privilege.slug,
         identityId,
@@ -474,15 +471,13 @@ export const SpecificPrivilegeSection = ({ identityId }: Props) => {
     if (createIdentityPrivilege.isLoading) return;
     try {
       await createIdentityPrivilege.mutateAsync({
-        permissions: [
-          {
-            action: ProjectPermissionActions.Read,
-            subject: [ProjectPermissionSub.Secrets],
-            conditions: {
-              environment: currentWorkspace?.environments?.[0].slug
-            }
+        privilegePermission: {
+          actions: [ProjectPermissionActions.Read],
+          subject: ProjectPermissionSub.Secrets,
+          conditions: {
+            environment: currentWorkspace?.environments?.[0].slug as string
           }
-        ],
+        },
         identityId,
         projectSlug
       });
@@ -512,6 +507,7 @@ export const SpecificPrivilegeSection = ({ identityId }: Props) => {
           ?.filter(({ permissions }) =>
             permissions?.[0]?.subject?.includes(ProjectPermissionSub.Secrets)
           )
+          .sort((a, b) => a.id.localeCompare(b.id))
           ?.map((privilege) => (
             <SpecificPrivilegeSecretForm
               privilege={privilege as TProjectUserPrivilege}

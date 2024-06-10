@@ -18,6 +18,7 @@ import { LdapConfigsSchema, LdapGroupMapsSchema } from "@app/db/schemas";
 import { TLDAPConfig } from "@app/ee/services/ldap-config/ldap-config-types";
 import { isValidLdapFilter, searchGroups } from "@app/ee/services/ldap-config/ldap-fns";
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -52,6 +53,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
       // eslint-disable-next-line
       async (req: IncomingMessage, user, cb) => {
         try {
+          if (!user.email) throw new BadRequestError({ message: "Invalid request. Missing email." });
           const ldapConfig = (req as unknown as FastifyRequest).ldapConfig as TLDAPConfig;
 
           let groups: { dn: string; cn: string }[] | undefined;
@@ -74,7 +76,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
             username: user.uid,
             firstName: user.givenName ?? user.cn ?? "",
             lastName: user.sn ?? "",
-            emails: user.mail ? [user.mail] : [],
+            email: user.mail,
             groups,
             relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
             orgId: (req as unknown as FastifyRequest).ldapConfig.organization

@@ -20,14 +20,14 @@ export const secretImportDALFactory = (db: TDbClient) => {
     return lastPos?.position || 0;
   };
 
-  const updateAllPosition = async (folderId: string, pos: number, targetPos: number, tx?: Knex) => {
+  const updateAllPosition = async (folderId: string, pos: number, targetPos: number, positionInc = 1, tx?: Knex) => {
     try {
       if (targetPos === -1) {
         // this means delete
         await (tx || db)(TableName.SecretImport)
           .where({ folderId })
           .andWhere("position", ">", pos)
-          .decrement("position", 1);
+          .decrement("position", positionInc);
         return;
       }
 
@@ -36,13 +36,13 @@ export const secretImportDALFactory = (db: TDbClient) => {
           .where({ folderId })
           .where("position", "<=", targetPos)
           .andWhere("position", ">", pos)
-          .decrement("position", 1);
+          .decrement("position", positionInc);
       } else {
         await (tx || db)(TableName.SecretImport)
           .where({ folderId })
           .where("position", ">=", targetPos)
           .andWhere("position", "<", pos)
-          .increment("position", 1);
+          .increment("position", positionInc);
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "Update position" });
@@ -74,6 +74,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db)(TableName.SecretImport)
         .whereIn("folderId", folderIds)
+        .where("isReplication", false)
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,

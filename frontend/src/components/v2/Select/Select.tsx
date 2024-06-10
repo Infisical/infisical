@@ -41,23 +41,28 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           ref={ref}
           className={twMerge(
             `inline-flex items-center justify-between rounded-md
-            bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200 focus:bg-mineshaft-700/80`,
-            className
+            bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none focus:bg-mineshaft-700/80 data-[placeholder]:text-mineshaft-200`,
+            className,
+            isDisabled && "cursor-not-allowed opacity-50"
           )}
         >
           <SelectPrimitive.Value placeholder={placeholder}>
             {props.icon ? <FontAwesomeIcon icon={props.icon} /> : placeholder}
           </SelectPrimitive.Value>
-          {!isDisabled && (
-            <SelectPrimitive.Icon className="ml-3">
-              <FontAwesomeIcon icon={faCaretDown} size="sm" />
-            </SelectPrimitive.Icon>
-          )}
+
+          <SelectPrimitive.Icon className="ml-3">
+            <FontAwesomeIcon
+              icon={faCaretDown}
+              size="sm"
+              className={twMerge(isDisabled && "opacity-30")}
+            />
+          </SelectPrimitive.Icon>
         </SelectPrimitive.Trigger>
         <SelectPrimitive.Portal>
           <SelectPrimitive.Content
             className={twMerge(
               "relative top-1 z-[100] overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md",
+              position === "popper" && "max-h-72",
               dropdownContainerClassName
             )}
             position={position}
@@ -109,7 +114,7 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
           outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-700/80`,
           isSelected && "bg-primary",
           isDisabled &&
-            "cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600",
+          "cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600",
           className
         )}
         ref={forwardedRef}

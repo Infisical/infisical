@@ -1,3 +1,7 @@
+export enum ReservedFolders {
+  SecretReplication = "__reserve_replication_"
+}
+
 export type TSecretFolder = {
   id: string;
   name: string;
@@ -35,4 +39,15 @@ export type TDeleteFolderDTO = {
   environment: string;
   folderId: string;
   path?: string;
+};
+
+export type TUpdateFolderBatchDTO = {
+  projectId: string;
+  projectSlug: string;
+  folders: {
+    name: string;
+    environment: string;
+    id: string;
+    path?: string;
+  }[];
 };

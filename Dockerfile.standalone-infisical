@@ -1,7 +1,6 @@
 ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
-ARG SAML_ORG_SLUG=saml-org-slug-default
 
 FROM  node:20-alpine AS base
 
@@ -35,9 +34,7 @@ ENV NEXT_PUBLIC_POSTHOG_API_KEY $POSTHOG_API_KEY
 ARG INTERCOM_ID
 ENV NEXT_PUBLIC_INTERCOM_ID $INTERCOM_ID
 ARG INFISICAL_PLATFORM_VERSION
-ENV NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
-ARG SAML_ORG_SLUG
-ENV NEXT_PUBLIC_SAML_ORG_SLUG=$SAML_ORG_SLUG 
+ENV NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION 
 
 # Build
 RUN npm run build
@@ -55,6 +52,7 @@ VOLUME /app/.next/cache/images
 COPY --chown=non-root-user:nodejs --chmod=555 frontend/scripts ./scripts
 COPY --from=frontend-builder /app/public ./public
 RUN chown non-root-user:nodejs ./public/data
+
 COPY --from=frontend-builder --chown=non-root-user:nodejs /app/.next/standalone ./
 COPY --from=frontend-builder --chown=non-root-user:nodejs /app/.next/static ./.next/static
 
@@ -93,8 +91,17 @@ RUN mkdir frontend-build
 
 # Production stage
 FROM base AS production
+RUN apk add --upgrade --no-cache ca-certificates
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 non-root-user
+
+# Give non-root-user permission to update SSL certs
+RUN chown -R non-root-user /etc/ssl/certs
+RUN chown non-root-user /etc/ssl/certs/ca-certificates.crt
+RUN chmod -R u+rwx /etc/ssl/certs
+RUN chmod u+rw /etc/ssl/certs/ca-certificates.crt
+RUN chown non-root-user /usr/sbin/update-ca-certificates
+RUN chmod u+rx /usr/sbin/update-ca-certificates
 
 ## set pre baked keys
 ARG POSTHOG_API_KEY
@@ -103,9 +110,6 @@ ENV NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY \
 ARG INTERCOM_ID=intercom-id
 ENV NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID \
   BAKED_NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID
-ARG SAML_ORG_SLUG
-ENV NEXT_PUBLIC_SAML_ORG_SLUG=$SAML_ORG_SLUG \
-  BAKED_NEXT_PUBLIC_SAML_ORG_SLUG=$SAML_ORG_SLUG
 
 WORKDIR / 
 

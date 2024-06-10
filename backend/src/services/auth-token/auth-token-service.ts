@@ -13,8 +13,9 @@ import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenFo
 
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
-  userDAL: Pick<TUserDALFactory, "findById">;
+  userDAL: Pick<TUserDALFactory, "findById" | "transaction">;
 };
+
 export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
 
 export const getTokenConfig = (tokenType: TokenType) => {
@@ -27,10 +28,17 @@ export const getTokenConfig = (tokenType: TokenType) => {
       const expiresAt = new Date(new Date().getTime() + 86400000);
       return { token, expiresAt };
     }
+    case TokenType.TOKEN_EMAIL_VERIFICATION: {
+      // generate random 6-digit code
+      const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
+      const triesLeft = 3;
+      const expiresAt = new Date(new Date().getTime() + 86400000);
+      return { token, triesLeft, expiresAt };
+    }
     case TokenType.TOKEN_EMAIL_MFA: {
       // generate random 6-digit code
       const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
-      const triesLeft = 5;
+      const triesLeft = 3;
       const expiresAt = new Date(new Date().getTime() + 300000);
       return { token, triesLeft, expiresAt };
     }
@@ -44,6 +52,11 @@ export const getTokenConfig = (tokenType: TokenType) => {
       // generate random hex
       const token = crypto.randomBytes(16).toString("hex");
       const expiresAt = new Date(new Date().getTime() + 86400000);
+      return { token, expiresAt };
+    }
+    case TokenType.TOKEN_USER_UNLOCK: {
+      const token = crypto.randomBytes(16).toString("hex");
+      const expiresAt = new Date(new Date().getTime() + 259200000);
       return { token, expiresAt };
     }
     default: {

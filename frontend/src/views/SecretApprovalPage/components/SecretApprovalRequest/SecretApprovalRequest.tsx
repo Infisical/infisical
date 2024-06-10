@@ -19,7 +19,13 @@ import {
   EmptyState,
   Skeleton
 } from "@app/components/v2";
-import { useUser, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useUser,
+  useWorkspace
+} from "@app/context";
 import {
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests,
@@ -58,6 +64,7 @@ export const SecretApprovalRequest = () => {
   const { data: secretApprovalRequestCount, isSuccess: isSecretApprovalReqCountSuccess } =
     useGetSecretApprovalRequestCount({ workspaceId });
   const { user: presentUser } = useUser();
+  const { permission } = useProjectPermission();
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
     (prev, curr) => ({ ...prev, [curr.id]: curr }),
@@ -156,34 +163,40 @@ export const SecretApprovalRequest = () => {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <Button
-                    variant="plain"
-                    colorSchema="secondary"
-                    className={committerFilter ? "text-white" : "text-bunker-300"}
-                    rightIcon={<FontAwesomeIcon icon={faChevronDown} size="sm" className="ml-2" />}
-                  >
-                    Author
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Select an author</DropdownMenuLabel>
-                  {members?.map(({ user, id }) => (
-                    <DropdownMenuItem
-                      onClick={() => setCommitterFilter((state) => (state === id ? undefined : id))}
-                      key={`request-filter-member-${id}`}
-                      icon={committerFilter === id && <FontAwesomeIcon icon={faCheckCircle} />}
-                      iconPos="right"
+              {!!permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Member) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger>
+                    <Button
+                      variant="plain"
+                      colorSchema="secondary"
+                      className={committerFilter ? "text-white" : "text-bunker-300"}
+                      rightIcon={
+                        <FontAwesomeIcon icon={faChevronDown} size="sm" className="ml-2" />
+                      }
                     >
-                      {user.email}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      Author
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Select an author</DropdownMenuLabel>
+                    {members?.map(({ user, id }) => (
+                      <DropdownMenuItem
+                        onClick={() =>
+                          setCommitterFilter((state) => (state === id ? undefined : id))
+                        }
+                        key={`request-filter-member-${id}`}
+                        icon={committerFilter === id && <FontAwesomeIcon icon={faCheckCircle} />}
+                        iconPos="right"
+                      >
+                        {user.username}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
-          <div className="flex flex-col rounded-b-md border-x border-t border-b border-mineshaft-600 border-mineshaft-600 bg-mineshaft-800">
+          <div className="flex flex-col rounded-b-md border-x border-t border-b border-mineshaft-600 bg-mineshaft-800">
             {isRequestListEmpty && (
               <div className="py-12">
                 <EmptyState title="No more requests pending." />
@@ -199,7 +212,8 @@ export const SecretApprovalRequest = () => {
                     createdAt,
                     policy,
                     reviewers,
-                    status
+                    status,
+                    isReplicated: isReplication
                   } = secretApproval;
                   const isApprover = policy?.approvers?.indexOf(myMembershipId || "") !== -1;
                   const isReviewed =
@@ -227,8 +241,9 @@ export const SecretApprovalRequest = () => {
                         Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
                         {membersGroupById?.[committerId]?.user?.firstName}{" "}
                         {membersGroupById?.[committerId]?.user?.lastName} (
-                        {membersGroupById?.[committerId]?.user?.email}){" "}
-                        {isApprover && !isReviewed && status === "open" && "- Review required"}
+                        {membersGroupById?.[committerId]?.user?.email})
+                        {isReplication && " via replication"}
+                        {isApprover && !isReviewed && status === "open" && " - Review required"}
                       </span>
                     </div>
                   );

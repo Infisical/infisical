@@ -2,11 +2,26 @@ import { Knex } from "knex";
 
 import {
   TableName,
+  TAccessApprovalPolicies,
+  TAccessApprovalPoliciesApprovers,
+  TAccessApprovalPoliciesApproversInsert,
+  TAccessApprovalPoliciesApproversUpdate,
+  TAccessApprovalPoliciesInsert,
+  TAccessApprovalPoliciesUpdate,
+  TAccessApprovalRequests,
+  TAccessApprovalRequestsInsert,
+  TAccessApprovalRequestsReviewers,
+  TAccessApprovalRequestsReviewersInsert,
+  TAccessApprovalRequestsReviewersUpdate,
+  TAccessApprovalRequestsUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
   TAuditLogs,
   TAuditLogsInsert,
+  TAuditLogStreams,
+  TAuditLogStreamsInsert,
+  TAuditLogStreamsUpdate,
   TAuditLogsUpdate,
   TAuthTokens,
   TAuthTokenSessions,
@@ -44,6 +59,18 @@ import {
   TIdentityAccessTokens,
   TIdentityAccessTokensInsert,
   TIdentityAccessTokensUpdate,
+  TIdentityAwsAuths,
+  TIdentityAwsAuthsInsert,
+  TIdentityAwsAuthsUpdate,
+  TIdentityAzureAuths,
+  TIdentityAzureAuthsInsert,
+  TIdentityAzureAuthsUpdate,
+  TIdentityGcpAuths,
+  TIdentityGcpAuthsInsert,
+  TIdentityGcpAuthsUpdate,
+  TIdentityKubernetesAuths,
+  TIdentityKubernetesAuthsInsert,
+  TIdentityKubernetesAuthsUpdate,
   TIdentityOrgMemberships,
   TIdentityOrgMembershipsInsert,
   TIdentityOrgMembershipsUpdate,
@@ -71,6 +98,15 @@ import {
   TIntegrations,
   TIntegrationsInsert,
   TIntegrationsUpdate,
+  TKmsKeys,
+  TKmsKeysInsert,
+  TKmsKeysUpdate,
+  TKmsKeyVersions,
+  TKmsKeyVersionsInsert,
+  TKmsKeyVersionsUpdate,
+  TKmsRootConfig,
+  TKmsRootConfigInsert,
+  TKmsRootConfigUpdate,
   TLdapConfigs,
   TLdapConfigsInsert,
   TLdapConfigsUpdate,
@@ -149,6 +185,9 @@ import {
   TSecretImports,
   TSecretImportsInsert,
   TSecretImportsUpdate,
+  TSecretReferences,
+  TSecretReferencesInsert,
+  TSecretReferencesUpdate,
   TSecretRotationOutputs,
   TSecretRotationOutputsInsert,
   TSecretRotationOutputsUpdate,
@@ -159,6 +198,9 @@ import {
   TSecretScanningGitRisks,
   TSecretScanningGitRisksInsert,
   TSecretScanningGitRisksUpdate,
+  TSecretSharing,
+  TSecretSharingInsert,
+  TSecretSharingUpdate,
   TSecretsInsert,
   TSecretSnapshotFolders,
   TSecretSnapshotFoldersInsert,
@@ -283,6 +325,11 @@ declare module "knex/types/tables" {
     >;
     [TableName.ProjectKeys]: Knex.CompositeTableType<TProjectKeys, TProjectKeysInsert, TProjectKeysUpdate>;
     [TableName.Secret]: Knex.CompositeTableType<TSecrets, TSecretsInsert, TSecretsUpdate>;
+    [TableName.SecretReference]: Knex.CompositeTableType<
+      TSecretReferences,
+      TSecretReferencesInsert,
+      TSecretReferencesUpdate
+    >;
     [TableName.SecretBlindIndex]: Knex.CompositeTableType<
       TSecretBlindIndexes,
       TSecretBlindIndexesInsert,
@@ -295,6 +342,7 @@ declare module "knex/types/tables" {
       TSecretFolderVersionsInsert,
       TSecretFolderVersionsUpdate
     >;
+    [TableName.SecretSharing]: Knex.CompositeTableType<TSecretSharing, TSecretSharingInsert, TSecretSharingUpdate>;
     [TableName.SecretTag]: Knex.CompositeTableType<TSecretTags, TSecretTagsInsert, TSecretTagsUpdate>;
     [TableName.SecretImport]: Knex.CompositeTableType<TSecretImports, TSecretImportsInsert, TSecretImportsUpdate>;
     [TableName.Integration]: Knex.CompositeTableType<TIntegrations, TIntegrationsInsert, TIntegrationsUpdate>;
@@ -310,6 +358,26 @@ declare module "knex/types/tables" {
       TIdentityUniversalAuths,
       TIdentityUniversalAuthsInsert,
       TIdentityUniversalAuthsUpdate
+    >;
+    [TableName.IdentityKubernetesAuth]: Knex.CompositeTableType<
+      TIdentityKubernetesAuths,
+      TIdentityKubernetesAuthsInsert,
+      TIdentityKubernetesAuthsUpdate
+    >;
+    [TableName.IdentityGcpAuth]: Knex.CompositeTableType<
+      TIdentityGcpAuths,
+      TIdentityGcpAuthsInsert,
+      TIdentityGcpAuthsUpdate
+    >;
+    [TableName.IdentityAwsAuth]: Knex.CompositeTableType<
+      TIdentityAwsAuths,
+      TIdentityAwsAuthsInsert,
+      TIdentityAwsAuthsUpdate
+    >;
+    [TableName.IdentityAzureAuth]: Knex.CompositeTableType<
+      TIdentityAzureAuths,
+      TIdentityAzureAuthsInsert,
+      TIdentityAzureAuthsUpdate
     >;
     [TableName.IdentityUaClientSecret]: Knex.CompositeTableType<
       TIdentityUaClientSecrets,
@@ -341,6 +409,31 @@ declare module "knex/types/tables" {
       TIdentityProjectAdditionalPrivilegeInsert,
       TIdentityProjectAdditionalPrivilegeUpdate
     >;
+
+    [TableName.AccessApprovalPolicy]: Knex.CompositeTableType<
+      TAccessApprovalPolicies,
+      TAccessApprovalPoliciesInsert,
+      TAccessApprovalPoliciesUpdate
+    >;
+
+    [TableName.AccessApprovalPolicyApprover]: Knex.CompositeTableType<
+      TAccessApprovalPoliciesApprovers,
+      TAccessApprovalPoliciesApproversInsert,
+      TAccessApprovalPoliciesApproversUpdate
+    >;
+
+    [TableName.AccessApprovalRequest]: Knex.CompositeTableType<
+      TAccessApprovalRequests,
+      TAccessApprovalRequestsInsert,
+      TAccessApprovalRequestsUpdate
+    >;
+
+    [TableName.AccessApprovalRequestReviewer]: Knex.CompositeTableType<
+      TAccessApprovalRequestsReviewers,
+      TAccessApprovalRequestsReviewersInsert,
+      TAccessApprovalRequestsReviewersUpdate
+    >;
+
     [TableName.ScimToken]: Knex.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
     [TableName.SecretApprovalPolicy]: Knex.CompositeTableType<
       TSecretApprovalPolicies,
@@ -404,6 +497,11 @@ declare module "knex/types/tables" {
     [TableName.LdapGroupMap]: Knex.CompositeTableType<TLdapGroupMaps, TLdapGroupMapsInsert, TLdapGroupMapsUpdate>;
     [TableName.OrgBot]: Knex.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;
     [TableName.AuditLog]: Knex.CompositeTableType<TAuditLogs, TAuditLogsInsert, TAuditLogsUpdate>;
+    [TableName.AuditLogStream]: Knex.CompositeTableType<
+      TAuditLogStreams,
+      TAuditLogStreamsInsert,
+      TAuditLogStreamsUpdate
+    >;
     [TableName.GitAppInstallSession]: Knex.CompositeTableType<
       TGitAppInstallSessions,
       TGitAppInstallSessionsInsert,
@@ -427,5 +525,13 @@ declare module "knex/types/tables" {
       TSecretVersionTagJunctionInsert,
       TSecretVersionTagJunctionUpdate
     >;
+    // KMS service
+    [TableName.KmsServerRootConfig]: Knex.CompositeTableType<
+      TKmsRootConfig,
+      TKmsRootConfigInsert,
+      TKmsRootConfigUpdate
+    >;
+    [TableName.KmsKey]: Knex.CompositeTableType<TKmsKeys, TKmsKeysInsert, TKmsKeysUpdate>;
+    [TableName.KmsKeyVersion]: Knex.CompositeTableType<TKmsKeyVersions, TKmsKeyVersionsInsert, TKmsKeyVersionsUpdate>;
   }
 }

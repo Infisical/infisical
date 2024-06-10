@@ -9,9 +9,12 @@
 
 import {
   CreateSecretCommand,
+  DescribeSecretCommand,
   GetSecretValueCommand,
   ResourceNotFoundException,
   SecretsManagerClient,
+  TagResourceCommand,
+  UntagResourceCommand,
   UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
 import { Octokit } from "@octokit/rest";
@@ -24,10 +27,16 @@ import { z } from "zod";
 import { SecretType, TIntegrationAuths, TIntegrations, TSecrets } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
-import { IntegrationInitialSyncBehavior, Integrations, IntegrationUrls } from "./integration-list";
+import {
+  IntegrationInitialSyncBehavior,
+  IntegrationMappingBehavior,
+  Integrations,
+  IntegrationUrls
+} from "./integration-list";
 
 const getSecretKeyValuePair = (secrets: Record<string, { value: string | null; comment?: string } | null>) =>
   Object.keys(secrets).reduce<Record<string, string | null | undefined>>((prev, key) => {
@@ -459,27 +468,39 @@ const syncSecretsAWSParameterStore = async ({
   ssm.config.update(config);
 
   const metadata = z.record(z.any()).parse(integration.metadata || {});
+  const awsParameterStoreSecretsObj: Record<string, AWS.SSM.Parameter> = {};
 
-  const params = {
-    Path: integration.path as string,
-    Recursive: false,
-    WithDecryption: true
-  };
+  // now fetch all aws parameter store secrets
+  let hasNext = true;
+  let nextToken: string | undefined;
+  while (hasNext) {
+    const parameters = await ssm
+      .getParametersByPath({
+        Path: integration.path as string,
+        Recursive: false,
+        WithDecryption: true,
+        MaxResults: 10,
+        NextToken: nextToken
+      })
+      .promise();
 
-  const parameterList = (await ssm.getParametersByPath(params).promise()).Parameters;
+    if (parameters.Parameters) {
+      parameters.Parameters.forEach((parameter) => {
+        if (parameter.Name) {
+          const secKey = parameter.Name.substring((integration.path as string).length);
+          awsParameterStoreSecretsObj[secKey] = parameter;
+        }
+      });
+    }
+    hasNext = Boolean(parameters.NextToken);
+    nextToken = parameters.NextToken;
+  }
 
-  const awsParameterStoreSecretsObj = (parameterList || [])
-    .filter(({ Name }) => Boolean(Name))
-    .reduce(
-      (obj, secret) => ({
-        ...obj,
-        [(secret.Name as string).substring((integration.path as string).length)]: secret
-      }),
-      {} as Record<string, AWS.SSM.Parameter>
-    );
   // Identify secrets to create
-  await Promise.all(
-    Object.keys(secrets).map(async (key) => {
+  // don't use Promise.all() and promise map here
+  // it will cause rate limit
+  for (const key in secrets) {
+    if (Object.hasOwn(secrets, key)) {
       if (!(key in awsParameterStoreSecretsObj)) {
         // case: secret does not exist in AWS parameter store
         // -> create secret
@@ -489,7 +510,7 @@ const syncSecretsAWSParameterStore = async ({
               Name: `${integration.path}${key}`,
               Type: "SecureString",
               Value: secrets[key].value,
-              KeyId: metadata.kmsKeyId ? metadata.kmsKeyId : undefined,
+              ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
               // Overwrite: true,
               Tags: metadata.secretAWSTag
                 ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
@@ -501,36 +522,68 @@ const syncSecretsAWSParameterStore = async ({
             .promise();
         }
         // case: secret exists in AWS parameter store
-      } else if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
-        // case: secret value doesn't match one in AWS parameter store
+      } else {
         // -> update secret
-        await ssm
-          .putParameter({
-            Name: `${integration.path}${key}`,
-            Type: "SecureString",
-            Value: secrets[key].value,
-            Overwrite: true
-            // Tags: metadata.secretAWSTag ? [{ Key: metadata.secretAWSTag.key, Value: metadata.secretAWSTag.value }] : []
-          })
-          .promise();
-      }
-    })
-  );
+        if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
+          await ssm
+            .putParameter({
+              Name: `${integration.path}${key}`,
+              Type: "SecureString",
+              Value: secrets[key].value,
+              Overwrite: true
+            })
+            .promise();
+        }
 
-  // Identify secrets to delete
-  await Promise.all(
-    Object.keys(awsParameterStoreSecretsObj).map(async (key) => {
-      if (!(key in secrets)) {
-        // case:
-        // -> delete secret
-        await ssm
-          .deleteParameter({
-            Name: awsParameterStoreSecretsObj[key].Name as string
-          })
-          .promise();
+        if (awsParameterStoreSecretsObj[key].Name) {
+          try {
+            await ssm
+              .addTagsToResource({
+                ResourceType: "Parameter",
+                ResourceId: awsParameterStoreSecretsObj[key].Name as string,
+                Tags: metadata.secretAWSTag
+                  ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+                      Key: tag.key,
+                      Value: tag.value
+                    }))
+                  : []
+              })
+              .promise();
+          } catch (err) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((err as any).code === "AccessDeniedException") {
+              logger.error(
+                `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
+              );
+            }
+          }
+        }
       }
-    })
-  );
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, 50);
+      });
+    }
+  }
+
+  if (!metadata.shouldDisableDelete) {
+    for (const key in awsParameterStoreSecretsObj) {
+      if (Object.hasOwn(awsParameterStoreSecretsObj, key)) {
+        if (!(key in secrets)) {
+          // case:
+          // -> delete secret
+          await ssm
+            .deleteParameter({
+              Name: awsParameterStoreSecretsObj[key].Name as string
+            })
+            .promise();
+        }
+        await new Promise((resolve) => {
+          setTimeout(resolve, 50);
+        });
+      }
+    }
+  }
 };
 
 /**
@@ -547,53 +600,149 @@ const syncSecretsAWSSecretManager = async ({
   accessId: string | null;
   accessToken: string;
 }) => {
-  let secretsManager;
-  const secKeyVal = getSecretKeyValuePair(secrets);
   const metadata = z.record(z.any()).parse(integration.metadata || {});
-  try {
-    if (!accessId) return;
 
-    secretsManager = new SecretsManagerClient({
-      region: integration.region as string,
-      credentials: {
-        accessKeyId: accessId,
-        secretAccessKey: accessToken
+  if (!accessId) return;
+
+  const secretsManager = new SecretsManagerClient({
+    region: integration.region as string,
+    credentials: {
+      accessKeyId: accessId,
+      secretAccessKey: accessToken
+    }
+  });
+
+  const processAwsSecret = async (
+    secretId: string,
+    secretValue: Record<string, string | null | undefined> | string
+  ) => {
+    try {
+      const awsSecretManagerSecret = await secretsManager.send(
+        new GetSecretValueCommand({
+          SecretId: secretId
+        })
+      );
+
+      let secretToCompare;
+      if (awsSecretManagerSecret?.SecretString) {
+        if (typeof secretValue === "string") {
+          secretToCompare = awsSecretManagerSecret.SecretString;
+        } else {
+          secretToCompare = JSON.parse(awsSecretManagerSecret.SecretString);
+        }
       }
-    });
 
-    const awsSecretManagerSecret = await secretsManager.send(
-      new GetSecretValueCommand({
-        SecretId: integration.app as string
-      })
-    );
+      if (!isEqual(secretToCompare, secretValue)) {
+        await secretsManager.send(
+          new UpdateSecretCommand({
+            SecretId: secretId,
+            SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue)
+          })
+        );
+      }
 
-    let awsSecretManagerSecretObj: { [key: string]: AWS.SecretsManager } = {};
+      const secretAWSTag = metadata.secretAWSTag as { key: string; value: string }[] | undefined;
 
-    if (awsSecretManagerSecret?.SecretString) {
-      awsSecretManagerSecretObj = JSON.parse(awsSecretManagerSecret.SecretString);
+      if (secretAWSTag && secretAWSTag.length) {
+        const describedSecret = await secretsManager.send(
+          // requires secretsmanager:DescribeSecret policy
+          new DescribeSecretCommand({
+            SecretId: secretId
+          })
+        );
+
+        if (!describedSecret.Tags) return;
+
+        const integrationTagObj = secretAWSTag.reduce(
+          (acc, item) => {
+            acc[item.key] = item.value;
+            return acc;
+          },
+          {} as Record<string, string>
+        );
+
+        const awsTagObj = (describedSecret.Tags || []).reduce(
+          (acc, item) => {
+            if (item.Key && item.Value) {
+              acc[item.Key] = item.Value;
+            }
+            return acc;
+          },
+          {} as Record<string, string>
+        );
+
+        const tagsToUpdate: { Key: string; Value: string }[] = [];
+        const tagsToDelete: { Key: string; Value: string }[] = [];
+
+        describedSecret.Tags?.forEach((tag) => {
+          if (tag.Key && tag.Value) {
+            if (!(tag.Key in integrationTagObj)) {
+              // delete tag from AWS secret manager
+              tagsToDelete.push({
+                Key: tag.Key,
+                Value: tag.Value
+              });
+            } else if (tag.Value !== integrationTagObj[tag.Key]) {
+              // update tag in AWS secret manager
+              tagsToUpdate.push({
+                Key: tag.Key,
+                Value: integrationTagObj[tag.Key]
+              });
+            }
+          }
+        });
+
+        secretAWSTag?.forEach((tag) => {
+          if (!(tag.key in awsTagObj)) {
+            // create tag in AWS secret manager
+            tagsToUpdate.push({
+              Key: tag.key,
+              Value: tag.value
+            });
+          }
+        });
+
+        if (tagsToUpdate.length) {
+          await secretsManager.send(
+            new TagResourceCommand({
+              SecretId: secretId,
+              Tags: tagsToUpdate
+            })
+          );
+        }
+
+        if (tagsToDelete.length) {
+          await secretsManager.send(
+            new UntagResourceCommand({
+              SecretId: secretId,
+              TagKeys: tagsToDelete.map((tag) => tag.Key)
+            })
+          );
+        }
+      }
+    } catch (err) {
+      // case when AWS manager can't find the specified secret
+      if (err instanceof ResourceNotFoundException && secretsManager) {
+        await secretsManager.send(
+          new CreateSecretCommand({
+            Name: secretId,
+            SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue),
+            ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
+            Tags: metadata.secretAWSTag
+              ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
+              : []
+          })
+        );
+      }
     }
+  };
 
-    if (!isEqual(awsSecretManagerSecretObj, secKeyVal)) {
-      await secretsManager.send(
-        new UpdateSecretCommand({
-          SecretId: integration.app as string,
-          SecretString: JSON.stringify(secKeyVal)
-        })
-      );
+  if (metadata.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE) {
+    for await (const [key, value] of Object.entries(secrets)) {
+      await processAwsSecret(key, value.value);
     }
-  } catch (err) {
-    if (err instanceof ResourceNotFoundException && secretsManager) {
-      await secretsManager.send(
-        new CreateSecretCommand({
-          Name: integration.app as string,
-          SecretString: JSON.stringify(secKeyVal),
-          KmsKeyId: metadata.kmsKeyId ? metadata.kmsKeyId : null,
-          Tags: metadata.secretAWSTag
-            ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
-            : []
-        })
-      );
-    }
+  } else {
+    await processAwsSecret(integration.app as string, getSecretKeyValuePair(secrets));
   }
 };
 
@@ -2572,18 +2721,21 @@ const syncSecretsCloudflarePages = async ({
     })
   ).data.result.deployment_configs[integration.targetEnvironment as string].env_vars;
 
-  // copy the secrets object, so we can set deleted keys to null
-  const secretsObj = Object.fromEntries(
-    Object.entries(getSecretKeyValuePair(secrets)).map(([key, val]) => [
-      key,
-      key in Object.keys(getSecretsRes) ? { type: "secret_text", value: val } : null
-    ])
-  );
+  let secretEntries: [string, object | null][] = Object.entries(getSecretKeyValuePair(secrets)).map(([key, val]) => [
+    key,
+    { type: "secret_text", value: val }
+  ]);
+
+  if (getSecretsRes) {
+    const toDeleteKeys = Object.keys(getSecretsRes).filter((key) => !Object.keys(secrets).includes(key));
+    const toDeleteEntries: [string, null][] = toDeleteKeys.map((key) => [key, null]);
+    secretEntries = [...secretEntries, ...toDeleteEntries];
+  }
 
   const data = {
     deployment_configs: {
       [integration.targetEnvironment as string]: {
-        env_vars: secretsObj
+        env_vars: Object.fromEntries(secretEntries)
       }
     }
   };
@@ -2598,6 +2750,20 @@ const syncSecretsCloudflarePages = async ({
       }
     }
   );
+
+  const metadata = z.record(z.any()).parse(integration.metadata);
+  if (metadata.shouldAutoRedeploy) {
+    await request.post(
+      `${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}/deployments`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        }
+      }
+    );
+  }
 };
 
 /**
@@ -2861,7 +3027,7 @@ const syncSecretsDigitalOceanAppPlatform = async ({
       spec: {
         name: integration.app,
         ...appSettings,
-        envs: Object.entries(secrets).map(([key, data]) => ({ key, value: data.value }))
+        envs: Object.entries(secrets).map(([key, data]) => ({ key, value: data.value, type: "SECRET" }))
       }
     },
     {
@@ -3203,6 +3369,82 @@ const syncSecretsHasuraCloud = async ({
   }
 };
 
+/** Sync/push [secrets] to Rundeck
+ * @param {Object} obj
+ * @param {TIntegrations} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Rundeck integration
+ */
+const syncSecretsRundeck = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: TIntegrations;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  interface RundeckSecretResource {
+    name: string;
+  }
+  interface RundeckSecretsGetRes {
+    resources: RundeckSecretResource[];
+  }
+
+  let existingRundeckSecrets: string[] = [];
+
+  try {
+    const listResult = await request.get<RundeckSecretsGetRes>(
+      `${integration.url}/api/44/storage/${integration.path}`,
+      {
+        headers: {
+          "X-Rundeck-Auth-Token": accessToken
+        }
+      }
+    );
+
+    existingRundeckSecrets = listResult.data.resources.map((res) => res.name);
+  } catch (err) {
+    logger.info("No existing rundeck secrets");
+  }
+
+  try {
+    for await (const [key, value] of Object.entries(secrets)) {
+      if (existingRundeckSecrets.includes(key)) {
+        await request.put(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken,
+            "Content-Type": "application/x-rundeck-data-password"
+          }
+        });
+      } else {
+        await request.post(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken,
+            "Content-Type": "application/x-rundeck-data-password"
+          }
+        });
+      }
+    }
+
+    for await (const existingSecret of existingRundeckSecrets) {
+      if (!(existingSecret in secrets)) {
+        await request.delete(`${integration.url}/api/44/storage/${integration.path}/${existingSecret}`, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken
+          }
+        });
+      }
+    }
+  } catch (err: unknown) {
+    throw new Error(
+      `Ensure that the provided Rundeck URL is accessible by Infisical and that the linked API token has sufficient permissions.\n\n${
+        (err as Error).message
+      }`
+    );
+  }
+};
+
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
  *
@@ -3464,6 +3706,13 @@ export const syncIntegrationSecrets = async ({
 
     case Integrations.HASURA_CLOUD:
       await syncSecretsHasuraCloud({
+        integration,
+        secrets,
+        accessToken
+      });
+      break;
+    case Integrations.RUNDECK:
+      await syncSecretsRundeck({
         integration,
         secrets,
         accessToken

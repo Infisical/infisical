@@ -7,6 +7,7 @@ export type IntegrationAuth = {
   updatedAt: string;
   algorithm: string;
   keyEncoding: string;
+  url?: string;
   teamId?: string;
 };
 
@@ -30,7 +31,7 @@ export type HerokuPipelineCoupling = {
 
 export type Team = {
   name: string;
-  teamId: string;
+  id: string;
 };
 
 export type Environment = {

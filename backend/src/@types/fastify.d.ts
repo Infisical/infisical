@@ -1,8 +1,11 @@
 import "fastify";
 
 import { TUsers } from "@app/db/schemas";
+import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
+import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
@@ -29,6 +32,10 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
+import { TIdentityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
+import { TIdentityAzureAuthServiceFactory } from "@app/services/identity-azure-auth/identity-azure-auth-service";
+import { TIdentityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
+import { TIdentityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
@@ -45,6 +52,8 @@ import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
+import { TSecretReplicationServiceFactory } from "@app/services/secret-replication/secret-replication-service";
+import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
@@ -100,6 +109,7 @@ declare module "fastify" {
       projectKey: TProjectKeyServiceFactory;
       projectRole: TProjectRoleServiceFactory;
       secret: TSecretServiceFactory;
+      secretReplication: TSecretReplicationServiceFactory;
       secretTag: TSecretTagServiceFactory;
       secretImport: TSecretImportServiceFactory;
       projectBot: TProjectBotServiceFactory;
@@ -112,6 +122,12 @@ declare module "fastify" {
       identityAccessToken: TIdentityAccessTokenServiceFactory;
       identityProject: TIdentityProjectServiceFactory;
       identityUa: TIdentityUaServiceFactory;
+      identityKubernetesAuth: TIdentityKubernetesAuthServiceFactory;
+      identityGcpAuth: TIdentityGcpAuthServiceFactory;
+      identityAwsAuth: TIdentityAwsAuthServiceFactory;
+      identityAzureAuth: TIdentityAzureAuthServiceFactory;
+      accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
+      accessApprovalRequest: TAccessApprovalRequestServiceFactory;
       secretApprovalPolicy: TSecretApprovalPolicyServiceFactory;
       secretApprovalRequest: TSecretApprovalRequestServiceFactory;
       secretRotation: TSecretRotationServiceFactory;
@@ -120,6 +136,7 @@ declare module "fastify" {
       scim: TScimServiceFactory;
       ldap: TLdapConfigServiceFactory;
       auditLog: TAuditLogServiceFactory;
+      auditLogStream: TAuditLogStreamServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;
@@ -129,6 +146,7 @@ declare module "fastify" {
       dynamicSecretLease: TDynamicSecretLeaseServiceFactory;
       projectUserAdditionalPrivilege: TProjectUserAdditionalPrivilegeServiceFactory;
       identityProjectAdditionalPrivilege: TIdentityProjectAdditionalPrivilegeServiceFactory;
+      secretSharing: TSecretSharingServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

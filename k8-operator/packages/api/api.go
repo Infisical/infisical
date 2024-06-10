@@ -66,6 +66,10 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 		httpRequest.SetQueryParam("secretPath", request.SecretPath)
 	}
 
+	if request.Recursive {
+		httpRequest.SetQueryParam("recursive", "true")
+	}
+
 	response, err := httpRequest.Get(fmt.Sprintf("%v/v3/secrets", API_HOST_URL))
 
 	if err != nil {
@@ -148,19 +152,27 @@ func CallUniversalMachineIdentityRefreshAccessToken(request MachineIdentityUnive
 func CallGetDecryptedSecretsV3(httpClient *resty.Client, request GetDecryptedSecretsV3Request) (GetDecryptedSecretsV3Response, error) {
 	var decryptedSecretsResponse GetDecryptedSecretsV3Response
 
-	response, err := httpClient.
+	req := httpClient.
 		R().
 		SetResult(&decryptedSecretsResponse).
 		SetHeader("User-Agent", USER_AGENT_NAME).
+		SetQueryParam("include_imports", "true").
 		SetQueryParam("secretPath", request.SecretPath).
 		SetQueryParam("workspaceSlug", request.ProjectSlug).
-		SetQueryParam("environment", request.Environment).
-		Get(fmt.Sprintf("%v/v3/secrets/raw", API_HOST_URL))
+		SetQueryParam("environment", request.Environment)
+
+	if request.Recursive {
+		req.SetQueryParam("recursive", "true")
+	}
+	if request.ExpandSecretReferences {
+		req.SetQueryParam("expandSecretReferences", "true")
+	}
+
+	response, err := req.Get(fmt.Sprintf("%v/v3/secrets/raw", API_HOST_URL))
 
 	if err != nil {
 		return GetDecryptedSecretsV3Response{}, fmt.Errorf("CallGetDecryptedSecretsV3: Unable to complete api request [err=%s]", err)
 	}
-
 	if response.IsError() {
 		return GetDecryptedSecretsV3Response{}, fmt.Errorf("CallGetDecryptedSecretsV3: Unsuccessful response: [response=%s]", response)
 	}

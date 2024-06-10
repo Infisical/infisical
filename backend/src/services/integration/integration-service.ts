@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -9,7 +9,12 @@ import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TIntegrationDALFactory } from "./integration-dal";
-import { TCreateIntegrationDTO, TDeleteIntegrationDTO, TUpdateIntegrationDTO } from "./integration-types";
+import {
+  TCreateIntegrationDTO,
+  TDeleteIntegrationDTO,
+  TSyncIntegrationDTO,
+  TUpdateIntegrationDTO
+} from "./integration-types";
 
 type TIntegrationServiceFactoryDep = {
   integrationDAL: TIntegrationDALFactory;
@@ -38,6 +43,7 @@ export const integrationServiceFactory = ({
     scope,
     actorId,
     region,
+    url,
     isActive,
     metadata,
     secretPath,
@@ -61,6 +67,11 @@ export const integrationServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment: sourceEnvironment, secretPath })
+    );
+
     const folder = await folderDAL.findBySecretPath(integrationAuth.projectId, sourceEnvironment, secretPath);
     if (!folder) throw new BadRequestError({ message: "Folder path not found" });
 
@@ -77,6 +88,7 @@ export const integrationServiceFactory = ({
       region,
       scope,
       owner,
+      url,
       appId,
       path,
       app,
@@ -103,7 +115,8 @@ export const integrationServiceFactory = ({
     owner,
     isActive,
     environment,
-    secretPath
+    secretPath,
+    metadata
   }: TUpdateIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new BadRequestError({ message: "Integration auth not found" });
@@ -117,6 +130,11 @@ export const integrationServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
+
     const folder = await folderDAL.findBySecretPath(integration.projectId, environment, secretPath);
     if (!folder) throw new BadRequestError({ message: "Folder path not found" });
 
@@ -127,7 +145,17 @@ export const integrationServiceFactory = ({
       appId,
       targetEnvironment,
       owner,
-      secretPath
+      secretPath,
+      metadata: {
+        ...(integration.metadata as object),
+        ...metadata
+      }
+    });
+
+    await secretQueueService.syncIntegrations({
+      environment: folder.environment.slug,
+      secretPath,
+      projectId: folder.projectId
     });
 
     return updatedIntegration;
@@ -190,10 +218,35 @@ export const integrationServiceFactory = ({
     return integrations;
   };
 
+  const syncIntegration = async ({ id, actorId, actor, actorOrgId, actorAuthMethod }: TSyncIntegrationDTO) => {
+    const integration = await integrationDAL.findById(id);
+    if (!integration) {
+      throw new BadRequestError({ message: "Integration not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integration.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+
+    await secretQueueService.syncIntegrations({
+      environment: integration.environment.slug,
+      secretPath: integration.secretPath,
+      projectId: integration.projectId
+    });
+
+    return { ...integration, envId: integration.environment.id };
+  };
+
   return {
     createIntegration,
     updateIntegration,
     deleteIntegration,
-    listIntegrationByProject
+    listIntegrationByProject,
+    syncIntegration
   };
 };

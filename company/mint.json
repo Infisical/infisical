@@ -1,0 +1,68 @@
+{
+  "name": "Infisical",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg",
+    "href": "https://infisical.com"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#26272b",
+    "light": "#97b31d",
+    "dark": "#A1B659",
+    "ultraLight": "#E7F256",
+    "ultraDark": "#8D9F4C",
+    "background": {
+      "light": "#ffffff",
+      "dark": "#0D1117"
+    },
+    "anchors": {
+      "from": "#000000",
+      "to": "#707174"
+    }
+  },
+  "modeToggle": {
+    "default": "light",
+    "isHidden": true
+  },
+  "feedback": {
+    "suggestEdit": true,
+    "raiseIssue": true,
+    "thumbsRating": true
+  },
+  "api": {
+    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
+  },
+  "topbarLinks": [
+    {
+      "name": "Log In",
+      "url": "https://app.infisical.com/login"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Start for Free",
+    "url": "https://app.infisical.com/signup"
+  },
+  "primaryTab": {
+    "name": "About"
+  },
+  "navigation": [
+    {
+      "group": "Handbook",
+      "pages": [
+        "handbook/overview"
+      ]
+    }, 
+    {
+      "group": "How we work",
+      "pages": [
+        "handbook/onboarding", 
+        "handbook/spending-money",
+        "handbook/time-off"
+      ]
+    }
+  ],
+  "integrations": {
+    "intercom": "hsg644ru"
+  }
+}

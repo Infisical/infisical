@@ -199,6 +199,7 @@ export const integrationAuthServiceFactory = ({
       projectId,
       namespace,
       integration,
+      url,
       algorithm: SecretEncryptionAlgo.AES_256_GCM,
       keyEncoding: SecretKeyEncoding.UTF8,
       ...(integration === Integrations.GCP_SECRET_MANAGER
@@ -566,20 +567,32 @@ export const integrationAuthServiceFactory = ({
       }
     });
     const kms = new AWS.KMS();
-
     const aliases = await kms.listAliases({}).promise();
-    const keys = await kms.listKeys({}).promise();
-    const response = keys
-      .Keys!.map((key) => {
-        const keyAlias = aliases.Aliases!.find((alias) => key.KeyId === alias.TargetKeyId);
-        if (!keyAlias?.AliasName?.includes("alias/aws/")) {
-          return { id: String(key.KeyId), alias: String(keyAlias?.AliasName || key.KeyId) };
-        }
-        return { id: "null", alias: "null" };
-      })
-      .filter((elem) => elem.id !== "null");
 
-    return [...response, { id: "null", alias: "default" }];
+    const keyAliases = aliases.Aliases!.filter((alias) => {
+      if (!alias.TargetKeyId) return false;
+
+      if (integrationAuth.integration === Integrations.AWS_PARAMETER_STORE && alias.AliasName === "alias/aws/ssm")
+        return true;
+
+      if (
+        integrationAuth.integration === Integrations.AWS_SECRET_MANAGER &&
+        alias.AliasName === "alias/aws/secretsmanager"
+      )
+        return true;
+
+      if (alias.AliasName?.includes("alias/aws/")) return false;
+      return alias.TargetKeyId;
+    });
+
+    const keysWithAliases = keyAliases.map((alias) => {
+      return {
+        id: alias.TargetKeyId!,
+        alias: alias.AliasName!
+      };
+    });
+
+    return keysWithAliases;
   };
 
   const getQoveryProjects = async ({

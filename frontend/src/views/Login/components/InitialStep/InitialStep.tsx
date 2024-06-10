@@ -12,6 +12,7 @@ import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
+import { useFetchServerStatus } from "@app/hooks/api";
 
 import { navigateUserToSelectOrg } from "../../Login.utils";
 
@@ -25,24 +26,21 @@ type Props = {
 
 export const InitialStep = ({ setStep, email, setEmail, password, setPassword }: Props) => {
   const router = useRouter();
-  
+
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(false);
   const { config } = useServerConfig();
   const queryParams = new URLSearchParams(window.location.search);
+  const { data: serverDetails } = useFetchServerStatus();
 
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_SAML_ORG_SLUG && process.env.NEXT_PUBLIC_SAML_ORG_SLUG !== "saml-org-slug-default") {
-      const callbackPort = queryParams.get("callback_port");
-      window.open(
-        `/api/v1/sso/redirect/saml2/organizations/${process.env.NEXT_PUBLIC_SAML_ORG_SLUG}${
-          callbackPort ? `?callback_port=${callbackPort}` : ""
-        }`
-      );
-      window.close();
-    }
-  }, [])
+      if (serverDetails?.samlDefaultOrgSlug){
+        const callbackPort = queryParams.get("callback_port");
+        const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${serverDetails?.samlDefaultOrgSlug}${callbackPort ? `?callback_port=${callbackPort}` : ""}`
+        router.push(redirectUrl);
+      }
+  }, [serverDetails?.samlDefaultOrgSlug]);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -102,8 +100,18 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           });
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      if (err.response.data.error === "User Locked") {
+        createNotification({
+          title: err.response.data.error,
+          text: err.response.data.message,
+          type: "error"
+        });
+        setIsLoading(false);
+        return;
+      }
+
       setLoginError(true);
       createNotification({
         text: "Login unsuccessful. Double-check your credentials and try again.",
@@ -196,7 +204,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           colorSchema="primary"
           variant="outline_bg"
           onClick={() => {
-            setStep(3);
+            router.push("/login/ldap");
           }}
           leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
           className="mx-0 h-10 w-full"

@@ -2,12 +2,22 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding, SecretsSchema, SecretType } from "@app/db/schemas";
+import {
+  ProjectMembershipRole,
+  SecretEncryptionAlgo,
+  SecretKeyEncoding,
+  SecretsSchema,
+  SecretType
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { getConfig } from "@app/lib/config/env";
-import { buildSecretBlindIndexFromName, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import {
+  buildSecretBlindIndexFromName,
+  decryptSymmetric128BitHexKeyUTF8,
+  encryptSymmetric128BitHexKeyUTF8
+} from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy, pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -25,13 +35,17 @@ import { TSecretDALFactory } from "./secret-dal";
 import {
   decryptSecretRaw,
   fnSecretBlindIndexCheck,
+  fnSecretBulkDelete,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
+  getAllNestedSecretReferences,
+  interpolateSecrets,
   recursivelyGetSecretPaths
 } from "./secret-fns";
 import { TSecretQueueFactory } from "./secret-queue";
 import {
   TAttachSecretTagsDTO,
+  TBackFillSecretReferencesDTO,
   TCreateBulkSecretDTO,
   TCreateManySecretRawDTO,
   TCreateSecretDTO,
@@ -40,8 +54,6 @@ import {
   TDeleteManySecretRawDTO,
   TDeleteSecretDTO,
   TDeleteSecretRawDTO,
-  TFnSecretBlindIndexCheckV2,
-  TFnSecretBulkDelete,
   TGetASecretDTO,
   TGetASecretRawDTO,
   TGetSecretsDTO,
@@ -90,6 +102,22 @@ export const secretServiceFactory = ({
   secretImportDAL,
   secretVersionTagDAL
 }: TSecretServiceFactoryDep) => {
+  const getSecretReference = async (projectId: string) => {
+    // if bot key missing means e2e still exist
+    const botKey = await projectBotService.getBotKey(projectId).catch(() => null);
+    return (el: { ciphertext?: string; iv: string; tag: string }) =>
+      botKey
+        ? getAllNestedSecretReferences(
+            decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: el.ciphertext || "",
+              iv: el.iv,
+              tag: el.tag,
+              key: botKey
+            })
+          )
+        : undefined;
+  };
+
   // utility function to get secret blind index data
   const interalGenSecBlindIndexByName = async (projectId: string, secretName: string) => {
     const appCfg = getConfig();
@@ -108,53 +136,6 @@ export const secretServiceFactory = ({
     });
     if (!secretBlindIndex) throw new BadRequestError({ message: "Secret not found" });
     return secretBlindIndex;
-  };
-
-  const fnSecretBulkDelete = async ({ folderId, inputSecrets, tx, actorId }: TFnSecretBulkDelete) => {
-    const deletedSecrets = await secretDAL.deleteMany(
-      inputSecrets.map(({ type, secretBlindIndex }) => ({
-        blindIndex: secretBlindIndex,
-        type
-      })),
-      folderId,
-      actorId,
-      tx
-    );
-
-    for (const s of deletedSecrets) {
-      if (s.secretReminderRepeatDays) {
-        // eslint-disable-next-line no-await-in-loop
-        await secretQueueService
-          .removeSecretReminder({
-            secretId: s.id,
-            repeatDays: s.secretReminderRepeatDays
-          })
-          .catch((err) => {
-            logger.error(err, `Failed to delete secret reminder for secret with ID ${s?.id}`);
-          });
-      }
-    }
-
-    return deletedSecrets;
-  };
-
-  // this is used when secret blind index already exist
-  // mainly for secret approval
-  const fnSecretBlindIndexCheckV2 = async ({ inputSecrets, folderId, userId }: TFnSecretBlindIndexCheckV2) => {
-    if (inputSecrets.some(({ type }) => type === SecretType.Personal) && !userId) {
-      throw new BadRequestError({ message: "Missing user id for personal secret" });
-    }
-    const secrets = await secretDAL.findByBlindIndexes(
-      folderId,
-      inputSecrets.map(({ secretBlindIndex, type }) => ({
-        blindIndex: secretBlindIndex,
-        type: type || SecretType.Shared
-      })),
-      userId
-    );
-    const secsGroupedByBlindIndex = groupBy(secrets, (i) => i.secretBlindIndex as string);
-
-    return { secsGroupedByBlindIndex, secrets };
   };
 
   const createSecret = async ({
@@ -224,6 +205,7 @@ export const secretServiceFactory = ({
     if ((inputSecret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
 
     const { secretName, type, ...el } = inputSecret;
+    const references = await getSecretReference(projectId);
     const secret = await secretDAL.transaction((tx) =>
       fnSecretBulkInsert({
         folderId,
@@ -236,7 +218,12 @@ export const secretServiceFactory = ({
             userId: inputSecret.type === SecretType.Personal ? actorId : null,
             algorithm: SecretEncryptionAlgo.AES_256_GCM,
             keyEncoding: SecretKeyEncoding.UTF8,
-            tags: inputSecret.tags
+            tags: inputSecret.tags,
+            references: references({
+              ciphertext: inputSecret.secretValueCiphertext,
+              iv: inputSecret.secretValueIV,
+              tag: inputSecret.secretValueTag
+            })
           }
         ],
         secretDAL,
@@ -248,9 +235,14 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
-    // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return { ...secret[0], environment, workspace: projectId, tags };
+    await secretQueueService.syncSecrets({
+      secretPath: path,
+      actorId,
+      actor,
+      projectId,
+      environmentSlug: folder.environment.slug
+    });
+    return { ...secret[0], environment, workspace: projectId, tags, secretPath: path };
   };
 
   const updateSecret = async ({
@@ -334,6 +326,7 @@ export const secretServiceFactory = ({
 
     const { secretName, ...el } = inputSecret;
 
+    const references = await getSecretReference(projectId);
     const updatedSecret = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
         folderId,
@@ -359,7 +352,12 @@ export const secretServiceFactory = ({
                 "secretReminderRepeatDays",
                 "tags"
               ]),
-              secretBlindIndex: newSecretNameBlindIndex || keyName2BlindIndex[secretName]
+              secretBlindIndex: newSecretNameBlindIndex || keyName2BlindIndex[secretName],
+              references: references({
+                ciphertext: inputSecret.secretValueCiphertext,
+                iv: inputSecret.secretValueIV,
+                tag: inputSecret.secretValueTag
+              })
             }
           }
         ],
@@ -372,9 +370,14 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
-    // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return { ...updatedSecret[0], workspace: projectId, environment };
+    await secretQueueService.syncSecrets({
+      actor,
+      actorId,
+      secretPath: path,
+      projectId,
+      environmentSlug: folder.environment.slug
+    });
+    return { ...updatedSecret[0], workspace: projectId, environment, secretPath: path };
   };
 
   const deleteSecret = async ({
@@ -429,6 +432,8 @@ export const secretServiceFactory = ({
         projectId,
         folderId,
         actorId,
+        secretDAL,
+        secretQueueService,
         inputSecrets: [
           {
             type: inputSecret.type as SecretType,
@@ -440,10 +445,15 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
-
+    await secretQueueService.syncSecrets({
+      actor,
+      actorId,
+      secretPath: path,
+      projectId,
+      environmentSlug: folder.environment.slug
+    });
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment };
+    return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment, secretPath: path };
   };
 
   const getSecrets = async ({
@@ -510,7 +520,8 @@ export const secretServiceFactory = ({
 
     if (includeImports) {
       const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
-      const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
+      const allowedImports = secretImports.filter(({ importEnv, importPath, isReplication }) =>
+        !isReplication &&
         // if its service token allow full access over imported one
         actor === ActorType.SERVICE
           ? true
@@ -615,7 +626,7 @@ export const secretServiceFactory = ({
     // then search for imported secrets
     // here we consider the import order also thus starting from bottom
     if (!secret && includeImports) {
-      const secretImports = await secretImportDAL.find({ folderId });
+      const secretImports = await secretImportDAL.find({ folderId, isReplication: false });
       const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
         // if its service token allow full access over imported one
         actor === ActorType.SERVICE
@@ -640,7 +651,8 @@ export const secretServiceFactory = ({
             return {
               ...importedSecrets[i].secrets[j],
               workspace: projectId,
-              environment: importedSecrets[i].environment
+              environment: importedSecrets[i].environment,
+              secretPath: importedSecrets[i].secretPath
             };
           }
         }
@@ -648,7 +660,7 @@ export const secretServiceFactory = ({
     }
     if (!secret) throw new BadRequestError({ message: "Secret not found" });
 
-    return { ...secret, workspace: projectId, environment };
+    return { ...secret, workspace: projectId, environment, secretPath: path };
   };
 
   const createManySecret = async ({
@@ -699,6 +711,7 @@ export const secretServiceFactory = ({
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
     if (tags.length !== tagIds.length) throw new BadRequestError({ message: "Tag not found" });
 
+    const references = await getSecretReference(projectId);
     const newSecrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkInsert({
         inputSecrets: inputSecrets.map(({ secretName, ...el }) => ({
@@ -707,7 +720,12 @@ export const secretServiceFactory = ({
           secretBlindIndex: keyName2BlindIndex[secretName],
           type: SecretType.Shared,
           algorithm: SecretEncryptionAlgo.AES_256_GCM,
-          keyEncoding: SecretKeyEncoding.UTF8
+          keyEncoding: SecretKeyEncoding.UTF8,
+          references: references({
+            ciphertext: el.secretValueCiphertext,
+            iv: el.secretValueIV,
+            tag: el.secretValueTag
+          })
         })),
         folderId,
         secretDAL,
@@ -719,7 +737,13 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
+    await secretQueueService.syncSecrets({
+      actor,
+      actorId,
+      secretPath: path,
+      projectId,
+      environmentSlug: folder.environment.slug
+    });
 
     return newSecrets;
   };
@@ -782,6 +806,8 @@ export const secretServiceFactory = ({
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
     if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+
+    const references = await getSecretReference(projectId);
     const secrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
         folderId,
@@ -798,7 +824,15 @@ export const secretServiceFactory = ({
                 ? newKeyName2BlindIndex[newSecretName]
                 : keyName2BlindIndex[secretName],
             algorithm: SecretEncryptionAlgo.AES_256_GCM,
-            keyEncoding: SecretKeyEncoding.UTF8
+            keyEncoding: SecretKeyEncoding.UTF8,
+            references:
+              el.secretValueIV && el.secretValueTag
+                ? references({
+                    ciphertext: el.secretValueCiphertext,
+                    iv: el.secretValueIV,
+                    tag: el.secretValueTag
+                  })
+                : undefined
           }
         })),
         secretDAL,
@@ -809,7 +843,13 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
+    await secretQueueService.syncSecrets({
+      actor,
+      actorId,
+      secretPath: path,
+      projectId,
+      environmentSlug: folder.environment.slug
+    });
 
     return secrets;
   };
@@ -859,6 +899,8 @@ export const secretServiceFactory = ({
 
     const secretsDeleted = await secretDAL.transaction(async (tx) =>
       fnSecretBulkDelete({
+        secretDAL,
+        secretQueueService,
         inputSecrets: inputSecrets.map(({ type, secretName }) => ({
           secretBlindIndex: keyName2BlindIndex[secretName],
           type
@@ -871,7 +913,13 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
+    await secretQueueService.syncSecrets({
+      actor,
+      actorId,
+      secretPath: path,
+      projectId,
+      environmentSlug: folder.environment.slug
+    });
 
     return secretsDeleted;
   };
@@ -885,6 +933,7 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     environment,
     includeImports,
+    expandSecretReferences,
     recursive
   }: TGetSecretsRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
@@ -902,17 +951,72 @@ export const secretServiceFactory = ({
       recursive
     });
 
-    return {
-      secrets: secrets.map((el) => decryptSecretRaw(el, botKey)),
-      imports: (imports || [])?.map(({ secrets: importedSecrets, ...el }) => ({
-        ...el,
-        secrets: importedSecrets.map((sec) =>
-          decryptSecretRaw(
-            { ...sec, environment: el.environment, workspace: projectId, secretPath: el.secretPath },
-            botKey
-          )
+    const decryptedSecrets = secrets.map((el) => decryptSecretRaw(el, botKey));
+    const decryptedImports = (imports || [])?.map(({ secrets: importedSecrets, ...el }) => ({
+      ...el,
+      secrets: importedSecrets.map((sec) =>
+        decryptSecretRaw(
+          { ...sec, environment: el.environment, workspace: projectId, secretPath: el.secretPath },
+          botKey
         )
-      }))
+      )
+    }));
+
+    if (expandSecretReferences) {
+      const expandSecrets = interpolateSecrets({
+        folderDAL,
+        projectId,
+        secretDAL,
+        secretEncKey: botKey
+      });
+
+      const batchSecretsExpand = async (
+        secretBatch: { secretKey: string; secretValue: string; secretComment?: string; secretPath: string }[]
+      ) => {
+        // Group secrets by secretPath
+        const secretsByPath: Record<string, { secretKey: string; secretValue: string; secretComment?: string }[]> = {};
+
+        secretBatch.forEach((secret) => {
+          if (!secretsByPath[secret.secretPath]) {
+            secretsByPath[secret.secretPath] = [];
+          }
+          secretsByPath[secret.secretPath].push(secret);
+        });
+
+        // Expand secrets for each group
+        for (const secPath in secretsByPath) {
+          if (!Object.hasOwn(secretsByPath, path)) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+
+          const secretRecord: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }> = {};
+          secretsByPath[secPath].forEach((decryptedSecret) => {
+            secretRecord[decryptedSecret.secretKey] = {
+              value: decryptedSecret.secretValue,
+              comment: decryptedSecret.secretComment
+            };
+          });
+
+          await expandSecrets(secretRecord);
+
+          secretsByPath[secPath].forEach((decryptedSecret) => {
+            // eslint-disable-next-line no-param-reassign
+            decryptedSecret.secretValue = secretRecord[decryptedSecret.secretKey].value;
+          });
+        }
+      };
+
+      // expand secrets
+      await batchSecretsExpand(decryptedSecrets);
+
+      // expand imports by batch
+      await Promise.all(decryptedImports.map((decryptedImport) => batchSecretsExpand(decryptedImport.secrets)));
+    }
+
+    return {
+      secrets: decryptedSecrets,
+      imports: decryptedImports
     };
   };
 
@@ -921,7 +1025,8 @@ export const secretServiceFactory = ({
     path,
     actor,
     environment,
-    projectId,
+    projectId: workspaceId,
+    projectSlug,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -929,6 +1034,8 @@ export const secretServiceFactory = ({
     includeImports,
     version
   }: TGetASecretRawDTO) => {
+    const projectId = workspaceId || (await projectDAL.findProjectBySlug(projectSlug as string, actorOrgId)).id;
+
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
@@ -945,6 +1052,7 @@ export const secretServiceFactory = ({
       includeImports,
       version
     });
+
     return decryptSecretRaw(secret, botKey);
   };
 
@@ -991,9 +1099,6 @@ export const secretServiceFactory = ({
       skipMultilineEncoding
     });
 
-    await snapshotService.performSnapshot(secret.folderId);
-    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
-
     return decryptSecretRaw(secret, botKey);
   };
 
@@ -1032,8 +1137,6 @@ export const secretServiceFactory = ({
     });
 
     await snapshotService.performSnapshot(secret.folderId);
-    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
-
     return decryptSecretRaw(secret, botKey);
   };
 
@@ -1062,9 +1165,6 @@ export const secretServiceFactory = ({
       actorOrgId,
       actorAuthMethod
     });
-
-    await snapshotService.performSnapshot(secret.folderId);
-    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
 
     return decryptSecretRaw(secret, botKey);
   };
@@ -1114,10 +1214,9 @@ export const secretServiceFactory = ({
       })
     });
 
-    await snapshotService.performSnapshot(secrets[0].folderId);
-    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
-
-    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+    return secrets.map((secret) =>
+      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+    );
   };
 
   const updateManySecretsRaw = async ({
@@ -1166,10 +1265,9 @@ export const secretServiceFactory = ({
       })
     });
 
-    await snapshotService.performSnapshot(secrets[0].folderId);
-    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
-
-    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+    return secrets.map((secret) =>
+      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+    );
   };
 
   const deleteManySecretsRaw = async ({
@@ -1200,10 +1298,9 @@ export const secretServiceFactory = ({
       secrets: inputSecrets.map(({ secretKey }) => ({ secretName: secretKey, type: SecretType.Shared }))
     });
 
-    await snapshotService.performSnapshot(secrets[0].folderId);
-    await secretQueueService.syncSecrets({ secretPath, projectId, environment });
-
-    return secrets.map((secret) => decryptSecretRaw({ ...secret, workspace: projectId, environment }, botKey));
+    return secrets.map((secret) =>
+      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+    );
   };
 
   const getSecretVersions = async ({
@@ -1324,7 +1421,12 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folder.id);
-    await secretQueueService.syncSecrets({ secretPath, projectId: project.id, environment });
+    await secretQueueService.syncSecrets({
+      secretPath,
+      projectId: project.id,
+      environmentSlug: environment,
+      excludeReplication: true
+    });
 
     return {
       ...updatedSecret[0],
@@ -1426,12 +1528,63 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folder.id);
-    await secretQueueService.syncSecrets({ secretPath, projectId: project.id, environment });
+    await secretQueueService.syncSecrets({
+      secretPath,
+      projectId: project.id,
+      environmentSlug: environment,
+      excludeReplication: true
+    });
 
     return {
       ...updatedSecret[0],
       tags: newTags
     };
+  };
+
+  // this is a backfilling API for secret references
+  // what it does is it will go through all the secret values and parse all references
+  // populate the secret reference to do sync integrations
+  const backfillSecretReferences = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: TBackFillSecretReferencesDTO) => {
+    const { hasRole } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    if (!hasRole(ProjectMembershipRole.Admin))
+      throw new BadRequestError({ message: "Only admins are allowed to take this action" });
+
+    const botKey = await projectBotService.getBotKey(projectId);
+    if (!botKey)
+      throw new BadRequestError({ message: "Please upgrade your project first", name: "bot_not_found_error" });
+
+    await secretDAL.transaction(async (tx) => {
+      const secrets = await secretDAL.findAllProjectSecretValues(projectId, tx);
+      await secretDAL.upsertSecretReferences(
+        secrets.map(({ id, secretValueCiphertext, secretValueIV, secretValueTag }) => ({
+          secretId: id,
+          references: getAllNestedSecretReferences(
+            decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: secretValueCiphertext,
+              iv: secretValueIV,
+              tag: secretValueTag,
+              key: botKey
+            })
+          )
+        })),
+        tx
+      );
+    });
+
+    return { message: "Successfully backfilled secret references" };
   };
 
   return {
@@ -1454,11 +1607,6 @@ export const secretServiceFactory = ({
     updateManySecretsRaw,
     deleteManySecretsRaw,
     getSecretVersions,
-    // external services function
-    fnSecretBulkDelete,
-    fnSecretBulkUpdate,
-    fnSecretBlindIndexCheck,
-    fnSecretBulkInsert,
-    fnSecretBlindIndexCheckV2
+    backfillSecretReferences
   };
 };
