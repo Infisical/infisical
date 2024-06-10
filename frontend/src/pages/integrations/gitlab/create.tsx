@@ -407,7 +407,7 @@ export default function GitLabCreateIntegrationPage() {
                       onCheckedChange={(isChecked) => onChange(isChecked)}
                       isChecked={value}
                     >
-                      <div className="max-w-md">Mask values in build logs</div>
+                      <div className="max-w-md">Mark Infisical secrets in Gitlab as &apos;Masked&apos; secrets</div>
                     </Switch>
                   )}
                 />
@@ -422,7 +422,7 @@ export default function GitLabCreateIntegrationPage() {
                       onCheckedChange={(isChecked) => onChange(isChecked)}
                       isChecked={value}
                     >
-                      Protect secrets (only use in protected branches and tags)
+                      Mark Infisical secrets in Gitlab as &apos;Protected&apos; secrets
                     </Switch>
                   )}
                 />
