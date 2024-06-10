@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faWarning } from "@fortawesome/free-solid-svg-icons";
+import { faCircleQuestion, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,6 +14,7 @@ import {
   Input,
   Modal,
   ModalContent,
+  Switch,
   Tooltip
 } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
@@ -24,6 +26,7 @@ const typeSchema = z
   .object({
     key: z.string().min(1, "Key is required"),
     value: z.string().optional(),
+    skipMultilineEncoding: z.boolean().optional(),
     environments: z.record(z.boolean().optional())
   })
   .refine((data) => data.key !== undefined, {
@@ -59,6 +62,13 @@ export const CreateSecretForm = ({
     formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
   const newSecretKey = watch("key");
+  const newValue = watch("value");
+  const [isMultiline, setIsMultiline] = useState(false);
+
+  useEffect(() => {
+    if (newValue) setIsMultiline(newValue.includes("\n"));
+    else setIsMultiline(false);
+  }, [newValue]);
 
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
@@ -68,7 +78,12 @@ export const CreateSecretForm = ({
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
 
-  const handleFormSubmit = async ({ key, value, environments: selectedEnv }: TFormSchema) => {
+  const handleFormSubmit = async ({
+    key,
+    value,
+    skipMultilineEncoding,
+    environments: selectedEnv
+  }: TFormSchema) => {
     const environmentsSelected = environments.filter(({ slug }) => selectedEnv[slug]);
     const isEnvironmentsSelected = environmentsSelected.length;
 
@@ -104,7 +119,8 @@ export const CreateSecretForm = ({
           secretName: key,
           secretValue: value || "",
           type: "shared",
-          latestFileKey: decryptFileKey
+          latestFileKey: decryptFileKey,
+          skipMultilineEncoding
         });
       }
 
@@ -116,7 +132,8 @@ export const CreateSecretForm = ({
         secretValue: value || "",
         secretComment: "",
         type: "shared",
-        latestFileKey: decryptFileKey
+        latestFileKey: decryptFileKey,
+        skipMultilineEncoding
       });
     });
 
@@ -168,6 +185,31 @@ export const CreateSecretForm = ({
               </FormControl>
             )}
           />
+          {isMultiline && (
+            <div className="my-2 mb-6 ml-1 border-b border-mineshaft-600 pb-4">
+              <Controller
+                control={control}
+                name="skipMultilineEncoding"
+                render={({ field: { value, onChange, onBlur } }) => (
+                  <Switch
+                    id="skipmultiencoding-option"
+                    onCheckedChange={(isChecked) => onChange(!isChecked)}
+                    isChecked={!value}
+                    onBlur={onBlur}
+                    className="items-center"
+                  >
+                    Enable multi line encoding
+                    <Tooltip
+                      content="Infisical encodes multiline secrets by escaping newlines and wrapping in quotes. To disable, enable this option"
+                      className="z-[100]"
+                    >
+                      <FontAwesomeIcon icon={faCircleQuestion} className="ml-1" size="sm" />
+                    </Tooltip>
+                  </Switch>
+                )}
+              />
+            </div>
+          )}
           <FormLabel label="Environments" className="mb-2" />
           <div className="thin-scrollbar grid max-h-64 grid-cols-3 gap-4 overflow-auto py-2">
             {environments.map((env) => {
