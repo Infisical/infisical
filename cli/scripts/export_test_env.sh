@@ -9,14 +9,15 @@ if [ ! -f "$TEST_ENV_FILE" ]; then
 fi
 
 # Export the variables
-while IFS='=' read -r key value
+while IFS= read -r line
 do
     # Skip empty lines and lines starting with #
-    if [[ -z "$key" || "$key" =~ ^\# ]]; then
+    if [[ -z "$line" || "$line" =~ ^\# ]]; then
         continue
     fi
-    # Use eval to correctly handle values with spaces
-    eval export $key='$value'
+    # Read the key-value pair
+    IFS='=' read -r key value <<< "$line"
+    eval export $key=\$value
 done < "$TEST_ENV_FILE"
 
 echo "Test environment variables set."

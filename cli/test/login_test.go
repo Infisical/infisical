@@ -77,22 +77,19 @@ func UserLoginCmd() {
 			n, err := ptmx.Read(buf)
 			if n > 0 {
 				terminalOut := string(buf)
-				if strings.Contains(terminalOut, "Add a new account") && step < 0  {
-					step += 1
-					stepChan <- step
-				} else if strings.Contains(terminalOut, "Infisical Cloud") && step < 1 {
+				if strings.Contains(terminalOut, "Infisical Cloud") && step < 0 {
 					step += 1;
 					stepChan <- step
-				} else if strings.Contains(terminalOut, "Email") && step < 2 {
+				} else if strings.Contains(terminalOut, "Email") && step < 1 {
 					step += 1;
 					stepChan <- step
-				} else if strings.Contains(terminalOut, "Password") && step < 3 {
+				} else if strings.Contains(terminalOut, "Password") && step < 2 {
 					step += 1;
 					stepChan <- step
-				} else if strings.Contains(terminalOut, "Infisical organization") && step < 4 {
+				} else if strings.Contains(terminalOut, "Infisical organization") && step < 3 {
 					step += 1;
 					stepChan <- step
-				} else if strings.Contains(terminalOut, "Enter passphrase") && step < 5 {
+				} else if strings.Contains(terminalOut, "Enter passphrase") && step < 4 {
 					step += 1;
 					stepChan <- step
 				}
@@ -106,17 +103,15 @@ func UserLoginCmd() {
 
 	for i := range stepChan {
 		switch i {
-		case 0: 
+		case 0:
 			ptmx.Write([]byte("\n"))
 		case 1:
-			ptmx.Write([]byte("\n"))
-		case 2:
 			ptmx.Write([]byte(creds.UserEmail))
 			ptmx.Write([]byte("\n"))
-		case 3:
+		case 2:
 			ptmx.Write([]byte(creds.UserPassword))
 			ptmx.Write([]byte("\n"))
-		case 4:
+		case 3:
 			ptmx.Write([]byte("\n"))
 		}
 	}
