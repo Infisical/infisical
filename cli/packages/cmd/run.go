@@ -116,71 +116,35 @@ var runCmd = &cobra.Command{
 			Recursive:     recursive,
 		}
 
-		var secrets []models.SingleEnvironmentVariable
-		var isUserSession bool
-		var infisicalDotJson models.WorkspaceConfigFile
-		var userBackupSecretsEncryptionKey []byte
-
 		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 			request.InfisicalToken = token.Token
 		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 			request.UniversalAuthAccessToken = token.Token
-		} else {
-			// user session
-			isUserSession = true
-			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			if projectConfigDir == "" {
-				projectConfig, err := util.GetWorkSpaceFromFile()
-				if err != nil {
-					util.HandleError(err)
-				}
-	
-				infisicalDotJson = projectConfig
-			} else {
-				projectConfig, err := util.GetWorkSpaceFromFilePath(projectConfigDir)
-				if err != nil {
-					util.HandleError(err)
-				}
-	
-				infisicalDotJson = projectConfig
-			}
-
-			userBackupSecretsEncryptionKey = []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
-			secrets = util.GetBackupSecretsIfDisconnected(infisicalDotJson.WorkspaceId, environmentName, userBackupSecretsEncryptionKey)
 		}
 
-		if len(secrets) == 0 {
-			secrets, err = util.GetAllEnvironmentVariables(request, projectConfigDir)
-			if err != nil {
-				util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
+		secrets, err := util.GetAllEnvironmentVariables(request, projectConfigDir)
+
+		if err != nil {
+			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
+		}
+
+		if secretOverriding {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
+		} else {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
+		}
+
+		if shouldExpandSecrets {
+
+			authParams := models.ExpandSecretsAuthentication{}
+
+			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+				authParams.InfisicalToken = token.Token
+			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+				authParams.UniversalAuthAccessToken = token.Token
 			}
 
-			if secretOverriding {
-				secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
-			} else {
-				secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
-			}
-
-			if shouldExpandSecrets {
-
-				authParams := models.ExpandSecretsAuthentication{}
-
-				if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
-					authParams.InfisicalToken = token.Token
-				} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
-					authParams.UniversalAuthAccessToken = token.Token
-				}
-
-				secrets = util.ExpandSecrets(secrets, authParams, projectConfigDir)
-			}
-
-			if isUserSession {
-				util.WriteBackupSecrets(infisicalDotJson.WorkspaceId, environmentName, userBackupSecretsEncryptionKey, secrets)
-			}
+			secrets = util.ExpandSecrets(secrets, authParams, projectConfigDir)
 		}
 
 		secretsByKey := getSecretsByKeys(secrets)
