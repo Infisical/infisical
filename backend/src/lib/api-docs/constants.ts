@@ -386,6 +386,8 @@ export const SECRET_IMPORTS = {
     environment: "The slug of the environment to import into.",
     path: "The path to import into.",
     workspaceId: "The ID of the project you are working in.",
+    isReplication:
+      "When true, secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately.",
     import: {
       environment: "The slug of the environment to import from.",
       path: "The path to import from."
