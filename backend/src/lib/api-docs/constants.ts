@@ -675,8 +675,8 @@ export const INTEGRATION = {
       secretAWSTag: "The tags for AWS secrets.",
       kmsKeyId: "The ID of the encryption key from AWS KMS.",
       shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store.",
-      shouldMaskSecrets: "The flag to determine the visibility of secrets to sync. Used by Gitlab",
-      shouldProtectSecrets: "The flag to determine usage rules of secrets to sync. Used by Gitlab",
+      shouldMaskSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Masked'.",
+      shouldProtectSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Protected'.",
       shouldEnableDelete: "The flag to enable deletion of secrets"
     }
   },
