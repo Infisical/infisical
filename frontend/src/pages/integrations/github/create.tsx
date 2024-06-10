@@ -560,7 +560,7 @@ export default function GitHubCreateIntegrationPage() {
                         onCheckedChange={(isChecked) => onChange(isChecked)}
                         isChecked={value}
                       >
-                        Delete secrets not in Infisical
+                        Delete secrets in Github that are not in Infisical
                       </Switch>
                     )}
                   />
