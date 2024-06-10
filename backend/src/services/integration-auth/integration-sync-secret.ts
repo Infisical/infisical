@@ -1921,7 +1921,7 @@ const syncSecretsGitLab = async ({
     return allEnvVariables;
   };
 
-  const metadata = z.record(z.any()).parse(integration.metadata);
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata);
   const allEnvVariables = await getAllEnvVariables(integration?.appId as string, accessToken);
   const getSecretsRes: GitLabSecret[] = allEnvVariables
     .filter((secret: GitLabSecret) => secret.environment_scope === integration.targetEnvironment)
