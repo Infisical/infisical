@@ -75,6 +75,7 @@ export const useCreateIntegration = () => {
         shouldDisableDelete?: boolean;
         shouldMaskSecrets?: boolean;
         shouldProtectSecrets?: boolean;
+        shouldEnableDelete?: boolean;
       };
     }) => {
       const {

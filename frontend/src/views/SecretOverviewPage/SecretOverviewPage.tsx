@@ -454,12 +454,12 @@ export const SecretOverviewPage = () => {
   const filteredSecretNames = secKeys
     ?.filter((name) => name.toUpperCase().includes(searchFilter.toUpperCase()))
     .sort((a, b) => (sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a)));
-  const filteredFolderNames = folderNames?.filter((name) =>
-    name.toLowerCase().includes(searchFilter.toLowerCase())
-  );
-  const filteredDynamicSecrets = dynamicSecretNames?.filter((name) =>
-    name.toLowerCase().includes(searchFilter.toLowerCase())
-  );
+  const filteredFolderNames = folderNames
+    ?.filter((name) => name.toLowerCase().includes(searchFilter.toLowerCase()))
+    .sort((a, b) => (sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a)));
+  const filteredDynamicSecrets = dynamicSecretNames
+    ?.filter((name) => name.toLowerCase().includes(searchFilter.toLowerCase()))
+    .sort((a, b) => (sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a)));
 
   const isTableEmpty =
     !(
