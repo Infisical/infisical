@@ -122,8 +122,7 @@ const envSchema = z
     MAINTENANCE_MODE: zodStrBool.default("false"),
 
     // CAPTCHA
-    CAPTCHA_SECRET: zpStr(z.string().optional()),
-    CAPTCHA_ENABLED: zodStrBool.default("false")
+    CAPTCHA_SECRET: zpStr(z.string().optional())
   })
   .transform((data) => ({
     ...data,
