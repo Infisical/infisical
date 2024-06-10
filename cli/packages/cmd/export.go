@@ -93,33 +93,10 @@ var exportCmd = &cobra.Command{
 			IncludeImport: includeImports,
 		}
 
-		
-		var secrets []models.SingleEnvironmentVariable
-		var isUserSession bool
-		var infisicalDotJson models.WorkspaceConfigFile
-		var userBackupSecretsEncryptionKey []byte
-		var loggedInUserDetails util.LoggedInUserDetails
-
 		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 			request.InfisicalToken = token.Token
 		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 			request.UniversalAuthAccessToken = token.Token
-		} else {
-			isUserSession = true
-			loggedInUserDetails, err = util.GetCurrentLoggedInUserDetails()
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			projectConfig, err := util.GetWorkSpaceFromFile()
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			infisicalDotJson = projectConfig
-
-			userBackupSecretsEncryptionKey = []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
-			secrets = util.GetBackupSecretsIfDisconnected(infisicalDotJson.WorkspaceId, environmentName, userBackupSecretsEncryptionKey)
 		}
 
 		if templatePath != "" {
@@ -132,6 +109,10 @@ var exportCmd = &cobra.Command{
 				accessToken = token.Token
 			} else {
 				log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
+				loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+				if err != nil {
+					util.HandleError(err)
+				}
 				accessToken = loggedInUserDetails.UserCredentials.JTWToken
 			}
 
@@ -143,44 +124,40 @@ var exportCmd = &cobra.Command{
 			return
 		}
 
-		if len(secrets) == 0 {
-			secrets, err = util.GetAllEnvironmentVariables(request, "")
-			if err != nil {
-				util.HandleError(err, "Unable to fetch secrets")
-			}
-
-			if secretOverriding {
-				secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
-			} else {
-				secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
-			}
-
-			if shouldExpandSecrets {
-
-				authParams := models.ExpandSecretsAuthentication{}
-
-				if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
-					authParams.InfisicalToken = token.Token
-				} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
-					authParams.UniversalAuthAccessToken = token.Token
-				}
-
-				secrets = util.ExpandSecrets(secrets, authParams, "")
-			}
-			secrets = util.FilterSecretsByTag(secrets, tagSlugs)
-			secrets = util.SortSecretsByKeys(secrets)
-			
-			if isUserSession {
-				util.WriteBackupSecrets(infisicalDotJson.WorkspaceId, environmentName, userBackupSecretsEncryptionKey, secrets)
-			}
+		secrets, err := util.GetAllEnvironmentVariables(request, "")
+		if err != nil {
+			util.HandleError(err, "Unable to fetch secrets")
 		}
 
-		output, err := formatEnvs(secrets, format)
+		if secretOverriding {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
+		} else {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
+		}
+
+		var output string
+		if shouldExpandSecrets {
+
+			authParams := models.ExpandSecretsAuthentication{}
+
+			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+				authParams.InfisicalToken = token.Token
+			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+				authParams.UniversalAuthAccessToken = token.Token
+			}
+
+			secrets = util.ExpandSecrets(secrets, authParams, "")
+		}
+		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
+		secrets = util.SortSecretsByKeys(secrets)
+
+		output, err = formatEnvs(secrets, format)
 		if err != nil {
 			util.HandleError(err)
 		}
 
 		fmt.Print(output)
+
 		// Telemetry.CaptureEvent("cli-command:export", posthog.NewProperties().Set("secretsCount", len(secrets)).Set("version", util.CLI_VERSION))
 	},
 }

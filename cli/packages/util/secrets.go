@@ -426,24 +426,6 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 	return secretMapByName
 }
 
-func GetBackupSecretsIfDisconnected(workspaceId string, environment string, encryptionKey []byte) ([]models.SingleEnvironmentVariable)  {
-	isConnected := CheckIsConnectedToInfisicalAPI()
-
-	if !isConnected {
-		secrets, err := ReadBackupSecrets(workspaceId, environment, encryptionKey)
-		if err != nil {
-			HandleError(err)
-		}
-		if len(secrets) > 0 {
-			PrintWarning("Unable to fetch latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
-		}
-
-		return secrets
-	}
-
-	return nil
-}
-
 func ExpandSecrets(secrets []models.SingleEnvironmentVariable, auth models.ExpandSecretsAuthentication, projectConfigPathDir string) []models.SingleEnvironmentVariable {
 	expandedSecs := make(map[string]string)
 	interpolatedSecs := make(map[string]string)
