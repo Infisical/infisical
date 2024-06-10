@@ -975,7 +975,8 @@ export const registerRoutes = async (
           emailConfigured: z.boolean().optional(),
           inviteOnlySignup: z.boolean().optional(),
           redisConfigured: z.boolean().optional(),
-          secretScanningConfigured: z.boolean().optional()
+          secretScanningConfigured: z.boolean().optional(),
+          samlDefaultOrgSlug: z.string().optional()
         })
       }
     },
@@ -988,7 +989,8 @@ export const registerRoutes = async (
         emailConfigured: cfg.isSmtpConfigured,
         inviteOnlySignup: Boolean(serverCfg.allowSignUp),
         redisConfigured: cfg.isRedisConfigured,
-        secretScanningConfigured: cfg.isSecretScanningConfigured
+        secretScanningConfigured: cfg.isSecretScanningConfigured,
+        samlDefaultOrgSlug: cfg.samlDefaultOrgSlug
       };
     }
   });

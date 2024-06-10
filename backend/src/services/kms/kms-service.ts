@@ -80,7 +80,7 @@ export const kmsServiceFactory = ({ kmsDAL, kmsRootConfigDAL, keyStore }: TKmsSe
     // This will switch to a seal process and HMS flow in future
     const encryptionKey = appCfg.ENCRYPTION_KEY || appCfg.ROOT_ENCRYPTION_KEY;
     // if root key its base64 encoded
-    const isBase64 = Boolean(appCfg.ROOT_ENCRYPTION_KEY);
+    const isBase64 = !appCfg.ENCRYPTION_KEY;
     if (!encryptionKey) throw new Error("Root encryption key not found for KMS service.");
     const encryptionKeyBuffer = Buffer.from(encryptionKey, isBase64 ? "base64" : "utf8");
 
