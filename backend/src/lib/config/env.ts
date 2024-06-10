@@ -75,6 +75,7 @@ const envSchema = z
         .optional()
         .default(process.env.URL_GITLAB_LOGIN ?? GITLAB_URL)
     ), // fallback since URL_GITLAB_LOGIN has been renamed
+    DEFAULT_SAML_ORG_SLUG: zpStr(z.string().optional()).default(process.env.NEXT_PUBLIC_SAML_ORG_SLUG),
     // integration client secrets
     // heroku
     CLIENT_ID_HEROKU: zpStr(z.string().optional()),
@@ -134,7 +135,8 @@ const envSchema = z
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
-      Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET)
+      Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
+    samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG
   }));
 
 let envCfg: Readonly<z.infer<typeof envSchema>>;

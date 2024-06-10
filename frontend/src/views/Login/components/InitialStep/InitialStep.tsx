@@ -14,6 +14,7 @@ import attemptLogin from "@app/components/utilities/attemptLogin";
 import { CAPTCHA_SITE_KEY } from "@app/components/utilities/config";
 import { Button, Input } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
+import { useFetchServerStatus } from "@app/hooks/api";
 
 import { navigateUserToSelectOrg } from "../../Login.utils";
 
@@ -36,21 +37,15 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
   const [captchaToken, setCaptchaToken] = useState("");
   const [shouldShowCaptcha, setShouldShowCaptcha] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
+  const { data: serverDetails } = useFetchServerStatus();
 
   useEffect(() => {
-    if (
-      process.env.NEXT_PUBLIC_SAML_ORG_SLUG &&
-      process.env.NEXT_PUBLIC_SAML_ORG_SLUG !== "saml-org-slug-default"
-    ) {
-      const callbackPort = queryParams.get("callback_port");
-      window.open(
-        `/api/v1/sso/redirect/saml2/organizations/${process.env.NEXT_PUBLIC_SAML_ORG_SLUG}${
-          callbackPort ? `?callback_port=${callbackPort}` : ""
-        }`
-      );
-      window.close();
-    }
-  }, []);
+      if (serverDetails?.samlDefaultOrgSlug){
+        const callbackPort = queryParams.get("callback_port");
+        const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${serverDetails?.samlDefaultOrgSlug}${callbackPort ? `?callback_port=${callbackPort}` : ""}`
+        router.push(redirectUrl);
+      }
+  }, [serverDetails?.samlDefaultOrgSlug]);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
