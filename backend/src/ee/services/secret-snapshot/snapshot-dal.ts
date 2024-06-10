@@ -329,9 +329,10 @@ export const snapshotDALFactory = (db: TDbClient) => {
 
   const pruneExcessSnapshots = async () => {
     const PRUNE_FOLDER_BATCH_SIZE = 10000;
-    let uuidOffset = "00000000-0000-0000-0000-000000000000";
 
     try {
+      let uuidOffset = "00000000-0000-0000-0000-000000000000";
+      // cleanup snapshots from root/non-versioned folders
       // eslint-disable-next-line no-constant-condition, no-unreachable-loop
       while (true) {
         const folderBatch = await db(TableName.SecretFolder)
@@ -366,15 +367,82 @@ export const snapshotDALFactory = (db: TDbClient) => {
               .delete();
           } catch (err) {
             logger.error(
-              `Failed to prune snapshots in range ${batchEntries[0]}:${batchEntries[batchEntries.length - 1]}`
+              `Failed to prune snapshots from root/non-versioned folders in range ${batchEntries[0]}:${
+                batchEntries[batchEntries.length - 1]
+              }`
             );
           } finally {
             uuidOffset = batchEntries[batchEntries.length - 1];
           }
         } else {
-          return;
+          break;
         }
       }
+
+      // cleanup snapshots from versioned folders
+      uuidOffset = "00000000-0000-0000-0000-000000000000";
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const folderBatch = await db(TableName.SecretFolderVersion)
+          .select("folderId")
+          .distinct("folderId")
+          .where("folderId", ">", uuidOffset)
+          .orderBy("folderId", "asc")
+          .limit(PRUNE_FOLDER_BATCH_SIZE);
+
+        const batchEntries = folderBatch.map((folder) => folder.folderId);
+
+        if (folderBatch.length) {
+          try {
+            logger.info(`Pruning snapshots in range ${batchEntries[0]}:${batchEntries[batchEntries.length - 1]}`);
+            await db(TableName.Snapshot)
+              .with("snapshot_cte", (qb) => {
+                void qb
+                  .from(TableName.Snapshot)
+                  .whereIn(`${TableName.Snapshot}.folderId`, batchEntries)
+                  .select(
+                    "folderId",
+                    `${TableName.Snapshot}.id as id`,
+                    db.raw(
+                      `ROW_NUMBER() OVER (PARTITION BY ${TableName.Snapshot}."folderId" ORDER BY ${TableName.Snapshot}."createdAt" DESC) AS row_num`
+                    )
+                  );
+              })
+              .join(
+                TableName.SecretFolderVersion,
+                `${TableName.SecretFolderVersion}.folderId`,
+                `${TableName.Snapshot}.folderId`
+              )
+              .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolderVersion}.envId`)
+              .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
+              .join("snapshot_cte", "snapshot_cte.id", `${TableName.Snapshot}.id`)
+              .whereRaw(`snapshot_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+              .delete();
+          } catch (err) {
+            logger.error(
+              `Failed to prune snapshots from versioned folders in range ${batchEntries[0]}:${
+                batchEntries[batchEntries.length - 1]
+              }`
+            );
+          } finally {
+            uuidOffset = batchEntries[batchEntries.length - 1];
+          }
+        } else {
+          break;
+        }
+      }
+
+      // cleanup orphaned snapshots (those that don't belong to an existing folder and folder version)
+      await db(TableName.Snapshot)
+        // eslint-disable-next-line func-names
+        .whereNotIn("folderId", function () {
+          void this.select("folderId").from(TableName.SecretFolderVersion);
+        })
+        // eslint-disable-next-line func-names
+        .whereNotIn("folderId", function () {
+          void this.select("folderId").from(TableName.SecretFolder);
+        })
+        .delete();
     } catch (error) {
       throw new DatabaseError({ error, name: "SnapshotPrune" });
     }
