@@ -401,7 +401,7 @@ export const SecretDetailSidebar = ({
                         >
                           Enable multi line encoding
                           <Tooltip
-                            content="Infisical encodes multiline secrets by escaping newlines and wrapping in quotes. To disable, enable this option"
+                            content="When enabled, secrets are escaped and wrapped in quotes"
                             className="z-[100]"
                           >
                             <FontAwesomeIcon icon={faCircleQuestion} className="ml-1" size="sm" />
