@@ -391,7 +391,7 @@ export const scimServiceFactory = ({
           );
         }
       }
-
+      await licenseService.updateSubscriptionOrgMemberCount(orgMembership.id);
       return { user, orgMembership };
     });
 
