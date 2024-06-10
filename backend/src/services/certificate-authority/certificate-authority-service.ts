@@ -30,7 +30,7 @@ import {
   TGetCrl,
   TImportCertToCaDTO,
   TIssueCertFromCaDTO,
-  TRotateCrlDTO,
+  // TRotateCrlDTO,
   TSignIntermediateDTO,
   TUpdateCaDTO
 } from "./certificate-authority-types";
@@ -145,8 +145,6 @@ export const certificateAuthorityServiceFactory = ({
         tx
       );
 
-      // TODO: create CRL
-
       const keyId = await getProjectKmsCertificateKeyId({
         projectId: project.id,
         projectDAL,
@@ -154,8 +152,7 @@ export const certificateAuthorityServiceFactory = ({
       });
 
       if (type === CaType.ROOT) {
-        // note: self-signed cert only applicable for root CA
-
+        // note: create self-signed cert only applicable for root CA
         const cert = await x509.X509CertificateGenerator.createSelfSigned({
           name: dn,
           serialNumber,
@@ -190,21 +187,30 @@ export const certificateAuthorityServiceFactory = ({
           },
           tx
         );
-
-        const { cipherTextBlob: encryptedCrl } = await kmsService.encrypt({
-          kmsId: keyId,
-          plainText: Buffer.alloc(0)
-        });
-
-        await certificateAuthorityCrlDAL.create(
-          {
-            caId: ca.id,
-            encryptedCrl,
-            ttl: 60 // in minutes
-          },
-          tx
-        );
       }
+
+      // create empty CRL
+      const crl = await x509.X509CrlGenerator.create({
+        issuer: ca.dn,
+        thisUpdate: new Date(),
+        nextUpdate: new Date("2025/12/12"), // TODO: change
+        entries: [],
+        signingAlgorithm: alg,
+        signingKey: keys.privateKey
+      });
+
+      const { cipherTextBlob: encryptedCrl } = await kmsService.encrypt({
+        kmsId: keyId,
+        plainText: Buffer.from(new Uint8Array(crl.rawData))
+      });
+
+      await certificateAuthorityCrlDAL.create(
+        {
+          caId: ca.id,
+          encryptedCrl
+        },
+        tx
+      );
 
       // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
       const skObj = KeyObject.from(keys.privateKey);
@@ -817,9 +823,8 @@ export const certificateAuthorityServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
-
-    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+    const caCrl = await certificateAuthorityCrlDAL.findOne({ caId: ca.id });
+    if (!caCrl) throw new BadRequestError({ message: "CRL not found" });
 
     const keyId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -827,37 +832,12 @@ export const certificateAuthorityServiceFactory = ({
       kmsService
     });
 
-    const privateKey = await kmsService.decrypt({
+    const decryptedCrl = await kmsService.decrypt({
       kmsId: keyId,
-      cipherTextBlob: caSecret.encryptedPrivateKey
+      cipherTextBlob: caCrl.encryptedCrl
     });
 
-    const skObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
-    const sk = await crypto.subtle.importKey("pkcs8", skObj.export({ format: "der", type: "pkcs8" }), alg, true, [
-      "sign"
-    ]);
-
-    const revokedCerts = await certificateDAL.find({
-      caId: ca.id,
-      status: CertStatus.REVOKED
-    });
-
-    const crl = await x509.X509CrlGenerator.create({
-      issuer: ca.dn,
-      thisUpdate: new Date(),
-      nextUpdate: new Date("2025/12/12"),
-      entries: revokedCerts.map((revokedCert) => {
-        return {
-          serialNumber: revokedCert.serialNumber,
-          revocationDate: new Date(revokedCert.revokedAt as Date),
-          reason: revokedCert.revocationReason as number,
-          invalidity: new Date("2022/01/01"),
-          issuer: ca.dn
-        };
-      }),
-      signingAlgorithm: alg,
-      signingKey: sk
-    });
+    const crl = new x509.X509Crl(decryptedCrl);
 
     const base64crl = crl.toString("base64");
     const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
@@ -867,86 +847,86 @@ export const certificateAuthorityServiceFactory = ({
     };
   };
 
-  const rotateCaCrl = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TRotateCrlDTO) => {
-    const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new BadRequestError({ message: "CA not found" });
+  // const rotateCaCrl = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TRotateCrlDTO) => {
+  //   const ca = await certificateAuthorityDAL.findById(caId);
+  //   if (!ca) throw new BadRequestError({ message: "CA not found" });
 
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      ca.projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
+  //   const { permission } = await permissionService.getProjectPermission(
+  //     actor,
+  //     actorId,
+  //     ca.projectId,
+  //     actorAuthMethod,
+  //     actorOrgId
+  //   );
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
-    );
+  //   ForbiddenError.from(permission).throwUnlessCan(
+  //     ProjectPermissionActions.Read,
+  //     ProjectPermissionSub.CertificateAuthorities
+  //   );
 
-    const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
+  //   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 
-    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+  //   const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
 
-    const keyId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+  //   const keyId = await getProjectKmsCertificateKeyId({
+  //     projectId: ca.projectId,
+  //     projectDAL,
+  //     kmsService
+  //   });
 
-    const privateKey = await kmsService.decrypt({
-      kmsId: keyId,
-      cipherTextBlob: caSecret.encryptedPrivateKey
-    });
+  //   const privateKey = await kmsService.decrypt({
+  //     kmsId: keyId,
+  //     cipherTextBlob: caSecret.encryptedPrivateKey
+  //   });
 
-    const skObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
-    const sk = await crypto.subtle.importKey("pkcs8", skObj.export({ format: "der", type: "pkcs8" }), alg, true, [
-      "sign"
-    ]);
+  //   const skObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
+  //   const sk = await crypto.subtle.importKey("pkcs8", skObj.export({ format: "der", type: "pkcs8" }), alg, true, [
+  //     "sign"
+  //   ]);
 
-    const revokedCerts = await certificateDAL.find({
-      caId: ca.id,
-      status: CertStatus.REVOKED
-    });
+  //   const revokedCerts = await certificateDAL.find({
+  //     caId: ca.id,
+  //     status: CertStatus.REVOKED
+  //   });
 
-    const crl = await x509.X509CrlGenerator.create({
-      issuer: ca.dn,
-      thisUpdate: new Date(),
-      nextUpdate: new Date("2025/12/12"),
-      entries: revokedCerts.map((revokedCert) => {
-        return {
-          serialNumber: revokedCert.serialNumber,
-          revocationDate: new Date(revokedCert.revokedAt as Date),
-          reason: revokedCert.revocationReason as number,
-          invalidity: new Date("2022/01/01"),
-          issuer: ca.dn
-        };
-      }),
-      signingAlgorithm: alg,
-      signingKey: sk
-    });
+  //   const crl = await x509.X509CrlGenerator.create({
+  //     issuer: ca.dn,
+  //     thisUpdate: new Date(),
+  //     nextUpdate: new Date("2025/12/12"),
+  //     entries: revokedCerts.map((revokedCert) => {
+  //       return {
+  //         serialNumber: revokedCert.serialNumber,
+  //         revocationDate: new Date(revokedCert.revokedAt as Date),
+  //         reason: revokedCert.revocationReason as number,
+  //         invalidity: new Date("2022/01/01"),
+  //         issuer: ca.dn
+  //       };
+  //     }),
+  //     signingAlgorithm: alg,
+  //     signingKey: sk
+  //   });
 
-    const { cipherTextBlob: encryptedCrl } = await kmsService.encrypt({
-      kmsId: keyId,
-      plainText: Buffer.from(new Uint8Array(crl.rawData))
-    });
+  //   const { cipherTextBlob: encryptedCrl } = await kmsService.encrypt({
+  //     kmsId: keyId,
+  //     plainText: Buffer.from(new Uint8Array(crl.rawData))
+  //   });
 
-    await certificateAuthorityCrlDAL.update(
-      {
-        caId: ca.id
-      },
-      {
-        encryptedCrl
-      }
-    );
+  //   await certificateAuthorityCrlDAL.update(
+  //     {
+  //       caId: ca.id
+  //     },
+  //     {
+  //       encryptedCrl
+  //     }
+  //   );
 
-    const base64crl = crl.toString("base64");
-    const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
+  //   const base64crl = crl.toString("base64");
+  //   const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
 
-    return {
-      crl: crlPem
-    };
-  };
+  //   return {
+  //     crl: crlPem
+  //   };
+  // };
 
   return {
     createCa,
@@ -958,7 +938,7 @@ export const certificateAuthorityServiceFactory = ({
     signIntermediate,
     importCertToCa,
     issueCertFromCa,
-    getCaCrl,
-    rotateCaCrl
+    getCaCrl
+    // rotateCaCrl
   };
 };

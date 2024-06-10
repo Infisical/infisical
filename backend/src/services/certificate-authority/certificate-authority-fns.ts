@@ -1,5 +1,11 @@
-import { CertKeyAlgorithm } from "../certificate/certificate-types";
-import { TDNParts } from "./certificate-authority-types";
+import * as x509 from "@peculiar/x509";
+import crypto from "crypto";
+
+import { BadRequestError } from "@app/lib/errors";
+import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+
+import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
+import { TDNParts, TRebuildCaCrlDTO } from "./certificate-authority-types";
 
 export const createDistinguishedName = (parts: TDNParts) => {
   const dnParts = [];
@@ -43,4 +49,73 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
       };
     }
   }
+};
+
+export const rebuildCaCrl = async ({
+  caId,
+  certificateAuthorityDAL,
+  certificateAuthorityCrlDAL,
+  certificateAuthoritySecretDAL,
+  projectDAL,
+  certificateDAL,
+  kmsService
+}: TRebuildCaCrlDTO) => {
+  const ca = await certificateAuthorityDAL.findById(caId);
+  if (!ca) throw new BadRequestError({ message: "CA not found" });
+
+  const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
+
+  const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+
+  const keyId = await getProjectKmsCertificateKeyId({
+    projectId: ca.projectId,
+    projectDAL,
+    kmsService
+  });
+
+  const privateKey = await kmsService.decrypt({
+    kmsId: keyId,
+    cipherTextBlob: caSecret.encryptedPrivateKey
+  });
+
+  const skObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
+  const sk = await crypto.subtle.importKey("pkcs8", skObj.export({ format: "der", type: "pkcs8" }), alg, true, [
+    "sign"
+  ]);
+
+  const revokedCerts = await certificateDAL.find({
+    caId: ca.id,
+    status: CertStatus.REVOKED
+  });
+
+  const crl = await x509.X509CrlGenerator.create({
+    issuer: ca.dn,
+    thisUpdate: new Date(),
+    nextUpdate: new Date("2025/12/12"),
+    entries: revokedCerts.map((revokedCert) => {
+      return {
+        serialNumber: revokedCert.serialNumber,
+        revocationDate: new Date(revokedCert.revokedAt as Date),
+        reason: revokedCert.revocationReason as number,
+        invalidity: new Date("2022/01/01"),
+        issuer: ca.dn
+      };
+    }),
+    signingAlgorithm: alg,
+    signingKey: sk
+  });
+
+  const { cipherTextBlob: encryptedCrl } = await kmsService.encrypt({
+    kmsId: keyId,
+    plainText: Buffer.from(new Uint8Array(crl.rawData))
+  });
+
+  await certificateAuthorityCrlDAL.update(
+    {
+      caId: ca.id
+    },
+    {
+      encryptedCrl
+    }
+  );
 };

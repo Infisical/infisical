@@ -6,19 +6,24 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { TCertificateCertDALFactory } from "@app/services/certificate/certificate-cert-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
+import { TCertificateAuthorityCrlDALFactory } from "@app/services/certificate-authority/certificate-authority-crl-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
+import { rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
 import { revocationReasonToCrlCode } from "./certificate-fns";
 import { CertStatus, TDeleteCertDTO, TGetCertCertDTO, TGetCertDTO, TRevokeCertDTO } from "./certificate-types";
 
 type TCertificateServiceFactoryDep = {
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update">;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find">;
   certificateCertDAL: Pick<TCertificateCertDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findOne">;
+  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encrypt" | "decrypt">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -31,6 +36,8 @@ export const certificateServiceFactory = ({
   certificateCertDAL,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
+  certificateAuthorityCrlDAL,
+  certificateAuthoritySecretDAL,
   projectDAL,
   kmsService,
   permissionService
@@ -104,6 +111,17 @@ export const certificateServiceFactory = ({
         revocationReason: revocationReasonToCrlCode(revocationReason)
       }
     );
+
+    // rebuild CRL (TODO: move to interval-based cron job)
+    await rebuildCaCrl({
+      caId: ca.id,
+      certificateAuthorityDAL,
+      certificateAuthorityCrlDAL,
+      certificateAuthoritySecretDAL,
+      projectDAL,
+      certificateDAL,
+      kmsService
+    });
 
     return { revokedAt };
   };

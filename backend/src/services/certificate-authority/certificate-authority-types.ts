@@ -1,6 +1,12 @@
 import { TProjectPermission } from "@app/lib/types";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { CertKeyAlgorithm } from "../certificate/certificate-types";
+import { TCertificateAuthorityCrlDALFactory } from "./certificate-authority-crl-dal";
+import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
+import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 
 export enum CaType {
   ROOT = "root",
@@ -86,6 +92,16 @@ export type TDNParts = {
   country?: string;
   province?: string;
   locality?: string;
+};
+
+export type TRebuildCaCrlDTO = {
+  caId: string;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "find">;
+  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decrypt" | "encrypt">;
 };
 
 export type TRotateCaCrlTriggerDTO = {

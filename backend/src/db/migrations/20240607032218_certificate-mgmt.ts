@@ -68,10 +68,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
       t.uuid("caId").notNullable().unique();
       t.foreign("caId").references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
-      t.binary("encryptedCrl").notNullable(); // TODO: encrypt
-      t.integer("ttl").notNullable(); // in minutes
-      // TODO: consider type (crl or delta)
-      // TODO: rebuild interval
+      t.binary("encryptedCrl").notNullable();
     });
   }
 

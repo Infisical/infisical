@@ -59,7 +59,7 @@ export const getProjectKmsCertificateKeyId = async ({
   kmsService
 }: {
   projectId: string;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey">;
 }) => {
   const keyId = await projectDAL.transaction(async (tx) => {
