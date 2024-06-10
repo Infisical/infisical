@@ -407,9 +407,7 @@ export default function GitLabCreateIntegrationPage() {
                       onCheckedChange={(isChecked) => onChange(isChecked)}
                       isChecked={value}
                     >
-                      <div className="max-w-md">
-                        Mask variables (requires secret values to match regex)
-                      </div>
+                      <div className="max-w-md">Mask values in build logs</div>
                     </Switch>
                   )}
                 />
