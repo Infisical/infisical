@@ -674,7 +674,8 @@ export const INTEGRATION = {
       secretGCPLabel: "The label for GCP secrets.",
       secretAWSTag: "The tags for AWS secrets.",
       kmsKeyId: "The ID of the encryption key from AWS KMS.",
-      shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store."
+      shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store.",
+      shouldEnableDelete: "The flag to enable deletion of secrets"
     }
   },
   UPDATE: {

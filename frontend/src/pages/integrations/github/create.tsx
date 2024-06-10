@@ -33,6 +33,7 @@ import {
   Input,
   Select,
   SelectItem,
+  Switch,
   Tab,
   TabList,
   TabPanel,
@@ -59,7 +60,7 @@ const schema = yup.object({
   selectedSourceEnvironment: yup.string().trim().required("Project Environment is required"),
   secretPath: yup.string().trim().required("Secrets Path is required"),
   secretSuffix: yup.string().trim().optional(),
-
+  shouldEnableDelete: yup.boolean().optional(),
   scope: yup.mixed<TargetEnv>().oneOf(targetEnv.slice()).required(),
 
   repoIds: yup.mixed().when("scope", {
@@ -98,7 +99,6 @@ type FormData = yup.InferType<typeof schema>;
 export default function GitHubCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
-  
 
   const integrationAuthId =
     (queryString.parse(router.asPath.split("?")[1]).integrationAuthId as string) ?? "";
@@ -120,7 +120,8 @@ export default function GitHubCreateIntegrationPage() {
     defaultValues: {
       secretPath: "/",
       scope: "github-repo",
-      repoIds: []
+      repoIds: [],
+      shouldEnableDelete: false
     }
   });
 
@@ -177,7 +178,8 @@ export default function GitHubCreateIntegrationPage() {
                 app: targetApp.name, // repo name
                 owner: targetApp.owner, // repo owner
                 metadata: {
-                  secretSuffix: data.secretSuffix
+                  secretSuffix: data.secretSuffix,
+                  shouldEnableDelete: data.shouldEnableDelete
                 }
               });
             })
@@ -194,7 +196,8 @@ export default function GitHubCreateIntegrationPage() {
             scope: data.scope,
             owner: integrationAuthOrgs?.find((e) => e.orgId === data.orgId)?.name,
             metadata: {
-              secretSuffix: data.secretSuffix
+              secretSuffix: data.secretSuffix,
+              shouldEnableDelete: data.shouldEnableDelete
             }
           });
           break;
@@ -211,7 +214,8 @@ export default function GitHubCreateIntegrationPage() {
             owner: repoOwner,
             targetEnvironmentId: data.envId,
             metadata: {
-              secretSuffix: data.secretSuffix
+              secretSuffix: data.secretSuffix,
+              shouldEnableDelete: data.shouldEnableDelete
             }
           });
           break;
@@ -546,6 +550,21 @@ export default function GitHubCreateIntegrationPage() {
                 animate={{ opacity: 1, translateX: 0 }}
                 exit={{ opacity: 0, translateX: 30 }}
               >
+                <div className="ml-1 mb-5">
+                  <Controller
+                    control={control}
+                    name="shouldEnableDelete"
+                    render={({ field: { onChange, value } }) => (
+                      <Switch
+                        id="delete-github-option"
+                        onCheckedChange={(isChecked) => onChange(isChecked)}
+                        isChecked={value}
+                      >
+                        Delete secrets in Github that are not in Infisical
+                      </Switch>
+                    )}
+                  />
+                </div>
                 <Controller
                   control={control}
                   name="secretSuffix"
