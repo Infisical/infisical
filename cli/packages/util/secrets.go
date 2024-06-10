@@ -365,12 +365,12 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 
 		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
 		if errorToReturn == nil {
-			WriteBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, backupSecretsEncryptionKey, secretsToReturn)
+			WriteBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, backupSecretsEncryptionKey, secretsToReturn)
 		}
 
 		// only attempt to serve cached secrets if no internet connection and if at least one secret cached
 		if !isConnected {
-			backedSecrets, err := ReadBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, backupSecretsEncryptionKey)
+			backedSecrets, err := ReadBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, backupSecretsEncryptionKey)
 			if len(backedSecrets) > 0 {
 				PrintWarning("Unable to fetch latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
 				secretsToReturn = backedSecrets
@@ -635,8 +635,9 @@ func GetPlainTextSecrets(key []byte, encryptedSecrets []api.EncryptedSecretV3) (
 	return plainTextSecrets, nil
 }
 
-func WriteBackupSecrets(workspace string, environment string, encryptionKey []byte, secrets []models.SingleEnvironmentVariable) error {
-	fileName := fmt.Sprintf("secrets_%s_%s", workspace, environment)
+func WriteBackupSecrets(workspace string, environment string, secretsPath string, encryptionKey []byte, secrets []models.SingleEnvironmentVariable) error {
+	formattedPath := strings.ReplaceAll(secretsPath, "/", "-")
+	fileName := fmt.Sprintf("secrets_%s_%s_%s", workspace, environment, formattedPath)
 	secrets_backup_folder_name := "secrets-backup"
 
 	_, fullConfigFileDirPath, err := GetFullConfigFilePath()
@@ -673,8 +674,9 @@ func WriteBackupSecrets(workspace string, environment string, encryptionKey []by
 	return nil
 }
 
-func ReadBackupSecrets(workspace string, environment string, encryptionKey []byte) ([]models.SingleEnvironmentVariable, error) {
-	fileName := fmt.Sprintf("secrets_%s_%s", workspace, environment)
+func ReadBackupSecrets(workspace string, environment string, secretsPath string, encryptionKey []byte) ([]models.SingleEnvironmentVariable, error) {
+	formattedPath := strings.ReplaceAll(secretsPath, "/", "-")
+	fileName := fmt.Sprintf("secrets_%s_%s_%s", workspace, environment, formattedPath)
 	secrets_backup_folder_name := "secrets-backup"
 
 	_, fullConfigFileDirPath, err := GetFullConfigFilePath()
