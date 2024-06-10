@@ -8,7 +8,7 @@ import { writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { IntegrationMappingBehavior } from "@app/services/integration-auth/integration-list";
+import { IntegrationMetadataSchema } from "@app/services/integration/integration-schema";
 import { PostHogEventTypes, TIntegrationCreatedEvent } from "@app/services/telemetry/telemetry-types";
 
 export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
@@ -46,37 +46,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         path: z.string().trim().optional().describe(INTEGRATION.CREATE.path),
         region: z.string().trim().optional().describe(INTEGRATION.CREATE.region),
         scope: z.string().trim().optional().describe(INTEGRATION.CREATE.scope),
-        metadata: z
-          .object({
-            secretPrefix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretPrefix),
-            secretSuffix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretSuffix),
-            initialSyncBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.initialSyncBehavoir),
-            mappingBehavior: z
-              .nativeEnum(IntegrationMappingBehavior)
-              .optional()
-              .describe(INTEGRATION.CREATE.metadata.mappingBehavior),
-            shouldAutoRedeploy: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldAutoRedeploy),
-            secretGCPLabel: z
-              .object({
-                labelName: z.string(),
-                labelValue: z.string()
-              })
-              .optional()
-              .describe(INTEGRATION.CREATE.metadata.secretGCPLabel),
-            secretAWSTag: z
-              .array(
-                z.object({
-                  key: z.string(),
-                  value: z.string()
-                })
-              )
-              .optional()
-              .describe(INTEGRATION.CREATE.metadata.secretAWSTag),
-            kmsKeyId: z.string().optional().describe(INTEGRATION.CREATE.metadata.kmsKeyId),
-            shouldDisableDelete: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldDisableDelete),
-            shouldEnableDelete: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldEnableDelete)
-          })
-          .default({})
+        metadata: IntegrationMetadataSchema.default({})
       }),
       response: {
         200: z.object({
@@ -162,33 +132,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         targetEnvironment: z.string().trim().describe(INTEGRATION.UPDATE.targetEnvironment),
         owner: z.string().trim().describe(INTEGRATION.UPDATE.owner),
         environment: z.string().trim().describe(INTEGRATION.UPDATE.environment),
-        metadata: z
-          .object({
-            secretPrefix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretPrefix),
-            secretSuffix: z.string().optional().describe(INTEGRATION.CREATE.metadata.secretSuffix),
-            initialSyncBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.initialSyncBehavoir),
-            mappingBehavior: z.string().optional().describe(INTEGRATION.CREATE.metadata.mappingBehavior),
-            shouldAutoRedeploy: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldAutoRedeploy),
-            secretGCPLabel: z
-              .object({
-                labelName: z.string(),
-                labelValue: z.string()
-              })
-              .optional()
-              .describe(INTEGRATION.CREATE.metadata.secretGCPLabel),
-            secretAWSTag: z
-              .array(
-                z.object({
-                  key: z.string(),
-                  value: z.string()
-                })
-              )
-              .optional()
-              .describe(INTEGRATION.CREATE.metadata.secretAWSTag),
-            kmsKeyId: z.string().optional().describe(INTEGRATION.CREATE.metadata.kmsKeyId),
-            shouldDisableDelete: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldDisableDelete)
-          })
-          .optional()
+        metadata: IntegrationMetadataSchema.optional()
       }),
       response: {
         200: z.object({

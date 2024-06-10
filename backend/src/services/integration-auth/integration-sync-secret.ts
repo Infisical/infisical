@@ -31,6 +31,7 @@ import { logger } from "@app/lib/logger";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
+import { IntegrationMetadataSchema } from "../integration/integration-schema";
 import {
   IntegrationInitialSyncBehavior,
   IntegrationMappingBehavior,
@@ -1363,7 +1364,7 @@ const syncSecretsGitHub = async ({
     }
   }
 
-  const metadata = z.record(z.any()).parse(integration.metadata);
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata);
   if (metadata.shouldEnableDelete) {
     for await (const encryptedSecret of encryptedSecrets) {
       if (
