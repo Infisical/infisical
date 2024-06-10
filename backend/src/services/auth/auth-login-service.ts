@@ -570,20 +570,21 @@ export const authLoginServiceFactory = ({
         ? decodedProviderToken.orgId
         : undefined;
 
-    const user = await userDAL.findUserEncKeyByUsername({
+    const userEnc = await userDAL.findUserEncKeyByUsername({
       username: email
     });
-    if (!user) throw new BadRequestError({ message: "Invalid token" });
-    if (!user.serverEncryptedPrivateKey) throw new BadRequestError({ message: "Private key handoff needs to be done" });
+    if (!userEnc) throw new BadRequestError({ message: "Invalid token" });
+    if (!userEnc.serverEncryptedPrivateKey)
+      throw new BadRequestError({ message: "Private key handoff needs to be done" });
     // send multi factor auth token if they it enabled
-    if (user.isMfaEnabled && user.email) {
-      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+    if (userEnc.isMfaEnabled && userEnc.email) {
+      enforceUserLockStatus(Boolean(userEnc.isLocked), userEnc.temporaryLockDateEnd);
 
       const mfaToken = jwt.sign(
         {
           authMethod,
           authTokenType: AuthTokenType.MFA_TOKEN,
-          userId: user.userId
+          userId: userEnc.userId
         },
         appCfg.AUTH_SECRET,
         {
@@ -592,22 +593,22 @@ export const authLoginServiceFactory = ({
       );
 
       await sendUserMfaCode({
-        userId: user.id,
-        email: user.email
+        userId: userEnc.userId,
+        email: userEnc.email
       });
 
       return { isMfaEnabled: true, token: mfaToken } as const;
     }
 
     const token = await generateUserTokens({
-      user: { ...user, id: user.userId },
+      user: { ...userEnc, id: userEnc.userId },
       ip,
       userAgent,
       authMethod,
       organizationId
     });
 
-    return { token, isMfaEnabled: false, user } as const;
+    return { token, isMfaEnabled: false, user: userEnc } as const;
   };
 
   /*

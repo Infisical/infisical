@@ -1,5 +1,6 @@
 export type TAdminSignUpDTO = {
   email: string;
+  password: string;
   publicKey: string;
   salt: string;
   lastName?: string;

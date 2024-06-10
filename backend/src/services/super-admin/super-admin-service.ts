@@ -1,6 +1,10 @@
+import bcrypt from "bcrypt";
+
 import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
@@ -77,6 +81,7 @@ export const superAdminServiceFactory = ({
     firstName,
     salt,
     email,
+    password,
     verifier,
     publicKey,
     protectedKey,
@@ -92,6 +97,17 @@ export const superAdminServiceFactory = ({
     const existingUser = await userDAL.findOne({ email });
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
 
+    const privateKey = await getUserPrivateKey(password, {
+      salt,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
+      encryptedPrivateKey,
+      iv: encryptedPrivateKeyIV,
+      tag: encryptedPrivateKeyTag
+    });
+    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
+    const { iv, tag, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
     const userInfo = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.create(
         {
@@ -119,7 +135,12 @@ export const superAdminServiceFactory = ({
           iv: encryptedPrivateKeyIV,
           tag: encryptedPrivateKeyTag,
           verifier,
-          userId: newUser.id
+          userId: newUser.id,
+          password: hashedPassword,
+          serverEncryptedPrivateKey: ciphertext,
+          serverEncryptedPrivateKeyIV: iv,
+          serverEncryptedPrivateKeyTag: tag,
+          serverEncryptedPrivateKeyEncoding: encoding
         },
         tx
       );

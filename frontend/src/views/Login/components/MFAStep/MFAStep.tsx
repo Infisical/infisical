@@ -60,48 +60,45 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
   // They don't have password
   const handleLoginMfaOauth = async (callbackPort: string, organizationId?: string) => {
     setIsLoading(true);
-    if (callbackPort) {
-      // attemptCliLogin
-      const { token } = await verifyMfaToken({
-        email,
-        mfaCode
-      });
-      //
-      // unset temporary (MFA) JWT token and set JWT token
-      SecurityClient.setMfaToken("");
-      SecurityClient.setToken(token);
-      SecurityClient.setProviderAuthToken("");
-      const privateKey = await fetchMyPrivateKey();
-      localStorage.setItem("PRIVATE_KEY", privateKey);
+    const { token } = await verifyMfaToken({
+      email,
+      mfaCode
+    });
+    //
+    // unset temporary (MFA) JWT token and set JWT token
+    SecurityClient.setMfaToken("");
+    SecurityClient.setToken(token);
+    SecurityClient.setProviderAuthToken("");
+    const privateKey = await fetchMyPrivateKey();
+    localStorage.setItem("PRIVATE_KEY", privateKey);
 
-      // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
-      if (organizationId) {
-        const { token: newJwtToken } = await selectOrganization({ organizationId });
-        if (callbackPort) {
-          const cliUrl = `http://127.0.0.1:${callbackPort}/`;
-          const instance = axios.create();
-          await instance.post(cliUrl, {
-            email,
-            privateKey,
-            JTWToken: newJwtToken
-          });
-        }
-        await navigateUserToOrg(router, organizationId);
+    // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
+    if (organizationId) {
+      const { token: newJwtToken } = await selectOrganization({ organizationId });
+      if (callbackPort) {
+        const cliUrl = `http://127.0.0.1:${callbackPort}/`;
+        const instance = axios.create();
+        await instance.post(cliUrl, {
+          email,
+          privateKey,
+          JTWToken: newJwtToken
+        });
       }
-      // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
-      // if the user has no orgs, navigate to the create org page
-      else {
-        const userOrgs = await fetchOrganizations();
+      await navigateUserToOrg(router, organizationId);
+    }
+    // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
+    // if the user has no orgs, navigate to the create org page
+    else {
+      const userOrgs = await fetchOrganizations();
 
-        // case: user has orgs, so we navigate the user to select an org
-        if (userOrgs.length > 0) {
-          navigateUserToSelectOrg(router, callbackPort);
-        }
-        // case: no orgs found, so we navigate the user to create an org
-        // cli login will fail in this case
-        else {
-          await navigateUserToOrg(router);
-        }
+      // case: user has orgs, so we navigate the user to select an org
+      if (userOrgs.length > 0) {
+        navigateUserToSelectOrg(router, callbackPort);
+      }
+      // case: no orgs found, so we navigate the user to create an org
+      // cli login will fail in this case
+      else {
+        await navigateUserToOrg(router);
       }
     }
   };
