@@ -40,6 +40,20 @@ export const secretSharingServiceFactory = ({
     if (new Date(expiresAt) < new Date()) {
       throw new BadRequestError({ message: "Expiration date cannot be in the past" });
     }
+
+    // Limit Expiry Time to 1 month
+    const expiryTime = new Date(expiresAt).getTime();
+    const currentTime = new Date().getTime();
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    if (expiryTime - currentTime > thirtyDays) {
+      throw new BadRequestError({ message: "Expiration date cannot be more than 30 days currently." });
+    }
+
+    // Limit Input ciphertext length to 13000 (equivalent to 10,000 characters of Plaintext)
+    if (encryptedValue.length > 13000) {
+      throw new BadRequestError({ message: "Shared Secret Value too long" });
+    }
+
     const newSharedSecret = await secretSharingDAL.create({
       encryptedValue,
       iv,
@@ -65,6 +79,11 @@ export const secretSharingServiceFactory = ({
     const thirtyDays = 30 * 24 * 60 * 60 * 1000;
     if (expiryTime - currentTime > thirtyDays) {
       throw new BadRequestError({ message: "Expiration date cannot be more than 30 days currently." });
+    }
+
+    // Limit Input ciphertext length to 13000 (equivalent to 10,000 characters of Plaintext)
+    if (encryptedValue.length > 13000) {
+      throw new BadRequestError({ message: "Shared Secret Value too long" });
     }
 
     const newSharedSecret = await secretSharingDAL.create({
