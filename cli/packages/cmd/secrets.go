@@ -88,74 +88,37 @@ var secretsCmd = &cobra.Command{
 			Recursive:     recursive,
 		}
 
-		var secrets []models.SingleEnvironmentVariable
-		var isUserSession bool
-		var infisicalDotJson models.WorkspaceConfigFile
-		var userBackupSecretsEncryptionKey []byte
-
 		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 			request.InfisicalToken = token.Token
 		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 			request.UniversalAuthAccessToken = token.Token
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables(request, "")
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		if secretOverriding {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
 		} else {
-			// user session
-			isUserSession = true
-			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
-			if err != nil {
-				util.HandleError(err)
-			}
-			
-			isConnected := util.CheckIsConnectedToInfisicalAPI()
-
-			projectConfig, err := util.GetWorkSpaceFromFile()
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			infisicalDotJson = projectConfig
-			userBackupSecretsEncryptionKey = []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
-
-			if !isConnected {
-				secrets, err = util.ReadBackupSecrets(infisicalDotJson.WorkspaceId, environmentName, userBackupSecretsEncryptionKey)
-				if err != nil {
-					util.HandleError(err)
-				}
-				if len(secrets) > 0 {
-					util.PrintWarning("Unable to fetch latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
-				}
-			}
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
 		}
 
-		if len(secrets) == 0 {
-			secrets, err = util.GetAllEnvironmentVariables(request, "")
-			if err != nil {
-				util.HandleError(err)
+		if shouldExpandSecrets {
+
+			authParams := models.ExpandSecretsAuthentication{}
+			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+				authParams.InfisicalToken = token.Token
+			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+				authParams.UniversalAuthAccessToken = token.Token
 			}
 
-			if secretOverriding {
-				secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
-			} else {
-				secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
-			}
-
-			if shouldExpandSecrets {
-
-				authParams := models.ExpandSecretsAuthentication{}
-				if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
-					authParams.InfisicalToken = token.Token
-				} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
-					authParams.UniversalAuthAccessToken = token.Token
-				}
-
-				secrets = util.ExpandSecrets(secrets, authParams, "")
-			}
-
-			// Sort the secrets by key so we can create a consistent output
-			secrets = util.SortSecretsByKeys(secrets)
-			if isUserSession {
-				util.WriteBackupSecrets(infisicalDotJson.WorkspaceId, environmentName, userBackupSecretsEncryptionKey, secrets)
-			}
+			secrets = util.ExpandSecrets(secrets, authParams, "")
 		}
+
+		// Sort the secrets by key so we can create a consistent output
+		secrets = util.SortSecretsByKeys(secrets)
 
 		visualize.PrintAllSecretDetails(secrets)
 		Telemetry.CaptureEvent("cli-command:secrets", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
