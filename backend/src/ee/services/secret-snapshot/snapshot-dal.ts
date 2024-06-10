@@ -434,13 +434,12 @@ export const snapshotDALFactory = (db: TDbClient) => {
 
       // cleanup orphaned snapshots (those that don't belong to an existing folder and folder version)
       await db(TableName.Snapshot)
-        // eslint-disable-next-line func-names
         .whereNotIn("folderId", function () {
-          void this.select("folderId").from(TableName.SecretFolderVersion);
-        })
-        // eslint-disable-next-line func-names
-        .whereNotIn("folderId", function () {
-          void this.select("folderId").from(TableName.SecretFolder);
+          void this.select("folderId")
+            .from(TableName.SecretFolderVersion)
+            .union(function () {
+              void this.select("id").from(TableName.SecretFolder);
+            });
         })
         .delete();
     } catch (error) {
