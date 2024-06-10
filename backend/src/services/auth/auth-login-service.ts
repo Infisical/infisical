@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import { TUsers, UserDeviceSchema } from "@app/db/schemas";
@@ -5,6 +6,8 @@ import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, UnauthorizedError } from "@app/lib/errors";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
@@ -19,6 +22,7 @@ import {
   TLoginClientProofDTO,
   TLoginGenServerPublicKeyDTO,
   TOauthLoginDTO,
+  TOauthTokenExchangeDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
 import { AuthMethod, AuthModeJwtTokenPayload, AuthModeMfaJwtTokenPayload, AuthTokenType } from "./auth-type";
@@ -101,7 +105,7 @@ export const authLoginServiceFactory = ({
     user: TUsers;
     ip: string;
     userAgent: string;
-    organizationId: string | undefined;
+    organizationId?: string;
     authMethod: AuthMethod;
   }) => {
     const cfg = getConfig();
@@ -178,7 +182,8 @@ export const authLoginServiceFactory = ({
     ip,
     userAgent,
     providerAuthToken,
-    captchaToken
+    captchaToken,
+    password
   }: TLoginClientProofDTO) => {
     const appCfg = getConfig();
 
@@ -248,14 +253,29 @@ export const authLoginServiceFactory = ({
       throw new Error("Failed to authenticate. Try again?");
     }
 
-    await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
-      serverPrivateKey: null,
-      clientPublicKey: null
-    });
-
     await userDAL.updateById(userEnc.userId, {
       consecutiveFailedPasswordAttempts: 0
     });
+    // from password decrypt the private key
+    if (password) {
+      const privateKey = await getUserPrivateKey(password, userEnc);
+      const hashedPassword = await bcrypt.hash(password, cfg.BCRYPT_SALT_ROUND);
+      const { iv, tag, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
+      await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
+        serverPrivateKey: null,
+        clientPublicKey: null,
+        password: hashedPassword,
+        serverEncryptedPrivateKey: ciphertext,
+        serverEncryptedPrivateKeyIV: iv,
+        serverEncryptedPrivateKeyTag: tag,
+        serverEncryptedPrivateKeyEncoding: encoding
+      });
+    } else {
+      await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
+        serverPrivateKey: null,
+        clientPublicKey: null
+      });
+    }
 
     // send multi factor auth token if they it enabled
     if (userEnc.isMfaEnabled && userEnc.email) {
@@ -499,8 +519,14 @@ export const authLoginServiceFactory = ({
         authMethods: [authMethod],
         isGhost: false
       });
+    } else {
+      const isLinkingRequired = !user?.authMethods?.includes(authMethod);
+      if (isLinkingRequired) {
+        user = await userDAL.updateById(user.id, { authMethods: [...(user.authMethods || []), authMethod] });
+      }
     }
-    const isLinkingRequired = !user?.authMethods?.includes(authMethod);
+
+    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
     const isUserCompleted = user.isAccepted;
     const providerAuthToken = jwt.sign(
       {
@@ -511,9 +537,9 @@ export const authLoginServiceFactory = ({
         isEmailVerified: user.isEmailVerified,
         firstName: user.firstName,
         lastName: user.lastName,
+        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
         authMethod,
         isUserCompleted,
-        isLinkingRequired,
         ...(callbackPort
           ? {
               callbackPort
@@ -525,8 +551,63 @@ export const authLoginServiceFactory = ({
         expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
       }
     );
-
     return { isUserCompleted, providerAuthToken };
+  };
+
+  // to login users with oauth2 token used for private key handoff
+  // The provider token will be given back to client to send back infisical access token
+  // why not directly sending access token?
+  // 1. To keep the logic change easier from SRP oauth to simple oauth
+  // 2. I don't want to attach access token to url as it may get logged the provider token has very short life span
+  const oauth2TokenExchange = async ({ userAgent, ip, providerAuthToken, email }: TOauthTokenExchangeDTO) => {
+    const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
+
+    const appCfg = getConfig();
+    const { authMethod, userName } = decodedProviderToken;
+    if (!userName) throw new BadRequestError({ message: "Missing user name" });
+    const organizationId =
+      (isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && decodedProviderToken.orgId
+        ? decodedProviderToken.orgId
+        : undefined;
+
+    const user = await userDAL.findUserEncKeyByUsername({
+      username: email
+    });
+    if (!user) throw new BadRequestError({ message: "Invalid token" });
+    if (!user.serverEncryptedPrivateKey) throw new BadRequestError({ message: "Private key handoff needs to be done" });
+    // send multi factor auth token if they it enabled
+    if (user.isMfaEnabled && user.email) {
+      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+
+      const mfaToken = jwt.sign(
+        {
+          authMethod,
+          authTokenType: AuthTokenType.MFA_TOKEN,
+          userId: user.userId
+        },
+        appCfg.AUTH_SECRET,
+        {
+          expiresIn: appCfg.JWT_MFA_LIFETIME
+        }
+      );
+
+      await sendUserMfaCode({
+        userId: user.id,
+        email: user.email
+      });
+
+      return { isMfaEnabled: true, token: mfaToken } as const;
+    }
+
+    const token = await generateUserTokens({
+      user: { ...user, id: user.userId },
+      ip,
+      userAgent,
+      authMethod,
+      organizationId
+    });
+
+    return { token, isMfaEnabled: false, user } as const;
   };
 
   /*
@@ -542,6 +623,7 @@ export const authLoginServiceFactory = ({
     loginExchangeClientProof,
     logout,
     oauth2Login,
+    oauth2TokenExchange,
     resendMfaToken,
     verifyMfaToken,
     selectOrganization,

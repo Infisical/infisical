@@ -102,7 +102,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         verifier: z.string().trim(),
         organizationName: z.string().trim().min(1),
         providerAuthToken: z.string().trim().optional().nullish(),
-        attributionSource: z.string().trim().optional()
+        attributionSource: z.string().trim().optional(),
+        password: z.string()
       }),
       response: {
         200: z.object({
@@ -167,6 +168,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         email: z.string().email().trim(),
+        password: z.string(),
         firstName: z.string().trim(),
         lastName: z.string().trim().optional(),
         protectedKey: z.string().trim(),

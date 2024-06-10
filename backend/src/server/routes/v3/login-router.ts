@@ -81,7 +81,8 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         email: z.string().trim(),
         providerAuthToken: z.string().trim().optional(),
         clientProof: z.string().trim(),
-        captchaToken: z.string().trim().optional()
+        captchaToken: z.string().trim().optional(),
+        password: z.string().optional()
       }),
       response: {
         200: z.discriminatedUnion("mfaEnabled", [
@@ -112,7 +113,8 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         ip: req.realIp,
         userAgent,
         providerAuthToken: req.body.providerAuthToken,
-        clientProof: req.body.clientProof
+        clientProof: req.body.clientProof,
+        password: req.body.password
       });
 
       if (data.isMfaEnabled) {
