@@ -25,7 +25,8 @@ export const UsersSchema = z.object({
   isEmailVerified: z.boolean().default(false).nullable().optional(),
   consecutiveFailedMfaAttempts: z.number().default(0).nullable().optional(),
   isLocked: z.boolean().default(false).nullable().optional(),
-  temporaryLockDateEnd: z.date().nullable().optional()
+  temporaryLockDateEnd: z.date().nullable().optional(),
+  consecutiveFailedPasswordAttempts: z.number().default(0).nullable().optional()
 });
 
 export type TUsers = z.infer<typeof UsersSchema>;

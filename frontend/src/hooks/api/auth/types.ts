@@ -30,6 +30,7 @@ export type Login1DTO = {
 };
 
 export type Login2DTO = {
+  captchaToken?: string;
   email: string;
   clientProof: string;
   providerAuthToken?: string;
