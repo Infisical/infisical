@@ -77,7 +77,7 @@ type TLdapConfigServiceFactoryDep = {
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -510,6 +510,7 @@ export const ldapConfigServiceFactory = ({
         return newUserAlias;
       });
     }
+    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
     const user = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);
