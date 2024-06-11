@@ -1,8 +1,20 @@
+extensions:
+  health_check:
+  pprof:
+  zpages:
+  basicauth/server:
+    htpasswd:
+      inline: |
+        infisical:infisical
+
 receivers:
   otlp:
     protocols:
       http:
         endpoint: 0.0.0.0:4318
+        auth:
+          authenticator: basicauth/server
+
   prometheus:
     config:
       scrape_configs:
@@ -19,17 +31,15 @@ processors:
 exporters:
   prometheus:
     endpoint: "0.0.0.0:8889"
+    auth:
+      authenticator: basicauth/server
     resource_to_telemetry_conversion:
       enabled: true
-extensions:
-  health_check:
-  pprof:
-  zpages:
 
 service:
-  extensions: [health_check, pprof, zpages]
+  extensions: [basicauth/server, health_check, pprof, zpages]
   pipelines:
     metrics:
-      receivers: [otlp, prometheus]
+      receivers: [otlp]
       processors: [batch]
       exporters: [prometheus]

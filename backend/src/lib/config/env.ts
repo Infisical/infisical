@@ -125,7 +125,11 @@ const envSchema = z
     MAINTENANCE_MODE: zodStrBool.default("false"),
     CAPTCHA_SECRET: zpStr(z.string().optional()),
     OTEL_TELEMETRY_COLLECTION_ENABLED: zodStrBool.default("false"),
-    OTEL_COLLECTOR_OTLP_URL: zpStr(z.string().optional())
+    OTEL_EXPORT_OTLP_ENDPOINT: zpStr(z.string().optional()),
+    OTEL_OTLP_PUSH_INTERVAL: z.coerce.number().default(30000),
+    OTEL_COLLECTOR_BASIC_AUTH_USERNAME: zpStr(z.string().optional()),
+    OTEL_COLLECTOR_BASIC_AUTH_PASSWORD: zpStr(z.string().optional()),
+    OTEL_EXPORT_TYPE: z.enum(["prometheus", "otlp"]).optional()
   })
   .transform((data) => ({
     ...data,

@@ -3,3 +3,6 @@ scrape_configs:
     scrape_interval: 30s
     static_configs:
       - targets: ["otel-collector:8889"]
+    basic_auth:
+      username: infisical
+      password: infisical

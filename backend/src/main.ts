@@ -4,7 +4,7 @@ import { initDbConnection } from "./db";
 import { keyStoreFactory } from "./keystore/keystore";
 import { formatSmtpConfig, initEnvConfig } from "./lib/config/env";
 import { initLogger } from "./lib/logger";
-import { initTelemetry } from "./lib/telemetry/instrumentation";
+import { initTelemetryInstrumentation } from "./lib/telemetry/instrumentation";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
@@ -16,7 +16,13 @@ const run = async () => {
   const appCfg = initEnvConfig(logger);
 
   if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-    await initTelemetry({ otlpURL: appCfg.OTEL_COLLECTOR_OTLP_URL });
+    await initTelemetryInstrumentation({
+      otlpURL: appCfg.OTEL_EXPORT_OTLP_ENDPOINT,
+      otlpUser: appCfg.OTEL_COLLECTOR_BASIC_AUTH_USERNAME,
+      otlpPassword: appCfg.OTEL_COLLECTOR_BASIC_AUTH_PASSWORD,
+      otlpPushInterval: appCfg.OTEL_OTLP_PUSH_INTERVAL,
+      exportType: appCfg.OTEL_EXPORT_TYPE
+    });
   }
 
   const db = initDbConnection({
