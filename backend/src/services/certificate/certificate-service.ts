@@ -13,7 +13,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
+import { getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
 import { revocationReasonToCrlCode } from "./certificate-fns";
 import { CertStatus, TDeleteCertDTO, TGetCertCertDTO, TGetCertDTO, TRevokeCertDTO } from "./certificate-types";
 
@@ -42,6 +42,9 @@ export const certificateServiceFactory = ({
   kmsService,
   permissionService
 }: TCertificateServiceFactoryDep) => {
+  /**
+   * Return details for certificate with serial number [serialNumber]
+   */
   const getCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
     const ca = await certificateAuthorityDAL.findById(cert.caId);
@@ -59,6 +62,9 @@ export const certificateServiceFactory = ({
     return cert;
   };
 
+  /**
+   * Delete certificate with serial number [serialNumber]
+   */
   const deleteCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
     const ca = await certificateAuthorityDAL.findById(cert.caId);
@@ -77,6 +83,11 @@ export const certificateServiceFactory = ({
     return deletedCert;
   };
 
+  /**
+   * Revoke certificate with serial number [serialNumber].
+   * Note: Revoking a certificate adds it to the certificate revocation list (CRL)
+   * of its issuing CA
+   */
   const revokeCert = async ({
     serialNumber,
     revocationReason,
@@ -126,10 +137,13 @@ export const certificateServiceFactory = ({
     return { revokedAt };
   };
 
+  /**
+   * Return certificate body and certificate chain for certificate with
+   * serial number [serialNumber]
+   */
   const getCertCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
     const ca = await certificateAuthorityDAL.findById(cert.caId);
-    const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -154,25 +168,19 @@ export const certificateServiceFactory = ({
       cipherTextBlob: certCert.encryptedCertificate
     });
 
-    const caCertChain = await kmsService.decrypt({
-      kmsId: keyId,
-      cipherTextBlob: caCert.encryptedCertificateChain
-    });
-
     const certObj = new x509.X509Certificate(decryptedCert);
 
-    const decryptedCaCert = await kmsService.decrypt({
-      kmsId: keyId,
-      cipherTextBlob: caCert.encryptedCertificate
+    const { caCert, caCertChain } = await getCaCertChain({
+      caId: ca.id,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
     });
-
-    const caCertObj = new x509.X509Certificate(decryptedCaCert);
-
-    const certificateChain = `${caCertObj.toString("pem")}\n${caCertChain.toString("utf-8")}`.trim();
 
     return {
       certificate: certObj.toString("pem"),
-      certificateChain,
+      certificateChain: `${caCert}\n${caCertChain}`.trim(),
       serialNumber: certObj.serialNumber
     };
   };

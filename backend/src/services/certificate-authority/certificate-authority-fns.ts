@@ -5,7 +5,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
-import { TDNParts, TRebuildCaCrlDTO } from "./certificate-authority-types";
+import { TDNParts, TGetCaCertChainDTO, TGetCaCredentialsDTO, TRebuildCaCrlDTO } from "./certificate-authority-types";
 
 export const createDistinguishedName = (parts: TDNParts) => {
   const dnParts = [];
@@ -51,6 +51,101 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
   }
 };
 
+/**
+ * Return the public and private key of CA with id [caId]
+ * Note: credentials are returned as crypto.webcrypto.CryptoKey
+ * suitable for use with @peculiar/x509 module
+ */
+export const getCaCredentials = async ({
+  caId,
+  certificateAuthorityDAL,
+  certificateAuthoritySecretDAL,
+  projectDAL,
+  kmsService
+}: TGetCaCredentialsDTO) => {
+  const ca = await certificateAuthorityDAL.findById(caId);
+  if (!ca) throw new BadRequestError({ message: "CA not found" });
+
+  const caSecret = await certificateAuthoritySecretDAL.findOne({ caId });
+  if (!caSecret) throw new BadRequestError({ message: "CA secret not found" });
+
+  const keyId = await getProjectKmsCertificateKeyId({
+    projectId: ca.projectId,
+    projectDAL,
+    kmsService
+  });
+
+  const decryptedPrivateKey = await kmsService.decrypt({
+    kmsId: keyId,
+    cipherTextBlob: caSecret.encryptedPrivateKey
+  });
+
+  const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+  const skObj = crypto.createPrivateKey({ key: decryptedPrivateKey, format: "der", type: "pkcs8" });
+  const caPrivateKey = await crypto.subtle.importKey(
+    "pkcs8",
+    skObj.export({ format: "der", type: "pkcs8" }),
+    alg,
+    true,
+    ["sign"]
+  );
+
+  const pkObj = crypto.createPublicKey(skObj);
+  const caPublicKey = await crypto.subtle.importKey("spki", pkObj.export({ format: "der", type: "spki" }), alg, true, [
+    "verify"
+  ]);
+
+  return {
+    caPrivateKey,
+    caPublicKey
+  };
+};
+
+/**
+ * Return the decrypted pem-encoded certificate and certificate chain
+ * for CA with id [caId].
+ */
+export const getCaCertChain = async ({
+  caId,
+  certificateAuthorityDAL,
+  certificateAuthorityCertDAL,
+  projectDAL,
+  kmsService
+}: TGetCaCertChainDTO) => {
+  const ca = await certificateAuthorityDAL.findById(caId);
+  if (!ca) throw new BadRequestError({ message: "CA not found" });
+
+  const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
+
+  const keyId = await getProjectKmsCertificateKeyId({
+    projectId: ca.projectId,
+    projectDAL,
+    kmsService
+  });
+
+  const decryptedCaCert = await kmsService.decrypt({
+    kmsId: keyId,
+    cipherTextBlob: caCert.encryptedCertificate
+  });
+
+  const caCertObj = new x509.X509Certificate(decryptedCaCert);
+
+  const decryptedChain = await kmsService.decrypt({
+    kmsId: keyId,
+    cipherTextBlob: caCert.encryptedCertificateChain
+  });
+
+  return {
+    caCert: caCertObj.toString("pem"),
+    caCertChain: decryptedChain.toString("utf-8"),
+    serialNumber: caCertObj.serialNumber
+  };
+};
+
+/**
+ * Rebuilds the certificate revocation list (CRL)
+ * for CA with id [caId]
+ */
 export const rebuildCaCrl = async ({
   caId,
   certificateAuthorityDAL,

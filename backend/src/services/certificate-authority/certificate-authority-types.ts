@@ -4,6 +4,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { CertKeyAlgorithm } from "../certificate/certificate-types";
+import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
 import { TCertificateAuthorityCrlDALFactory } from "./certificate-authority-crl-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
@@ -92,6 +93,22 @@ export type TDNParts = {
   country?: string;
   province?: string;
   locality?: string;
+};
+
+export type TGetCaCredentialsDTO = {
+  caId: string;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  kmsService: Pick<TKmsServiceFactory, "decrypt" | "generateKmsKey">;
+};
+
+export type TGetCaCertChainDTO = {
+  caId: string;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  kmsService: Pick<TKmsServiceFactory, "decrypt" | "generateKmsKey">;
 };
 
 export type TRebuildCaCrlDTO = {
