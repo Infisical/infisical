@@ -329,8 +329,8 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
         // should not do multi line encoding if user has set it to skip
         // eslint-disable-next-line
         secrets[key].value = secrets[key].skipMultilineEncoding
-          ? expandedSec[key]
-          : formatMultiValueEnv(expandedSec[key]);
+          ? formatMultiValueEnv(expandedSec[key])
+          : expandedSec[key];
         // eslint-disable-next-line
         continue;
       }
@@ -347,7 +347,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
       );
 
       // eslint-disable-next-line
-      secrets[key].value = secrets[key].skipMultilineEncoding ? expandedVal : formatMultiValueEnv(expandedVal);
+      secrets[key].value = secrets[key].skipMultilineEncoding ? formatMultiValueEnv(expandedVal) : expandedVal;
     }
 
     return secrets;
@@ -395,7 +395,8 @@ export const decryptSecretRaw = (
     type: secret.type,
     _id: secret.id,
     id: secret.id,
-    user: secret.userId
+    user: secret.userId,
+    skipMultilineEncoding: secret.skipMultilineEncoding
   };
 };
 
