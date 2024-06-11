@@ -554,11 +554,16 @@ export const authLoginServiceFactory = ({
     return { isUserCompleted, providerAuthToken };
   };
 
-  // to login users with oauth2 token used for private key handoff
-  // The provider token will be given back to client to send back infisical access token
-  // why not directly sending access token?
-  // 1. To keep the logic change easier from SRP oauth to simple oauth
-  // 2. I don't want to attach access token to url as it may get logged the provider token has very short life span
+  /**
+   * Handles OAuth2 token exchange for user login with private key handoff.
+   *
+   * The process involves exchanging a provider's authorization token for an Infisical access token.
+   * The provider token is returned to the client, who then sends it back to obtain the Infisical access token.
+   *
+   * This approach is used instead of directly sending the access token for the following reasons:
+   * 1. To facilitate easier logic changes from SRP OAuth to simple OAuth.
+   * 2. To avoid attaching the access token to the URL, which could be logged. The provider token has a very short lifespan, reducing security risks.
+   */
   const oauth2TokenExchange = async ({ userAgent, ip, providerAuthToken, email }: TOauthTokenExchangeDTO) => {
     const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
 
@@ -575,7 +580,7 @@ export const authLoginServiceFactory = ({
     });
     if (!userEnc) throw new BadRequestError({ message: "Invalid token" });
     if (!userEnc.serverEncryptedPrivateKey)
-      throw new BadRequestError({ message: "Private key handoff needs to be done" });
+      throw new BadRequestError({ message: "Key handoff incomplete. Please try logging in again." });
     // send multi factor auth token if they it enabled
     if (userEnc.isMfaEnabled && userEnc.email) {
       enforceUserLockStatus(Boolean(userEnc.isLocked), userEnc.temporaryLockDateEnd);
