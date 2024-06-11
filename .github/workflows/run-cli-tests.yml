@@ -20,7 +20,12 @@ on:
                 required: true
             CLI_TESTS_ENV_SLUG:
                 required: true
-
+            CLI_TESTS_USER_EMAIL:
+                required: true
+            CLI_TESTS_USER_PASSWORD:
+                required: true
+            CLI_TESTS_INFISICAL_VAULT_FILE_PASSPHRASE:
+                required: true
 jobs:
     test:
         defaults:
@@ -43,5 +48,8 @@ jobs:
                   CLI_TESTS_SERVICE_TOKEN: ${{ secrets.CLI_TESTS_SERVICE_TOKEN }}
                   CLI_TESTS_PROJECT_ID: ${{ secrets.CLI_TESTS_PROJECT_ID }}
                   CLI_TESTS_ENV_SLUG: ${{ secrets.CLI_TESTS_ENV_SLUG }}
+                  CLI_TESTS_USER_EMAIL: ${{ secrets.CLI_TESTS_USER_EMAIL }}
+                  CLI_TESTS_USER_PASSWORD: ${{ secrets.CLI_TESTS_USER_PASSWORD }}
+                  INFISICAL_VAULT_FILE_PASSPHRASE: ${{ secrets.CLI_TESTS_INFISICAL_VAULT_FILE_PASSPHRASE }}
 
               run: go test -v -count=1 ./test
