@@ -315,7 +315,6 @@ export const orgServiceFactory = ({
         },
         tx
       );
-      await licenseService.updateSubscriptionOrgMemberCount(org.id);
       await orgBotDAL.create(
         {
           name: org.name,
@@ -337,6 +336,7 @@ export const orgServiceFactory = ({
       return org;
     });
 
+    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
     return organization;
   };
 
