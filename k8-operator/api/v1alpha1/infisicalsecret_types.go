@@ -11,11 +11,65 @@ type Authentication struct {
 	ServiceToken ServiceTokenDetails `json:"serviceToken"`
 	// +kubebuilder:validation:Optional
 	UniversalAuth UniversalAuthDetails `json:"universalAuth"`
+	// +kubebuilder:validation:Optional
+	KubernetesAuth KubernetesAuthDetails `json:"kubernetesAuth"`
+	// +kubebuilder:validation:Optional
+	AwsIamAuth AWSIamAuthDetails `json:"awsIamAuth"`
+	// +kubebuilder:validation:Optional
+	AzureAuth AzureAuthDetails `json:"azureAuth"`
+	// +kubebuilder:validation:Optional
+	GcpIdTokenAuth GCPIdTokenAuthDetails `json:"gcpIdTokenAuth"`
+	// +kubebuilder:validation:Optional
+	GcpIamAuth GcpIamAuthDetails `json:"gcpIamAuth"`
 }
 
 type UniversalAuthDetails struct {
 	// +kubebuilder:validation:Required
 	CredentialsRef KubeSecretReference `json:"credentialsRef"`
+	// +kubebuilder:validation:Required
+	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
+}
+
+type KubernetesAuthDetails struct {
+	// +kubebuilder:validation:Required
+	IdentityID string `json:"identityId"`
+	// +kubebuilder:validation:Optional
+	ServiceAccountTokenPath string `json:"serviceAccountTokenPath"`
+
+	// +kubebuilder:validation:Required
+	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
+}
+
+type AWSIamAuthDetails struct {
+	// +kubebuilder:validation:Required
+	IdentityID string `json:"identityId"`
+
+	// +kubebuilder:validation:Required
+	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
+}
+
+type AzureAuthDetails struct {
+	// +kubebuilder:validation:Required
+	IdentityID string `json:"identityId"`
+
+	// +kubebuilder:validation:Required
+	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
+}
+
+type GCPIdTokenAuthDetails struct {
+	// +kubebuilder:validation:Required
+	IdentityID string `json:"identityId"`
+
+	// +kubebuilder:validation:Required
+	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
+}
+
+type GcpIamAuthDetails struct {
+	// +kubebuilder:validation:Required
+	IdentityID string `json:"identityId"`
+	// +kubebuilder:validation:Required
+	ServiceAccountKeyFilePath string `json:"serviceAccountKeyFilePath"`
+
 	// +kubebuilder:validation:Required
 	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
 }
