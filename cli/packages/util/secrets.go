@@ -323,7 +323,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
 
 		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
-		isConnected := CheckIsConnectedToInfisicalAPI()
+		isConnected := ValidateInfisicalAPIConnection()
 
 		if isConnected {
 			log.Debug().Msg("GetAllEnvironmentVariables: Connected to Infisical instance, checking logged in creds")

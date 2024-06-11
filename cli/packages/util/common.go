@@ -23,7 +23,7 @@ func WriteToFile(fileName string, dataToWrite []byte, filePerm os.FileMode) erro
 	return nil
 }
 
-func CheckIsConnectedToInfisicalAPI() (ok bool) {
+func ValidateInfisicalAPIConnection() (ok bool) {
 	_, err := http.Get(fmt.Sprintf("%v/status", config.INFISICAL_URL))
 	return err == nil
 }
