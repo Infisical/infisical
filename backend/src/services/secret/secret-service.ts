@@ -977,6 +977,7 @@ export const secretServiceFactory = ({
             _id: string;
             id: string;
             user: string | null | undefined;
+            skipMultilineEncoding?: boolean;
           }[],
           sec
         ) => {
