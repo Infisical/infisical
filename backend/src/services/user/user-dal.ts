@@ -94,6 +94,14 @@ export const userDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findMergeableUsers = async (email: string, tx?: Knex) => {
+    const users = await (tx || db)(TableName.Users).where((builder) => {
+      void builder.where({ email, isEmailVerified: true }).orWhere({ email, isAccepted: false });
+    });
+
+    return users;
+  };
+
   const updateUserEncryptionByUserId = async (userId: string, data: TUserEncryptionKeysUpdate, tx?: Knex) => {
     try {
       const [userEnc] = await (tx || db)(TableName.UserEncryptionKey)
@@ -154,6 +162,7 @@ export const userDALFactory = (db: TDbClient) => {
     findUsersByProjectMembershipIds,
     upsertUserEncryptionKey,
     createUserEncryption,
+    findMergeableUsers,
     findOneUserAction,
     createUserAction
   };
