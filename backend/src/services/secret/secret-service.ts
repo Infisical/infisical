@@ -962,7 +962,7 @@ export const secretServiceFactory = ({
 
       // secret-override to handle duplicate keys from different import levels
       // this prioritizes secret values from direct imports
-      const importedKeys: Record<string, boolean> = {};
+      const importedKeys = new Set<string>();
       const importedEntries = decryptedImportSecrets.reduce(
         (
           accum: {
@@ -981,8 +981,8 @@ export const secretServiceFactory = ({
           }[],
           sec
         ) => {
-          if (!importedKeys[sec.secretKey]) {
-            importedKeys[sec.secretKey] = true;
+          if (!importedKeys.has(sec.secretKey)) {
+            importedKeys.add(sec.secretKey);
             return [...accum, sec];
           }
           return accum;
