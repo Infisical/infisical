@@ -69,7 +69,10 @@ const MAX_SYNC_SECRET_DEPTH = 5;
 export const uniqueSecretQueueKey = (environment: string, secretPath: string) =>
   `secret-queue-dedupe-${environment}-${secretPath}`;
 
-type TIntegrationSecret = Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }>;
+type TIntegrationSecret = Record<
+  string,
+  { value: string; comment?: string; skipMultilineEncoding?: boolean | null | undefined }
+>;
 export const secretQueueFactory = ({
   queueService,
   integrationDAL,
