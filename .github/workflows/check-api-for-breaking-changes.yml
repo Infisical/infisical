@@ -40,13 +40,14 @@ jobs:
           REDIS_URL: redis://172.17.0.1:6379
           DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
           JWT_AUTH_SECRET: something-random
+          ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
       - uses: actions/setup-go@v5
         with:
           go-version: '1.21.5'
       - name: Wait for container to be stable and check logs
         run: |
           SECONDS=0
-          HEALTHY=0
+ r        HEALTHY=0
           while [ $SECONDS -lt 60 ]; do
             if docker ps | grep infisical-api | grep -q healthy; then
               echo "Container is healthy."

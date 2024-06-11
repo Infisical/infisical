@@ -178,7 +178,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
                   errorText={error?.message}
                 >
                   <SecretInput
-                    isVisible
+                    isVisible={false}
                     {...field}
                     containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2 text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 min-h-[100px]"
                   />

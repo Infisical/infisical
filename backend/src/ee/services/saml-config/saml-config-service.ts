@@ -50,7 +50,7 @@ type TSamlConfigServiceFactoryDep = {
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
@@ -449,6 +449,7 @@ export const samlConfigServiceFactory = ({
         return newUser;
       });
     }
+    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
     const isUserCompleted = Boolean(user.isAccepted);
     const providerAuthToken = jwt.sign(

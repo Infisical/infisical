@@ -386,6 +386,8 @@ export const SECRET_IMPORTS = {
     environment: "The slug of the environment to import into.",
     path: "The path to import into.",
     workspaceId: "The ID of the project you are working in.",
+    isReplication:
+      "When true, secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately.",
     import: {
       environment: "The slug of the environment to import from.",
       path: "The path to import from."
@@ -661,6 +663,7 @@ export const INTEGRATION = {
     targetServiceId:
       "The service based grouping identifier ID of the external provider. Used in Terraform cloud, Checkly, Railway and NorthFlank",
     owner: "External integration providers service entity owner. Used in Github.",
+    url: "The self-hosted URL of the platform to integrate with",
     path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault",
     region: "AWS region to sync secrets to.",
     scope: "Scope of the provider. Used by Github, Qovery",
@@ -673,7 +676,10 @@ export const INTEGRATION = {
       secretGCPLabel: "The label for GCP secrets.",
       secretAWSTag: "The tags for AWS secrets.",
       kmsKeyId: "The ID of the encryption key from AWS KMS.",
-      shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store."
+      shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store.",
+      shouldMaskSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Masked'.",
+      shouldProtectSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Protected'.",
+      shouldEnableDelete: "The flag to enable deletion of secrets"
     }
   },
   UPDATE: {

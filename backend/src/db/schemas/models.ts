@@ -81,7 +81,11 @@ export enum TableName {
   DynamicSecretLease = "dynamic_secret_leases",
   // junction tables with tags
   JnSecretTag = "secret_tag_junction",
-  SecretVersionTag = "secret_version_tag_junction"
+  SecretVersionTag = "secret_version_tag_junction",
+  // KMS Service
+  KmsServerRootConfig = "kms_root_config",
+  KmsKey = "kms_keys",
+  KmsKeyVersion = "kms_key_versions"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
