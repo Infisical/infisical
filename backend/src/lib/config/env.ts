@@ -39,7 +39,9 @@ const envSchema = z
     HTTPS_ENABLED: zodStrBool,
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
-    SMTP_SECURE: zodStrBool,
+    SMTP_IGNORE_TLS: zodStrBool.default("false"),
+    SMTP_REQUIRE_TLS: zodStrBool.default("true"),
+    SMTP_TLS_REJECT_UNAUTHORIZED: zodStrBool.default("true"),
     SMTP_PORT: z.coerce.number().default(587),
     SMTP_USERNAME: zpStr(z.string().optional()),
     SMTP_PASSWORD: zpStr(z.string().optional()),
@@ -153,13 +155,20 @@ export const initEnvConfig = (logger: Logger) => {
   return envCfg;
 };
 
-export const formatSmtpConfig = () => ({
-  host: envCfg.SMTP_HOST,
-  port: envCfg.SMTP_PORT,
-  auth:
-    envCfg.SMTP_USERNAME && envCfg.SMTP_PASSWORD
-      ? { user: envCfg.SMTP_USERNAME, pass: envCfg.SMTP_PASSWORD }
-      : undefined,
-  secure: envCfg.SMTP_SECURE,
-  from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`
-});
+export const formatSmtpConfig = () => {
+  return {
+    host: envCfg.SMTP_HOST,
+    port: envCfg.SMTP_PORT,
+    auth:
+      envCfg.SMTP_USERNAME && envCfg.SMTP_PASSWORD
+        ? { user: envCfg.SMTP_USERNAME, pass: envCfg.SMTP_PASSWORD }
+        : undefined,
+    secure: envCfg.SMTP_PORT === 465,
+    from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`,
+    ignoreTLS: envCfg.SMTP_IGNORE_TLS,
+    requireTLS: envCfg.SMTP_REQUIRE_TLS,
+    tls: {
+      rejectUnauthorized: envCfg.SMTP_TLS_REJECT_UNAUTHORIZED
+    }
+  };
+};
