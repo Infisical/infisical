@@ -108,6 +108,7 @@ export type VerifySignupInviteDTO = {
 };
 
 export type ChangePasswordDTO = {
+  password: string;
   clientProof: string;
   protectedKey: string;
   protectedKeyIV: string;

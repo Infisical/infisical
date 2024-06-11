@@ -20,11 +20,20 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           user: UsersSchema.merge(
-            UserEncryptionKeysSchema.omit({
+            UserEncryptionKeysSchema.pick({
+              clientPublicKey: true,
+              serverPrivateKey: true,
+              encryptionVersion: true,
+              protectedKey: true,
+              protectedKeyIV: true,
+              protectedKeyTag: true,
+              publicKey: true,
+              encryptedPrivateKey: true,
+              iv: true,
+              tag: true,
+              salt: true,
               verifier: true,
-              serverEncryptedPrivateKey: true,
-              serverEncryptedPrivateKeyIV: true,
-              serverEncryptedPrivateKeyTag: true
+              userId: true
             })
           )
         })
