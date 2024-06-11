@@ -952,15 +952,49 @@ export const secretServiceFactory = ({
     });
 
     const decryptedSecrets = secrets.map((el) => decryptSecretRaw(el, botKey));
-    const decryptedImports = (imports || [])?.map(({ secrets: importedSecrets, ...el }) => ({
-      ...el,
-      secrets: importedSecrets.map((sec) =>
+    const processedImports = (imports || [])?.map(({ secrets: importedSecrets, ...el }) => {
+      const decryptedImportSecrets = importedSecrets.map((sec) =>
         decryptSecretRaw(
           { ...sec, environment: el.environment, workspace: projectId, secretPath: el.secretPath },
           botKey
         )
-      )
-    }));
+      );
+
+      // secret-override to handle duplicate keys from different import levels
+      // this prioritizes secret values from direct imports
+      const importedKeys = new Set<string>();
+      const importedEntries = decryptedImportSecrets.reduce(
+        (
+          accum: {
+            secretKey: string;
+            secretPath: string;
+            workspace: string;
+            environment: string;
+            secretValue: string;
+            secretComment: string;
+            version: number;
+            type: string;
+            _id: string;
+            id: string;
+            user: string | null | undefined;
+            skipMultilineEncoding: boolean | null | undefined;
+          }[],
+          sec
+        ) => {
+          if (!importedKeys.has(sec.secretKey)) {
+            importedKeys.add(sec.secretKey);
+            return [...accum, sec];
+          }
+          return accum;
+        },
+        []
+      );
+
+      return {
+        ...el,
+        secrets: importedEntries
+      };
+    });
 
     if (expandSecretReferences) {
       const expandSecrets = interpolateSecrets({
@@ -1029,12 +1063,12 @@ export const secretServiceFactory = ({
       await batchSecretsExpand(decryptedSecrets);
 
       // expand imports by batch
-      await Promise.all(decryptedImports.map((decryptedImport) => batchSecretsExpand(decryptedImport.secrets)));
+      await Promise.all(processedImports.map((processedImport) => batchSecretsExpand(processedImport.secrets)));
     }
 
     return {
       secrets: decryptedSecrets,
-      imports: decryptedImports
+      imports: processedImports
     };
   };
 
