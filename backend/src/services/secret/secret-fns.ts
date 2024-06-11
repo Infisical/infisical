@@ -395,7 +395,8 @@ export const decryptSecretRaw = (
     type: secret.type,
     _id: secret.id,
     id: secret.id,
-    user: secret.userId
+    user: secret.userId,
+    skipMultilineEncoding: secret.skipMultilineEncoding
   };
 };
 
