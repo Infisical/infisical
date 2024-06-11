@@ -134,14 +134,59 @@ export const userServiceFactory = ({
           );
         }
       } else {
-        // update current user's username to [email]
-        await userDAL.updateById(
-          user.id,
-          {
-            username: email
-          },
-          tx
-        );
+        const existingUserWithUsername = await userDAL.findOne({
+          username: email
+        });
+
+        if (existingUserWithUsername && existingUserWithUsername.id !== user.id) {
+          // merge users
+          const mergeUserOrgMembershipSet = new Set(
+            (await orgMembershipDAL.find({ userId: existingUserWithUsername.id }, { tx })).map((m) => m.orgId)
+          );
+
+          const myOrgMemberships = (await orgMembershipDAL.find({ userId: user.id }, { tx })).filter(
+            (m) => !mergeUserOrgMembershipSet.has(m.orgId)
+          );
+
+          const userAliases = await userAliasDAL.find(
+            {
+              userId: user.id
+            },
+            { tx }
+          );
+
+          // delete current user
+          await userDAL.deleteById(user.id, tx);
+
+          if (myOrgMemberships.length) {
+            await orgMembershipDAL.insertMany(
+              myOrgMemberships.map((orgMembership) => ({
+                ...orgMembership,
+                userId: existingUserWithUsername.id
+              })),
+              tx
+            );
+          }
+
+          if (userAliases.length) {
+            await userAliasDAL.insertMany(
+              userAliases.map((userAlias) => ({
+                ...userAlias,
+                userId: existingUserWithUsername.id
+              })),
+              tx
+            );
+          }
+        } else {
+          // update current user's username to [email]
+          await userDAL.updateById(
+            user.id,
+            {
+              username: email
+            },
+            tx
+          );
+        }
       }
     });
   };
