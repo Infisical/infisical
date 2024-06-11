@@ -23,7 +23,7 @@ export const SecretsSchema = z.object({
   secretCommentTag: z.string().nullable().optional(),
   secretReminderNote: z.string().nullable().optional(),
   secretReminderRepeatDays: z.number().nullable().optional(),
-  skipMultilineEncoding: z.boolean().default(false).optional(),
+  skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
   algorithm: z.string().default("aes-256-gcm"),
   keyEncoding: z.string().default("utf8"),
   metadata: z.unknown().nullable().optional(),

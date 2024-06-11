@@ -976,13 +976,18 @@ export const secretServiceFactory = ({
           secretValue: string;
           secretComment?: string;
           secretPath: string;
-          skipMultilineEncoding?: boolean;
+          skipMultilineEncoding: boolean | null | undefined;
         }[]
       ) => {
         // Group secrets by secretPath
         const secretsByPath: Record<
           string,
-          { secretKey: string; secretValue: string; secretComment?: string; skipMultilineEncoding?: boolean }[]
+          {
+            secretKey: string;
+            secretValue: string;
+            secretComment?: string;
+            skipMultilineEncoding: boolean | null | undefined;
+          }[]
         > = {};
 
         secretBatch.forEach((secret) => {
@@ -999,7 +1004,10 @@ export const secretServiceFactory = ({
             continue;
           }
 
-          const secretRecord: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }> = {};
+          const secretRecord: Record<
+            string,
+            { value: string; comment?: string; skipMultilineEncoding: boolean | null | undefined }
+          > = {};
           secretsByPath[secPath].forEach((decryptedSecret) => {
             secretRecord[decryptedSecret.secretKey] = {
               value: decryptedSecret.secretValue,

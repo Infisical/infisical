@@ -309,7 +309,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
   };
 
   const expandSecrets = async (
-    secrets: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }>
+    secrets: Record<string, { value: string; comment?: string; skipMultilineEncoding: boolean | null | undefined }>
   ) => {
     const expandedSec: Record<string, string> = {};
     const interpolatedSec: Record<string, string> = {};
