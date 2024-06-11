@@ -31,5 +31,7 @@ export const IntegrationMetadataSchema = z.object({
     .describe(INTEGRATION.CREATE.metadata.secretAWSTag),
   kmsKeyId: z.string().optional().describe(INTEGRATION.CREATE.metadata.kmsKeyId),
   shouldDisableDelete: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldDisableDelete),
-  shouldEnableDelete: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldEnableDelete)
+  shouldEnableDelete: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldEnableDelete),
+  shouldMaskSecrets: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldMaskSecrets),
+  shouldProtectSecrets: z.boolean().optional().describe(INTEGRATION.CREATE.metadata.shouldProtectSecrets)
 });

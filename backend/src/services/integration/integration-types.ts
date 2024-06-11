@@ -29,6 +29,8 @@ export type TCreateIntegrationDTO = {
     }[];
     kmsKeyId?: string;
     shouldDisableDelete?: boolean;
+    shouldMaskSecrets?: boolean;
+    shouldProtectSecrets?: boolean;
     shouldEnableDelete?: boolean;
   };
 } & Omit<TProjectPermission, "projectId">;

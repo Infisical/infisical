@@ -25,6 +25,7 @@ import {
   ModalContent,
   Select,
   SelectItem,
+  Switch,
   Tab,
   TabList,
   TabPanel,
@@ -58,7 +59,9 @@ const schema = yup.object({
   targetAppId: yup.string().required("GitLab project is required"),
   targetEnvironment: yup.string(),
   secretPrefix: yup.string(),
-  secretSuffix: yup.string()
+  secretSuffix: yup.string(),
+  shouldMaskSecrets: yup.boolean(),
+  shouldProtectSecrets: yup.boolean()
 });
 
 type FormData = yup.InferType<typeof schema>;
@@ -138,7 +141,9 @@ export default function GitLabCreateIntegrationPage() {
     targetAppId,
     targetEnvironment,
     secretPrefix,
-    secretSuffix
+    secretSuffix,
+    shouldMaskSecrets,
+    shouldProtectSecrets
   }: FormData) => {
     try {
       setIsLoading(true);
@@ -156,7 +161,9 @@ export default function GitLabCreateIntegrationPage() {
         secretPath,
         metadata: {
           secretPrefix,
-          secretSuffix
+          secretSuffix,
+          shouldMaskSecrets,
+          shouldProtectSecrets
         }
       });
 
@@ -390,6 +397,36 @@ export default function GitLabCreateIntegrationPage() {
               exit={{ opacity: 0, translateX: 30 }}
               className="pb-[14.25rem]"
             >
+              <div className="ml-1">
+                <Controller
+                  control={control}
+                  name="shouldMaskSecrets"
+                  render={({ field: { onChange, value } }) => (
+                    <Switch
+                      id="should-mask-secrets"
+                      onCheckedChange={(isChecked) => onChange(isChecked)}
+                      isChecked={value}
+                    >
+                      <div className="max-w-md">Mark Infisical secrets in Gitlab as &apos;Masked&apos; secrets</div>
+                    </Switch>
+                  )}
+                />
+              </div>
+              <div className="ml-1 mt-4 mb-5">
+                <Controller
+                  control={control}
+                  name="shouldProtectSecrets"
+                  render={({ field: { onChange, value } }) => (
+                    <Switch
+                      id="should-protect-secrets"
+                      onCheckedChange={(isChecked) => onChange(isChecked)}
+                      isChecked={value}
+                    >
+                      Mark Infisical secrets in Gitlab as &apos;Protected&apos; secrets
+                    </Switch>
+                  )}
+                />
+              </div>
               <Controller
                 control={control}
                 name="secretPrefix"
