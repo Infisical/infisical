@@ -363,6 +363,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
               .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
               .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
               .join("snapshot_cte", "snapshot_cte.id", `${TableName.Snapshot}.id`)
+              .whereNull(`${TableName.SecretFolder}.parentId`)
               .whereRaw(`snapshot_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
               .delete();
           } catch (err) {
@@ -434,12 +435,11 @@ export const snapshotDALFactory = (db: TDbClient) => {
 
       // cleanup orphaned snapshots (those that don't belong to an existing folder and folder version)
       await db(TableName.Snapshot)
-        .whereNotIn("folderId", function () {
-          void this.select("folderId")
+        .whereNotIn("folderId", (qb) => {
+          void qb
+            .select("folderId")
             .from(TableName.SecretFolderVersion)
-            .union(function () {
-              void this.select("id").from(TableName.SecretFolder);
-            });
+            .union((qb1) => void qb1.select("id").from(TableName.SecretFolder));
         })
         .delete();
     } catch (error) {
