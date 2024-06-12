@@ -12,7 +12,6 @@ type TUserServiceFactoryDep = {
   userDAL: Pick<
     TUserDALFactory,
     | "find"
-    | "findMergeableUsers"
     | "findOne"
     | "findById"
     | "transaction"
@@ -22,6 +21,7 @@ type TUserServiceFactoryDep = {
     | "findOneUserAction"
     | "createUserAction"
     | "findUserEncKeyByUserId"
+    | "delete"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "find" | "insertMany">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany">;
@@ -86,8 +86,14 @@ export const userServiceFactory = ({
         tx
       );
 
-      // check if there are users with the same email.
-      const users = await userDAL.findMergeableUsers(email, tx);
+      // check if there are verified users with the same email.
+      const users = await userDAL.find(
+        {
+          email,
+          isEmailVerified: true
+        },
+        { tx }
+      );
 
       if (users.length > 1) {
         // merge users
@@ -129,6 +135,15 @@ export const userServiceFactory = ({
           );
         }
       } else {
+        await userDAL.delete(
+          {
+            email,
+            isAccepted: false,
+            isEmailVerified: false
+          },
+          tx
+        );
+
         // update current user's username to [email]
         await userDAL.updateById(
           user.id,
