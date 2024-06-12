@@ -81,8 +81,7 @@ export const secretSnapshotServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-    const count = await snapshotDAL.countOfSnapshotsByFolderId(folder.id);
-    return count;
+    return snapshotDAL.countOfSnapshotsByFolderId(folder.id);
   };
 
   const listSnapshots = async ({

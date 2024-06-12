@@ -39,6 +39,7 @@ import {
   TToggleProjectAutoCapitalizationDTO,
   TUpdateProjectDTO,
   TUpdateProjectNameDTO,
+  TUpdateProjectVersionLimitDTO,
   TUpgradeProjectDTO
 } from "./project-types";
 
@@ -133,7 +134,8 @@ export const projectServiceFactory = ({
           name: workspaceName,
           orgId: organization.id,
           slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
-          version: ProjectVersion.V2
+          version: ProjectVersion.V2,
+          pitVersionLimit: 10
         },
         tx
       );
@@ -406,6 +408,35 @@ export const projectServiceFactory = ({
     return updatedProject;
   };
 
+  const updateVersionLimit = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    pitVersionLimit,
+    workspaceSlug
+  }: TUpdateProjectVersionLimitDTO) => {
+    const project = await projectDAL.findProjectBySlug(workspaceSlug, actorOrgId);
+    if (!project) {
+      throw new BadRequestError({
+        message: "Project not found"
+      });
+    }
+
+    const { hasRole } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    if (!hasRole(ProjectMembershipRole.Admin))
+      throw new BadRequestError({ message: "Only admins are allowed to take this action" });
+
+    return projectDAL.updateById(project.id, { pitVersionLimit });
+  };
+
   const updateName = async ({
     projectId,
     actor,
@@ -501,6 +532,7 @@ export const projectServiceFactory = ({
     getAProject,
     toggleAutoCapitalization,
     updateName,
-    upgradeProject
+    upgradeProject,
+    updateVersionLimit
   };
 };
