@@ -233,6 +233,7 @@ type GetLoginOneV2Response struct {
 type GetLoginTwoV2Request struct {
 	Email       string `json:"email"`
 	ClientProof string `json:"clientProof"`
+	Password    string `json:"password"`
 }
 
 type GetLoginTwoV2Response struct {
