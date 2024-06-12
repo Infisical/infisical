@@ -13,11 +13,11 @@ import {
   faArrowRight,
   faArrowUpRightFromSquare,
   faBorderAll,
-  faBoxesStacked,
   faCheck,
   faCheckCircle,
   faClipboard,
   faExclamationCircle,
+  faFileShield,
   faHandPeace,
   faList,
   faMagnifyingGlass,
@@ -618,7 +618,7 @@ const OrganizationPage = withPermission(
     );
 
     const projectsListView = (
-      <div className="mt-4 w-full">
+      <div className="mt-4 w-full rounded-md">
         {isWorkspaceLoading &&
           Array.apply(0, Array(3)).map((_x, i) => (
             <div
@@ -641,15 +641,15 @@ const OrganizationPage = withPermission(
               className="min-w-72 group grid h-14 cursor-pointer grid-cols-6 border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700"
             >
               <div className="flex items-center sm:col-span-3 lg:col-span-4">
-                <FontAwesomeIcon icon={faBoxesStacked} className="text-sm text-white" />
-                <div className="ml-4 truncate text-lg text-mineshaft-100">{workspace.name}</div>
+                <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
+                <div className="ml-5 truncate text-sm text-mineshaft-100">{workspace.name}</div>
               </div>
               <div className="grid grid-cols-2 sm:col-span-3 lg:col-span-2">
                 <div className="col-span-1 flex items-center justify-start text-center text-sm text-mineshaft-300 xl:pl-8">
                   {workspace.environments?.length || 0} environments
                 </div>
                 <div className="col-span-1 flex items-center justify-start text-sm text-mineshaft-300">
-                  last update: {timeAgo(new Date(workspace.updatedAt), new Date())}
+                  Updated {timeAgo(new Date(workspace.updatedAt), new Date())}
                 </div>
               </div>
             </div>
@@ -688,7 +688,16 @@ const OrganizationPage = withPermission(
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
           <div className="flex w-full justify-between">
             <p className="mr-4 font-semibold text-white">Projects</p>
-            <div className="flex">
+          </div>
+          <div className="mt-6 flex w-full flex-row">
+            <Input
+              className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+              placeholder="Search by project name..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+            />
+            <div className="flex ml-2 p-1 bg-mineshaft-800 border border-mineshaft-600 rounded-md">
               <IconButton
                 variant="outline_bg"
                 onClick={() => {
@@ -696,7 +705,8 @@ const OrganizationPage = withPermission(
                   setProjectsViewMode(ProjectsViewMode.GRID);
                 }}
                 ariaLabel="grid"
-                className="mr-1 min-w-[2.8rem]"
+                size="xs"
+                className={`${projectsViewMode === ProjectsViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"} hover:bg-mineshaft-600 min-w-[2.4rem] border-none`}
               >
                 <FontAwesomeIcon icon={faBorderAll} />
               </IconButton>
@@ -707,20 +717,12 @@ const OrganizationPage = withPermission(
                   setProjectsViewMode(ProjectsViewMode.LIST);
                 }}
                 ariaLabel="list"
-                className="min-w-[2.8rem]"
+                size="xs"
+                className={`${projectsViewMode === ProjectsViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"} hover:bg-mineshaft-600 min-w-[2.4rem] border-none`}
               >
                 <FontAwesomeIcon icon={faList} />
               </IconButton>
             </div>
-          </div>
-          <div className="mt-6 flex w-full flex-row">
-            <Input
-              className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-              placeholder="Search by project name..."
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-            />
             <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
               {(isAllowed) => (
                 <Button
