@@ -66,6 +66,7 @@ export type TDeleteScimUserDTO = {
 
 export type TListScimGroupsDTO = {
   startIndex: number;
+  filter?: string;
   limit: number;
   orgId: string;
 };

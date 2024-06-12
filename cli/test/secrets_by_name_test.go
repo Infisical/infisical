@@ -7,8 +7,6 @@ import (
 )
 
 func TestServiceToken_GetSecretsByNameRecursive(t *testing.T) {
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "get", "TEST-SECRET-1", "TEST-SECRET-2", "FOLDER-SECRET-1", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent")
 
 	if err != nil {
@@ -23,8 +21,6 @@ func TestServiceToken_GetSecretsByNameRecursive(t *testing.T) {
 }
 
 func TestServiceToken_GetSecretsByNameWithNotFoundSecret(t *testing.T) {
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "get", "TEST-SECRET-1", "TEST-SECRET-2", "FOLDER-SECRET-1", "DOES-NOT-EXIST", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent")
 
 	if err != nil {
@@ -39,8 +35,6 @@ func TestServiceToken_GetSecretsByNameWithNotFoundSecret(t *testing.T) {
 }
 
 func TestServiceToken_GetSecretsByNameWithImports(t *testing.T) {
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "get", "TEST-SECRET-1", "STAGING-SECRET-2", "FOLDER-SECRET-1", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent")
 
 	if err != nil {
@@ -56,8 +50,6 @@ func TestServiceToken_GetSecretsByNameWithImports(t *testing.T) {
 
 func TestUniversalAuth_GetSecretsByNameRecursive(t *testing.T) {
 	MachineIdentityLoginCmd(t)
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "get", "TEST-SECRET-1", "TEST-SECRET-2", "FOLDER-SECRET-1", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent")
 
 	if err != nil {
@@ -73,8 +65,6 @@ func TestUniversalAuth_GetSecretsByNameRecursive(t *testing.T) {
 
 func TestUniversalAuth_GetSecretsByNameWithNotFoundSecret(t *testing.T) {
 	MachineIdentityLoginCmd(t)
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "get", "TEST-SECRET-1", "TEST-SECRET-2", "FOLDER-SECRET-1", "DOES-NOT-EXIST", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent")
 
 	if err != nil {
@@ -90,8 +80,6 @@ func TestUniversalAuth_GetSecretsByNameWithNotFoundSecret(t *testing.T) {
 
 func TestUniversalAuth_GetSecretsByNameWithImports(t *testing.T) {
 	MachineIdentityLoginCmd(t)
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "get", "TEST-SECRET-1", "STAGING-SECRET-2", "FOLDER-SECRET-1", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent")
 
 	if err != nil {

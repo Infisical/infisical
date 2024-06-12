@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { TUsers, UserDeviceSchema } from "@app/db/schemas";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { BadRequestError, DatabaseError, UnauthorizedError } from "@app/lib/errors";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -176,12 +177,16 @@ export const authLoginServiceFactory = ({
     clientProof,
     ip,
     userAgent,
-    providerAuthToken
+    providerAuthToken,
+    captchaToken
   }: TLoginClientProofDTO) => {
+    const appCfg = getConfig();
+
     const userEnc = await userDAL.findUserEncKeyByUsername({
       username: email
     });
     if (!userEnc) throw new Error("Failed to find user");
+    const user = await userDAL.findById(userEnc.userId);
     const cfg = getConfig();
 
     let authMethod = AuthMethod.EMAIL;
@@ -196,6 +201,31 @@ export const authLoginServiceFactory = ({
       }
     }
 
+    if (
+      user.consecutiveFailedPasswordAttempts &&
+      user.consecutiveFailedPasswordAttempts >= 10 &&
+      Boolean(appCfg.CAPTCHA_SECRET)
+    ) {
+      if (!captchaToken) {
+        throw new BadRequestError({
+          name: "Captcha Required",
+          message: "Accomplish the required captcha by logging in via Web"
+        });
+      }
+
+      // validate captcha token
+      const response = await request.postForm<{ success: boolean }>("https://api.hcaptcha.com/siteverify", {
+        response: captchaToken,
+        secret: appCfg.CAPTCHA_SECRET
+      });
+
+      if (!response.data.success) {
+        throw new BadRequestError({
+          name: "Invalid Captcha"
+        });
+      }
+    }
+
     if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey) throw new Error("Failed to authenticate. Try again?");
     const isValidClientProof = await srpCheckClientProof(
       userEnc.salt,
@@ -204,15 +234,31 @@ export const authLoginServiceFactory = ({
       userEnc.clientPublicKey,
       clientProof
     );
-    if (!isValidClientProof) throw new Error("Failed to authenticate. Try again?");
+
+    if (!isValidClientProof) {
+      await userDAL.update(
+        { id: userEnc.userId },
+        {
+          $incr: {
+            consecutiveFailedPasswordAttempts: 1
+          }
+        }
+      );
+
+      throw new Error("Failed to authenticate. Try again?");
+    }
 
     await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
       serverPrivateKey: null,
       clientPublicKey: null
     });
+
+    await userDAL.updateById(userEnc.userId, {
+      consecutiveFailedPasswordAttempts: 0
+    });
+
     // send multi factor auth token if they it enabled
     if (userEnc.isMfaEnabled && userEnc.email) {
-      const user = await userDAL.findById(userEnc.userId);
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
       const mfaToken = jwt.sign(

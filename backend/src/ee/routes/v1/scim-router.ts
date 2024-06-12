@@ -362,6 +362,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       const groups = await req.server.services.scim.listScimGroups({
         orgId: req.permission.orgId,
         startIndex: req.query.startIndex,
+        filter: req.query.filter,
         limit: req.query.count
       });
 

@@ -393,13 +393,13 @@ export const SecretDetailSidebar = ({
                       {(isAllowed) => (
                         <Switch
                           id="skipmultiencoding-option"
-                          onCheckedChange={(isChecked) => onChange(!isChecked)}
-                          isChecked={!value}
+                          onCheckedChange={(isChecked) => onChange(isChecked)}
+                          isChecked={value}
                           onBlur={onBlur}
                           isDisabled={!isAllowed}
                           className="items-center"
                         >
-                          Enable multi line encoding
+                          Multi line encoding
                           <Tooltip
                             content="When enabled, secrets are escaped and wrapped in quotes"
                             className="z-[100]"

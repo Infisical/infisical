@@ -45,7 +45,6 @@ export const computeImportedSecretRows = (
   if (importedSecIndex === -1) return [];
 
   const importedSec = importSecrets[importedSecIndex];
-
   const overridenSec: Record<string, { env: string; secretPath: string }> = {};
 
   for (let i = importedSecIndex + 1; i < importSecrets.length; i += 1) {
@@ -61,11 +60,28 @@ export const computeImportedSecretRows = (
     overridenSec[el.key] = { env: SECRET_IN_DASHBOARD, secretPath: "" };
   });
 
-  return importedSec.secrets.map(({ key, value }) => ({
-    key,
-    value,
-    overriden: overridenSec?.[key]
-  }));
+  const importedEntry: Record<string, boolean> = {};
+  const importedSecretEntries: {
+    key: string;
+    value: string;
+    overriden: {
+      env: string;
+      secretPath: string;
+    };
+  }[] = [];
+
+  importedSec.secrets.forEach(({ key, value }) => {
+    if (!importedEntry[key]) {
+      importedSecretEntries.push({
+        key,
+        value,
+        overriden: overridenSec?.[key]
+      });
+      importedEntry[key] = true;
+    }
+  });
+
+  return importedSecretEntries;
 };
 
 type Props = {
@@ -159,8 +175,9 @@ export const SecretImportListView = ({
         importEnv.slug === environment &&
         isReserved &&
         importPath ===
-        `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication
-        }${replicationImportId}`
+          `${secretPath === "/" ? "" : secretPath}/${
+            ReservedFolders.SecretReplication
+          }${replicationImportId}`
     );
     if (reservedImport) {
       setReplicationSecrets((state) => ({
@@ -206,8 +223,9 @@ export const SecretImportListView = ({
         isOpen={popUp.deleteSecretImport.isOpen}
         deleteKey="unlink"
         title="Do you want to remove this secret import?"
-        subTitle={`This will unlink secrets from environment ${(popUp.deleteSecretImport?.data as TSecretImport)?.importEnv
-          } of path ${(popUp.deleteSecretImport?.data as TSecretImport)?.importPath}?`}
+        subTitle={`This will unlink secrets from environment ${
+          (popUp.deleteSecretImport?.data as TSecretImport)?.importEnv
+        } of path ${(popUp.deleteSecretImport?.data as TSecretImport)?.importPath}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteSecretImport", isOpen)}
         onDeleteApproved={handleSecretImportDelete}
       />
