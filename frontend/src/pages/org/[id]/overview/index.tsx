@@ -624,7 +624,9 @@ const OrganizationPage = withPermission(
           Array.apply(0, Array(3)).map((_x, i) => (
             <div
               key={`workspace-cards-loading-${i + 1}`}
-              className="min-w-72 group flex h-12 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700"
+              className={`min-w-72 group flex h-12 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
+                i === 0 && "rounded-t-md"
+              } ${i === 2 && "rounded-b-md border-b"}`}
             >
               <Skeleton className="w-full bg-mineshaft-600" />
             </div>
