@@ -9,7 +9,7 @@ icon: "golang"
 If you're working with Go Lang, the official [Infisical Go SDK](https://github.com/infisical/go-sdk) package is the easiest way to fetch and work with secrets for your application.
 
 - [Package](https://pkg.go.dev/github.com/infisical/go-sdk)
-- [Github Repository](https://github.com/infiscial/go-sdk)
+- [Github Repository](https://github.com/infisical/go-sdk)
 
 ## Basic Usage
 
@@ -282,7 +282,7 @@ Retrieve all secrets within the Infisical project and environment that client is
 
 </ParamField>
 
-### client.Secrets().Get(options)
+### client.Secrets().Retrieve(options)
 
 ```go
 secret, err := client.Secrets().Retrieve(infisical.RetrieveSecretOptions{
@@ -294,7 +294,7 @@ secret, err := client.Secrets().Retrieve(infisical.RetrieveSecretOptions{
 
 Retrieve a secret from Infisical.
 
-By default, `Secrets().Get()` fetches and returns a shared secret.
+By default, `Secrets().Retrieve()` fetches and returns a shared secret.
 
 #### Parameters
 
