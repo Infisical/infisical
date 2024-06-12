@@ -82,6 +82,7 @@ spec:
         # GCP IAM Auth
         gcpIamAuth:
             identityId: <your-machine-identity-id>
+            serviceAccountKeyFilePath: "/path/to-service-account-key-file-path.json"
 
             # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
             secretsScope:
