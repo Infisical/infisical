@@ -196,6 +196,12 @@ export const UserInfoSSOStep = ({
     }
   };
 
+  useEffect(() => {
+    if (password && providerOrganizationName) {
+      signupErrorCheck();
+    }
+  }, [providerOrganizationName, password]);
+
   return (
     <div className="mx-auto mb-36 h-full w-max rounded-xl md:mb-16 md:px-8">
       <p className="text-medium mx-8 mb-6 flex justify-center bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-xl font-bold text-transparent md:mx-16">
@@ -265,6 +271,7 @@ export const UserInfoSSOStep = ({
               colorSchema="primary"
               variant="outline_bg"
               isLoading={isLoading}
+              isDisabled={isLoading}
             >
               {" "}
               {String(t("signup.signup"))}{" "}
