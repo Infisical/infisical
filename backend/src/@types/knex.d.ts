@@ -149,6 +149,9 @@ import {
   TProjectUserMembershipRoles,
   TProjectUserMembershipRolesInsert,
   TProjectUserMembershipRolesUpdate,
+  TRateLimit,
+  TRateLimitInsert,
+  TRateLimitUpdate,
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
@@ -343,6 +346,7 @@ declare module "knex/types/tables" {
       TSecretFolderVersionsUpdate
     >;
     [TableName.SecretSharing]: Knex.CompositeTableType<TSecretSharing, TSecretSharingInsert, TSecretSharingUpdate>;
+    [TableName.RateLimit]: Knex.CompositeTableType<TRateLimit, TRateLimitInsert, TRateLimitUpdate>;
     [TableName.SecretTag]: Knex.CompositeTableType<TSecretTags, TSecretTagsInsert, TSecretTagsUpdate>;
     [TableName.SecretImport]: Knex.CompositeTableType<TSecretImports, TSecretImportsInsert, TSecretImportsUpdate>;
     [TableName.Integration]: Knex.CompositeTableType<TIntegrations, TIntegrationsInsert, TIntegrationsUpdate>;

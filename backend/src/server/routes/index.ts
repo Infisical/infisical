@@ -121,6 +121,8 @@ import { projectMembershipServiceFactory } from "@app/services/project-membershi
 import { projectUserMembershipRoleDALFactory } from "@app/services/project-membership/project-user-membership-role-dal";
 import { projectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
+import { rateLimitDALFactory } from "@app/services/rate-limit/rate-limit-dal";
+import { rateLimitServiceFactory } from "@app/services/rate-limit/rate-limit-service";
 import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-cleanup/resource-cleanup-queue";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
 import { secretQueueFactory } from "@app/services/secret/secret-queue";
@@ -185,6 +187,7 @@ export const registerRoutes = async (
   const incidentContactDAL = incidentContactDALFactory(db);
   const orgRoleDAL = orgRoleDALFactory(db);
   const superAdminDAL = superAdminDALFactory(db);
+  const rateLimitDAL = rateLimitDALFactory(db);
   const apiKeyDAL = apiKeyDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
@@ -443,6 +446,9 @@ export const registerRoutes = async (
     serverCfgDAL: superAdminDAL,
     orgService,
     keyStore
+  });
+  const rateLimitService = rateLimitServiceFactory({
+    rateLimitDAL
   });
   const apiKeyService = apiKeyServiceFactory({ apiKeyDAL, userDAL });
 
@@ -859,6 +865,7 @@ export const registerRoutes = async (
     secret: secretService,
     secretReplication: secretReplicationService,
     secretTag: secretTagService,
+    rateLimit: rateLimitService,
     folder: folderService,
     secretImport: secretImportService,
     projectBot: projectBotService,

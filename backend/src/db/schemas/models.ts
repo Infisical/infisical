@@ -18,6 +18,7 @@ export enum TableName {
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
   SuperAdmin = "super_admin",
+  RateLimit = "rate_limit",
   ApiKey = "api_keys",
   Project = "projects",
   ProjectBot = "project_bots",
