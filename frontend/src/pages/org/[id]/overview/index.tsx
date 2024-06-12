@@ -567,6 +567,9 @@ const OrganizationPage = withPermission(
     }, []);
 
     const isWorkspaceEmpty = !isWorkspaceLoading && orgWorkspaces?.length === 0;
+    const filteredWorkspaces = orgWorkspaces.filter((ws) =>
+      ws?.name?.toLowerCase().includes(searchFilter.toLowerCase())
+    );
 
     const projectsGridView = (
       <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -587,33 +590,31 @@ const OrganizationPage = withPermission(
               </div>
             </div>
           ))}
-        {orgWorkspaces
-          .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
-          .map((workspace) => (
-            // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-            <div
-              onClick={() => {
-                router.push(`/project/${workspace.id}/secrets/overview`);
-                localStorage.setItem("projectData.id", workspace.id);
-              }}
-              key={workspace.id}
-              className="min-w-72 group flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
-            >
-              <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
-              <div className="mt-0 pb-6 text-sm text-mineshaft-300">
-                {workspace.environments?.length || 0} environments
-              </div>
-              <button type="button">
-                <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all group-hover:border-primary-500/80 group-hover:bg-primary-800/20 group-hover:text-mineshaft-200">
-                  Explore{" "}
-                  <FontAwesomeIcon
-                    icon={faArrowRight}
-                    className="pl-1.5 pr-0.5 duration-200 group-hover:pl-2 group-hover:pr-0"
-                  />
-                </div>
-              </button>
+        {filteredWorkspaces.map((workspace) => (
+          // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+          <div
+            onClick={() => {
+              router.push(`/project/${workspace.id}/secrets/overview`);
+              localStorage.setItem("projectData.id", workspace.id);
+            }}
+            key={workspace.id}
+            className="min-w-72 group flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+          >
+            <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
+            <div className="mt-0 pb-6 text-sm text-mineshaft-300">
+              {workspace.environments?.length || 0} environments
             </div>
-          ))}
+            <button type="button">
+              <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all group-hover:border-primary-500/80 group-hover:bg-primary-800/20 group-hover:text-mineshaft-200">
+                Explore{" "}
+                <FontAwesomeIcon
+                  icon={faArrowRight}
+                  className="pl-1.5 pr-0.5 duration-200 group-hover:pl-2 group-hover:pr-0"
+                />
+              </div>
+            </button>
+          </div>
+        ))}
       </div>
     );
 
@@ -628,32 +629,32 @@ const OrganizationPage = withPermission(
               <Skeleton className="w-full bg-mineshaft-600" />
             </div>
           ))}
-        {orgWorkspaces
-          .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
-          .map((workspace) => (
-            // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-            <div
-              onClick={() => {
-                router.push(`/project/${workspace.id}/secrets/overview`);
-                localStorage.setItem("projectData.id", workspace.id);
-              }}
-              key={workspace.id}
-              className="min-w-72 group grid h-14 cursor-pointer grid-cols-6 border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700"
-            >
-              <div className="flex items-center sm:col-span-3 lg:col-span-4">
-                <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
-                <div className="ml-5 truncate text-sm text-mineshaft-100">{workspace.name}</div>
+        {filteredWorkspaces.map((workspace, ind) => (
+          // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+          <div
+            onClick={() => {
+              router.push(`/project/${workspace.id}/secrets/overview`);
+              localStorage.setItem("projectData.id", workspace.id);
+            }}
+            key={workspace.id}
+            className={`min-w-72 group grid h-14 cursor-pointer grid-cols-6 border-t border-l border-r border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
+              ind === filteredWorkspaces.length - 1 && "border-b"
+            }`}
+          >
+            <div className="flex items-center sm:col-span-3 lg:col-span-4">
+              <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
+              <div className="ml-5 truncate text-sm text-mineshaft-100">{workspace.name}</div>
+            </div>
+            <div className="grid grid-cols-2 sm:col-span-3 lg:col-span-2">
+              <div className="col-span-1 flex items-center justify-start text-center text-sm text-mineshaft-300 xl:pl-8">
+                {workspace.environments?.length || 0} environments
               </div>
-              <div className="grid grid-cols-2 sm:col-span-3 lg:col-span-2">
-                <div className="col-span-1 flex items-center justify-start text-center text-sm text-mineshaft-300 xl:pl-8">
-                  {workspace.environments?.length || 0} environments
-                </div>
-                <div className="col-span-1 flex items-center justify-start text-sm text-mineshaft-300">
-                  Updated {timeAgo(new Date(workspace.updatedAt), new Date())}
-                </div>
+              <div className="col-span-1 flex items-center justify-start text-sm text-mineshaft-300">
+                Updated {timeAgo(new Date(workspace.updatedAt), new Date())}
               </div>
             </div>
-          ))}
+          </div>
+        ))}
       </div>
     );
 
@@ -697,7 +698,7 @@ const OrganizationPage = withPermission(
               onChange={(e) => setSearchFilter(e.target.value)}
               leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
             />
-            <div className="flex ml-2 p-1 bg-mineshaft-800 border border-mineshaft-600 rounded-md">
+            <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
               <IconButton
                 variant="outline_bg"
                 onClick={() => {
@@ -706,7 +707,9 @@ const OrganizationPage = withPermission(
                 }}
                 ariaLabel="grid"
                 size="xs"
-                className={`${projectsViewMode === ProjectsViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"} hover:bg-mineshaft-600 min-w-[2.4rem] border-none`}
+                className={`${
+                  projectsViewMode === ProjectsViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"
+                } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
               >
                 <FontAwesomeIcon icon={faBorderAll} />
               </IconButton>
@@ -718,7 +721,9 @@ const OrganizationPage = withPermission(
                 }}
                 ariaLabel="list"
                 size="xs"
-                className={`${projectsViewMode === ProjectsViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"} hover:bg-mineshaft-600 min-w-[2.4rem] border-none`}
+                className={`${
+                  projectsViewMode === ProjectsViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"
+                } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
               >
                 <FontAwesomeIcon icon={faList} />
               </IconButton>
