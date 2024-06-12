@@ -59,7 +59,7 @@ jobs:
             - uses: goreleaser/goreleaser-action@v4
               with:
                   distribution: goreleaser-pro
-                  version: latest
+                  version: v1.26.2
                   args: release --clean
               env:
                   GITHUB_TOKEN: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
