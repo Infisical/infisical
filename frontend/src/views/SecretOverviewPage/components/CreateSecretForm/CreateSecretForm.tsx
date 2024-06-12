@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCircleQuestion, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -62,13 +61,8 @@ export const CreateSecretForm = ({
     formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
   const newSecretKey = watch("key");
-  const newValue = watch("value");
-  const [isMultiline, setIsMultiline] = useState(false);
-
-  useEffect(() => {
-    if (newValue) setIsMultiline(newValue.includes("\n"));
-    else setIsMultiline(false);
-  }, [newValue]);
+  const newSecretValue = watch("value");
+  const isMultiline = newSecretValue?.includes("\n");
 
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
