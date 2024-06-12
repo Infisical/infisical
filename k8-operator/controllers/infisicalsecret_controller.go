@@ -10,7 +10,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
 )
@@ -32,8 +31,9 @@ type InfisicalSecretReconciler struct {
 // move the current state of the cluster closer to the desired state.
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.1/pkg/reconcile
+
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	var infisicalSecretCR v1alpha1.InfisicalSecret
+	var infisicalSecretCR secretsv1alpha1.InfisicalSecret
 	requeueTime := time.Minute // seconds
 
 	err := r.Get(ctx, req.NamespacedName, &infisicalSecretCR)
