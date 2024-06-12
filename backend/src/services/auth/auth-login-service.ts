@@ -264,7 +264,7 @@ export const authLoginServiceFactory = ({
       await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
         serverPrivateKey: null,
         clientPublicKey: null,
-        password: hashedPassword,
+        hashedPassword,
         serverEncryptedPrivateKey: ciphertext,
         serverEncryptedPrivateKeyIV: iv,
         serverEncryptedPrivateKeyTag: tag,

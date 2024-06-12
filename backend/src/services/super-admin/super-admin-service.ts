@@ -136,7 +136,7 @@ export const superAdminServiceFactory = ({
           tag: encryptedPrivateKeyTag,
           verifier,
           userId: newUser.id,
-          password: hashedPassword,
+          hashedPassword,
           serverEncryptedPrivateKey: ciphertext,
           serverEncryptedPrivateKeyIV: iv,
           serverEncryptedPrivateKeyTag: tag,

@@ -92,7 +92,7 @@ export const authPaswordServiceFactory = ({
       verifier,
       serverPrivateKey: null,
       clientPublicKey: null,
-      password: hashedPassword
+      hashedPassword
     });
 
     if (tokenVersionId) {

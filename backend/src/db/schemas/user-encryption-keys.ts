@@ -22,7 +22,7 @@ export const UserEncryptionKeysSchema = z.object({
   salt: z.string(),
   verifier: z.string(),
   userId: z.string().uuid(),
-  password: z.string().nullable().optional(),
+  hashedPassword: z.string().nullable().optional(),
   serverEncryptedPrivateKey: z.string().nullable().optional(),
   serverEncryptedPrivateKeyIV: z.string().nullable().optional(),
   serverEncryptedPrivateKeyTag: z.string().nullable().optional(),
