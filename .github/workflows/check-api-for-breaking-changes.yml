@@ -47,7 +47,7 @@ jobs:
       - name: Wait for container to be stable and check logs
         run: |
           SECONDS=0
- r        HEALTHY=0
+          HEALTHY=0
           while [ $SECONDS -lt 60 ]; do
             if docker ps | grep infisical-api | grep -q healthy; then
               echo "Container is healthy."
