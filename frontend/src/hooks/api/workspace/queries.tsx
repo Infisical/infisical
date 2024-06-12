@@ -48,8 +48,18 @@ export const workspaceKeys = {
     [{ projectSlug }, "workspace-cas"] as const,
   specificWorkspaceCas: ({ projectSlug, status }: { projectSlug: string; status?: CaStatus }) =>
     [...workspaceKeys.getWorkspaceCas({ projectSlug }), { status }] as const,
-  getWorkspaceCertificates: (projectSlug: string) =>
-    [{ projectSlug }, "workspace-certificates"] as const
+  allWorkspaceCertificates: () => ["workspace-certificates"] as const,
+  forWorkspaceCertificates: (slug: string) =>
+    [...workspaceKeys.allWorkspaceCertificates(), slug] as const,
+  specificWorkspaceCertificates: ({
+    slug,
+    offset,
+    limit
+  }: {
+    slug: string;
+    offset: number;
+    limit: number;
+  }) => [...workspaceKeys.forWorkspaceCertificates(slug), { offset, limit }] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -526,16 +536,37 @@ export const useListWorkspaceCas = ({
   });
 };
 
-export const useListWorkspaceCertificates = (projectSlug: string) => {
+export const useListWorkspaceCertificates = ({
+  projectSlug,
+  offset,
+  limit
+}: {
+  projectSlug: string;
+  offset: number;
+  limit: number;
+}) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceCertificates(projectSlug),
+    queryKey: workspaceKeys.specificWorkspaceCertificates({
+      slug: projectSlug,
+      offset,
+      limit
+    }),
     queryFn: async () => {
+      const params = new URLSearchParams({
+        offset: String(offset),
+        limit: String(limit)
+      });
+
       const {
-        data: { certificates }
-      } = await apiRequest.get<{ certificates: TCertificate[] }>(
-        `/api/v2/workspace/${projectSlug}/certificates`
+        data: { certificates, totalCount }
+      } = await apiRequest.get<{ certificates: TCertificate[]; totalCount: number }>(
+        `/api/v2/workspace/${projectSlug}/certificates`,
+        {
+          params
+        }
       );
-      return certificates;
+
+      return { certificates, totalCount };
     },
     enabled: Boolean(projectSlug)
   });

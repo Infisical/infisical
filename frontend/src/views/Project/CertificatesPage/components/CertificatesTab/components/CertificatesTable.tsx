@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   faBan,
   faCertificate,
@@ -17,6 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyState,
+  Pagination,
   Table,
   TableContainer,
   TableSkeleton,
@@ -25,8 +27,7 @@ import {
   Th,
   THead,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  Tr} from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useListWorkspaceCertificates } from "@app/hooks/api";
 import { certStatusToNameMap } from "@app/hooks/api/certificates/constants";
@@ -45,8 +46,16 @@ type Props = {
 };
 
 export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
+
   const { currentWorkspace } = useWorkspace();
-  const { data, isLoading } = useListWorkspaceCertificates(currentWorkspace?.slug ?? "");
+  const { data, isLoading } = useListWorkspaceCertificates({
+    projectSlug: currentWorkspace?.slug ?? "",
+    offset: (page - 1) * perPage,
+    limit: perPage
+  });
+
   return (
     <div>
       <TableContainer>
@@ -62,9 +71,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
           <TBody>
             {isLoading && <TableSkeleton columns={3} innerKey="project-cas" />}
             {!isLoading &&
-              data &&
-              data.length > 0 &&
-              data.map((certificate) => {
+              data?.certificates.map((certificate) => {
                 return (
                   <Tr className="h-10" key={`certificate-${certificate.id}`}>
                     <Td>{certificate.friendlyName}</Td>
@@ -177,7 +184,16 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
               })}
           </TBody>
         </Table>
-        {!isLoading && data?.length === 0 && (
+        {!isLoading && data?.totalCount !== undefined && (
+          <Pagination
+            count={data.totalCount}
+            page={page}
+            perPage={perPage}
+            onChangePage={(newPage) => setPage(newPage)}
+            onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+          />
+        )}
+        {!isLoading && !data?.certificates?.length && (
           <EmptyState title="No certificates have been created" icon={faCertificate} />
         )}
       </TableContainer>

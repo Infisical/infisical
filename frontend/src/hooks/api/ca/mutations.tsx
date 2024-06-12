@@ -102,7 +102,7 @@ export const useCreateCertificate = () => {
       return data;
     },
     onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCertificates(projectSlug));
+      queryClient.invalidateQueries(workspaceKeys.forWorkspaceCertificates(projectSlug));
     }
   });
 };

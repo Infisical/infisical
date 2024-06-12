@@ -356,15 +356,20 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         slug: slugSchema.describe("The slug of the project to list certificates.")
       }),
+      querystring: z.object({
+        offset: z.coerce.number().min(0).max(100).default(0),
+        limit: z.coerce.number().min(1).max(100).default(25)
+      }),
       response: {
         200: z.object({
-          certificates: z.array(CertificatesSchema)
+          certificates: z.array(CertificatesSchema),
+          totalCount: z.number()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const certificates = await server.services.project.listProjectCertificates({
+      const { certificates, totalCount } = await server.services.project.listProjectCertificates({
         filter: {
           slug: req.params.slug,
           orgId: req.permission.orgId,
@@ -373,9 +378,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.permission.type,
+        ...req.query
       });
-      return { certificates };
+      return { certificates, totalCount };
     }
   });
 };

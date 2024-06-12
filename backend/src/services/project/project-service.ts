@@ -39,6 +39,7 @@ import {
   TDeleteProjectDTO,
   TGetProjectDTO,
   TListProjectCasDTO,
+  TListProjectCertsDTO,
   TToggleProjectAutoCapitalizationDTO,
   TUpdateProjectDTO,
   TUpdateProjectNameDTO,
@@ -68,7 +69,7 @@ type TProjectServiceFactoryDep = {
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
-  certificateDAL: Pick<TCertificateDALFactory, "find">;
+  certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -569,12 +570,14 @@ export const projectServiceFactory = ({
    * Return list of certificates for project
    */
   const listProjectCertificates = async ({
+    offset,
+    limit,
     actorId,
     actorOrgId,
     actorAuthMethod,
     filter,
     actor
-  }: TListProjectCasDTO) => {
+  }: TListProjectCertsDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
     const { permission } = await permissionService.getProjectPermission(
@@ -589,12 +592,21 @@ export const projectServiceFactory = ({
 
     const cas = await certificateAuthorityDAL.find({ projectId: project.id });
 
-    const certificates = await certificateDAL.find({
-      $in: {
-        caId: cas.map((ca) => ca.id)
-      }
-    });
-    return certificates;
+    const certificates = await certificateDAL.find(
+      {
+        $in: {
+          caId: cas.map((ca) => ca.id)
+        }
+      },
+      { offset, limit, sort: [["updatedAt", "desc"]] }
+    );
+
+    const count = await certificateDAL.countCertificatesInProject(project.id);
+
+    return {
+      certificates,
+      totalCount: count
+    };
   };
 
   return {

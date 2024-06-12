@@ -17,7 +17,7 @@ export const useDeleteCert = () => {
       return certificate;
     },
     onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCertificates(projectSlug));
+      queryClient.invalidateQueries(workspaceKeys.forWorkspaceCertificates(projectSlug));
     }
   });
 };
@@ -37,7 +37,7 @@ export const useRevokeCert = () => {
       return certificate;
     },
     onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCertificates(projectSlug));
+      queryClient.invalidateQueries(workspaceKeys.forWorkspaceCertificates(projectSlug));
     }
   });
 };

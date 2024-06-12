@@ -86,3 +86,9 @@ export type TListProjectCasDTO = {
   status?: CaStatus;
   filter: Filter;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TListProjectCertsDTO = {
+  filter: Filter;
+  offset: number;
+  limit: number;
+} & Omit<TProjectPermission, "projectId">;
