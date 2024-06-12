@@ -1,5 +1,5 @@
 import { Modal, ModalContent } from "@app/components/v2";
-import { useGetCertCert } from "@app/hooks/api";
+import { useGetCertBody } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "./CertificateContent";
@@ -10,7 +10,7 @@ type Props = {
 };
 
 export const CertificateCertModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { data } = useGetCertCert(
+  const { data } = useGetCertBody(
     (popUp?.certificateCert?.data as { serialNumber: string })?.serialNumber || ""
   );
 

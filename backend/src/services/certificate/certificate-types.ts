@@ -38,6 +38,6 @@ export type TRevokeCertDTO = {
   revocationReason: CrlReason;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TGetCertCertDTO = {
+export type TGetCertBodyDTO = {
   serialNumber: string;
 } & Omit<TProjectPermission, "projectId">;

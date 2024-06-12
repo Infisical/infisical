@@ -15,7 +15,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
 import { revocationReasonToCrlCode } from "./certificate-fns";
-import { CertStatus, TDeleteCertDTO, TGetCertCertDTO, TGetCertDTO, TRevokeCertDTO } from "./certificate-types";
+import { CertStatus, TDeleteCertDTO, TGetCertBodyDTO, TGetCertDTO, TRevokeCertDTO } from "./certificate-types";
 
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find">;
@@ -141,7 +141,7 @@ export const certificateServiceFactory = ({
    * Return certificate body and certificate chain for certificate with
    * serial number [serialNumber]
    */
-  const getCertCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertCertDTO) => {
+  const getCertBody = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
     const ca = await certificateAuthorityDAL.findById(cert.caId);
 
@@ -155,7 +155,7 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 
-    const certCert = await certificateBodyDAL.findOne({ certId: cert.id });
+    const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
     const keyId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -165,7 +165,7 @@ export const certificateServiceFactory = ({
 
     const decryptedCert = await kmsService.decrypt({
       kmsId: keyId,
-      cipherTextBlob: certCert.encryptedCertificate
+      cipherTextBlob: certBody.encryptedCertificate
     });
 
     const certObj = new x509.X509Certificate(decryptedCert);
@@ -189,6 +189,6 @@ export const certificateServiceFactory = ({
     getCert,
     deleteCert,
     revokeCert,
-    getCertCert
+    getCertBody
   };
 };

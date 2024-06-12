@@ -6,7 +6,7 @@ import { TCertificate } from "./types";
 
 export const certKeys = {
   getCertById: (serialNumber: string) => [{ serialNumber }, "cert"],
-  getCertCert: (serialNumber: string) => [{ serialNumber }, "certCert"]
+  getCertBody: (serialNumber: string) => [{ serialNumber }, "certBody"]
 };
 
 export const useGetCert = (serialNumber: string) => {
@@ -24,9 +24,9 @@ export const useGetCert = (serialNumber: string) => {
   });
 };
 
-export const useGetCertCert = (serialNumber: string) => {
+export const useGetCertBody = (serialNumber: string) => {
   return useQuery({
-    queryKey: certKeys.getCertCert(serialNumber),
+    queryKey: certKeys.getCertBody(serialNumber),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificate: string;
