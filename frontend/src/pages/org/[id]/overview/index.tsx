@@ -63,7 +63,6 @@ import {
 // import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { timeAgo } from "@app/lib/fn/date";
 
 const features = [
   {
@@ -647,12 +646,9 @@ const OrganizationPage = withPermission(
               <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
               <div className="ml-5 truncate text-sm text-mineshaft-100">{workspace.name}</div>
             </div>
-            <div className="grid grid-cols-2 sm:col-span-3 lg:col-span-2">
-              <div className="col-span-1 flex items-center justify-start text-center text-sm text-mineshaft-300 xl:pl-8">
+            <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
+              <div className="text-center text-sm text-mineshaft-300">
                 {workspace.environments?.length || 0} environments
-              </div>
-              <div className="col-span-1 flex items-center justify-start text-sm text-mineshaft-300">
-                Updated {timeAgo(new Date(workspace.updatedAt), new Date())}
               </div>
             </div>
           </div>
