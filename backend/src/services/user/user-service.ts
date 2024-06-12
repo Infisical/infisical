@@ -21,6 +21,7 @@ type TUserServiceFactoryDep = {
     | "findOneUserAction"
     | "createUserAction"
     | "findUserEncKeyByUserId"
+    | "delete"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "find" | "insertMany">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany">;
@@ -85,7 +86,7 @@ export const userServiceFactory = ({
         tx
       );
 
-      // check if there are users with the same email.
+      // check if there are verified users with the same email.
       const users = await userDAL.find(
         {
           email,
@@ -134,6 +135,15 @@ export const userServiceFactory = ({
           );
         }
       } else {
+        await userDAL.delete(
+          {
+            email,
+            isAccepted: false,
+            isEmailVerified: false
+          },
+          tx
+        );
+
         // update current user's username to [email]
         await userDAL.updateById(
           user.id,
