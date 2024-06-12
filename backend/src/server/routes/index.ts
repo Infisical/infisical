@@ -878,6 +878,9 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,
     queueService,
+    secretVersionDAL,
+    secretFolderVersionDAL: folderVersionDAL,
+    snapshotDAL,
     identityAccessTokenDAL,
     secretSharingDAL
   });

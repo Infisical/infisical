@@ -31,6 +31,7 @@ import { logger } from "@app/lib/logger";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
+import { IntegrationMetadataSchema } from "../integration/integration-schema";
 import {
   IntegrationInitialSyncBehavior,
   IntegrationMappingBehavior,
@@ -1363,38 +1364,41 @@ const syncSecretsGitHub = async ({
     }
   }
 
-  for await (const encryptedSecret of encryptedSecrets) {
-    if (
-      !(encryptedSecret.name in secrets) &&
-      !(appendices?.prefix !== undefined && !encryptedSecret.name.startsWith(appendices?.prefix)) &&
-      !(appendices?.suffix !== undefined && !encryptedSecret.name.endsWith(appendices?.suffix))
-    ) {
-      switch (integration.scope) {
-        case GithubScope.Org: {
-          await octokit.request("DELETE /orgs/{org}/actions/secrets/{secret_name}", {
-            org: integration.owner as string,
-            secret_name: encryptedSecret.name
-          });
-          break;
-        }
-        case GithubScope.Env: {
-          await octokit.request(
-            "DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
-            {
-              repository_id: Number(integration.appId),
-              environment_name: integration.targetEnvironmentId as string,
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata);
+  if (metadata.shouldEnableDelete) {
+    for await (const encryptedSecret of encryptedSecrets) {
+      if (
+        !(encryptedSecret.name in secrets) &&
+        !(appendices?.prefix !== undefined && !encryptedSecret.name.startsWith(appendices?.prefix)) &&
+        !(appendices?.suffix !== undefined && !encryptedSecret.name.endsWith(appendices?.suffix))
+      ) {
+        switch (integration.scope) {
+          case GithubScope.Org: {
+            await octokit.request("DELETE /orgs/{org}/actions/secrets/{secret_name}", {
+              org: integration.owner as string,
               secret_name: encryptedSecret.name
-            }
-          );
-          break;
-        }
-        default: {
-          await octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
-            owner: integration.owner as string,
-            repo: integration.app as string,
-            secret_name: encryptedSecret.name
-          });
-          break;
+            });
+            break;
+          }
+          case GithubScope.Env: {
+            await octokit.request(
+              "DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
+              {
+                repository_id: Number(integration.appId),
+                environment_name: integration.targetEnvironmentId as string,
+                secret_name: encryptedSecret.name
+              }
+            );
+            break;
+          }
+          default: {
+            await octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+              owner: integration.owner as string,
+              repo: integration.app as string,
+              secret_name: encryptedSecret.name
+            });
+            break;
+          }
         }
       }
     }
@@ -1917,13 +1921,13 @@ const syncSecretsGitLab = async ({
     return allEnvVariables;
   };
 
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata);
   const allEnvVariables = await getAllEnvVariables(integration?.appId as string, accessToken);
   const getSecretsRes: GitLabSecret[] = allEnvVariables
     .filter((secret: GitLabSecret) => secret.environment_scope === integration.targetEnvironment)
     .filter((gitLabSecret) => {
       let isValid = true;
 
-      const metadata = z.record(z.any()).parse(integration.metadata);
       if (metadata.secretPrefix && !gitLabSecret.key.startsWith(metadata.secretPrefix)) {
         isValid = false;
       }
@@ -1943,8 +1947,8 @@ const syncSecretsGitLab = async ({
         {
           key,
           value: secrets[key].value,
-          protected: false,
-          masked: false,
+          protected: Boolean(metadata.shouldProtectSecrets),
+          masked: Boolean(metadata.shouldMaskSecrets),
           raw: false,
           environment_scope: integration.targetEnvironment
         },
@@ -1961,7 +1965,9 @@ const syncSecretsGitLab = async ({
         `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables/${existingSecret.key}?filter[environment_scope]=${integration.targetEnvironment}`,
         {
           ...existingSecret,
-          value: secrets[existingSecret.key].value
+          value: secrets[existingSecret.key].value,
+          protected: Boolean(metadata.shouldProtectSecrets),
+          masked: Boolean(metadata.shouldMaskSecrets)
         },
         {
           headers: {

@@ -8,8 +8,6 @@ import (
 )
 
 func TestServiceToken_RunCmdRecursiveAndImports(t *testing.T) {
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "run", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent", "--", "echo", "hello world")
 
 	if err != nil {
@@ -25,8 +23,6 @@ func TestServiceToken_RunCmdRecursiveAndImports(t *testing.T) {
 	}
 }
 func TestServiceToken_RunCmdWithImports(t *testing.T) {
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "run", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent", "--", "echo", "hello world")
 
 	if err != nil {
@@ -44,8 +40,6 @@ func TestServiceToken_RunCmdWithImports(t *testing.T) {
 
 func TestUniversalAuth_RunCmdRecursiveAndImports(t *testing.T) {
 	MachineIdentityLoginCmd(t)
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "run", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent", "--", "echo", "hello world")
 
 	if err != nil {
@@ -63,8 +57,6 @@ func TestUniversalAuth_RunCmdRecursiveAndImports(t *testing.T) {
 
 func TestUniversalAuth_RunCmdWithImports(t *testing.T) {
 	MachineIdentityLoginCmd(t)
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "run", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent", "--", "echo", "hello world")
 
 	if err != nil {
@@ -83,8 +75,6 @@ func TestUniversalAuth_RunCmdWithImports(t *testing.T) {
 
 func TestUniversalAuth_RunCmdWithoutImports(t *testing.T) {
 	MachineIdentityLoginCmd(t)
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "run", "--token", creds.UAAccessToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent", "--include-imports=false", "--", "echo", "hello world")
 
 	if err != nil {
@@ -101,8 +91,6 @@ func TestUniversalAuth_RunCmdWithoutImports(t *testing.T) {
 }
 
 func TestServiceToken_RunCmdWithoutImports(t *testing.T) {
-	SetupCli(t)
-
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "run", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--silent", "--include-imports=false", "--", "echo", "hello world")
 
 	if err != nil {

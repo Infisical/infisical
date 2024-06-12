@@ -1,13 +1,19 @@
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
+import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
+import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
+import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretSharingDALFactory } from "../secret-sharing/secret-sharing-dal";
 
 type TDailyResourceCleanUpQueueServiceFactoryDep = {
   auditLogDAL: Pick<TAuditLogDALFactory, "pruneAuditLog">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "removeExpiredTokens">;
+  secretVersionDAL: Pick<TSecretVersionDALFactory, "pruneExcessVersions">;
+  secretFolderVersionDAL: Pick<TSecretFolderVersionDALFactory, "pruneExcessVersions">;
+  snapshotDAL: Pick<TSnapshotDALFactory, "pruneExcessSnapshots">;
   secretSharingDAL: Pick<TSecretSharingDALFactory, "pruneExpiredSharedSecrets">;
   queueService: TQueueServiceFactory;
 };
@@ -17,6 +23,9 @@ export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyRe
 export const dailyResourceCleanUpQueueServiceFactory = ({
   auditLogDAL,
   queueService,
+  snapshotDAL,
+  secretVersionDAL,
+  secretFolderVersionDAL,
   identityAccessTokenDAL,
   secretSharingDAL
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
@@ -25,6 +34,9 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     await auditLogDAL.pruneAuditLog();
     await identityAccessTokenDAL.removeExpiredTokens();
     await secretSharingDAL.pruneExpiredSharedSecrets();
+    await snapshotDAL.pruneExcessSnapshots();
+    await secretVersionDAL.pruneExcessVersions();
+    await secretFolderVersionDAL.pruneExcessVersions();
     logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
   });
 

@@ -2,6 +2,7 @@ ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 ARG NEXT_INFISICAL_PLATFORM_VERSION=next-infisical-platform-version
+ARG CAPTCHA_SITE_KEY=captcha-site-key
 
 FROM node:16-alpine AS deps
 # Install dependencies only when needed. Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
@@ -31,6 +32,8 @@ ARG POSTHOG_API_KEY
 ENV NEXT_PUBLIC_POSTHOG_API_KEY $POSTHOG_API_KEY
 ARG INTERCOM_ID
 ENV NEXT_PUBLIC_INTERCOM_ID $INTERCOM_ID
+ARG CAPTCHA_SITE_KEY
+ENV NEXT_PUBLIC_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY
 
 # Build
 RUN npm run build
@@ -57,7 +60,9 @@ ENV NEXT_PUBLIC_SAML_ORG_SLUG=$SAML_ORG_SLUG \
     BAKED_NEXT_PUBLIC_SAML_ORG_SLUG=$SAML_ORG_SLUG
 ARG NEXT_INFISICAL_PLATFORM_VERSION
 ENV NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION=$NEXT_INFISICAL_PLATFORM_VERSION 
-
+ARG CAPTCHA_SITE_KEY
+ENV NEXT_PUBLIC_CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY \
+    BAKED_NEXT_PUBLIC_CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
 COPY --chown=nextjs:nodejs --chmod=555 scripts ./scripts
 COPY --from=builder /app/public ./public
 RUN chown nextjs:nodejs ./public/data

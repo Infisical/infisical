@@ -30,7 +30,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
           environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.import.environment),
           path: z.string().trim().transform(removeTrailingSlash).describe(SECRET_IMPORTS.CREATE.import.path)
         }),
-        isReplication: z.boolean().default(false)
+        isReplication: z.boolean().default(false).describe(SECRET_IMPORTS.CREATE.isReplication)
       }),
       response: {
         200: z.object({

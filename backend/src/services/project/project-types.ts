@@ -44,6 +44,11 @@ export type TToggleProjectAutoCapitalizationDTO = {
   autoCapitalization: boolean;
 } & TProjectPermission;
 
+export type TUpdateProjectVersionLimitDTO = {
+  pitVersionLimit: number;
+  workspaceSlug: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TUpdateProjectNameDTO = {
   name: string;
 } & TProjectPermission;

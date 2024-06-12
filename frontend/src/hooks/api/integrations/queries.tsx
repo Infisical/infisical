@@ -73,6 +73,9 @@ export const useCreateIntegration = () => {
         }[];
         kmsKeyId?: string;
         shouldDisableDelete?: boolean;
+        shouldMaskSecrets?: boolean;
+        shouldProtectSecrets?: boolean;
+        shouldEnableDelete?: boolean;
       };
     }) => {
       const {

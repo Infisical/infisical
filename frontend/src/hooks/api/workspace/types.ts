@@ -16,6 +16,7 @@ export type Workspace = {
   upgradeStatus: string | null;
   autoCapitalization: boolean;
   environments: WorkspaceEnv[];
+  pitVersionLimit: number;
   slug: string;
 };
 
@@ -48,6 +49,7 @@ export type CreateWorkspaceDTO = {
 };
 
 export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
+export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
 export type ToggleAutoCapitalizationDTO = { workspaceID: string; state: boolean };
 
 export type DeleteWorkspaceDTO = { workspaceID: string };
