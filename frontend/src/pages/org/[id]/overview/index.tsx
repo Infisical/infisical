@@ -12,6 +12,8 @@ import { faFolderOpen } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowRight,
   faArrowUpRightFromSquare,
+  faBorderAll,
+  faBoxesStacked,
   faCheck,
   faCheckCircle,
   faClipboard,
@@ -22,9 +24,6 @@ import {
   faNetworkWired,
   faPlug,
   faPlus,
-  faProjectDiagram,
-  faTableCells,
-  faTableColumns,
   faUserPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -38,10 +37,8 @@ import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
 import {
   Button,
   Checkbox,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
   FormControl,
+  IconButton,
   Input,
   Modal,
   ModalContent,
@@ -66,6 +63,7 @@ import {
 // import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { timeAgo } from "@app/lib/fn/date";
 
 const features = [
   {
@@ -478,7 +476,6 @@ const formSchema = yup.object({
 type TAddProjectFormData = yup.InferType<typeof formSchema>;
 
 // #TODO: Update all the workspaceIds
-
 const OrganizationPage = withPermission(
   () => {
     const { t } = useTranslation();
@@ -641,14 +638,19 @@ const OrganizationPage = withPermission(
                 localStorage.setItem("projectData.id", workspace.id);
               }}
               key={workspace.id}
-              className="min-w-72 group flex h-12 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700"
+              className="min-w-72 group grid h-14 cursor-pointer grid-cols-6 border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700"
             >
-              <div className="flex items-center">
-                <FontAwesomeIcon icon={faProjectDiagram} className="text-sm text-white" />
+              <div className="flex items-center sm:col-span-3 lg:col-span-4">
+                <FontAwesomeIcon icon={faBoxesStacked} className="text-sm text-white" />
                 <div className="ml-4 truncate text-lg text-mineshaft-100">{workspace.name}</div>
               </div>
-              <div className="text-sm text-mineshaft-300">
-                {workspace.environments?.length || 0} environments
+              <div className="grid grid-cols-2 sm:col-span-3 lg:col-span-2">
+                <div className="col-span-1 flex items-center justify-start text-center text-sm text-mineshaft-300 xl:pl-8">
+                  {workspace.environments?.length || 0} environments
+                </div>
+                <div className="col-span-1 flex items-center justify-start text-sm text-mineshaft-300">
+                  last update: {timeAgo(new Date(workspace.updatedAt), new Date())}
+                </div>
               </div>
             </div>
           ))}
@@ -686,41 +688,30 @@ const OrganizationPage = withPermission(
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
           <div className="flex w-full justify-between">
             <p className="mr-4 font-semibold text-white">Projects</p>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline_bg" leftIcon={<FontAwesomeIcon icon={faTableColumns} />}>
-                  Display
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <div className="flex flex-col space-y-1 p-1.5">
-                  <Button
-                    leftIcon={<FontAwesomeIcon icon={faTableCells} className="pr-2" />}
-                    onClick={() => {
-                      localStorage.setItem("projectsViewMode", ProjectsViewMode.GRID);
-                      setProjectsViewMode(ProjectsViewMode.GRID);
-                    }}
-                    variant="outline_bg"
-                    className="h-10 text-left"
-                    isFullWidth
-                  >
-                    Grid
-                  </Button>
-                  <Button
-                    leftIcon={<FontAwesomeIcon icon={faList} className="pr-2" />}
-                    onClick={() => {
-                      localStorage.setItem("projectsViewMode", ProjectsViewMode.LIST);
-                      setProjectsViewMode(ProjectsViewMode.LIST);
-                    }}
-                    variant="outline_bg"
-                    className="h-10 text-left"
-                    isFullWidth
-                  >
-                    List
-                  </Button>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex">
+              <IconButton
+                variant="outline_bg"
+                onClick={() => {
+                  localStorage.setItem("projectsViewMode", ProjectsViewMode.GRID);
+                  setProjectsViewMode(ProjectsViewMode.GRID);
+                }}
+                ariaLabel="grid"
+                className="mr-1 min-w-[2.8rem]"
+              >
+                <FontAwesomeIcon icon={faBorderAll} />
+              </IconButton>
+              <IconButton
+                variant="outline_bg"
+                onClick={() => {
+                  localStorage.setItem("projectsViewMode", ProjectsViewMode.LIST);
+                  setProjectsViewMode(ProjectsViewMode.LIST);
+                }}
+                ariaLabel="list"
+                className="min-w-[2.8rem]"
+              >
+                <FontAwesomeIcon icon={faList} />
+              </IconButton>
+            </div>
           </div>
           <div className="mt-6 flex w-full flex-row">
             <Input
