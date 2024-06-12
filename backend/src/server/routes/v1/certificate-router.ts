@@ -52,17 +52,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         serialNumber: z.string().trim()
       }),
       body: z.object({
-        revocationReason: z.enum([
-          CrlReason.UNSPECIFIED,
-          CrlReason.KEY_COMPROMISE,
-          CrlReason.CA_COMPROMISE,
-          CrlReason.AFFILIATION_CHANGED,
-          CrlReason.SUPERSEDED,
-          CrlReason.CESSATION_OF_OPERATION,
-          CrlReason.CERTIFICATE_HOLD,
-          CrlReason.PRIVILEGE_WITHDRAWN,
-          CrlReason.A_A_COMPROMISE
-        ])
+        revocationReason: z.nativeEnum(CrlReason)
       }),
       response: {
         200: z.object({

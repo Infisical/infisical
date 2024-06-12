@@ -44,9 +44,9 @@ import {
   TCertificateAuthoritySecret,
   TCertificateAuthoritySecretInsert,
   TCertificateAuthoritySecretUpdate,
-  TCertificateCerts,
-  TCertificateCertsInsert,
-  TCertificateCertsUpdate,
+  TCertificateBodies,
+  TCertificateBodiesInsert,
+  TCertificateBodiesUpdate,
   TCertificates,
   TCertificateSecrets,
   TCertificateSecretsInsert,
@@ -299,10 +299,10 @@ declare module "knex/types/tables" {
       TCertificateAuthorityCrlUpdate
     >;
     [TableName.Certificate]: Knex.CompositeTableType<TCertificates, TCertificatesInsert, TCertificatesUpdate>;
-    [TableName.CertificateCert]: Knex.CompositeTableType<
-      TCertificateCerts,
-      TCertificateCertsInsert,
-      TCertificateCertsUpdate
+    [TableName.CertificateBody]: Knex.CompositeTableType<
+      TCertificateBodies,
+      TCertificateBodiesInsert,
+      TCertificateBodiesUpdate
     >;
     [TableName.CertificateSecret]: Knex.CompositeTableType<
       TCertificateSecrets,

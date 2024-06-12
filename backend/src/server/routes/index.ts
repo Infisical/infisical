@@ -71,7 +71,7 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
-import { certificateCertDALFactory } from "@app/services/certificate/certificate-cert-dal";
+import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -521,11 +521,11 @@ export const registerRoutes = async (
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
 
   const certificateDAL = certificateDALFactory(db);
-  const certificateCertDAL = certificateCertDALFactory(db);
+  const certificateBodyDAL = certificateBodyDALFactory(db);
 
   const certificateService = certificateServiceFactory({
     certificateDAL,
-    certificateCertDAL,
+    certificateBodyDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     certificateAuthorityCrlDAL,
@@ -552,7 +552,7 @@ export const registerRoutes = async (
     certificateAuthorityCrlDAL,
     certificateAuthorityQueue,
     certificateDAL,
-    certificateCertDAL,
+    certificateBodyDAL,
     projectDAL,
     kmsService,
     permissionService

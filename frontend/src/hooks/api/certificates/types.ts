@@ -4,6 +4,7 @@ export type TCertificate = {
   id: string;
   caId: string;
   status: CertStatus;
+  friendlyName: string;
   commonName: string;
   serialNumber: string;
   notBefore: string;

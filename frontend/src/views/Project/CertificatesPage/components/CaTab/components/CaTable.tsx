@@ -56,7 +56,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
         <Table>
           <THead>
             <Tr>
-              <Th>Subject</Th>
+              <Th>Friendly Name</Th>
               <Th>Status</Th>
               <Th>Type</Th>
               <Th>Valid Until</Th>
@@ -71,7 +71,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
               data.map((ca) => {
                 return (
                   <Tr className="h-10" key={`ca-${ca.id}`}>
-                    <Td>{ca.dn}</Td>
+                    <Td>{ca.friendlyName}</Td>
                     <Td>{caStatusToNameMap[ca.status]}</Td>
                     <Td>{caTypeToNameMap[ca.type]}</Td>
                     <Td>{ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "-"}</Td>

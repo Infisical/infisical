@@ -4,6 +4,7 @@ import {
   faAnchorLock,
   faArrowLeft,
   faBook,
+  faCertificate,
   faCog,
   faKey,
   faLock,
@@ -13,8 +14,7 @@ import {
   faShield,
   faTags,
   faUser,
-  faUsers
-} from "@fortawesome/free-solid-svg-icons";
+  faUsers} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -117,6 +117,18 @@ const SINGLE_PERMISSION_LIST = [
     subtitle: "IP allowlist management control",
     icon: faNetworkWired,
     formName: "ip-allowlist"
+  },
+  {
+    title: "Certificate Authorities",
+    subtitle: "CA management control",
+    icon: faCertificate,
+    formName: "certificate-authorities"
+  },
+  {
+    title: "Certificates",
+    subtitle: "Certificate management control",
+    icon: faCertificate,
+    formName: "certificates"
   }
 ] as const;
 

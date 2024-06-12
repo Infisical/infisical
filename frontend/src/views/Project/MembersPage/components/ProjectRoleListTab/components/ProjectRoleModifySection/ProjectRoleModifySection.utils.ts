@@ -48,6 +48,8 @@ export const formSchema = z.object({
       tags: generalPermissionSchema,
       "audit-logs": generalPermissionSchema,
       "ip-allowlist": generalPermissionSchema,
+      "certificate-authorities": generalPermissionSchema,
+      certificates: generalPermissionSchema,
       // akhilmhdh: refactor all keys like below
       [ProjectPermissionSub.SecretApproval]: generalPermissionSchema,
       workspace: z

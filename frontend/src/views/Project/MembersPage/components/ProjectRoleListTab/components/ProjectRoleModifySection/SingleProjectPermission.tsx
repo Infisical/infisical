@@ -25,6 +25,8 @@ type Props = {
     | "audit-logs"
     | "ip-allowlist"
     | "identity"
+    | "certificate-authorities"
+    | "certificates"
     | ProjectPermissionSub.SecretApproval;
   isNonEditable?: boolean;
   setValue: UseFormSetValue<TFormSchema>;

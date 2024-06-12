@@ -7,7 +7,7 @@ export enum TableName {
   CertificateAuthoritySecret = "certificate_authority_secret",
   CertificateAuthorityCrl = "certificate_authority_crl",
   Certificate = "certificates",
-  CertificateCert = "certificate_certs",
+  CertificateBody = "certificate_bodies",
   CertificateSecret = "certificate_secrets",
   Groups = "groups",
   GroupProjectMembership = "group_project_memberships",

@@ -1,3 +1,4 @@
+import ms from "ms";
 import { z } from "zod";
 
 import { CertificateAuthoritiesSchema } from "@app/db/schemas";
@@ -21,7 +22,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           projectSlug: z.string().trim(),
-          type: z.enum([CaType.ROOT, CaType.INTERMEDIATE]),
+          type: z.nativeEnum(CaType),
+          friendlyName: z.string().optional(),
           commonName: z.string().trim(),
           organization: z.string().trim(),
           ou: z.string().trim(),
@@ -32,14 +34,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional(),
           maxPathLength: z.number().min(-1).default(-1),
-          keyAlgorithm: z
-            .enum([
-              CertKeyAlgorithm.RSA_2048,
-              CertKeyAlgorithm.RSA_4096,
-              CertKeyAlgorithm.ECDSA_P256,
-              CertKeyAlgorithm.ECDSA_P384
-            ])
-            .default(CertKeyAlgorithm.RSA_2048)
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).default(CertKeyAlgorithm.RSA_2048)
         })
         .refine(
           (data) => {
@@ -342,8 +337,9 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }),
       body: z
         .object({
+          friendlyName: z.string().optional(),
           commonName: z.string().trim().min(1),
-          ttl: z.number().int().min(0).optional(),
+          ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional()
         })

@@ -53,7 +53,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
         <Table>
           <THead>
             <Tr>
-              <Th>Common Name</Th>
+              <Th>Friendly Name</Th>
               <Th>Status</Th>
               <Th>Valid Until</Th>
               <Th />
@@ -67,7 +67,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
               data.map((certificate) => {
                 return (
                   <Tr className="h-10" key={`certificate-${certificate.id}`}>
-                    <Td>{certificate.commonName}</Td>
+                    <Td>{certificate.friendlyName}</Td>
                     <Td>{certStatusToNameMap[certificate.status]}</Td>
                     <Td>
                       {certificate.notAfter

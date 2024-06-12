@@ -12,7 +12,7 @@ export * from "./certificate-authorities";
 export * from "./certificate-authority-certs";
 export * from "./certificate-authority-crl";
 export * from "./certificate-authority-secret";
-export * from "./certificate-certs";
+export * from "./certificate-bodies";
 export * from "./certificate-secrets";
 export * from "./certificates";
 export * from "./dynamic-secret-leases";

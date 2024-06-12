@@ -23,6 +23,7 @@ export enum CaStatus {
 export type TCreateCaDTO = {
   projectSlug: string;
   type: CaType;
+  friendlyName?: string;
   commonName: string;
   organization: string;
   ou: string;
@@ -72,8 +73,9 @@ export type TImportCertToCaDTO = {
 
 export type TIssueCertFromCaDTO = {
   caId: string;
+  friendlyName?: string;
   commonName: string;
-  ttl?: number;
+  ttl: string;
   notBefore?: string;
   notAfter?: string;
 } & Omit<TProjectPermission, "projectId">;

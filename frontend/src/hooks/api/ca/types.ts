@@ -7,6 +7,7 @@ export type TCertificateAuthority = {
   projectId: string;
   type: CaType;
   status: CaStatus;
+  friendlyName: string;
   organization: string;
   ou: string;
   country: string;
@@ -25,6 +26,7 @@ export type TCertificateAuthority = {
 export type TCreateCaDTO = {
   projectSlug: string;
   type: string;
+  friendlyName?: string;
   organization: string;
   ou: string;
   country: string;
@@ -74,12 +76,12 @@ export type TImportCaCertificateResponse = {
   caId: string;
 };
 
-// TODO: add TTL
 export type TCreateCertificateDTO = {
   projectSlug: string;
   caId: string;
+  friendlyName?: string;
   commonName: string;
-  ttl?: number;
+  ttl: string; // string compatible with ms
   notBefore?: string;
   notAfter?: string;
 };

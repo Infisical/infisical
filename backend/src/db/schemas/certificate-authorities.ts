@@ -15,6 +15,7 @@ export const CertificateAuthoritiesSchema = z.object({
   projectId: z.string(),
   type: z.string(),
   status: z.string(),
+  friendlyName: z.string(),
   organization: z.string(),
   ou: z.string(),
   country: z.string(),

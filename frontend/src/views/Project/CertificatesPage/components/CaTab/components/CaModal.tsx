@@ -35,6 +35,7 @@ const getDateTenYearsFromToday = () => {
 const schema = z
   .object({
     type: z.enum([CaType.ROOT, CaType.INTERMEDIATE]),
+    friendlyName: z.string(),
     organization: z.string(),
     ou: z.string(),
     country: z.string(),
@@ -81,6 +82,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     resolver: zodResolver(schema),
     defaultValues: {
       type: CaType.ROOT,
+      friendlyName: "",
       organization: "",
       ou: "",
       country: "",
@@ -99,6 +101,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (ca) {
       reset({
         type: ca.type,
+        friendlyName: ca.friendlyName,
         organization: ca.organization,
         ou: ca.ou,
         country: ca.country,
@@ -112,6 +115,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else {
       reset({
         type: CaType.ROOT,
+        friendlyName: "",
         organization: "",
         ou: "",
         country: "",
@@ -127,6 +131,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({
     type,
+    friendlyName,
     commonName,
     organization,
     ou,
@@ -143,6 +148,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
       await createMutateAsync({
         projectSlug: currentWorkspace.slug,
         type,
+        friendlyName,
         commonName,
         organization,
         ou,
@@ -169,12 +175,6 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
       });
     }
   };
-
-  // const getDefaultNotAfterDate = () => {
-  //   const date = new Date();
-  //   date.setFullYear(date.getFullYear() + 10);
-  //   return date;
-  // };
 
   return (
     <Modal
@@ -305,6 +305,20 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     </SelectItem>
                   ))}
                 </Select>
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="friendlyName"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Friendly Name"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="My CA" isDisabled={Boolean(ca)} />
               </FormControl>
             )}
           />

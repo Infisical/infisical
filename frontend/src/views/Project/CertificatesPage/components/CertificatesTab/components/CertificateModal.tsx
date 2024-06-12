@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -21,21 +20,11 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "./CertificateContent";
 
-const isValidDate = (dateString: string) => {
-  if (dateString === "") return true;
-  const date = new Date(dateString);
-  return !Number.isNaN(date.getTime());
-};
-
 const schema = z.object({
   caId: z.string(),
+  friendlyName: z.string(),
   commonName: z.string().trim().min(1),
-  ttl: z.string().trim().optional(),
-  notAfter: z
-    .string()
-    .trim()
-    .refine(isValidDate, { message: "Invalid date format" })
-    .transform((val) => (val === "" ? undefined : val))
+  ttl: z.string().trim()
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -80,31 +69,30 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (cert) {
       reset({
         caId: cert.caId,
+        friendlyName: cert.friendlyName,
         commonName: cert.commonName,
-        ttl: "",
-        notAfter: format(new Date(cert.notAfter), "yyyy-MM-dd")
+        ttl: ""
       });
     } else {
       reset({
         caId: "",
+        friendlyName: "",
         commonName: "",
-        ttl: "",
-        notAfter: ""
+        ttl: ""
       });
     }
   }, [cert]);
 
-  const onFormSubmit = async ({ caId, commonName, ttl, notAfter }: FormData) => {
+  const onFormSubmit = async ({ caId, friendlyName, commonName, ttl }: FormData) => {
     try {
       if (!currentWorkspace?.slug) return;
 
       const { serialNumber, certificate, certificateChain, privateKey } = await createCertificate({
         projectSlug: currentWorkspace.slug,
         caId,
+        friendlyName,
         commonName,
-        ttl: ttl ? Number(ttl) : undefined,
-        notBefore: new Date().toISOString(),
-        notAfter
+        ttl
       });
 
       reset();
@@ -178,6 +166,20 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
             <Controller
               control={control}
               defaultValue=""
+              name="friendlyName"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Friendly Name"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="My Certificate" isDisabled={Boolean(cert)} />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue=""
               name="commonName"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
@@ -195,25 +197,16 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
               name="ttl"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
-                  label="TTL (seconds)"
+                  label="TTL"
                   isError={Boolean(error)}
                   errorText={error?.message}
+                  isRequired
                 >
-                  <Input {...field} placeholder="86400" isDisabled={Boolean(cert)} />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              defaultValue=""
-              name="notAfter"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Valid Until"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="YYYY-MM-DD" isDisabled={Boolean(cert)} />
+                  <Input
+                    {...field}
+                    placeholder="2 days, 1d, 2h, 1y, ..."
+                    isDisabled={Boolean(cert)}
+                  />
                 </FormControl>
               )}
             />

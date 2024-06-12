@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { TCertificateCertDALFactory } from "@app/services/certificate/certificate-cert-dal";
+import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityCrlDALFactory } from "@app/services/certificate-authority/certificate-authority-crl-dal";
@@ -19,7 +19,7 @@ import { CertStatus, TDeleteCertDTO, TGetCertCertDTO, TGetCertDTO, TRevokeCertDT
 
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find">;
-  certificateCertDAL: Pick<TCertificateCertDALFactory, "findOne">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
@@ -33,7 +33,7 @@ export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFac
 
 export const certificateServiceFactory = ({
   certificateDAL,
-  certificateCertDAL,
+  certificateBodyDAL,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
   certificateAuthorityCrlDAL,
@@ -155,7 +155,7 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 
-    const certCert = await certificateCertDAL.findOne({ certId: cert.id });
+    const certCert = await certificateBodyDAL.findOne({ certId: cert.id });
 
     const keyId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,

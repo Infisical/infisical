@@ -24,6 +24,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.string("type").notNullable(); // root / intermediate
       t.string("status").notNullable(); // active / pending-certificate
+      t.string("friendlyName").notNullable();
       t.string("organization").notNullable();
       t.string("ou").notNullable();
       t.string("country").notNullable();
@@ -31,7 +32,6 @@ export async function up(knex: Knex): Promise<void> {
       t.string("locality").notNullable();
       t.string("commonName").notNullable();
       t.string("dn").notNullable();
-      t.unique(["dn", "projectId"]);
       t.string("serialNumber").nullable().unique();
       t.integer("maxPathLength").nullable();
       t.string("keyAlgorithm").notNullable();
@@ -80,6 +80,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("caId").references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
       t.string("status").notNullable(); // active / pending-certificate
       t.string("serialNumber").notNullable().unique();
+      t.string("friendlyName").notNullable();
       t.string("commonName").notNullable();
       t.datetime("notBefore").notNullable();
       t.datetime("notAfter").notNullable();
@@ -88,8 +89,8 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.CertificateCert))) {
-    await knex.schema.createTable(TableName.CertificateCert, (t) => {
+  if (!(await knex.schema.hasTable(TableName.CertificateBody))) {
+    await knex.schema.createTable(TableName.CertificateBody, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
       t.uuid("certId").notNullable().unique();
@@ -102,7 +103,7 @@ export async function up(knex: Knex): Promise<void> {
   await createOnUpdateTrigger(knex, TableName.CertificateAuthorityCert);
   await createOnUpdateTrigger(knex, TableName.CertificateAuthoritySecret);
   await createOnUpdateTrigger(knex, TableName.Certificate);
-  await createOnUpdateTrigger(knex, TableName.CertificateCert);
+  await createOnUpdateTrigger(knex, TableName.CertificateBody);
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -115,8 +116,8 @@ export async function down(knex: Knex): Promise<void> {
   }
 
   // certificates
-  await knex.schema.dropTableIfExists(TableName.CertificateCert);
-  await dropOnUpdateTrigger(knex, TableName.CertificateCert);
+  await knex.schema.dropTableIfExists(TableName.CertificateBody);
+  await dropOnUpdateTrigger(knex, TableName.CertificateBody);
 
   await knex.schema.dropTableIfExists(TableName.Certificate);
   await dropOnUpdateTrigger(knex, TableName.Certificate);

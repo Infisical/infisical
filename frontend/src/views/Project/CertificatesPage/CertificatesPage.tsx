@@ -14,7 +14,7 @@ export const CertificatesPage = withProjectPermission(
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
         <div className="mx-auto mb-6 w-full max-w-7xl py-6 px-6">
-          <p className="mr-4 mb-4 text-3xl font-semibold text-white">Certificates</p>
+          <p className="mr-4 mb-4 text-3xl font-semibold text-white">Internal PKI</p>
           <Tabs defaultValue={TabSections.Certificates}>
             <TabList>
               <Tab value={TabSections.Certificates}>Certificates</Tab>

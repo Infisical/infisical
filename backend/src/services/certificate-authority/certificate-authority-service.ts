@@ -2,11 +2,12 @@
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import crypto, { KeyObject } from "crypto";
+import ms from "ms";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
-import { TCertificateCertDALFactory } from "@app/services/certificate/certificate-cert-dal";
+import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -50,7 +51,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
   certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
-  certificateCertDAL: Pick<TCertificateCertDALFactory, "create">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encrypt" | "decrypt">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -64,7 +65,7 @@ export const certificateAuthorityServiceFactory = ({
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
   certificateDAL,
-  certificateCertDAL,
+  certificateBodyDAL,
   projectDAL,
   kmsService,
   permissionService
@@ -75,6 +76,7 @@ export const certificateAuthorityServiceFactory = ({
   const createCa = async ({
     projectSlug,
     type,
+    friendlyName,
     commonName,
     organization,
     ou,
@@ -127,6 +129,7 @@ export const certificateAuthorityServiceFactory = ({
         : new Date(new Date().setFullYear(new Date().getFullYear() + 10));
 
       const serialNumber = crypto.randomBytes(32).toString("hex");
+
       const ca = await certificateAuthorityDAL.create(
         {
           projectId: project.id,
@@ -136,6 +139,7 @@ export const certificateAuthorityServiceFactory = ({
           country,
           province,
           locality,
+          friendlyName: friendlyName || dn,
           commonName,
           status: type === CaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
           dn,
@@ -642,6 +646,7 @@ export const certificateAuthorityServiceFactory = ({
    */
   const issueCertFromCa = async ({
     caId,
+    friendlyName,
     commonName,
     ttl,
     notBefore,
@@ -688,8 +693,7 @@ export const certificateAuthorityServiceFactory = ({
     if (notAfter) {
       notAfterDate = new Date(notAfter);
     } else if (ttl) {
-      // ttl in seconds
-      notAfterDate = new Date(new Date().getTime() + ttl * 1000);
+      notAfterDate = new Date(new Date().getTime() + ms(ttl));
     }
 
     const caCertNotBeforeDate = new Date(caCertObj.notBefore);
@@ -760,6 +764,7 @@ export const certificateAuthorityServiceFactory = ({
         {
           caId: ca.id,
           status: CertStatus.ACTIVE,
+          friendlyName: friendlyName || commonName,
           commonName,
           serialNumber,
           notBefore: notBeforeDate,
@@ -768,7 +773,7 @@ export const certificateAuthorityServiceFactory = ({
         tx
       );
 
-      await certificateCertDAL.create(
+      await certificateBodyDAL.create(
         {
           certId: cert.id,
           encryptedCertificate
