@@ -638,8 +638,8 @@ const OrganizationPage = withPermission(
             }}
             key={workspace.id}
             className={`min-w-72 group grid h-14 cursor-pointer grid-cols-6 border-t border-l border-r border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
-              ind === filteredWorkspaces.length - 1 && "border-b"
-            }`}
+              ind === 0 && "rounded-t-md"
+            } ${ind === filteredWorkspaces.length - 1 && "rounded-b-md border-b"}`}
           >
             <div className="flex items-center sm:col-span-3 lg:col-span-4">
               <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
