@@ -327,6 +327,24 @@ export const snapshotDALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * Prunes excess snapshots from the database to ensure only a specified number of recent snapshots are retained for each folder.
+   *
+   * This function operates in three main steps:
+   * 1. Pruning snapshots from root/non-versioned folders.
+   * 2. Pruning snapshots from versioned folders.
+   * 3. Removing orphaned snapshots that do not belong to any existing folder or folder version.
+   *
+   * The function processes snapshots in batches, determined by the `PRUNE_FOLDER_BATCH_SIZE` constant,
+   * to manage the large datasets without overwhelming the DB.
+   *
+   * Steps:
+   * - Fetch a batch of folder IDs.
+   * - For each batch, use a Common Table Expression (CTE) to rank snapshots within each folder by their creation date.
+   * - Identify and delete snapshots that exceed the project's point-in-time version limit (`pitVersionLimit`).
+   * - Repeat the process for versioned folders.
+   * - Finally, delete orphaned snapshots that do not have an associated folder.
+   */
   const pruneExcessSnapshots = async () => {
     const PRUNE_FOLDER_BATCH_SIZE = 10000;
 
@@ -337,6 +355,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
       while (true) {
         const folderBatch = await db(TableName.SecretFolder)
           .where("id", ">", uuidOffset)
+          .where("isReserved", false)
           .orderBy("id", "asc")
           .limit(PRUNE_FOLDER_BATCH_SIZE)
           .select("id");
@@ -345,7 +364,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
 
         if (folderBatch.length) {
           try {
-            logger.info(`Pruning snapshots in range ${batchEntries[0]}:${batchEntries[batchEntries.length - 1]}`);
+            logger.info(`Pruning snapshots in [range=${batchEntries[0]}:${batchEntries[batchEntries.length - 1]}]`);
             await db(TableName.Snapshot)
               .with("snapshot_cte", (qb) => {
                 void qb

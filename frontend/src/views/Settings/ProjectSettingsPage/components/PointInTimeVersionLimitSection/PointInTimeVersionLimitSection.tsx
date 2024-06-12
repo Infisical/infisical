@@ -56,12 +56,10 @@ export const PointInTimeVersionLimitSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex w-full items-center justify-between">
-        <p className="text-xl font-semibold">Point in Time Recovery</p>
+        <p className="text-xl font-semibold">Version Retention</p>
       </div>
       <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">
-        This defines the maximum number of folder snapshots, secret versions, and folder versions
-        that are retained by the system. The cleanup of excess snapshots and versions happens once a
-        day on midnight of UTC.
+      This defines the maximum number of recent secret versions to keep per folder. Excess versions will be removed at midnight (UTC) each day.
       </p>
       <form onSubmit={handleSubmit(handleVersionLimitSubmit)} autoComplete="off">
         <div className="max-w-xs">
@@ -73,7 +71,7 @@ export const PointInTimeVersionLimitSection = () => {
               <FormControl
                 isError={Boolean(error)}
                 errorText={error?.message}
-                label="Version Limit"
+                label="Recent versions to keep"
               >
                 <Input {...field} type="number" min={1} step={1} isDisabled={!isAdmin} />
               </FormControl>
