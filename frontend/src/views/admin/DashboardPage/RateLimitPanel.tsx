@@ -95,7 +95,7 @@ export const RateLimitPanel = () => {
           defaultValue={300}
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Read Requests allowed per minute"
+              label="Global Read Requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -114,7 +114,7 @@ export const RateLimitPanel = () => {
           name="writeRateLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Write Requests allowed per minute"
+              label="Global Write Requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -133,7 +133,7 @@ export const RateLimitPanel = () => {
           name="secretsRateLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Secret Requests allowed per minute"
+              label="Secret Requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -152,7 +152,7 @@ export const RateLimitPanel = () => {
           name="authRateLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Auth Requests allowed per minute"
+              label="Auth Requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -171,7 +171,7 @@ export const RateLimitPanel = () => {
           name="inviteUserRateLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Invite User Requests allowed per minute"
+              label="Invite User Requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -190,7 +190,7 @@ export const RateLimitPanel = () => {
           name="mfaRateLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Multi Factor Auth Requests allowed per minute"
+              label="Multi Factor Auth Requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -209,7 +209,7 @@ export const RateLimitPanel = () => {
           name="creationLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Creation Requests allowed per minute"
+              label="Creation Requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -228,7 +228,7 @@ export const RateLimitPanel = () => {
           name="publicEndpointLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Public Endpoints Requests allowed per minute"
+              label="Secret Sharing Requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
