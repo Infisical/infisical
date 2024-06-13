@@ -12,7 +12,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { TCertificateAuthorityCrlDALFactory } from "./certificate-authority-crl-dal";
+import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";

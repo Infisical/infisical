@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import { Button, DeleteActionModal, UpgradePlanModal } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { CaStatus, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -25,7 +25,8 @@ export const CaSection = () => {
     "installCaCert",
     "deleteCa",
     "caStatus", // enable / disable
-    "caCrl" // enable / disable
+    "caCrl", // enable / disable
+    "upgradePlan"
   ] as const);
 
   const onRemoveCaSubmit = async (caId: string) => {
@@ -123,6 +124,11 @@ export const CaSection = () => {
         onDeleteApproved={() =>
           onUpdateCaStatus(popUp?.caStatus?.data as { caId: string; status: CaStatus })
         }
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text={(popUp.upgradePlan?.data as { description: string })?.description}
       />
     </div>
   );

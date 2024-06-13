@@ -27,7 +27,11 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useSubscription,
+  useWorkspace} from "@app/context";
 import { CaStatus, useListWorkspaceCas } from "@app/hooks/api";
 import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -35,17 +39,19 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
-      ["installCaCert", "caCert", "ca", "deleteCa", "caStatus", "caCrl"]
+      ["installCaCert", "caCert", "ca", "deleteCa", "caStatus", "caCrl", "upgradePlan"]
     >,
     data?: {
       caId?: string;
       dn?: string;
       status?: CaStatus;
+      description?: string;
     }
   ) => void;
 };
 
 export const CaTable = ({ handlePopUpOpen }: Props) => {
+  const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
   const { data, isLoading } = useListWorkspaceCas({
     projectSlug: currentWorkspace?.slug ?? ""
@@ -144,11 +150,18 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                     !isAllowed &&
                                       "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
-                                  onClick={async () =>
-                                    handlePopUpOpen("caCrl", {
-                                      caId: ca.id
-                                    })
-                                  }
+                                  onClick={async () => {
+                                    if (!subscription?.caCrl) {
+                                      handlePopUpOpen("upgradePlan", {
+                                        description:
+                                          "You can use the certificate revocation list (CRL) feature if you upgrade your Infisical plan."
+                                      });
+                                    } else {
+                                      handlePopUpOpen("caCrl", {
+                                        caId: ca.id
+                                      });
+                                    }
+                                  }}
                                   disabled={!isAllowed}
                                   icon={<FontAwesomeIcon icon={faFile} />}
                                 >

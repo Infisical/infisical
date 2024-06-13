@@ -1,6 +1,7 @@
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
+import { registerCaCrlRouter } from "./certificate-authority-crl-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerGroupRouter } from "./group-router";
@@ -52,6 +53,13 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await dynamicSecretRouter.register(registerDynamicSecretLeaseRouter, { prefix: "/leases" });
     },
     { prefix: "/dynamic-secrets" }
+  );
+
+  await server.register(
+    async (pkiRouter) => {
+      await pkiRouter.register(registerCaCrlRouter, { prefix: "/ca" });
+    },
+    { prefix: "/pki" }
   );
 
   await server.register(registerSamlRouter, { prefix: "/sso" });
