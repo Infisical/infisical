@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -9,35 +10,15 @@ import (
 	"github.com/Infisical/infisical/k8-operator/packages/api"
 	"github.com/Infisical/infisical/k8-operator/packages/model"
 	"github.com/Infisical/infisical/k8-operator/packages/util"
+
+	"k8s.io/apimachinery/pkg/types"
+
 	infisicalSdk "github.com/infisical/go-sdk"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8Errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
-
-type AuthStrategyType string
-
-var AuthStrategy = struct {
-	SERVICE_TOKEN                 AuthStrategyType
-	SERVICE_ACCOUNT               AuthStrategyType
-	UNIVERSAL_MACHINE_IDENTITY    AuthStrategyType
-	KUBERNETES_MACHINE_IDENTITY   AuthStrategyType
-	AWS_IAM_MACHINE_IDENTITY      AuthStrategyType
-	AZURE_MACHINE_IDENTITY        AuthStrategyType
-	GCP_ID_TOKEN_MACHINE_IDENTITY AuthStrategyType
-	GCP_IAM_MACHINE_IDENTITY      AuthStrategyType
-}{
-	SERVICE_TOKEN:                 "SERVICE_TOKEN",
-	SERVICE_ACCOUNT:               "SERVICE_ACCOUNT",
-	UNIVERSAL_MACHINE_IDENTITY:    "UNIVERSAL_MACHINE_IDENTITY",
-	KUBERNETES_MACHINE_IDENTITY:   "KUBERNETES_AUTH_MACHINE_IDENTITY",
-	AWS_IAM_MACHINE_IDENTITY:      "AWS_IAM_MACHINE_IDENTITY",
-	AZURE_MACHINE_IDENTITY:        "AZURE_MACHINE_IDENTITY",
-	GCP_ID_TOKEN_MACHINE_IDENTITY: "GCP_ID_TOKEN_MACHINE_IDENTITY",
-	GCP_IAM_MACHINE_IDENTITY:      "GCP_IAM_MACHINE_IDENTITY",
-}
 
 type AuthenticationDetails struct {
 	authStrategy          AuthStrategyType
@@ -63,30 +44,17 @@ var authDetails AuthenticationDetails
 
 func (r *InfisicalSecretReconciler) HandleAuthentication(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (AuthenticationDetails, error) {
 
-	// Legacy support, service token auth
+	// ? Legacy support, service token auth
 	infisicalToken, err := r.GetInfisicalTokenFromKubeSecret(ctx, infisicalSecret)
 	if err != nil {
 		return AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get service token from kube secret [err=%s]", err)
 	}
 
-	// Legacy support, service account auth
+	// ? Legacy support, service account auth
 	serviceAccountCreds, err := r.GetInfisicalServiceAccountCredentialsFromKubeSecret(ctx, infisicalSecret)
 	if err != nil {
 		return AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get service account creds from kube secret [err=%s]", err)
 	}
-	// Machine Identities:
-	universalAuthKubeSecret, err := r.GetInfisicalUniversalAuthFromKubeSecret(ctx, infisicalSecret)
-
-	if err != nil {
-		return AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get machine identity creds from kube secret [err=%s]", err)
-	}
-
-	universalAuthSpec := infisicalSecret.Spec.Authentication.UniversalAuth
-	kubernetesAuthSpec := infisicalSecret.Spec.Authentication.KubernetesAuth
-	awsIamAuthSpec := infisicalSecret.Spec.Authentication.AwsIamAuth
-	azureAuthSpec := infisicalSecret.Spec.Authentication.AzureAuth
-	gcpIdTokenSpec := infisicalSecret.Spec.Authentication.GcpIdTokenAuth
-	gcpIamSpec := infisicalSecret.Spec.Authentication.GcpIamAuth
 
 	if serviceAccountCreds.AccessKey != "" || serviceAccountCreds.PrivateKey != "" || serviceAccountCreds.PublicKey != "" {
 		return AuthenticationDetails{authStrategy: AuthStrategy.SERVICE_ACCOUNT}, nil
@@ -94,64 +62,28 @@ func (r *InfisicalSecretReconciler) HandleAuthentication(ctx context.Context, in
 		return AuthenticationDetails{authStrategy: AuthStrategy.SERVICE_TOKEN}, nil
 	}
 
-	if universalAuthKubeSecret.ClientId != "" && universalAuthKubeSecret.ClientSecret != "" {
-		_, err := infisicalClient.Auth().UniversalAuthLogin(universalAuthKubeSecret.ClientId, universalAuthKubeSecret.ClientSecret)
-		if err != nil {
-			return AuthenticationDetails{}, fmt.Errorf("unable to login with machine identity credentials [err=%s]", err)
-		}
-
-		fmt.Println("Successfully authenticated with machine identity credentials")
-
-		return AuthenticationDetails{authStrategy: AuthStrategy.UNIVERSAL_MACHINE_IDENTITY, machineIdentityScope: universalAuthSpec.SecretsScope, isMachineIdentityAuth: true}, nil
-
-	}
-	if kubernetesAuthSpec.IdentityID != "" {
-		_, err := infisicalClient.Auth().KubernetesAuthLogin(kubernetesAuthSpec.IdentityID, kubernetesAuthSpec.ServiceAccountTokenPath)
-
-		if err != nil {
-			return AuthenticationDetails{}, fmt.Errorf("unable to login with Kubernetes native auth [err=%s]", err)
-		}
-
-		return AuthenticationDetails{authStrategy: AuthStrategy.KUBERNETES_MACHINE_IDENTITY, machineIdentityScope: kubernetesAuthSpec.SecretsScope, isMachineIdentityAuth: true}, nil
-	}
-	if awsIamAuthSpec.IdentityID != "" {
-		_, err := infisicalClient.Auth().AwsIamAuthLogin(awsIamAuthSpec.IdentityID)
-
-		if err != nil {
-			return AuthenticationDetails{}, fmt.Errorf("unable to login with AWS IAM auth [err=%s]", err)
-		}
-
-		return AuthenticationDetails{authStrategy: AuthStrategy.AWS_IAM_MACHINE_IDENTITY, machineIdentityScope: awsIamAuthSpec.SecretsScope, isMachineIdentityAuth: true}, nil
-	}
-	if azureAuthSpec.IdentityID != "" {
-		_, err := infisicalClient.Auth().AzureAuthLogin(azureAuthSpec.IdentityID)
-
-		if err != nil {
-			return AuthenticationDetails{}, fmt.Errorf("unable to login with Azure auth [err=%s]", err)
-		}
-
-		return AuthenticationDetails{authStrategy: AuthStrategy.AZURE_MACHINE_IDENTITY, machineIdentityScope: azureAuthSpec.SecretsScope, isMachineIdentityAuth: true}, nil
-	}
-	if gcpIdTokenSpec.IdentityID != "" {
-		_, err := infisicalClient.Auth().GcpIdTokenAuthLogin(gcpIdTokenSpec.IdentityID)
-
-		if err != nil {
-			return AuthenticationDetails{}, fmt.Errorf("unable to login with GCP Id Token auth [err=%s]", err)
-		}
-
-		return AuthenticationDetails{authStrategy: AuthStrategy.GCP_ID_TOKEN_MACHINE_IDENTITY, machineIdentityScope: gcpIdTokenSpec.SecretsScope, isMachineIdentityAuth: true}, nil
-	}
-	if gcpIamSpec.IdentityID != "" && gcpIamSpec.ServiceAccountKeyFilePath != "" {
-		_, err := infisicalClient.Auth().GcpIamAuthLogin(gcpIamSpec.IdentityID, gcpIamSpec.ServiceAccountKeyFilePath)
-
-		if err != nil {
-			return AuthenticationDetails{}, fmt.Errorf("unable to login with GCP IAM auth [err=%s]", err)
-		}
-
-		return AuthenticationDetails{authStrategy: AuthStrategy.GCP_IAM_MACHINE_IDENTITY, machineIdentityScope: gcpIamSpec.SecretsScope, isMachineIdentityAuth: true}, nil
+	authStrategies := map[AuthStrategyType]func(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (AuthenticationDetails, error){
+		AuthStrategy.UNIVERSAL_MACHINE_IDENTITY:    r.handleUniversalAuth,
+		AuthStrategy.KUBERNETES_MACHINE_IDENTITY:   r.handleKubernetesAuth,
+		AuthStrategy.AWS_IAM_MACHINE_IDENTITY:      r.handleAwsIamAuth,
+		AuthStrategy.AZURE_MACHINE_IDENTITY:        r.handleAzureAuth,
+		AuthStrategy.GCP_ID_TOKEN_MACHINE_IDENTITY: r.handleGcpIdTokenAuth,
+		AuthStrategy.GCP_IAM_MACHINE_IDENTITY:      r.handleGcpIamAuth,
 	}
 
-	return AuthenticationDetails{}, nil
+	for authStrategy, authHandler := range authStrategies {
+		authDetails, err := authHandler(ctx, infisicalSecret)
+
+		if err == nil {
+			return authDetails, nil
+		}
+
+		if err != nil && !errors.Is(err, ErrAuthNotApplicable) {
+			return AuthenticationDetails{}, fmt.Errorf("authentication failed for strategy [%s] [err=%w]", authStrategy, err)
+		}
+	}
+
+	return AuthenticationDetails{}, fmt.Errorf("no authentication method provided")
 
 }
 
@@ -167,7 +99,7 @@ func (r *InfisicalSecretReconciler) GetInfisicalConfigMap(ctx context.Context) (
 	}, kubeConfigMap)
 
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8Errors.IsNotFound(err) {
 			kubeConfigMap = nil
 		} else {
 			return nil, fmt.Errorf("GetConfigMapByNamespacedName: unable to fetch config map in [namespacedName=%s] [err=%s]", OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE, err)
@@ -216,7 +148,7 @@ func (r *InfisicalSecretReconciler) GetInfisicalTokenFromKubeSecret(ctx context.
 		Name:      secretName,
 	})
 
-	if errors.IsNotFound(err) {
+	if k8Errors.IsNotFound(err) {
 		return "", nil
 	}
 
@@ -236,7 +168,7 @@ func (r *InfisicalSecretReconciler) GetInfisicalUniversalAuthFromKubeSecret(ctx 
 		Name:      infisicalSecret.Spec.Authentication.UniversalAuth.CredentialsRef.SecretName,
 	})
 
-	if errors.IsNotFound(err) {
+	if k8Errors.IsNotFound(err) {
 		return model.MachineIdentityDetails{}, nil
 	}
 
@@ -259,7 +191,7 @@ func (r *InfisicalSecretReconciler) GetInfisicalServiceAccountCredentialsFromKub
 		Name:      infisicalSecret.Spec.Authentication.ServiceAccount.ServiceAccountSecretReference.SecretName,
 	})
 
-	if errors.IsNotFound(err) {
+	if k8Errors.IsNotFound(err) {
 		return model.ServiceAccountDetails{}, nil
 	}
 
@@ -380,7 +312,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		Namespace: infisicalSecret.Spec.ManagedSecretReference.SecretNamespace,
 	})
 
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8Errors.IsNotFound(err) {
 		return fmt.Errorf("something went wrong when fetching the managed Kubernetes secret [%w]", err)
 	}
 
