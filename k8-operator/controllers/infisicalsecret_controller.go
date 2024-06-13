@@ -9,10 +9,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	controllerUtil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
+	infisicalSdk "github.com/infisical/go-sdk"
 )
 
 // InfisicalSecretReconciler reconciles a InfisicalSecret object
@@ -32,19 +33,54 @@ type InfisicalSecretReconciler struct {
 // move the current state of the cluster closer to the desired state.
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.1/pkg/reconcile
+
+type ResourceVariables struct {
+	infisicalClient infisicalSdk.InfisicalClientInterface
+	authDetails     AuthenticationDetails
+}
+
+// Maps the infisicalSecretCR.UID to a infisicalSdk.InfisicalClientInterface and AuthenticationDetails.
+var resourceVariablesMap = make(map[string]ResourceVariables)
+
+const FINALIZER_NAME = "secrets.finalizers.infisical.com"
+
+func (r *InfisicalSecretReconciler) addFinalizer(ctx context.Context, infisicalSecret *secretsv1alpha1.InfisicalSecret) error {
+	if !controllerUtil.ContainsFinalizer(infisicalSecret, FINALIZER_NAME) {
+		controllerUtil.AddFinalizer(infisicalSecret, FINALIZER_NAME)
+		if err := r.Update(ctx, infisicalSecret); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *InfisicalSecretReconciler) handleFinalizer(ctx context.Context, infisicalSecret *secretsv1alpha1.InfisicalSecret) error {
+	if controllerUtil.ContainsFinalizer(infisicalSecret, FINALIZER_NAME) {
+		// Cleanup deployment variables
+		delete(resourceVariablesMap, string(infisicalSecret.UID))
+
+		// Remove the finalizer and update the resource
+		controllerUtil.RemoveFinalizer(infisicalSecret, FINALIZER_NAME)
+		if err := r.Update(ctx, infisicalSecret); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	var infisicalSecretCR v1alpha1.InfisicalSecret
+	var infisicalSecretCR secretsv1alpha1.InfisicalSecret
 	requeueTime := time.Minute // seconds
 
 	err := r.Get(ctx, req.NamespacedName, &infisicalSecretCR)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			fmt.Printf("Infisical Secret CRD not found [err=%v]", err)
+			fmt.Printf("\nInfisical Secret CRD not found [err=%v]", err)
 			return ctrl.Result{
 				Requeue: false,
 			}, nil
 		} else {
-			fmt.Printf("Unable to fetch Infisical Secret CRD from cluster because [err=%v]", err)
+			fmt.Printf("\nUnable to fetch Infisical Secret CRD from cluster because [err=%v]", err)
 			return ctrl.Result{
 				RequeueAfter: requeueTime,
 			}, nil
@@ -58,8 +94,20 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		fmt.Printf("\nRe-sync interval set. Interval: %v\n", requeueTime)
 	}
 
+	// Add the finalizer if it does not exist, and only add it if the resource is not marked for deletion
+	if infisicalSecretCR.GetDeletionTimestamp() == nil || infisicalSecretCR.GetDeletionTimestamp().IsZero() {
+		if err := r.addFinalizer(ctx, &infisicalSecretCR); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	// Check if the resource is already marked for deletion
 	if infisicalSecretCR.GetDeletionTimestamp() != nil {
+		// Handle the finalizer logic
+		if err := r.handleFinalizer(ctx, &infisicalSecretCR); err != nil {
+			return ctrl.Result{}, err
+		}
+
 		return ctrl.Result{
 			Requeue: false,
 		}, nil
