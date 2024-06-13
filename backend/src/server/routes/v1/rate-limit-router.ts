@@ -21,6 +21,11 @@ export const registerRateLimitRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
     handler: async () => {
       const rateLimit = await server.services.rateLimit.getRateLimits();
       if (!rateLimit) {
@@ -40,7 +45,7 @@ export const registerRateLimitRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     onRequest: (req, res, done) => {
-      verifyAuth([AuthMode.JWT, AuthMode.API_KEY])(req, res, () => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
         verifySuperAdmin(req, res, done);
       });
     },
