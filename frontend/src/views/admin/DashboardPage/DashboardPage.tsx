@@ -22,7 +22,8 @@ import {
 } from "@app/components/v2";
 import { useOrganization, useServerConfig, useUser } from "@app/context";
 import { useUpdateServerConfig } from "@app/hooks/api";
-import { useGetRateLimit, useUpdateRateLimit } from "@app/hooks/api/rateLimit";
+
+import { RateLimitPanel } from "./RateLimitPanel";
 
 enum TabSections {
   Settings = "settings",
@@ -38,22 +39,13 @@ const formSchema = z.object({
   signUpMode: z.nativeEnum(SignUpModes),
   allowedSignUpDomain: z.string().optional().nullable(),
   trustSamlEmails: z.boolean(),
-  trustLdapEmails: z.boolean(),
-  readRateLimit: z.number(),
-  writeRateLimit: z.number(),
-  secretsRateLimit: z.number(),
-  authRateLimit: z.number(),
-  inviteUserRateLimit: z.number(),
-  mfaRateLimit: z.number(),
-  creationLimit: z.number(),
-  publicEndpointLimit: z.number()
+  trustLdapEmails: z.boolean()
 });
 
 type TDashboardForm = z.infer<typeof formSchema>;
 export const AdminDashboardPage = () => {
   const router = useRouter();
   const data = useServerConfig();
-  const { data: rateLimit } = useGetRateLimit();
   const { config } = data;
 
   const {
@@ -68,15 +60,7 @@ export const AdminDashboardPage = () => {
       signUpMode: config.allowSignUp ? SignUpModes.Anyone : SignUpModes.Disabled,
       allowedSignUpDomain: config.allowedSignUpDomain,
       trustSamlEmails: config.trustSamlEmails,
-      trustLdapEmails: config.trustLdapEmails,
-      readRateLimit: rateLimit?.readRateLimit ?? 600,
-      writeRateLimit: rateLimit?.writeRateLimit ?? 200,
-      secretsRateLimit: rateLimit?.secretsRateLimit ?? 60,
-      authRateLimit: rateLimit?.authRateLimit ?? 60,
-      inviteUserRateLimit: rateLimit?.inviteUserRateLimit ?? 30,
-      mfaRateLimit: rateLimit?.mfaRateLimit ?? 20,
-      creationLimit: rateLimit?.creationLimit ?? 30,
-      publicEndpointLimit: rateLimit?.publicEndpointLimit ?? 30
+      trustLdapEmails: config.trustLdapEmails
     }
   });
 
@@ -85,7 +69,6 @@ export const AdminDashboardPage = () => {
   const { user, isLoading: isUserLoading } = useUser();
   const { orgs } = useOrganization();
   const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
-  const { mutateAsync: updateRateLimit } = useUpdateRateLimit();
 
   const isNotAllowed = !user?.superAdmin;
 
@@ -118,42 +101,6 @@ export const AdminDashboardPage = () => {
       createNotification({
         type: "error",
         text: "Failed to update sign up setting."
-      });
-    }
-  };
-
-  const onRateLimitFormSubmit = async (formData: TDashboardForm) => {
-    try {
-      const {
-        readRateLimit,
-        writeRateLimit,
-        secretsRateLimit,
-        authRateLimit,
-        inviteUserRateLimit,
-        mfaRateLimit,
-        creationLimit,
-        publicEndpointLimit
-      } = formData;
-
-      await updateRateLimit({
-        readRateLimit,
-        writeRateLimit,
-        secretsRateLimit,
-        authRateLimit,
-        inviteUserRateLimit,
-        mfaRateLimit,
-        creationLimit,
-        publicEndpointLimit
-      });
-      createNotification({
-        text: "Successfully changed rate limits. Please restart your server",
-        type: "success"
-      });
-    } catch (e) {
-      console.error(e);
-      createNotification({
-        type: "error",
-        text: "Failed to update rate limiting setting."
       });
     }
   };
@@ -292,175 +239,7 @@ export const AdminDashboardPage = () => {
               </form>
             </TabPanel>
             <TabPanel value={TabSections.RateLimit}>
-              <form
-                className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-                onSubmit={handleSubmit(onRateLimitFormSubmit)}
-              >
-                <div className="mb-8 flex flex-col justify-start">
-                  <div className="mb-4 text-xl font-semibold text-mineshaft-100">
-                    Set Rate Limits for your Infisical Instance
-                  </div>
-                  <Controller
-                    control={control}
-                    name="readRateLimit"
-                    defaultValue={300}
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Read Requests allowed per minute"
-                        className="w-72"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <Input
-                          {...field}
-                          value={field.value}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    defaultValue={300}
-                    name="writeRateLimit"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Write Requests allowed per minute"
-                        className="w-72"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <Input
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    defaultValue={300}
-                    name="secretsRateLimit"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Secrets allowed per minute"
-                        className="w-72"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <Input
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    defaultValue={300}
-                    name="authRateLimit"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Auth Requests allowed per minute"
-                        className="w-72"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <Input
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    defaultValue={300}
-                    name="inviteUserRateLimit"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Invite User Requests allowed per minute"
-                        className="w-72"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <Input
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    defaultValue={300}
-                    name="mfaRateLimit"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Multi Factor Auth Requests allowed per minute"
-                        className="w-72"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <Input
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    defaultValue={300}
-                    name="creationLimit"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Creation Requests allowed per minute"
-                        className="w-72"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <Input
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    defaultValue={300}
-                    name="publicEndpointLimit"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Public Endpoints Requests allowed per minute"
-                        className="w-72"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <Input
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                    )}
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  isLoading={isSubmitting}
-                  isDisabled={isSubmitting || !isDirty}
-                >
-                  Save
-                </Button>
-              </form>
+              <RateLimitPanel />
             </TabPanel>
           </Tabs>
         </div>

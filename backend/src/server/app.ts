@@ -17,6 +17,8 @@ import { Logger } from "pino";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
+import { rateLimitDALFactory } from "@app/services/rate-limit/rate-limit-dal";
+import { rateLimitServiceFactory } from "@app/services/rate-limit/rate-limit-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
@@ -69,8 +71,11 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
 
     // Rate limiters and security headers
     if (appCfg.isProductionMode) {
-      await server.register<FastifyRateLimitOptions>(ratelimiter, await globalRateLimiterCfg(db));
+      const rateLimitDAL = rateLimitDALFactory(db);
+      const rateLimits = await rateLimitServiceFactory({ rateLimitDAL }).getRateLimits();
+      await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg(rateLimits));
     }
+
     await server.register(helmet, { contentSecurityPolicy: false });
 
     await server.register(maintenanceMode);

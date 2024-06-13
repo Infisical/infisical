@@ -39,10 +39,15 @@ export const registerRateLimitRouter = async (server: FastifyZodProvider) => {
     },
 
     schema: {
-      body: RateLimitSchema.omit({
-        id: true,
-        createdAt: true,
-        updatedAt: true
+      body: z.object({
+        readRateLimit: z.number().optional(),
+        writeRateLimit: z.number().optional(),
+        secretsRateLimit: z.number().optional(),
+        authRateLimit: z.number().optional(),
+        inviteUserRateLimit: z.number().optional(),
+        mfaRateLimit: z.number().optional(),
+        creationLimit: z.number().optional(),
+        publicEndpointLimit: z.number().optional()
       }),
       response: {
         200: z.object({

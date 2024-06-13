@@ -10,34 +10,23 @@ type TRateLimitServiceFactoryDep = {
 export type TRateLimitServiceFactory = ReturnType<typeof rateLimitServiceFactory>;
 
 export const rateLimitServiceFactory = ({ rateLimitDAL }: TRateLimitServiceFactoryDep) => {
-  const initRateLimits = async (): Promise<TRateLimit> => {
-    const rateLimit = await rateLimitDAL.create({});
-    return rateLimit;
-  };
-
   const getRateLimits = async (): Promise<TRateLimit> => {
-    let rateLimit = (await rateLimitDAL.find({}))[0];
-    if (!rateLimit) {
-      rateLimit = await initRateLimits();
-    }
-    return rateLimit;
+    return rateLimitDAL.findOne({ id: "00000000-0000-0000-0000-000000000000" });
   };
 
   const updateRateLimit = async (updates: TRateLimitUpdateDTO): Promise<TRateLimit> => {
-    const rateLimit = await rateLimitDAL.findOne({});
-    if (!rateLimit) throw new BadRequestError({ name: "Rate Limit Update", message: "Rate Limit does not exist yet" });
+    const rateLimit = await rateLimitDAL.findOne({
+      id: "00000000-0000-0000-0000-000000000000"
+    });
 
-    const updateData: Record<string, number> = {};
-    for (const [key, value] of Object.entries(updates)) {
-      updateData[key] = value;
+    if (!rateLimit) {
+      throw new BadRequestError({ name: "Rate Limit Update", message: "Rate Limit does not exist yet" });
     }
 
-    const updatedRateLimit = await rateLimitDAL.updateById(rateLimit.id, updateData);
-    return updatedRateLimit;
+    return rateLimitDAL.updateById(rateLimit.id, updates);
   };
 
   return {
-    initRateLimits,
     getRateLimits,
     updateRateLimit
   };
