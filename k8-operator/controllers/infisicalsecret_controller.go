@@ -42,11 +42,11 @@ type ResourceVariables struct {
 // Maps the infisicalSecretCR.UID to a infisicalSdk.InfisicalClientInterface and AuthenticationDetails.
 var resourceVariablesMap = make(map[string]ResourceVariables)
 
-const finalizerName = "secrets.finalizers.infisical.com"
+const FINALIZER_NAME = "secrets.finalizers.infisical.com"
 
 func (r *InfisicalSecretReconciler) addFinalizer(ctx context.Context, infisicalSecret *secretsv1alpha1.InfisicalSecret) error {
-	if !controllerutil.ContainsFinalizer(infisicalSecret, finalizerName) {
-		controllerutil.AddFinalizer(infisicalSecret, finalizerName)
+	if !controllerutil.ContainsFinalizer(infisicalSecret, FINALIZER_NAME) {
+		controllerutil.AddFinalizer(infisicalSecret, FINALIZER_NAME)
 		if err := r.Update(ctx, infisicalSecret); err != nil {
 			return err
 		}
@@ -55,12 +55,12 @@ func (r *InfisicalSecretReconciler) addFinalizer(ctx context.Context, infisicalS
 }
 
 func (r *InfisicalSecretReconciler) handleFinalizer(ctx context.Context, infisicalSecret *secretsv1alpha1.InfisicalSecret) error {
-	if controllerutil.ContainsFinalizer(infisicalSecret, finalizerName) {
+	if controllerutil.ContainsFinalizer(infisicalSecret, FINALIZER_NAME) {
 		// Cleanup deployment variables
 		delete(resourceVariablesMap, string(infisicalSecret.UID))
 
 		// Remove the finalizer and update the resource
-		controllerutil.RemoveFinalizer(infisicalSecret, finalizerName)
+		controllerutil.RemoveFinalizer(infisicalSecret, FINALIZER_NAME)
 		if err := r.Update(ctx, infisicalSecret); err != nil {
 			return err
 		}
