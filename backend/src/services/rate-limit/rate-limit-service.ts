@@ -45,6 +45,7 @@ export const rateLimitServiceFactory = ({ rateLimitDAL }: TRateLimitServiceFacto
       }
       return rateLimit;
     } catch (err) {
+      logger.error("Error fetching rate limits %o", err);
       return undefined;
     }
   };
