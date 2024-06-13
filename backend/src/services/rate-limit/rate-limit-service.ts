@@ -1,7 +1,5 @@
 import { CronJob } from "cron";
 
-import { getConfig } from "@app/lib/config/env";
-import { ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { rateLimitMaxConfiguration } from "@app/server/config/rateLimiter";
 
@@ -15,23 +13,28 @@ type TRateLimitServiceFactoryDep = {
 export type TRateLimitServiceFactory = ReturnType<typeof rateLimitServiceFactory>;
 
 export const rateLimitServiceFactory = ({ rateLimitDAL }: TRateLimitServiceFactoryDep) => {
+  const DEFAULT_RATE_LIMIT_CONFIG_ID = "00000000-0000-0000-0000-000000000000";
+
   const getRateLimits = async (): Promise<TRateLimit | undefined> => {
+    let rateLimit: TRateLimit;
+
     try {
-      return await rateLimitDAL.findOne({ id: "00000000-0000-0000-0000-000000000000" });
-    } catch (error) {
+      rateLimit = await rateLimitDAL.findOne({ id: DEFAULT_RATE_LIMIT_CONFIG_ID });
+      if (!rateLimit) {
+        // rate limit might not exist
+        rateLimit = await rateLimitDAL.create({
+          // @ts-expect-error id is kept as fixed because there should only be one rate limit config per instance
+          id: DEFAULT_RATE_LIMIT_CONFIG_ID
+        });
+      }
+      return rateLimit;
+    } catch (err) {
       return undefined;
     }
   };
 
   const updateRateLimit = async (updates: TRateLimitUpdateDTO): Promise<TRateLimit> => {
-    const appCfg = getConfig();
-    if (!appCfg.ALLOW_RATELIMIT_UPDATES) {
-      throw new ForbiddenRequestError({
-        name: "Rate limit Updates Disabled",
-        message: "Changes to rate limits are disabled"
-      });
-    }
-    return rateLimitDAL.updateById("00000000-0000-0000-0000-000000000000", updates);
+    return rateLimitDAL.updateById(DEFAULT_RATE_LIMIT_CONFIG_ID, updates);
   };
 
   const initializeBackgroundSync = () => {

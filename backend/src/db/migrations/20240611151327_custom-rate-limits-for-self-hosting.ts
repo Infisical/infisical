@@ -6,7 +6,7 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.RateLimit))) {
     await knex.schema.createTable(TableName.RateLimit, (t) => {
-      t.uuid("id", { primaryKey: true }).defaultTo("00000000-0000-0000-0000-000000000000");
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.integer("readRateLimit").defaultTo(600).notNullable();
       t.integer("writeRateLimit").defaultTo(200).notNullable();
       t.integer("secretsRateLimit").defaultTo(60).notNullable();

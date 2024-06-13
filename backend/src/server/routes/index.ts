@@ -1,3 +1,4 @@
+import { CronJob } from "cron";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -907,6 +908,11 @@ export const registerRoutes = async (
     secretSharing: secretSharingService
   });
 
+  const cronJobs: CronJob[] = [];
+  if (appCfg.isProductionMode) {
+    cronJobs.push(rateLimitService.initializeBackgroundSync());
+  }
+
   server.decorate<FastifyZodProvider["store"]>("store", {
     user: userDAL
   });
@@ -961,6 +967,7 @@ export const registerRoutes = async (
   await server.register(registerV3Routes, { prefix: "/api/v3" });
 
   server.addHook("onClose", async () => {
+    cronJobs.forEach((job) => job.stop());
     await telemetryService.flushAll();
   });
 };
