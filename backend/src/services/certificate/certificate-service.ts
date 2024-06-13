@@ -59,7 +59,10 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 
-    return cert;
+    return {
+      cert,
+      ca
+    };
   };
 
   /**
@@ -80,7 +83,11 @@ export const certificateServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
 
     const deletedCert = await certificateDAL.deleteById(cert.id);
-    return deletedCert;
+
+    return {
+      deletedCert,
+      ca
+    };
   };
 
   /**
@@ -134,7 +141,7 @@ export const certificateServiceFactory = ({
       kmsService
     });
 
-    return { revokedAt };
+    return { revokedAt, cert, ca };
   };
 
   /**
@@ -181,7 +188,9 @@ export const certificateServiceFactory = ({
     return {
       certificate: certObj.toString("pem"),
       certificateChain: `${caCert}\n${caCertChain}`.trim(),
-      serialNumber: certObj.serialNumber
+      serialNumber: certObj.serialNumber,
+      cert,
+      ca
     };
   };
 

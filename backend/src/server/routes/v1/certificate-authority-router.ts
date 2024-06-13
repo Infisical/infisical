@@ -2,6 +2,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { CertificateAuthoritiesSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -63,6 +64,19 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.CREATE_CA,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
       return {
         ca
       };
@@ -95,6 +109,19 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CA,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
       return {
         ca
       };
@@ -131,6 +158,20 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.UPDATE_CA,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn,
+            status: ca.status as CaStatus
+          }
+        }
+      });
+
       return {
         ca
       };
@@ -163,6 +204,19 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.DELETE_CA,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
       return {
         ca
       };
@@ -188,13 +242,26 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const csr = await server.services.certificateAuthority.getCaCsr({
+      const { ca, csr } = await server.services.certificateAuthority.getCaCsr({
         caId: req.params.caId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CA_CSR,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
       return {
         csr
       };
@@ -222,13 +289,26 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, serialNumber } = await server.services.certificateAuthority.getCaCert({
+      const { certificate, certificateChain, serialNumber, ca } = await server.services.certificateAuthority.getCaCert({
         caId: req.params.caId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CA_CERT,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
       return {
         certificate,
         certificateChain,
@@ -265,7 +345,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, issuingCaCertificate, serialNumber } =
+      const { certificate, certificateChain, issuingCaCertificate, serialNumber, ca } =
         await server.services.certificateAuthority.signIntermediate({
           caId: req.params.caId,
           actor: req.permission.type,
@@ -274,6 +354,20 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           actorOrgId: req.permission.orgId,
           ...req.body
         });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.SIGN_INTERMEDIATE,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn,
+            serialNumber
+          }
+        }
+      });
+
       return {
         certificate,
         certificateChain,
@@ -307,13 +401,25 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      await server.services.certificateAuthority.importCertToCa({
+      const { ca } = await server.services.certificateAuthority.importCertToCa({
         caId: req.params.caId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.IMPORT_CA_CERT,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
       });
 
       return {
@@ -364,7 +470,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber } =
+      const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber, ca } =
         await server.services.certificateAuthority.issueCertFromCa({
           caId: req.params.caId,
           actor: req.permission.type,
@@ -373,6 +479,19 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           actorOrgId: req.permission.orgId,
           ...req.body
         });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.ISSUE_CERT,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn,
+            serialNumber
+          }
+        }
+      });
 
       return {
         certificate,
@@ -403,13 +522,26 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { crl } = await server.services.certificateAuthority.getCaCrl({
+      const { crl, ca } = await server.services.certificateAuthority.getCaCrl({
         caId: req.params.caId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CA_CRL,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
       return {
         crl
       };

@@ -373,7 +373,10 @@ export const certificateAuthorityServiceFactory = ({
       attributes: [new x509.ChallengePasswordAttribute("password")]
     });
 
-    return csrObj.toString("pem");
+    return {
+      csr: csrObj.toString("pem"),
+      ca
+    };
   };
 
   /**
@@ -407,7 +410,8 @@ export const certificateAuthorityServiceFactory = ({
     return {
       certificate: caCert,
       certificateChain: caCertChain,
-      serialNumber
+      serialNumber,
+      ca
     };
   };
 
@@ -535,7 +539,8 @@ export const certificateAuthorityServiceFactory = ({
       certificate: intermediateCert.toString("pem"),
       issuingCaCertificate,
       certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
-      serialNumber: intermediateCert.serialNumber
+      serialNumber: intermediateCert.serialNumber,
+      ca
     };
   };
 
@@ -639,6 +644,8 @@ export const certificateAuthorityServiceFactory = ({
         tx
       );
     });
+
+    return { ca };
   };
 
   /**
@@ -797,7 +804,8 @@ export const certificateAuthorityServiceFactory = ({
       certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
       issuingCaCertificate,
       privateKey: skLeaf,
-      serialNumber
+      serialNumber,
+      ca
     };
   };
 
@@ -841,7 +849,8 @@ export const certificateAuthorityServiceFactory = ({
     const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
 
     return {
-      crl: crlPem
+      crl: crlPem,
+      ca
     };
   };
 
