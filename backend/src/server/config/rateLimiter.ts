@@ -61,20 +61,22 @@ export const publicEndpointLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
-export const globalRateLimiterCfg = async (rateLimits: TRateLimit): Promise<RateLimitPluginOptions> => {
+export const globalRateLimiterCfg = async (rateLimits?: TRateLimit): Promise<RateLimitPluginOptions> => {
   const appCfg = getConfig();
   const redis = appCfg.isRedisConfigured
     ? new Redis(appCfg.REDIS_URL, { connectTimeout: 500, maxRetriesPerRequest: 1 })
     : null;
 
-  readLimit.max = rateLimits.readRateLimit;
-  publicEndpointLimit.max = rateLimits.publicEndpointLimit;
-  writeLimit.max = rateLimits.writeRateLimit;
-  secretsLimit.max = rateLimits.secretsRateLimit;
-  authRateLimit.max = rateLimits.authRateLimit;
-  inviteUserRateLimit.max = rateLimits.inviteUserRateLimit;
-  mfaRateLimit.max = rateLimits.mfaRateLimit;
-  creationLimit.max = rateLimits.creationLimit;
+  if (rateLimits) {
+    readLimit.max = rateLimits.readRateLimit;
+    publicEndpointLimit.max = rateLimits.publicEndpointLimit;
+    writeLimit.max = rateLimits.writeRateLimit;
+    secretsLimit.max = rateLimits.secretsRateLimit;
+    authRateLimit.max = rateLimits.authRateLimit;
+    inviteUserRateLimit.max = rateLimits.inviteUserRateLimit;
+    mfaRateLimit.max = rateLimits.mfaRateLimit;
+    creationLimit.max = rateLimits.creationLimit;
+  }
 
   return {
     timeWindow: 60 * 1000,

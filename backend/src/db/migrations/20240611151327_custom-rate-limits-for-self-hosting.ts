@@ -19,6 +19,9 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     await createOnUpdateTrigger(knex, TableName.RateLimit);
+
+    // create rate limit entry
+    await knex(TableName.RateLimit).insert({});
   }
 }
 

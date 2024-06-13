@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { RateLimitSchema } from "@app/db/schemas";
+import { BadRequestError } from "@app/lib/errors";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -22,12 +23,18 @@ export const registerRateLimitRouter = async (server: FastifyZodProvider) => {
     },
     handler: async () => {
       const rateLimit = await server.services.rateLimit.getRateLimits();
+      if (!rateLimit) {
+        throw new BadRequestError({
+          name: "Get Rate Limit Error",
+          message: "Rate limit configuration does not exist."
+        });
+      }
       return { rateLimit };
     }
   });
 
   server.route({
-    method: "PATCH",
+    method: "PUT",
     url: "/",
     config: {
       rateLimit: readLimit
@@ -40,14 +47,14 @@ export const registerRateLimitRouter = async (server: FastifyZodProvider) => {
 
     schema: {
       body: z.object({
-        readRateLimit: z.number().optional(),
-        writeRateLimit: z.number().optional(),
-        secretsRateLimit: z.number().optional(),
-        authRateLimit: z.number().optional(),
-        inviteUserRateLimit: z.number().optional(),
-        mfaRateLimit: z.number().optional(),
-        creationLimit: z.number().optional(),
-        publicEndpointLimit: z.number().optional()
+        readRateLimit: z.number(),
+        writeRateLimit: z.number(),
+        secretsRateLimit: z.number(),
+        authRateLimit: z.number(),
+        inviteUserRateLimit: z.number(),
+        mfaRateLimit: z.number(),
+        creationLimit: z.number(),
+        publicEndpointLimit: z.number()
       }),
       response: {
         200: z.object({

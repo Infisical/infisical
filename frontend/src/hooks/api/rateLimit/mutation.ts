@@ -8,9 +8,9 @@ import { TRateLimit } from "./types";
 export const useUpdateRateLimit = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TRateLimit, {}, Partial<TRateLimit>>({
+  return useMutation<TRateLimit, {}, TRateLimit>({
     mutationFn: async (opt) => {
-      const { data } = await apiRequest.patch<{ rateLimit: TRateLimit }>("/api/v1/rate-limit", opt);
+      const { data } = await apiRequest.put<{ rateLimit: TRateLimit }>("/api/v1/rate-limit", opt);
       return data.rateLimit;
     },
     onSuccess: (data) => {
