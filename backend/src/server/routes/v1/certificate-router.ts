@@ -73,8 +73,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string().trim(),
-          serialNumber: z.string().trim(),
-          revokedAt: z.date()
+          serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumberRes),
+          revokedAt: z.date().describe(CERTIFICATES.REVOKE.revokedAt)
         })
       }
     },
@@ -169,9 +169,9 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: z.string().trim(),
-          certificateChain: z.string().trim(),
-          serialNumber: z.string().trim()
+          certificate: z.string().trim().describe(CERTIFICATES.GET_CERT.certificate),
+          certificateChain: z.string().trim().describe(CERTIFICATES.GET_CERT.certificateChain),
+          serialNumber: z.string().trim().describe(CERTIFICATES.GET_CERT.serialNumberRes)
         })
       }
     },

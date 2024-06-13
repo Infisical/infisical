@@ -237,11 +237,11 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Get CA CSR",
       params: z.object({
-        caId: z.string().trim()
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CSR.caId)
       }),
       response: {
         200: z.object({
-          csr: z.string()
+          csr: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CSR.csr)
         })
       }
     },
@@ -286,9 +286,9 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: z.string(),
-          certificateChain: z.string(),
-          serialNumber: z.string()
+          certificate: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.certificate),
+          certificateChain: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.certificateChain),
+          serialNumber: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.serialNumber)
         })
       }
     },
@@ -341,10 +341,13 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: z.string().trim(),
-          certificateChain: z.string().trim(),
-          issuingCaCertificate: z.string().trim(),
-          serialNumber: z.string().trim()
+          certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.certificate),
+          certificateChain: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.certificateChain),
+          issuingCaCertificate: z
+            .string()
+            .trim()
+            .describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.issuingCaCertificate),
+          serialNumber: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.serialNumber)
         })
       }
     },
@@ -468,11 +471,11 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         ),
       response: {
         200: z.object({
-          certificate: z.string().trim(),
-          issuingCaCertificate: z.string().trim(),
-          certificateChain: z.string().trim(),
-          privateKey: z.string().trim(),
-          serialNumber: z.string().trim()
+          certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.certificate),
+          issuingCaCertificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.issuingCaCertificate),
+          certificateChain: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.certificateChain),
+          privateKey: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.privateKey),
+          serialNumber: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.serialNumber)
         })
       }
     },
@@ -524,7 +527,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          crl: z.string()
+          crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRL.crl)
         })
       }
     },

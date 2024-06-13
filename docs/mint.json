@@ -565,6 +565,30 @@
         {
           "group": "Audit Logs",
           "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+        },
+        {
+          "group": "Certificate Authorities",
+          "pages": [
+            "api-reference/endpoints/certificate-authorities/create",
+            "api-reference/endpoints/certificate-authorities/read",
+            "api-reference/endpoints/certificate-authorities/update",
+            "api-reference/endpoints/certificate-authorities/delete",
+            "api-reference/endpoints/certificate-authorities/csr",
+            "api-reference/endpoints/certificate-authorities/cert",
+            "api-reference/endpoints/certificate-authorities/sign-intermediate",
+            "api-reference/endpoints/certificate-authorities/import-cert",
+            "api-reference/endpoints/certificate-authorities/issue-cert",
+            "api-reference/endpoints/certificate-authorities/crl"
+          ]
+        },
+        {
+          "group": "Certificates",
+          "pages": [
+            "api-reference/endpoints/certificates/read",
+            "api-reference/endpoints/certificates/revoke",
+            "api-reference/endpoints/certificates/delete",
+            "api-reference/endpoints/certificates/cert-body"
+          ]
         }
       ]
     },
