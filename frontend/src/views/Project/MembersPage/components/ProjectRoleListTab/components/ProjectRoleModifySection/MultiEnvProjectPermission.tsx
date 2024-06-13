@@ -70,6 +70,7 @@ export const MultiEnvProjectPermission = ({
   }, [allRule]);
 
   const handlePermissionChange = (val: Permission) => {
+    if(!val) return
     switch (val) {
       case Permission.NoAccess: {
         const permissions = getValue("permissions");
@@ -106,7 +107,7 @@ export const MultiEnvProjectPermission = ({
       className={twMerge(
         "rounded-md bg-mineshaft-800 px-10 py-6",
         (selectedPermissionCategory !== Permission.NoAccess || isCustom) &&
-        "border-l-2 border-primary-600"
+          "border-l-2 border-primary-600"
       )}
     >
       <div className="flex items-center space-x-4">

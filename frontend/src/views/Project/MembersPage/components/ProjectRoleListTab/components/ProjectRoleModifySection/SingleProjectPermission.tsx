@@ -100,6 +100,7 @@ export const SingleProjectPermission = ({
   }, [selectedPermissionCategory]);
 
   const handlePermissionChange = (val: Permission) => {
+    if(!val) return;
     if (val === Permission.Custom) setIsCustom.on();
     else setIsCustom.off();
 
