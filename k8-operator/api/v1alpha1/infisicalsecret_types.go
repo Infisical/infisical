@@ -33,11 +33,18 @@ type UniversalAuthDetails struct {
 type KubernetesAuthDetails struct {
 	// +kubebuilder:validation:Required
 	IdentityID string `json:"identityId"`
-	// +kubebuilder:validation:Optional
-	ServiceAccountTokenPath string `json:"serviceAccountTokenPath"`
+	// +kubebuilder:validation:Required
+	ServiceAccountRef KubernetesServiceAccountRef `json:"serviceAccountRef"`
 
 	// +kubebuilder:validation:Required
 	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`
+}
+
+type KubernetesServiceAccountRef struct {
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+	// +kubebuilder:validation:Required
+	Namespace string `json:"namespace"`
 }
 
 type AWSIamAuthDetails struct {

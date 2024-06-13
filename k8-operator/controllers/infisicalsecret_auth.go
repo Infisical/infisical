@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	"github.com/Infisical/infisical/k8-operator/packages/util"
 	infisicalSdk "github.com/infisical/go-sdk"
 )
 
@@ -29,6 +30,12 @@ var AuthStrategy = struct {
 	AZURE_MACHINE_IDENTITY:        "AZURE_MACHINE_IDENTITY",
 	GCP_ID_TOKEN_MACHINE_IDENTITY: "GCP_ID_TOKEN_MACHINE_IDENTITY",
 	GCP_IAM_MACHINE_IDENTITY:      "GCP_IAM_MACHINE_IDENTITY",
+}
+
+type AuthenticationDetails struct {
+	authStrategy          AuthStrategyType
+	machineIdentityScope  v1alpha1.MachineIdentityScopeInWorkspace // This will only be set if a machine identity auth method is used (e.g. UniversalAuth or KubernetesAuth, etc.)
+	isMachineIdentityAuth bool
 }
 
 var ErrAuthNotApplicable = errors.New("authentication not applicable")
@@ -65,7 +72,12 @@ func (r *InfisicalSecretReconciler) handleKubernetesAuth(ctx context.Context, in
 		return AuthenticationDetails{}, ErrAuthNotApplicable
 	}
 
-	_, err := infisicalClient.Auth().KubernetesAuthLogin(kubernetesAuthSpec.IdentityID, kubernetesAuthSpec.ServiceAccountTokenPath)
+	serviceAccountToken, err := util.GetServiceAccountToken(r.Client, kubernetesAuthSpec.ServiceAccountRef.Namespace, kubernetesAuthSpec.ServiceAccountRef.Name)
+	if err != nil {
+		return AuthenticationDetails{}, fmt.Errorf("unable to get service account token [err=%s]", err)
+	}
+
+	_, err = infisicalClient.Auth().KubernetesRawServiceAccountTokenLogin(kubernetesAuthSpec.IdentityID, serviceAccountToken)
 	if err != nil {
 		return AuthenticationDetails{}, fmt.Errorf("unable to login with Kubernetes native auth [err=%s]", err)
 	}
