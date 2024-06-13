@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { CERTIFICATES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -18,7 +19,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Get certificate",
       params: z.object({
-        serialNumber: z.string().trim()
+        serialNumber: z.string().trim().describe(CERTIFICATES.GET.serialNumber)
       }),
       response: {
         200: z.object({
@@ -64,10 +65,10 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Revoke",
       params: z.object({
-        serialNumber: z.string().trim()
+        serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumber)
       }),
       body: z.object({
-        revocationReason: z.nativeEnum(CrlReason)
+        revocationReason: z.nativeEnum(CrlReason).describe(CERTIFICATES.REVOKE.revocationReason)
       }),
       response: {
         200: z.object({
@@ -118,7 +119,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Delete certificate",
       params: z.object({
-        serialNumber: z.string().trim()
+        serialNumber: z.string().trim().describe(CERTIFICATES.DELETE.serialNumber)
       }),
       response: {
         200: z.object({
@@ -162,9 +163,9 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Get certificate of certificate",
+      description: "Get certificate body of certificate",
       params: z.object({
-        serialNumber: z.string().trim()
+        serialNumber: z.string().trim().describe(CERTIFICATES.GET_CERT.serialNumber)
       }),
       response: {
         200: z.object({

@@ -728,6 +728,85 @@ export const AUDIT_LOG_STREAMS = {
   }
 };
 
+// TODO
+export const CERTIFICATE_AUTHORITIES = {
+  CREATE: {
+    projectSlug: "Slug of the project to create the CA in.",
+    type: "The type of CA to create (root or intermediate)",
+    friendlyName: "A friendly name for the CA",
+    organization: "The organization (O) for the CA",
+    ou: "The organization unit (OU) for the CA",
+    country: "The country name (C) for the CA",
+    province: "The state of province name for the CA",
+    locality: "The locality name for the CA",
+    commonName: "The common name (CN) for the CA",
+    notBefore: "The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    notAfter: "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    maxPathLength:
+      "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
+    keyAlgorithm:
+      "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA. This should be one of RSA_2048, RSA_4096, EC_prime256v1, or EC_secp384r1."
+  },
+  GET: {
+    caId: "The ID of the CA to get"
+  },
+  UPDATE: {
+    caId: "The ID of the CA to get",
+    status: "The status of the CA to update to. This can be one of active or disabled"
+  },
+  DELETE: {
+    caId: "The ID of the CA to delete"
+  },
+  GET_CSR: {
+    caId: "The ID of the CA to generate CSR from"
+  },
+  GET_CERT: {
+    caId: "The ID of the CA to get the certificate body and certificate chain from"
+  },
+  SIGN_INTERMEDIATE: {
+    caId: "The ID of the CA to sign the intermediate certificate with",
+    csr: "The CSR to sign with the CA",
+    notBefore: "The date and time when the intermediate CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    notAfter: "The date and time when the intermediate CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    maxPathLength:
+      "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain."
+  },
+  IMPORT_CERT: {
+    caId: "The ID of the CA to import the certificate for",
+    certificate: "The certificate body to import",
+    certificateChain: "The certificate chain to import"
+  },
+  ISSUE_CERT: {
+    caId: "The ID of the CA to issue the certificate from",
+    friendlyName: "A friendly name for the certificate",
+    commonName: "The common name (CN) for the certificate",
+    ttl: "The time to live for the certificate such as 1m, 1h, 1d, 1y, ...",
+    notBefore: "The date and time when the certificate becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    notAfter: "The date and time when the certificate expires in YYYY-MM-DDTHH:mm:ss.sssZ format"
+  },
+  GET_CRL: {
+    caId: "The ID of the CA to get the certificate revocation list (CRL) for"
+  }
+};
+
+export const CERTIFICATES = {
+  GET: {
+    serialNumber: "The serial number of the certificate to get"
+  },
+  REVOKE: {
+    serialNumber:
+      "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
+    revocationReason:
+      "The reason for revoking the certificate. This can be one of UNSPECIFIED, KEY_COMPROMISE, CA_COMPROMISE, AFFILIATION_CHANGED, SUPERSEDED, CESSATION_OF_OPERATION, CERTIFICATE_HOLD, PRIVILEGE_WITHDRAWN, or A_A_COMPROMISE."
+  },
+  DELETE: {
+    serialNumber: "The serial number of the certificate to delete"
+  },
+  GET_CERT: {
+    serialNumber: "The serial number of the certificate to get the certificate body and certificate chain for"
+  }
+};
+
 export const PROJECT_ROLE = {
   CREATE: {
     projectSlug: "Slug of the project to create the role for.",

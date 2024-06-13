@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { CertificateAuthoritiesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -22,20 +23,23 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       description: "Create CA",
       body: z
         .object({
-          projectSlug: z.string().trim(),
-          type: z.nativeEnum(CaType),
-          friendlyName: z.string().optional(),
-          commonName: z.string().trim(),
-          organization: z.string().trim(),
-          ou: z.string().trim(),
-          country: z.string().trim(),
-          province: z.string().trim(),
-          locality: z.string().trim(),
+          projectSlug: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.projectSlug),
+          type: z.nativeEnum(CaType).describe(CERTIFICATE_AUTHORITIES.CREATE.type),
+          friendlyName: z.string().optional().describe(CERTIFICATE_AUTHORITIES.CREATE.friendlyName),
+          commonName: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.commonName),
+          organization: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.organization),
+          ou: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.ou),
+          country: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.country),
+          province: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.province),
+          locality: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.locality),
           // format: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format
-          notBefore: validateCaDateField.optional(),
-          notAfter: validateCaDateField.optional(),
-          maxPathLength: z.number().min(-1).default(-1),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).default(CertKeyAlgorithm.RSA_2048)
+          notBefore: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.CREATE.notBefore),
+          notAfter: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.CREATE.notAfter),
+          maxPathLength: z.number().min(-1).default(-1).describe(CERTIFICATE_AUTHORITIES.CREATE.maxPathLength),
+          keyAlgorithm: z
+            .nativeEnum(CertKeyAlgorithm)
+            .default(CertKeyAlgorithm.RSA_2048)
+            .describe(CERTIFICATE_AUTHORITIES.CREATE.keyAlgorithm)
         })
         .refine(
           (data) => {
@@ -93,7 +97,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Get CA",
       params: z.object({
-        caId: z.string().trim()
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET.caId)
       }),
       response: {
         200: z.object({
@@ -138,10 +142,10 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Update CA",
       params: z.object({
-        caId: z.string().trim()
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.UPDATE.caId)
       }),
       body: z.object({
-        status: z.enum([CaStatus.ACTIVE, CaStatus.DISABLED]).optional()
+        status: z.enum([CaStatus.ACTIVE, CaStatus.DISABLED]).optional().describe(CERTIFICATE_AUTHORITIES.UPDATE.status)
       }),
       response: {
         200: z.object({
@@ -188,7 +192,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Delete CA",
       params: z.object({
-        caId: z.string().trim()
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.DELETE.caId)
       }),
       response: {
         200: z.object({
@@ -278,7 +282,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Get cert and cert chain of a CA",
       params: z.object({
-        caId: z.string().trim()
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId)
       }),
       response: {
         200: z.object({
@@ -327,13 +331,13 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Create intermediate CA certificate from parent CA",
       params: z.object({
-        caId: z.string().trim()
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.caId)
       }),
       body: z.object({
-        csr: z.string().trim(),
-        notBefore: validateCaDateField.optional(),
-        notAfter: validateCaDateField,
-        maxPathLength: z.number().min(-1).default(-1)
+        csr: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.csr),
+        notBefore: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.notBefore),
+        notAfter: validateCaDateField.describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.notAfter),
+        maxPathLength: z.number().min(-1).default(-1).describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.maxPathLength)
       }),
       response: {
         200: z.object({
@@ -387,11 +391,11 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Import certificate and chain to CA",
       params: z.object({
-        caId: z.string().trim()
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.IMPORT_CERT.caId)
       }),
       body: z.object({
-        certificate: z.string().trim(),
-        certificateChain: z.string().trim()
+        certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.IMPORT_CERT.certificate),
+        certificateChain: z.string().trim().describe(CERTIFICATE_AUTHORITIES.IMPORT_CERT.certificateChain)
       }),
       response: {
         200: z.object({
@@ -439,15 +443,18 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Issue certificate from CA",
       params: z.object({
-        caId: z.string().trim()
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.caId)
       }),
       body: z
         .object({
-          friendlyName: z.string().optional(),
-          commonName: z.string().trim().min(1),
-          ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
-          notBefore: validateCaDateField.optional(),
-          notAfter: validateCaDateField.optional()
+          friendlyName: z.string().optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.friendlyName),
+          commonName: z.string().trim().min(1).describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.commonName),
+          ttl: z
+            .string()
+            .refine((val) => ms(val) > 0, "TTL must be a positive number")
+            .describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.ttl),
+          notBefore: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.notBefore),
+          notAfter: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.notAfter)
         })
         .refine(
           (data) => {
@@ -513,7 +520,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Get CRL of the CA",
       params: z.object({
-        caId: z.string().trim()
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CRL.caId)
       }),
       response: {
         200: z.object({
