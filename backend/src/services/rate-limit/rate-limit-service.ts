@@ -1,5 +1,7 @@
 import { CronJob } from "cron";
 
+import { getConfig } from "@app/lib/config/env";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { rateLimitMaxConfiguration } from "@app/server/config/rateLimiter";
 
@@ -22,6 +24,13 @@ export const rateLimitServiceFactory = ({ rateLimitDAL }: TRateLimitServiceFacto
   };
 
   const updateRateLimit = async (updates: TRateLimitUpdateDTO): Promise<TRateLimit> => {
+    const appCfg = getConfig();
+    if (!appCfg.ALLOW_RATELIMIT_UPDATES) {
+      throw new ForbiddenRequestError({
+        name: "Rate limit Updates Disabled",
+        message: "Changes to rate limits are disabled"
+      });
+    }
     return rateLimitDAL.updateById("00000000-0000-0000-0000-000000000000", updates);
   };
 
