@@ -30,7 +30,7 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { buildScimGroup, buildScimGroupList, buildScimUser, buildScimUserList } from "./scim-fns";
+import { buildScimGroup, buildScimGroupList, buildScimUser, buildScimUserList, parseScimFilter } from "./scim-fns";
 import {
   TCreateScimGroupDTO,
   TCreateScimTokenDTO,
@@ -184,18 +184,6 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const parseFilter = (filterToParse: string | undefined) => {
-      if (!filterToParse) return {};
-      const [parsedName, parsedValue] = filterToParse.split("eq").map((s) => s.trim());
-
-      let attributeName = parsedName;
-      if (parsedName === "userName") {
-        attributeName = "email";
-      }
-
-      return { [attributeName]: parsedValue.replace(/"/g, "") };
-    };
-
     const findOpts = {
       ...(startIndex && { offset: startIndex - 1 }),
       ...(limit && { limit })
@@ -204,7 +192,7 @@ export const scimServiceFactory = ({
     const users = await orgDAL.findMembership(
       {
         [`${TableName.OrgMembership}.orgId` as "id"]: orgId,
-        ...parseFilter(filter)
+        ...parseScimFilter(filter)
       },
       findOpts
     );
@@ -391,7 +379,7 @@ export const scimServiceFactory = ({
           );
         }
       }
-
+      await licenseService.updateSubscriptionOrgMemberCount(org.id);
       return { user, orgMembership };
     });
 
@@ -557,7 +545,7 @@ export const scimServiceFactory = ({
     return {}; // intentionally return empty object upon success
   };
 
-  const listScimGroups = async ({ orgId, startIndex, limit }: TListScimGroupsDTO) => {
+  const listScimGroups = async ({ orgId, startIndex, limit, filter }: TListScimGroupsDTO) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
       throw new BadRequestError({
@@ -580,7 +568,8 @@ export const scimServiceFactory = ({
 
     const groups = await groupDAL.findGroups(
       {
-        orgId
+        orgId,
+        ...(filter && parseScimFilter(filter))
       },
       {
         offset: startIndex - 1,

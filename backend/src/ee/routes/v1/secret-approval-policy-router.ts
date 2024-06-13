@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
+import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
@@ -19,7 +20,11 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           workspaceId: z.string(),
           name: z.string().optional(),
           environment: z.string(),
-          secretPath: z.string().optional().nullable(),
+          secretPath: z
+            .string()
+            .optional()
+            .nullable()
+            .transform((val) => (val ? removeTrailingSlash(val) : val)),
           approvers: z.string().array().min(1),
           approvals: z.number().min(1).default(1)
         })
@@ -63,7 +68,11 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           name: z.string().optional(),
           approvers: z.string().array().min(1),
           approvals: z.number().min(1).default(1),
-          secretPath: z.string().optional().nullable()
+          secretPath: z
+            .string()
+            .optional()
+            .nullable()
+            .transform((val) => (val ? removeTrailingSlash(val) : val))
         })
         .refine((data) => data.approvals <= data.approvers.length, {
           path: ["approvals"],
@@ -157,7 +166,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        secretPath: z.string().trim()
+        secretPath: z.string().trim().transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
