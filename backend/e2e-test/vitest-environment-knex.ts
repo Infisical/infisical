@@ -43,7 +43,7 @@ export default {
       const smtp = mockSmtpServer();
       const queue = mockQueue();
       const keyStore = mockKeyStore();
-      const server = await main({ db, smtp, logger, queue, keyStore });
+      const { server } = await main({ db, smtp, logger, queue, keyStore });
       // @ts-expect-error type
       globalThis.testServer = server;
       // @ts-expect-error type
