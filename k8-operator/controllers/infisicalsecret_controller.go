@@ -12,6 +12,8 @@ import (
 
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
+	infisical "github.com/infisical/go-sdk"
+	infisicalSdk "github.com/infisical/go-sdk"
 )
 
 // InfisicalSecretReconciler reconciles a InfisicalSecret object
@@ -80,7 +82,13 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		api.API_HOST_URL = infisicalSecretCR.Spec.HostAPI
 	}
 
-	err = r.ReconcileInfisicalSecret(ctx, infisicalSecretCR)
+	// Initialize the SDK client with the necessary configuration
+	infisicalClient := infisical.NewInfisicalClient(infisicalSdk.Config{
+		SiteUrl:   api.API_HOST_URL,
+		UserAgent: api.USER_AGENT_NAME,
+	})
+
+	err = r.ReconcileInfisicalSecret(ctx, infisicalSecretCR, infisicalClient)
 	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCR, err)
 
 	if err != nil {

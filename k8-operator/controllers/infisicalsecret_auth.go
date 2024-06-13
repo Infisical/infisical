@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	infisicalSdk "github.com/infisical/go-sdk"
 )
 
 type AuthStrategyType string
@@ -32,7 +33,7 @@ var AuthStrategy = struct {
 
 var ErrAuthNotApplicable = errors.New("authentication not applicable")
 
-func (r *InfisicalSecretReconciler) handleUniversalAuth(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (AuthenticationDetails, error) {
+func (r *InfisicalSecretReconciler) handleUniversalAuth(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
 
 	// Machine Identities:
 	universalAuthKubeSecret, err := r.GetInfisicalUniversalAuthFromKubeSecret(ctx, infisicalSecret)
@@ -57,7 +58,7 @@ func (r *InfisicalSecretReconciler) handleUniversalAuth(ctx context.Context, inf
 
 }
 
-func (r *InfisicalSecretReconciler) handleKubernetesAuth(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (AuthenticationDetails, error) {
+func (r *InfisicalSecretReconciler) handleKubernetesAuth(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
 	kubernetesAuthSpec := infisicalSecret.Spec.Authentication.KubernetesAuth
 
 	if kubernetesAuthSpec.IdentityID == "" {
@@ -73,7 +74,7 @@ func (r *InfisicalSecretReconciler) handleKubernetesAuth(ctx context.Context, in
 
 }
 
-func (r *InfisicalSecretReconciler) handleAwsIamAuth(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (AuthenticationDetails, error) {
+func (r *InfisicalSecretReconciler) handleAwsIamAuth(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
 	awsIamAuthSpec := infisicalSecret.Spec.Authentication.AwsIamAuth
 
 	if awsIamAuthSpec.IdentityID == "" {
@@ -89,7 +90,7 @@ func (r *InfisicalSecretReconciler) handleAwsIamAuth(ctx context.Context, infisi
 
 }
 
-func (r *InfisicalSecretReconciler) handleAzureAuth(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (AuthenticationDetails, error) {
+func (r *InfisicalSecretReconciler) handleAzureAuth(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
 	azureAuthSpec := infisicalSecret.Spec.Authentication.AzureAuth
 
 	if azureAuthSpec.IdentityID == "" {
@@ -105,7 +106,7 @@ func (r *InfisicalSecretReconciler) handleAzureAuth(ctx context.Context, infisic
 
 }
 
-func (r *InfisicalSecretReconciler) handleGcpIdTokenAuth(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (AuthenticationDetails, error) {
+func (r *InfisicalSecretReconciler) handleGcpIdTokenAuth(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
 	gcpIdTokenSpec := infisicalSecret.Spec.Authentication.GcpIdTokenAuth
 
 	if gcpIdTokenSpec.IdentityID == "" {
@@ -121,7 +122,7 @@ func (r *InfisicalSecretReconciler) handleGcpIdTokenAuth(ctx context.Context, in
 
 }
 
-func (r *InfisicalSecretReconciler) handleGcpIamAuth(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (AuthenticationDetails, error) {
+func (r *InfisicalSecretReconciler) handleGcpIamAuth(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
 	gcpIamSpec := infisicalSecret.Spec.Authentication.GcpIamAuth
 
 	if gcpIamSpec.IdentityID == "" && gcpIamSpec.ServiceAccountKeyFilePath == "" {

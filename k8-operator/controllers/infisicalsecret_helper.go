@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
-	"github.com/Infisical/infisical/k8-operator/packages/api"
 	"github.com/Infisical/infisical/k8-operator/packages/model"
 	"github.com/Infisical/infisical/k8-operator/packages/util"
 
@@ -39,10 +38,10 @@ const OPERATOR_SETTINGS_CONFIGMAP_NAME = "infisical-config"
 const OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE = "infisical-operator-system"
 const INFISICAL_DOMAIN = "https://app.infisical.com/api"
 
-var infisicalClient = infisicalSdk.NewInfisicalClient(infisicalSdk.Config{})
+// var infisicalClient = infisicalSdk.NewInfisicalClient(infisicalSdk.Config{})
 var authDetails AuthenticationDetails
 
-func (r *InfisicalSecretReconciler) HandleAuthentication(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (AuthenticationDetails, error) {
+func (r *InfisicalSecretReconciler) HandleAuthentication(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
 
 	// ? Legacy support, service token auth
 	infisicalToken, err := r.GetInfisicalTokenFromKubeSecret(ctx, infisicalSecret)
@@ -62,7 +61,7 @@ func (r *InfisicalSecretReconciler) HandleAuthentication(ctx context.Context, in
 		return AuthenticationDetails{authStrategy: AuthStrategy.SERVICE_TOKEN}, nil
 	}
 
-	authStrategies := map[AuthStrategyType]func(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (AuthenticationDetails, error){
+	authStrategies := map[AuthStrategyType]func(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error){
 		AuthStrategy.UNIVERSAL_MACHINE_IDENTITY:    r.handleUniversalAuth,
 		AuthStrategy.KUBERNETES_MACHINE_IDENTITY:   r.handleKubernetesAuth,
 		AuthStrategy.AWS_IAM_MACHINE_IDENTITY:      r.handleAwsIamAuth,
@@ -72,7 +71,7 @@ func (r *InfisicalSecretReconciler) HandleAuthentication(ctx context.Context, in
 	}
 
 	for authStrategy, authHandler := range authStrategies {
-		authDetails, err := authHandler(ctx, infisicalSecret)
+		authDetails, err := authHandler(ctx, infisicalSecret, infisicalClient)
 
 		if err == nil {
 			return authDetails, nil
@@ -288,16 +287,11 @@ func (r *InfisicalSecretReconciler) UpdateInfisicalManagedKubeSecret(ctx context
 	return nil
 }
 
-func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) error {
-	// We can't set these values when instantiating the client because we can't be sure that the variables have been populated yet. So instead we're updating the configuration here. This will happen on each reconcile, which is fine.
-	infisicalClient.UpdateConfiguration(infisicalSdk.Config{
-		SiteUrl:   api.API_HOST_URL,
-		UserAgent: api.USER_AGENT_NAME,
-	})
+func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) error {
 
 	if authDetails.authStrategy == "" {
 		fmt.Println("ReconcileInfisicalSecret: No authentication strategy found. Attempting to authenticate")
-		details, err := r.HandleAuthentication(ctx, infisicalSecret)
+		details, err := r.HandleAuthentication(ctx, infisicalSecret, infisicalClient)
 
 		if err != nil {
 			return fmt.Errorf("unable to authenticate [err=%s]", err)
