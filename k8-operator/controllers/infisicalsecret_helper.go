@@ -317,14 +317,13 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 
 	if authDetails.authStrategy == "" {
 		fmt.Println("ReconcileInfisicalSecret: No authentication strategy found. Attempting to authenticate")
-		details, err := r.HandleAuthentication(ctx, infisicalSecret, infisicalClient)
-		r.SetInfisicalTokenLoadCondition(ctx, &infisicalSecret, details.authStrategy, err)
+		authDetails, err := r.HandleAuthentication(ctx, infisicalSecret, infisicalClient)
+		r.SetInfisicalTokenLoadCondition(ctx, &infisicalSecret, authDetails.authStrategy, err)
 
 		if err != nil {
 			return fmt.Errorf("unable to authenticate [err=%s]", err)
 		}
 
-		authDetails = details
 		r.UpdateResourceVariables(infisicalSecret, ResourceVariables{
 			infisicalClient: infisicalClient,
 			authDetails:     authDetails,
