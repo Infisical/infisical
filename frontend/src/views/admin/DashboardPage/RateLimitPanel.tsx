@@ -66,7 +66,7 @@ export const RateLimitPanel = () => {
         publicEndpointLimit
       });
       createNotification({
-        text: "Successfully changed rate limits. Please restart your server",
+        text: "Rate limits have been successfully updated. Please allow at least 10 minutes for the changes to take effect.",
         type: "success"
       });
     } catch (e) {
