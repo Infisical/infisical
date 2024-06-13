@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	"github.com/Infisical/infisical/k8-operator/packages/api"
 	"github.com/Infisical/infisical/k8-operator/packages/model"
 	"github.com/Infisical/infisical/k8-operator/packages/util"
 
@@ -18,12 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
-
-type AuthenticationDetails struct {
-	authStrategy          AuthStrategyType
-	machineIdentityScope  v1alpha1.MachineIdentityScopeInWorkspace // This will only be set if a machine identity auth method is used (e.g. UniversalAuth or KubernetesAuth, etc.)
-	isMachineIdentityAuth bool
-}
 
 const SERVICE_ACCOUNT_ACCESS_KEY = "serviceAccountAccessKey"
 const SERVICE_ACCOUNT_PUBLIC_KEY = "serviceAccountPublicKey"
@@ -37,9 +32,6 @@ const SECRET_VERSION_ANNOTATION = "secrets.infisical.com/version" // used to set
 const OPERATOR_SETTINGS_CONFIGMAP_NAME = "infisical-config"
 const OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE = "infisical-operator-system"
 const INFISICAL_DOMAIN = "https://app.infisical.com/api"
-
-// var infisicalClient = infisicalSdk.NewInfisicalClient(infisicalSdk.Config{})
-var authDetails AuthenticationDetails
 
 func (r *InfisicalSecretReconciler) HandleAuthentication(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
 
@@ -287,7 +279,41 @@ func (r *InfisicalSecretReconciler) UpdateInfisicalManagedKubeSecret(ctx context
 	return nil
 }
 
-func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) error {
+func (r *InfisicalSecretReconciler) GetResourceVariables(infisicalSecret v1alpha1.InfisicalSecret) ResourceVariables {
+
+	var resourceVariables ResourceVariables
+
+	if _, ok := resourceVariablesMap[string(infisicalSecret.UID)]; !ok {
+
+		client := infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
+			SiteUrl:   infisicalSecret.Spec.HostAPI,
+			UserAgent: api.USER_AGENT_NAME,
+		})
+
+		resourceVariablesMap[string(infisicalSecret.UID)] = ResourceVariables{
+			infisicalClient: client,
+			authDetails:     AuthenticationDetails{},
+		}
+
+		resourceVariables = resourceVariablesMap[string(infisicalSecret.UID)]
+
+	} else {
+		resourceVariables = resourceVariablesMap[string(infisicalSecret.UID)]
+	}
+
+	return resourceVariables
+
+}
+
+func (r *InfisicalSecretReconciler) UpdateResourceVariables(infisicalSecret v1alpha1.InfisicalSecret, resourceVariables ResourceVariables) {
+	resourceVariablesMap[string(infisicalSecret.UID)] = resourceVariables
+}
+
+func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) error {
+
+	resourceVariables := r.GetResourceVariables(infisicalSecret)
+	infisicalClient := resourceVariables.infisicalClient
+	authDetails := resourceVariables.authDetails
 
 	if authDetails.authStrategy == "" {
 		fmt.Println("ReconcileInfisicalSecret: No authentication strategy found. Attempting to authenticate")
@@ -299,6 +325,10 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		}
 
 		authDetails = details
+		r.UpdateResourceVariables(infisicalSecret, ResourceVariables{
+			infisicalClient: infisicalClient,
+			authDetails:     authDetails,
+		})
 	}
 
 	// Look for managed secret by name and namespace

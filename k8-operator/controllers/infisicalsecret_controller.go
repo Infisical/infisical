@@ -9,10 +9,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
-	infisical "github.com/infisical/go-sdk"
 	infisicalSdk "github.com/infisical/go-sdk"
 )
 
@@ -33,6 +33,40 @@ type InfisicalSecretReconciler struct {
 // move the current state of the cluster closer to the desired state.
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.1/pkg/reconcile
+
+type ResourceVariables struct {
+	infisicalClient infisicalSdk.InfisicalClientInterface
+	authDetails     AuthenticationDetails
+}
+
+// Maps the infisicalSecretCR.UID to a infisicalSdk.InfisicalClientInterface and AuthenticationDetails.
+var resourceVariablesMap = make(map[string]ResourceVariables)
+
+const finalizerName = "secrets.finalizers.infisical.com"
+
+func (r *InfisicalSecretReconciler) addFinalizer(ctx context.Context, infisicalSecret *secretsv1alpha1.InfisicalSecret) error {
+	if !controllerutil.ContainsFinalizer(infisicalSecret, finalizerName) {
+		controllerutil.AddFinalizer(infisicalSecret, finalizerName)
+		if err := r.Update(ctx, infisicalSecret); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *InfisicalSecretReconciler) handleFinalizer(ctx context.Context, infisicalSecret *secretsv1alpha1.InfisicalSecret) error {
+	if controllerutil.ContainsFinalizer(infisicalSecret, finalizerName) {
+		// Cleanup deployment variables
+		delete(resourceVariablesMap, string(infisicalSecret.UID))
+
+		// Remove the finalizer and update the resource
+		controllerutil.RemoveFinalizer(infisicalSecret, finalizerName)
+		if err := r.Update(ctx, infisicalSecret); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var infisicalSecretCR secretsv1alpha1.InfisicalSecret
@@ -60,8 +94,18 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		fmt.Printf("\nRe-sync interval set. Interval: %v\n", requeueTime)
 	}
 
+	// Add the finalizer if it does not exist
+	if err := r.addFinalizer(ctx, &infisicalSecretCR); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// Check if the resource is already marked for deletion
 	if infisicalSecretCR.GetDeletionTimestamp() != nil {
+		// Handle the finalizer logic
+		if err := r.handleFinalizer(ctx, &infisicalSecretCR); err != nil {
+			return ctrl.Result{}, err
+		}
+
 		return ctrl.Result{
 			Requeue: false,
 		}, nil
@@ -82,13 +126,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		api.API_HOST_URL = infisicalSecretCR.Spec.HostAPI
 	}
 
-	// Initialize the SDK client with the necessary configuration
-	infisicalClient := infisical.NewInfisicalClient(infisicalSdk.Config{
-		SiteUrl:   api.API_HOST_URL,
-		UserAgent: api.USER_AGENT_NAME,
-	})
-
-	err = r.ReconcileInfisicalSecret(ctx, infisicalSecretCR, infisicalClient)
+	err = r.ReconcileInfisicalSecret(ctx, infisicalSecretCR)
 	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCR, err)
 
 	if err != nil {
