@@ -37,7 +37,10 @@ The typical workflow for managing certificates consists of the following steps:
 
 ## Guide to Issuing Certificates
 
-In the following steps, we explore how to issue a X.509 certificate under a CA using the Infisical UI.
+In the following steps, we explore how to issue a X.509 certificate under a CA.
+
+<Tabs>
+  <Tab title="Infisical UI">
 
 <Steps>
   <Step title="Creating a certificate">
@@ -52,6 +55,7 @@ In the following steps, we explore how to issue a X.509 certificate under a CA u
     Here's some guidance on each field:
 
     - Issuing CA: The CA under which to issue the certificate.
+    - Friendly Name: A friendly name for the certificate; this is only for display and defaults to the common name of the certificate if left empty.
     - Common Name (CN): The (common) name of the certificate.
     - TTL: The lifetime of the certificate in seconds.
     - Valid Until: The date until which the certificate is valid in the date time string format specified [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format). For example, the following formats would be valid: `YYYY`, `YYYY-MM`, `YYYY-MM-DD`, `YYYY-MM-DDTHH:mm:ss.sssZ`.
@@ -68,16 +72,51 @@ In the following steps, we explore how to issue a X.509 certificate under a CA u
     </Note>
   </Step>
 </Steps>
+  </Tab>
+  <Tab title="API">
+    To create a certificate, make an API request to the [Create Certificate](/api-reference/endpoints/certificate-authorities/sign-intermediate) API endpoint,
+    specifying the issuing CA.
+    
+    ### Sample request
+
+    ```bash Request
+    curl --location --request POST 'https://app.infisical.com/api/v1/pki/ca/<ca-id>/issue-certificate' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "commonName": "My Certificate",
+      }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      certificate: "...",
+      certificateChain: "...",
+      issuingCaCertificate: "...",
+      privateKey: "...",
+      serialNumber: "..."
+    }
+    ```
+
+    <Note>
+      Make sure to store the `privateKey` as it is only returned once here at the time of certificate issuance. The `certificate` and `certificateChain` will remain accessible and can be retrieved at any time.
+    </Note>
+
+  </Tab>
+</Tabs>
 
 ## Guide to Revoking Certificates
 
-In the following steps, we explore how to revoke a X.509 certificate under a CA and obtain a Certificate Revocation List (CRL) for a CA using the Infisical UI.
+In the following steps, we explore how to revoke a X.509 certificate under a CA and obtain a Certificate Revocation List (CRL) for a CA.
 
+<Tabs>
+  <Tab title="Infisical UI">
 <Steps>
   <Step title="Revoking a Certificate">
     Assuming that you've issued a certificate under a CA, you can revoke it by
     selecting the **Revoke Certificate** option for it and specifying the reason
-    for revocation. Image 1 Image 2
+    for revocation.
 
     ![pki revoke certificate](/images/platform/pki/cert-revoke.png)
 
@@ -102,6 +141,63 @@ openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
 
   </Step>
 </Steps>
+  </Tab>
+  <Tab title="API">
+    <Steps>
+      <Step title="Revoking a certificate">
+        Assuming that you've issued a certificate under a CA, you can revoke it by making an API request to the [Revoke Certificate](/api-reference/endpoints/certificate-authorities/revoke) API endpoint,
+        specifying the serial number of the certificate and the reason for revocation.
+        
+        ### Sample request
+
+        ```bash Request
+        curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificates/<cert-serial-number>/revoke' \
+          --header 'Authorization: Bearer <access-token>' \
+          --header 'Content-Type: application/json' \
+          --data-raw '{
+              "revocationReason": "UNSPECIFIED"
+          }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          message: "Successfully revoked certificate",
+          serialNumber: "...",
+          revokedAt: "..."
+        }
+        ```
+      </Step>
+      <Step title="Obtaining a CRL">
+        In order to check the revocation status of a certificate, you can check it against the CRL of the issuing CA.
+        To obtain the CRL of the CA, make an API request to the [Get CRL](/api-reference/endpoints/certificate-authorities/crl) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --location --request GET 'https://app.infisical.com/api/v1/pki/ca/<ca-id>/crl' \
+          --header 'Authorization: Bearer <access-token>'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          crl: "..."
+        }
+        ```
+
+        To verify a certificate against the CRL with OpenSSL, you can use the following command:
+
+        ```bash
+        openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
+        ```
+      </Step>
+    </Steps>
+
+  </Tab>
+</Tabs>
 
 ## FAQ
 
