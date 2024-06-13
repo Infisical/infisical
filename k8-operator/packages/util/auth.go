@@ -9,21 +9,18 @@ import (
 )
 
 func GetServiceAccountToken(k8sClient client.Client, namespace string, serviceAccountName string) (string, error) {
-	if namespace == "" {
-		namespace = "default"
-	}
 
-	sa := &corev1.ServiceAccount{}
-	err := k8sClient.Get(context.TODO(), client.ObjectKey{Name: serviceAccountName, Namespace: namespace}, sa)
+	serviceAccount := &corev1.ServiceAccount{}
+	err := k8sClient.Get(context.TODO(), client.ObjectKey{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
 	if err != nil {
 		return "", err
 	}
 
-	if len(sa.Secrets) == 0 {
+	if len(serviceAccount.Secrets) == 0 {
 		return "", fmt.Errorf("no secrets found for service account %s", serviceAccountName)
 	}
 
-	secretName := sa.Secrets[0].Name
+	secretName := serviceAccount.Secrets[0].Name
 
 	secret := &corev1.Secret{}
 	err = k8sClient.Get(context.TODO(), client.ObjectKey{Name: secretName, Namespace: namespace}, secret)
