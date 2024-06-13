@@ -94,9 +94,11 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		fmt.Printf("\nRe-sync interval set. Interval: %v\n", requeueTime)
 	}
 
-	// Add the finalizer if it does not exist
-	if err := r.addFinalizer(ctx, &infisicalSecretCR); err != nil {
-		return ctrl.Result{}, err
+	// Add the finalizer if it does not exist, and only add it if the resource is not marked for deletion
+	if infisicalSecretCR.GetDeletionTimestamp() == nil || infisicalSecretCR.GetDeletionTimestamp().IsZero() {
+		if err := r.addFinalizer(ctx, &infisicalSecretCR); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Check if the resource is already marked for deletion
