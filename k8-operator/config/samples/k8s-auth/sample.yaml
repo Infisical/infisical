@@ -12,8 +12,10 @@ spec:
     authentication:
         # Native Kubernetes Auth
         kubernetesAuth:
-            identityId: 8c0c9823-7249-4043-b292-a861fb9b1b50
-            # serviceAccountTokenPath: "/var/run/secrets/kubernetes.io/serviceaccount/token" # Optional, defaults to /var/run/secrets/kubernetes.io/serviceaccount/token
+            identityId: <>
+            serviceAccountRef:
+              name: infisical-auth
+              namespace: default
 
             # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
             secretsScope:
@@ -24,7 +26,7 @@ spec:
 
 
     managedSecretReference:
-        secretName: managed-secret
+        secretName: managed-secret-k8s
         secretNamespace: default
         creationPolicy: "Orphan" ## Owner | Orphan
         # secretType: kubernetes.io/dockerconfigjson

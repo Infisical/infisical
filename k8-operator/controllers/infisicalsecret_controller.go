@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	controllerUtil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
@@ -45,8 +45,8 @@ var resourceVariablesMap = make(map[string]ResourceVariables)
 const FINALIZER_NAME = "secrets.finalizers.infisical.com"
 
 func (r *InfisicalSecretReconciler) addFinalizer(ctx context.Context, infisicalSecret *secretsv1alpha1.InfisicalSecret) error {
-	if !controllerutil.ContainsFinalizer(infisicalSecret, FINALIZER_NAME) {
-		controllerutil.AddFinalizer(infisicalSecret, FINALIZER_NAME)
+	if !controllerUtil.ContainsFinalizer(infisicalSecret, FINALIZER_NAME) {
+		controllerUtil.AddFinalizer(infisicalSecret, FINALIZER_NAME)
 		if err := r.Update(ctx, infisicalSecret); err != nil {
 			return err
 		}
@@ -55,12 +55,12 @@ func (r *InfisicalSecretReconciler) addFinalizer(ctx context.Context, infisicalS
 }
 
 func (r *InfisicalSecretReconciler) handleFinalizer(ctx context.Context, infisicalSecret *secretsv1alpha1.InfisicalSecret) error {
-	if controllerutil.ContainsFinalizer(infisicalSecret, FINALIZER_NAME) {
+	if controllerUtil.ContainsFinalizer(infisicalSecret, FINALIZER_NAME) {
 		// Cleanup deployment variables
 		delete(resourceVariablesMap, string(infisicalSecret.UID))
 
 		// Remove the finalizer and update the resource
-		controllerutil.RemoveFinalizer(infisicalSecret, FINALIZER_NAME)
+		controllerUtil.RemoveFinalizer(infisicalSecret, FINALIZER_NAME)
 		if err := r.Update(ctx, infisicalSecret); err != nil {
 			return err
 		}
@@ -75,12 +75,12 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	err := r.Get(ctx, req.NamespacedName, &infisicalSecretCR)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			fmt.Printf("Infisical Secret CRD not found [err=%v]", err)
+			fmt.Printf("\nInfisical Secret CRD not found [err=%v]", err)
 			return ctrl.Result{
 				Requeue: false,
 			}, nil
 		} else {
-			fmt.Printf("Unable to fetch Infisical Secret CRD from cluster because [err=%v]", err)
+			fmt.Printf("\nUnable to fetch Infisical Secret CRD from cluster because [err=%v]", err)
 			return ctrl.Result{
 				RequeueAfter: requeueTime,
 			}, nil
