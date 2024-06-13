@@ -98,7 +98,9 @@ spec:
         # Native Kubernetes Auth
         kubernetesAuth:
             identityId: <machine-identity-id>
-            serviceAccountTokenPath: "/path/to/your/service-account/token" # Optional, defaults to /var/run/secrets/kubernetes.io/serviceaccount/token
+            serviceAccountRef:
+              name: <service-account-name>
+              namespace: <service-account-namespace>
 
             # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
             secretsScope:
@@ -257,6 +259,11 @@ spec:
     <Step title="Add your identity ID to your InfisicalSecret resource">
       Once you have created your machine identity and added it to your project(s), you will need to add the identity ID to your InfisicalSecret resource. In the `authentication.kubernetesAuth.identityId` field, add the identity ID of the machine identity you created. See the example below for more details.
     </Step>
+    <Step title="Add your Kubernetes service account token to the InfisicalSecret resource">
+    When you configured your Kubernetes machine identity, you would have created a service account token if you followed the [Kubernetes machine identity guide](/documentation/platform/identities/kubernetes-auth). If you did not create a service account token, please follow the guide to do so.
+
+    You will need to enter the name of the service account and the namespace where the service account lives. The example below shows how to add the service account token to the InfisicalSecret resource.
+    </Step> 
 
   </Steps>
 
@@ -278,7 +285,9 @@ spec:
   authentication:
       kubernetesAuth:
           identityId: <machine-identity-id>
-          serviceAccountTokenPath: "/path/to/your/service-account/token" # Optional, defaults to /var/run/secrets/kubernetes.io/serviceaccount/token
+          serviceAccountRef:
+            name: <service-account-name>
+            namespace: <service-account-namespace>
 
           # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
           secretsScope:
