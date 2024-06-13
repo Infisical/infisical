@@ -1,3 +1,8 @@
+import { CronJob } from "cron";
+
+import { logger } from "@app/lib/logger";
+import { rateLimitMaxConfiguration } from "@app/server/config/rateLimiter";
+
 import { TRateLimitDALFactory } from "./rate-limit-dal";
 import { TRateLimit, TRateLimitUpdateDTO } from "./rate-limit-types";
 
@@ -20,8 +25,35 @@ export const rateLimitServiceFactory = ({ rateLimitDAL }: TRateLimitServiceFacto
     return rateLimitDAL.updateById("00000000-0000-0000-0000-000000000000", updates);
   };
 
+  const initializeBackgroundSync = () => {
+    const rateLimitSync = async () => {
+      try {
+        const rateLimit = await getRateLimits();
+        if (rateLimit) {
+          rateLimitMaxConfiguration.readLimit = rateLimit.readRateLimit;
+          rateLimitMaxConfiguration.publicEndpointLimit = rateLimit.publicEndpointLimit;
+          rateLimitMaxConfiguration.writeLimit = rateLimit.writeRateLimit;
+          rateLimitMaxConfiguration.secretsLimit = rateLimit.secretsRateLimit;
+          rateLimitMaxConfiguration.authRateLimit = rateLimit.authRateLimit;
+          rateLimitMaxConfiguration.inviteUserRateLimit = rateLimit.inviteUserRateLimit;
+          rateLimitMaxConfiguration.mfaRateLimit = rateLimit.mfaRateLimit;
+          rateLimitMaxConfiguration.creationLimit = rateLimit.creationLimit;
+        }
+      } catch (error) {
+        logger.error(`Error syncing rate limit configurations: %o`, error);
+      }
+    };
+
+    // sync rate limits configuration every 10 minutes
+    const job = new CronJob("*/10 * * * *", rateLimitSync);
+    job.start();
+
+    return job;
+  };
+
   return {
     getRateLimits,
-    updateRateLimit
+    updateRateLimit,
+    initializeBackgroundSync
   };
 };

@@ -10,6 +10,7 @@ import fastifyFormBody from "@fastify/formbody";
 import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
+import { CronJob } from "cron";
 import fasitfy from "fastify";
 import { Knex } from "knex";
 import { Logger } from "pino";
@@ -41,6 +42,7 @@ type TMain = {
 // Run the server!
 export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
   const appCfg = getConfig();
+  const cronJobs: CronJob[] = [];
   const server = fasitfy({
     logger: appCfg.NODE_ENV === "test" ? false : logger,
     trustProxy: true,
@@ -72,7 +74,13 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
     // Rate limiters and security headers
     if (appCfg.isProductionMode) {
       const rateLimitDAL = rateLimitDALFactory(db);
-      const rateLimits = await rateLimitServiceFactory({ rateLimitDAL }).getRateLimits();
+      const rateLimitService = rateLimitServiceFactory({ rateLimitDAL });
+      const rateLimits = await rateLimitService.getRateLimits();
+
+      if (rateLimits) {
+        cronJobs.push(rateLimitService.initializeBackgroundSync());
+      }
+
       await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg(rateLimits));
     }
 
@@ -92,7 +100,7 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
 
     await server.ready();
     server.swagger();
-    return server;
+    return { server, jobs: cronJobs };
   } catch (err) {
     server.log.error(err);
     await queue.shutdown();

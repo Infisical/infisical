@@ -97,6 +97,7 @@
     "bcrypt": "^5.1.1",
     "bullmq": "^5.4.2",
     "cassandra-driver": "^4.7.2",
+    "cron": "^3.1.7",
     "dotenv": "^16.4.1",
     "fastify": "^4.26.0",
     "fastify-plugin": "^4.5.1",

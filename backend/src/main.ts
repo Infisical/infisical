@@ -22,12 +22,13 @@ const run = async () => {
   const queue = queueServiceFactory(appCfg.REDIS_URL);
   const keyStore = keyStoreFactory(appCfg.REDIS_URL);
 
-  const server = await main({ db, smtp, logger, queue, keyStore });
+  const { server, jobs } = await main({ db, smtp, logger, queue, keyStore });
   const bootstrap = await bootstrapCheck({ db });
   // eslint-disable-next-line
   process.on("SIGINT", async () => {
     await server.close();
     await db.destroy();
+    jobs.forEach((job) => job.stop());
     process.exit(0);
   });
 
@@ -35,6 +36,7 @@ const run = async () => {
   process.on("SIGTERM", async () => {
     await server.close();
     await db.destroy();
+    jobs.forEach((job) => job.stop());
     process.exit(0);
   });
 
