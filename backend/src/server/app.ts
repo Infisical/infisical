@@ -73,8 +73,8 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
     if (appCfg.isProductionMode) {
       const rateLimitDAL = rateLimitDALFactory(db);
       const rateLimitService = rateLimitServiceFactory({ rateLimitDAL });
-      const rateLimits = await rateLimitService.getRateLimits();
-      await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg(rateLimits));
+      await rateLimitService.syncRateLimitConfiguration();
+      await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg());
     }
 
     await server.register(helmet, { contentSecurityPolicy: false });
