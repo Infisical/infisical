@@ -292,6 +292,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	if authDetails.authStrategy == "" {
 		fmt.Println("ReconcileInfisicalSecret: No authentication strategy found. Attempting to authenticate")
 		details, err := r.HandleAuthentication(ctx, infisicalSecret, infisicalClient)
+		r.SetInfisicalTokenLoadCondition(ctx, &infisicalSecret, details.authStrategy, err)
 
 		if err != nil {
 			return fmt.Errorf("unable to authenticate [err=%s]", err)
@@ -325,7 +326,6 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 			return fmt.Errorf("ReconcileInfisicalSecret: unable to get service account creds from kube secret [err=%s]", err)
 		}
 
-		r.SetInfisicalTokenLoadCondition(ctx, &infisicalSecret, err)
 		if err != nil {
 			return fmt.Errorf("unable to load Infisical Token from the specified Kubernetes secret with error [%w]", err)
 		}
