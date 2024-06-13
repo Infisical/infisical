@@ -27,7 +27,8 @@ import {
   Th,
   THead,
   Tooltip,
-  Tr} from "@app/components/v2";
+  Tr
+} from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useListWorkspaceCertificates } from "@app/hooks/api";
 import { certStatusToNameMap } from "@app/hooks/api/certificates/constants";
@@ -45,9 +46,11 @@ type Props = {
   ) => void;
 };
 
+const PER_PAGE_INIT = 25;
+
 export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(25);
+  const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
   const { currentWorkspace } = useWorkspace();
   const { data, isLoading } = useListWorkspaceCertificates({
@@ -184,7 +187,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
               })}
           </TBody>
         </Table>
-        {!isLoading && data?.totalCount !== undefined && (
+        {!isLoading && data?.totalCount !== undefined && data.totalCount >= PER_PAGE_INIT && (
           <Pagination
             count={data.totalCount}
             page={page}
