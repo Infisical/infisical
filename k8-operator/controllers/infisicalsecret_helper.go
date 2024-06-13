@@ -381,20 +381,17 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
 
-		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via service token")
+		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via [type=SERVICE_TOKEN]")
 	} else if authDetails.isMachineIdentityAuth { // * Machine Identity authentication, the SDK will be authenticated at this point
-
-		fmt.Println("ReconcileInfisicalSecret: Fetching secrets via machine identity")
-
 		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaMachineIdentity(infisicalClient, secretVersionBasedOnETag, authDetails.machineIdentityScope)
 
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
-		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via universal auth")
+		fmt.Printf("ReconcileInfisicalSecret: Fetched secrets via machine identity [type=%v]\n", authDetails.authStrategy)
 
 	} else {
-		return fmt.Errorf("no authentication method provided. You must provide either a valid service token or a service account details to fetch secrets")
+		return errors.New("no authentication method provided yet. Please configure a authentication method then try again")
 	}
 
 	if !updateDetails.Modified {
