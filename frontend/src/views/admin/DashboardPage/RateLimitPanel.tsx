@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { Button, ContentLoader, FormControl, Input } from "@app/components/v2";
 import { useGetRateLimit, useUpdateRateLimit } from "@app/hooks/api";
 
 const formSchema = z.object({
@@ -20,7 +20,7 @@ const formSchema = z.object({
 type TRateLimitForm = z.infer<typeof formSchema>;
 
 export const RateLimitPanel = () => {
-  const { data: rateLimit } = useGetRateLimit();
+  const { data: rateLimit, isLoading } = useGetRateLimit();
   const { mutateAsync: updateRateLimit } = useUpdateRateLimit();
 
   const {
@@ -78,7 +78,9 @@ export const RateLimitPanel = () => {
     }
   };
 
-  return (
+  return isLoading ? (
+    <ContentLoader />
+  ) : (
     <form
       className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
       onSubmit={handleSubmit(onRateLimitFormSubmit)}
