@@ -911,9 +911,9 @@ export const registerRoutes = async (
 
   const cronJobs: CronJob[] = [];
   if (appCfg.isProductionMode) {
-    const rateLimitJob = await rateLimitService.initializeBackgroundSync();
-    if (rateLimitJob) {
-      cronJobs.push(rateLimitJob);
+    const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
+    if (rateLimitSyncJob) {
+      cronJobs.push(rateLimitSyncJob);
     }
   }
 
