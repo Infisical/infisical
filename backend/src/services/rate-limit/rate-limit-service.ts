@@ -69,7 +69,7 @@ export const rateLimitServiceFactory = ({ rateLimitDAL }: TRateLimitServiceFacto
           creationLimit: rateLimit.creationLimit
         };
 
-        logger.info(`Rate limit configuration: %o`, newRateLimitMaxConfiguration);
+        logger.info(`syncRateLimitConfiguration: rate limit configuration: %o`, newRateLimitMaxConfiguration);
         Object.freeze(newRateLimitMaxConfiguration);
         rateLimitMaxConfiguration = newRateLimitMaxConfiguration;
       }

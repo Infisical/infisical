@@ -20,7 +20,7 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.RateLimit);
 
-    // create rate limit entry
+    // create init rate limit entry with defaults
     await knex(TableName.RateLimit).insert({});
   }
 }

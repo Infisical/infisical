@@ -4,6 +4,21 @@ import { Redis } from "ioredis";
 import { getConfig } from "@app/lib/config/env";
 import { getRateLimiterConfig } from "@app/services/rate-limit/rate-limit-service";
 
+export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
+  const appCfg = getConfig();
+  const redis = appCfg.isRedisConfigured
+    ? new Redis(appCfg.REDIS_URL, { connectTimeout: 500, maxRetriesPerRequest: 1 })
+    : null;
+
+  return {
+    timeWindow: 60 * 1000,
+    max: 600,
+    redis,
+    allowList: (req) => req.url === "/healthcheck" || req.url === "/api/status",
+    keyGenerator: (req) => req.realIp
+  };
+};
+
 // GET endpoints
 export const readLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
@@ -59,19 +74,4 @@ export const publicEndpointLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   max: () => getRateLimiterConfig().publicEndpointLimit,
   keyGenerator: (req) => req.realIp
-};
-
-export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
-  const appCfg = getConfig();
-  const redis = appCfg.isRedisConfigured
-    ? new Redis(appCfg.REDIS_URL, { connectTimeout: 500, maxRetriesPerRequest: 1 })
-    : null;
-
-  return {
-    timeWindow: 60 * 1000,
-    max: 600,
-    redis,
-    allowList: (req) => req.url === "/healthcheck" || req.url === "/api/status",
-    keyGenerator: (req) => req.realIp
-  };
 };

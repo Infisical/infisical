@@ -87,7 +87,7 @@ export const RateLimitPanel = () => {
     >
       <div className="mb-8 flex flex-col justify-start">
         <div className="mb-4 text-xl font-semibold text-mineshaft-100">
-          Set Rate Limits for your Infisical Instance
+          Configure rate limits
         </div>
         <Controller
           control={control}
@@ -95,7 +95,7 @@ export const RateLimitPanel = () => {
           defaultValue={300}
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Global Read Requests per minute"
+              label="Global read requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -114,7 +114,7 @@ export const RateLimitPanel = () => {
           name="writeRateLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Global Write Requests per minute"
+              label="Global write requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -133,7 +133,7 @@ export const RateLimitPanel = () => {
           name="secretsRateLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Secret Requests per minute"
+              label="Secret requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -152,7 +152,7 @@ export const RateLimitPanel = () => {
           name="authRateLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Auth Requests per minute"
+              label="Auth requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -171,7 +171,7 @@ export const RateLimitPanel = () => {
           name="inviteUserRateLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Invite User Requests per minute"
+              label="User invitation requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -190,7 +190,7 @@ export const RateLimitPanel = () => {
           name="mfaRateLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Multi Factor Auth Requests per minute"
+              label="Multi factor auth requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -209,7 +209,7 @@ export const RateLimitPanel = () => {
           name="creationLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Creation Requests per minute"
+              label="New resource creation requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
@@ -228,7 +228,7 @@ export const RateLimitPanel = () => {
           name="publicEndpointLimit"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Secret Sharing Requests per minute"
+              label="Secret sharing requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}
