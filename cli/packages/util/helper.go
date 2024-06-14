@@ -123,7 +123,7 @@ func UniversalAuthLogin(clientId string, clientSecret string) (api.UniversalAuth
 	return tokenResponse, nil
 }
 
-func RenewUniversalAuthAccessToken(accessToken string) (string, error) {
+func RenewMachineIdentityAccessToken(accessToken string) (string, error) {
 
 	httpClient := resty.New()
 	httpClient.SetRetryCount(10000).
@@ -134,7 +134,7 @@ func RenewUniversalAuthAccessToken(accessToken string) (string, error) {
 		AccessToken: accessToken,
 	}
 
-	tokenResponse, err := api.CallUniversalAuthRefreshAccessToken(httpClient, request)
+	tokenResponse, err := api.CallMachineIdentityRefreshAccessToken(httpClient, request)
 	if err != nil {
 		return "", err
 	}
