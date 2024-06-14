@@ -14,11 +14,11 @@ import fasitfy from "fastify";
 import { Knex } from "knex";
 import { Logger } from "pino";
 
+import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
+import { rateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
-import { rateLimitDALFactory } from "@app/services/rate-limit/rate-limit-dal";
-import { rateLimitServiceFactory } from "@app/services/rate-limit/rate-limit-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";

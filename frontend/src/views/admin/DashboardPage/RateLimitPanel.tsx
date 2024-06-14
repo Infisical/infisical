@@ -3,7 +3,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, ContentLoader, FormControl, Input } from "@app/components/v2";
+import { Button, ContentLoader, FormControl, Input, UpgradePlanModal } from "@app/components/v2";
+import { useSubscription } from "@app/context";
+import { usePopUp } from "@app/hooks";
 import { useGetRateLimit, useUpdateRateLimit } from "@app/hooks/api";
 
 const formSchema = z.object({
@@ -21,7 +23,9 @@ type TRateLimitForm = z.infer<typeof formSchema>;
 
 export const RateLimitPanel = () => {
   const { data: rateLimit, isLoading } = useGetRateLimit();
+  const { subscription } = useSubscription();
   const { mutateAsync: updateRateLimit } = useUpdateRateLimit();
+  const { handlePopUpToggle, handlePopUpOpen, popUp } = usePopUp(["upgradePlan"] as const);
 
   const {
     control,
@@ -44,6 +48,11 @@ export const RateLimitPanel = () => {
 
   const onRateLimitFormSubmit = async (formData: TRateLimitForm) => {
     try {
+      if (subscription && !subscription.customRateLimits) {
+        handlePopUpOpen("upgradePlan");
+        return;
+      }
+
       const {
         readRateLimit,
         writeRateLimit,
@@ -86,9 +95,7 @@ export const RateLimitPanel = () => {
       onSubmit={handleSubmit(onRateLimitFormSubmit)}
     >
       <div className="mb-8 flex flex-col justify-start">
-        <div className="mb-4 text-xl font-semibold text-mineshaft-100">
-          Configure rate limits
-        </div>
+        <div className="mb-4 text-xl font-semibold text-mineshaft-100">Configure rate limits</div>
         <Controller
           control={control}
           name="readRateLimit"
@@ -245,6 +252,11 @@ export const RateLimitPanel = () => {
       <Button type="submit" isLoading={isSubmitting} isDisabled={isSubmitting || !isDirty}>
         Save
       </Button>
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="You can configure custom rate limits if you switch to Infisical's Enterprise  plan."
+      />
     </form>
   );
 };

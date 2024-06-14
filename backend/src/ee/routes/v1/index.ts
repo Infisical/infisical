@@ -10,6 +10,7 @@ import { registerLicenseRouter } from "./license-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
+import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
 import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
@@ -45,6 +46,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(registerAccessApprovalPolicyRouter, { prefix: "/access-approvals/policies" });
   await server.register(registerAccessApprovalRequestRouter, { prefix: "/access-approvals/requests" });
+  await server.register(registerRateLimitRouter, { prefix: "/rate-limit" });
 
   await server.register(
     async (dynamicSecretRouter) => {
