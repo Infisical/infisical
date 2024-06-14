@@ -2,6 +2,7 @@ import { CronJob } from "cron";
 
 import { logger } from "@app/lib/logger";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TRateLimitDALFactory } from "./rate-limit-dal";
 import { TRateLimit, TRateLimitUpdateDTO } from "./rate-limit-types";
 
@@ -24,11 +25,12 @@ export const getRateLimiterConfig = () => {
 
 type TRateLimitServiceFactoryDep = {
   rateLimitDAL: TRateLimitDALFactory;
+  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
 };
 
 export type TRateLimitServiceFactory = ReturnType<typeof rateLimitServiceFactory>;
 
-export const rateLimitServiceFactory = ({ rateLimitDAL }: TRateLimitServiceFactoryDep) => {
+export const rateLimitServiceFactory = ({ rateLimitDAL, licenseService }: TRateLimitServiceFactoryDep) => {
   const DEFAULT_RATE_LIMIT_CONFIG_ID = "00000000-0000-0000-0000-000000000000";
 
   const getRateLimits = async (): Promise<TRateLimit | undefined> => {
@@ -78,7 +80,16 @@ export const rateLimitServiceFactory = ({ rateLimitDAL }: TRateLimitServiceFacto
     }
   };
 
-  const initializeBackgroundSync = () => {
+  const initializeBackgroundSync = async () => {
+    if (!licenseService.onPremFeatures.customRateLimits) {
+      logger.info("Current license does not support custom rate limit configuration");
+      return;
+    }
+
+    logger.info("Setting up backround sync process for rate limits");
+    // initial sync upon startup
+    await syncRateLimitConfiguration();
+
     // sync rate limits configuration every 10 minutes
     const job = new CronJob("*/10 * * * *", syncRateLimitConfiguration);
     job.start();

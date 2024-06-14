@@ -449,7 +449,8 @@ export const registerRoutes = async (
     keyStore
   });
   const rateLimitService = rateLimitServiceFactory({
-    rateLimitDAL
+    rateLimitDAL,
+    licenseService
   });
   const apiKeyService = apiKeyServiceFactory({ apiKeyDAL, userDAL });
 
@@ -910,7 +911,10 @@ export const registerRoutes = async (
 
   const cronJobs: CronJob[] = [];
   if (appCfg.isProductionMode) {
-    cronJobs.push(rateLimitService.initializeBackgroundSync());
+    const rateLimitJob = await rateLimitService.initializeBackgroundSync();
+    if (rateLimitJob) {
+      cronJobs.push(rateLimitJob);
+    }
   }
 
   server.decorate<FastifyZodProvider["store"]>("store", {
