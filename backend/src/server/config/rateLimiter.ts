@@ -1,8 +1,8 @@
 import type { RateLimitOptions, RateLimitPluginOptions } from "@fastify/rate-limit";
 import { Redis } from "ioredis";
 
+import { getRateLimiterConfig } from "@app/ee/services/rate-limit/rate-limit-service";
 import { getConfig } from "@app/lib/config/env";
-import { getRateLimiterConfig } from "@app/services/rate-limit/rate-limit-service";
 
 export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
   const appCfg = getConfig();
