@@ -24,14 +24,13 @@ The operator can be install via [Helm](https://helm.sh) or [kubectl](https://git
 
     **Install the Helm chart**
 
-    For production deployments, it is highly recommended to set the chart version and the application version during installs and upgrades.
-    This will prevent the operator from being accidentally updated to the latest version and introduce unintended breaking changes.
-
-    View application versions [here](https://hub.docker.com/r/infisical/kubernetes-operator/tags) and chart versions [here](https://cloudsmith.io/~infisical/repos/helm-charts/packages/detail/helm/secrets-operator/#versions)
+    To select a specific version, view the  application versions [here](https://hub.docker.com/r/infisical/kubernetes-operator/tags) and chart versions [here](https://cloudsmith.io/~infisical/repos/helm-charts/packages/detail/helm/secrets-operator/#versions)
 
     ```bash
-    helm install --generate-name infisical-helm-charts/secrets-operator --version=<PLACE-CHART-VERSION-HERE> --set controllerManager.manager.image.tag=<PLACE-APP-VERSION-HERE>
+    helm install --generate-name infisical-helm-charts/secrets-operator 
+    ```
 
+    ```bash
     # Example installing app version v0.2.0 and chart version 0.1.4
     helm install --generate-name infisical-helm-charts/secrets-operator --version=0.1.4 --set controllerManager.manager.image.tag=v0.2.0
     ```
