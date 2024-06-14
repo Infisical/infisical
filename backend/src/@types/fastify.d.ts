@@ -6,6 +6,7 @@ import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-ap
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
+import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
@@ -14,6 +15,7 @@ import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-con
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TProjectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
+import { TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -29,6 +31,8 @@ import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
+import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
@@ -137,6 +141,9 @@ declare module "fastify" {
       ldap: TLdapConfigServiceFactory;
       auditLog: TAuditLogServiceFactory;
       auditLogStream: TAuditLogStreamServiceFactory;
+      certificate: TCertificateServiceFactory;
+      certificateAuthority: TCertificateAuthorityServiceFactory;
+      certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;
@@ -147,6 +154,7 @@ declare module "fastify" {
       projectUserAdditionalPrivilege: TProjectUserAdditionalPrivilegeServiceFactory;
       identityProjectAdditionalPrivilege: TIdentityProjectAdditionalPrivilegeServiceFactory;
       secretSharing: TSecretSharingServiceFactory;
+      rateLimit: TRateLimitServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

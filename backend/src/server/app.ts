@@ -71,6 +71,7 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
     if (appCfg.isProductionMode) {
       await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg());
     }
+
     await server.register(helmet, { contentSecurityPolicy: false });
 
     await server.register(maintenanceMode);

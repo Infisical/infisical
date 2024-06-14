@@ -1,4 +1,6 @@
 /* eslint-disable no-await-in-loop */
+import { AxiosError } from "axios";
+
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
@@ -67,7 +69,10 @@ const MAX_SYNC_SECRET_DEPTH = 5;
 export const uniqueSecretQueueKey = (environment: string, secretPath: string) =>
   `secret-queue-dedupe-${environment}-${secretPath}`;
 
-type TIntegrationSecret = Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }>;
+type TIntegrationSecret = Record<
+  string,
+  { value: string; comment?: string; skipMultilineEncoding?: boolean | null | undefined }
+>;
 export const secretQueueFactory = ({
   queueService,
   integrationDAL,
@@ -567,11 +572,14 @@ export const secretQueueFactory = ({
           isSynced: true
         });
       } catch (err: unknown) {
-        logger.info("Secret integration sync error:", err);
+        logger.info("Secret integration sync error: %o", err);
+        const message =
+          err instanceof AxiosError ? JSON.stringify((err as AxiosError)?.response?.data) : (err as Error)?.message;
+
         await integrationDAL.updateById(integration.id, {
           lastSyncJobId: job.id,
           lastUsed: new Date(),
-          syncMessage: (err as Error)?.message,
+          syncMessage: message,
           isSynced: false
         });
       }

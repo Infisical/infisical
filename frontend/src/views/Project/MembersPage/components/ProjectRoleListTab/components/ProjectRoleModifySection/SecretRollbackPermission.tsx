@@ -53,6 +53,7 @@ export const SecretRollbackPermission = ({ isNonEditable, setValue, control }: P
   }, [selectedPermissionCategory]);
 
   const handlePermissionChange = (val: Permission) => {
+    if(!val) return;
     if (val === Permission.Custom) setIsCustom.on();
     else setIsCustom.off();
 

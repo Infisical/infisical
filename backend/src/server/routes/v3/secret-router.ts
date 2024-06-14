@@ -306,7 +306,16 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          secret: secretRawSchema
+          secret: secretRawSchema.extend({
+            tags: SecretTagsSchema.pick({
+              id: true,
+              slug: true,
+              name: true,
+              color: true
+            })
+              .array()
+              .optional()
+          })
         })
       }
     },
@@ -404,6 +413,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
           .describe(RAW_SECRETS.CREATE.secretValue),
         secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
+        tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds),
         skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.CREATE.type)
       }),
@@ -427,7 +437,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         type: req.body.type,
         secretValue: req.body.secretValue,
         skipMultilineEncoding: req.body.skipMultilineEncoding,
-        secretComment: req.body.secretComment
+        secretComment: req.body.secretComment,
+        tagIds: req.body.tagIds
       });
 
       await server.services.auditLog.createAuditLog({
@@ -492,7 +503,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .transform(removeTrailingSlash)
           .describe(RAW_SECRETS.UPDATE.secretPath),
         skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
-        type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.UPDATE.type)
+        type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.UPDATE.type),
+        tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds)
       }),
       response: {
         200: z.object({
@@ -513,7 +525,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName: req.params.secretName,
         type: req.body.type,
         secretValue: req.body.secretValue,
-        skipMultilineEncoding: req.body.skipMultilineEncoding
+        skipMultilineEncoding: req.body.skipMultilineEncoding,
+        tagIds: req.body.tagIds
       });
 
       await server.services.auditLog.createAuditLog({

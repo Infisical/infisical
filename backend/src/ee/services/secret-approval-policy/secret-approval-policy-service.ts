@@ -4,6 +4,7 @@ import picomatch from "picomatch";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -207,7 +208,8 @@ export const secretApprovalPolicyServiceFactory = ({
     return sapPolicies;
   };
 
-  const getSecretApprovalPolicy = async (projectId: string, environment: string, secretPath: string) => {
+  const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string) => {
+    const secretPath = removeTrailingSlash(path);
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     if (!env) throw new BadRequestError({ message: "Environment not found" });
 

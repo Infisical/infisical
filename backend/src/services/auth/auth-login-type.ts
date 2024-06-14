@@ -12,6 +12,7 @@ export type TLoginClientProofDTO = {
   providerAuthToken?: string;
   ip: string;
   userAgent: string;
+  captchaToken?: string;
 };
 
 export type TVerifyMfaTokenDTO = {

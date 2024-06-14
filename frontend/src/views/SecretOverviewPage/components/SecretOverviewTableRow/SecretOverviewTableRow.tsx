@@ -29,7 +29,7 @@ type Props = {
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
   onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
-  isImportedSecretPresentInEnv: (name: string, env: string, secretName: string) => boolean;
+  isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
 };
 
 export const SecretOverviewTableRow = ({
@@ -53,9 +53,8 @@ export const SecretOverviewTableRow = ({
     <>
       <Tr isHoverable isSelectable onClick={() => setIsFormExpanded.toggle()} className="group">
         <Td
-          className={`sticky left-0 z-10 bg-mineshaft-800 bg-clip-padding py-0 px-0 group-hover:bg-mineshaft-700 ${
-            isFormExpanded && "border-t-2 border-mineshaft-500"
-          }`}
+          className={`sticky left-0 z-10 bg-mineshaft-800 bg-clip-padding py-0 px-0 group-hover:bg-mineshaft-700 ${isFormExpanded && "border-t-2 border-mineshaft-500"
+            }`}
         >
           <div className="h-full w-full border-r border-mineshaft-600 py-2.5 px-5">
             <div className="flex items-center space-x-5">
@@ -83,7 +82,7 @@ export const SecretOverviewTableRow = ({
         {environments.map(({ slug }, i) => {
           const secret = getSecretByKey(slug, secretKey);
 
-          const isSecretImported = isImportedSecretPresentInEnv(secretPath, slug, secretKey);
+          const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
 
           const isSecretPresent = Boolean(secret);
           const isSecretEmpty = secret?.value === "";
@@ -108,8 +107,8 @@ export const SecretOverviewTableRow = ({
                         isSecretPresent
                           ? "Present secret"
                           : isSecretImported
-                          ? "Imported secret"
-                          : "Missing secret"
+                            ? "Imported secret"
+                            : "Missing secret"
                       }
                     >
                       <FontAwesomeIcon
@@ -133,9 +132,8 @@ export const SecretOverviewTableRow = ({
         <Tr>
           <Td
             colSpan={totalCols}
-            className={`bg-bunker-600 px-0 py-0 ${
-              isFormExpanded && "border-b-2 border-mineshaft-500"
-            }`}
+            className={`bg-bunker-600 px-0 py-0 ${isFormExpanded && "border-b-2 border-mineshaft-500"
+              }`}
           >
             <div
               className="ml-2 p-2"
@@ -180,11 +178,7 @@ export const SecretOverviewTableRow = ({
                       const secret = getSecretByKey(slug, secretKey);
                       const isCreatable = !secret;
 
-                      const isImportedSecret = isImportedSecretPresentInEnv(
-                        secretPath,
-                        slug,
-                        secretKey
-                      );
+                      const isImportedSecret = isImportedSecretPresentInEnv(slug, secretKey);
 
                       return (
                         <tr

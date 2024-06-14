@@ -18,12 +18,16 @@ import {
   Tab,
   TabList,
   TabPanel,
-  Tabs} from "@app/components/v2";
+  Tabs
+} from "@app/components/v2";
 import { useOrganization, useServerConfig, useUser } from "@app/context";
 import { useUpdateServerConfig } from "@app/hooks/api";
 
+import { RateLimitPanel } from "./RateLimitPanel";
+
 enum TabSections {
-  Settings = "settings"
+  Settings = "settings",
+  RateLimit = "rate-limit"
 }
 
 enum SignUpModes {
@@ -117,6 +121,7 @@ export const AdminDashboardPage = () => {
             <TabList>
               <div className="flex w-full flex-row border-b border-mineshaft-600">
                 <Tab value={TabSections.Settings}>General</Tab>
+                <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
               </div>
             </TabList>
             <TabPanel value={TabSections.Settings}>
@@ -232,6 +237,9 @@ export const AdminDashboardPage = () => {
                   Save
                 </Button>
               </form>
+            </TabPanel>
+            <TabPanel value={TabSections.RateLimit}>
+              <RateLimitPanel />
             </TabPanel>
           </Tabs>
         </div>

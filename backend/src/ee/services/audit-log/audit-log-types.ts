@@ -1,5 +1,6 @@
 import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 
 export type TListProjectAuditLogDTO = {
@@ -104,7 +105,21 @@ export enum EventType {
   SECRET_APPROVAL_MERGED = "secret-approval-merged",
   SECRET_APPROVAL_REQUEST = "secret-approval-request",
   SECRET_APPROVAL_CLOSED = "secret-approval-closed",
-  SECRET_APPROVAL_REOPENED = "secret-approval-reopened"
+  SECRET_APPROVAL_REOPENED = "secret-approval-reopened",
+  CREATE_CA = "create-certificate-authority",
+  GET_CA = "get-certificate-authority",
+  UPDATE_CA = "update-certificate-authority",
+  DELETE_CA = "delete-certificate-authority",
+  GET_CA_CSR = "get-certificate-authority-csr",
+  GET_CA_CERT = "get-certificate-authority-cert",
+  SIGN_INTERMEDIATE = "sign-intermediate",
+  IMPORT_CA_CERT = "import-certificate-authority-cert",
+  GET_CA_CRL = "get-certificate-authority-crl",
+  ISSUE_CERT = "issue-cert",
+  GET_CERT = "get-cert",
+  DELETE_CERT = "delete-cert",
+  REVOKE_CERT = "revoke-cert",
+  GET_CERT_BODY = "get-cert-body"
 }
 
 interface UserActorMetadata {
@@ -843,6 +858,125 @@ interface SecretApprovalRequest {
   };
 }
 
+interface CreateCa {
+  type: EventType.CREATE_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCa {
+  type: EventType.GET_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface UpdateCa {
+  type: EventType.UPDATE_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+    status: CaStatus;
+  };
+}
+
+interface DeleteCa {
+  type: EventType.DELETE_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCsr {
+  type: EventType.GET_CA_CSR;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCert {
+  type: EventType.GET_CA_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface SignIntermediate {
+  type: EventType.SIGN_INTERMEDIATE;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+  };
+}
+
+interface ImportCaCert {
+  type: EventType.IMPORT_CA_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCrl {
+  type: EventType.GET_CA_CRL;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface IssueCert {
+  type: EventType.ISSUE_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+  };
+}
+
+interface GetCert {
+  type: EventType.GET_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface DeleteCert {
+  type: EventType.DELETE_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface RevokeCert {
+  type: EventType.REVOKE_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface GetCertBody {
+  type: EventType.GET_CERT_BODY;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -910,4 +1044,18 @@ export type Event =
   | SecretApprovalMerge
   | SecretApprovalClosed
   | SecretApprovalRequest
-  | SecretApprovalReopened;
+  | SecretApprovalReopened
+  | CreateCa
+  | GetCa
+  | UpdateCa
+  | DeleteCa
+  | GetCaCsr
+  | GetCaCert
+  | SignIntermediate
+  | ImportCaCert
+  | GetCaCrl
+  | IssueCert
+  | GetCert
+  | DeleteCert
+  | RevokeCert
+  | GetCertBody;

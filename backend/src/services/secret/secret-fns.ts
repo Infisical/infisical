@@ -309,7 +309,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
   };
 
   const expandSecrets = async (
-    secrets: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }>
+    secrets: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean | null }>
   ) => {
     const expandedSec: Record<string, string> = {};
     const interpolatedSec: Record<string, string> = {};
@@ -329,8 +329,8 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
         // should not do multi line encoding if user has set it to skip
         // eslint-disable-next-line
         secrets[key].value = secrets[key].skipMultilineEncoding
-          ? expandedSec[key]
-          : formatMultiValueEnv(expandedSec[key]);
+          ? formatMultiValueEnv(expandedSec[key])
+          : expandedSec[key];
         // eslint-disable-next-line
         continue;
       }
@@ -347,7 +347,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
       );
 
       // eslint-disable-next-line
-      secrets[key].value = secrets[key].skipMultilineEncoding ? expandedVal : formatMultiValueEnv(expandedVal);
+      secrets[key].value = secrets[key].skipMultilineEncoding ? formatMultiValueEnv(expandedVal) : expandedVal;
     }
 
     return secrets;
@@ -356,7 +356,17 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
 };
 
 export const decryptSecretRaw = (
-  secret: TSecrets & { workspace: string; environment: string; secretPath: string },
+  secret: TSecrets & {
+    workspace: string;
+    environment: string;
+    secretPath: string;
+    tags?: {
+      id: string;
+      slug: string;
+      color?: string | null;
+      name: string;
+    }[];
+  },
   key: string
 ) => {
   const secretKey = decryptSymmetric128BitHexKeyUTF8({
@@ -395,7 +405,9 @@ export const decryptSecretRaw = (
     type: secret.type,
     _id: secret.id,
     id: secret.id,
-    user: secret.userId
+    user: secret.userId,
+    tags: secret.tags,
+    skipMultilineEncoding: secret.skipMultilineEncoding
   };
 };
 

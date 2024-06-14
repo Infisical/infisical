@@ -42,7 +42,8 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
       name,
       slug,
       color,
-      createdBy: actorId
+      createdBy: actorId,
+      createdByActorType: actor
     });
     return newTag;
   };

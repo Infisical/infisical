@@ -1,3 +1,4 @@
+import { CronJob } from "cron";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -13,6 +14,8 @@ import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-lo
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { auditLogStreamDALFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-dal";
 import { auditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
+import { certificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { certificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
 import { dynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { dynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/providers";
@@ -33,6 +36,8 @@ import { permissionDALFactory } from "@app/ee/services/permission/permission-dal
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { projectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
+import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
+import { rateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
@@ -71,6 +76,14 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
+import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
+import { certificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
+import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
@@ -185,6 +198,7 @@ export const registerRoutes = async (
   const incidentContactDAL = incidentContactDALFactory(db);
   const orgRoleDAL = orgRoleDALFactory(db);
   const superAdminDAL = superAdminDALFactory(db);
+  const rateLimitDAL = rateLimitDALFactory(db);
   const apiKeyDAL = apiKeyDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
@@ -444,6 +458,10 @@ export const registerRoutes = async (
     orgService,
     keyStore
   });
+  const rateLimitService = rateLimitServiceFactory({
+    rateLimitDAL,
+    licenseService
+  });
   const apiKeyService = apiKeyServiceFactory({ apiKeyDAL, userDAL });
 
   const secretScanningQueue = secretScanningQueueFactory({
@@ -506,6 +524,58 @@ export const registerRoutes = async (
     projectUserMembershipRoleDAL
   });
 
+  const certificateAuthorityDAL = certificateAuthorityDALFactory(db);
+  const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
+  const certificateAuthoritySecretDAL = certificateAuthoritySecretDALFactory(db);
+  const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
+
+  const certificateDAL = certificateDALFactory(db);
+  const certificateBodyDAL = certificateBodyDALFactory(db);
+
+  const certificateService = certificateServiceFactory({
+    certificateDAL,
+    certificateBodyDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthorityCrlDAL,
+    certificateAuthoritySecretDAL,
+    projectDAL,
+    kmsService,
+    permissionService
+  });
+
+  const certificateAuthorityQueue = certificateAuthorityQueueFactory({
+    certificateAuthorityCrlDAL,
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL,
+    certificateDAL,
+    projectDAL,
+    kmsService,
+    queueService
+  });
+
+  const certificateAuthorityService = certificateAuthorityServiceFactory({
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCrlDAL,
+    certificateAuthorityQueue,
+    certificateDAL,
+    certificateBodyDAL,
+    projectDAL,
+    kmsService,
+    permissionService
+  });
+
+  const certificateAuthorityCrlService = certificateAuthorityCrlServiceFactory({
+    certificateAuthorityDAL,
+    certificateAuthorityCrlDAL,
+    projectDAL,
+    kmsService,
+    permissionService,
+    licenseService
+  });
+
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
@@ -522,6 +592,8 @@ export const registerRoutes = async (
     projectMembershipDAL,
     folderDAL,
     licenseService,
+    certificateAuthorityDAL,
+    certificateDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore
@@ -824,6 +896,9 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,
     queueService,
+    secretVersionDAL,
+    secretFolderVersionDAL: folderVersionDAL,
+    snapshotDAL,
     identityAccessTokenDAL,
     secretSharingDAL
   });
@@ -859,6 +934,7 @@ export const registerRoutes = async (
     secret: secretService,
     secretReplication: secretReplicationService,
     secretTag: secretTagService,
+    rateLimit: rateLimitService,
     folder: folderService,
     secretImport: secretImportService,
     projectBot: projectBotService,
@@ -886,6 +962,9 @@ export const registerRoutes = async (
     ldap: ldapService,
     auditLog: auditLogService,
     auditLogStream: auditLogStreamService,
+    certificate: certificateService,
+    certificateAuthority: certificateAuthorityService,
+    certificateAuthorityCrl: certificateAuthorityCrlService,
     secretScanning: secretScanningService,
     license: licenseService,
     trustedIp: trustedIpService,
@@ -896,6 +975,14 @@ export const registerRoutes = async (
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
     secretSharing: secretSharingService
   });
+
+  const cronJobs: CronJob[] = [];
+  if (appCfg.isProductionMode) {
+    const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
+    if (rateLimitSyncJob) {
+      cronJobs.push(rateLimitSyncJob);
+    }
+  }
 
   server.decorate<FastifyZodProvider["store"]>("store", {
     user: userDAL
@@ -951,6 +1038,7 @@ export const registerRoutes = async (
   await server.register(registerV3Routes, { prefix: "/api/v3" });
 
   server.addHook("onClose", async () => {
+    cronJobs.forEach((job) => job.stop());
     await telemetryService.flushAll();
   });
 };

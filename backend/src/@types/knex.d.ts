@@ -32,6 +32,27 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
+  TCertificateAuthorities,
+  TCertificateAuthoritiesInsert,
+  TCertificateAuthoritiesUpdate,
+  TCertificateAuthorityCerts,
+  TCertificateAuthorityCertsInsert,
+  TCertificateAuthorityCertsUpdate,
+  TCertificateAuthorityCrl,
+  TCertificateAuthorityCrlInsert,
+  TCertificateAuthorityCrlUpdate,
+  TCertificateAuthoritySecret,
+  TCertificateAuthoritySecretInsert,
+  TCertificateAuthoritySecretUpdate,
+  TCertificateBodies,
+  TCertificateBodiesInsert,
+  TCertificateBodiesUpdate,
+  TCertificates,
+  TCertificateSecrets,
+  TCertificateSecretsInsert,
+  TCertificateSecretsUpdate,
+  TCertificatesInsert,
+  TCertificatesUpdate,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
@@ -149,6 +170,9 @@ import {
   TProjectUserMembershipRoles,
   TProjectUserMembershipRolesInsert,
   TProjectUserMembershipRolesUpdate,
+  TRateLimit,
+  TRateLimitInsert,
+  TRateLimitUpdate,
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
@@ -257,6 +281,37 @@ declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.Groups]: Knex.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.CertificateAuthority]: Knex.CompositeTableType<
+      TCertificateAuthorities,
+      TCertificateAuthoritiesInsert,
+      TCertificateAuthoritiesUpdate
+    >;
+    [TableName.CertificateAuthorityCert]: Knex.CompositeTableType<
+      TCertificateAuthorityCerts,
+      TCertificateAuthorityCertsInsert,
+      TCertificateAuthorityCertsUpdate
+    >;
+    [TableName.CertificateAuthoritySecret]: Knex.CompositeTableType<
+      TCertificateAuthoritySecret,
+      TCertificateAuthoritySecretInsert,
+      TCertificateAuthoritySecretUpdate
+    >;
+    [TableName.CertificateAuthorityCrl]: Knex.CompositeTableType<
+      TCertificateAuthorityCrl,
+      TCertificateAuthorityCrlInsert,
+      TCertificateAuthorityCrlUpdate
+    >;
+    [TableName.Certificate]: Knex.CompositeTableType<TCertificates, TCertificatesInsert, TCertificatesUpdate>;
+    [TableName.CertificateBody]: Knex.CompositeTableType<
+      TCertificateBodies,
+      TCertificateBodiesInsert,
+      TCertificateBodiesUpdate
+    >;
+    [TableName.CertificateSecret]: Knex.CompositeTableType<
+      TCertificateSecrets,
+      TCertificateSecretsInsert,
+      TCertificateSecretsUpdate
+    >;
     [TableName.UserGroupMembership]: Knex.CompositeTableType<
       TUserGroupMembership,
       TUserGroupMembershipInsert,
@@ -343,6 +398,7 @@ declare module "knex/types/tables" {
       TSecretFolderVersionsUpdate
     >;
     [TableName.SecretSharing]: Knex.CompositeTableType<TSecretSharing, TSecretSharingInsert, TSecretSharingUpdate>;
+    [TableName.RateLimit]: Knex.CompositeTableType<TRateLimit, TRateLimitInsert, TRateLimitUpdate>;
     [TableName.SecretTag]: Knex.CompositeTableType<TSecretTags, TSecretTagsInsert, TSecretTagsUpdate>;
     [TableName.SecretImport]: Knex.CompositeTableType<TSecretImports, TSecretImportsInsert, TSecretImportsUpdate>;
     [TableName.Integration]: Knex.CompositeTableType<TIntegrations, TIntegrationsInsert, TIntegrationsUpdate>;
