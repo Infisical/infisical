@@ -7,7 +7,7 @@ import { decryptSymmetric } from "@app/components/utilities/cryptography/crypto"
 import { useTimedReset } from "@app/hooks";
 import { useGetActiveSharedSecretByIdAndHashedHex } from "@app/hooks/api/secretSharing";
 
-import { DragonMainImage, SecretTable } from "./components";
+import { SecretTable } from "./components";
 
 export const ShareSecretPublicPage = () => {
   const router = useRouter();
@@ -68,7 +68,7 @@ export const ShareSecretPublicPage = () => {
         A secret has been shared with you securely via Infisical
       </p>
       <div className="flex min-h-screen w-full flex-col md:flex-row">
-        <DragonMainImage />
+        {/* <DragonMainImage /> */}
         <div className="m-4 flex flex-1 flex-col items-center justify-start md:m-0">
           <p className="mt-8 mb-2 text-xl font-semibold text-mineshaft-100 md:mt-20">
             Shared Secret
