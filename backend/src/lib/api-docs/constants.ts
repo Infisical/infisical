@@ -343,7 +343,8 @@ export const RAW_SECRETS = {
     secretValue: "The value of the secret to create.",
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to create.",
-    workspaceId: "The ID of the project to create the secret in."
+    workspaceId: "The ID of the project to create the secret in.",
+    tagIds: "The ID of the tags to be attached to the created secret."
   },
   GET: {
     secretName: "The name of the secret to get.",
@@ -364,7 +365,8 @@ export const RAW_SECRETS = {
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to update.",
     projectSlug: "The slug of the project to update the secret in.",
-    workspaceId: "The ID of the project to update the secret in."
+    workspaceId: "The ID of the project to update the secret in.",
+    tagIds: "The ID of the tags to be attached to the updated secret."
   },
   DELETE: {
     secretName: "The name of the secret to delete.",
