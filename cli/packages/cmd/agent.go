@@ -20,6 +20,7 @@ import (
 	"text/template"
 	"time"
 
+	infisicalSdk "github.com/infisical/go-sdk"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v2"
 
@@ -85,15 +86,6 @@ type Template struct {
 			Timeout int64  `yaml:"timeout"` // Timeout for the command
 		} `yaml:"execute"` // Command to execute once the template has been rendered
 	} `yaml:"config"`
-}
-
-func newAgentTemplateChannels(templates []Template) map[string]chan bool {
-	// we keep each destination as an identifier for various channel
-	templateChannel := make(map[string]chan bool)
-	for _, template := range templates {
-		templateChannel[template.DestinationPath] = make(chan bool)
-	}
-	return templateChannel
 }
 
 type DynamicSecretLease struct {
@@ -296,7 +288,7 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 	}
 
 	switch rawConfig.Auth.Type {
-	case "universal-auth":
+	case string(util.AuthStrategy.UNIVERSAL_AUTH):
 		var tokenConfig UniversalAuth
 		if err := yaml.Unmarshal(configBytes, &tokenConfig); err != nil {
 			return nil, err
@@ -337,7 +329,7 @@ func dynamicSecretTemplateFunction(accessToken string, dynamicSecretManager *Dyn
 	return func(args ...string) (map[string]interface{}, error) {
 		argLength := len(args)
 		if argLength != 4 && argLength != 5 {
-			return nil, fmt.Errorf("Invalid arguments found for dynamic-secret function. Check template %i", templateId)
+			return nil, fmt.Errorf("invalid arguments found for dynamic-secret function. Check template %d", templateId)
 		}
 
 		projectSlug, envSlug, secretPath, slug, ttl := args[0], args[1], args[2], args[3], ""
@@ -421,32 +413,56 @@ func ProcessBase64Template(templateId int, encodedTemplate string, data interfac
 }
 
 type AgentManager struct {
-	accessToken                    string
-	accessTokenTTL                 time.Duration
-	accessTokenMaxTTL              time.Duration
-	accessTokenFetchedTime         time.Time
-	accessTokenRefreshedTime       time.Time
-	mutex                          sync.Mutex
-	filePaths                      []Sink // Store file paths if needed
-	templates                      []Template
-	dynamicSecretLeases            *DynamicSecretLeaseManager
-	clientIdPath                   string
-	clientSecretPath               string
-	newAccessTokenNotificationChan chan bool
-	removeClientSecretOnRead       bool
-	cachedClientSecret             string
-	exitAfterAuth                  bool
+	accessToken              string
+	accessTokenTTL           time.Duration
+	accessTokenMaxTTL        time.Duration
+	accessTokenFetchedTime   time.Time
+	accessTokenRefreshedTime time.Time
+	mutex                    sync.Mutex
+	filePaths                []Sink // Store file paths if needed
+	templates                []Template
+	dynamicSecretLeases      *DynamicSecretLeaseManager
+
+	universalAuthConfig UniversalAuth
+	authStrategy        util.AuthStrategyType
+
+	newAccessTokenNotificationChan        chan bool
+	removeUniversalAuthClientSecretOnRead bool
+	cachedUniversalAuthClientSecret       string
+	exitAfterAuth                         bool
+
+	infisicalClient infisicalSdk.InfisicalClientInterface
 }
 
-func NewAgentManager(fileDeposits []Sink, templates []Template, clientIdPath string, clientSecretPath string, newAccessTokenNotificationChan chan bool, removeClientSecretOnRead bool, exitAfterAuth bool) *AgentManager {
+type NewAgentMangerOptions struct {
+	FileDeposits []Sink
+	Templates    []Template
+
+	UniversalAuthConfig UniversalAuth
+	AuthStrategy        util.AuthStrategyType
+
+	NewAccessTokenNotificationChan chan bool
+	ExitAfterAuth                  bool
+}
+
+func NewAgentManager(options NewAgentMangerOptions) *AgentManager {
 	return &AgentManager{
-		filePaths:                      fileDeposits,
-		templates:                      templates,
-		clientIdPath:                   clientIdPath,
-		clientSecretPath:               clientSecretPath,
-		newAccessTokenNotificationChan: newAccessTokenNotificationChan,
-		removeClientSecretOnRead:       removeClientSecretOnRead,
-		exitAfterAuth:                  exitAfterAuth,
+		filePaths: options.FileDeposits,
+		templates: options.Templates,
+
+		universalAuthConfig: options.UniversalAuthConfig,
+		authStrategy:        options.AuthStrategy,
+
+		newAccessTokenNotificationChan: options.NewAccessTokenNotificationChan,
+		exitAfterAuth:                  options.ExitAfterAuth,
+
+		infisicalClient: infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
+			SiteUrl:   config.INFISICAL_URL,
+			UserAgent: "infisical-agent",
+		}),
+
+		// clientIdPath: clientIdPath,
+		// clientSecretPath:               clientSecretPath,
 	}
 
 }
@@ -469,52 +485,61 @@ func (tm *AgentManager) GetToken() string {
 	return tm.accessToken
 }
 
-// Fetches a new access token using client credentials
-func (tm *AgentManager) FetchNewAccessToken() error {
+func fetchUniversalAuthAccessToken(tm *AgentManager) (credential infisicalSdk.MachineIdentityCredential, e error) {
+
 	clientID := os.Getenv(util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
 	if clientID == "" {
-		clientIDAsByte, err := ReadFile(tm.clientIdPath)
+		clientIDAsByte, err := ReadFile(tm.universalAuthConfig.ClientIDPath)
 		if err != nil {
-			return fmt.Errorf("unable to read client id from file path '%s' due to error: %v", tm.clientIdPath, err)
+			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to read client id from file path '%s' due to error: %v", tm.universalAuthConfig.ClientIDPath, err)
 		}
 		clientID = string(clientIDAsByte)
 	}
 
 	clientSecret := os.Getenv("INFISICAL_UNIVERSAL_CLIENT_SECRET")
 	if clientSecret == "" {
-		clientSecretAsByte, err := ReadFile(tm.clientSecretPath)
+		clientSecretAsByte, err := ReadFile(tm.universalAuthConfig.ClientSecretPath)
 		if err != nil {
-			if len(tm.cachedClientSecret) == 0 {
-				return fmt.Errorf("unable to read client secret from file and no cached client secret found: %v", err)
+			if len(tm.cachedUniversalAuthClientSecret) == 0 {
+				return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to read client secret from file and no cached client secret found: %v", err)
 			} else {
-				clientSecretAsByte = []byte(tm.cachedClientSecret)
+				clientSecretAsByte = []byte(tm.cachedUniversalAuthClientSecret)
 			}
 		}
 		clientSecret = string(clientSecretAsByte)
 	}
 
-	// remove client secret after first read
-	if tm.removeClientSecretOnRead {
-		os.Remove(tm.clientSecretPath)
+	tm.cachedUniversalAuthClientSecret = clientSecret
+	if tm.removeUniversalAuthClientSecretOnRead {
+		defer os.Remove(tm.universalAuthConfig.ClientSecretPath)
 	}
 
-	// save as cache in memory
-	tm.cachedClientSecret = clientSecret
+	return tm.infisicalClient.Auth().UniversalAuthLogin(clientID, clientSecret)
 
-	loginResponse, err := util.UniversalAuthLogin(clientID, clientSecret)
+}
+
+// Fetches a new access token using client credentials
+func (tm *AgentManager) FetchNewAccessToken() error {
+
+	authStrategies := map[util.AuthStrategyType]func(agentManager *AgentManager) (credential infisicalSdk.MachineIdentityCredential, e error){
+		util.AuthStrategy.UNIVERSAL_AUTH: fetchUniversalAuthAccessToken,
+	}
+
+	credential, err := authStrategies[tm.authStrategy](tm)
+
 	if err != nil {
 		return err
 	}
 
-	accessTokenTTL := time.Duration(loginResponse.AccessTokenTTL * int(time.Second))
-	accessTokenMaxTTL := time.Duration(loginResponse.AccessTokenMaxTTL * int(time.Second))
+	accessTokenTTL := time.Duration(credential.ExpiresIn * int64(time.Second))
+	accessTokenMaxTTL := time.Duration(credential.AccessTokenMaxTTL * int64(time.Second))
 
 	if accessTokenTTL <= time.Duration(5)*time.Second {
-		util.PrintErrorMessageAndExit("At this this, agent does not support refresh of tokens with 5 seconds or less ttl. Please increase access token ttl and try again")
+		util.PrintErrorMessageAndExit("At this time, agent does not support refresh of tokens with 5 seconds or less ttl. Please increase access token ttl and try again")
 	}
 
 	tm.accessTokenFetchedTime = time.Now()
-	tm.SetToken(loginResponse.AccessToken, accessTokenTTL, accessTokenMaxTTL)
+	tm.SetToken(credential.AccessToken, accessTokenTTL, accessTokenMaxTTL)
 
 	return nil
 }
@@ -527,7 +552,7 @@ func (tm *AgentManager) RefreshAccessToken() error {
 		SetRetryWaitTime(5 * time.Second)
 
 	accessToken := tm.GetToken()
-	response, err := api.CallUniversalAuthRefreshAccessToken(httpClient, api.UniversalAuthRefreshRequest{AccessToken: accessToken})
+	response, err := api.CallMachineIdentityRefreshAccessToken(httpClient, api.UniversalAuthRefreshRequest{AccessToken: accessToken})
 	if err != nil {
 		return err
 	}
@@ -564,6 +589,7 @@ func (tm *AgentManager) ManageTokenLifecycle() {
 				continue
 			}
 		} else if time.Now().After(accessTokenMaxTTLExpiresInTime) {
+			// case: token has reached max ttl and we should re-authenticate entirely (cannot refresh)
 			log.Info().Msgf("token has reached max ttl, attempting to re authenticate...")
 			err := tm.FetchNewAccessToken()
 			if err != nil {
@@ -574,6 +600,7 @@ func (tm *AgentManager) ManageTokenLifecycle() {
 				continue
 			}
 		} else {
+			// case: token ttl has expired, but the token is still within max ttl, so we can refresh
 			log.Info().Msgf("attempting to refresh existing token...")
 			err := tm.RefreshAccessToken()
 			if err != nil {
@@ -770,8 +797,10 @@ var agentCmd = &cobra.Command{
 			return
 		}
 
-		if agentConfig.Auth.Type != "universal-auth" {
-			util.PrintErrorMessageAndExit("Only auth type of 'universal-auth' is supported at this time")
+		authMethodValid, authStrategy := util.IsAuthMethodValid(agentConfig.Auth.Type)
+
+		if !authMethodValid {
+			util.PrintErrorMessageAndExit("Invalid auth method provided. Please provide a valid auth method")
 		}
 
 		configUniversalAuthType := agentConfig.Auth.Config.(UniversalAuth)
@@ -781,7 +810,15 @@ var agentCmd = &cobra.Command{
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 		filePaths := agentConfig.Sinks
-		tm := NewAgentManager(filePaths, agentConfig.Templates, configUniversalAuthType.ClientIDPath, configUniversalAuthType.ClientSecretPath, tokenRefreshNotifier, configUniversalAuthType.RemoveClientSecretOnRead, agentConfig.Infisical.ExitAfterAuth)
+		tm := NewAgentManager(NewAgentMangerOptions{
+			FileDeposits:                   filePaths,
+			Templates:                      agentConfig.Templates,
+			UniversalAuthConfig:            configUniversalAuthType,
+			NewAccessTokenNotificationChan: tokenRefreshNotifier,
+			ExitAfterAuth:                  agentConfig.Infisical.ExitAfterAuth,
+			AuthStrategy:                   authStrategy,
+		})
+
 		tm.dynamicSecretLeases = NewDynamicSecretLeaseManager(sigChan)
 
 		go tm.ManageTokenLifecycle()
