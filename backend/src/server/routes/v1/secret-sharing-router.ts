@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 import { SecretSharingSchema } from "@app/db/schemas";
-import { publicEndpointLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import {
+  publicEndpointLimit,
+  publicSecretShareCreationLimit,
+  readLimit,
+  writeLimit
+} from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -72,7 +77,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "POST",
-    url: "/",
+    url: "/public",
     config: {
       rateLimit: writeLimit
     },
@@ -82,9 +87,42 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         iv: z.string(),
         tag: z.string(),
         hashedHex: z.string(),
-        expiresAt: z
-          .string()
-          .refine((date) => date === undefined || new Date(date) > new Date(), "Expires at should be a future date"),
+        expiresAt: z.string(),
+        expiresAfterViews: z.number()
+      }),
+      response: {
+        200: z.object({
+          id: z.string().uuid()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { encryptedValue, iv, tag, hashedHex, expiresAt, expiresAfterViews } = req.body;
+      const sharedSecret = await req.server.services.secretSharing.createPublicSharedSecret({
+        encryptedValue,
+        iv,
+        tag,
+        hashedHex,
+        expiresAt: new Date(expiresAt),
+        expiresAfterViews
+      });
+      return { id: sharedSecret.id };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/",
+    config: {
+      rateLimit: publicSecretShareCreationLimit
+    },
+    schema: {
+      body: z.object({
+        encryptedValue: z.string(),
+        iv: z.string(),
+        tag: z.string(),
+        hashedHex: z.string(),
+        expiresAt: z.string(),
         expiresAfterViews: z.number()
       }),
       response: {

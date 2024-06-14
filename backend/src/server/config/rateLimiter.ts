@@ -70,8 +70,15 @@ export const creationLimit: RateLimitOptions = {
 
 // Public endpoints to avoid brute force attacks
 export const publicEndpointLimit: RateLimitOptions = {
-  // Shared Secrets
+  // Read Shared Secrets
   timeWindow: 60 * 1000,
   max: () => getRateLimiterConfig().publicEndpointLimit,
+  keyGenerator: (req) => req.realIp
+};
+
+export const publicSecretShareCreationLimit: RateLimitOptions = {
+  // Create Shared Secrets
+  timeWindow: 60 * 1000,
+  max: 5,
   keyGenerator: (req) => req.realIp
 };

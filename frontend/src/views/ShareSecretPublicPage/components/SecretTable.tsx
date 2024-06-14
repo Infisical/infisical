@@ -1,7 +1,7 @@
 import { faCheck, faCopy, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { EmptyState, IconButton, SecretInput, Td, Tr } from "@app/components/v2";
+import { EmptyState, IconButton, Td, Tr } from "@app/components/v2";
 
 type Props = {
   isLoading: boolean;
@@ -16,7 +16,7 @@ export const SecretTable = ({
   isUrlCopied,
   copyUrlToClipboard
 }: Props) => (
-  <div className="flex items-center rounded border border-solid border-mineshaft-700 bg-mineshaft-800 p-4">
+  <div className="flex w-full items-center justify-center rounded border border-solid border-mineshaft-700 bg-mineshaft-800 p-2">
     {isLoading && <div className="bg-mineshaft-800 text-center text-bunker-400">Loading...</div>}
     {!isLoading && !decryptedSecret && (
       <Tr>
@@ -26,19 +26,23 @@ export const SecretTable = ({
       </Tr>
     )}
     {!isLoading && decryptedSecret && (
-      <>
-        <div className="min-w-[12rem] max-w-[20rem] flex-1 break-words pr-4">
-          <SecretInput isVisible value={decryptedSecret} readOnly />
+      <div className="dark relative flex h-full w-full items-center overflow-y-auto border border-mineshaft-700 bg-mineshaft-900 p-2">
+        <div className="thin-scrollbar flex h-full max-h-44 w-full flex-1 overflow-y-scroll break-words pr-4 dark:[color-scheme:dark]">
+          <div className="align-center flex w-full min-w-full whitespace-pre-line">
+            {decryptedSecret}
+          </div>
         </div>
         <IconButton
+          variant="outline_bg"
+          colorSchema="primary"
           ariaLabel="copy to clipboard"
           onClick={copyUrlToClipboard}
-          className="rounded p-2 hover:bg-gray-700"
+          className="mx-1 flex max-h-8 items-center rounded"
           size="xs"
         >
-          <FontAwesomeIcon icon={isUrlCopied ? faCheck : faCopy} />
+          <FontAwesomeIcon className="pr-2" icon={isUrlCopied ? faCheck : faCopy} /> Copy
         </IconButton>
-      </>
+      </div>
     )}
   </div>
 );

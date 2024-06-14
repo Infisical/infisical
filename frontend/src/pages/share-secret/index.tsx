@@ -2,7 +2,7 @@ import Head from "next/head";
 
 import { ShareSecretPublicPage } from "@app/views/ShareSecretPublicPage";
 
-const SecretSharedPublicPage = () => {
+const ShareNewPublicSecretPage = () => {
   return (
     <>
       <Head>
@@ -13,12 +13,12 @@ const SecretSharedPublicPage = () => {
         <meta name="og:description" content="" />
       </Head>
       <div className="dark h-full">
-        <ShareSecretPublicPage isNewSession={false} />
+        <ShareSecretPublicPage isNewSession />
       </div>
     </>
   );
 };
 
-export default SecretSharedPublicPage;
+export default ShareNewPublicSecretPage;
 
-SecretSharedPublicPage.requireAuth = false;
+ShareNewPublicSecretPage.requireAuth = false;
