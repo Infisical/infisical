@@ -60,6 +60,28 @@ type UniversalAuth struct {
 	RemoveClientSecretOnRead bool   `yaml:"remove_client_secret_on_read"`
 }
 
+type KubernetesAuth struct {
+	IdentityID              string `yaml:"identity-id"`
+	ServiceAccountTokenPath string `yaml:"service-account-token-path"`
+}
+
+type AzureAuth struct {
+	IdentityID string `yaml:"identity-id"`
+}
+
+type GcpIdTokenAuth struct {
+	IdentityID string `yaml:"identity-id"`
+}
+
+type GcpIamAuth struct {
+	IdentityID            string `yaml:"identity-id"`
+	ServiceAccountKeyPath string `yaml:"service-account-key-path"`
+}
+
+type AwsIamAuth struct {
+	IdentityID string `yaml:"identity-id"`
+}
+
 type OAuthConfig struct {
 	ClientID     string `yaml:"client-id"`
 	ClientSecret string `yaml:"client-secret"`
@@ -248,6 +270,14 @@ func WriteBytesToFile(data *bytes.Buffer, outputPath string) error {
 	return err
 }
 
+func ParseAuthConfig(authConfigFile []byte, destination interface{}) error {
+	if err := yaml.Unmarshal(authConfigFile, destination); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func ParseAgentConfig(configFile []byte) (*Config, error) {
 	var rawConfig struct {
 		Infisical InfisicalConfig `yaml:"infisical"`
@@ -275,34 +305,11 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 	config := &Config{
 		Infisical: rawConfig.Infisical,
 		Auth: AuthConfig{
-			Type: rawConfig.Auth.Type,
+			Type:   rawConfig.Auth.Type,
+			Config: rawConfig.Auth.Config,
 		},
 		Sinks:     rawConfig.Sinks,
 		Templates: rawConfig.Templates,
-	}
-
-	// Marshal and then unmarshal the config based on the type
-	configBytes, err := yaml.Marshal(rawConfig.Auth.Config)
-	if err != nil {
-		return nil, err
-	}
-
-	switch rawConfig.Auth.Type {
-	case string(util.AuthStrategy.UNIVERSAL_AUTH):
-		var tokenConfig UniversalAuth
-		if err := yaml.Unmarshal(configBytes, &tokenConfig); err != nil {
-			return nil, err
-		}
-
-		config.Auth.Config = tokenConfig
-	case "oauth": // aws, gcp, k8s service account, etc
-		var oauthConfig OAuthConfig
-		if err := yaml.Unmarshal(configBytes, &oauthConfig); err != nil {
-			return nil, err
-		}
-		config.Auth.Config = oauthConfig
-	default:
-		return nil, fmt.Errorf("unknown auth type: %s", rawConfig.Auth.Type)
 	}
 
 	return config, nil
@@ -423,8 +430,8 @@ type AgentManager struct {
 	templates                []Template
 	dynamicSecretLeases      *DynamicSecretLeaseManager
 
-	universalAuthConfig UniversalAuth
-	authStrategy        util.AuthStrategyType
+	authConfigBytes []byte
+	authStrategy    util.AuthStrategyType
 
 	newAccessTokenNotificationChan        chan bool
 	removeUniversalAuthClientSecretOnRead bool
@@ -438,31 +445,29 @@ type NewAgentMangerOptions struct {
 	FileDeposits []Sink
 	Templates    []Template
 
-	UniversalAuthConfig UniversalAuth
-	AuthStrategy        util.AuthStrategyType
+	AuthConfigBytes []byte
+	AuthStrategy    util.AuthStrategyType
 
 	NewAccessTokenNotificationChan chan bool
 	ExitAfterAuth                  bool
 }
 
 func NewAgentManager(options NewAgentMangerOptions) *AgentManager {
+
 	return &AgentManager{
 		filePaths: options.FileDeposits,
 		templates: options.Templates,
 
-		universalAuthConfig: options.UniversalAuthConfig,
-		authStrategy:        options.AuthStrategy,
+		authConfigBytes: options.AuthConfigBytes,
+		authStrategy:    options.AuthStrategy,
 
 		newAccessTokenNotificationChan: options.NewAccessTokenNotificationChan,
 		exitAfterAuth:                  options.ExitAfterAuth,
 
 		infisicalClient: infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
 			SiteUrl:   config.INFISICAL_URL,
-			UserAgent: "infisical-agent",
+			UserAgent: api.USER_AGENT, // ? Should we perhaps use a different user agent for the Agent for better analytics?
 		}),
-
-		// clientIdPath: clientIdPath,
-		// clientSecretPath:               clientSecretPath,
 	}
 
 }
@@ -485,20 +490,25 @@ func (tm *AgentManager) GetToken() string {
 	return tm.accessToken
 }
 
-func fetchUniversalAuthAccessToken(tm *AgentManager) (credential infisicalSdk.MachineIdentityCredential, e error) {
+func (tm *AgentManager) FetchUniversalAuthAccessToken() (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	var universalAuthConfig UniversalAuth
+	if err := ParseAuthConfig(tm.authConfigBytes, &universalAuthConfig); err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
+	}
 
 	clientID := os.Getenv(util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
 	if clientID == "" {
-		clientIDAsByte, err := ReadFile(tm.universalAuthConfig.ClientIDPath)
+		clientIDAsByte, err := ReadFile(universalAuthConfig.ClientIDPath)
 		if err != nil {
-			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to read client id from file path '%s' due to error: %v", tm.universalAuthConfig.ClientIDPath, err)
+			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to read client id from file path '%s' due to error: %v", universalAuthConfig.ClientIDPath, err)
 		}
 		clientID = string(clientIDAsByte)
 	}
 
 	clientSecret := os.Getenv("INFISICAL_UNIVERSAL_CLIENT_SECRET")
 	if clientSecret == "" {
-		clientSecretAsByte, err := ReadFile(tm.universalAuthConfig.ClientSecretPath)
+		clientSecretAsByte, err := ReadFile(universalAuthConfig.ClientSecretPath)
 		if err != nil {
 			if len(tm.cachedUniversalAuthClientSecret) == 0 {
 				return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to read client secret from file and no cached client secret found: %v", err)
@@ -511,21 +521,142 @@ func fetchUniversalAuthAccessToken(tm *AgentManager) (credential infisicalSdk.Ma
 
 	tm.cachedUniversalAuthClientSecret = clientSecret
 	if tm.removeUniversalAuthClientSecretOnRead {
-		defer os.Remove(tm.universalAuthConfig.ClientSecretPath)
+		defer os.Remove(universalAuthConfig.ClientSecretPath)
 	}
 
 	return tm.infisicalClient.Auth().UniversalAuthLogin(clientID, clientSecret)
 
 }
 
+func (tm *AgentManager) FetchKubernetesAuthAccessToken() (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	var kubernetesAuthConfig KubernetesAuth
+	if err := ParseAuthConfig(tm.authConfigBytes, &kubernetesAuthConfig); err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
+	}
+
+	identityId := os.Getenv(util.INFISICAL_KUBERNETES_IDENTITY_ID_NAME)
+	if identityId == "" {
+		identityId = kubernetesAuthConfig.IdentityID
+
+		if identityId == "" {
+			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("kubernetes identity id not found")
+		}
+	}
+
+	serviceAccountTokenPath := os.Getenv(util.INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_NAME)
+	if serviceAccountTokenPath == "" {
+		serviceAccountTokenPath = kubernetesAuthConfig.ServiceAccountTokenPath
+		if serviceAccountTokenPath == "" {
+			serviceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+		}
+	}
+
+	return tm.infisicalClient.Auth().KubernetesAuthLogin(identityId, serviceAccountTokenPath)
+
+}
+
+func (tm *AgentManager) FetchAzureAuthAccessToken() (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	var azureAuthConfig AzureAuth
+	if err := ParseAuthConfig(tm.authConfigBytes, &azureAuthConfig); err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
+	}
+
+	identityId := os.Getenv(util.INFISICAL_AZURE_AUTH_IDENTITY_ID_NAME)
+	if identityId == "" {
+		identityId = azureAuthConfig.IdentityID
+		if identityId == "" {
+			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("azure identity id not found")
+		}
+	}
+
+	return tm.infisicalClient.Auth().AzureAuthLogin(identityId)
+
+}
+
+func (tm *AgentManager) FetchGcpIdTokenAuthAccessToken() (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	var gcpIdTokenAuthConfig GcpIdTokenAuth
+	if err := ParseAuthConfig(tm.authConfigBytes, &gcpIdTokenAuthConfig); err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
+	}
+
+	identityId := os.Getenv(util.INFISICAL_GCP_AUTH_IDENTITY_ID_NAME)
+	if identityId == "" {
+		identityId = gcpIdTokenAuthConfig.IdentityID
+		if identityId == "" {
+			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("gcp identity id not found")
+		}
+	}
+
+	return tm.infisicalClient.Auth().GcpIdTokenAuthLogin(identityId)
+
+}
+
+func (tm *AgentManager) FetchGcpIamAuthAccessToken() (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	var gcpIamAuthConfig GcpIamAuth
+	if err := ParseAuthConfig(tm.authConfigBytes, &gcpIamAuthConfig); err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
+	}
+
+	identityId := os.Getenv(util.INFISICAL_GCP_AUTH_IDENTITY_ID_NAME)
+	if identityId == "" {
+		identityId = gcpIamAuthConfig.IdentityID
+		if identityId == "" {
+			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("gcp identity id not found")
+		}
+	}
+
+	serviceAccountKeyPath := os.Getenv(util.INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH_NAME)
+	if serviceAccountKeyPath == "" {
+		serviceAccountKeyPath = gcpIamAuthConfig.ServiceAccountKeyPath
+		if serviceAccountKeyPath == "" {
+			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("gcp service account key path not found")
+		}
+	}
+
+	return tm.infisicalClient.Auth().GcpIamAuthLogin(identityId, serviceAccountKeyPath)
+
+}
+
+func (tm *AgentManager) FetchAwsIamAuthAccessToken() (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	var awsIamAuthConfig AwsIamAuth
+	if err := ParseAuthConfig(tm.authConfigBytes, &awsIamAuthConfig); err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
+	}
+
+	identityId := os.Getenv(util.INFISICAL_AWS_IAM_AUTH_IDENTITY_ID_NAME)
+	if identityId == "" {
+		identityId = awsIamAuthConfig.IdentityID
+		if identityId == "" {
+			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("aws identity id not found")
+		}
+	}
+
+	return tm.infisicalClient.Auth().AwsIamAuthLogin(identityId)
+
+}
+
 // Fetches a new access token using client credentials
 func (tm *AgentManager) FetchNewAccessToken() error {
 
-	authStrategies := map[util.AuthStrategyType]func(agentManager *AgentManager) (credential infisicalSdk.MachineIdentityCredential, e error){
-		util.AuthStrategy.UNIVERSAL_AUTH: fetchUniversalAuthAccessToken,
+	authStrategies := map[util.AuthStrategyType]func() (credential infisicalSdk.MachineIdentityCredential, e error){
+		util.AuthStrategy.UNIVERSAL_AUTH:    tm.FetchUniversalAuthAccessToken,
+		util.AuthStrategy.KUBERNETES_AUTH:   tm.FetchKubernetesAuthAccessToken,
+		util.AuthStrategy.AZURE_AUTH:        tm.FetchAzureAuthAccessToken,
+		util.AuthStrategy.GCP_ID_TOKEN_AUTH: tm.FetchGcpIdTokenAuthAccessToken,
+		util.AuthStrategy.GCP_IAM_AUTH:      tm.FetchGcpIamAuthAccessToken,
+		util.AuthStrategy.AWS_IAM_AUTH:      tm.FetchAwsIamAuthAccessToken,
 	}
 
-	credential, err := authStrategies[tm.authStrategy](tm)
+	if _, ok := authStrategies[tm.authStrategy]; !ok {
+		return fmt.Errorf("auth strategy %s not found", tm.authStrategy)
+	}
+
+	credential, err := authStrategies[tm.authStrategy]()
 
 	if err != nil {
 		return err
@@ -800,20 +931,25 @@ var agentCmd = &cobra.Command{
 		authMethodValid, authStrategy := util.IsAuthMethodValid(agentConfig.Auth.Type)
 
 		if !authMethodValid {
-			util.PrintErrorMessageAndExit("Invalid auth method provided. Please provide a valid auth method")
+			util.PrintErrorMessageAndExit(fmt.Sprintf("The auth method '%s' is not supported.", agentConfig.Auth.Type))
 		}
-
-		configUniversalAuthType := agentConfig.Auth.Config.(UniversalAuth)
 
 		tokenRefreshNotifier := make(chan bool)
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 		filePaths := agentConfig.Sinks
+
+		configBytes, err := yaml.Marshal(agentConfig.Auth.Config)
+		if err != nil {
+			log.Error().Msgf("unable to marshal auth config because %v", err)
+			return
+		}
+
 		tm := NewAgentManager(NewAgentMangerOptions{
 			FileDeposits:                   filePaths,
 			Templates:                      agentConfig.Templates,
-			UniversalAuthConfig:            configUniversalAuthType,
+			AuthConfigBytes:                configBytes,
 			NewAccessTokenNotificationChan: tokenRefreshNotifier,
 			ExitAfterAuth:                  agentConfig.Infisical.ExitAfterAuth,
 			AuthStrategy:                   authStrategy,
