@@ -86,7 +86,7 @@ export const rateLimitServiceFactory = ({ rateLimitDAL, licenseService }: TRateL
       return;
     }
 
-    logger.info("Setting up backround sync process for rate limits");
+    logger.info("Setting up background sync process for rate limits");
     // initial sync upon startup
     await syncRateLimitConfiguration();
 
