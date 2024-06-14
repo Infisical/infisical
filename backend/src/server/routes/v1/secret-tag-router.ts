@@ -23,7 +23,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspaceTags = await server.services.secretTag.getProjectTags({
         actor: req.permission.type,
@@ -57,7 +57,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspaceTag = await server.services.secretTag.createTag({
         actor: req.permission.type,
@@ -88,7 +88,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspaceTag = await server.services.secretTag.deleteTag({
         actor: req.permission.type,

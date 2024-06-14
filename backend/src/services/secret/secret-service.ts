@@ -608,7 +608,7 @@ export const secretServiceFactory = ({
     }
 
     const secret = await (version === undefined
-      ? secretDAL.findOne({
+      ? secretDAL.findOneWithTags({
           folderId,
           type: secretType,
           userId: secretType === SecretType.Personal ? actorId : null,
@@ -1120,7 +1120,8 @@ export const secretServiceFactory = ({
     secretPath,
     secretValue,
     secretComment,
-    skipMultilineEncoding
+    skipMultilineEncoding,
+    tagIds
   }: TCreateSecretRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -1148,7 +1149,8 @@ export const secretServiceFactory = ({
       secretCommentCiphertext: secretCommentEncrypted.ciphertext,
       secretCommentIV: secretCommentEncrypted.iv,
       secretCommentTag: secretCommentEncrypted.tag,
-      skipMultilineEncoding
+      skipMultilineEncoding,
+      tags: tagIds
     });
 
     return decryptSecretRaw(secret, botKey);
@@ -1165,7 +1167,8 @@ export const secretServiceFactory = ({
     type,
     secretPath,
     secretValue,
-    skipMultilineEncoding
+    skipMultilineEncoding,
+    tagIds
   }: TUpdateSecretRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -1185,7 +1188,8 @@ export const secretServiceFactory = ({
       secretValueCiphertext: secretValueEncrypted.ciphertext,
       secretValueIV: secretValueEncrypted.iv,
       secretValueTag: secretValueEncrypted.tag,
-      skipMultilineEncoding
+      skipMultilineEncoding,
+      tags: tagIds
     });
 
     await snapshotService.performSnapshot(secret.folderId);
