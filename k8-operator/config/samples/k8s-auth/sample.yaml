@@ -12,7 +12,7 @@ spec:
     authentication:
         # Native Kubernetes Auth
         kubernetesAuth:
-            identityId: <>
+            identityId: 8c0c9823-7249-4043-b292-a861fb9b1b50
             serviceAccountRef:
               name: infisical-auth
               namespace: default
