@@ -32,6 +32,27 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
+  TCertificateAuthorities,
+  TCertificateAuthoritiesInsert,
+  TCertificateAuthoritiesUpdate,
+  TCertificateAuthorityCerts,
+  TCertificateAuthorityCertsInsert,
+  TCertificateAuthorityCertsUpdate,
+  TCertificateAuthorityCrl,
+  TCertificateAuthorityCrlInsert,
+  TCertificateAuthorityCrlUpdate,
+  TCertificateAuthoritySecret,
+  TCertificateAuthoritySecretInsert,
+  TCertificateAuthoritySecretUpdate,
+  TCertificateBodies,
+  TCertificateBodiesInsert,
+  TCertificateBodiesUpdate,
+  TCertificates,
+  TCertificateSecrets,
+  TCertificateSecretsInsert,
+  TCertificateSecretsUpdate,
+  TCertificatesInsert,
+  TCertificatesUpdate,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
@@ -260,6 +281,37 @@ declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.Groups]: Knex.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.CertificateAuthority]: Knex.CompositeTableType<
+      TCertificateAuthorities,
+      TCertificateAuthoritiesInsert,
+      TCertificateAuthoritiesUpdate
+    >;
+    [TableName.CertificateAuthorityCert]: Knex.CompositeTableType<
+      TCertificateAuthorityCerts,
+      TCertificateAuthorityCertsInsert,
+      TCertificateAuthorityCertsUpdate
+    >;
+    [TableName.CertificateAuthoritySecret]: Knex.CompositeTableType<
+      TCertificateAuthoritySecret,
+      TCertificateAuthoritySecretInsert,
+      TCertificateAuthoritySecretUpdate
+    >;
+    [TableName.CertificateAuthorityCrl]: Knex.CompositeTableType<
+      TCertificateAuthorityCrl,
+      TCertificateAuthorityCrlInsert,
+      TCertificateAuthorityCrlUpdate
+    >;
+    [TableName.Certificate]: Knex.CompositeTableType<TCertificates, TCertificatesInsert, TCertificatesUpdate>;
+    [TableName.CertificateBody]: Knex.CompositeTableType<
+      TCertificateBodies,
+      TCertificateBodiesInsert,
+      TCertificateBodiesUpdate
+    >;
+    [TableName.CertificateSecret]: Knex.CompositeTableType<
+      TCertificateSecrets,
+      TCertificateSecretsInsert,
+      TCertificateSecretsUpdate
+    >;
     [TableName.UserGroupMembership]: Knex.CompositeTableType<
       TUserGroupMembership,
       TUserGroupMembershipInsert,

@@ -25,6 +25,7 @@ export const getDefaultOnPremFeatures = () => {
     trial_end: null,
     has_used_trial: true,
     secretApproval: false,
-    secretRotation: true
+    secretRotation: true,
+    caCrl: false
   };
 };

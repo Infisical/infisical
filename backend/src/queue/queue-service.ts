@@ -23,6 +23,7 @@ export enum QueueName {
   SecretPushEventScan = "secret-push-event-scan",
   UpgradeProjectToGhost = "upgrade-project-to-ghost",
   DynamicSecretRevocation = "dynamic-secret-revocation",
+  CaCrlRotation = "ca-crl-rotation",
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync" // parent queue to push integration sync, webhook, and secret replication
 }
@@ -41,6 +42,7 @@ export enum QueueJobs {
   UpgradeProjectToGhost = "upgrade-project-to-ghost-job",
   DynamicSecretRevocation = "dynamic-secret-revocation",
   DynamicSecretPruning = "dynamic-secret-pruning",
+  CaCrlRotation = "ca-crl-rotation-job",
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync" // parent queue to push integration sync, webhook, and secret replication
 }
@@ -55,7 +57,6 @@ export type TQueueJobTypes = {
     };
     name: QueueJobs.SecretReminder;
   };
-
   [QueueName.SecretRotation]: {
     payload: { rotationId: string };
     name: QueueJobs.SecretRotation;
@@ -121,6 +122,12 @@ export type TQueueJobTypes = {
           dynamicSecretCfgId: string;
         };
       };
+  [QueueName.CaCrlRotation]: {
+    name: QueueJobs.CaCrlRotation;
+    payload: {
+      caId: string;
+    };
+  };
   [QueueName.SecretReplication]: {
     name: QueueJobs.SecretReplication;
     payload: TSyncSecretsDTO;

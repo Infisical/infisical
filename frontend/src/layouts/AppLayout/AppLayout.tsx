@@ -519,6 +519,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
+                      <Link href={`/project/${currentWorkspace?.id}/certificates`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={
+                              router.asPath === `/project/${currentWorkspace?.id}/certificates`
+                            }
+                            icon="system-outline-90-lock-closed"
+                          >
+                            Internal PKI
+                          </MenuItem>
+                        </a>
+                      </Link>
                       <Link href={`/project/${currentWorkspace?.id}/members`} passHref>
                         <a>
                           <MenuItem
@@ -633,9 +645,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <Link href={`/org/${currentOrg?.id}/secret-sharing`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={
-                              router.asPath === `/org/${currentOrg?.id}/secret-sharing`
-                            }
+                            isSelected={router.asPath === `/org/${currentOrg?.id}/secret-sharing`}
                             icon="system-outline-90-lock-closed"
                           >
                             Secret Sharing

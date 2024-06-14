@@ -21,6 +21,8 @@ export {
   useGetWorkspaceIntegrations,
   useGetWorkspaceSecrets,
   useGetWorkspaceUsers,
+  useListWorkspaceCas,
+  useListWorkspaceCertificates,
   useListWorkspaceGroups,
   useNameWorkspaceSecrets,
   useRenameWorkspace,
@@ -28,5 +30,4 @@ export {
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
-  useUpgradeProject
-} from "./queries";
+  useUpgradeProject} from "./queries";

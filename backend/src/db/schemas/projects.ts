@@ -17,6 +17,7 @@ export const ProjectsSchema = z.object({
   updatedAt: z.date(),
   version: z.number().default(1),
   upgradeStatus: z.string().nullable().optional(),
+  kmsCertificateKeyId: z.string().uuid().nullable().optional(),
   pitVersionLimit: z.number().default(10)
 });
 
