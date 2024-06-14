@@ -3,16 +3,28 @@ package util
 type AuthStrategyType string
 
 var AuthStrategy = struct {
-	UNIVERSAL_AUTH  AuthStrategyType
-	KUBERNETES_AUTH AuthStrategyType
+	UNIVERSAL_AUTH    AuthStrategyType
+	KUBERNETES_AUTH   AuthStrategyType
+	AZURE_AUTH        AuthStrategyType
+	GCP_ID_TOKEN_AUTH AuthStrategyType
+	GCP_IAM_AUTH      AuthStrategyType
+	AWS_IAM_AUTH      AuthStrategyType
 }{
-	UNIVERSAL_AUTH:  "universal-auth",
-	KUBERNETES_AUTH: "kubernetes",
+	UNIVERSAL_AUTH:    "universal-auth",
+	KUBERNETES_AUTH:   "kubernetes",
+	AZURE_AUTH:        "azure",
+	GCP_ID_TOKEN_AUTH: "gcp-id-token",
+	GCP_IAM_AUTH:      "gcp-iam",
+	AWS_IAM_AUTH:      "aws-iam",
 }
 
 var AVAILABLE_AUTH_STRATEGIES = []AuthStrategyType{
 	AuthStrategy.UNIVERSAL_AUTH,
 	AuthStrategy.KUBERNETES_AUTH,
+	AuthStrategy.AZURE_AUTH,
+	AuthStrategy.GCP_ID_TOKEN_AUTH,
+	AuthStrategy.GCP_IAM_AUTH,
+	AuthStrategy.AWS_IAM_AUTH,
 }
 
 func IsAuthMethodValid(authMethod string) (isValid bool, strategy AuthStrategyType) {
