@@ -17,6 +17,7 @@ export * from "./keys";
 export * from "./ldapConfig";
 export * from "./organization";
 export * from "./projectUserAdditionalPrivilege";
+export * from "./rateLimit";
 export * from "./roles";
 export * from "./scim";
 export * from "./secretApproval";
