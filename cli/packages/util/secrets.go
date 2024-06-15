@@ -1017,7 +1017,6 @@ func SetRawSecrets(secretArgs []string, secretType string, environmentName strin
 	}
 
 	httpClient := resty.New().
-		SetAuthScheme("Bearer").
 		SetAuthToken(tokenDetails.Token).
 		SetHeader("Accept", "application/json")
 

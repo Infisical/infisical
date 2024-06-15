@@ -248,7 +248,7 @@ var secretsDeleteCmd = &cobra.Command{
 		}
 
 		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
-			httpClient.SetAuthScheme("Bearer").SetAuthToken(token.Token)
+			httpClient.SetAuthToken(token.Token)
 		} else {
 			util.RequireLogin()
 			util.RequireLocalWorkspaceFile()
