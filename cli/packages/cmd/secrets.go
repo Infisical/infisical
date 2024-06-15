@@ -4,23 +4,17 @@ Copyright (c) 2023 Infisical Inc.
 package cmd
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
-	"unicode"
 
 	"github.com/Infisical/infisical-merge/packages/api"
-	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/Infisical/infisical-merge/packages/visualize"
 	"github.com/go-resty/resty/v2"
 	"github.com/posthog/posthog-go"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -160,14 +154,19 @@ var secretsSetCmd = &cobra.Command{
 			}
 		}
 
-		secretsPath, err := cmd.Flags().GetString("path")
+		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		workspaceFile, err := util.GetWorkSpaceFromFile()
+		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
-			util.HandleError(err, "Unable to get your local config details")
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		secretsPath, err := cmd.Flags().GetString("path")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
 		}
 
 		secretType, err := cmd.Flags().GetString("type")
@@ -175,196 +174,18 @@ var secretsSetCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse secret type")
 		}
 
-		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+		var secretOperations []models.SecretSetOperation
+		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, token)
+		} else {
+			util.RequireLogin()
+			util.RequireLocalWorkspaceFile()
+
+			secretOperations, err = util.SetEncryptedSecrets(args, secretType, environmentName, secretsPath)
+		}
+
 		if err != nil {
-			util.HandleError(err, "Unable to authenticate")
-		}
-
-		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
-		}
-
-
-		httpClient := resty.New().
-			SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
-			SetHeader("Accept", "application/json")
-
-		request := api.GetEncryptedWorkspaceKeyRequest{
-			WorkspaceId: workspaceFile.WorkspaceId,
-		}
-
-		workspaceKeyResponse, err := api.CallGetEncryptedWorkspaceKey(httpClient, request)
-		if err != nil {
-			util.HandleError(err, "unable to get your encrypted workspace key")
-		}
-
-		encryptedWorkspaceKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.EncryptedKey)
-		encryptedWorkspaceKeySenderPublicKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.Sender.PublicKey)
-		encryptedWorkspaceKeyNonce, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.Nonce)
-		currentUsersPrivateKey, _ := base64.StdEncoding.DecodeString(loggedInUserDetails.UserCredentials.PrivateKey)
-
-		if len(currentUsersPrivateKey) == 0 || len(encryptedWorkspaceKeySenderPublicKey) == 0 {
-			log.Debug().Msgf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
-			util.PrintErrorMessageAndExit("Some required user credentials are missing to generate your [plainTextEncryptionKey]. Please run [infisical login] then try again")
-		}
-
-		// decrypt workspace key
-		plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
-
-		infisicalTokenEnv := os.Getenv(util.INFISICAL_TOKEN_NAME)
-
-		// pull current secrets
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath, InfisicalToken: infisicalTokenEnv}, "")
-		if err != nil {
-			util.HandleError(err, "unable to retrieve secrets")
-		}
-
-		type SecretSetOperation struct {
-			SecretKey       string
-			SecretValue     string
-			SecretOperation string
-		}
-
-		secretsToCreate := []api.Secret{}
-		secretsToModify := []api.Secret{}
-		secretOperations := []SecretSetOperation{}
-
-		sharedSecretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
-		personalSecretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
-	
-		for _, secret := range secrets {
-			if secret.Type == util.SECRET_TYPE_PERSONAL {
-				personalSecretMapByName[secret.Key] = secret
-			} else {
-				sharedSecretMapByName[secret.Key] = secret
-			}
-		}
-
-		for _, arg := range args {
-			splitKeyValueFromArg := strings.SplitN(arg, "=", 2)
-			if splitKeyValueFromArg[0] == "" || splitKeyValueFromArg[1] == "" {
-				util.PrintErrorMessageAndExit("ensure that each secret has a none empty key and value. Modify the input and try again")
-			}
-
-			if unicode.IsNumber(rune(splitKeyValueFromArg[0][0])) {
-				util.PrintErrorMessageAndExit("keys of secrets cannot start with a number. Modify the key name(s) and try again")
-			}
-
-			// Key and value from argument
-			key := splitKeyValueFromArg[0]
-			value := splitKeyValueFromArg[1]
-
-			hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
-			encryptedKey, err := crypto.EncryptSymmetric([]byte(key), []byte(plainTextEncryptionKey))
-			if err != nil {
-				util.HandleError(err, "unable to encrypt your secrets")
-			}
-
-			hashedValue := fmt.Sprintf("%x", sha256.Sum256([]byte(value)))
-			encryptedValue, err := crypto.EncryptSymmetric([]byte(value), []byte(plainTextEncryptionKey))
-			if err != nil {
-				util.HandleError(err, "unable to encrypt your secrets")
-			}
-
-			var existingSecret models.SingleEnvironmentVariable
-			var doesSecretExist bool
-
-			if secretType == util.SECRET_TYPE_SHARED {
-				existingSecret, doesSecretExist = sharedSecretMapByName[key]
-			} else {
-				existingSecret, doesSecretExist = personalSecretMapByName[key]
-			}
-
-			if doesSecretExist {
-				// case: secret exists in project so it needs to be modified
-				encryptedSecretDetails := api.Secret{
-					ID:                    existingSecret.ID,
-					SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
-					SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
-					SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
-					SecretValueHash:       hashedValue,
-					PlainTextKey:          key,
-					Type:                  existingSecret.Type,
-				}
-
-				// Only add to modifications if the value is different
-				if existingSecret.Value != value {
-					secretsToModify = append(secretsToModify, encryptedSecretDetails)
-					secretOperations = append(secretOperations, SecretSetOperation{
-						SecretKey:       key,
-						SecretValue:     value,
-						SecretOperation: "SECRET VALUE MODIFIED",
-					})
-				} else {
-					// Current value is same as exisitng so no change
-					secretOperations = append(secretOperations, SecretSetOperation{
-						SecretKey:       key,
-						SecretValue:     value,
-						SecretOperation: "SECRET VALUE UNCHANGED",
-					})
-				}
-
-			} else {
-				// case: secret doesn't exist in project so it needs to be created
-				encryptedSecretDetails := api.Secret{
-					SecretKeyCiphertext:   base64.StdEncoding.EncodeToString(encryptedKey.CipherText),
-					SecretKeyIV:           base64.StdEncoding.EncodeToString(encryptedKey.Nonce),
-					SecretKeyTag:          base64.StdEncoding.EncodeToString(encryptedKey.AuthTag),
-					SecretKeyHash:         hashedKey,
-					SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
-					SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
-					SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
-					SecretValueHash:       hashedValue,
-					Type:                  secretType,
-					PlainTextKey:          key,
-				}
-				secretsToCreate = append(secretsToCreate, encryptedSecretDetails)
-				secretOperations = append(secretOperations, SecretSetOperation{
-					SecretKey:       key,
-					SecretValue:     value,
-					SecretOperation: "SECRET CREATED",
-				})
-			}
-		}
-
-		for _, secret := range secretsToCreate {
-			createSecretRequest := api.CreateSecretV3Request{
-				WorkspaceID:           workspaceFile.WorkspaceId,
-				Environment:           environmentName,
-				SecretName:            secret.PlainTextKey,
-				SecretKeyCiphertext:   secret.SecretKeyCiphertext,
-				SecretKeyIV:           secret.SecretKeyIV,
-				SecretKeyTag:          secret.SecretKeyTag,
-				SecretValueCiphertext: secret.SecretValueCiphertext,
-				SecretValueIV:         secret.SecretValueIV,
-				SecretValueTag:        secret.SecretValueTag,
-				Type:                  secret.Type,
-				SecretPath:            secretsPath,
-			}
-
-			err = api.CallCreateSecretsV3(httpClient, createSecretRequest)
-			if err != nil {
-				util.HandleError(err, "Unable to process new secret creations")
-				return
-			}
-		}
-
-		for _, secret := range secretsToModify {
-			updateSecretRequest := api.UpdateSecretByNameV3Request{
-				WorkspaceID:           workspaceFile.WorkspaceId,
-				Environment:           environmentName,
-				SecretValueCiphertext: secret.SecretValueCiphertext,
-				SecretValueIV:         secret.SecretValueIV,
-				SecretValueTag:        secret.SecretValueTag,
-				Type:                  secret.Type,
-				SecretPath:            secretsPath,
-			}
-
-			err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest, secret.PlainTextKey)
-			if err != nil {
-				util.HandleError(err, "Unable to process secret update request")
-				return
-			}
+			util.HandleError(err, "Unable to set secrets")
 		}
 
 		// Print secret operations
@@ -395,6 +216,16 @@ var secretsDeleteCmd = &cobra.Command{
 			}
 		}
 
+		token, err := util.GetInfisicalToken(cmd)
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		projectId, err := cmd.Flags().GetString("projectId")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		secretsPath, err := cmd.Flags().GetString("path")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -405,32 +236,43 @@ var secretsDeleteCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
-		if err != nil {
-			util.HandleError(err, "Unable to authenticate")
+		httpClient := resty.New().
+			SetHeader("Accept", "application/json")
+
+		if projectId == "" {
+			workspaceFile, err := util.GetWorkSpaceFromFile()
+			if err != nil {
+				util.HandleError(err, "Unable to get local project details")
+			}
+			projectId = workspaceFile.WorkspaceId
 		}
 
-		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
-		}
+		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+			httpClient.SetAuthScheme("Bearer").SetAuthToken(token.Token)
+		} else {
+			util.RequireLogin()
+			util.RequireLocalWorkspaceFile()
 
-		workspaceFile, err := util.GetWorkSpaceFromFile()
-		if err != nil {
-			util.HandleError(err, "Unable to get local project details")
+			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+			if err != nil {
+				util.HandleError(err, "Unable to authenticate")
+			}
+
+			if loggedInUserDetails.LoginExpired {
+				util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+			}
+
+			httpClient.SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken)
 		}
 
 		for _, secretName := range args {
 			request := api.DeleteSecretV3Request{
-				WorkspaceId: workspaceFile.WorkspaceId,
+				WorkspaceId: projectId,
 				Environment: environmentName,
 				SecretName:  secretName,
 				Type:        secretType,
 				SecretPath:  secretsPath,
 			}
-
-			httpClient := resty.New().
-				SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
-				SetHeader("Accept", "application/json")
 
 			err = api.CallDeleteSecretsV3(httpClient, request)
 			if err != nil {
@@ -804,24 +646,16 @@ func init() {
 
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
+	secretsSetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsSetCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
 	secretsSetCmd.Flags().String("type", util.SECRET_TYPE_SHARED, "the type of secret to create: personal or shared")
 
-	// Only supports logged in users (JWT auth)
-	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
-	}
-
 	secretsDeleteCmd.Flags().String("type", "personal", "the type of secret to delete: personal or shared  (default: personal)")
+	secretsDeleteCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsDeleteCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	secretsDeleteCmd.Flags().String("path", "/", "get secrets within a folder path")
 	secretsCmd.AddCommand(secretsDeleteCmd)
-
-	// Only supports logged in users (JWT auth)
-	secretsDeleteCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
-	}
 
 	// *** Folders sub command ***
 	folderCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
@@ -835,10 +669,14 @@ func init() {
 	// Add createCmd flags here
 	createCmd.Flags().StringP("path", "p", "/", "Path to where the folder should be created")
 	createCmd.Flags().StringP("name", "n", "", "Name of the folder to be created in selected `--path`")
+	createCmd.Flags().String("token", "", "Fetch folders using the infisical token")
+	createCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	folderCmd.AddCommand(createCmd)
 
 	// Add deleteCmd flags here
 	deleteCmd.Flags().StringP("path", "p", "/", "Path to the folder to be deleted")
+	deleteCmd.Flags().String("token", "", "Fetch folders using the infisical token")
+	deleteCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
 	deleteCmd.Flags().StringP("name", "n", "", "Name of the folder to be deleted within selected `--path`")
 	folderCmd.AddCommand(deleteCmd)
 
