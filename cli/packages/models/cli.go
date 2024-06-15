@@ -134,3 +134,9 @@ type MachineIdentityCredentials struct {
 	ClientId     string
 	ClientSecret string
 }
+
+type SecretSetOperation struct {
+	SecretKey       string
+	SecretValue     string
+	SecretOperation string
+}
