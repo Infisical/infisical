@@ -1009,8 +1009,6 @@ func SetRawSecrets(secretArgs []string, secretType string, environmentName strin
 		return nil, fmt.Errorf("unable to process set secret operations, token details are missing")
 	}
 
-	fmt.Printf("\nToken details %v", tokenDetails)
-
 	getAllEnvironmentVariablesRequest := models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath, WorkspaceId: projectId}
 	if tokenDetails.Type == UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 		getAllEnvironmentVariablesRequest.UniversalAuthAccessToken = tokenDetails.Token
