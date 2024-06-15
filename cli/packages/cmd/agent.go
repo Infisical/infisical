@@ -61,8 +61,8 @@ type UniversalAuth struct {
 }
 
 type KubernetesAuth struct {
-	IdentityID              string `yaml:"identity-id"`
-	ServiceAccountTokenPath string `yaml:"service-account-token-path"`
+	IdentityID          string `yaml:"identity-id"`
+	ServiceAccountToken string `yaml:"service-account-token"`
 }
 
 type AzureAuth struct {
@@ -557,7 +557,7 @@ func (tm *AgentManager) FetchKubernetesAuthAccessToken() (credential infisicalSd
 
 	serviceAccountTokenPath := os.Getenv(util.INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_NAME)
 	if serviceAccountTokenPath == "" {
-		serviceAccountTokenPath = kubernetesAuthConfig.ServiceAccountTokenPath
+		serviceAccountTokenPath = kubernetesAuthConfig.ServiceAccountToken
 		if serviceAccountTokenPath == "" {
 			serviceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 		}
