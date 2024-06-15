@@ -55,6 +55,11 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		token, err := util.GetInfisicalToken(cmd)
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		format, err := cmd.Flags().GetString("format")
 		if err != nil {
 			util.HandleError(err)
@@ -66,11 +71,6 @@ var exportCmd = &cobra.Command{
 		}
 
 		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
-		if err != nil {
-			util.HandleError(err, "Unable to parse flag")
-		}
-
-		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
