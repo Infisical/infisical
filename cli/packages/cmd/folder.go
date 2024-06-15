@@ -127,9 +127,6 @@ var createCmd = &cobra.Command{
 
 		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
 			params.InfisicalToken = token.Token
-		} else {
-			util.RequireLogin()
-			util.RequireLocalWorkspaceFile()
 		}
 
 		_, err = util.CreateFolder(params)
@@ -198,9 +195,6 @@ var deleteCmd = &cobra.Command{
 
 		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
 			params.InfisicalToken = token.Token
-		} else {
-			util.RequireLogin()
-			util.RequireLocalWorkspaceFile()
 		}
 
 		_, err = util.DeleteFolder(params)

@@ -176,6 +176,7 @@ func CreateFolder(params models.CreateFolderParameters) (models.SingleFolder, er
 	// If no token is provided, we will try to get the token from the current logged in user
 	if params.InfisicalToken == "" {
 		RequireLogin()
+		RequireLocalWorkspaceFile()
 		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
 
 		if err != nil {
@@ -221,6 +222,8 @@ func DeleteFolder(params models.DeleteFolderParameters) ([]models.SingleFolder, 
 	// If no token is provided, we will try to get the token from the current logged in user
 	if params.InfisicalToken == "" {
 		RequireLogin()
+		RequireLocalWorkspaceFile()
+
 		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
 
 		if err != nil {
