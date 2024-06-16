@@ -450,9 +450,12 @@ func init() {
 	rootCmd.AddCommand(loginCmd)
 	loginCmd.Flags().BoolP("interactive", "i", false, "login via the command line")
 	loginCmd.Flags().String("method", "user", "login method [user, universal-auth]")
-	loginCmd.Flags().String("client-id", "", "client id for universal auth")
 	loginCmd.Flags().Bool("plain", false, "only output the token without any formatting")
+	loginCmd.Flags().String("client-id", "", "client id for universal auth")
 	loginCmd.Flags().String("client-secret", "", "client secret for universal auth")
+	loginCmd.Flags().String("machine-identity-id", "", "machine identity id for kubernetes, azure, gcp-id-token, gcp-iam, and aws-iam auth methods")
+	loginCmd.Flags().String("service-account-token-path", "", "service account token path for kubernetes auth")
+	loginCmd.Flags().String("service-account-key-file-path", "", "service account key file path for GCP IAM auth")
 }
 
 func DomainOverridePrompt() (bool, error) {
