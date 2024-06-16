@@ -82,11 +82,6 @@ type AwsIamAuth struct {
 	IdentityID string `yaml:"identity-id"`
 }
 
-type OAuthConfig struct {
-	ClientID     string `yaml:"client-id"`
-	ClientSecret string `yaml:"client-secret"`
-}
-
 type Sink struct {
 	Type   string      `yaml:"type"`
 	Config SinkDetails `yaml:"config"`
