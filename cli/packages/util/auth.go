@@ -27,9 +27,9 @@ var AVAILABLE_AUTH_STRATEGIES = []AuthStrategyType{
 	AuthStrategy.AWS_IAM_AUTH,
 }
 
-func IsAuthMethodValid(authMethod string) (isValid bool, strategy AuthStrategyType) {
+func IsAuthMethodValid(authMethod string, allowUserAuth bool) (isValid bool, strategy AuthStrategyType) {
 
-	if authMethod == "user" {
+	if authMethod == "user" && allowUserAuth {
 		return true, ""
 	}
 
