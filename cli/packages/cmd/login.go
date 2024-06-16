@@ -122,7 +122,7 @@ func handleAwsIamAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.Infi
 	return infisicalClient.Auth().AwsIamAuthLogin(identityId)
 }
 
-func FormatAuthMethod(authMethod string) string {
+func formatAuthMethod(authMethod string) string {
 	return strings.ReplaceAll(authMethod, "-", " ")
 }
 
@@ -262,7 +262,7 @@ var loginCmd = &cobra.Command{
 			credential, err := authStrategies[strategy](cmd, infisicalClient)
 
 			if err != nil {
-				util.HandleError(err)
+				util.HandleError(fmt.Errorf("unable to authenticate with %s [err=%v]", formatAuthMethod(loginMethod), err))
 			}
 
 			if plainOutput {
@@ -273,7 +273,7 @@ var loginCmd = &cobra.Command{
 			boldGreen := color.New(color.FgGreen).Add(color.Bold)
 			boldPlain := color.New(color.Bold)
 			time.Sleep(time.Second * 1)
-			boldGreen.Printf(">>>> Successfully authenticated with %s!\n\n", FormatAuthMethod(loginMethod))
+			boldGreen.Printf(">>>> Successfully authenticated with %s!\n\n", formatAuthMethod(loginMethod))
 			boldPlain.Printf("Access Token:\n%v", credential.AccessToken)
 
 			plainBold := color.New(color.Bold)
