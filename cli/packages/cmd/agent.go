@@ -214,17 +214,6 @@ func ReadFile(filePath string) ([]byte, error) {
 	return ioutil.ReadFile(filePath)
 }
 
-func ReadFileAsString(filePath string) (string, error) {
-	fileBytes, err := ReadFile(filePath)
-
-	if err != nil {
-		return "", err
-	}
-
-	return string(fileBytes), nil
-
-}
-
 func ExecuteCommandWithTimeout(command string, timeout int64) error {
 
 	shell := [2]string{"sh", "-c"}
@@ -508,26 +497,17 @@ func (tm *AgentManager) FetchUniversalAuthAccessToken() (credential infisicalSdk
 		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
 	}
 
-	clientID := os.Getenv(util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
-	if clientID == "" {
-		clientId, err := ReadFileAsString(universalAuthConfig.ClientIDPath)
-		if err != nil {
-			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to read client id from file path '%s' due to error: %v", universalAuthConfig.ClientIDPath, err)
-		}
-		clientID = clientId
+	clientID, err := util.GetEnvVarOrFileContent(util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME, universalAuthConfig.ClientIDPath)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get client id: %v", err)
 	}
 
-	clientSecret := os.Getenv("INFISICAL_UNIVERSAL_CLIENT_SECRET")
-	if clientSecret == "" {
-		secret, err := ReadFileAsString(universalAuthConfig.ClientSecretPath)
-		if err != nil {
-			if len(tm.cachedUniversalAuthClientSecret) == 0 {
-				return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to read client secret from file and no cached client secret found: %v", err)
-			} else {
-				secret = tm.cachedUniversalAuthClientSecret
-			}
+	clientSecret, err := util.GetEnvVarOrFileContent("INFISICAL_UNIVERSAL_CLIENT_SECRET", universalAuthConfig.ClientSecretPath)
+	if err != nil {
+		if len(tm.cachedUniversalAuthClientSecret) == 0 {
+			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get client secret: %v", err)
 		}
-		clientSecret = secret
+		clientSecret = tm.cachedUniversalAuthClientSecret
 	}
 
 	tm.cachedUniversalAuthClientSecret = clientSecret
@@ -546,13 +526,9 @@ func (tm *AgentManager) FetchKubernetesAuthAccessToken() (credential infisicalSd
 		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
 	}
 
-	identityId := os.Getenv(util.INFISICAL_KUBERNETES_IDENTITY_ID_NAME)
-	if identityId == "" {
-		identityId, err = ReadFileAsString(kubernetesAuthConfig.IdentityID)
-
-		if err != nil {
-			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to read identity id from file path '%s' due to error: %v", kubernetesAuthConfig.IdentityID, err)
-		}
+	identityId, err := util.GetEnvVarOrFileContent(util.INFISICAL_MACHINE_IDENTITY_ID_NAME, kubernetesAuthConfig.IdentityID)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
 	}
 
 	serviceAccountTokenPath := os.Getenv(util.INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_NAME)
@@ -574,13 +550,9 @@ func (tm *AgentManager) FetchAzureAuthAccessToken() (credential infisicalSdk.Mac
 		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
 	}
 
-	identityId := os.Getenv(util.INFISICAL_AZURE_AUTH_IDENTITY_ID_NAME)
-	if identityId == "" {
-		identityId, err = ReadFileAsString(azureAuthConfig.IdentityID)
-
-		if err != nil {
-			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to read identity id from file path '%s' due to error: %v", azureAuthConfig.IdentityID, err)
-		}
+	identityId, err := util.GetEnvVarOrFileContent(util.INFISICAL_MACHINE_IDENTITY_ID_NAME, azureAuthConfig.IdentityID)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
 	}
 
 	return tm.infisicalClient.Auth().AzureAuthLogin(identityId)
@@ -594,13 +566,9 @@ func (tm *AgentManager) FetchGcpIdTokenAuthAccessToken() (credential infisicalSd
 		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
 	}
 
-	identityId := os.Getenv(util.INFISICAL_GCP_AUTH_IDENTITY_ID_NAME)
-	if identityId == "" {
-		identityId, err = ReadFileAsString(gcpIdTokenAuthConfig.IdentityID)
-
-		if err != nil {
-			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to read identity id from file path '%s' due to error: %v", gcpIdTokenAuthConfig.IdentityID, err)
-		}
+	identityId, err := util.GetEnvVarOrFileContent(util.INFISICAL_MACHINE_IDENTITY_ID_NAME, gcpIdTokenAuthConfig.IdentityID)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
 	}
 
 	return tm.infisicalClient.Auth().GcpIdTokenAuthLogin(identityId)
@@ -614,14 +582,9 @@ func (tm *AgentManager) FetchGcpIamAuthAccessToken() (credential infisicalSdk.Ma
 		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
 	}
 
-	identityId := os.Getenv(util.INFISICAL_GCP_AUTH_IDENTITY_ID_NAME)
-	if identityId == "" {
-		identityId, err = ReadFileAsString(gcpIamAuthConfig.IdentityID)
-
-		if err != nil {
-			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to read identity id from file path '%s' due to error: %v", gcpIamAuthConfig.IdentityID, err)
-		}
-
+	identityId, err := util.GetEnvVarOrFileContent(util.INFISICAL_MACHINE_IDENTITY_ID_NAME, gcpIamAuthConfig.IdentityID)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
 	}
 
 	serviceAccountKeyPath := os.Getenv(util.INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH_NAME)
@@ -644,13 +607,10 @@ func (tm *AgentManager) FetchAwsIamAuthAccessToken() (credential infisicalSdk.Ma
 		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
 	}
 
-	identityId := os.Getenv(util.INFISICAL_AWS_IAM_AUTH_IDENTITY_ID_NAME)
-	if identityId == "" {
-		identityId, err = ReadFileAsString(awsIamAuthConfig.IdentityID)
+	identityId, err := util.GetEnvVarOrFileContent(util.INFISICAL_MACHINE_IDENTITY_ID_NAME, awsIamAuthConfig.IdentityID)
 
-		if err != nil {
-			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to read identity id from file path '%s' due to error: %v", awsIamAuthConfig.IdentityID, err)
-		}
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
 	}
 
 	return tm.infisicalClient.Auth().AwsIamAuthLogin(identityId)
