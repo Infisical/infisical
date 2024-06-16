@@ -22,6 +22,9 @@ const (
 	// Generic env variable used for auth methods that require a machine identity ID
 	INFISICAL_MACHINE_IDENTITY_ID_NAME = "INFISICAL_MACHINE_IDENTITY_ID"
 
+	// For auth methods that require a machine identity ID
+	INFISICAL_MACHINE_IDENTITY_ID_NAME = "INFISICAL_MACHINE_IDENTITY_ID"
+
 	SECRET_TYPE_PERSONAL      = "personal"
 	SECRET_TYPE_SHARED        = "shared"
 	KEYRING_SERVICE_NAME      = "infisical"
