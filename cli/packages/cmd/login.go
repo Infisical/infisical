@@ -152,7 +152,7 @@ var loginCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
-		authMethodValid, strategy := IsAuthMethodValid(loginMethod, true)
+		authMethodValid, strategy := util.IsAuthMethodValid(loginMethod, true)
 		if !authMethodValid {
 			util.PrintErrorMessageAndExit(fmt.Sprintf("Invalid login method: %s", loginMethod))
 		}
