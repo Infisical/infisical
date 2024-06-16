@@ -25,14 +25,9 @@ import (
 
 func main() {
 
-	client, err := infisical.NewInfisicalClient(infisical.Config{
+	client := infisical.NewInfisicalClient(infisical.Config{
 		SiteUrl: "https://app.infisical.com", // Optional, default is https://app.infisical.com
 	})
-
-	if err != nil {
-		fmt.Printf("Error: %v", err)
-		os.Exit(1)
-	}
 
 	_, err = client.Auth().UniversalAuthLogin("YOUR_CLIENT_ID", "YOUR_CLIENT_SECRET")
 
@@ -74,14 +69,9 @@ $ go get github.com/infisical/go-sdk
 Import the SDK and create a client instance.
 
 ```go
-client, err := infisical.NewInfisicalClient(infisical.Config{
+client := infisical.NewInfisicalClient(infisical.Config{
 		SiteUrl: "https://app.infisical.com", // Optional, default is https://api.infisical.com
 	})
-
-if err != nil {
-  fmt.Printf("Error: %v", err)
-  os.Exit(1)
-}
 ```
 
 ### ClientSettings methods
@@ -433,6 +423,148 @@ Delete a secret in Infisical.
         </ParamField>
         <ParamField query="Type" type="string" optional>
             The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+## Working with folders
+
+
+### client.Folders().List(options)
+
+```go
+folders, err := client.Folders().List(infisical.ListFoldersOptions{
+  ProjectID:   "PROJECT_ID",
+  Environment: "dev",
+  Path:        "/",
+})
+```
+
+Retrieve all within the Infisical project and environment that client is connected to.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object">
+    <Expandable title="properties">
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where folders should be fetched from.
+        </ParamField>
+
+        <ParamField query="ProjectID" type="string">
+            The project ID where the folder lives in.
+        </ParamField>
+
+         <ParamField query="Path" type="string" optional>
+            The path from where folders should be fetched from.
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### client.Folders().Create(options)
+
+```go
+folder, err := client.Folders().Create(infisical.CreateFolderOptions{
+  ProjectID:   "PROJECT_ID",
+  Name:        "new=folder-name",
+  Environment: "dev",
+  Path:        "/",
+})
+```
+
+Create a new folder in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="ProjectID" type="string" required>
+            The ID of the project where the folder will be created.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment where the folder will be created.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path to create the folder in. The root path is `/`.
+        </ParamField>
+        <ParamField query="Name" type="string" optional>
+            The name of the folder to create.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+
+
+### client.Folders().Update(options)
+
+```go
+folder, err := client.Folders().Update(infisical.UpdateFolderOptions{
+  ProjectID:   "PROJECT_ID",
+  Environment: "dev",
+  Path:        "/",
+  FolderID:    "FOLDER_ID_TO_UPDATE",
+  NewName:     "new-folder-name",
+})
+```
+
+Update an existing folder in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="ProjectID" type="string" required>
+            The ID of the project where the folder will be updated.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where the folder lives in.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path from where the folder should be updated.
+        </ParamField>
+        <ParamField query="FolderID" type="string" required>
+            The ID of the folder to update.
+        </ParamField>
+        <ParamField query="NewName" type="string" required>
+            The new name of the folder.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.Folders().Delete(options)
+
+```go
+deletedFolder, err := client.Folders().Delete(infisical.DeleteFolderOptions{
+  // Either folder ID or folder name is required.
+  FolderName:  "name-of-folder-to-delete",
+  FolderID:    "folder-id-to-delete",
+  ProjectID:   "PROJECT_ID",
+  Environment: "dev",
+  Path:        "/",
+})
+```
+
+Delete a folder in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="FolderName" type="string" optional>
+            The name of the folder to delete. Note that either `FolderName` or `FolderID` is required.
+        </ParamField>
+        <ParamField query="FolderID" type="string" optional>
+            The ID of the folder to delete. Note that either `FolderName` or `FolderID` is required.
+        </ParamField>
+
+        <ParamField query="ProjectID" type="string" required>
+            The ID of the project where the folder lives in.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where the folder lives in.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path from where the folder should be deleted.
         </ParamField>
     </Expandable>
 </ParamField>
