@@ -93,19 +93,18 @@ export const DeleteProjectSection = () => {
       // If there's no members, and the user has access to read members, something went wrong.
       if (!members && !isNoAccessMember) return;
 
-      // If the user has access to read members, and there's less than 2 members, they can't leave the project.
-      if (!isNoAccessMember && members!.length < 2) {
-        createNotification({
-          text: "You can't leave the project as you are the only member",
-          type: "error"
-        });
-        return;
-      }
-
-      // If the user has access to read members, and there's less than 1 admin member excluding the current user, they can't leave the project.
+      // If the user has elevated permissions and can read members:
       if (!isNoAccessMember) {
         if (!members) return;
 
+        if (members.length < 2) {
+          createNotification({
+            text: "You can't leave the project as you are the only member",
+            type: "error"
+          });
+          return;
+        }
+        // If the user has access to read members, and there's less than 1 admin member excluding the current user, they can't leave the project.
         if (isOnlyAdminMember) {
           createNotification({
             text: "You can't leave a project with no admin members left. Promote another member to admin first.",
