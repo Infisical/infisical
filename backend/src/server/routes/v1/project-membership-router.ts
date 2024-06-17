@@ -309,4 +309,32 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       return { membership };
     }
   });
+
+  server.route({
+    method: "DELETE",
+    url: "/:workspaceId/leave",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          membership: ProjectMembershipsSchema
+        })
+      }
+    },
+
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const membership = await server.services.projectMembership.leaveProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        projectId: req.params.workspaceId
+      });
+      return { membership };
+    }
+  });
 };
