@@ -55,8 +55,13 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     { prefix: "/dynamic-secrets" }
   );
 
-  await server.register(registerSamlRouter, { prefix: "/sso" });
-  await server.register(registerOidcRouter, { prefix: "/oidc" });
+  await server.register(
+    async (ssoRouter) => {
+      await ssoRouter.register(registerSamlRouter);
+      await ssoRouter.register(registerOidcRouter, { prefix: "/oidc" });
+    },
+    { prefix: "/sso" }
+  );
   await server.register(registerScimRouter, { prefix: "/scim" });
   await server.register(registerLdapRouter, { prefix: "/ldap" });
   await server.register(registerSecretScanningRouter, { prefix: "/secret-scanning" });

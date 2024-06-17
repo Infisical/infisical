@@ -13,7 +13,7 @@ export const useGetOIDCConfig = (orgSlug: string) => {
     queryKey: oidcConfigKeys.getOIDCConfig(orgSlug),
     queryFn: async () => {
       const { data } = await apiRequest.get<OIDCConfigData>(
-        `/api/v1/oidc/config?orgSlug=${orgSlug}`
+        `/api/v1/sso/oidc/config?orgSlug=${orgSlug}`
       );
 
       return data;

@@ -28,7 +28,7 @@ export const useUpdateOIDCConfig = () => {
       isActive?: boolean;
       orgSlug: string;
     }) => {
-      const { data } = await apiRequest.patch("/api/v1/oidc/config", {
+      const { data } = await apiRequest.patch("/api/v1/sso/oidc/config", {
         issuer,
         authorizationEndpoint,
         jwksUri,
@@ -72,7 +72,7 @@ export const useCreateOIDCConfig = () => {
       isActive: boolean;
       orgSlug: string;
     }) => {
-      const { data } = await apiRequest.post("/api/v1/oidc/config", {
+      const { data } = await apiRequest.post("/api/v1/sso/oidc/config", {
         issuer,
         authorizationEndpoint,
         jwksUri,
