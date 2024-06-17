@@ -8,10 +8,15 @@ export type TOidcLoginDTO = {
   orgId: string;
 };
 
-export type TGetOidcCfgDTO = {
-  type: "internal" | "external";
-  orgSlug: string;
-} & TGenericPermission;
+export type TGetOidcCfgDTO =
+  | ({
+      type: "external";
+      orgSlug: string;
+    } & TGenericPermission)
+  | {
+      type: "internal";
+      orgSlug: string;
+    };
 
 export type TCreateOidcCfgDTO = {
   issuer: string;

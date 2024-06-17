@@ -1,13 +1,28 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
+import { Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
 
-import { OrgMembershipRole, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
+import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
+import {
+  decryptSymmetric,
+  encryptSymmetric,
+  generateAsymmetricKeyPair,
+  generateSymmetricKey,
+  infisicalSymmetricDecrypt,
+  infisicalSymmetricEncypt
+} from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 
 import { AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { TOrgBotDALFactory } from "../org/org-bot-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgMembershipDALFactory } from "../org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
@@ -15,7 +30,8 @@ import { TUserDALFactory } from "../user/user-dal";
 import { normalizeUsername } from "../user/user-fns";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
-import { TOidcLoginDTO } from "./oidc-config-types";
+import { TOidcConfigDALFactory } from "./oidc-config-dal";
+import { TCreateOidcCfgDTO, TGetOidcCfgDTO, TOidcLoginDTO, TUpdateOidcCfgDTO } from "./oidc-config-types";
 
 type TOidcConfigServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById" | "findById">;
@@ -25,9 +41,12 @@ type TOidcConfigServiceFactoryDep = {
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
+  orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -38,8 +57,11 @@ export const oidcConfigServiceFactory = ({
   userDAL,
   userAliasDAL,
   licenseService,
+  permissionService,
   tokenService,
-  smtpService
+  orgBotDAL,
+  smtpService,
+  oidcConfigDAL
 }: TOidcConfigServiceFactoryDep) => {
   const oidcLogin = async ({ externalId, email, firstName, lastName, orgId }: TOidcLoginDTO) => {
     const appCfg = getConfig();
@@ -196,5 +218,331 @@ export const oidcConfigServiceFactory = ({
     return { isUserCompleted, providerAuthToken };
   };
 
-  return { oidcLogin };
+  const getOidc = async (dto: TGetOidcCfgDTO) => {
+    const org = await orgDAL.findOne({ slug: dto.orgSlug });
+    if (!org) {
+      throw new BadRequestError({
+        message: "Organization not found",
+        name: "OrgNotFound"
+      });
+    }
+    if (dto.type === "external") {
+      const { permission } = await permissionService.getOrgPermission(
+        dto.actor,
+        dto.actorId,
+        org.id,
+        dto.actorAuthMethod,
+        dto.actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
+    }
+
+    const oidcCfg = await oidcConfigDAL.findOne({
+      orgId: org.id
+    });
+
+    if (!oidcCfg) {
+      throw new BadRequestError({
+        message: "Failed to find organization OIDC configuration"
+      });
+    }
+
+    // decrypt and return cfg
+    const orgBot = await orgBotDAL.findOne({ orgId: oidcCfg.orgId });
+    if (!orgBot) {
+      throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
+    }
+
+    const key = infisicalSymmetricDecrypt({
+      ciphertext: orgBot.encryptedSymmetricKey,
+      iv: orgBot.symmetricKeyIV,
+      tag: orgBot.symmetricKeyTag,
+      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    });
+
+    const { encryptedClientId, clientIdIV, clientIdTag, encryptedClientSecret, clientSecretIV, clientSecretTag } =
+      oidcCfg;
+
+    let clientId = "";
+    if (encryptedClientId && clientIdIV && clientIdTag) {
+      clientId = decryptSymmetric({
+        ciphertext: encryptedClientId,
+        key,
+        tag: clientIdTag,
+        iv: clientIdIV
+      });
+    }
+
+    let clientSecret = "";
+    if (encryptedClientSecret && clientSecretIV && clientSecretTag) {
+      clientSecret = decryptSymmetric({
+        key,
+        tag: clientSecretTag,
+        iv: clientSecretIV,
+        ciphertext: encryptedClientSecret
+      });
+    }
+
+    return {
+      id: oidcCfg.id,
+      issuer: oidcCfg.issuer,
+      authorizationEndpoint: oidcCfg.authorizationEndpoint,
+      jwksUri: oidcCfg.jwksUri,
+      tokenEndpoint: oidcCfg.tokenEndpoint,
+      userinfoEndpoint: oidcCfg.userinfoEndpoint,
+      orgId: oidcCfg.orgId,
+      isActive: oidcCfg.isActive,
+      clientId,
+      clientSecret
+    };
+  };
+
+  const updateOidcCfg = async ({
+    orgSlug,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    actorId,
+    issuer,
+    isActive,
+    authorizationEndpoint,
+    jwksUri,
+    tokenEndpoint,
+    userinfoEndpoint,
+    clientId,
+    clientSecret
+  }: TUpdateOidcCfgDTO) => {
+    const org = await orgDAL.findOne({
+      slug: orgSlug
+    });
+    if (!org) {
+      throw new BadRequestError({
+        message: "Organization not found"
+      });
+    }
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      org.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
+
+    const orgBot = await orgBotDAL.findOne({ orgId: org.id });
+    if (!orgBot) throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
+    const key = infisicalSymmetricDecrypt({
+      ciphertext: orgBot.encryptedSymmetricKey,
+      iv: orgBot.symmetricKeyIV,
+      tag: orgBot.symmetricKeyTag,
+      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    });
+
+    const updateQuery: TOidcConfigsUpdate = {
+      issuer,
+      authorizationEndpoint,
+      tokenEndpoint,
+      userinfoEndpoint,
+      jwksUri,
+      isActive
+    };
+
+    if (clientId !== undefined) {
+      const { ciphertext: encryptedClientId, iv: clientIdIV, tag: clientIdTag } = encryptSymmetric(clientId, key);
+      updateQuery.encryptedClientId = encryptedClientId;
+      updateQuery.clientIdIV = clientIdIV;
+      updateQuery.clientIdTag = clientIdTag;
+    }
+
+    if (clientSecret !== undefined) {
+      const {
+        ciphertext: encryptedClientSecret,
+        iv: clientSecretIV,
+        tag: clientSecretTag
+      } = encryptSymmetric(clientSecret, key);
+
+      updateQuery.encryptedClientSecret = encryptedClientSecret;
+      updateQuery.clientSecretIV = clientSecretIV;
+      updateQuery.clientSecretTag = clientSecretTag;
+    }
+
+    const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
+
+    return ssoConfig;
+  };
+
+  const createOidcCfg = async ({
+    orgSlug,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    actorId,
+    issuer,
+    isActive,
+    authorizationEndpoint,
+    jwksUri,
+    tokenEndpoint,
+    userinfoEndpoint,
+    clientId,
+    clientSecret
+  }: TCreateOidcCfgDTO) => {
+    const org = await orgDAL.findOne({
+      slug: orgSlug
+    });
+    if (!org) {
+      throw new BadRequestError({
+        message: "Organization not found"
+      });
+    }
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      org.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
+
+    const orgBot = await orgBotDAL.transaction(async (tx) => {
+      const doc = await orgBotDAL.findOne({ orgId: org.id }, tx);
+      if (doc) return doc;
+
+      const { privateKey, publicKey } = generateAsymmetricKeyPair();
+      const key = generateSymmetricKey();
+      const {
+        ciphertext: encryptedPrivateKey,
+        iv: privateKeyIV,
+        tag: privateKeyTag,
+        encoding: privateKeyKeyEncoding,
+        algorithm: privateKeyAlgorithm
+      } = infisicalSymmetricEncypt(privateKey);
+      const {
+        ciphertext: encryptedSymmetricKey,
+        iv: symmetricKeyIV,
+        tag: symmetricKeyTag,
+        encoding: symmetricKeyKeyEncoding,
+        algorithm: symmetricKeyAlgorithm
+      } = infisicalSymmetricEncypt(key);
+
+      return orgBotDAL.create(
+        {
+          name: "Infisical org bot",
+          publicKey,
+          privateKeyIV,
+          encryptedPrivateKey,
+          symmetricKeyIV,
+          symmetricKeyTag,
+          encryptedSymmetricKey,
+          symmetricKeyAlgorithm,
+          orgId: org.id,
+          privateKeyTag,
+          privateKeyAlgorithm,
+          privateKeyKeyEncoding,
+          symmetricKeyKeyEncoding
+        },
+        tx
+      );
+    });
+
+    const key = infisicalSymmetricDecrypt({
+      ciphertext: orgBot.encryptedSymmetricKey,
+      iv: orgBot.symmetricKeyIV,
+      tag: orgBot.symmetricKeyTag,
+      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    });
+
+    const { ciphertext: encryptedClientId, iv: clientIdIV, tag: clientIdTag } = encryptSymmetric(clientId, key);
+    const {
+      ciphertext: encryptedClientSecret,
+      iv: clientSecretIV,
+      tag: clientSecretTag
+    } = encryptSymmetric(clientSecret, key);
+
+    const oidcCfg = await oidcConfigDAL.create({
+      issuer,
+      isActive,
+      authorizationEndpoint,
+      jwksUri,
+      tokenEndpoint,
+      userinfoEndpoint,
+      orgId: org.id,
+      encryptedClientId,
+      clientIdIV,
+      clientIdTag,
+      encryptedClientSecret,
+      clientSecretIV,
+      clientSecretTag
+    });
+
+    return oidcCfg;
+  };
+
+  const getOrgAuthStrategy = async (orgSlug: string) => {
+    const appCfg = getConfig();
+
+    const org = await orgDAL.findOne({
+      slug: orgSlug
+    });
+
+    if (!org) {
+      throw new BadRequestError({
+        message: "Organization not found."
+      });
+    }
+
+    const oidcCfg = await getOidc({
+      type: "internal",
+      orgSlug
+    });
+
+    const openIdIssuer = new OpenIdIssuer({
+      issuer: oidcCfg.issuer,
+      authorization_endpoint: oidcCfg.authorizationEndpoint,
+      jwks_uri: oidcCfg.jwksUri,
+      token_endpoint: oidcCfg.tokenEndpoint,
+      userinfo_endpoint: oidcCfg.userinfoEndpoint
+    });
+
+    const client = new openIdIssuer.Client({
+      client_id: oidcCfg.clientId,
+      client_secret: oidcCfg.clientSecret,
+      redirect_uris: [`${appCfg.SITE_URL}/api/v1/oidc/callback`]
+    });
+
+    const strategy = new OpenIdStrategy(
+      {
+        client,
+        passReqToCallback: true
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (_req: any, tokenSet: TokenSet, cb: any) => {
+        const claims = tokenSet.claims();
+        if (!claims.email || !claims.given_name) {
+          throw new BadRequestError({
+            message: "Invalid request. Missing email or first name"
+          });
+        }
+
+        oidcLogin({
+          email: claims.email,
+          externalId: claims.sub,
+          firstName: claims.given_name ?? "",
+          lastName: claims.family_name ?? "",
+          orgId: org.id
+        })
+          .then(({ isUserCompleted, providerAuthToken }) => {
+            cb(null, { isUserCompleted, providerAuthToken });
+          })
+          .catch((error) => {
+            cb(error);
+          });
+      }
+    );
+
+    return strategy;
+  };
+
+  return { oidcLogin, getOrgAuthStrategy, getOidc, updateOidcCfg, createOidcCfg };
 };
