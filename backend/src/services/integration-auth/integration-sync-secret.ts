@@ -557,6 +557,8 @@ const syncSecretsAWSParameterStore = async ({
                 `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
               );
             }
+
+            throw err;
           }
         }
       }
@@ -603,7 +605,9 @@ const syncSecretsAWSSecretManager = async ({
 }) => {
   const metadata = z.record(z.any()).parse(integration.metadata || {});
 
-  if (!accessId) return;
+  if (!accessId) {
+    throw new Error("AWS access ID is required");
+  }
 
   const secretsManager = new SecretsManagerClient({
     region: integration.region as string,
@@ -722,7 +726,7 @@ const syncSecretsAWSSecretManager = async ({
         }
       }
     } catch (err) {
-      // case when AWS manager can't find the specified secret
+      // case 1: when AWS manager can't find the specified secret
       if (err instanceof ResourceNotFoundException && secretsManager) {
         await secretsManager.send(
           new CreateSecretCommand({
@@ -734,6 +738,9 @@ const syncSecretsAWSSecretManager = async ({
               : []
           })
         );
+        // case 2: something unexpected went wrong, so we'll throw the error to reflect the error in the integration sync status
+      } else {
+        throw err;
       }
     }
   };
@@ -753,14 +760,12 @@ const syncSecretsAWSSecretManager = async ({
 const syncSecretsHeroku = async ({
   createManySecretsRawFn,
   updateManySecretsRawFn,
-  integrationDAL,
   integration,
   secrets,
   accessToken
 }: {
   createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
   updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
   integration: TIntegrations & {
     projectId: string;
     environment: {
@@ -862,10 +867,6 @@ const syncSecretsHeroku = async ({
       }
     }
   );
-
-  await integrationDAL.updateById(integration.id, {
-    lastUsed: new Date()
-  });
 };
 
 /**
@@ -2656,7 +2657,9 @@ const syncSecretsHashiCorpVault = async ({
   accessId: string | null;
   accessToken: string;
 }) => {
-  if (!accessId) return;
+  if (!accessId) {
+    throw new Error("Access ID is required");
+  }
 
   interface LoginAppRoleRes {
     auth: {
@@ -3521,7 +3524,6 @@ export const syncIntegrationSecrets = async ({
       await syncSecretsHeroku({
         createManySecretsRawFn,
         updateManySecretsRawFn,
-        integrationDAL,
         integration,
         secrets,
         accessToken
