@@ -508,11 +508,26 @@ export const SECRET_TAGS = {
   LIST: {
     projectId: "The ID of the project to list tags from."
   },
+  GET_TAG_BY_ID: {
+    projectId: "The ID of the project to get tags from.",
+    tagId: "The ID of the tag to get details"
+  },
+  GET_TAG_BY_SLUG: {
+    projectId: "The ID of the project to get tags from.",
+    tagSlug: "The slug of the tag to get details"
+  },
   CREATE: {
     projectId: "The ID of the project to create the tag in.",
     name: "The name of the tag to create.",
     slug: "The slug of the tag to create.",
     color: "The color of the tag to create."
+  },
+  UPDATE: {
+    projectId: "The ID of the project to update the tag in.",
+    tagId: "The ID of the tag to get details",
+    name: "The name of the tag to update.",
+    slug: "The slug of the tag to update.",
+    color: "The color of the tag to update."
   },
   DELETE: {
     tagId: "The ID of the tag to delete.",
