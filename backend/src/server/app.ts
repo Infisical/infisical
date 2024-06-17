@@ -58,7 +58,7 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
 
     await server.register<FastifyCorsOptions>(cors, {
       credentials: true,
-      origin: appCfg.SITE_URL || true
+      origin: false
     });
     // pull ip based on various proxy headers
     await server.register(fastifyIp);
