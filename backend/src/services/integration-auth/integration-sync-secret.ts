@@ -556,9 +556,8 @@ const syncSecretsAWSParameterStore = async ({
               logger.error(
                 `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
               );
+              throw err;
             }
-
-            throw err;
           }
         }
       }
