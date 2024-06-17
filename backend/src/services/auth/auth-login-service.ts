@@ -196,7 +196,10 @@ export const authLoginServiceFactory = ({
       const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
 
       authMethod = decodedProviderToken.authMethod;
-      if ((isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && decodedProviderToken.orgId) {
+      if (
+        (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod)) &&
+        decodedProviderToken.orgId
+      ) {
         organizationId = decodedProviderToken.orgId;
       }
     }

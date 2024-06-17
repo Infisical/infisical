@@ -116,6 +116,7 @@
     "mysql2": "^3.9.8",
     "nanoid": "^5.0.4",
     "nodemailer": "^6.9.9",
+    "openid-client": "^5.6.5",
     "ora": "^7.0.1",
     "oracledb": "^6.4.0",
     "passport-github": "^1.1.0",

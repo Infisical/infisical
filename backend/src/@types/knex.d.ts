@@ -255,6 +255,7 @@ import {
   TWebhooksInsert,
   TWebhooksUpdate
 } from "@app/db/schemas";
+import { TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
 
 declare module "knex/types/tables" {
   interface Tables {
@@ -497,6 +498,7 @@ declare module "knex/types/tables" {
       TDynamicSecretLeasesUpdate
     >;
     [TableName.SamlConfig]: Knex.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
+    [TableName.OidcConfig]: Knex.CompositeTableType<TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate>;
     [TableName.LdapConfig]: Knex.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
     [TableName.LdapGroupMap]: Knex.CompositeTableType<TLdapGroupMaps, TLdapGroupMapsInsert, TLdapGroupMapsUpdate>;
     [TableName.OrgBot]: Knex.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;

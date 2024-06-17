@@ -101,6 +101,7 @@ import { integrationAuthServiceFactory } from "@app/services/integration-auth/in
 import { kmsDALFactory } from "@app/services/kms/kms-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
+import { oidcConfigServiceFactory } from "@app/services/oidc/oidc-config-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
 import { orgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
@@ -838,6 +839,16 @@ export const registerRoutes = async (
     secretSharingDAL
   });
 
+  const oidcService = oidcConfigServiceFactory({
+    orgDAL,
+    orgMembershipDAL,
+    userDAL,
+    userAliasDAL,
+    licenseService,
+    tokenService,
+    smtpService
+  });
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -858,6 +869,7 @@ export const registerRoutes = async (
     permission: permissionService,
     org: orgService,
     orgRole: orgRoleService,
+    oidc: oidcService,
     apiKey: apiKeyService,
     authToken: tokenService,
     superAdmin: superAdminService,

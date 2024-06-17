@@ -40,6 +40,7 @@ import { TIdentityProjectServiceFactory } from "@app/services/identity-project/i
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
+import { TOidcConfigServiceFactory } from "@app/services/oidc/oidc-config-service";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
@@ -99,6 +100,7 @@ declare module "fastify" {
       permission: TPermissionServiceFactory;
       org: TOrgServiceFactory;
       orgRole: TOrgRoleServiceFactory;
+      oidc: TOidcConfigServiceFactory;
       superAdmin: TSuperAdminServiceFactory;
       user: TUserServiceFactory;
       group: TGroupServiceFactory;
