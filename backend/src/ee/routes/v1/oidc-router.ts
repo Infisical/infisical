@@ -33,13 +33,13 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     url: "/login",
     method: "GET",
     schema: {
-      params: z.object({
+      querystring: z.object({
         orgSlug: z.string().trim()
       })
     },
     handler: async (req, res) => {
       // get params, save to session
-      const { orgSlug } = req.params;
+      const { orgSlug } = req.query;
       req.session.set<any>("oidcOrgSlug", orgSlug);
       const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(orgSlug);
       (

@@ -12,6 +12,7 @@ import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
 import { TIdentityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TProjectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
@@ -40,7 +41,6 @@ import { TIdentityProjectServiceFactory } from "@app/services/identity-project/i
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
-import { TOidcConfigServiceFactory } from "@app/services/oidc/oidc-config-service";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";

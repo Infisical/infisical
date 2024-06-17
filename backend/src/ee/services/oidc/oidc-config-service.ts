@@ -18,18 +18,18 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
+import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
+import { normalizeUsername } from "@app/services/user/user-fns";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
-import { AuthMethod, AuthTokenType } from "../auth/auth-type";
-import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
-import { TokenType } from "../auth-token/auth-token-types";
-import { TOrgBotDALFactory } from "../org/org-bot-dal";
-import { TOrgDALFactory } from "../org/org-dal";
-import { TOrgMembershipDALFactory } from "../org-membership/org-membership-dal";
-import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TUserDALFactory } from "../user/user-dal";
-import { normalizeUsername } from "../user/user-fns";
-import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
-import { UserAliasType } from "../user-alias/user-alias-types";
 import { TOidcConfigDALFactory } from "./oidc-config-dal";
 import { TCreateOidcCfgDTO, TGetOidcCfgDTO, TOidcLoginDTO, TUpdateOidcCfgDTO } from "./oidc-config-types";
 

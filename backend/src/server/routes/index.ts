@@ -30,6 +30,8 @@ import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-conf
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
+import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
+import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -101,8 +103,6 @@ import { integrationAuthServiceFactory } from "@app/services/integration-auth/in
 import { kmsDALFactory } from "@app/services/kms/kms-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
-import { oidcConfigDALFactory } from "@app/services/oidc/oidc-config-dal";
-import { oidcConfigServiceFactory } from "@app/services/oidc/oidc-config-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
 import { orgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
