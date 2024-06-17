@@ -505,7 +505,10 @@
           "group": "Secret Tags",
           "pages": [
             "api-reference/endpoints/secret-tags/list",
+            "api-reference/endpoints/secret-tags/get-by-id",
+            "api-reference/endpoints/secret-tags/get-by-slug",
             "api-reference/endpoints/secret-tags/create",
+            "api-reference/endpoints/secret-tags/update",
             "api-reference/endpoints/secret-tags/delete"
           ]
         },
