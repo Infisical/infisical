@@ -64,13 +64,13 @@ export const useDeleteGroupFromWorkspace = () => {
 };
 
 export const useLeaveProject = () => {
-  return useMutation<{}, {}, { workspaceId: string; organizationId: string }>({
+  const queryClient = useQueryClient();
+  return useMutation<{}, {}, { workspaceId: string }>({
     mutationFn: ({ workspaceId }) => {
       return apiRequest.delete(`/api/v1/workspace/${workspaceId}/leave`);
     },
-    onSuccess: (_, { organizationId }) => {
-      // Invalidating the query here will cause a permission error, so we won't invalidate any queries here. Instead after leaving the workspace, we will redirect the user to the organization overview page.
-      window.location.href = `/org/${organizationId}/overview`;
+    onSuccess: () => {
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
   });
 };

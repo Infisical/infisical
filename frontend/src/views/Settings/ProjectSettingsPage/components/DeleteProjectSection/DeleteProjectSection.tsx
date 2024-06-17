@@ -114,9 +114,10 @@ export const DeleteProjectSection = () => {
         }
       }
 
+      // If it's actually a no-access member, then we don't really care about the members.
+
       await leaveProject.mutateAsync({
-        workspaceId: currentWorkspace.id,
-        organizationId: currentOrg.id
+        workspaceId: currentWorkspace.id
       });
 
       router.push(`/org/${currentOrg.id}/overview`);
@@ -152,7 +153,7 @@ export const DeleteProjectSection = () => {
             </Button>
           )}
         </ProjectPermissionCan>
-        {!!isOnlyAdminMember && (
+        {!isOnlyAdminMember && (
           <Button
             disabled={isMembersLoading || (members && members?.length < 2)}
             isLoading={isLeaving}
