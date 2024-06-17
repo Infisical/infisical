@@ -40,11 +40,13 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
   const { data: serverDetails } = useFetchServerStatus();
 
   useEffect(() => {
-      if (serverDetails?.samlDefaultOrgSlug){
-        const callbackPort = queryParams.get("callback_port");
-        const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${serverDetails?.samlDefaultOrgSlug}${callbackPort ? `?callback_port=${callbackPort}` : ""}`
-        router.push(redirectUrl);
-      }
+    if (serverDetails?.samlDefaultOrgSlug) {
+      const callbackPort = queryParams.get("callback_port");
+      const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${
+        serverDetails?.samlDefaultOrgSlug
+      }${callbackPort ? `?callback_port=${callbackPort}` : ""}`;
+      router.push(redirectUrl);
+    }
   }, [serverDetails?.samlDefaultOrgSlug]);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
@@ -215,6 +217,19 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           className="mx-0 h-10 w-full"
         >
           Continue with SAML
+        </Button>
+      </div>
+      <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+        <Button
+          colorSchema="primary"
+          variant="outline_bg"
+          onClick={() => {
+            setStep(3);
+          }}
+          leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+          className="mx-0 h-10 w-full"
+        >
+          Continue with OIDC
         </Button>
       </div>
       <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">

@@ -59,7 +59,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
       const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(oidcOrgSlug);
       await (
         passport.authenticate(oidcStrategy as Strategy, {
-          failureRedirect: "/api/v1/oidc/login/error",
+          failureRedirect: "/api/v1/sso/oidc/login/error",
           session: false,
           failureMessage: true
         }) as any
@@ -137,13 +137,13 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z
         .object({
-          issuer: z.string(),
-          authorizationEndpoint: z.string(),
-          jwksUri: z.string(),
-          tokenEndpoint: z.string(),
-          userinfoEndpoint: z.string(),
-          clientId: z.string(),
-          clientSecret: z.string(),
+          issuer: z.string().trim(),
+          authorizationEndpoint: z.string().trim(),
+          jwksUri: z.string().trim(),
+          tokenEndpoint: z.string().trim(),
+          userinfoEndpoint: z.string().trim(),
+          clientId: z.string().trim(),
+          clientSecret: z.string().trim(),
           isActive: z.boolean()
         })
         .partial()
@@ -182,15 +182,15 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
-        issuer: z.string(),
-        authorizationEndpoint: z.string(),
-        jwksUri: z.string(),
-        tokenEndpoint: z.string(),
-        userinfoEndpoint: z.string(),
-        clientId: z.string(),
-        clientSecret: z.string(),
+        issuer: z.string().trim(),
+        authorizationEndpoint: z.string().trim(),
+        jwksUri: z.string().trim(),
+        tokenEndpoint: z.string().trim(),
+        userinfoEndpoint: z.string().trim(),
+        clientId: z.string().trim(),
+        clientSecret: z.string().trim(),
         isActive: z.boolean(),
-        orgSlug: z.string()
+        orgSlug: z.string().trim()
       }),
       response: {
         200: OidcConfigsSchema.pick({

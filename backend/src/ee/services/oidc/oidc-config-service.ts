@@ -520,7 +520,7 @@ export const oidcConfigServiceFactory = ({
     const client = new openIdIssuer.Client({
       client_id: oidcCfg.clientId,
       client_secret: oidcCfg.clientSecret,
-      redirect_uris: [`${appCfg.SITE_URL}/api/v1/oidc/callback`]
+      redirect_uris: [`${appCfg.SITE_URL}/api/v1/sso/oidc/callback`]
     });
 
     const strategy = new OpenIdStrategy(
