@@ -13,6 +13,18 @@ export type TGetOidcCfgDTO = {
   orgSlug: string;
 } & TGenericPermission;
 
+export type TCreateOidcCfgDTO = {
+  issuer: string;
+  authorizationEndpoint: string;
+  jwksUri: string;
+  tokenEndpoint: string;
+  userinfoEndpoint: string;
+  clientId: string;
+  clientSecret: string;
+  isActive: boolean;
+  orgSlug: string;
+} & TGenericPermission;
+
 export type TUpdateOidcCfgDTO = Partial<{
   issuer: string;
   authorizationEndpoint: string;

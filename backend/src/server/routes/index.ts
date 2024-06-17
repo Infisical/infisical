@@ -101,6 +101,7 @@ import { integrationAuthServiceFactory } from "@app/services/integration-auth/in
 import { kmsDALFactory } from "@app/services/kms/kms-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
+import { oidcConfigDALFactory } from "@app/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/services/oidc/oidc-config-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
 import { orgBotDALFactory } from "@app/services/org/org-bot-dal";
@@ -241,6 +242,7 @@ export const registerRoutes = async (
   const ldapConfigDAL = ldapConfigDALFactory(db);
   const ldapGroupMapDAL = ldapGroupMapDALFactory(db);
 
+  const oidcConfigDAL = oidcConfigDALFactory(db);
   const accessApprovalPolicyDAL = accessApprovalPolicyDALFactory(db);
   const accessApprovalRequestDAL = accessApprovalRequestDALFactory(db);
   const accessApprovalPolicyApproverDAL = accessApprovalPolicyApproverDALFactory(db);
@@ -846,7 +848,10 @@ export const registerRoutes = async (
     userAliasDAL,
     licenseService,
     tokenService,
-    smtpService
+    smtpService,
+    orgBotDAL,
+    permissionService,
+    oidcConfigDAL
   });
 
   await superAdminService.initServerCfg();

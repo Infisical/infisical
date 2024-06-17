@@ -12,6 +12,9 @@ import { z } from "zod";
 
 import { OidcConfigsSchema } from "@app/db/schemas/oidc-configs";
 import { getConfig } from "@app/lib/config/env";
+import { writeLimit } from "@app/server/config/rateLimiter";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerOidcRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -101,6 +104,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           jwksUri: true,
           tokenEndpoint: true,
           userinfoEndpoint: true,
+          isActive: true,
           orgId: true
         }).extend({
           clientId: z.string(),
@@ -119,6 +123,97 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod
       });
 
+      return oidc;
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/config",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      body: z
+        .object({
+          issuer: z.string(),
+          authorizationEndpoint: z.string(),
+          jwksUri: z.string(),
+          tokenEndpoint: z.string(),
+          userinfoEndpoint: z.string(),
+          clientId: z.string(),
+          clientSecret: z.string(),
+          isActive: z.boolean()
+        })
+        .partial()
+        .merge(z.object({ orgSlug: z.string() })),
+      response: {
+        200: OidcConfigsSchema.pick({
+          id: true,
+          issuer: true,
+          authorizationEndpoint: true,
+          jwksUri: true,
+          tokenEndpoint: true,
+          userinfoEndpoint: true,
+          orgId: true,
+          isActive: true
+        })
+      }
+    },
+    handler: async (req) => {
+      const oidc = await server.services.oidc.updateOidcCfg({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+      return oidc;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/config",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      body: z.object({
+        issuer: z.string(),
+        authorizationEndpoint: z.string(),
+        jwksUri: z.string(),
+        tokenEndpoint: z.string(),
+        userinfoEndpoint: z.string(),
+        clientId: z.string(),
+        clientSecret: z.string(),
+        isActive: z.boolean(),
+        orgSlug: z.string()
+      }),
+      response: {
+        200: OidcConfigsSchema.pick({
+          id: true,
+          issuer: true,
+          authorizationEndpoint: true,
+          jwksUri: true,
+          tokenEndpoint: true,
+          userinfoEndpoint: true,
+          orgId: true,
+          isActive: true
+        })
+      }
+    },
+
+    handler: async (req) => {
+      const oidc = await server.services.oidc.createOidcCfg({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
       return oidc;
     }
   });

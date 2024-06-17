@@ -113,6 +113,9 @@ import {
   TLdapGroupMaps,
   TLdapGroupMapsInsert,
   TLdapGroupMapsUpdate,
+  TOidcConfigs,
+  TOidcConfigsInsert,
+  TOidcConfigsUpdate,
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
@@ -255,7 +258,6 @@ import {
   TWebhooksInsert,
   TWebhooksUpdate
 } from "@app/db/schemas";
-import { TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
 
 declare module "knex/types/tables" {
   interface Tables {
