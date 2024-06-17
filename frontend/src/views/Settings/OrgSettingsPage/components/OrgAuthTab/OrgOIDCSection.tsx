@@ -1,7 +1,12 @@
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Switch } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { Button, Switch, UpgradePlanModal } from "@app/components/v2";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription
+} from "@app/context";
 import { useGetOIDCConfig } from "@app/hooks/api";
 import { useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -10,16 +15,23 @@ import { OIDCModal } from "./OIDCModal";
 
 export const OrgOIDCSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
+  const { subscription } = useSubscription();
 
   const { data, isLoading } = useGetOIDCConfig(currentOrg?.slug ?? "");
   const { mutateAsync } = useUpdateOIDCConfig();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "addOIDC"
+    "addOIDC",
+    "upgradePlan"
   ] as const);
 
   const handleOIDCToggle = async (value: boolean) => {
     try {
       if (!currentOrg?.id) return;
+
+      if (!subscription?.oidcSSO) {
+        handlePopUpOpen("upgradePlan");
+        return;
+      }
 
       await mutateAsync({
         orgSlug: currentOrg?.slug,
@@ -40,10 +52,10 @@ export const OrgOIDCSection = (): JSX.Element => {
   };
 
   const addOidcButtonClick = async () => {
-    try {
+    if (subscription?.oidcSSO && currentOrg) {
       handlePopUpOpen("addOIDC");
-    } catch (err) {
-      console.error(err);
+    } else {
+      handlePopUpOpen("upgradePlan");
     }
   };
 
@@ -95,6 +107,11 @@ export const OrgOIDCSection = (): JSX.Element => {
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="You can use OIDC SSO if you switch to Infisical's Pro plan."
       />
     </>
   );

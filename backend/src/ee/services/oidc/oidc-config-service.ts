@@ -196,9 +196,6 @@ export const oidcConfigServiceFactory = ({
       }
     );
 
-    // TODO: Sheen update oidc config
-    // await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
-
     if (user.email && !user.isEmailVerified) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
@@ -315,11 +312,19 @@ export const oidcConfigServiceFactory = ({
     const org = await orgDAL.findOne({
       slug: orgSlug
     });
+
     if (!org) {
       throw new BadRequestError({
         message: "Organization not found"
       });
     }
+
+    const plan = await licenseService.getPlan(org.id);
+    if (!plan.oidcSSO)
+      throw new BadRequestError({
+        message:
+          "Failed to update OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
+      });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -395,6 +400,13 @@ export const oidcConfigServiceFactory = ({
         message: "Organization not found"
       });
     }
+
+    const plan = await licenseService.getPlan(org.id);
+    if (!plan.oidcSSO)
+      throw new BadRequestError({
+        message:
+          "Failed to create OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
+      });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
