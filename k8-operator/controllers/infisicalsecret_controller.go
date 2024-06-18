@@ -75,6 +75,31 @@ func (r *InfisicalSecretReconciler) handleFinalizer(ctx context.Context, infisic
 	return nil
 }
 
+func (r *InfisicalSecretReconciler) handleManagedSecretDeletion(a client.Object) []ctrl.Request {
+	var requests []ctrl.Request
+	infisicalSecrets := &secretsv1alpha1.InfisicalSecretList{}
+	err := r.List(context.Background(), infisicalSecrets)
+	if err != nil {
+		fmt.Printf("unable to list Infisical Secrets from cluster because [err=%v]", err)
+		return requests
+	}
+
+	for _, infisicalSecret := range infisicalSecrets.Items {
+		if a.GetName() == infisicalSecret.Spec.ManagedSecretReference.SecretName &&
+			a.GetNamespace() == infisicalSecret.Spec.ManagedSecretReference.SecretNamespace {
+			requests = append(requests, ctrl.Request{
+				NamespacedName: client.ObjectKey{
+					Namespace: infisicalSecret.Namespace,
+					Name:      infisicalSecret.Name,
+				},
+			})
+			fmt.Printf("\nManaged secret deleted in resource %s: [name=%v] [namespace=%v]\n", infisicalSecret.Name, a.GetName(), a.GetNamespace())
+		}
+	}
+
+	return requests
+}
+
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var infisicalSecretCR secretsv1alpha1.InfisicalSecret
 	requeueTime := time.Minute // seconds
@@ -165,37 +190,38 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&secretsv1alpha1.InfisicalSecret{}).
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
-			handler.EnqueueRequestsFromMapFunc(func(a client.Object) []ctrl.Request {
-				var requests []ctrl.Request
-				infisicalSecrets := &secretsv1alpha1.InfisicalSecretList{}
-				err := r.List(context.Background(), infisicalSecrets)
-				if err != nil {
-					fmt.Printf("unable to list Infisical Secrets from cluster because [err=%v]", err)
-					return requests
-				}
-
-				for _, infisicalSecret := range infisicalSecrets.Items {
-					isManagedSecret := a.GetName() == infisicalSecret.Spec.ManagedSecretReference.SecretName && a.GetNamespace() == infisicalSecret.Spec.ManagedSecretReference.SecretNamespace
-
-					// If a managed secret is deleted, we should re-reconcile the InfisicalSecret resource that the managed secret belongs to.
-					if isManagedSecret {
-						requests = append(requests, ctrl.Request{
-							NamespacedName: client.ObjectKey{
-								Namespace: infisicalSecret.Namespace,
-								Name:      infisicalSecret.Name,
-							},
-						})
-						fmt.Printf("\nManaged secret deleted: [name=%v] [namespace=[%v]\n", a.GetName(), a.GetNamespace())
-					}
-				}
-
-				return requests
-			}),
+			handler.EnqueueRequestsFromMapFunc(r.handleManagedSecretDeletion),
 			builder.WithPredicates(predicate.Funcs{
+				// Always return true to ensure we process all delete events
 				DeleteFunc: func(e event.DeleteEvent) bool {
 					return true
 				},
 			}),
 		).
 		Complete(r)
+}
+
+func (r *InfisicalSecretReconciler) HandleManagedSecretDeletion(a client.Object) []ctrl.Request {
+	var requests []ctrl.Request
+	infisicalSecrets := &secretsv1alpha1.InfisicalSecretList{}
+	err := r.List(context.Background(), infisicalSecrets)
+	if err != nil {
+		fmt.Printf("unable to list Infisical Secrets from cluster because [err=%v]", err)
+		return requests
+	}
+
+	for _, infisicalSecret := range infisicalSecrets.Items {
+		if a.GetName() == infisicalSecret.Spec.ManagedSecretReference.SecretName &&
+			a.GetNamespace() == infisicalSecret.Spec.ManagedSecretReference.SecretNamespace {
+			requests = append(requests, ctrl.Request{
+				NamespacedName: client.ObjectKey{
+					Namespace: infisicalSecret.Namespace,
+					Name:      infisicalSecret.Name,
+				},
+			})
+			fmt.Printf("\nManaged secret deleted in resource %s: [name=%v] [namespace=%v]\n", infisicalSecret.Name, a.GetName(), a.GetNamespace())
+		}
+	}
+
+	return requests
 }
