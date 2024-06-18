@@ -6,6 +6,7 @@ export type TOidcLoginDTO = {
   firstName: string;
   lastName?: string;
   orgId: string;
+  callbackPort?: string;
 };
 
 export type TGetOidcCfgDTO =

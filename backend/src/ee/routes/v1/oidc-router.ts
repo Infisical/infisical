@@ -45,14 +45,20 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     schema: {
       querystring: z.object({
-        orgSlug: z.string().trim()
+        orgSlug: z.string().trim(),
+        callbackPort: z.string().trim().optional()
       })
     },
     handler: async (req, res) => {
       // get params, save to session
-      const { orgSlug } = req.query;
+      const { orgSlug, callbackPort } = req.query;
       req.session.set<any>("oidcOrgSlug", orgSlug);
-      const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(orgSlug);
+
+      if (callbackPort) {
+        req.session.set<any>("callbackPort", callbackPort);
+      }
+
+      const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(orgSlug, callbackPort);
       (
         passport.authenticate(oidcStrategy as Strategy, {
           scope: "profile email openid"
@@ -67,7 +73,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     handler: async (req, res) => {
       const oidcOrgSlug = req.session.get<any>("oidcOrgSlug");
-      const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(oidcOrgSlug);
+      const callbackPort = req.session.get<any>("callbackPort");
+      const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(oidcOrgSlug, callbackPort);
+
       await (
         passport.authenticate(oidcStrategy as Strategy, {
           failureRedirect: "/api/v1/sso/oidc/login/error",
@@ -75,6 +83,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           failureMessage: true
         }) as any
       )(req, res);
+
+      await req.session.destroy();
 
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
@@ -92,7 +102,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/login/error",
     method: "GET",
-    handler: (req, res) => {
+    handler: async (req, res) => {
+      await req.session.destroy();
+
       return res.status(500).send({
         error: "Authentication error",
         details: req.query

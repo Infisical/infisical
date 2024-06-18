@@ -24,8 +24,11 @@ export const SSOStep = ({ setStep, type }: Props) => {
         }`
       );
     } else {
-      // TODO: Sheen - Add callback support for CLI login
-      window.open(`/api/v1/sso/oidc/login?orgSlug=${ssoIdentifier}`);
+      window.open(
+        `/api/v1/sso/oidc/login?orgSlug=${ssoIdentifier}${
+          callbackPort ? `&callbackPort=${callbackPort}` : ""
+        }`
+      );
     }
 
     window.close();

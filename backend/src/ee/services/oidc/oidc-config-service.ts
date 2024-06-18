@@ -63,7 +63,7 @@ export const oidcConfigServiceFactory = ({
   smtpService,
   oidcConfigDAL
 }: TOidcConfigServiceFactoryDep) => {
-  const oidcLogin = async ({ externalId, email, firstName, lastName, orgId }: TOidcLoginDTO) => {
+  const oidcLogin = async ({ externalId, email, firstName, lastName, orgId, callbackPort }: TOidcLoginDTO) => {
     const appCfg = getConfig();
     const userAlias = await userAliasDAL.findOne({
       externalId,
@@ -188,7 +188,8 @@ export const oidcConfigServiceFactory = ({
         organizationSlug: organization.slug,
         authMethod: AuthMethod.OIDC,
         authType: UserAliasType.OIDC,
-        isUserCompleted
+        isUserCompleted,
+        ...(callbackPort && { callbackPort })
       },
       appCfg.AUTH_SECRET,
       {
@@ -491,7 +492,7 @@ export const oidcConfigServiceFactory = ({
     return oidcCfg;
   };
 
-  const getOrgAuthStrategy = async (orgSlug: string) => {
+  const getOrgAuthStrategy = async (orgSlug: string, callbackPort?: string) => {
     const appCfg = getConfig();
 
     const org = await orgDAL.findOne({
@@ -542,7 +543,8 @@ export const oidcConfigServiceFactory = ({
           externalId: claims.sub,
           firstName: claims.given_name ?? "",
           lastName: claims.family_name ?? "",
-          orgId: org.id
+          orgId: org.id,
+          callbackPort
         })
           .then(({ isUserCompleted, providerAuthToken }) => {
             cb(null, { isUserCompleted, providerAuthToken });
