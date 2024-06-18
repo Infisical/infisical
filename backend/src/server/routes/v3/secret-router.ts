@@ -8,7 +8,7 @@ import {
   SecretType,
   ServiceTokenScopes
 } from "@app/db/schemas";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { RAW_SECRETS, SECRETS } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -259,18 +259,20 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretPulled,
-        distinctId: getTelemetryDistinctId(req),
-        properties: {
-          numberOfSecrets: secrets.length,
-          workspaceId,
-          environment,
-          secretPath: req.query.secretPath,
-          channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
-        }
-      });
+      if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretPulled,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            numberOfSecrets: secrets.length,
+            workspaceId,
+            environment,
+            secretPath: req.query.secretPath,
+            channel: getUserAgentType(req.headers["user-agent"]),
+            ...req.auditLogInfo
+          }
+        });
+      }
       return { secrets, imports };
     }
   });
@@ -367,18 +369,20 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretPulled,
-        distinctId: getTelemetryDistinctId(req),
-        properties: {
-          numberOfSecrets: 1,
-          workspaceId: secret.workspace,
-          environment,
-          secretPath: req.query.secretPath,
-          channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
-        }
-      });
+      if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretPulled,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            numberOfSecrets: 1,
+            workspaceId: secret.workspace,
+            environment,
+            secretPath: req.query.secretPath,
+            channel: getUserAgentType(req.headers["user-agent"]),
+            ...req.auditLogInfo
+          }
+        });
+      }
       return { secret };
     }
   });
@@ -723,24 +727,22 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       });
 
       // TODO: Move to telemetry plugin
-      let shouldRecordK8Event = false;
-      if (req.headers["user-agent"] === "k8-operatoer") {
-        const randomNumber = Math.random();
-        if (randomNumber > 0.95) {
-          shouldRecordK8Event = true;
-        }
-      }
+      // let shouldRecordK8Event = false;
+      // if (req.headers["user-agent"] === "k8-operatoer") {
+      //   const randomNumber = Math.random();
+      //   if (randomNumber > 0.95) {
+      //     shouldRecordK8Event = true;
+      //   }
+      // }
 
       const shouldCapture =
-        req.query.workspaceId !== "650e71fbae3e6c8572f436d4" &&
-        (req.headers["user-agent"] !== "k8-operator" || shouldRecordK8Event);
-      const approximateNumberTotalSecrets = secrets.length * 20;
+        req.query.workspaceId !== "650e71fbae3e6c8572f436d4" && req.headers["user-agent"] !== "k8-operator";
       if (shouldCapture) {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretPulled,
           distinctId: getTelemetryDistinctId(req),
           properties: {
-            numberOfSecrets: shouldRecordK8Event ? approximateNumberTotalSecrets : secrets.length,
+            numberOfSecrets: secrets.length,
             workspaceId: req.query.workspaceId,
             environment: req.query.environment,
             secretPath: req.query.secretPath,
@@ -817,18 +819,20 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretPulled,
-        distinctId: getTelemetryDistinctId(req),
-        properties: {
-          numberOfSecrets: 1,
-          workspaceId: req.query.workspaceId,
-          environment: req.query.environment,
-          secretPath: req.query.secretPath,
-          channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
-        }
-      });
+      if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretPulled,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            numberOfSecrets: 1,
+            workspaceId: req.query.workspaceId,
+            environment: req.query.environment,
+            secretPath: req.query.secretPath,
+            channel: getUserAgentType(req.headers["user-agent"]),
+            ...req.auditLogInfo
+          }
+        });
+      }
       return { secret };
     }
   });
