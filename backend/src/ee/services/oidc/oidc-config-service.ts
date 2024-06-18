@@ -510,6 +510,12 @@ export const oidcConfigServiceFactory = ({
       orgSlug
     });
 
+    if (!oidcCfg || !oidcCfg.isActive) {
+      throw new BadRequestError({
+        message: "Failed to authenticate with OIDC SSO"
+      });
+    }
+
     const openIdIssuer = new OpenIdIssuer({
       issuer: oidcCfg.issuer,
       authorization_endpoint: oidcCfg.authorizationEndpoint,
