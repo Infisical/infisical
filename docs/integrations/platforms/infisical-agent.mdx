@@ -89,7 +89,7 @@ The Infisical agent supports multiple authentication methods. Below are the avai
     <Step title="Configure the agent">
       Update the agent configuration file with the specified auth method, client ID, and client secret. In the snippet below you can see a sample configuration of the `auth` field when using the Universal Auth method.
 
-    ```yaml example-agent-config-file.yaml
+    ```yaml example-auth-config.yaml
     auth:
       type: "universal-auth"
       config:
@@ -121,7 +121,7 @@ The Infisical agent supports multiple authentication methods. Below are the avai
     <Step title="Configure the agent">
       Update the agent configuration file with the specified auth method, identity ID, and service account token. In the snippet below you can see a sample configuration of the `auth` field when using the Kubernetes method.
 
-    ```yaml example-agent-config-file.yaml
+    ```yaml example-auth-config.yaml
     auth:
       type: "kubernetes"
       config:
@@ -150,7 +150,7 @@ The Infisical agent supports multiple authentication methods. Below are the avai
       <Step title="Configure the agent">
         Update the agent configuration file with the specified auth method and identity ID. In the snippet below you can see a sample configuration of the `auth` field when using the Azure method.
 
-      ```yaml example-agent-config-file.yaml
+      ```yaml example-auth-config.yaml
       auth:
         type: "azure"
         config:
@@ -178,7 +178,7 @@ The Infisical agent supports multiple authentication methods. Below are the avai
       <Step title="Configure the agent">
         Update the agent configuration file with the specified auth method and identity ID. In the snippet below you can see a sample configuration of the `auth` field when using the GCP ID Token method.
 
-      ```yaml example-agent-config-file.yaml
+      ```yaml example-auth-config.yaml
       auth:
         type: "gcp-id-token"
         config:
@@ -208,7 +208,7 @@ The Infisical agent supports multiple authentication methods. Below are the avai
       <Step title="Configure the agent">
         Update the agent configuration file with the specified auth method, identity ID, and service account key. In the snippet below you can see a sample configuration of the `auth` field when using the GCP IAM method.
 
-      ```yaml example-agent-config-file.yaml
+      ```yaml example-auth-config.yaml
       auth:
         type: "gcp-iam"
         config:
@@ -236,7 +236,7 @@ The Infisical agent supports multiple authentication methods. Below are the avai
       <Step title="Configure the agent">
         Update the agent configuration file with the specified auth method and identity ID. In the snippet below you can see a sample configuration of the `auth` field when using the AWS IAM method.
 
-      ```yaml example-agent-config-file.yaml
+      ```yaml example-auth-config.yaml
       auth:
         type: "aws-iam"
         config:
