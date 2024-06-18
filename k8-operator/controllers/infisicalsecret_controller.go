@@ -5,11 +5,17 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	controllerUtil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
@@ -154,9 +160,42 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
 func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&secretsv1alpha1.InfisicalSecret{}).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			handler.EnqueueRequestsFromMapFunc(func(a client.Object) []ctrl.Request {
+				var requests []ctrl.Request
+				infisicalSecrets := &secretsv1alpha1.InfisicalSecretList{}
+				err := r.List(context.Background(), infisicalSecrets)
+				if err != nil {
+					fmt.Printf("unable to list Infisical Secrets from cluster because [err=%v]", err)
+					return requests
+				}
+
+				for _, infisicalSecret := range infisicalSecrets.Items {
+					isManagedSecret := a.GetName() == infisicalSecret.Spec.ManagedSecretReference.SecretName && a.GetNamespace() == infisicalSecret.Spec.ManagedSecretReference.SecretNamespace
+
+					// If a managed secret is deleted, we should re-reconcile the InfisicalSecret resource that the managed secret belongs to.
+					if isManagedSecret {
+						requests = append(requests, ctrl.Request{
+							NamespacedName: client.ObjectKey{
+								Namespace: infisicalSecret.Namespace,
+								Name:      infisicalSecret.Name,
+							},
+						})
+						fmt.Printf("\nManaged secret deleted: [name=%v] [namespace=[%v]\n", a.GetName(), a.GetNamespace())
+					}
+				}
+
+				return requests
+			}),
+			builder.WithPredicates(predicate.Funcs{
+				DeleteFunc: func(e event.DeleteEvent) bool {
+					return true
+				},
+			}),
+		).
 		Complete(r)
 }
