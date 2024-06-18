@@ -50,8 +50,11 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
       })
     },
     handler: async (req, res) => {
-      // get params, save to session
       const { orgSlug, callbackPort } = req.query;
+
+      // ensure fresh session state per login attempt
+      await req.session.regenerate();
+
       req.session.set<any>("oidcOrgSlug", orgSlug);
 
       if (callbackPort) {
