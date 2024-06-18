@@ -8,6 +8,8 @@
 
 import { Authenticator, Strategy } from "@fastify/passport";
 import fastifySession from "@fastify/session";
+import RedisStore from "connect-redis";
+import { Redis } from "ioredis";
 import { z } from "zod";
 
 import { OidcConfigsSchema } from "@app/db/schemas/oidc-configs";
@@ -18,13 +20,22 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerOidcRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
+  const redis = new Redis(appCfg.REDIS_URL);
   const passport = new Authenticator({ key: "oidc", userProperty: "passportUser" });
+  const redisStore = new RedisStore({
+    client: redis,
+    prefix: "oidc-session:",
+    ttl: 600 // 10 minutes
+  });
+
   await server.register(fastifySession, {
     secret: appCfg.COOKIE_SECRET_SIGN_KEY,
+    store: redisStore,
     cookie: {
-      secure: false // has to be set to false if testing locally
+      secure: false // set to true in production
     }
   });
+
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
 
