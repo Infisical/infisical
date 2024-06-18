@@ -42,6 +42,13 @@ export const IDENTITIES = {
   },
   DELETE: {
     identityId: "The ID of the identity to delete."
+  },
+  GET_BY_ID: {
+    identityId: "The ID of the identity to get details.",
+    orgId: "The ID of the org of the identity"
+  },
+  LIST: {
+    orgId: "The ID of the organization to list identities."
   }
 } as const;
 
