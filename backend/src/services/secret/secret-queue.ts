@@ -562,8 +562,8 @@ export const secretQueueFactory = ({
         await integrationDAL.updateById(integration.id, {
           lastSyncJobId: job.id,
           lastUsed: new Date(),
-          syncMessage: response?.syncMessage || "",
-          isSynced: response?.isSynced || true
+          syncMessage: response?.syncMessage ?? "",
+          isSynced: response?.isSynced ?? true
         });
       } catch (err) {
         logger.info("Secret integration sync error: %o", err);

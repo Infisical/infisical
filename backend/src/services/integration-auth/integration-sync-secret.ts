@@ -454,7 +454,9 @@ const syncSecretsAWSParameterStore = async ({
 }) => {
   let response: { isSynced: boolean; syncMessage: string } | null = null;
 
-  if (!accessId) return null;
+  if (!accessId) {
+    throw new Error("AWS access ID is required");
+  }
 
   const config = new AWS.Config({
     region: integration.region as string,
