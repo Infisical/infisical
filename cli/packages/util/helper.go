@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -249,7 +248,7 @@ func AppendAPIEndpoint(address string) string {
 }
 
 func ReadFileAsString(filePath string) (string, error) {
-	fileBytes, err := ioutil.ReadFile(filePath)
+	fileBytes, err := os.ReadFile(filePath)
 
 	if err != nil {
 		return "", err
