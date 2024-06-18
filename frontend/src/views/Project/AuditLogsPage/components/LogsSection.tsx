@@ -23,7 +23,8 @@ export const LogsSection = () => {
     defaultValues: {
       page: 1,
       perPage: 10,
-      startDate: new Date(new Date().setDate(new Date().getDate() - 1))
+      startDate: new Date(new Date().setDate(new Date().getDate() - 1)), // day before today
+      endDate: new Date(new Date(Date.now()).setHours(23, 59, 59, 999)) // end of today
     }
   });
 

@@ -56,5 +56,19 @@ export enum EventType {
   UPDATE_SECRET_IMPORT = "update-secret-import",
   DELETE_SECRET_IMPORT = "delete-secret-import",
   UPDATE_USER_WORKSPACE_ROLE = "update-user-workspace-role",
-  UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS = "update-user-workspace-denied-permissions"
+  UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS = "update-user-workspace-denied-permissions",
+  CREATE_CA = "create-certificate-authority",
+  GET_CA = "get-certificate-authority",
+  UPDATE_CA = "update-certificate-authority",
+  DELETE_CA = "delete-certificate-authority",
+  GET_CA_CSR = "get-certificate-authority-csr",
+  GET_CA_CERT = "get-certificate-authority-cert",
+  SIGN_INTERMEDIATE = "sign-intermediate",
+  IMPORT_CA_CERT = "import-certificate-authority-cert",
+  GET_CA_CRL = "get-certificate-authority-crl",
+  ISSUE_CERT = "issue-cert",
+  GET_CERT = "get-cert",
+  DELETE_CERT = "delete-cert",
+  REVOKE_CERT = "revoke-cert",
+  GET_CERT_BODY = "get-cert-body"
 }

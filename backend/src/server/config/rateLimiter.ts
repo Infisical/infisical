@@ -1,8 +1,8 @@
 import type { RateLimitOptions, RateLimitPluginOptions } from "@fastify/rate-limit";
 import { Redis } from "ioredis";
 
+import { getRateLimiterConfig } from "@app/ee/services/rate-limit/rate-limit-service";
 import { getConfig } from "@app/lib/config/env";
-import { getRateLimiterConfig } from "@app/services/rate-limit/rate-limit-service";
 
 export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
   const appCfg = getConfig();
@@ -70,8 +70,15 @@ export const creationLimit: RateLimitOptions = {
 
 // Public endpoints to avoid brute force attacks
 export const publicEndpointLimit: RateLimitOptions = {
-  // Shared Secrets
+  // Read Shared Secrets
   timeWindow: 60 * 1000,
   max: () => getRateLimiterConfig().publicEndpointLimit,
+  keyGenerator: (req) => req.realIp
+};
+
+export const publicSecretShareCreationLimit: RateLimitOptions = {
+  // Create Shared Secrets
+  timeWindow: 60 * 1000,
+  max: 5,
   keyGenerator: (req) => req.realIp
 };

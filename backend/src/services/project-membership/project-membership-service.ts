@@ -36,6 +36,7 @@ import {
   TDeleteProjectMembershipsDTO,
   TGetProjectMembershipByUsernameDTO,
   TGetProjectMembershipDTO,
+  TLeaveProjectDTO,
   TUpdateProjectMembershipDTO
 } from "./project-membership-types";
 import { TProjectUserMembershipRoleDALFactory } from "./project-user-membership-role-dal";
@@ -531,6 +532,53 @@ export const projectMembershipServiceFactory = ({
     return memberships;
   };
 
+  const leaveProject = async ({ projectId, actorId, actor }: TLeaveProjectDTO) => {
+    if (actor !== ActorType.USER) {
+      throw new BadRequestError({ message: "Only users can leave projects" });
+    }
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new BadRequestError({ message: "Project not found" });
+
+    if (project.version !== ProjectVersion.V2) {
+      throw new BadRequestError({
+        message: "Please ask your project administrator to upgrade the project before leaving."
+      });
+    }
+
+    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+
+    if (!projectMembers?.length) {
+      throw new BadRequestError({ message: "Failed to find project members" });
+    }
+
+    if (projectMembers.length < 2) {
+      throw new BadRequestError({ message: "You cannot leave the project as you are the only member" });
+    }
+
+    const adminMembers = projectMembers.filter(
+      (member) => member.roles.map((r) => r.role).includes("admin") && member.userId !== actorId
+    );
+    if (!adminMembers.length) {
+      throw new BadRequestError({
+        message: "You cannot leave the project as you are the only admin. Promote another user to admin before leaving."
+      });
+    }
+
+    const deletedMembership = (
+      await projectMembershipDAL.delete({
+        projectId: project.id,
+        userId: actorId
+      })
+    )?.[0];
+
+    if (!deletedMembership) {
+      throw new BadRequestError({ message: "Failed to leave project" });
+    }
+
+    return deletedMembership;
+  };
+
   return {
     getProjectMemberships,
     getProjectMembershipByUsername,
@@ -538,6 +586,7 @@ export const projectMembershipServiceFactory = ({
     addUsersToProjectNonE2EE,
     deleteProjectMemberships,
     deleteProjectMembership, // TODO: Remove this
-    addUsersToProject
+    addUsersToProject,
+    leaveProject
   };
 };

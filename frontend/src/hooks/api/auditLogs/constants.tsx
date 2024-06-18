@@ -26,7 +26,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET]: "Create universal auth client secret",
   [EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET]: "Revoke universal auth client secret",
   [EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS]: "Get universal auth client secrets",
-  [EventType.GET_IDENTITY_UNIVERSAL_AUTH]: "Get universal auth",
   [EventType.CREATE_ENVIRONMENT]: "Create environment",
   [EventType.UPDATE_ENVIRONMENT]: "Update environment",
   [EventType.DELETE_ENVIRONMENT]: "Delete environment",
@@ -43,7 +42,21 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_SECRET_IMPORT]: "Update secret import",
   [EventType.DELETE_SECRET_IMPORT]: "Delete secret import",
   [EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS]: "Update denied permissions",
-  [EventType.UPDATE_USER_WORKSPACE_ROLE]: "Update user role"
+  [EventType.UPDATE_USER_WORKSPACE_ROLE]: "Update user role",
+  [EventType.CREATE_CA]: "Create CA",
+  [EventType.GET_CA]: "Get CA",
+  [EventType.UPDATE_CA]: "Update CA",
+  [EventType.DELETE_CA]: "Delete CA",
+  [EventType.GET_CA_CSR]: "Get CA CSR",
+  [EventType.GET_CA_CERT]: "Get CA certificate",
+  [EventType.SIGN_INTERMEDIATE]: "Sign intermediate",
+  [EventType.IMPORT_CA_CERT]: "Import CA certificate",
+  [EventType.GET_CA_CRL]: "Get CA CRL",
+  [EventType.ISSUE_CERT]: "Issue certificate",
+  [EventType.GET_CERT]: "Get certificate",
+  [EventType.DELETE_CERT]: "Delete certificate",
+  [EventType.REVOKE_CERT]: "Revoke certificate",
+  [EventType.GET_CERT_BODY]: "Get certificate body"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

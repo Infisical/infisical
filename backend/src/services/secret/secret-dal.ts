@@ -311,6 +311,40 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOneWithTags = async (filter: Partial<TSecrets>, tx?: Knex) => {
+    try {
+      const rawDocs = await (tx || db)(TableName.Secret)
+        .where(filter)
+        .leftJoin(TableName.JnSecretTag, `${TableName.Secret}.id`, `${TableName.JnSecretTag}.${TableName.Secret}Id`)
+        .leftJoin(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
+        .select(selectAllTableCols(TableName.Secret))
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"));
+      const docs = sqlNestRelationships({
+        data: rawDocs,
+        key: "id",
+        parentMapper: (el) => ({ _id: el.id, ...SecretsSchema.parse(el) }),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug, tagName: name }) => ({
+              id,
+              color,
+              slug,
+              name
+            })
+          }
+        ]
+      });
+      return docs?.[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOneWIthTags" });
+    }
+  };
+
   return {
     ...secretOrm,
     update,
@@ -318,6 +352,7 @@ export const secretDALFactory = (db: TDbClient) => {
     deleteMany,
     bulkUpdateNoVersionIncrement,
     getSecretTags,
+    findOneWithTags,
     findByFolderId,
     findByFolderIds,
     findByBlindIndexes,

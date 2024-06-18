@@ -28,6 +28,7 @@ type InfisicalSecretReconciler struct {
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;delete
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;delete
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=list;watch;get;update
+//+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -75,7 +76,6 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	err := r.Get(ctx, req.NamespacedName, &infisicalSecretCR)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			fmt.Printf("\nInfisical Secret CRD not found [err=%v]", err)
 			return ctrl.Result{
 				Requeue: false,
 			}, nil

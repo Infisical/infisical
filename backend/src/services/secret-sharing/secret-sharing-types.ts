@@ -8,14 +8,16 @@ export type TSharedSecretPermission = {
   orgId: string;
 };
 
-export type TCreateSharedSecretDTO = {
+export type TCreatePublicSharedSecretDTO = {
   encryptedValue: string;
   iv: string;
   tag: string;
   hashedHex: string;
   expiresAt: Date;
   expiresAfterViews: number;
-} & TSharedSecretPermission;
+};
+
+export type TCreateSharedSecretDTO = TSharedSecretPermission & TCreatePublicSharedSecretDTO;
 
 export type TDeleteSharedSecretDTO = {
   sharedSecretId: string;

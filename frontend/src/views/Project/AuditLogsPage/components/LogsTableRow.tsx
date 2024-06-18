@@ -320,6 +320,30 @@ export const LogsTableRow = ({ auditLog }: Props) => {
             })}
           </Td>
         );
+      case EventType.CREATE_CA:
+      case EventType.GET_CA:
+      case EventType.UPDATE_CA:
+      case EventType.DELETE_CA:
+      case EventType.GET_CA_CSR:
+      case EventType.GET_CA_CERT:
+      case EventType.IMPORT_CA_CERT:
+      case EventType.GET_CA_CRL:
+      case EventType.SIGN_INTERMEDIATE:
+      case EventType.ISSUE_CERT:
+        return (
+          <Td>
+            <p>{`CA DN: ${event.metadata.dn}`}</p>
+          </Td>
+        );
+      case EventType.GET_CERT:
+      case EventType.DELETE_CERT:
+      case EventType.REVOKE_CERT:
+      case EventType.GET_CERT_BODY:
+        return (
+          <Td>
+            <p>{`Cert CN: ${event.metadata.cn}`}</p>
+          </Td>
+        );
       default:
         return <Td />;
     }

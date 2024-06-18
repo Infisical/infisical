@@ -1,6 +1,7 @@
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
+import { registerCaCrlRouter } from "./certificate-authority-crl-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerGroupRouter } from "./group-router";
@@ -11,6 +12,7 @@ import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
+import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
 import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
@@ -46,6 +48,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(registerAccessApprovalPolicyRouter, { prefix: "/access-approvals/policies" });
   await server.register(registerAccessApprovalRequestRouter, { prefix: "/access-approvals/requests" });
+  await server.register(registerRateLimitRouter, { prefix: "/rate-limit" });
 
   await server.register(
     async (dynamicSecretRouter) => {
@@ -56,12 +59,20 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(
+    async (pkiRouter) => {
+      await pkiRouter.register(registerCaCrlRouter, { prefix: "/ca" });
+    },
+    { prefix: "/pki" }
+  );
+
+  await server.register(
     async (ssoRouter) => {
       await ssoRouter.register(registerSamlRouter);
       await ssoRouter.register(registerOidcRouter, { prefix: "/oidc" });
     },
     { prefix: "/sso" }
   );
+
   await server.register(registerScimRouter, { prefix: "/scim" });
   await server.register(registerLdapRouter, { prefix: "/ldap" });
   await server.register(registerSecretScanningRouter, { prefix: "/secret-scanning" });

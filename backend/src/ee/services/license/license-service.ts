@@ -575,6 +575,9 @@ export const licenseServiceFactory = ({
     getInstanceType() {
       return instanceType;
     },
+    get onPremFeatures() {
+      return onPremFeatures;
+    },
     getPlan,
     updateSubscriptionOrgMemberCount,
     refreshPlan,

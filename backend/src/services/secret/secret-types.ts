@@ -164,6 +164,7 @@ export type TCreateSecretRawDTO = TProjectPermission & {
   secretName: string;
   secretValue: string;
   type: SecretType;
+  tagIds?: string[];
   secretComment?: string;
   skipMultilineEncoding?: boolean;
 };
@@ -174,6 +175,7 @@ export type TUpdateSecretRawDTO = TProjectPermission & {
   secretName: string;
   secretValue?: string;
   type: SecretType;
+  tagIds?: string[];
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;

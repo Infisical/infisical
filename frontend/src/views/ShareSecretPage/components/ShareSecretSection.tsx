@@ -22,7 +22,7 @@ export const ShareSecretSection = () => {
   const onDeleteApproved = async () => {
     try {
       deleteSharedSecret.mutateAsync({
-        sharedSecretId: (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.id,
+        sharedSecretId: (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.id
       });
       createNotification({
         text: "Successfully deleted shared secret",
@@ -40,7 +40,6 @@ export const ShareSecretSection = () => {
   };
 
   return (
-
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <Head>
         <title>Secret Sharing</title>
@@ -60,14 +59,18 @@ export const ShareSecretSection = () => {
           Share Secret
         </Button>
       </div>
-      <ShareSecretsTable
-        handlePopUpOpen={handlePopUpOpen}
+      <ShareSecretsTable handlePopUpOpen={handlePopUpOpen} />
+      <AddShareSecretModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        isPublic={false}
+        inModal
       />
-      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteSharedSecretConfirmation.isOpen}
-        title={`Delete ${(popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name || " "
-          } shared secret?`}
+        title={`Delete ${
+          (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name || " "
+        } shared secret?`}
         onChange={(isOpen) => handlePopUpToggle("deleteSharedSecretConfirmation", isOpen)}
         deleteKey={(popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.name}
         onClose={() => handlePopUpClose("deleteSharedSecretConfirmation")}

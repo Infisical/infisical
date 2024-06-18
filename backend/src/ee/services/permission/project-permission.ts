@@ -26,7 +26,9 @@ export enum ProjectPermissionSub {
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretRotation = "secret-rotation",
-  Identity = "identity"
+  Identity = "identity",
+  CertificateAuthorities = "certificate-authorities",
+  Certificates = "certificates"
 }
 
 type SubjectFields = {
@@ -53,6 +55,8 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
   | [ProjectPermissionActions, ProjectPermissionSub.Identity]
+  | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
+  | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
@@ -139,6 +143,17 @@ const buildAdminPermissionRules = () => {
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.IpAllowList);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.IpAllowList);
 
+  // double check if all CRUD are needed for CA and Certificates
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.CertificateAuthorities);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.CertificateAuthorities);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.CertificateAuthorities);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
+
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
@@ -205,6 +220,14 @@ const buildMemberPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
 
+  // double check if all CRUD are needed for CA and Certificates
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
+
   return rules;
 };
 
@@ -229,6 +252,8 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 
   return rules;
 };

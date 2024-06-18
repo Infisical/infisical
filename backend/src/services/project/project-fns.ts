@@ -1,6 +1,9 @@
 import crypto from "crypto";
 
 import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
+import { BadRequestError } from "@app/lib/errors";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { AddUserToWsDTO } from "./project-types";
 
@@ -48,4 +51,45 @@ export const createProjectKey = ({ publicKey, privateKey, plainProjectKey }: TCr
   );
 
   return { key: encryptedProjectKey, iv: encryptedProjectKeyIv };
+};
+
+export const getProjectKmsCertificateKeyId = async ({
+  projectId,
+  projectDAL,
+  kmsService
+}: {
+  projectId: string;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  kmsService: Pick<TKmsServiceFactory, "generateKmsKey">;
+}) => {
+  const keyId = await projectDAL.transaction(async (tx) => {
+    const project = await projectDAL.findOne({ id: projectId }, tx);
+    if (!project) {
+      throw new BadRequestError({ message: "Project not found" });
+    }
+
+    if (!project.kmsCertificateKeyId) {
+      // create default kms key for certificate service
+      const key = await kmsService.generateKmsKey({
+        scopeId: projectId,
+        scopeType: "project",
+        isReserved: true,
+        tx
+      });
+
+      await projectDAL.updateById(
+        projectId,
+        {
+          kmsCertificateKeyId: key.id
+        },
+        tx
+      );
+
+      return key.id;
+    }
+
+    return project.kmsCertificateKeyId;
+  });
+
+  return keyId;
 };

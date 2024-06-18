@@ -179,8 +179,9 @@ export const LogsFilter = ({ control, reset }: Props) => {
               <FormControl label="End date" errorText={error?.message} isError={Boolean(error)}>
                 <DatePicker
                   value={field.value || undefined}
-                  onChange={(date) => {
-                    onChange(date);
+                  onChange={(pickedDate) => {
+                    pickedDate?.setHours(23, 59, 59, 999); // we choose the end of today not the start of it (going off of aws cloud watch)
+                    onChange(pickedDate);
                     setIsEndDatePickerOpen(false);
                   }}
                   popUpProps={{

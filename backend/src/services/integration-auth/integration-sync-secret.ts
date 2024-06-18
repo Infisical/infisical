@@ -18,7 +18,7 @@ import {
   UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
 import { Octokit } from "@octokit/rest";
-import AWS from "aws-sdk";
+import AWS, { AWSError } from "aws-sdk";
 import { AxiosError } from "axios";
 import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
@@ -452,7 +452,11 @@ const syncSecretsAWSParameterStore = async ({
   accessId: string | null;
   accessToken: string;
 }) => {
-  if (!accessId) return;
+  let response: { isSynced: boolean; syncMessage: string } | null = null;
+
+  if (!accessId) {
+    throw new Error("AWS access ID is required");
+  }
 
   const config = new AWS.Config({
     region: integration.region as string,
@@ -557,6 +561,11 @@ const syncSecretsAWSParameterStore = async ({
                 `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
               );
             }
+
+            response = {
+              isSynced: false,
+              syncMessage: (err as AWSError)?.message || "Error syncing with AWS Parameter Store"
+            };
           }
         }
       }
@@ -585,6 +594,8 @@ const syncSecretsAWSParameterStore = async ({
       }
     }
   }
+
+  return response;
 };
 
 /**
@@ -603,7 +614,9 @@ const syncSecretsAWSSecretManager = async ({
 }) => {
   const metadata = z.record(z.any()).parse(integration.metadata || {});
 
-  if (!accessId) return;
+  if (!accessId) {
+    throw new Error("AWS access ID is required");
+  }
 
   const secretsManager = new SecretsManagerClient({
     region: integration.region as string,
@@ -722,7 +735,7 @@ const syncSecretsAWSSecretManager = async ({
         }
       }
     } catch (err) {
-      // case when AWS manager can't find the specified secret
+      // case 1: when AWS manager can't find the specified secret
       if (err instanceof ResourceNotFoundException && secretsManager) {
         await secretsManager.send(
           new CreateSecretCommand({
@@ -734,6 +747,9 @@ const syncSecretsAWSSecretManager = async ({
               : []
           })
         );
+        // case 2: something unexpected went wrong, so we'll throw the error to reflect the error in the integration sync status
+      } else {
+        throw err;
       }
     }
   };
@@ -753,14 +769,12 @@ const syncSecretsAWSSecretManager = async ({
 const syncSecretsHeroku = async ({
   createManySecretsRawFn,
   updateManySecretsRawFn,
-  integrationDAL,
   integration,
   secrets,
   accessToken
 }: {
   createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
   updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
   integration: TIntegrations & {
     projectId: string;
     environment: {
@@ -862,10 +876,6 @@ const syncSecretsHeroku = async ({
       }
     }
   );
-
-  await integrationDAL.updateById(integration.id, {
-    lastUsed: new Date()
-  });
 };
 
 /**
@@ -2656,7 +2666,9 @@ const syncSecretsHashiCorpVault = async ({
   accessId: string | null;
   accessToken: string;
 }) => {
-  if (!accessId) return;
+  if (!accessId) {
+    throw new Error("Access ID is required");
+  }
 
   interface LoginAppRoleRes {
     auth: {
@@ -3486,6 +3498,8 @@ export const syncIntegrationSecrets = async ({
   accessToken: string;
   appendices?: { prefix: string; suffix: string };
 }) => {
+  let response: { isSynced: boolean; syncMessage: string } | null = null;
+
   switch (integration.integration) {
     case Integrations.GCP_SECRET_MANAGER:
       await syncSecretsGCPSecretManager({
@@ -3502,7 +3516,7 @@ export const syncIntegrationSecrets = async ({
       });
       break;
     case Integrations.AWS_PARAMETER_STORE:
-      await syncSecretsAWSParameterStore({
+      response = await syncSecretsAWSParameterStore({
         integration,
         secrets,
         accessId,
@@ -3521,7 +3535,6 @@ export const syncIntegrationSecrets = async ({
       await syncSecretsHeroku({
         createManySecretsRawFn,
         updateManySecretsRawFn,
-        integrationDAL,
         integration,
         secrets,
         accessToken
@@ -3727,4 +3740,6 @@ export const syncIntegrationSecrets = async ({
     default:
       throw new BadRequestError({ message: "Invalid integration" });
   }
+
+  return response;
 };
