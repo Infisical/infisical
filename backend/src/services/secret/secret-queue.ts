@@ -544,7 +544,7 @@ export const secretQueueFactory = ({
       }
 
       try {
-        await syncIntegrationSecrets({
+        const response = await syncIntegrationSecrets({
           createManySecretsRawFn,
           updateManySecretsRawFn,
           integrationDAL,
@@ -562,8 +562,8 @@ export const secretQueueFactory = ({
         await integrationDAL.updateById(integration.id, {
           lastSyncJobId: job.id,
           lastUsed: new Date(),
-          syncMessage: "",
-          isSynced: true
+          syncMessage: response?.syncMessage || "",
+          isSynced: response?.isSynced || true
         });
       } catch (err) {
         logger.info("Secret integration sync error: %o", err);
