@@ -631,13 +631,13 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 }
 
 func init() {
-	secretsGenerateExampleEnvCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
-	secretsGenerateExampleEnvCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
+	secretsGenerateExampleEnvCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
+	secretsGenerateExampleEnvCmd.Flags().String("projectId", "", "manually set the projectId when using machine identity based auth")
 	secretsGenerateExampleEnvCmd.Flags().String("path", "/", "Fetch secrets from within a folder path")
 	secretsCmd.AddCommand(secretsGenerateExampleEnvCmd)
 
-	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
-	secretsGetCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
+	secretsGetCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
+	secretsGetCmd.Flags().String("projectId", "", "manually set the project ID to fetch secrets from when using machine identity based auth")
 	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
 	secretsGetCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	secretsGetCmd.Flags().Bool("raw-value", false, "Returns only the value of secret, only works with one secret")
@@ -646,14 +646,14 @@ func init() {
 
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
-	secretsSetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
-	secretsSetCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
+	secretsSetCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
+	secretsSetCmd.Flags().String("projectId", "", "manually set the project ID to for setting secrets when using machine identity based auth")
 	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
 	secretsSetCmd.Flags().String("type", util.SECRET_TYPE_SHARED, "the type of secret to create: personal or shared")
 
 	secretsDeleteCmd.Flags().String("type", "personal", "the type of secret to delete: personal or shared  (default: personal)")
-	secretsDeleteCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
-	secretsDeleteCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
+	secretsDeleteCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
+	secretsDeleteCmd.Flags().String("projectId", "", "manually set the projectId to delete secrets from when using machine identity based auth")
 	secretsDeleteCmd.Flags().String("path", "/", "get secrets within a folder path")
 	secretsCmd.AddCommand(secretsDeleteCmd)
 
@@ -662,21 +662,21 @@ func init() {
 
 	// Add getCmd, createCmd and deleteCmd flags here
 	getCmd.Flags().StringP("path", "p", "/", "The path from where folders should be fetched from")
-	getCmd.Flags().String("token", "", "Fetch folders using the infisical token")
-	getCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
+	getCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
+	getCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from when using machine identity based auth")
 	folderCmd.AddCommand(getCmd)
 
 	// Add createCmd flags here
 	createCmd.Flags().StringP("path", "p", "/", "Path to where the folder should be created")
 	createCmd.Flags().StringP("name", "n", "", "Name of the folder to be created in selected `--path`")
-	createCmd.Flags().String("token", "", "Fetch folders using the infisical token")
-	createCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
+	createCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
+	createCmd.Flags().String("projectId", "", "manually set the project ID for creating folders in when using machine identity based auth")
 	folderCmd.AddCommand(createCmd)
 
 	// Add deleteCmd flags here
 	deleteCmd.Flags().StringP("path", "p", "/", "Path to the folder to be deleted")
-	deleteCmd.Flags().String("token", "", "Fetch folders using the infisical token")
-	deleteCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
+	deleteCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
+	deleteCmd.Flags().String("projectId", "", "manually set the projectId to delete folders when using machine identity based auth")
 	deleteCmd.Flags().StringP("name", "n", "", "Name of the folder to be deleted within selected `--path`")
 	folderCmd.AddCommand(deleteCmd)
 
@@ -684,8 +684,8 @@ func init() {
 
 	// ** End of folders sub command
 
-	secretsCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
-	secretsCmd.Flags().String("projectId", "", "manually set the projectId to fetch folders from for machine identity")
+	secretsCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
+	secretsCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets when using machine identity based auth")
 	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
 	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	secretsCmd.Flags().Bool("include-imports", true, "Imported linked secrets ")
