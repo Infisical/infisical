@@ -1,4 +1,6 @@
 /* eslint-disable no-await-in-loop */
+import { AxiosError } from "axios";
+
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
@@ -67,7 +69,10 @@ const MAX_SYNC_SECRET_DEPTH = 5;
 export const uniqueSecretQueueKey = (environment: string, secretPath: string) =>
   `secret-queue-dedupe-${environment}-${secretPath}`;
 
-type TIntegrationSecret = Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }>;
+type TIntegrationSecret = Record<
+  string,
+  { value: string; comment?: string; skipMultilineEncoding?: boolean | null | undefined }
+>;
 export const secretQueueFactory = ({
   queueService,
   integrationDAL,
@@ -416,94 +421,88 @@ export const secretQueueFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) {
-      logger.error(new Error("Secret path not found"));
-      return;
+      throw new Error("Secret path not found");
     }
 
-    // start syncing all linked imports also
-    if (depth < MAX_SYNC_SECRET_DEPTH) {
-      // find all imports made with the given environment and secret path
-      const linkSourceDto = {
-        projectId,
-        importEnv: folder.environment.id,
-        importPath: secretPath,
-        isReplication: false
-      };
-      const imports = await secretImportDAL.find(linkSourceDto);
+    // find all imports made with the given environment and secret path
+    const linkSourceDto = {
+      projectId,
+      importEnv: folder.environment.id,
+      importPath: secretPath,
+      isReplication: false
+    };
+    const imports = await secretImportDAL.find(linkSourceDto);
 
-      if (imports.length) {
-        // keep calling sync secret for all the imports made
-        const importedFolderIds = unique(imports, (i) => i.folderId).map(({ folderId }) => folderId);
-        const importedFolders = await folderDAL.findSecretPathByFolderIds(projectId, importedFolderIds);
-        const foldersGroupedById = groupBy(importedFolders.filter(Boolean), (i) => i?.id as string);
-        logger.info(
-          `getIntegrationSecrets: Syncing secret due to link change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
-        );
-        await Promise.all(
-          imports
-            .filter(({ folderId }) => Boolean(foldersGroupedById[folderId][0]?.path as string))
-            // filter out already synced ones
-            .filter(
-              ({ folderId }) =>
-                !deDupeQueue[
-                  uniqueSecretQueueKey(
-                    foldersGroupedById[folderId][0]?.environmentSlug as string,
-                    foldersGroupedById[folderId][0]?.path as string
-                  )
-                ]
-            )
-            .map(({ folderId }) =>
-              syncSecrets({
-                projectId,
-                secretPath: foldersGroupedById[folderId][0]?.path as string,
-                environmentSlug: foldersGroupedById[folderId][0]?.environmentSlug as string,
-                _deDupeQueue: deDupeQueue,
-                _depth: depth + 1,
-                excludeReplication: true
-              })
-            )
-        );
-      }
-
-      const secretReferences = await secretDAL.findReferencedSecretReferences(
-        projectId,
-        folder.environment.slug,
-        secretPath
+    if (imports.length) {
+      // keep calling sync secret for all the imports made
+      const importedFolderIds = unique(imports, (i) => i.folderId).map(({ folderId }) => folderId);
+      const importedFolders = await folderDAL.findSecretPathByFolderIds(projectId, importedFolderIds);
+      const foldersGroupedById = groupBy(importedFolders.filter(Boolean), (i) => i?.id as string);
+      logger.info(
+        `getIntegrationSecrets: Syncing secret due to link change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
       );
-      if (secretReferences.length) {
-        const referencedFolderIds = unique(secretReferences, (i) => i.folderId).map(({ folderId }) => folderId);
-        const referencedFolders = await folderDAL.findSecretPathByFolderIds(projectId, referencedFolderIds);
-        const referencedFoldersGroupedById = groupBy(referencedFolders.filter(Boolean), (i) => i?.id as string);
-        logger.info(
-          `getIntegrationSecrets: Syncing secret due to reference change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
-        );
-        await Promise.all(
-          secretReferences
-            .filter(({ folderId }) => Boolean(referencedFoldersGroupedById[folderId][0]?.path))
-            // filter out already synced ones
-            .filter(
-              ({ folderId }) =>
-                !deDupeQueue[
-                  uniqueSecretQueueKey(
-                    referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
-                    referencedFoldersGroupedById[folderId][0]?.path as string
-                  )
-                ]
-            )
-            .map(({ folderId }) =>
-              syncSecrets({
-                projectId,
-                secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
-                environmentSlug: referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
-                _deDupeQueue: deDupeQueue,
-                _depth: depth + 1,
-                excludeReplication: true
-              })
-            )
-        );
-      }
-    } else {
-      logger.info(`getIntegrationSecrets: Secret depth exceeded for [projectId=${projectId}] [folderId=${folder.id}]`);
+      await Promise.all(
+        imports
+          .filter(({ folderId }) => Boolean(foldersGroupedById[folderId][0]?.path as string))
+          // filter out already synced ones
+          .filter(
+            ({ folderId }) =>
+              !deDupeQueue[
+                uniqueSecretQueueKey(
+                  foldersGroupedById[folderId][0]?.environmentSlug as string,
+                  foldersGroupedById[folderId][0]?.path as string
+                )
+              ]
+          )
+          .map(({ folderId }) =>
+            syncSecrets({
+              projectId,
+              secretPath: foldersGroupedById[folderId][0]?.path as string,
+              environmentSlug: foldersGroupedById[folderId][0]?.environmentSlug as string,
+              _deDupeQueue: deDupeQueue,
+              _depth: depth + 1,
+              excludeReplication: true
+            })
+          )
+      );
+    }
+
+    const secretReferences = await secretDAL.findReferencedSecretReferences(
+      projectId,
+      folder.environment.slug,
+      secretPath
+    );
+    if (secretReferences.length) {
+      const referencedFolderIds = unique(secretReferences, (i) => i.folderId).map(({ folderId }) => folderId);
+      const referencedFolders = await folderDAL.findSecretPathByFolderIds(projectId, referencedFolderIds);
+      const referencedFoldersGroupedById = groupBy(referencedFolders.filter(Boolean), (i) => i?.id as string);
+      logger.info(
+        `getIntegrationSecrets: Syncing secret due to reference change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
+      );
+      await Promise.all(
+        secretReferences
+          .filter(({ folderId }) => Boolean(referencedFoldersGroupedById[folderId][0]?.path))
+          // filter out already synced ones
+          .filter(
+            ({ folderId }) =>
+              !deDupeQueue[
+                uniqueSecretQueueKey(
+                  referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
+                  referencedFoldersGroupedById[folderId][0]?.path as string
+                )
+              ]
+          )
+          .map(({ folderId }) =>
+            syncSecrets({
+              projectId,
+              secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
+              environmentSlug: referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
+              _deDupeQueue: deDupeQueue,
+              _depth: depth + 1,
+              excludeReplication: true
+            })
+          )
+      );
     }
 
     const integrations = await integrationDAL.findByProjectIdV2(projectId, environment); // note: returns array of integrations + integration auths in this environment
@@ -545,7 +544,7 @@ export const secretQueueFactory = ({
       }
 
       try {
-        await syncIntegrationSecrets({
+        const response = await syncIntegrationSecrets({
           createManySecretsRawFn,
           updateManySecretsRawFn,
           integrationDAL,
@@ -563,15 +562,20 @@ export const secretQueueFactory = ({
         await integrationDAL.updateById(integration.id, {
           lastSyncJobId: job.id,
           lastUsed: new Date(),
-          syncMessage: "",
-          isSynced: true
+          syncMessage: response?.syncMessage ?? "",
+          isSynced: response?.isSynced ?? true
         });
-      } catch (err: unknown) {
-        logger.info("Secret integration sync error:", err);
+      } catch (err) {
+        logger.info("Secret integration sync error: %o", err);
+
+        const message =
+          (err instanceof AxiosError ? JSON.stringify(err?.response?.data) : (err as Error)?.message) ||
+          "Unknown error occurred.";
+
         await integrationDAL.updateById(integration.id, {
           lastSyncJobId: job.id,
           lastUsed: new Date(),
-          syncMessage: (err as Error)?.message,
+          syncMessage: message,
           isSynced: false
         });
       }

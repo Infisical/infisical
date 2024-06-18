@@ -1,3 +1,4 @@
+import { CaStatus } from "../ca";
 import { IdentityTrustedIp } from "../identities/types";
 import { ActorType, EventType, UserAgentType } from "./enums";
 
@@ -462,6 +463,125 @@ interface UpdateUserDeniedPermissions {
   };
 }
 
+interface CreateCa {
+  type: EventType.CREATE_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCa {
+  type: EventType.GET_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface UpdateCa {
+  type: EventType.UPDATE_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+    status: CaStatus;
+  };
+}
+
+interface DeleteCa {
+  type: EventType.DELETE_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCsr {
+  type: EventType.GET_CA_CSR;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCert {
+  type: EventType.GET_CA_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface SignIntermediate {
+  type: EventType.SIGN_INTERMEDIATE;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+  };
+}
+
+interface ImportCaCert {
+  type: EventType.IMPORT_CA_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCrl {
+  type: EventType.GET_CA_CRL;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface IssueCert {
+  type: EventType.ISSUE_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+  };
+}
+
+interface GetCert {
+  type: EventType.GET_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface DeleteCert {
+  type: EventType.DELETE_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface RevokeCert {
+  type: EventType.REVOKE_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface GetCertBody {
+  type: EventType.GET_CERT_BODY;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -504,7 +624,21 @@ export type Event =
   | UpdateSecretImportEvent
   | DeleteSecretImportEvent
   | UpdateUserRole
-  | UpdateUserDeniedPermissions;
+  | UpdateUserDeniedPermissions
+  | CreateCa
+  | GetCa
+  | UpdateCa
+  | DeleteCa
+  | GetCaCsr
+  | GetCaCert
+  | SignIntermediate
+  | ImportCaCert
+  | GetCaCrl
+  | IssueCert
+  | GetCert
+  | DeleteCert
+  | RevokeCert
+  | GetCertBody;
 
 export type AuditLog = {
   id: string;

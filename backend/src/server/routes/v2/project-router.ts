@@ -1,13 +1,14 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
+import { CertificateAuthoritiesSchema, CertificatesSchema, ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -305,6 +306,82 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return project;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:slug/cas",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        slug: slugSchema.describe("The slug of the project to list CAs.")
+      }),
+      querystring: z.object({
+        status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional()
+      }),
+      response: {
+        200: z.object({
+          cas: z.array(CertificateAuthoritiesSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const cas = await server.services.project.listProjectCas({
+        filter: {
+          slug: req.params.slug,
+          orgId: req.permission.orgId,
+          type: ProjectFilterType.SLUG
+        },
+        status: req.query.status,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+      return { cas };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:slug/certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        slug: slugSchema.describe("The slug of the project to list certificates.")
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().min(0).max(100).default(0),
+        limit: z.coerce.number().min(1).max(100).default(25)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(CertificatesSchema),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificates, totalCount } = await server.services.project.listProjectCertificates({
+        filter: {
+          slug: req.params.slug,
+          orgId: req.permission.orgId,
+          type: ProjectFilterType.SLUG
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        ...req.query
+      });
+      return { certificates, totalCount };
     }
   });
 };

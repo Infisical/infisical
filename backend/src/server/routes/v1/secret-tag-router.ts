@@ -23,7 +23,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspaceTags = await server.services.secretTag.getProjectTags({
         actor: req.permission.type,
@@ -33,6 +33,67 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.projectId
       });
       return { workspaceTags };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/tags/:tagId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_ID.projectId),
+        tagId: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_ID.tagId)
+      }),
+      response: {
+        200: z.object({
+          workspaceTag: SecretTagsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const workspaceTag = await server.services.secretTag.getTagById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.tagId
+      });
+      return { workspaceTag };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/tags/slug/:tagSlug",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_SLUG.projectId),
+        tagSlug: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_SLUG.tagSlug)
+      }),
+      response: {
+        200: z.object({
+          workspaceTag: SecretTagsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const workspaceTag = await server.services.secretTag.getTagBySlug({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        slug: req.params.tagSlug,
+        projectId: req.params.projectId
+      });
+      return { workspaceTag };
     }
   });
 
@@ -57,7 +118,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspaceTag = await server.services.secretTag.createTag({
         actor: req.permission.type,
@@ -66,6 +127,42 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         projectId: req.params.projectId,
         ...req.body
+      });
+      return { workspaceTag };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:projectId/tags/:tagId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim().describe(SECRET_TAGS.UPDATE.projectId),
+        tagId: z.string().trim().describe(SECRET_TAGS.UPDATE.tagId)
+      }),
+      body: z.object({
+        name: z.string().trim().describe(SECRET_TAGS.UPDATE.name),
+        slug: z.string().trim().describe(SECRET_TAGS.UPDATE.slug),
+        color: z.string().trim().describe(SECRET_TAGS.UPDATE.color)
+      }),
+      response: {
+        200: z.object({
+          workspaceTag: SecretTagsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const workspaceTag = await server.services.secretTag.updateTag({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body,
+        id: req.params.tagId
       });
       return { workspaceTag };
     }
@@ -88,7 +185,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspaceTag = await server.services.secretTag.deleteTag({
         actor: req.permission.type,

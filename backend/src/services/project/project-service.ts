@@ -16,6 +16,8 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
@@ -36,9 +38,12 @@ import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
   TGetProjectDTO,
+  TListProjectCasDTO,
+  TListProjectCertsDTO,
   TToggleProjectAutoCapitalizationDTO,
   TUpdateProjectDTO,
   TUpdateProjectNameDTO,
+  TUpdateProjectVersionLimitDTO,
   TUpgradeProjectDTO
 } from "./project-types";
 
@@ -49,6 +54,7 @@ export const DEFAULT_PROJECT_ENVS = [
 ];
 
 type TProjectServiceFactoryDep = {
+  // TODO: Pick
   projectDAL: TProjectDALFactory;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
@@ -62,6 +68,8 @@ type TProjectServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
+  certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -89,6 +97,8 @@ export const projectServiceFactory = ({
   licenseService,
   projectUserMembershipRoleDAL,
   identityProjectMembershipRoleDAL,
+  certificateAuthorityDAL,
+  certificateDAL,
   keyStore
 }: TProjectServiceFactoryDep) => {
   /*
@@ -133,7 +143,8 @@ export const projectServiceFactory = ({
           name: workspaceName,
           orgId: organization.id,
           slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
-          version: ProjectVersion.V2
+          version: ProjectVersion.V2,
+          pitVersionLimit: 10
         },
         tx
       );
@@ -406,6 +417,35 @@ export const projectServiceFactory = ({
     return updatedProject;
   };
 
+  const updateVersionLimit = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    pitVersionLimit,
+    workspaceSlug
+  }: TUpdateProjectVersionLimitDTO) => {
+    const project = await projectDAL.findProjectBySlug(workspaceSlug, actorOrgId);
+    if (!project) {
+      throw new BadRequestError({
+        message: "Project not found"
+      });
+    }
+
+    const { hasRole } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    if (!hasRole(ProjectMembershipRole.Admin))
+      throw new BadRequestError({ message: "Only admins are allowed to take this action" });
+
+    return projectDAL.updateById(project.id, { pitVersionLimit });
+  };
+
   const updateName = async ({
     projectId,
     actor,
@@ -492,6 +532,83 @@ export const projectServiceFactory = ({
     return project.upgradeStatus || null;
   };
 
+  /**
+   * Return list of CAs for project
+   */
+  const listProjectCas = async ({
+    status,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    filter,
+    actor
+  }: TListProjectCasDTO) => {
+    const project = await projectDAL.findProjectByFilter(filter);
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    const cas = await certificateAuthorityDAL.find({
+      projectId: project.id,
+      ...(status && { status })
+    });
+
+    return cas;
+  };
+
+  /**
+   * Return list of certificates for project
+   */
+  const listProjectCertificates = async ({
+    offset,
+    limit,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    filter,
+    actor
+  }: TListProjectCertsDTO) => {
+    const project = await projectDAL.findProjectByFilter(filter);
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+
+    const cas = await certificateAuthorityDAL.find({ projectId: project.id });
+
+    const certificates = await certificateDAL.find(
+      {
+        $in: {
+          caId: cas.map((ca) => ca.id)
+        }
+      },
+      { offset, limit, sort: [["updatedAt", "desc"]] }
+    );
+
+    const count = await certificateDAL.countCertificatesInProject(project.id);
+
+    return {
+      certificates,
+      totalCount: count
+    };
+  };
+
   return {
     createProject,
     deleteProject,
@@ -501,6 +618,9 @@ export const projectServiceFactory = ({
     getAProject,
     toggleAutoCapitalization,
     updateName,
-    upgradeProject
+    upgradeProject,
+    listProjectCas,
+    listProjectCertificates,
+    updateVersionLimit
   };
 };

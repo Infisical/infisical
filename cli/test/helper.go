@@ -2,10 +2,10 @@ package tests
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
-	"testing"
 )
 
 const (
@@ -23,6 +23,8 @@ type Credentials struct {
 	ServiceToken  string
 	ProjectID     string
 	EnvSlug       string
+	UserEmail     string
+	UserPassword  string
 }
 
 var creds = Credentials{
@@ -32,18 +34,21 @@ var creds = Credentials{
 	ServiceToken:  os.Getenv("CLI_TESTS_SERVICE_TOKEN"),
 	ProjectID:     os.Getenv("CLI_TESTS_PROJECT_ID"),
 	EnvSlug:       os.Getenv("CLI_TESTS_ENV_SLUG"),
+	UserEmail:     os.Getenv("CLI_TESTS_USER_EMAIL"),
+	UserPassword:  os.Getenv("CLI_TESTS_USER_PASSWORD"),
 }
 
 func ExecuteCliCommand(command string, args ...string) (string, error) {
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(fmt.Sprint(err) + ": " + string(output))
 		return strings.TrimSpace(string(output)), err
 	}
 	return strings.TrimSpace(string(output)), nil
 }
 
-func SetupCli(t *testing.T) {
+func SetupCli() {
 
 	if creds.ClientID == "" || creds.ClientSecret == "" || creds.ServiceToken == "" || creds.ProjectID == "" || creds.EnvSlug == "" {
 		panic("Missing required environment variables")
@@ -57,7 +62,7 @@ func SetupCli(t *testing.T) {
 
 	if !alreadyBuilt {
 		if err := exec.Command("go", "build", "../.").Run(); err != nil {
-			t.Fatal(err)
+			log.Fatal(err)
 		}
 	}
 

@@ -264,13 +264,12 @@ export const useGetImportedSecretsAllEnvs = ({
   });
 
   const isImportedSecretPresentInEnv = useCallback(
-    (secPath: string, envSlug: string, secretName: string) => {
+    (envSlug: string, secretName: string) => {
       const selectedEnvIndex = environments.indexOf(envSlug);
 
       if (selectedEnvIndex !== -1) {
-        const isPresent = secretImports?.[selectedEnvIndex]?.data?.find(
-          ({ secretPath, secrets }) =>
-            secretPath === secPath && secrets.some((s) => s.key === secretName)
+        const isPresent = secretImports?.[selectedEnvIndex]?.data?.find(({ secrets }) =>
+          secrets.some((s) => s.key === secretName)
         );
 
         return Boolean(isPresent);

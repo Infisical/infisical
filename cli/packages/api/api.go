@@ -490,7 +490,7 @@ func CallUniversalAuthLogin(httpClient *resty.Client, request UniversalAuthLogin
 	return universalAuthLoginResponse, nil
 }
 
-func CallUniversalAuthRefreshAccessToken(httpClient *resty.Client, request UniversalAuthRefreshRequest) (UniversalAuthRefreshResponse, error) {
+func CallMachineIdentityRefreshAccessToken(httpClient *resty.Client, request UniversalAuthRefreshRequest) (UniversalAuthRefreshResponse, error) {
 	var universalAuthRefreshResponse UniversalAuthRefreshResponse
 	response, err := httpClient.
 		R().
@@ -500,11 +500,11 @@ func CallUniversalAuthRefreshAccessToken(httpClient *resty.Client, request Unive
 		Post(fmt.Sprintf("%v/v1/auth/token/renew", config.INFISICAL_URL))
 
 	if err != nil {
-		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallUniversalAuthRefreshAccessToken: Unable to complete api request [err=%s]", err)
+		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallMachineIdentityRefreshAccessToken: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.IsError() {
-		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallUniversalAuthRefreshAccessToken: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallMachineIdentityRefreshAccessToken: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
 	}
 
 	return universalAuthRefreshResponse, nil

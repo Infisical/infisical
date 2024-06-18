@@ -59,6 +59,18 @@ export class BadRequestError extends Error {
   }
 }
 
+export class NotFoundError extends Error {
+  name: string;
+
+  error: unknown;
+
+  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
+    super(message ?? "The requested entity is not found");
+    this.name = name || "NotFound";
+    this.error = error;
+  }
+}
+
 export class DisableRotationErrors extends Error {
   name: string;
 

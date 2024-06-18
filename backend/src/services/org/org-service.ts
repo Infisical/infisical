@@ -336,6 +336,7 @@ export const orgServiceFactory = ({
       return org;
     });
 
+    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
     return organization;
   };
 

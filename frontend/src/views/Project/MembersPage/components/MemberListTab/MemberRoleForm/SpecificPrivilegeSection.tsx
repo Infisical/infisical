@@ -43,6 +43,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
+import { removeTrailingSlash } from "@app/helpers/string";
 import { usePopUp } from "@app/hooks";
 import {
   TProjectUserPrivilege,
@@ -104,7 +105,9 @@ export const SpecificPrivilegeSecretForm = ({
         ? {
             environmentSlug: privilege.permissions?.[0]?.conditions?.environment,
             // secret path will be inside $glob operator
-            secretPath: privilege.permissions?.[0]?.conditions?.secretPath?.$glob || "",
+            secretPath: privilege.permissions?.[0]?.conditions?.secretPath?.$glob
+              ? removeTrailingSlash(privilege.permissions?.[0]?.conditions?.secretPath?.$glob)
+              : "",
             read: privilege.permissions?.some(({ action }) =>
               action.includes(ProjectPermissionActions.Read)
             ),
@@ -183,7 +186,7 @@ export const SpecificPrivilegeSecretForm = ({
       ];
       const conditions: Record<string, any> = { environment: data.environmentSlug };
       if (data.secretPath) {
-        conditions.secretPath = { $glob: data.secretPath };
+        conditions.secretPath = { $glob: removeTrailingSlash(data.secretPath) };
       }
       await updateUserPrivilege.mutateAsync({
         privilegeId: privilege.id,

@@ -1,0 +1,570 @@
+---
+title: "Infisical Go SDK"
+sidebarTitle: "Go"
+icon: "golang"
+---
+
+
+
+If you're working with Go Lang, the official [Infisical Go SDK](https://github.com/infisical/go-sdk) package is the easiest way to fetch and work with secrets for your application.
+
+- [Package](https://pkg.go.dev/github.com/infisical/go-sdk)
+- [Github Repository](https://github.com/infisical/go-sdk)
+
+## Basic Usage
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+
+	infisical "github.com/infisical/go-sdk"
+)
+
+func main() {
+
+	client := infisical.NewInfisicalClient(infisical.Config{
+		SiteUrl: "https://app.infisical.com", // Optional, default is https://app.infisical.com
+	})
+
+	_, err = client.Auth().UniversalAuthLogin("YOUR_CLIENT_ID", "YOUR_CLIENT_SECRET")
+
+	if err != nil {
+		fmt.Printf("Authentication failed: %v", err)
+		os.Exit(1)
+	}
+
+	apiKeySecret, err := client.Secrets().Retrieve(infisical.RetrieveSecretOptions{
+		SecretKey:   "API_KEY",
+		Environment: "dev",
+		ProjectID:   "YOUR_PROJECT_ID",
+		SecretPath:  "/",
+	})
+
+	if err != nil {
+		fmt.Printf("Error: %v", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("API Key Secret: %v", apiKeySecret)
+
+}
+```
+
+This example demonstrates how to use the Infisical Go SDK in a simple Go application. The application retrieves a secret named `API_KEY` from the `dev` environment of the `YOUR_PROJECT_ID` project.
+
+<Warning>
+    We do not recommend hardcoding your [Machine Identity Tokens](/platform/identities/overview). Setting it as an environment variable would be best.
+</Warning>
+
+# Installation
+
+```console
+$ go get github.com/infisical/go-sdk
+```
+# Configuration
+
+Import the SDK and create a client instance.
+
+```go
+client := infisical.NewInfisicalClient(infisical.Config{
+		SiteUrl: "https://app.infisical.com", // Optional, default is https://api.infisical.com
+	})
+```
+
+### ClientSettings methods
+
+<ParamField query="options" type="object">
+    <Expandable title="properties">
+        <ParamField query="SiteUrl" type="string" optional>
+            The URL of the Infisical API. Default is `https://api.infisical.com`.
+        </ParamField>
+
+        <ParamField query="UserAgent" type="string" required>
+            Optionally set the user agent that will be used for HTTP requests. _(Not recommended)_
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### Authentication
+
+The SDK supports a variety of authentication methods. The most common authentication method is Universal Auth, which uses a client ID and client secret to authenticate.
+
+#### Universal Auth
+
+**Using environment variables**
+
+Call `.Auth().UniversalAuthLogin()` with empty arguments to use the following environment variables:
+
+- `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` - Your machine identity client ID.
+- `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` - Your machine identity client secret.
+
+**Using the SDK directly**
+```go
+_, err := client.Auth().UniversalAuthLogin("CLIENT_ID", "CLIENT_SECRET")
+
+if err != nil {
+  fmt.Println(err)
+  os.Exit(1)
+}
+```
+
+#### GCP ID Token Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Google Cloud Platform.
+  Please [read more](/documentation/platform/identities/gcp-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+
+Call `.Auth().GcpIdTokenAuthLogin()` with empty arguments to use the following environment variables:
+
+- `INFISICAL_GCP_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```go
+_, err := client.Auth().GcpIdTokenAuthLogin("YOUR_MACHINE_IDENTITY_ID")
+
+if err != nil {
+  fmt.Println(err)
+  os.Exit(1)
+}
+```
+
+#### GCP IAM Auth
+
+**Using environment variables**
+
+Call `.Auth().GcpIamAuthLogin()` with empty arguments to use the following environment variables:
+
+- `INFISICAL_GCP_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+- `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` - The path to your GCP service account key file.
+
+**Using the SDK directly**
+```go
+_, err = client.Auth().GcpIamAuthLogin("MACHINE_IDENTITY_ID", "SERVICE_ACCOUNT_KEY_FILE_PATH")
+
+if err != nil {
+  fmt.Println(err)
+  os.Exit(1)
+}
+```
+
+#### AWS IAM Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on AWS.
+  Please [read more](/documentation/platform/identities/aws-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+
+Call `.Auth().AwsIamAuthLogin()` with empty arguments to use the following environment variables:
+
+- `INFISICAL_AWS_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```go
+_, err = client.Auth().AwsIamAuthLogin("MACHINE_IDENTITY_ID")
+
+if err != nil {
+  fmt.Println(err)
+  os.Exit(1)
+}
+```
+
+
+#### Azure Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Azure.
+  Please [read more](/documentation/platform/identities/azure-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+
+Call `.Auth().AzureAuthLogin()` with empty arguments to use the following environment variables:
+
+- `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+**Using the SDK directly**
+```go
+_, err = client.Auth().AzureAuthLogin("MACHINE_IDENTITY_ID")
+
+if err != nil {
+  fmt.Println(err)
+  os.Exit(1)
+}
+```
+
+#### Kubernetes Auth
+<Info>
+  Please note that this authentication method will only work if you're running your application on Kubernetes.
+  Please [read more](/documentation/platform/identities/kubernetes-auth) about this authentication method.
+</Info>
+
+**Using environment variables**
+
+Call `.Auth().KubernetesAuthLogin()` with empty arguments to use the following environment variables:
+
+- `INFISICAL_KUBERNETES_IDENTITY_ID` - Your Infisical Machine Identity ID.
+- `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+
+**Using the SDK directly**
+```go
+// Service account token path will default to /var/run/secrets/kubernetes.io/serviceaccount/token if empty value is passed
+_, err = client.Auth().KubernetesAuthLogin("MACHINE_IDENTITY_ID", "SERVICE_ACCOUNT_TOKEN_PATH")
+
+if err != nil {
+  fmt.Println(err)
+  os.Exit(1)
+}
+```
+
+## Working with Secrets
+
+### client.Secrets().List(options)
+
+```go
+secrets, err := client.Secrets().List(infisical.ListSecretsOptions{
+  ProjectID:          "PROJECT_ID",
+  Environment:        "dev",
+  SecretPath:         "/foo/bar",
+  AttachToProcessEnv: false,
+})
+```
+
+Retrieve all secrets within the Infisical project and environment that client is connected to
+
+#### Parameters
+
+<ParamField query="Parameters" type="object">
+    <Expandable title="properties">
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+
+        <ParamField query="ProjectID" type="string">
+            The project ID where the secret lives in.
+        </ParamField>
+
+         <ParamField query="SecretPath" type="string" optional>
+            The path from where secrets should be fetched from.
+        </ParamField>
+
+        <ParamField query="AttachToProcessEnv" type="boolean" default="false" optional>
+             Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `System.getenv("SECRET_NAME")`.
+        </ParamField>
+
+        <ParamField query="IncludeImports" type="boolean" default="false" optional>
+             Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+        </ParamField>
+
+        <ParamField query="Recursive" type="boolean" default="false" optional>
+            Whether or not to fetch secrets recursively from the specified path. Please note that there's a 20-depth limit for recursive fetching.
+        </ParamField>
+
+        <ParamField query="ExpandSecretReferences" type="boolean" default="true" optional>
+            Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### client.Secrets().Retrieve(options)
+
+```go
+secret, err := client.Secrets().Retrieve(infisical.RetrieveSecretOptions{
+  SecretKey:   "API_KEY",
+  ProjectID:   "PROJECT_ID",
+  Environment: "dev",
+})
+```
+
+Retrieve a secret from Infisical.
+
+By default, `Secrets().Retrieve()` fetches and returns a shared secret.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="SecretKey" type="string" required>
+            The key of the secret to retrieve.
+        </ParamField>
+        <ParamField query="ProjectID" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="SecretPath" type="string" optional>
+            The path from where secret should be fetched from.
+        </ParamField>
+        <ParamField query="Type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.Secrets().Create(options)
+
+```go
+secret, err := client.Secrets().Create(infisical.CreateSecretOptions{
+  ProjectID:   "PROJECT_ID",
+  Environment: "dev",
+
+  SecretKey:     "NEW_SECRET_KEY",
+  SecretValue:   "NEW_SECRET_VALUE",
+  SecretComment: "This is a new secret",
+})
+```
+
+Create a new secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="SecretKey" type="string" required>
+            The key of the secret to create.
+        </ParamField>
+        <ParamField query="SecretValue" type="string" required>
+            The value of the secret.
+        </ParamField>
+        <ParamField query="SecretComment" type="string" optional>
+            A comment for the secret.
+        </ParamField>
+        <ParamField query="ProjectID" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="SecretPath" type="string" optional>
+            The path from where secret should be created.
+        </ParamField>
+        <ParamField query="Type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.Secrets().Update(options)
+
+```go
+secret, err := client.Secrets().Update(infisical.UpdateSecretOptions{
+  ProjectID:                "PROJECT_ID",
+  Environment:              "dev",
+  SecretKey:                "NEW_SECRET_KEY",
+  NewSecretValue:           "NEW_SECRET_VALUE",
+  NewSkipMultilineEncoding: false,
+})
+```
+
+Update an existing secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="SecretKey" type="string" required>
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="NewSecretValue" type="string" required>
+            The new value of the secret.
+        </ParamField>
+        <ParamField query="NewSkipMultilineEncoding" type="boolean" default="false" optional>
+            Whether or not to skip multiline encoding for the new secret value.
+        </ParamField>
+        <ParamField query="ProjectID" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="SecretPath" type="string" optional>
+            The path from where secret should be updated.
+        </ParamField>
+        <ParamField query="Type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.Secrets().Delete(options)
+
+```go
+secret, err := client.Secrets().Delete(infisical.DeleteSecretOptions{
+  ProjectID:   "PROJECT_ID",
+  Environment: "dev",
+  SecretKey:   "SECRET_KEY",
+})
+```
+
+Delete a secret in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="SecretKey" type="string">
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="ProjectID" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="SecretPath" type="string" optional>
+            The path from where secret should be deleted.
+        </ParamField>
+        <ParamField query="Type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+## Working with folders
+
+
+### client.Folders().List(options)
+
+```go
+folders, err := client.Folders().List(infisical.ListFoldersOptions{
+  ProjectID:   "PROJECT_ID",
+  Environment: "dev",
+  Path:        "/",
+})
+```
+
+Retrieve all within the Infisical project and environment that client is connected to.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object">
+    <Expandable title="properties">
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where folders should be fetched from.
+        </ParamField>
+
+        <ParamField query="ProjectID" type="string">
+            The project ID where the folder lives in.
+        </ParamField>
+
+         <ParamField query="Path" type="string" optional>
+            The path from where folders should be fetched from.
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### client.Folders().Create(options)
+
+```go
+folder, err := client.Folders().Create(infisical.CreateFolderOptions{
+  ProjectID:   "PROJECT_ID",
+  Name:        "new=folder-name",
+  Environment: "dev",
+  Path:        "/",
+})
+```
+
+Create a new folder in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="ProjectID" type="string" required>
+            The ID of the project where the folder will be created.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment where the folder will be created.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path to create the folder in. The root path is `/`.
+        </ParamField>
+        <ParamField query="Name" type="string" optional>
+            The name of the folder to create.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+
+
+### client.Folders().Update(options)
+
+```go
+folder, err := client.Folders().Update(infisical.UpdateFolderOptions{
+  ProjectID:   "PROJECT_ID",
+  Environment: "dev",
+  Path:        "/",
+  FolderID:    "FOLDER_ID_TO_UPDATE",
+  NewName:     "new-folder-name",
+})
+```
+
+Update an existing folder in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="ProjectID" type="string" required>
+            The ID of the project where the folder will be updated.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where the folder lives in.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path from where the folder should be updated.
+        </ParamField>
+        <ParamField query="FolderID" type="string" required>
+            The ID of the folder to update.
+        </ParamField>
+        <ParamField query="NewName" type="string" required>
+            The new name of the folder.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+### client.Folders().Delete(options)
+
+```go
+deletedFolder, err := client.Folders().Delete(infisical.DeleteFolderOptions{
+  // Either folder ID or folder name is required.
+  FolderName:  "name-of-folder-to-delete",
+  FolderID:    "folder-id-to-delete",
+  ProjectID:   "PROJECT_ID",
+  Environment: "dev",
+  Path:        "/",
+})
+```
+
+Delete a folder in Infisical.
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="FolderName" type="string" optional>
+            The name of the folder to delete. Note that either `FolderName` or `FolderID` is required.
+        </ParamField>
+        <ParamField query="FolderID" type="string" optional>
+            The ID of the folder to delete. Note that either `FolderName` or `FolderID` is required.
+        </ParamField>
+
+        <ParamField query="ProjectID" type="string" required>
+            The ID of the project where the folder lives in.
+        </ParamField>
+        <ParamField query="Environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where the folder lives in.
+        </ParamField>
+        <ParamField query="Path" type="string" optional>
+            The path from where the folder should be deleted.
+        </ParamField>
+    </Expandable>
+</ParamField>

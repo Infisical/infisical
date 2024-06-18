@@ -48,25 +48,26 @@
 
 ## Introduction
 
-**[Infisical](https://infisical.com)** is the open source secret management platform that teams use to centralize their secrets like API keys, database credentials, and configurations.
+**[Infisical](https://infisical.com)** is the open source secret management platform that teams use to centralize their application configuration and secrets like API keys and database credentials as well as manage their internal PKI.
 
-We're on a mission to make secret management more accessible to everyone, not just security teams, and that means redesigning the entire developer experience from ground up.
+We're on a mission to make security tooling more accessible to everyone, not just security teams, and that means redesigning the entire developer experience from ground up.
 
 ## Features
 
-- **[User-friendly dashboard](https://infisical.com/docs/documentation/platform/project)** to manage secrets across projects and environments (e.g. development, production, etc.). 
-- **[Client SDKs](https://infisical.com/docs/sdks/overview)** to fetch secrets for your apps and infrastructure on demand. 
-- **[Infisical CLI](https://infisical.com/docs/cli/overview)** to fetch and inject secrets into any framework in local development and CI/CD. 
-- **[Infisical API](https://infisical.com/docs/api-reference/overview/introduction)** to perform CRUD operation on secrets, users, projects, and any other resource in Infisical. 
-- **[Native integrations](https://infisical.com/docs/integrations/overview)** with platforms like [GitHub](https://infisical.com/docs/integrations/cicd/githubactions), [Vercel](https://infisical.com/docs/integrations/cloud/vercel), [AWS](https://infisical.com/docs/integrations/cloud/aws-secret-manager), and tools like [Terraform](https://infisical.com/docs/integrations/frameworks/terraform), [Ansible](https://infisical.com/docs/integrations/platforms/ansible), and more. 
+- **[User-friendly dashboard](https://infisical.com/docs/documentation/platform/project)** to manage secrets across projects and environments (e.g. development, production, etc.).
+- **[Client SDKs](https://infisical.com/docs/sdks/overview)** to fetch secrets for your apps and infrastructure on demand.
+- **[Infisical CLI](https://infisical.com/docs/cli/overview)** to fetch and inject secrets into any framework in local development and CI/CD.
+- **[Infisical API](https://infisical.com/docs/api-reference/overview/introduction)** to perform CRUD operation on secrets, users, projects, and any other resource in Infisical.
+- **[Native integrations](https://infisical.com/docs/integrations/overview)** with platforms like [GitHub](https://infisical.com/docs/integrations/cicd/githubactions), [Vercel](https://infisical.com/docs/integrations/cloud/vercel), [AWS](https://infisical.com/docs/integrations/cloud/aws-secret-manager), and tools like [Terraform](https://infisical.com/docs/integrations/frameworks/terraform), [Ansible](https://infisical.com/docs/integrations/platforms/ansible), and more.
 - **[Infisical Kubernetes operator](https://infisical.com/docs/documentation/getting-started/kubernetes)** to managed secrets in k8s, automatically reload deployments, and more.
-- **[Infisical Agent](https://infisical.com/docs/infisical-agent/overview)** to inject secrets into your applications without modifying any code logic. 
+- **[Infisical Agent](https://infisical.com/docs/infisical-agent/overview)** to inject secrets into your applications without modifying any code logic.
 - **[Self-hosting and on-prem](https://infisical.com/docs/self-hosting/overview)** to get complete control over your data.
-- **[Secret versioning](https://infisical.com/docs/documentation/platform/secret-versioning)** and **[Point-in-Time Recovery](https://infisical.com/docs/documentation/platform/pit-recovery)** to version every secret and project state. 
-- **[Audit logs](https://infisical.com/docs/documentation/platform/audit-logs)** to record every action taken in a project. 
-- **[Role-based Access Controls](https://infisical.com/docs/documentation/platform/role-based-access-controls)** to create permission sets on any resource in Infisica and assign those to user or machine identities. 
+- **[Secret versioning](https://infisical.com/docs/documentation/platform/secret-versioning)** and **[Point-in-Time Recovery](https://infisical.com/docs/documentation/platform/pit-recovery)** to version every secret and project state.
+- **[Audit logs](https://infisical.com/docs/documentation/platform/audit-logs)** to record every action taken in a project.
+- **[Role-based Access Controls](https://infisical.com/docs/documentation/platform/role-based-access-controls)** to create permission sets on any resource in Infisica and assign those to user or machine identities.
 - **[Simple on-premise deployments](https://infisical.com/docs/self-hosting/overview)** to AWS, Digital Ocean, and more.
-- **[Secret Scanning and Leak Prevention](https://infisical.com/docs/cli/scanning-overview)** to prevent secrets from leaking to git. 
+- **[Internal PKI](https://infisical.com/docs/documentation/platform/pki/private-ca)** to create Private CA hierarchies and start issuing and managing X.509 digital certificates.
+- **[Secret Scanning and Leak Prevention](https://infisical.com/docs/cli/scanning-overview)** to prevent secrets from leaking to git.
 
 And much more.
 
@@ -74,9 +75,9 @@ And much more.
 
 Check out the [Quickstart Guides](https://infisical.com/docs/getting-started/introduction)
 
-| Use Infisical Cloud                                                                                                                                     | Deploy Infisical on premise                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The fastest and most reliable way to <br> get started with Infisical is signing up <br> for free to [Infisical Cloud](https://app.infisical.com/login). |  <br> View all [deployment options](https://infisical.com/docs/self-hosting/overview) |
+| Use Infisical Cloud                                                                                                                                     | Deploy Infisical on premise                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| The fastest and most reliable way to <br> get started with Infisical is signing up <br> for free to [Infisical Cloud](https://app.infisical.com/login). | <br> View all [deployment options](https://infisical.com/docs/self-hosting/overview) |
 
 ### Run Infisical locally
 
@@ -85,13 +86,13 @@ To set up and run Infisical locally, make sure you have Git and Docker installed
 Linux/macOS:
 
 ```console
-git clone https://github.com/Infisical/infisical && cd "$(basename $_ .git)" && cp .env.example .env && docker-compose -f docker-compose.prod.yml up
+git clone https://github.com/Infisical/infisical && cd "$(basename $_ .git)" && cp .env.example .env && docker compose -f docker-compose.prod.yml up
 ```
 
 Windows Command Prompt:
 
 ```console
-git clone https://github.com/Infisical/infisical && cd infisical && copy .env.example .env && docker-compose -f docker-compose.prod.yml up
+git clone https://github.com/Infisical/infisical && cd infisical && copy .env.example .env && docker compose -f docker-compose.prod.yml up
 ```
 
 Create an account at `http://localhost:80`

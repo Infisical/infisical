@@ -2,6 +2,7 @@ import { ProjectMembershipRole, TProjectKeys } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { CaStatus } from "../certificate-authority/certificate-authority-types";
 
 export enum ProjectFilterType {
   ID = "id",
@@ -43,6 +44,11 @@ export type TToggleProjectAutoCapitalizationDTO = {
   autoCapitalization: boolean;
 } & TProjectPermission;
 
+export type TUpdateProjectVersionLimitDTO = {
+  pitVersionLimit: number;
+  workspaceSlug: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TUpdateProjectNameDTO = {
   name: string;
 } & TProjectPermission;
@@ -75,3 +81,14 @@ export type AddUserToWsDTO = {
     userPublicKey: string;
   }[];
 };
+
+export type TListProjectCasDTO = {
+  status?: CaStatus;
+  filter: Filter;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TListProjectCertsDTO = {
+  filter: Filter;
+  offset: number;
+  limit: number;
+} & Omit<TProjectPermission, "projectId">;

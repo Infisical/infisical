@@ -22,11 +22,13 @@ interface IsLoginSuccessful {
 const attemptLogin = async ({
   email,
   password,
-  providerAuthToken
+  providerAuthToken,
+  captchaToken
 }: {
   email: string;
   password: string;
   providerAuthToken?: string;
+  captchaToken?: string;
 }): Promise<IsLoginSuccessful> => {
   const telemetry = new Telemetry().getInstance();
   // eslint-disable-next-line new-cap
@@ -58,6 +60,7 @@ const attemptLogin = async ({
     iv,
     tag
   } = await login2({
+    captchaToken,
     email,
     clientProof,
     providerAuthToken

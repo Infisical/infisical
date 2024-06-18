@@ -1,4 +1,5 @@
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { Lock } from "@app/lib/red-lock";
 
 export const mockKeyStore = (): TKeyStoreFactory => {
   const store: Record<string, string | number | Buffer> = {};
@@ -27,7 +28,10 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       return 1;
     },
     acquireLock: () => {
-      throw new Error("Not implemented");
-    }
+      return Promise.resolve({
+        release: () => {}
+      }) as Promise<Lock>;
+    },
+    waitTillReady: async () => {}
   };
 };

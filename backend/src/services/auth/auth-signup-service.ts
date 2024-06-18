@@ -231,7 +231,7 @@ export const authSignupServiceFactory = ({
 
     const accessToken = jwt.sign(
       {
-        authMethod: AuthMethod.EMAIL,
+        authMethod: authMethod || AuthMethod.EMAIL,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,
@@ -244,7 +244,7 @@ export const authSignupServiceFactory = ({
 
     const refreshToken = jwt.sign(
       {
-        authMethod: AuthMethod.EMAIL,
+        authMethod: authMethod || AuthMethod.EMAIL,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: updateduser.info.id,
         tokenVersionId: tokenSession.id,

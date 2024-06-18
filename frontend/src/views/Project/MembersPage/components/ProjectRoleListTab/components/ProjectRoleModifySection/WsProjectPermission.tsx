@@ -52,6 +52,7 @@ export const WsProjectPermission = ({ isNonEditable, setValue, control }: Props)
   }, [selectedPermissionCategory]);
 
   const handlePermissionChange = (val: Permission) => {
+    if(!val) return;
     if (val === Permission.Custom) setIsCustom.on();
     else setIsCustom.off();
 

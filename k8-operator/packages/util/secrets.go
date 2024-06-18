@@ -12,6 +12,7 @@ import (
 	"github.com/Infisical/infisical/k8-operator/packages/crypto"
 	"github.com/Infisical/infisical/k8-operator/packages/model"
 	"github.com/go-resty/resty/v2"
+	infisical "github.com/infisical/go-sdk"
 )
 
 type DecodedSymmetricEncryptionDetails = struct {
@@ -51,29 +52,26 @@ func GetServiceTokenDetails(infisicalToken string) (api.GetServiceTokenDetailsRe
 	return serviceTokenDetails, nil
 }
 
-func GetPlainTextSecretsViaUniversalAuth(accessToken string, etag string, secretScope v1alpha1.MachineIdentityScopeInWorkspace) ([]model.SingleEnvironmentVariable, model.RequestUpdateUpdateDetails, error) {
+func GetPlainTextSecretsViaMachineIdentity(infisicalClient infisical.InfisicalClientInterface, etag string, secretScope v1alpha1.MachineIdentityScopeInWorkspace) ([]model.SingleEnvironmentVariable, model.RequestUpdateUpdateDetails, error) {
 
-	httpClient := resty.New()
-	httpClient.SetAuthScheme("Bearer")
-	httpClient.SetAuthToken(accessToken)
-
-	secretsResponse, err := api.CallGetDecryptedSecretsV3(httpClient, api.GetDecryptedSecretsV3Request{
+	secrets, err := infisicalClient.Secrets().List(infisical.ListSecretsOptions{
 		ProjectSlug:            secretScope.ProjectSlug,
 		Environment:            secretScope.EnvSlug,
 		Recursive:              secretScope.Recursive,
 		SecretPath:             secretScope.SecretsPath,
+		IncludeImports:         true,
 		ExpandSecretReferences: true,
-		ETag:                   etag,
 	})
 
 	if err != nil {
 		return nil, model.RequestUpdateUpdateDetails{}, err
 	}
 
-	var secrets []model.SingleEnvironmentVariable
+	var environmentVariables []model.SingleEnvironmentVariable
 
-	for _, secret := range secretsResponse.Secrets {
-		secrets = append(secrets, model.SingleEnvironmentVariable{
+	for _, secret := range secrets {
+
+		environmentVariables = append(environmentVariables, model.SingleEnvironmentVariable{
 			Key:   secret.SecretKey,
 			Value: secret.SecretValue,
 			Type:  secret.Type,
@@ -81,15 +79,11 @@ func GetPlainTextSecretsViaUniversalAuth(accessToken string, etag string, secret
 		})
 	}
 
-	// No need to do expansion for Machine Identity auth as this is handled on server-side.
-	mergedSecrets := MergeRawImportedSecrets(secrets, secretsResponse.Imports)
-	if err != nil {
-		return nil, model.RequestUpdateUpdateDetails{}, err
-	}
+	newEtag := crypto.ComputeEtag([]byte(fmt.Sprintf("%v", environmentVariables)))
 
-	return mergedSecrets, model.RequestUpdateUpdateDetails{
-		Modified: secretsResponse.Modified,
-		ETag:     secretsResponse.ETag,
+	return environmentVariables, model.RequestUpdateUpdateDetails{
+		Modified: etag != newEtag,
+		ETag:     newEtag,
 	}, nil
 }
 

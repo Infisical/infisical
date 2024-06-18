@@ -12,11 +12,14 @@ import { faFolderOpen } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowRight,
   faArrowUpRightFromSquare,
+  faBorderAll,
   faCheck,
   faCheckCircle,
   faClipboard,
   faExclamationCircle,
+  faFileShield,
   faHandPeace,
+  faList,
   faMagnifyingGlass,
   faNetworkWired,
   faPlug,
@@ -35,6 +38,7 @@ import {
   Button,
   Checkbox,
   FormControl,
+  IconButton,
   Input,
   Modal,
   ModalContent,
@@ -85,6 +89,11 @@ type ItemProps = {
   userAction?: string;
   link?: string;
 };
+
+enum ProjectsViewMode {
+  GRID = "grid",
+  LIST = "list"
+}
 
 function copyToClipboard(id: string, setState: (value: boolean) => void) {
   // Get the text field
@@ -309,8 +318,9 @@ const LearningItem = ({
         href={link}
       >
         <div
-          className={`${complete ? "bg-gradient-to-r from-primary-500/70 p-[0.07rem]" : ""
-            } mb-3 rounded-md`}
+          className={`${
+            complete ? "bg-gradient-to-r from-primary-500/70 p-[0.07rem]" : ""
+          } mb-3 rounded-md`}
         >
           <div
             onKeyDown={() => null}
@@ -321,10 +331,11 @@ const LearningItem = ({
                 await registerUserAction.mutateAsync(userAction);
               }
             }}
-            className={`group relative flex h-[5.5rem] w-full items-center justify-between overflow-hidden rounded-md border ${complete
+            className={`group relative flex h-[5.5rem] w-full items-center justify-between overflow-hidden rounded-md border ${
+              complete
                 ? "cursor-default border-mineshaft-900 bg-gradient-to-r from-[#0e1f01] to-mineshaft-700"
                 : "cursor-pointer border-mineshaft-600 bg-mineshaft-800 shadow-xl hover:bg-mineshaft-700"
-              } text-mineshaft-100 duration-200`}
+            } text-mineshaft-100 duration-200`}
           >
             <div className="mr-4 flex flex-row items-center">
               <FontAwesomeIcon icon={icon} className="mx-2 w-16 text-4xl" />
@@ -402,8 +413,9 @@ const LearningItemSquare = ({
       href={link}
     >
       <div
-        className={`${complete ? "bg-gradient-to-r from-primary-500/70 p-[0.07rem]" : ""
-          } w-full rounded-md`}
+        className={`${
+          complete ? "bg-gradient-to-r from-primary-500/70 p-[0.07rem]" : ""
+        } w-full rounded-md`}
       >
         <div
           onKeyDown={() => null}
@@ -414,10 +426,11 @@ const LearningItemSquare = ({
               await registerUserAction.mutateAsync(userAction);
             }
           }}
-          className={`group relative flex w-full items-center justify-between overflow-hidden rounded-md border ${complete
+          className={`group relative flex w-full items-center justify-between overflow-hidden rounded-md border ${
+            complete
               ? "cursor-default border-mineshaft-900 bg-gradient-to-r from-[#0e1f01] to-mineshaft-700"
               : "cursor-pointer border-mineshaft-600 bg-mineshaft-800 shadow-xl hover:bg-mineshaft-700"
-            } text-mineshaft-100 duration-200`}
+          } text-mineshaft-100 duration-200`}
         >
           <div className="flex w-full flex-col items-center px-6 py-4">
             <div className="flex w-full flex-row items-start justify-between">
@@ -431,8 +444,9 @@ const LearningItemSquare = ({
                 </div>
               )}
               <div
-                className={`text-right text-sm font-normal text-mineshaft-300 ${complete ? "font-semibold text-primary" : ""
-                  }`}
+                className={`text-right text-sm font-normal text-mineshaft-300 ${
+                  complete ? "font-semibold text-primary" : ""
+                }`}
               >
                 {complete ? "Complete!" : `About ${time}`}
               </div>
@@ -461,7 +475,6 @@ const formSchema = yup.object({
 type TAddProjectFormData = yup.InferType<typeof formSchema>;
 
 // #TODO: Update all the workspaceIds
-
 const OrganizationPage = withPermission(
   () => {
     const { t } = useTranslation();
@@ -496,6 +509,9 @@ const OrganizationPage = withPermission(
     const createWs = useCreateWorkspace();
     const { user } = useUser();
     const { data: serverDetails } = useFetchServerStatus();
+    const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
+      (localStorage.getItem("projectsViewMode") as ProjectsViewMode) || ProjectsViewMode.GRID
+    );
 
     const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
       // type check
@@ -550,6 +566,95 @@ const OrganizationPage = withPermission(
     }, []);
 
     const isWorkspaceEmpty = !isWorkspaceLoading && orgWorkspaces?.length === 0;
+    const filteredWorkspaces = orgWorkspaces.filter((ws) =>
+      ws?.name?.toLowerCase().includes(searchFilter.toLowerCase())
+    );
+
+    const projectsGridView = (
+      <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        {isWorkspaceLoading &&
+          Array.apply(0, Array(3)).map((_x, i) => (
+            <div
+              key={`workspace-cards-loading-${i + 1}`}
+              className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+            >
+              <div className="mt-0 text-lg text-mineshaft-100">
+                <Skeleton className="w-3/4 bg-mineshaft-600" />
+              </div>
+              <div className="mt-0 pb-6 text-sm text-mineshaft-300">
+                <Skeleton className="w-1/2 bg-mineshaft-600" />
+              </div>
+              <div className="flex justify-end">
+                <Skeleton className="w-1/2 bg-mineshaft-600" />
+              </div>
+            </div>
+          ))}
+        {filteredWorkspaces.map((workspace) => (
+          // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+          <div
+            onClick={() => {
+              router.push(`/project/${workspace.id}/secrets/overview`);
+              localStorage.setItem("projectData.id", workspace.id);
+            }}
+            key={workspace.id}
+            className="min-w-72 group flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+          >
+            <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
+            <div className="mt-0 pb-6 text-sm text-mineshaft-300">
+              {workspace.environments?.length || 0} environments
+            </div>
+            <button type="button">
+              <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all group-hover:border-primary-500/80 group-hover:bg-primary-800/20 group-hover:text-mineshaft-200">
+                Explore{" "}
+                <FontAwesomeIcon
+                  icon={faArrowRight}
+                  className="pl-1.5 pr-0.5 duration-200 group-hover:pl-2 group-hover:pr-0"
+                />
+              </div>
+            </button>
+          </div>
+        ))}
+      </div>
+    );
+
+    const projectsListView = (
+      <div className="mt-4 w-full rounded-md">
+        {isWorkspaceLoading &&
+          Array.apply(0, Array(3)).map((_x, i) => (
+            <div
+              key={`workspace-cards-loading-${i + 1}`}
+              className={`min-w-72 group flex h-12 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
+                i === 0 && "rounded-t-md"
+              } ${i === 2 && "rounded-b-md border-b"}`}
+            >
+              <Skeleton className="w-full bg-mineshaft-600" />
+            </div>
+          ))}
+        {filteredWorkspaces.map((workspace, ind) => (
+          // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+          <div
+            onClick={() => {
+              router.push(`/project/${workspace.id}/secrets/overview`);
+              localStorage.setItem("projectData.id", workspace.id);
+            }}
+            key={workspace.id}
+            className={`min-w-72 group grid h-14 cursor-pointer grid-cols-6 border-t border-l border-r border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
+              ind === 0 && "rounded-t-md"
+            } ${ind === filteredWorkspaces.length - 1 && "rounded-b-md border-b"}`}
+          >
+            <div className="flex items-center sm:col-span-3 lg:col-span-4">
+              <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
+              <div className="ml-5 truncate text-sm text-mineshaft-100">{workspace.name}</div>
+            </div>
+            <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
+              <div className="text-center text-sm text-mineshaft-300">
+                {workspace.environments?.length || 0} environments
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
 
     return (
       <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800 md:h-screen">
@@ -580,7 +685,9 @@ const OrganizationPage = withPermission(
           </div>
         )}
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
-          <p className="mr-4 font-semibold text-white">Projects</p>
+          <div className="flex w-full justify-between">
+            <p className="mr-4 font-semibold text-white">Projects</p>
+          </div>
           <div className="mt-6 flex w-full flex-row">
             <Input
               className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
@@ -589,6 +696,36 @@ const OrganizationPage = withPermission(
               onChange={(e) => setSearchFilter(e.target.value)}
               leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
             />
+            <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+              <IconButton
+                variant="outline_bg"
+                onClick={() => {
+                  localStorage.setItem("projectsViewMode", ProjectsViewMode.GRID);
+                  setProjectsViewMode(ProjectsViewMode.GRID);
+                }}
+                ariaLabel="grid"
+                size="xs"
+                className={`${
+                  projectsViewMode === ProjectsViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"
+                } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
+              >
+                <FontAwesomeIcon icon={faBorderAll} />
+              </IconButton>
+              <IconButton
+                variant="outline_bg"
+                onClick={() => {
+                  localStorage.setItem("projectsViewMode", ProjectsViewMode.LIST);
+                  setProjectsViewMode(ProjectsViewMode.LIST);
+                }}
+                ariaLabel="list"
+                size="xs"
+                className={`${
+                  projectsViewMode === ProjectsViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"
+                } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
+              >
+                <FontAwesomeIcon icon={faList} />
+              </IconButton>
+            </div>
             <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
               {(isAllowed) => (
                 <Button
@@ -609,52 +746,7 @@ const OrganizationPage = withPermission(
               )}
             </OrgPermissionCan>
           </div>
-          <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {isWorkspaceLoading &&
-              Array.apply(0, Array(3)).map((_x, i) => (
-                <div
-                  key={`workspace-cards-loading-${i + 1}`}
-                  className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
-                >
-                  <div className="mt-0 text-lg text-mineshaft-100">
-                    <Skeleton className="w-3/4 bg-mineshaft-600" />
-                  </div>
-                  <div className="mt-0 pb-6 text-sm text-mineshaft-300">
-                    <Skeleton className="w-1/2 bg-mineshaft-600" />
-                  </div>
-                  <div className="flex justify-end">
-                    <Skeleton className="w-1/2 bg-mineshaft-600" />
-                  </div>
-                </div>
-              ))}
-            {orgWorkspaces
-              .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
-              .map((workspace) => (
-                // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-                <div
-                  onClick={() => {
-                    router.push(`/project/${workspace.id}/secrets/overview`);
-                    localStorage.setItem("projectData.id", workspace.id);
-                  }}
-                  key={workspace.id}
-                  className="min-w-72 group flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
-                >
-                  <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
-                  <div className="mt-0 pb-6 text-sm text-mineshaft-300">
-                    {workspace.environments?.length || 0} environments
-                  </div>
-                  <button type="button">
-                    <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all group-hover:border-primary-500/80 group-hover:bg-primary-800/20 group-hover:text-mineshaft-200">
-                      Explore{" "}
-                      <FontAwesomeIcon
-                        icon={faArrowRight}
-                        className="pl-1.5 pr-0.5 duration-200 group-hover:pl-2 group-hover:pr-0"
-                      />
-                    </div>
-                  </button>
-                </div>
-              ))}
-          </div>
+          {projectsViewMode === ProjectsViewMode.LIST ? projectsListView : projectsGridView}
           {isWorkspaceEmpty && (
             <div className="w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
               <FontAwesomeIcon
@@ -709,94 +801,95 @@ const OrganizationPage = withPermission(
           new Date().getTime() - new Date(user?.createdAt).getTime() <
           30 * 24 * 60 * 60 * 1000
         ) && (
-            <div className="mb-4 flex flex-col items-start justify-start px-6 pb-0 text-3xl">
-              <p className="mr-4 mb-4 font-semibold text-white">Onboarding Guide</p>
-              <div className="mb-3 grid w-full grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                <LearningItemSquare
-                  text="Watch Infisical demo"
-                  subText="Set up Infisical in 3 min."
-                  complete={hasUserClickedIntro}
-                  icon={faHandPeace}
-                  time="3 min"
-                  userAction="intro_cta_clicked"
-                  link="https://www.youtube.com/watch?v=PK23097-25I"
-                />
-                {orgWorkspaces.length !== 0 && (
-                  <>
-                    <LearningItemSquare
-                      text="Add your secrets"
-                      subText="Drop a .env file or type your secrets."
-                      complete={hasUserPushedSecrets}
-                      icon={faPlus}
-                      time="1 min"
-                      userAction="first_time_secrets_pushed"
-                      link={`/project/${orgWorkspaces[0]?.id}/secrets/overview`}
-                    />
-                    <LearningItemSquare
-                      text="Invite your teammates"
-                      subText="Infisical is better used as a team."
-                      complete={usersInOrg}
-                      icon={faUserPlus}
-                      time="2 min"
-                      link={`/org/${router.query.id}/members?action=invite`}
-                    />
-                  </>
-                )}
-                <div className="block xl:hidden 2xl:block">
-                  <LearningItemSquare
-                    text="Join Infisical Slack"
-                    subText="Have any questions? Ask us!"
-                    complete={hasUserClickedSlack}
-                    icon={faSlack}
-                    time="1 min"
-                    userAction="slack_cta_clicked"
-                    link="https://infisical.com/slack"
-                  />
-                </div>
-              </div>
+          <div className="mb-4 flex flex-col items-start justify-start px-6 pb-0 text-3xl">
+            <p className="mr-4 mb-4 font-semibold text-white">Onboarding Guide</p>
+            <div className="mb-3 grid w-full grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <LearningItemSquare
+                text="Watch Infisical demo"
+                subText="Set up Infisical in 3 min."
+                complete={hasUserClickedIntro}
+                icon={faHandPeace}
+                time="3 min"
+                userAction="intro_cta_clicked"
+                link="https://www.youtube.com/watch?v=PK23097-25I"
+              />
               {orgWorkspaces.length !== 0 && (
-                <div className="group relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 text-mineshaft-100 shadow-xl duration-200">
-                  <div className="mb-4 flex w-full flex-row items-center pr-4">
-                    <div className="mr-4 flex w-full flex-row items-center">
-                      <FontAwesomeIcon icon={faNetworkWired} className="mx-2 w-16 text-4xl" />
-                      {false && (
-                        <div className="absolute left-12 top-10 flex h-7 w-7 items-center justify-center rounded-full bg-bunker-500 p-2 group-hover:bg-mineshaft-700">
-                          <FontAwesomeIcon
-                            icon={faCheckCircle}
-                            className="h-5 w-5 text-4xl text-green"
-                          />
-                        </div>
-                      )}
-                      <div className="flex flex-col items-start pl-0.5">
-                        <div className="mt-0.5 text-xl font-semibold">Inject secrets locally</div>
-                        <div className="text-sm font-normal">
-                          Replace .env files with a more secure and efficient alternative.
-                        </div>
+                <>
+                  <LearningItemSquare
+                    text="Add your secrets"
+                    subText="Drop a .env file or type your secrets."
+                    complete={hasUserPushedSecrets}
+                    icon={faPlus}
+                    time="1 min"
+                    userAction="first_time_secrets_pushed"
+                    link={`/project/${orgWorkspaces[0]?.id}/secrets/overview`}
+                  />
+                  <LearningItemSquare
+                    text="Invite your teammates"
+                    subText="Infisical is better used as a team."
+                    complete={usersInOrg}
+                    icon={faUserPlus}
+                    time="2 min"
+                    link={`/org/${router.query.id}/members?action=invite`}
+                  />
+                </>
+              )}
+              <div className="block xl:hidden 2xl:block">
+                <LearningItemSquare
+                  text="Join Infisical Slack"
+                  subText="Have any questions? Ask us!"
+                  complete={hasUserClickedSlack}
+                  icon={faSlack}
+                  time="1 min"
+                  userAction="slack_cta_clicked"
+                  link="https://infisical.com/slack"
+                />
+              </div>
+            </div>
+            {orgWorkspaces.length !== 0 && (
+              <div className="group relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 text-mineshaft-100 shadow-xl duration-200">
+                <div className="mb-4 flex w-full flex-row items-center pr-4">
+                  <div className="mr-4 flex w-full flex-row items-center">
+                    <FontAwesomeIcon icon={faNetworkWired} className="mx-2 w-16 text-4xl" />
+                    {false && (
+                      <div className="absolute left-12 top-10 flex h-7 w-7 items-center justify-center rounded-full bg-bunker-500 p-2 group-hover:bg-mineshaft-700">
+                        <FontAwesomeIcon
+                          icon={faCheckCircle}
+                          className="h-5 w-5 text-4xl text-green"
+                        />
+                      </div>
+                    )}
+                    <div className="flex flex-col items-start pl-0.5">
+                      <div className="mt-0.5 text-xl font-semibold">Inject secrets locally</div>
+                      <div className="text-sm font-normal">
+                        Replace .env files with a more secure and efficient alternative.
                       </div>
                     </div>
-                    <div
-                      className={`w-28 pr-4 text-right text-sm font-semibold ${false && "text-green"
-                        }`}
-                    >
-                      About 2 min
-                    </div>
                   </div>
-                  <TabsObject />
-                  {false && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
+                  <div
+                    className={`w-28 pr-4 text-right text-sm font-semibold ${
+                      false && "text-green"
+                    }`}
+                  >
+                    About 2 min
+                  </div>
                 </div>
-              )}
-              {orgWorkspaces.length !== 0 && (
-                <LearningItem
-                  text="Integrate Infisical with your infrastructure"
-                  subText="Connect Infisical to various 3rd party services and platforms."
-                  complete={false}
-                  icon={faPlug}
-                  time="15 min"
-                  link="https://infisical.com/docs/integrations/overview"
-                />
-              )}
-            </div>
-          )}
+                <TabsObject />
+                {false && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
+              </div>
+            )}
+            {orgWorkspaces.length !== 0 && (
+              <LearningItem
+                text="Integrate Infisical with your infrastructure"
+                subText="Connect Infisical to various 3rd party services and platforms."
+                complete={false}
+                icon={faPlug}
+                time="15 min"
+                link="https://infisical.com/docs/integrations/overview"
+              />
+            )}
+          </div>
+        )}
         <Modal
           isOpen={popUp.addNewWs.isOpen}
           onOpenChange={(isModalOpen) => {

@@ -32,10 +32,7 @@
     "thumbsRating": true
   },
   "api": {
-    "baseUrl": [
-      "https://app.infisical.com",
-      "http://localhost:8080"
-    ]
+    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
   },
   "topbarLinks": [
     {
@@ -76,9 +73,7 @@
         "documentation/getting-started/introduction",
         {
           "group": "Quickstart",
-          "pages": [
-            "documentation/guides/local-development"
-          ]
+          "pages": ["documentation/guides/local-development"]
         },
         {
           "group": "Guides",
@@ -105,6 +100,14 @@
             "documentation/platform/pit-recovery",
             "documentation/platform/secret-reference",
             "documentation/platform/webhooks"
+          ]
+        },
+        {
+          "group": "Internal PKI",
+          "pages": [
+            "documentation/platform/pki/overview",
+            "documentation/platform/pki/private-ca",
+            "documentation/platform/pki/certificates"
           ]
         },
         {
@@ -221,9 +224,7 @@
         },
         {
           "group": "Reference architectures",
-          "pages": [
-            "self-hosting/reference-architectures/aws-ecs"
-          ]
+          "pages": ["self-hosting/reference-architectures/aws-ecs"]
         },
         "self-hosting/ee",
         "self-hosting/faq"
@@ -343,6 +344,7 @@
           "pages": [
             "integrations/cicd/circleci",
             "integrations/cicd/travisci",
+            "integrations/cicd/rundeck",
             "integrations/cicd/codefresh",
             "integrations/cloud/checkly"
           ]
@@ -379,21 +381,18 @@
     },
     {
       "group": "Build Tool Integrations",
-      "pages": [
-        "integrations/build-tools/gradle"
-      ]
+      "pages": ["integrations/build-tools/gradle"]
     },
     {
       "group": "",
-      "pages": [
-        "sdks/overview"
-      ]
+      "pages": ["sdks/overview"]
     },
     {
       "group": "SDK's",
       "pages": [
         "sdks/languages/node",
         "sdks/languages/python",
+        "sdks/languages/go",
         "sdks/languages/java",
         "sdks/languages/csharp"
       ]
@@ -405,9 +404,7 @@
         "api-reference/overview/authentication",
         {
           "group": "Examples",
-          "pages": [
-            "api-reference/overview/examples/integration"
-          ]
+          "pages": ["api-reference/overview/examples/integration"]
         }
       ]
     },
@@ -508,7 +505,10 @@
           "group": "Secret Tags",
           "pages": [
             "api-reference/endpoints/secret-tags/list",
+            "api-reference/endpoints/secret-tags/get-by-id",
+            "api-reference/endpoints/secret-tags/get-by-slug",
             "api-reference/endpoints/secret-tags/create",
+            "api-reference/endpoints/secret-tags/update",
             "api-reference/endpoints/secret-tags/delete"
           ]
         },
@@ -563,14 +563,34 @@
         },
         {
           "group": "Service Tokens",
-          "pages": [
-            "api-reference/endpoints/service-tokens/get"
-          ]
+          "pages": ["api-reference/endpoints/service-tokens/get"]
         },
         {
           "group": "Audit Logs",
+          "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+        },
+        {
+          "group": "Certificate Authorities",
           "pages": [
-            "api-reference/endpoints/audit-logs/export-audit-log"
+            "api-reference/endpoints/certificate-authorities/create",
+            "api-reference/endpoints/certificate-authorities/read",
+            "api-reference/endpoints/certificate-authorities/update",
+            "api-reference/endpoints/certificate-authorities/delete",
+            "api-reference/endpoints/certificate-authorities/csr",
+            "api-reference/endpoints/certificate-authorities/cert",
+            "api-reference/endpoints/certificate-authorities/sign-intermediate",
+            "api-reference/endpoints/certificate-authorities/import-cert",
+            "api-reference/endpoints/certificate-authorities/issue-cert",
+            "api-reference/endpoints/certificate-authorities/crl"
+          ]
+        },
+        {
+          "group": "Certificates",
+          "pages": [
+            "api-reference/endpoints/certificates/read",
+            "api-reference/endpoints/certificates/revoke",
+            "api-reference/endpoints/certificates/delete",
+            "api-reference/endpoints/certificates/cert-body"
           ]
         }
       ]
@@ -587,9 +607,7 @@
     },
     {
       "group": "",
-      "pages": [
-        "changelog/overview"
-      ]
+      "pages": ["changelog/overview"]
     },
     {
       "group": "Contributing",
@@ -613,9 +631,7 @@
         },
         {
           "group": "Contributing to SDK",
-          "pages": [
-            "contributing/sdk/developing"
-          ]
+          "pages": ["contributing/sdk/developing"]
         }
       ]
     }

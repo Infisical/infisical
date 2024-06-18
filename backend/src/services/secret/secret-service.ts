@@ -608,7 +608,7 @@ export const secretServiceFactory = ({
     }
 
     const secret = await (version === undefined
-      ? secretDAL.findOne({
+      ? secretDAL.findOneWithTags({
           folderId,
           type: secretType,
           userId: secretType === SecretType.Personal ? actorId : null,
@@ -952,15 +952,49 @@ export const secretServiceFactory = ({
     });
 
     const decryptedSecrets = secrets.map((el) => decryptSecretRaw(el, botKey));
-    const decryptedImports = (imports || [])?.map(({ secrets: importedSecrets, ...el }) => ({
-      ...el,
-      secrets: importedSecrets.map((sec) =>
+    const processedImports = (imports || [])?.map(({ secrets: importedSecrets, ...el }) => {
+      const decryptedImportSecrets = importedSecrets.map((sec) =>
         decryptSecretRaw(
           { ...sec, environment: el.environment, workspace: projectId, secretPath: el.secretPath },
           botKey
         )
-      )
-    }));
+      );
+
+      // secret-override to handle duplicate keys from different import levels
+      // this prioritizes secret values from direct imports
+      const importedKeys = new Set<string>();
+      const importedEntries = decryptedImportSecrets.reduce(
+        (
+          accum: {
+            secretKey: string;
+            secretPath: string;
+            workspace: string;
+            environment: string;
+            secretValue: string;
+            secretComment: string;
+            version: number;
+            type: string;
+            _id: string;
+            id: string;
+            user: string | null | undefined;
+            skipMultilineEncoding: boolean | null | undefined;
+          }[],
+          sec
+        ) => {
+          if (!importedKeys.has(sec.secretKey)) {
+            importedKeys.add(sec.secretKey);
+            return [...accum, sec];
+          }
+          return accum;
+        },
+        []
+      );
+
+      return {
+        ...el,
+        secrets: importedEntries
+      };
+    });
 
     if (expandSecretReferences) {
       const expandSecrets = interpolateSecrets({
@@ -971,10 +1005,24 @@ export const secretServiceFactory = ({
       });
 
       const batchSecretsExpand = async (
-        secretBatch: { secretKey: string; secretValue: string; secretComment?: string; secretPath: string }[]
+        secretBatch: {
+          secretKey: string;
+          secretValue: string;
+          secretComment?: string;
+          secretPath: string;
+          skipMultilineEncoding: boolean | null | undefined;
+        }[]
       ) => {
         // Group secrets by secretPath
-        const secretsByPath: Record<string, { secretKey: string; secretValue: string; secretComment?: string }[]> = {};
+        const secretsByPath: Record<
+          string,
+          {
+            secretKey: string;
+            secretValue: string;
+            secretComment?: string;
+            skipMultilineEncoding: boolean | null | undefined;
+          }[]
+        > = {};
 
         secretBatch.forEach((secret) => {
           if (!secretsByPath[secret.secretPath]) {
@@ -990,11 +1038,15 @@ export const secretServiceFactory = ({
             continue;
           }
 
-          const secretRecord: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }> = {};
+          const secretRecord: Record<
+            string,
+            { value: string; comment?: string; skipMultilineEncoding: boolean | null | undefined }
+          > = {};
           secretsByPath[secPath].forEach((decryptedSecret) => {
             secretRecord[decryptedSecret.secretKey] = {
               value: decryptedSecret.secretValue,
-              comment: decryptedSecret.secretComment
+              comment: decryptedSecret.secretComment,
+              skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
             };
           });
 
@@ -1011,12 +1063,12 @@ export const secretServiceFactory = ({
       await batchSecretsExpand(decryptedSecrets);
 
       // expand imports by batch
-      await Promise.all(decryptedImports.map((decryptedImport) => batchSecretsExpand(decryptedImport.secrets)));
+      await Promise.all(processedImports.map((processedImport) => batchSecretsExpand(processedImport.secrets)));
     }
 
     return {
       secrets: decryptedSecrets,
-      imports: decryptedImports
+      imports: processedImports
     };
   };
 
@@ -1068,7 +1120,8 @@ export const secretServiceFactory = ({
     secretPath,
     secretValue,
     secretComment,
-    skipMultilineEncoding
+    skipMultilineEncoding,
+    tagIds
   }: TCreateSecretRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -1096,7 +1149,8 @@ export const secretServiceFactory = ({
       secretCommentCiphertext: secretCommentEncrypted.ciphertext,
       secretCommentIV: secretCommentEncrypted.iv,
       secretCommentTag: secretCommentEncrypted.tag,
-      skipMultilineEncoding
+      skipMultilineEncoding,
+      tags: tagIds
     });
 
     return decryptSecretRaw(secret, botKey);
@@ -1113,7 +1167,8 @@ export const secretServiceFactory = ({
     type,
     secretPath,
     secretValue,
-    skipMultilineEncoding
+    skipMultilineEncoding,
+    tagIds
   }: TUpdateSecretRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -1133,7 +1188,8 @@ export const secretServiceFactory = ({
       secretValueCiphertext: secretValueEncrypted.ciphertext,
       secretValueIV: secretValueEncrypted.iv,
       secretValueTag: secretValueEncrypted.tag,
-      skipMultilineEncoding
+      skipMultilineEncoding,
+      tags: tagIds
     });
 
     await snapshotService.performSnapshot(secret.folderId);
