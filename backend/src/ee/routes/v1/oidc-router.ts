@@ -22,6 +22,12 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
   const redis = new Redis(appCfg.REDIS_URL);
   const passport = new Authenticator({ key: "oidc", userProperty: "passportUser" });
+
+  /*
+  - OIDC protocol cannot work without sessions: https://github.com/panva/node-openid-client/issues/190
+  - Current redis usage is not ideal and will eventually have to be refactored to use a better structure
+  - Fastify session <> Redis structure is based on the ff: https://github.com/fastify/session/blob/master/examples/redis.js
+  */
   const redisStore = new RedisStore({
     client: redis,
     prefix: "oidc-session:",
