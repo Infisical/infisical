@@ -1,6 +1,7 @@
 export {
   useAddGroupToWorkspace,
   useDeleteGroupFromWorkspace,
+  useLeaveProject,
   useUpdateGroupWorkspaceRole
 } from "./mutations";
 export {
@@ -30,4 +31,5 @@ export {
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
-  useUpgradeProject} from "./queries";
+  useUpgradeProject
+} from "./queries";
