@@ -65,6 +65,7 @@ export enum EventType {
   ADD_IDENTITY_UNIVERSAL_AUTH = "add-identity-universal-auth",
   UPDATE_IDENTITY_UNIVERSAL_AUTH = "update-identity-universal-auth",
   GET_IDENTITY_UNIVERSAL_AUTH = "get-identity-universal-auth",
+  REVOKE_IDENTITY_UNIVERSAL_AUTH = "revoke-identity-universal-auth",
   LOGIN_IDENTITY_KUBERNETES_AUTH = "login-identity-kubernetes-auth",
   ADD_IDENTITY_KUBERNETES_AUTH = "add-identity-kubernetes-auth",
   UPDATE_IDENTITY_KUBENETES_AUTH = "update-identity-kubernetes-auth",
@@ -72,6 +73,7 @@ export enum EventType {
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
+  GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID = "get-identity-universal-auth-client-secret-by-id",
   LOGIN_IDENTITY_GCP_AUTH = "login-identity-gcp-auth",
   ADD_IDENTITY_GCP_AUTH = "add-identity-gcp-auth",
   UPDATE_IDENTITY_GCP_AUTH = "update-identity-gcp-auth",
@@ -434,6 +436,13 @@ interface GetIdentityUniversalAuthEvent {
   };
 }
 
+interface DeleteIdentityUniversalAuthEvent {
+  type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface LoginIdentityKubernetesAuthEvent {
   type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH;
   metadata: {
@@ -490,6 +499,14 @@ interface GetIdentityUniversalAuthClientSecretsEvent {
   type: EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS;
   metadata: {
     identityId: string;
+  };
+}
+
+interface GetIdentityUniversalAuthClientSecretByIdEvent {
+  type: EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID;
+  metadata: {
+    identityId: string;
+    clientSecretId: string;
   };
 }
 
@@ -1003,6 +1020,7 @@ export type Event =
   | LoginIdentityUniversalAuthEvent
   | AddIdentityUniversalAuthEvent
   | UpdateIdentityUniversalAuthEvent
+  | DeleteIdentityUniversalAuthEvent
   | GetIdentityUniversalAuthEvent
   | LoginIdentityKubernetesAuthEvent
   | AddIdentityKubernetesAuthEvent
@@ -1010,6 +1028,7 @@ export type Event =
   | GetIdentityKubernetesAuthEvent
   | CreateIdentityUniversalAuthClientSecretEvent
   | GetIdentityUniversalAuthClientSecretsEvent
+  | GetIdentityUniversalAuthClientSecretByIdEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
   | LoginIdentityGcpAuthEvent
   | AddIdentityGcpAuthEvent

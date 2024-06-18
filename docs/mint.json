@@ -428,9 +428,11 @@
             "api-reference/endpoints/universal-auth/attach",
             "api-reference/endpoints/universal-auth/retrieve",
             "api-reference/endpoints/universal-auth/update",
+            "api-reference/endpoints/universal-auth/revoke",
             "api-reference/endpoints/universal-auth/create-client-secret",
             "api-reference/endpoints/universal-auth/list-client-secrets",
             "api-reference/endpoints/universal-auth/revoke-client-secret",
+            "api-reference/endpoints/universal-auth/get-client-secret-by-id",
             "api-reference/endpoints/universal-auth/renew-access-token",
             "api-reference/endpoints/universal-auth/revoke-access-token"
           ]

@@ -72,6 +72,9 @@ export const UNIVERSAL_AUTH = {
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve."
   },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke."
+  },
   UPDATE: {
     identityId: "The ID of the identity to update.",
     clientSecretTrustedIps: "The new list of IPs or CIDR ranges that the Client Secret can be used from.",
@@ -89,6 +92,10 @@ export const UNIVERSAL_AUTH = {
   },
   LIST_CLIENT_SECRETS: {
     identityId: "The ID of the identity to list client secrets for."
+  },
+  GET_CLIENT_SECRET: {
+    identityId: "The ID of the identity to get the client secret from.",
+    clientSecretId: "The ID of the client secret to get details."
   },
   REVOKE_CLIENT_SECRET: {
     identityId: "The ID of the identity to revoke the client secret from.",
