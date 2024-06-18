@@ -23,7 +23,8 @@ const schema = z.object({
   tokenEndpoint: z.string().min(1),
   userinfoEndpoint: z.string().min(1),
   clientId: z.string().min(1),
-  clientSecret: z.string().min(1)
+  clientSecret: z.string().min(1),
+  allowedEmailDomains: z.string().optional()
 });
 
 export type OIDCFormData = z.infer<typeof schema>;
@@ -48,12 +49,14 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
       setValue("userinfoEndpoint", data.userinfoEndpoint);
       setValue("clientId", data.clientId);
       setValue("clientSecret", data.clientSecret);
+      setValue("allowedEmailDomains", data.allowedEmailDomains);
     }
   }, [data]);
 
   const onOIDCModalSubmit = async ({
     issuer,
     authorizationEndpoint,
+    allowedEmailDomains,
     jwksUri,
     tokenEndpoint,
     userinfoEndpoint,
@@ -67,6 +70,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
         await createMutateAsync({
           issuer,
           authorizationEndpoint,
+          allowedEmailDomains,
           jwksUri,
           tokenEndpoint,
           userinfoEndpoint,
@@ -79,6 +83,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
         await updateMutateAsync({
           issuer,
           authorizationEndpoint,
+          allowedEmailDomains,
           jwksUri,
           tokenEndpoint,
           userinfoEndpoint,
@@ -184,6 +189,19 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
                   placeholder="https://www.googleapis.com/oauth2/v3/certs"
                   autoComplete="off"
                 />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="allowedEmailDomains"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Allowed Email Domains (defaults to any)"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
+                <Input {...field} placeholder="infisical.com, google.com" autoComplete="off" />
               </FormControl>
             )}
           />

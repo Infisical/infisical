@@ -20,6 +20,7 @@ export const OidcConfigsSchema = z.object({
   encryptedClientSecret: z.string(),
   clientSecretIV: z.string(),
   clientSecretTag: z.string(),
+  allowedEmailDomains: z.string().nullable().optional(),
   isActive: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),

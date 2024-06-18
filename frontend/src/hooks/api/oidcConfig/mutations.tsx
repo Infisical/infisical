@@ -13,11 +13,13 @@ export const useUpdateOIDCConfig = () => {
       jwksUri,
       tokenEndpoint,
       userinfoEndpoint,
+      allowedEmailDomains,
       clientId,
       clientSecret,
       isActive,
       orgSlug
     }: {
+      allowedEmailDomains?: string;
       issuer?: string;
       authorizationEndpoint?: string;
       jwksUri?: string;
@@ -30,6 +32,7 @@ export const useUpdateOIDCConfig = () => {
     }) => {
       const { data } = await apiRequest.patch("/api/v1/sso/oidc/config", {
         issuer,
+        allowedEmailDomains,
         authorizationEndpoint,
         jwksUri,
         tokenEndpoint,
@@ -54,6 +57,7 @@ export const useCreateOIDCConfig = () => {
     mutationFn: async ({
       issuer,
       authorizationEndpoint,
+      allowedEmailDomains,
       jwksUri,
       tokenEndpoint,
       userinfoEndpoint,
@@ -71,10 +75,12 @@ export const useCreateOIDCConfig = () => {
       clientSecret: string;
       isActive: boolean;
       orgSlug: string;
+      allowedEmailDomains?: string;
     }) => {
       const { data } = await apiRequest.post("/api/v1/sso/oidc/config", {
         issuer,
         authorizationEndpoint,
+        allowedEmailDomains,
         jwksUri,
         tokenEndpoint,
         userinfoEndpoint,

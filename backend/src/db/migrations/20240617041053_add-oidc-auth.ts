@@ -17,6 +17,7 @@ export async function up(knex: Knex): Promise<void> {
       tb.text("encryptedClientSecret").notNullable();
       tb.string("clientSecretIV").notNullable();
       tb.string("clientSecretTag").notNullable();
+      tb.string("allowedEmailDomains").nullable();
       tb.boolean("isActive").notNullable();
       tb.timestamps(true, true, true);
       tb.uuid("orgId").notNullable().unique();

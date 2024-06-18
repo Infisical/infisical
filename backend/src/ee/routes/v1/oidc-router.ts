@@ -137,7 +137,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           tokenEndpoint: true,
           userinfoEndpoint: true,
           isActive: true,
-          orgId: true
+          orgId: true,
+          allowedEmailDomains: true
         }).extend({
           clientId: z.string(),
           clientSecret: z.string()
@@ -169,6 +170,19 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z
         .object({
+          allowedEmailDomains: z
+            .string()
+            .trim()
+            .optional()
+            .default("")
+            .transform((data) => {
+              if (data === "") return "";
+              // Trim each ID and join with ', ' to ensure formatting
+              return data
+                .split(",")
+                .map((id) => id.trim())
+                .join(", ");
+            }),
           issuer: z.string().trim(),
           authorizationEndpoint: z.string().trim(),
           jwksUri: z.string().trim(),
@@ -189,6 +203,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           tokenEndpoint: true,
           userinfoEndpoint: true,
           orgId: true,
+          allowedEmailDomains: true,
           isActive: true
         })
       }
@@ -215,6 +230,19 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         issuer: z.string().trim(),
+        allowedEmailDomains: z
+          .string()
+          .trim()
+          .optional()
+          .default("")
+          .transform((data) => {
+            if (data === "") return "";
+            // Trim each ID and join with ', ' to ensure formatting
+            return data
+              .split(",")
+              .map((id) => id.trim())
+              .join(", ");
+          }),
         authorizationEndpoint: z.string().trim(),
         jwksUri: z.string().trim(),
         tokenEndpoint: z.string().trim(),
@@ -233,7 +261,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           tokenEndpoint: true,
           userinfoEndpoint: true,
           orgId: true,
-          isActive: true
+          isActive: true,
+          allowedEmailDomains: true
         })
       }
     },

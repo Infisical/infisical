@@ -9,4 +9,5 @@ export type OIDCConfigData = {
   orgId: string;
   clientId: string;
   clientSecret: string;
+  allowedEmailDomains?: string;
 };

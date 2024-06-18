@@ -22,6 +22,7 @@ export type TGetOidcCfgDTO =
 export type TCreateOidcCfgDTO = {
   issuer: string;
   authorizationEndpoint: string;
+  allowedEmailDomains: string;
   jwksUri: string;
   tokenEndpoint: string;
   userinfoEndpoint: string;
@@ -34,6 +35,7 @@ export type TCreateOidcCfgDTO = {
 export type TUpdateOidcCfgDTO = Partial<{
   issuer: string;
   authorizationEndpoint: string;
+  allowedEmailDomains: string;
   jwksUri: string;
   tokenEndpoint: string;
   userinfoEndpoint: string;

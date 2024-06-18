@@ -63,6 +63,86 @@ export const oidcConfigServiceFactory = ({
   smtpService,
   oidcConfigDAL
 }: TOidcConfigServiceFactoryDep) => {
+  const getOidc = async (dto: TGetOidcCfgDTO) => {
+    const org = await orgDAL.findOne({ slug: dto.orgSlug });
+    if (!org) {
+      throw new BadRequestError({
+        message: "Organization not found",
+        name: "OrgNotFound"
+      });
+    }
+    if (dto.type === "external") {
+      const { permission } = await permissionService.getOrgPermission(
+        dto.actor,
+        dto.actorId,
+        org.id,
+        dto.actorAuthMethod,
+        dto.actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
+    }
+
+    const oidcCfg = await oidcConfigDAL.findOne({
+      orgId: org.id
+    });
+
+    if (!oidcCfg) {
+      throw new BadRequestError({
+        message: "Failed to find organization OIDC configuration"
+      });
+    }
+
+    // decrypt and return cfg
+    const orgBot = await orgBotDAL.findOne({ orgId: oidcCfg.orgId });
+    if (!orgBot) {
+      throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
+    }
+
+    const key = infisicalSymmetricDecrypt({
+      ciphertext: orgBot.encryptedSymmetricKey,
+      iv: orgBot.symmetricKeyIV,
+      tag: orgBot.symmetricKeyTag,
+      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    });
+
+    const { encryptedClientId, clientIdIV, clientIdTag, encryptedClientSecret, clientSecretIV, clientSecretTag } =
+      oidcCfg;
+
+    let clientId = "";
+    if (encryptedClientId && clientIdIV && clientIdTag) {
+      clientId = decryptSymmetric({
+        ciphertext: encryptedClientId,
+        key,
+        tag: clientIdTag,
+        iv: clientIdIV
+      });
+    }
+
+    let clientSecret = "";
+    if (encryptedClientSecret && clientSecretIV && clientSecretTag) {
+      clientSecret = decryptSymmetric({
+        key,
+        tag: clientSecretTag,
+        iv: clientSecretIV,
+        ciphertext: encryptedClientSecret
+      });
+    }
+
+    return {
+      id: oidcCfg.id,
+      issuer: oidcCfg.issuer,
+      authorizationEndpoint: oidcCfg.authorizationEndpoint,
+      jwksUri: oidcCfg.jwksUri,
+      tokenEndpoint: oidcCfg.tokenEndpoint,
+      userinfoEndpoint: oidcCfg.userinfoEndpoint,
+      orgId: oidcCfg.orgId,
+      isActive: oidcCfg.isActive,
+      allowedEmailDomains: oidcCfg.allowedEmailDomains,
+      clientId,
+      clientSecret
+    };
+  };
+
   const oidcLogin = async ({ externalId, email, firstName, lastName, orgId, callbackPort }: TOidcLoginDTO) => {
     const appCfg = getConfig();
     const userAlias = await userAliasDAL.findOne({
@@ -216,87 +296,9 @@ export const oidcConfigServiceFactory = ({
     return { isUserCompleted, providerAuthToken };
   };
 
-  const getOidc = async (dto: TGetOidcCfgDTO) => {
-    const org = await orgDAL.findOne({ slug: dto.orgSlug });
-    if (!org) {
-      throw new BadRequestError({
-        message: "Organization not found",
-        name: "OrgNotFound"
-      });
-    }
-    if (dto.type === "external") {
-      const { permission } = await permissionService.getOrgPermission(
-        dto.actor,
-        dto.actorId,
-        org.id,
-        dto.actorAuthMethod,
-        dto.actorOrgId
-      );
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
-    }
-
-    const oidcCfg = await oidcConfigDAL.findOne({
-      orgId: org.id
-    });
-
-    if (!oidcCfg) {
-      throw new BadRequestError({
-        message: "Failed to find organization OIDC configuration"
-      });
-    }
-
-    // decrypt and return cfg
-    const orgBot = await orgBotDAL.findOne({ orgId: oidcCfg.orgId });
-    if (!orgBot) {
-      throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
-    }
-
-    const key = infisicalSymmetricDecrypt({
-      ciphertext: orgBot.encryptedSymmetricKey,
-      iv: orgBot.symmetricKeyIV,
-      tag: orgBot.symmetricKeyTag,
-      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
-    });
-
-    const { encryptedClientId, clientIdIV, clientIdTag, encryptedClientSecret, clientSecretIV, clientSecretTag } =
-      oidcCfg;
-
-    let clientId = "";
-    if (encryptedClientId && clientIdIV && clientIdTag) {
-      clientId = decryptSymmetric({
-        ciphertext: encryptedClientId,
-        key,
-        tag: clientIdTag,
-        iv: clientIdIV
-      });
-    }
-
-    let clientSecret = "";
-    if (encryptedClientSecret && clientSecretIV && clientSecretTag) {
-      clientSecret = decryptSymmetric({
-        key,
-        tag: clientSecretTag,
-        iv: clientSecretIV,
-        ciphertext: encryptedClientSecret
-      });
-    }
-
-    return {
-      id: oidcCfg.id,
-      issuer: oidcCfg.issuer,
-      authorizationEndpoint: oidcCfg.authorizationEndpoint,
-      jwksUri: oidcCfg.jwksUri,
-      tokenEndpoint: oidcCfg.tokenEndpoint,
-      userinfoEndpoint: oidcCfg.userinfoEndpoint,
-      orgId: oidcCfg.orgId,
-      isActive: oidcCfg.isActive,
-      clientId,
-      clientSecret
-    };
-  };
-
   const updateOidcCfg = async ({
     orgSlug,
+    allowedEmailDomains,
     actor,
     actorOrgId,
     actorAuthMethod,
@@ -346,6 +348,7 @@ export const oidcConfigServiceFactory = ({
     });
 
     const updateQuery: TOidcConfigsUpdate = {
+      allowedEmailDomains,
       issuer,
       authorizationEndpoint,
       tokenEndpoint,
@@ -374,12 +377,12 @@ export const oidcConfigServiceFactory = ({
     }
 
     const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
-
     return ssoConfig;
   };
 
   const createOidcCfg = async ({
     orgSlug,
+    allowedEmailDomains,
     actor,
     actorOrgId,
     actorAuthMethod,
@@ -477,6 +480,7 @@ export const oidcConfigServiceFactory = ({
       issuer,
       isActive,
       authorizationEndpoint,
+      allowedEmailDomains,
       jwksUri,
       tokenEndpoint,
       userinfoEndpoint,
@@ -542,6 +546,15 @@ export const oidcConfigServiceFactory = ({
           throw new BadRequestError({
             message: "Invalid request. Missing email or first name"
           });
+        }
+
+        if (oidcCfg.allowedEmailDomains) {
+          const allowedDomains = oidcCfg.allowedEmailDomains.split(", ");
+          if (!allowedDomains.includes(claims.email.split("@")[1])) {
+            throw new BadRequestError({
+              message: "Email not allowed."
+            });
+          }
         }
 
         oidcLogin({
