@@ -200,28 +200,3 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		Complete(r)
 }
-
-func (r *InfisicalSecretReconciler) HandleManagedSecretDeletion(a client.Object) []ctrl.Request {
-	var requests []ctrl.Request
-	infisicalSecrets := &secretsv1alpha1.InfisicalSecretList{}
-	err := r.List(context.Background(), infisicalSecrets)
-	if err != nil {
-		fmt.Printf("unable to list Infisical Secrets from cluster because [err=%v]", err)
-		return requests
-	}
-
-	for _, infisicalSecret := range infisicalSecrets.Items {
-		if a.GetName() == infisicalSecret.Spec.ManagedSecretReference.SecretName &&
-			a.GetNamespace() == infisicalSecret.Spec.ManagedSecretReference.SecretNamespace {
-			requests = append(requests, ctrl.Request{
-				NamespacedName: client.ObjectKey{
-					Namespace: infisicalSecret.Namespace,
-					Name:      infisicalSecret.Name,
-				},
-			})
-			fmt.Printf("\nManaged secret deleted in resource %s: [name=%v] [namespace=%v]\n", infisicalSecret.Name, a.GetName(), a.GetNamespace())
-		}
-	}
-
-	return requests
-}
