@@ -193,13 +193,13 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
                 .map((id) => id.trim())
                 .join(", ");
             }),
-          discoveryURL: z.string().trim().optional().default(""),
+          discoveryURL: z.string().trim(),
           configurationType: z.nativeEnum(OIDCConfigurationType),
-          issuer: z.string().trim().optional().default(""),
-          authorizationEndpoint: z.string().trim().optional().default(""),
-          jwksUri: z.string().trim().optional().default(""),
-          tokenEndpoint: z.string().trim().optional().default(""),
-          userinfoEndpoint: z.string().trim().optional().default(""),
+          issuer: z.string().trim(),
+          authorizationEndpoint: z.string().trim(),
+          jwksUri: z.string().trim(),
+          tokenEndpoint: z.string().trim(),
+          userinfoEndpoint: z.string().trim(),
           clientId: z.string().trim(),
           clientSecret: z.string().trim(),
           isActive: z.boolean()
