@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/Infisical/infisical-merge/packages/models"
@@ -71,10 +72,6 @@ var getCmd = &cobra.Command{
 var createCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a folder",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
@@ -82,6 +79,16 @@ var createCmd = &cobra.Command{
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
+		}
+
+		token, err := util.GetInfisicalToken(cmd)
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		projectId, err := cmd.Flags().GetString("projectId")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
 		}
 
 		folderPath, err := cmd.Flags().GetString("path")
@@ -95,19 +102,31 @@ var createCmd = &cobra.Command{
 		}
 
 		if folderName == "" {
-			util.HandleError(fmt.Errorf("Invalid folder name"), "Folder name cannot be empty")
+			util.HandleError(errors.New("invalid folder name, folder name cannot be empty"))
 		}
 
-		workspaceFile, err := util.GetWorkSpaceFromFile()
 		if err != nil {
 			util.HandleError(err, "Unable to get workspace file")
 		}
 
+		if projectId == "" {
+			workspaceFile, err := util.GetWorkSpaceFromFile()
+			if err != nil {
+				util.HandleError(err, "Unable to get workspace file")
+			}
+
+			projectId = workspaceFile.WorkspaceId
+		}
+
 		params := models.CreateFolderParameters{
 			FolderName:  folderName,
-			WorkspaceId: workspaceFile.WorkspaceId,
 			Environment: environmentName,
 			FolderPath:  folderPath,
+			WorkspaceId: projectId,
+		}
+
+		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+			params.InfisicalToken = token.Token
 		}
 
 		_, err = util.CreateFolder(params)
@@ -124,10 +143,6 @@ var createCmd = &cobra.Command{
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a folder",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 
 		environmentName, _ := cmd.Flags().GetString("env")
@@ -136,6 +151,16 @@ var deleteCmd = &cobra.Command{
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
+		}
+
+		token, err := util.GetInfisicalToken(cmd)
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		projectId, err := cmd.Flags().GetString("projectId")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
 		}
 
 		folderPath, err := cmd.Flags().GetString("path")
@@ -149,19 +174,27 @@ var deleteCmd = &cobra.Command{
 		}
 
 		if folderName == "" {
-			util.HandleError(fmt.Errorf("Invalid folder name"), "Folder name cannot be empty")
+			util.HandleError(errors.New("invalid folder name, folder name cannot be empty"))
 		}
 
-		workspaceFile, err := util.GetWorkSpaceFromFile()
-		if err != nil {
-			util.HandleError(err, "Unable to get workspace file")
+		if projectId == "" {
+			workspaceFile, err := util.GetWorkSpaceFromFile()
+			if err != nil {
+				util.HandleError(err, "Unable to get workspace file")
+			}
+
+			projectId = workspaceFile.WorkspaceId
 		}
 
 		params := models.DeleteFolderParameters{
 			FolderName:  folderName,
-			WorkspaceId: workspaceFile.WorkspaceId,
+			WorkspaceId: projectId,
 			Environment: environmentName,
 			FolderPath:  folderPath,
+		}
+
+		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+			params.InfisicalToken = token.Token
 		}
 
 		_, err = util.DeleteFolder(params)
