@@ -54,7 +54,7 @@ export const licenseDALFactory = (db: TDbClient) => {
 
       return userCount + identityCount;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Count of Org Identities" });
+      throw new DatabaseError({ error, name: "Count of Org Users + Identities" });
     }
   };
 
