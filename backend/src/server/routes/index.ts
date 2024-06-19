@@ -801,7 +801,8 @@ export const registerRoutes = async (
   const identityService = identityServiceFactory({
     permissionService,
     identityDAL,
-    identityOrgMembershipDAL
+    identityOrgMembershipDAL,
+    licenseService
   });
   const identityAccessTokenService = identityAccessTokenServiceFactory({
     identityAccessTokenDAL,

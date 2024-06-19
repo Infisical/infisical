@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
@@ -16,6 +17,7 @@ type TIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;

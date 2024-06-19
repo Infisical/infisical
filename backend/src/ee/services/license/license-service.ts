@@ -155,6 +155,7 @@ export const licenseServiceFactory = ({
           LICENSE_SERVER_CLOUD_PLAN_TTL,
           JSON.stringify(currentPlan)
         );
+
         return currentPlan;
       }
     } catch (error) {
