@@ -40,7 +40,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     store: redisStore,
     cookie: {
       secure: appCfg.HTTPS_ENABLED,
-      sameSite: "lax" // we want cookies to be sent to Infisical during redirects originating from IDP server
+      sameSite: "lax" // we want cookies to be sent to Infisical in redirects originating from IDP server
     }
   });
 
