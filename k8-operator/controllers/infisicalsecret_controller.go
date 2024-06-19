@@ -5,11 +5,17 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	controllerUtil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
@@ -67,6 +73,31 @@ func (r *InfisicalSecretReconciler) handleFinalizer(ctx context.Context, infisic
 		}
 	}
 	return nil
+}
+
+func (r *InfisicalSecretReconciler) handleManagedSecretDeletion(secret client.Object) []ctrl.Request {
+	var requests []ctrl.Request
+	infisicalSecrets := &secretsv1alpha1.InfisicalSecretList{}
+	err := r.List(context.Background(), infisicalSecrets)
+	if err != nil {
+		fmt.Printf("unable to list Infisical Secrets from cluster because [err=%v]", err)
+		return requests
+	}
+
+	for _, infisicalSecret := range infisicalSecrets.Items {
+		if secret.GetName() == infisicalSecret.Spec.ManagedSecretReference.SecretName &&
+			secret.GetNamespace() == infisicalSecret.Spec.ManagedSecretReference.SecretNamespace {
+			requests = append(requests, ctrl.Request{
+				NamespacedName: client.ObjectKey{
+					Namespace: infisicalSecret.Namespace,
+					Name:      infisicalSecret.Name,
+				},
+			})
+			fmt.Printf("\nManaged secret deleted in resource %s: [name=%v] [namespace=%v]\n", infisicalSecret.Name, secret.GetName(), secret.GetNamespace())
+		}
+	}
+
+	return requests
 }
 
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -154,9 +185,18 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
 func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&secretsv1alpha1.InfisicalSecret{}).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			handler.EnqueueRequestsFromMapFunc(r.handleManagedSecretDeletion),
+			builder.WithPredicates(predicate.Funcs{
+				// Always return true to ensure we process all delete events
+				DeleteFunc: func(e event.DeleteEvent) bool {
+					return true
+				},
+			}),
+		).
 		Complete(r)
 }
