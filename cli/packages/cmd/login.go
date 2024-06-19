@@ -539,6 +539,7 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	loginTwoResponseResult, err := api.CallLogin2V2(httpClient, api.GetLoginTwoV2Request{
 		Email:       email,
 		ClientProof: hex.EncodeToString(srpM1),
+		Password: password,
 	})
 
 	if err != nil {

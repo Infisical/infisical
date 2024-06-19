@@ -149,6 +149,7 @@ export default function SignupInvite() {
 
               const { token: jwtToken } = await completeAccountSignupInvite({
                 email,
+                password,
                 firstName,
                 lastName,
                 protectedKey,

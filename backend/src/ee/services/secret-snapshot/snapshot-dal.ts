@@ -331,8 +331,8 @@ export const snapshotDALFactory = (db: TDbClient) => {
    * Prunes excess snapshots from the database to ensure only a specified number of recent snapshots are retained for each folder.
    *
    * This function operates in three main steps:
-   * 1. Pruning snapshots from root/non-versioned folders.
-   * 2. Pruning snapshots from versioned folders.
+   * 1. Pruning snapshots from current folders.
+   * 2. Pruning snapshots from non-current folders (versioned ones).
    * 3. Removing orphaned snapshots that do not belong to any existing folder or folder version.
    *
    * The function processes snapshots in batches, determined by the `PRUNE_FOLDER_BATCH_SIZE` constant,
@@ -350,7 +350,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
 
     try {
       let uuidOffset = "00000000-0000-0000-0000-000000000000";
-      // cleanup snapshots from root/non-versioned folders
+      // cleanup snapshots from current folders
       // eslint-disable-next-line no-constant-condition, no-unreachable-loop
       while (true) {
         const folderBatch = await db(TableName.SecretFolder)
@@ -382,12 +382,11 @@ export const snapshotDALFactory = (db: TDbClient) => {
               .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
               .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
               .join("snapshot_cte", "snapshot_cte.id", `${TableName.Snapshot}.id`)
-              .whereNull(`${TableName.SecretFolder}.parentId`)
               .whereRaw(`snapshot_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
               .delete();
           } catch (err) {
             logger.error(
-              `Failed to prune snapshots from root/non-versioned folders in range ${batchEntries[0]}:${
+              `Failed to prune snapshots from current folders in range ${batchEntries[0]}:${
                 batchEntries[batchEntries.length - 1]
               }`
             );
@@ -399,7 +398,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
         }
       }
 
-      // cleanup snapshots from versioned folders
+      // cleanup snapshots from non-current folders
       uuidOffset = "00000000-0000-0000-0000-000000000000";
       // eslint-disable-next-line no-constant-condition
       while (true) {
@@ -440,7 +439,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
               .delete();
           } catch (err) {
             logger.error(
-              `Failed to prune snapshots from versioned folders in range ${batchEntries[0]}:${
+              `Failed to prune snapshots from non-current folders in range ${batchEntries[0]}:${
                 batchEntries[batchEntries.length - 1]
               }`
             );

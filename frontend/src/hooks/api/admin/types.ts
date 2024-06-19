@@ -11,6 +11,7 @@ export type TServerConfig = {
 
 export type TCreateAdminUserDTO = {
   email: string;
+  password: string;
   firstName: string;
   lastName?: string;
   protectedKey: string;

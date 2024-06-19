@@ -20,6 +20,7 @@ import {
 
 export const userKeys = {
   getUser: ["user"] as const,
+  getPrivateKey: ["user"] as const,
   userAction: ["user-action"] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
   myIp: ["ip"] as const,
@@ -350,4 +351,12 @@ export const useGetMyOrganizationProjects = (orgId: string) => {
     },
     enabled: true
   });
+};
+
+export const fetchMyPrivateKey = async () => {
+  const {
+    data: { privateKey }
+  } = await apiRequest.get<{ privateKey: string }>("/api/v1/user/private-key");
+
+  return privateKey;
 };

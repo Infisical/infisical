@@ -6,7 +6,7 @@ import tweetnacl from "tweetnacl-util";
 
 import { TUserEncryptionKeys } from "@app/db/schemas";
 
-import { decryptSymmetric, encryptAsymmetric, encryptSymmetric } from "./encryption";
+import { decryptSymmetric128BitHexKeyUTF8, encryptAsymmetric, encryptSymmetric } from "./encryption";
 
 export const generateSrpServerKey = async (salt: string, verifier: string) => {
   // eslint-disable-next-line new-cap
@@ -97,7 +97,13 @@ export const generateUserSrpKeys = async (email: string, password: string) => {
   };
 };
 
-export const getUserPrivateKey = async (password: string, user: TUserEncryptionKeys) => {
+export const getUserPrivateKey = async (
+  password: string,
+  user: Pick<
+    TUserEncryptionKeys,
+    "protectedKeyTag" | "protectedKey" | "protectedKeyIV" | "encryptedPrivateKey" | "iv" | "salt" | "tag"
+  >
+) => {
   const derivedKey = await argon2.hash(password, {
     salt: Buffer.from(user.salt),
     memoryCost: 65536,
@@ -108,17 +114,18 @@ export const getUserPrivateKey = async (password: string, user: TUserEncryptionK
     raw: true
   });
   if (!derivedKey) throw new Error("Failed to derive key from password");
-  const key = decryptSymmetric({
-    ciphertext: user.protectedKey!,
-    iv: user.protectedKeyIV!,
-    tag: user.protectedKeyTag!,
-    key: derivedKey.toString("base64")
+  const key = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: user.protectedKey as string,
+    iv: user.protectedKeyIV as string,
+    tag: user.protectedKeyTag as string,
+    key: derivedKey
   });
-  const privateKey = decryptSymmetric({
+
+  const privateKey = decryptSymmetric128BitHexKeyUTF8({
     ciphertext: user.encryptedPrivateKey,
     iv: user.iv,
     tag: user.tag,
-    key
+    key: Buffer.from(key, "hex")
   });
   return privateKey;
 };
