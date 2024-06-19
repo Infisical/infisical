@@ -39,7 +39,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     secret: appCfg.COOKIE_SECRET_SIGN_KEY,
     store: redisStore,
     cookie: {
-      secure: appCfg.isProductionMode
+      secure: appCfg.HTTPS_ENABLED,
+      sameSite: "lax"
     }
   });
 
