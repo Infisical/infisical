@@ -25,6 +25,7 @@ import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -144,6 +145,7 @@ export const oidcConfigServiceFactory = ({
   };
 
   const oidcLogin = async ({ externalId, email, firstName, lastName, orgId, callbackPort }: TOidcLoginDTO) => {
+    const serverCfg = await getServerCfg();
     const appCfg = getConfig();
     const userAlias = await userAliasDAL.findOne({
       externalId,
@@ -192,14 +194,25 @@ export const oidcConfigServiceFactory = ({
     } else {
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
+
+        if (serverCfg.trustOidcEmails) {
+          newUser = await userDAL.findOne(
+            {
+              email,
+              isEmailVerified: true
+            },
+            tx
+          );
+        }
+
         if (!newUser) {
           const uniqueUsername = await normalizeUsername(externalId, userDAL);
           newUser = await userDAL.create(
             {
               email,
               firstName,
-              isEmailVerified: false,
-              username: uniqueUsername,
+              isEmailVerified: serverCfg.trustOidcEmails,
+              username: serverCfg.trustOidcEmails ? email : uniqueUsername,
               lastName,
               authMethods: [],
               isGhost: false
@@ -252,6 +265,7 @@ export const oidcConfigServiceFactory = ({
         return newUser;
       });
     }
+
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
     const isUserCompleted = Boolean(user.isAccepted);

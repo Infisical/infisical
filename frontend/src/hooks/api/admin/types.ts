@@ -5,6 +5,7 @@ export type TServerConfig = {
   isMigrationModeOn?: boolean;
   trustSamlEmails: boolean;
   trustLdapEmails: boolean;
+  trustOidcEmails: boolean;
   isSecretScanningDisabled: boolean;
 };
 

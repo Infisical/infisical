@@ -24,8 +24,24 @@ export async function up(knex: Knex): Promise<void> {
       tb.foreign("orgId").references("id").inTable(TableName.Organization);
     });
   }
+
+  if (await knex.schema.hasTable(TableName.SuperAdmin)) {
+    if (!(await knex.schema.hasColumn(TableName.SuperAdmin, "trustOidcEmails"))) {
+      await knex.schema.alterTable(TableName.SuperAdmin, (tb) => {
+        tb.boolean("trustOidcEmails").defaultTo(false);
+      });
+    }
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.OidcConfig);
+
+  if (await knex.schema.hasTable(TableName.SuperAdmin)) {
+    if (await knex.schema.hasColumn(TableName.SuperAdmin, "trustOidcEmails")) {
+      await knex.schema.alterTable(TableName.SuperAdmin, (t) => {
+        t.dropColumn("trustOidcEmails");
+      });
+    }
+  }
 }

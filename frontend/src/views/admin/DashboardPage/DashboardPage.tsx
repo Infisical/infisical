@@ -39,7 +39,8 @@ const formSchema = z.object({
   signUpMode: z.nativeEnum(SignUpModes),
   allowedSignUpDomain: z.string().optional().nullable(),
   trustSamlEmails: z.boolean(),
-  trustLdapEmails: z.boolean()
+  trustLdapEmails: z.boolean(),
+  trustOidcEmails: z.boolean()
 });
 
 type TDashboardForm = z.infer<typeof formSchema>;
@@ -60,7 +61,8 @@ export const AdminDashboardPage = () => {
       signUpMode: config.allowSignUp ? SignUpModes.Anyone : SignUpModes.Disabled,
       allowedSignUpDomain: config.allowedSignUpDomain,
       trustSamlEmails: config.trustSamlEmails,
-      trustLdapEmails: config.trustLdapEmails
+      trustLdapEmails: config.trustLdapEmails,
+      trustOidcEmails: config.trustOidcEmails
     }
   });
 
@@ -84,13 +86,15 @@ export const AdminDashboardPage = () => {
 
   const onFormSubmit = async (formData: TDashboardForm) => {
     try {
-      const { signUpMode, allowedSignUpDomain, trustSamlEmails, trustLdapEmails } = formData;
+      const { signUpMode, allowedSignUpDomain, trustSamlEmails, trustLdapEmails, trustOidcEmails } =
+        formData;
 
       await updateServerConfig({
         allowSignUp: signUpMode !== SignUpModes.Disabled,
         allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : null,
         trustSamlEmails,
-        trustLdapEmails
+        trustLdapEmails,
+        trustOidcEmails
       });
       createNotification({
         text: "Successfully changed sign up setting.",
@@ -190,9 +194,9 @@ export const AdminDashboardPage = () => {
                 <div className="mt-8 mb-8 flex flex-col justify-start">
                   <div className="mb-2 text-xl font-semibold text-mineshaft-100">Trust emails</div>
                   <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
-                    Select if you want Infisical to trust external emails from SAML/LDAP identity
-                    providers. If set to false, then Infisical will prompt SAML/LDAP provisioned
-                    users to verify their email upon their first login.
+                    Select if you want Infisical to trust external emails from SAML/LDAP/OIDC
+                    identity providers. If set to false, then Infisical will prompt SAML/LDAP
+                    provisioned users to verify their email upon their first login.
                   </div>
                   <Controller
                     control={control}
@@ -223,6 +227,23 @@ export const AdminDashboardPage = () => {
                             isChecked={field.value}
                           >
                             <p className="w-full">Trust LDAP emails</p>
+                          </Switch>
+                        </FormControl>
+                      );
+                    }}
+                  />
+                  <Controller
+                    control={control}
+                    name="trustOidcEmails"
+                    render={({ field, fieldState: { error } }) => {
+                      return (
+                        <FormControl isError={Boolean(error)} errorText={error?.message}>
+                          <Switch
+                            id="trust-oidc-emails"
+                            onCheckedChange={(value) => field.onChange(value)}
+                            isChecked={field.value}
+                          >
+                            <p className="w-full">Trust OIDC emails</p>
                           </Switch>
                         </FormControl>
                       );
