@@ -191,6 +191,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
                 .join(", ");
             }),
           discoveryURL: z.string().trim().optional().default(""),
+          configurationType: z.nativeEnum(OIDCConfigurationType),
           issuer: z.string().trim().optional().default(""),
           authorizationEndpoint: z.string().trim().optional().default(""),
           jwksUri: z.string().trim().optional().default(""),
@@ -201,7 +202,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           isActive: z.boolean()
         })
         .partial()
-        .merge(z.object({ orgSlug: z.string(), configurationType: z.nativeEnum(OIDCConfigurationType) })),
+        .merge(z.object({ orgSlug: z.string() })),
       response: {
         200: OidcConfigsSchema.pick({
           id: true,

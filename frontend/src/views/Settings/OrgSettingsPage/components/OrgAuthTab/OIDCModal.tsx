@@ -25,11 +25,8 @@ enum ConfigurationType {
 
 type Props = {
   popUp: UsePopUpState<["addOIDC"]>;
-  handlePopUpClose: (popUpName: keyof UsePopUpState<["addOIDC", "loadViaDiscoveryURL"]>) => void;
-  handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["addOIDC", "loadViaDiscoveryURL"]>,
-    state?: boolean
-  ) => void;
+  handlePopUpClose: (popUpName: keyof UsePopUpState<["addOIDC"]>) => void;
+  handlePopUpToggle: (popUpName: keyof UsePopUpState<["addOIDC"]>, state?: boolean) => void;
 };
 
 const schema = z.object({

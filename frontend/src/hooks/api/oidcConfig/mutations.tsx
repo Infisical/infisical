@@ -31,7 +31,7 @@ export const useUpdateOIDCConfig = () => {
       clientId?: string;
       clientSecret?: string;
       isActive?: boolean;
-      configurationType: string;
+      configurationType?: string;
       orgSlug: string;
     }) => {
       const { data } = await apiRequest.patch("/api/v1/sso/oidc/config", {

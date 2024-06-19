@@ -45,12 +45,12 @@ export type TUpdateOidcCfgDTO = Partial<{
   allowedEmailDomains: string;
   discoveryURL: string;
   jwksUri: string;
+  configurationType: OIDCConfigurationType;
   tokenEndpoint: string;
   userinfoEndpoint: string;
   clientId: string;
   clientSecret: string;
   isActive: boolean;
   orgSlug: string;
-}> & {
-  configurationType: OIDCConfigurationType;
-} & TGenericPermission;
+}> &
+  TGenericPermission;
