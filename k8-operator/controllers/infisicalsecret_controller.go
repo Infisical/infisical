@@ -75,7 +75,7 @@ func (r *InfisicalSecretReconciler) handleFinalizer(ctx context.Context, infisic
 	return nil
 }
 
-func (r *InfisicalSecretReconciler) handleManagedSecretDeletion(a client.Object) []ctrl.Request {
+func (r *InfisicalSecretReconciler) handleManagedSecretDeletion(secret client.Object) []ctrl.Request {
 	var requests []ctrl.Request
 	infisicalSecrets := &secretsv1alpha1.InfisicalSecretList{}
 	err := r.List(context.Background(), infisicalSecrets)
@@ -85,15 +85,15 @@ func (r *InfisicalSecretReconciler) handleManagedSecretDeletion(a client.Object)
 	}
 
 	for _, infisicalSecret := range infisicalSecrets.Items {
-		if a.GetName() == infisicalSecret.Spec.ManagedSecretReference.SecretName &&
-			a.GetNamespace() == infisicalSecret.Spec.ManagedSecretReference.SecretNamespace {
+		if secret.GetName() == infisicalSecret.Spec.ManagedSecretReference.SecretName &&
+			secret.GetNamespace() == infisicalSecret.Spec.ManagedSecretReference.SecretNamespace {
 			requests = append(requests, ctrl.Request{
 				NamespacedName: client.ObjectKey{
 					Namespace: infisicalSecret.Namespace,
 					Name:      infisicalSecret.Name,
 				},
 			})
-			fmt.Printf("\nManaged secret deleted in resource %s: [name=%v] [namespace=%v]\n", infisicalSecret.Name, a.GetName(), a.GetNamespace())
+			fmt.Printf("\nManaged secret deleted in resource %s: [name=%v] [namespace=%v]\n", infisicalSecret.Name, secret.GetName(), secret.GetNamespace())
 		}
 	}
 
