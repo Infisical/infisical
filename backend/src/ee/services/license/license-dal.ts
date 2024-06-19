@@ -19,11 +19,44 @@ export const licenseDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .where(`${TableName.Users}.isGhost`, false)
         .count();
-      return doc?.[0].count;
+      return Number(doc?.[0].count);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count of Org Members" });
     }
   };
 
-  return { countOfOrgMembers };
+  const countOrgUsersAndIdentities = async (orgId: string | null, tx?: Knex) => {
+    try {
+      // count org users
+      const userDoc = await (tx || db)(TableName.OrgMembership)
+        .where({ status: OrgMembershipStatus.Accepted })
+        .andWhere((bd) => {
+          if (orgId) {
+            void bd.where({ orgId });
+          }
+        })
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .where(`${TableName.Users}.isGhost`, false)
+        .count();
+
+      const userCount = Number(userDoc?.[0].count);
+
+      // count org identities
+      const identityDoc = await (tx || db)(TableName.IdentityOrgMembership)
+        .where((bd) => {
+          if (orgId) {
+            void bd.where({ orgId });
+          }
+        })
+        .count();
+
+      const identityCount = Number(identityDoc?.[0].count);
+
+      return userCount + identityCount;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count of Org Identities" });
+    }
+  };
+
+  return { countOfOrgMembers, countOrgUsersAndIdentities };
 };
