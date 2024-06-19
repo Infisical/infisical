@@ -900,7 +900,7 @@ var agentCmd = &cobra.Command{
 			return
 		}
 
-		authMethodValid, authStrategy := util.IsAuthMethodValid(agentConfig.Auth.Type)
+		authMethodValid, authStrategy := util.IsAuthMethodValid(agentConfig.Auth.Type, false)
 
 		if !authMethodValid {
 			util.PrintErrorMessageAndExit(fmt.Sprintf("The auth method '%s' is not supported.", agentConfig.Auth.Type))
