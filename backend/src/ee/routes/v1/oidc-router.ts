@@ -242,32 +242,81 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
-      body: z.object({
-        allowedEmailDomains: z
-          .string()
-          .trim()
-          .optional()
-          .default("")
-          .transform((data) => {
-            if (data === "") return "";
-            // Trim each ID and join with ', ' to ensure formatting
-            return data
-              .split(",")
-              .map((id) => id.trim())
-              .join(", ");
-          }),
-        configurationType: z.nativeEnum(OIDCConfigurationType),
-        issuer: z.string().trim().optional().default(""),
-        discoveryURL: z.string().trim().optional().default(""),
-        authorizationEndpoint: z.string().trim().optional().default(""),
-        jwksUri: z.string().trim().optional().default(""),
-        tokenEndpoint: z.string().trim().optional().default(""),
-        userinfoEndpoint: z.string().trim().optional().default(""),
-        clientId: z.string().trim(),
-        clientSecret: z.string().trim(),
-        isActive: z.boolean(),
-        orgSlug: z.string().trim()
-      }),
+      body: z
+        .object({
+          allowedEmailDomains: z
+            .string()
+            .trim()
+            .optional()
+            .default("")
+            .transform((data) => {
+              if (data === "") return "";
+              // Trim each ID and join with ', ' to ensure formatting
+              return data
+                .split(",")
+                .map((id) => id.trim())
+                .join(", ");
+            }),
+          configurationType: z.nativeEnum(OIDCConfigurationType),
+          issuer: z.string().trim().optional().default(""),
+          discoveryURL: z.string().trim().optional().default(""),
+          authorizationEndpoint: z.string().trim().optional().default(""),
+          jwksUri: z.string().trim().optional().default(""),
+          tokenEndpoint: z.string().trim().optional().default(""),
+          userinfoEndpoint: z.string().trim().optional().default(""),
+          clientId: z.string().trim(),
+          clientSecret: z.string().trim(),
+          isActive: z.boolean(),
+          orgSlug: z.string().trim()
+        })
+        .superRefine((data, ctx) => {
+          if (data.configurationType === OIDCConfigurationType.CUSTOM) {
+            if (!data.issuer) {
+              ctx.addIssue({
+                path: ["issuer"],
+                message: "Issuer is required",
+                code: z.ZodIssueCode.custom
+              });
+            }
+            if (!data.authorizationEndpoint) {
+              ctx.addIssue({
+                path: ["authorizationEndpoint"],
+                message: "Authorization endpoint is required",
+                code: z.ZodIssueCode.custom
+              });
+            }
+            if (!data.jwksUri) {
+              ctx.addIssue({
+                path: ["jwksUri"],
+                message: "JWKS URI is required",
+                code: z.ZodIssueCode.custom
+              });
+            }
+            if (!data.tokenEndpoint) {
+              ctx.addIssue({
+                path: ["tokenEndpoint"],
+                message: "Token endpoint is required",
+                code: z.ZodIssueCode.custom
+              });
+            }
+            if (!data.userinfoEndpoint) {
+              ctx.addIssue({
+                path: ["userinfoEndpoint"],
+                message: "Userinfo endpoint is required",
+                code: z.ZodIssueCode.custom
+              });
+            }
+          } else {
+            // eslint-disable-next-line no-lonely-if
+            if (!data.discoveryURL) {
+              ctx.addIssue({
+                path: ["discoveryURL"],
+                message: "Discovery URL is required",
+                code: z.ZodIssueCode.custom
+              });
+            }
+          }
+        }),
       response: {
         200: OidcConfigsSchema.pick({
           id: true,
