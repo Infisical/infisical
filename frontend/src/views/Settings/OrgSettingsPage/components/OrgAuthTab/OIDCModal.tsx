@@ -29,18 +29,67 @@ type Props = {
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["addOIDC"]>, state?: boolean) => void;
 };
 
-const schema = z.object({
-  configurationType: z.string(),
-  issuer: z.string().optional(),
-  discoveryURL: z.string().optional(),
-  authorizationEndpoint: z.string().optional(),
-  jwksUri: z.string().optional(),
-  tokenEndpoint: z.string().optional(),
-  userinfoEndpoint: z.string().optional(),
-  clientId: z.string().min(1),
-  clientSecret: z.string().min(1),
-  allowedEmailDomains: z.string().optional()
-});
+const schema = z
+  .object({
+    configurationType: z.string(),
+    issuer: z.string().optional(),
+    discoveryURL: z.string().optional(),
+    authorizationEndpoint: z.string().optional(),
+    jwksUri: z.string().optional(),
+    tokenEndpoint: z.string().optional(),
+    userinfoEndpoint: z.string().optional(),
+    clientId: z.string().min(1),
+    clientSecret: z.string().min(1),
+    allowedEmailDomains: z.string().optional()
+  })
+  .superRefine((data, ctx) => {
+    if (data.configurationType === ConfigurationType.CUSTOM) {
+      if (!data.issuer) {
+        ctx.addIssue({
+          path: ["issuer"],
+          message: "Issuer is required",
+          code: z.ZodIssueCode.custom
+        });
+      }
+      if (!data.authorizationEndpoint) {
+        ctx.addIssue({
+          path: ["authorizationEndpoint"],
+          message: "Authorization endpoint is required",
+          code: z.ZodIssueCode.custom
+        });
+      }
+      if (!data.jwksUri) {
+        ctx.addIssue({
+          path: ["jwksUri"],
+          message: "JWKS URI is required",
+          code: z.ZodIssueCode.custom
+        });
+      }
+      if (!data.tokenEndpoint) {
+        ctx.addIssue({
+          path: ["tokenEndpoint"],
+          message: "Token endpoint is required",
+          code: z.ZodIssueCode.custom
+        });
+      }
+      if (!data.userinfoEndpoint) {
+        ctx.addIssue({
+          path: ["userinfoEndpoint"],
+          message: "Userinfo endpoint is required",
+          code: z.ZodIssueCode.custom
+        });
+      }
+    } else {
+      // eslint-disable-next-line no-lonely-if
+      if (!data.discoveryURL) {
+        ctx.addIssue({
+          path: ["discoveryURL"],
+          message: "Discovery URL is required",
+          code: z.ZodIssueCode.custom
+        });
+      }
+    }
+  });
 
 export type OIDCFormData = z.infer<typeof schema>;
 
@@ -88,7 +137,9 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
     clientSecret
   }: OIDCFormData) => {
     try {
-      if (!currentOrg) return;
+      if (!currentOrg) {
+        return;
+      }
 
       if (!data) {
         await createMutateAsync({
