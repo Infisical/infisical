@@ -7,7 +7,7 @@ description: "Login into Infisical from the CLI"
 infisical login
 ```
 
-## Description
+### Description
 The CLI uses authentication to verify your identity. When you enter the correct email and password for your account, a token is generated and saved in your system Keyring to allow you to make future interactions with the CLI. 
 
 To change where the login credentials are stored, visit the [vaults command](./vault).
@@ -23,6 +23,9 @@ If you have added multiple users, you can switch between the users by using the 
 
 
 ### Flags
+The login command supports a number of flags that you can use for different authentication methods. Below is a list of all the flags that can be used with the login command.
+
+<AccordionGroup>
   <Accordion title="--method">
     ```bash
     infisical login --method=<auth-method> # Optional, will default to 'user'.
@@ -98,7 +101,171 @@ If you have added multiple users, you can switch between the users by using the 
       The `service-account-key-path` flag can be substituted with the `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` environment variable.
     </Tip>
   </Accordion>
+</AccordionGroup>
 
+
+### Authentication Methods
+
+The Infisical CLI supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
+
+<AccordionGroup>
+<Accordion title="Universal Auth">
+  The Universal Auth method is a simple and secure way to authenticate with Infisical. It requires a client ID and a client secret to authenticate with Infisical.
+
+  <ParamField query="flags" type="UniversalAuthFlags">
+    <Expandable title="properties">
+        <ParamField query="client-id" type="string" required>
+        Your machine identity client ID.
+        </ParamField>
+        <ParamField query="client-secret" type="string" required>
+        Your machine identity client secret.
+        </ParamField>
+    </Expandable>
+  </ParamField>
+
+  <Steps>
+    <Step title="Create a universal auth machine identity">
+      To create a universal auth machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/universal-auth).
+    </Step>
+    <Step title="Obtain an access token">
+      Run the `login` command with the following flags to obtain an access token:
+
+    ```bash
+      infisical login --method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
+    ```
+    </Step>
+  </Steps>
+</Accordion>
+<Accordion title="Native Kubernetes">
+  The Native Kubernetes method is used to authenticate with Infisical when running in a Kubernetes environment. It requires a service account token to authenticate with Infisical.
+
+  <ParamField query="config" type="KubernetesAuthConfig">
+    <Expandable title="properties">
+        <ParamField query="machine-identity-id" type="string" required>
+        Your machine identity ID.
+        </ParamField>
+        <ParamField query="service-account-token-path" type="string" optional>
+          Path to the Kubernetes service account token to use. Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+        </ParamField>
+    </Expandable>
+  </ParamField>
+
+  <Steps>
+    <Step title="Create a Kubernetes machine identity">
+      To create a Kubernetes machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/kubernetes-auth).
+    </Step>
+    <Step title="Obtain access an token">
+      Run the `login` command with the following flags to obtain an access token:
+
+    ```bash
+      # --service-account-token-path is optional, and will default to '/var/run/secrets/kubernetes.io/serviceaccount/token' if not provided.
+      infisical login --method=kubernetes --machine-identity-id=<machine-identity-id> --service-account-token-path=<service-account-token-path>
+    ```
+    </Step>
+  </Steps>
+
+</Accordion>
+  <Accordion title="Native Azure">
+    The Native Azure method is used to authenticate with Infisical when running in an Azure environment.
+
+    <ParamField query="config" type="AzureAuthConfig">
+      <Expandable title="properties">
+          <ParamField query="machine-identity-id" type="string" required>
+            Your machine identity ID.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    <Steps>
+      <Step title="Create an Azure machine identity">
+        To create an Azure machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/azure-auth).
+      </Step>
+      <Step title="Obtain an access token">
+       Run the `login` command with the following flags to obtain an access token:
+
+      ```bash
+        infisical login --method=azure --machine-identity-id=<machine-identity-id>
+      ```
+      </Step>
+    </Steps>
+
+  </Accordion>
+  <Accordion title="Native GCP ID Token">
+    The Native GCP ID Token method is used to authenticate with Infisical when running in a GCP environment.
+
+    <ParamField query="config" type="GCPIDTokenAuthConfig">
+      <Expandable title="properties">
+          <ParamField query="machine-identity-id" type="string" required>
+            Your machine identity ID.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    <Steps>
+      <Step title="Create a GCP machine identity">
+        To create a GCP machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/gcp-auth).
+      </Step>
+      <Step title="Obtain an access token">
+        Run the `login` command with the following flags to obtain an access token:
+
+      ```bash
+        infisical login --method=gcp-id-token --machine-identity-id=<machine-identity-id>
+      ```
+      </Step>
+    </Steps>
+  </Accordion>
+  <Accordion title="GCP IAM">
+    The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
+
+    <ParamField query="config" type="GCPIAMAuthConfig">
+      <Expandable title="properties">
+          <ParamField query="machine-identity-id" type="string" required>
+          Your machine identity ID.
+          </ParamField>
+          <ParamField query="service-account-key-file-path" type="string" required>
+            Path to your GCP service account key file _(Must be in JSON format!)_
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    <Steps>
+      <Step title="Create a GCP machine identity">
+        To create a GCP machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/gcp-auth).
+      </Step>
+      <Step title="Obtain an access token">
+        Run the `login` command with the following flags to obtain an access token:
+
+      ```bash 
+        infisical login --method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path>
+      ```
+      </Step>
+    </Steps>
+  </Accordion>
+  <Accordion title="Native AWS IAM">
+    The AWS IAM method is used to authenticate with Infisical with an AWS IAM role while running in an AWS environment like EC2, Lambda, etc.
+
+    <ParamField query="config" type="AWSIAMAuthConfig">
+      <Expandable title="properties">
+          <ParamField query="machine-identity-id" type="string" required>
+            Your machine identity ID.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    <Steps>
+      <Step title="Create an AWS machine identity">
+        To create an AWS machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/aws-auth).
+      </Step>
+      <Step title="Obtain an access token">
+        Run the `login` command with the following flags to obtain an access token:
+
+      ```bash
+        infisical login --method=aws-iam --machine-identity-id=<machine-identity-id>
+      ```
+      </Step>
+    </Steps>
+  </Accordion>
+</AccordionGroup>
 
 ### Machine Identity Authentication Quick Start
 In this example we'll be using the `universal-auth` method to login to obtain an Infisical access token, which we will then use to fetch secrets with.
