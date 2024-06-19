@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
-import { Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
+import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
 
 import { OrgMembershipRole, OrgMembershipStatus, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
@@ -32,7 +32,13 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TOidcConfigDALFactory } from "./oidc-config-dal";
-import { TCreateOidcCfgDTO, TGetOidcCfgDTO, TOidcLoginDTO, TUpdateOidcCfgDTO } from "./oidc-config-types";
+import {
+  OIDCConfigurationType,
+  TCreateOidcCfgDTO,
+  TGetOidcCfgDTO,
+  TOidcLoginDTO,
+  TUpdateOidcCfgDTO
+} from "./oidc-config-types";
 
 type TOidcConfigServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById" | "findById">;
@@ -133,6 +139,8 @@ export const oidcConfigServiceFactory = ({
       id: oidcCfg.id,
       issuer: oidcCfg.issuer,
       authorizationEndpoint: oidcCfg.authorizationEndpoint,
+      configurationType: oidcCfg.configurationType,
+      discoveryURL: oidcCfg.discoveryURL,
       jwksUri: oidcCfg.jwksUri,
       tokenEndpoint: oidcCfg.tokenEndpoint,
       userinfoEndpoint: oidcCfg.userinfoEndpoint,
@@ -313,6 +321,8 @@ export const oidcConfigServiceFactory = ({
   const updateOidcCfg = async ({
     orgSlug,
     allowedEmailDomains,
+    configurationType,
+    discoveryURL,
     actor,
     actorOrgId,
     actorAuthMethod,
@@ -363,6 +373,8 @@ export const oidcConfigServiceFactory = ({
 
     const updateQuery: TOidcConfigsUpdate = {
       allowedEmailDomains,
+      configurationType,
+      discoveryURL,
       issuer,
       authorizationEndpoint,
       tokenEndpoint,
@@ -397,6 +409,8 @@ export const oidcConfigServiceFactory = ({
   const createOidcCfg = async ({
     orgSlug,
     allowedEmailDomains,
+    configurationType,
+    discoveryURL,
     actor,
     actorOrgId,
     actorAuthMethod,
@@ -493,6 +507,8 @@ export const oidcConfigServiceFactory = ({
     const oidcCfg = await oidcConfigDAL.create({
       issuer,
       isActive,
+      configurationType,
+      discoveryURL,
       authorizationEndpoint,
       allowedEmailDomains,
       jwksUri,
@@ -534,15 +550,36 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const openIdIssuer = new OpenIdIssuer({
-      issuer: oidcCfg.issuer,
-      authorization_endpoint: oidcCfg.authorizationEndpoint,
-      jwks_uri: oidcCfg.jwksUri,
-      token_endpoint: oidcCfg.tokenEndpoint,
-      userinfo_endpoint: oidcCfg.userinfoEndpoint
-    });
+    let issuer: Issuer;
+    if (oidcCfg.configurationType === OIDCConfigurationType.DISCOVERY_URL) {
+      if (!oidcCfg.discoveryURL) {
+        throw new BadRequestError({
+          message: "OIDC not configured correctly"
+        });
+      }
+      issuer = await Issuer.discover(oidcCfg.discoveryURL);
+    } else {
+      if (
+        !oidcCfg.issuer ||
+        !oidcCfg.authorizationEndpoint ||
+        !oidcCfg.jwksUri ||
+        !oidcCfg.tokenEndpoint ||
+        !oidcCfg.userinfoEndpoint
+      ) {
+        throw new BadRequestError({
+          message: "OIDC not configured correctly"
+        });
+      }
+      issuer = new OpenIdIssuer({
+        issuer: oidcCfg.issuer,
+        authorization_endpoint: oidcCfg.authorizationEndpoint,
+        jwks_uri: oidcCfg.jwksUri,
+        token_endpoint: oidcCfg.tokenEndpoint,
+        userinfo_endpoint: oidcCfg.userinfoEndpoint
+      });
+    }
 
-    const client = new openIdIssuer.Client({
+    const client = new issuer.Client({
       client_id: oidcCfg.clientId,
       client_secret: oidcCfg.clientSecret,
       redirect_uris: [`${appCfg.SITE_URL}/api/v1/sso/oidc/callback`]

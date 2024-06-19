@@ -4,24 +4,42 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  Input,
+  Modal,
+  ModalContent,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useGetOIDCConfig } from "@app/hooks/api";
 import { useCreateOIDCConfig, useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+enum ConfigurationType {
+  CUSTOM = "custom",
+  DISCOVERY_URL = "discoveryURL"
+}
+
 type Props = {
   popUp: UsePopUpState<["addOIDC"]>;
-  handlePopUpClose: (popUpName: keyof UsePopUpState<["addOIDC"]>) => void;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["addOIDC"]>, state?: boolean) => void;
+  handlePopUpClose: (popUpName: keyof UsePopUpState<["addOIDC", "loadViaDiscoveryURL"]>) => void;
+  handlePopUpToggle: (
+    popUpName: keyof UsePopUpState<["addOIDC", "loadViaDiscoveryURL"]>,
+    state?: boolean
+  ) => void;
 };
 
 const schema = z.object({
-  issuer: z.string().min(1),
-  authorizationEndpoint: z.string().min(1),
-  jwksUri: z.string().min(1),
-  tokenEndpoint: z.string().min(1),
-  userinfoEndpoint: z.string().min(1),
+  configurationType: z.string(),
+  issuer: z.string().optional(),
+  discoveryURL: z.string().optional(),
+  authorizationEndpoint: z.string().optional(),
+  jwksUri: z.string().optional(),
+  tokenEndpoint: z.string().optional(),
+  userinfoEndpoint: z.string().optional(),
   clientId: z.string().min(1),
   clientSecret: z.string().min(1),
   allowedEmailDomains: z.string().optional()
@@ -36,9 +54,14 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
   const { mutateAsync: updateMutateAsync, isLoading: updateIsLoading } = useUpdateOIDCConfig();
   const { data } = useGetOIDCConfig(currentOrg?.slug ?? "");
 
-  const { control, handleSubmit, reset, setValue } = useForm<OIDCFormData>({
-    resolver: zodResolver(schema)
+  const { control, handleSubmit, reset, setValue, watch } = useForm<OIDCFormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      configurationType: ConfigurationType.DISCOVERY_URL
+    }
   });
+
+  const configurationTypeValue = watch("configurationType");
 
   useEffect(() => {
     if (data) {
@@ -47,9 +70,11 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
       setValue("jwksUri", data.jwksUri);
       setValue("tokenEndpoint", data.tokenEndpoint);
       setValue("userinfoEndpoint", data.userinfoEndpoint);
+      setValue("discoveryURL", data.discoveryURL);
       setValue("clientId", data.clientId);
       setValue("clientSecret", data.clientSecret);
       setValue("allowedEmailDomains", data.allowedEmailDomains);
+      setValue("configurationType", data.configurationType);
     }
   }, [data]);
 
@@ -60,6 +85,8 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
     jwksUri,
     tokenEndpoint,
     userinfoEndpoint,
+    configurationType,
+    discoveryURL,
     clientId,
     clientSecret
   }: OIDCFormData) => {
@@ -69,6 +96,8 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
       if (!data) {
         await createMutateAsync({
           issuer,
+          configurationType,
+          discoveryURL,
           authorizationEndpoint,
           allowedEmailDomains,
           jwksUri,
@@ -82,6 +111,8 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
       } else {
         await updateMutateAsync({
           issuer,
+          configurationType,
+          discoveryURL,
           authorizationEndpoint,
           allowedEmailDomains,
           jwksUri,
@@ -121,77 +152,125 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
         <form onSubmit={handleSubmit(onOIDCModalSubmit)}>
           <Controller
             control={control}
-            name="issuer"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Issuer" errorText={error?.message} isError={Boolean(error)}>
-                <Input {...field} placeholder="https://accounts.google.com" autoComplete="off" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="authorizationEndpoint"
-            render={({ field, fieldState: { error } }) => (
+            name="configurationType"
+            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl
-                label="Authorization Endpoint"
+                label="Configuration Type"
                 errorText={error?.message}
                 isError={Boolean(error)}
               >
-                <Input
+                <Select
+                  className="w-full"
+                  defaultValue="discoveryURL"
                   {...field}
-                  placeholder="https://accounts.google.com/o/oauth2/v2/auth"
-                  autoComplete="off"
-                />
+                  onValueChange={(e) => onChange(e)}
+                >
+                  <SelectItem value={ConfigurationType.DISCOVERY_URL}>Discovery URL</SelectItem>
+                  <SelectItem value={ConfigurationType.CUSTOM}>Custom</SelectItem>
+                </Select>
               </FormControl>
             )}
           />
-          <Controller
-            control={control}
-            name="tokenEndpoint"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Token Endpoint"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Input
-                  {...field}
-                  placeholder="https://oauth2.googleapis.com/token"
-                  autoComplete="off"
-                />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="userinfoEndpoint"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="User info endpoint"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Input
-                  {...field}
-                  placeholder="https://openidconnect.googleapis.com/v1/userinfo"
-                  autoComplete="off"
-                />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="jwksUri"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="JWKS URI" errorText={error?.message} isError={Boolean(error)}>
-                <Input
-                  {...field}
-                  placeholder="https://www.googleapis.com/oauth2/v3/certs"
-                  autoComplete="off"
-                />
-              </FormControl>
-            )}
-          />
+          {configurationTypeValue === ConfigurationType.DISCOVERY_URL && (
+            <Controller
+              control={control}
+              name="discoveryURL"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Discovery Document URL"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Input
+                    {...field}
+                    placeholder="https://accounts.google.com/.well-known/openid-configuration"
+                    autoComplete="off"
+                  />
+                </FormControl>
+              )}
+            />
+          )}
+          {configurationTypeValue === ConfigurationType.CUSTOM && (
+            <>
+              <Controller
+                control={control}
+                name="issuer"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl label="Issuer" errorText={error?.message} isError={Boolean(error)}>
+                    <Input
+                      {...field}
+                      placeholder="https://accounts.google.com"
+                      autoComplete="off"
+                    />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="authorizationEndpoint"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Authorization Endpoint"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                  >
+                    <Input
+                      {...field}
+                      placeholder="https://accounts.google.com/o/oauth2/v2/auth"
+                      autoComplete="off"
+                    />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="tokenEndpoint"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Token Endpoint"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                  >
+                    <Input
+                      {...field}
+                      placeholder="https://oauth2.googleapis.com/token"
+                      autoComplete="off"
+                    />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="userinfoEndpoint"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="User info endpoint"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                  >
+                    <Input
+                      {...field}
+                      placeholder="https://openidconnect.googleapis.com/v1/userinfo"
+                      autoComplete="off"
+                    />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="jwksUri"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl label="JWKS URI" errorText={error?.message} isError={Boolean(error)}>
+                    <Input
+                      {...field}
+                      placeholder="https://www.googleapis.com/oauth2/v3/certs"
+                      autoComplete="off"
+                    />
+                  </FormControl>
+                )}
+              />
+            </>
+          )}
           <Controller
             control={control}
             name="allowedEmailDomains"

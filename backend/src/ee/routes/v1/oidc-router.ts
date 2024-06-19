@@ -13,6 +13,7 @@ import { Redis } from "ioredis";
 import { z } from "zod";
 
 import { OidcConfigsSchema } from "@app/db/schemas/oidc-configs";
+import { OIDCConfigurationType } from "@app/ee/services/oidc/oidc-config-types";
 import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -140,6 +141,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           jwksUri: true,
           tokenEndpoint: true,
           userinfoEndpoint: true,
+          configurationType: true,
+          discoveryURL: true,
           isActive: true,
           orgId: true,
           allowedEmailDomains: true
@@ -187,22 +190,25 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
                 .map((id) => id.trim())
                 .join(", ");
             }),
-          issuer: z.string().trim(),
-          authorizationEndpoint: z.string().trim(),
-          jwksUri: z.string().trim(),
-          tokenEndpoint: z.string().trim(),
-          userinfoEndpoint: z.string().trim(),
+          discoveryURL: z.string().trim().optional().default(""),
+          issuer: z.string().trim().optional().default(""),
+          authorizationEndpoint: z.string().trim().optional().default(""),
+          jwksUri: z.string().trim().optional().default(""),
+          tokenEndpoint: z.string().trim().optional().default(""),
+          userinfoEndpoint: z.string().trim().optional().default(""),
           clientId: z.string().trim(),
           clientSecret: z.string().trim(),
           isActive: z.boolean()
         })
         .partial()
-        .merge(z.object({ orgSlug: z.string() })),
+        .merge(z.object({ orgSlug: z.string(), configurationType: z.nativeEnum(OIDCConfigurationType) })),
       response: {
         200: OidcConfigsSchema.pick({
           id: true,
           issuer: true,
           authorizationEndpoint: true,
+          configurationType: true,
+          discoveryURL: true,
           jwksUri: true,
           tokenEndpoint: true,
           userinfoEndpoint: true,
@@ -233,7 +239,6 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
-        issuer: z.string().trim(),
         allowedEmailDomains: z
           .string()
           .trim()
@@ -247,10 +252,13 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
               .map((id) => id.trim())
               .join(", ");
           }),
-        authorizationEndpoint: z.string().trim(),
-        jwksUri: z.string().trim(),
-        tokenEndpoint: z.string().trim(),
-        userinfoEndpoint: z.string().trim(),
+        configurationType: z.nativeEnum(OIDCConfigurationType),
+        issuer: z.string().trim().optional().default(""),
+        discoveryURL: z.string().trim().optional().default(""),
+        authorizationEndpoint: z.string().trim().optional().default(""),
+        jwksUri: z.string().trim().optional().default(""),
+        tokenEndpoint: z.string().trim().optional().default(""),
+        userinfoEndpoint: z.string().trim().optional().default(""),
         clientId: z.string().trim(),
         clientSecret: z.string().trim(),
         isActive: z.boolean(),
@@ -261,6 +269,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           id: true,
           issuer: true,
           authorizationEndpoint: true,
+          configurationType: true,
+          discoveryURL: true,
           jwksUri: true,
           tokenEndpoint: true,
           userinfoEndpoint: true,

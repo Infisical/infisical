@@ -6,12 +6,14 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.OidcConfig))) {
     await knex.schema.createTable(TableName.OidcConfig, (tb) => {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      tb.string("issuer").notNullable();
-      tb.string("authorizationEndpoint").notNullable();
-      tb.string("jwksUri").notNullable();
-      tb.string("tokenEndpoint").notNullable();
-      tb.string("userinfoEndpoint").notNullable();
+      tb.string("discoveryURL");
+      tb.string("issuer");
+      tb.string("authorizationEndpoint");
+      tb.string("jwksUri");
+      tb.string("tokenEndpoint");
+      tb.string("userinfoEndpoint");
       tb.text("encryptedClientId").notNullable();
+      tb.string("configurationType").notNullable();
       tb.string("clientIdIV").notNullable();
       tb.string("clientIdTag").notNullable();
       tb.text("encryptedClientSecret").notNullable();

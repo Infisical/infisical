@@ -10,6 +10,8 @@ export const useUpdateOIDCConfig = () => {
     mutationFn: async ({
       issuer,
       authorizationEndpoint,
+      configurationType,
+      discoveryURL,
       jwksUri,
       tokenEndpoint,
       userinfoEndpoint,
@@ -22,18 +24,22 @@ export const useUpdateOIDCConfig = () => {
       allowedEmailDomains?: string;
       issuer?: string;
       authorizationEndpoint?: string;
+      discoveryURL?: string;
       jwksUri?: string;
       tokenEndpoint?: string;
       userinfoEndpoint?: string;
       clientId?: string;
       clientSecret?: string;
       isActive?: boolean;
+      configurationType: string;
       orgSlug: string;
     }) => {
       const { data } = await apiRequest.patch("/api/v1/sso/oidc/config", {
         issuer,
         allowedEmailDomains,
         authorizationEndpoint,
+        discoveryURL,
+        configurationType,
         jwksUri,
         tokenEndpoint,
         userinfoEndpoint,
@@ -56,6 +62,8 @@ export const useCreateOIDCConfig = () => {
   return useMutation({
     mutationFn: async ({
       issuer,
+      configurationType,
+      discoveryURL,
       authorizationEndpoint,
       allowedEmailDomains,
       jwksUri,
@@ -66,11 +74,13 @@ export const useCreateOIDCConfig = () => {
       isActive,
       orgSlug
     }: {
-      issuer: string;
-      authorizationEndpoint: string;
-      jwksUri: string;
-      tokenEndpoint: string;
-      userinfoEndpoint: string;
+      issuer?: string;
+      configurationType: string;
+      discoveryURL?: string;
+      authorizationEndpoint?: string;
+      jwksUri?: string;
+      tokenEndpoint?: string;
+      userinfoEndpoint?: string;
       clientId: string;
       clientSecret: string;
       isActive: boolean;
@@ -79,6 +89,8 @@ export const useCreateOIDCConfig = () => {
     }) => {
       const { data } = await apiRequest.post("/api/v1/sso/oidc/config", {
         issuer,
+        configurationType,
+        discoveryURL,
         authorizationEndpoint,
         allowedEmailDomains,
         jwksUri,

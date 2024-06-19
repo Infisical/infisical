@@ -1,5 +1,10 @@
 import { TGenericPermission } from "@app/lib/types";
 
+export enum OIDCConfigurationType {
+  CUSTOM = "custom",
+  DISCOVERY_URL = "discoveryURL"
+}
+
 export type TOidcLoginDTO = {
   externalId: string;
   email: string;
@@ -20,12 +25,14 @@ export type TGetOidcCfgDTO =
     };
 
 export type TCreateOidcCfgDTO = {
-  issuer: string;
-  authorizationEndpoint: string;
-  allowedEmailDomains: string;
-  jwksUri: string;
-  tokenEndpoint: string;
-  userinfoEndpoint: string;
+  issuer?: string;
+  authorizationEndpoint?: string;
+  discoveryURL?: string;
+  configurationType: OIDCConfigurationType;
+  allowedEmailDomains?: string;
+  jwksUri?: string;
+  tokenEndpoint?: string;
+  userinfoEndpoint?: string;
   clientId: string;
   clientSecret: string;
   isActive: boolean;
@@ -36,6 +43,7 @@ export type TUpdateOidcCfgDTO = Partial<{
   issuer: string;
   authorizationEndpoint: string;
   allowedEmailDomains: string;
+  discoveryURL: string;
   jwksUri: string;
   tokenEndpoint: string;
   userinfoEndpoint: string;
@@ -43,5 +51,6 @@ export type TUpdateOidcCfgDTO = Partial<{
   clientSecret: string;
   isActive: boolean;
   orgSlug: string;
-}> &
-  TGenericPermission;
+}> & {
+  configurationType: OIDCConfigurationType;
+} & TGenericPermission;
