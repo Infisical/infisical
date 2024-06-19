@@ -112,7 +112,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
 <Accordion title="Universal Auth">
   The Universal Auth method is a simple and secure way to authenticate with Infisical. It requires a client ID and a client secret to authenticate with Infisical.
 
-  <ParamField query="flags" type="UniversalAuthFlags">
+    <ParamField query="Flags">
     <Expandable title="properties">
         <ParamField query="client-id" type="string" required>
         Your machine identity client ID.
@@ -139,7 +139,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
 <Accordion title="Native Kubernetes">
   The Native Kubernetes method is used to authenticate with Infisical when running in a Kubernetes environment. It requires a service account token to authenticate with Infisical.
 
-  <ParamField query="config" type="KubernetesAuthConfig">
+    <ParamField query="Flags">
     <Expandable title="properties">
         <ParamField query="machine-identity-id" type="string" required>
         Your machine identity ID.
@@ -168,7 +168,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
   <Accordion title="Native Azure">
     The Native Azure method is used to authenticate with Infisical when running in an Azure environment.
 
-    <ParamField query="config" type="AzureAuthConfig">
+    <ParamField query="Flags">
       <Expandable title="properties">
           <ParamField query="machine-identity-id" type="string" required>
             Your machine identity ID.
@@ -193,7 +193,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
   <Accordion title="Native GCP ID Token">
     The Native GCP ID Token method is used to authenticate with Infisical when running in a GCP environment.
 
-    <ParamField query="config" type="GCPIDTokenAuthConfig">
+    <ParamField query="Flags">
       <Expandable title="properties">
           <ParamField query="machine-identity-id" type="string" required>
             Your machine identity ID.
@@ -217,7 +217,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
   <Accordion title="GCP IAM">
     The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
 
-    <ParamField query="config" type="GCPIAMAuthConfig">
+    <ParamField query="Flags">
       <Expandable title="properties">
           <ParamField query="machine-identity-id" type="string" required>
           Your machine identity ID.
@@ -244,7 +244,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
   <Accordion title="Native AWS IAM">
     The AWS IAM method is used to authenticate with Infisical with an AWS IAM role while running in an AWS environment like EC2, Lambda, etc.
 
-    <ParamField query="config" type="AWSIAMAuthConfig">
+    <ParamField query="Flags">
       <Expandable title="properties">
           <ParamField query="machine-identity-id" type="string" required>
             Your machine identity ID.
