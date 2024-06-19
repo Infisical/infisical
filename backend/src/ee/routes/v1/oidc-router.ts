@@ -15,7 +15,7 @@ import { z } from "zod";
 import { OidcConfigsSchema } from "@app/db/schemas/oidc-configs";
 import { OIDCConfigurationType } from "@app/ee/services/oidc/oidc-config-types";
 import { getConfig } from "@app/lib/config/env";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -50,6 +50,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/login",
     method: "GET",
+    config: {
+      rateLimit: authRateLimit
+    },
     schema: {
       querystring: z.object({
         orgSlug: z.string().trim(),
