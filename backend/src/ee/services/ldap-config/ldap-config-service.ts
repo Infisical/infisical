@@ -73,7 +73,13 @@ type TLdapConfigServiceFactoryDep = {
   >;
   userDAL: Pick<
     TUserDALFactory,
-    "create" | "findOne" | "transaction" | "updateById" | "findUserEncKeyByUserIdsBatch" | "find"
+    | "create"
+    | "findOne"
+    | "transaction"
+    | "updateById"
+    | "findUserEncKeyByUserIdsBatch"
+    | "find"
+    | "findUserEncKeyByUserId"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -607,12 +613,14 @@ export const ldapConfigServiceFactory = ({
     });
 
     const isUserCompleted = Boolean(user.isAccepted);
+    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
 
     const providerAuthToken = jwt.sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
+        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
         ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
         firstName,
         lastName,

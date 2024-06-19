@@ -34,6 +34,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/term"
+
+	infisicalSdk "github.com/infisical/go-sdk"
 )
 
 type params struct {
@@ -42,6 +44,86 @@ type params struct {
 	parallelism uint8
 	saltLength  uint32
 	keyLength   uint32
+}
+
+func handleUniversalAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	clientId, err := util.GetCmdFlagOrEnv(cmd, "client-id", util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
+
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, err
+	}
+
+	clientSecret, err := util.GetCmdFlagOrEnv(cmd, "client-secret", util.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET_NAME)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, err
+	}
+
+	return infisicalClient.Auth().UniversalAuthLogin(clientId, clientSecret)
+}
+
+func handleKubernetesAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	identityId, err := util.GetCmdFlagOrEnv(cmd, "machine-identity-id", util.INFISICAL_MACHINE_IDENTITY_ID_NAME)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, err
+	}
+
+	serviceAccountTokenPath, err := util.GetCmdFlagOrEnv(cmd, "service-account-token-path", util.INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_NAME)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, err
+	}
+
+	return infisicalClient.Auth().KubernetesAuthLogin(identityId, serviceAccountTokenPath)
+}
+
+func handleAzureAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	identityId, err := util.GetCmdFlagOrEnv(cmd, "machine-identity-id", util.INFISICAL_MACHINE_IDENTITY_ID_NAME)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, err
+	}
+
+	return infisicalClient.Auth().AzureAuthLogin(identityId)
+}
+
+func handleGcpIdTokenAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	identityId, err := util.GetCmdFlagOrEnv(cmd, "machine-identity-id", util.INFISICAL_MACHINE_IDENTITY_ID_NAME)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, err
+	}
+
+	return infisicalClient.Auth().GcpIdTokenAuthLogin(identityId)
+}
+
+func handleGcpIamAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	identityId, err := util.GetCmdFlagOrEnv(cmd, "machine-identity-id", util.INFISICAL_MACHINE_IDENTITY_ID_NAME)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, err
+	}
+
+	serviceAccountKeyFilePath, err := util.GetCmdFlagOrEnv(cmd, "service-account-key-file-path", util.INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH_NAME)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, err
+	}
+
+	return infisicalClient.Auth().GcpIamAuthLogin(identityId, serviceAccountKeyFilePath)
+}
+
+func handleAwsIamAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	identityId, err := util.GetCmdFlagOrEnv(cmd, "machine-identity-id", util.INFISICAL_MACHINE_IDENTITY_ID_NAME)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, err
+	}
+
+	return infisicalClient.Auth().AwsIamAuthLogin(identityId)
+}
+
+func formatAuthMethod(authMethod string) string {
+	return strings.ReplaceAll(authMethod, "-", " ")
 }
 
 const ADD_USER = "Add a new account login"
@@ -56,6 +138,11 @@ var loginCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 
+		infisicalClient := infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
+			SiteUrl:   config.INFISICAL_URL,
+			UserAgent: api.USER_AGENT,
+		})
+
 		loginMethod, err := cmd.Flags().GetString("method")
 		if err != nil {
 			util.HandleError(err)
@@ -65,12 +152,13 @@ var loginCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
-		if loginMethod != "user" && loginMethod != "universal-auth" {
-			util.PrintErrorMessageAndExit("Invalid login method. Please use either 'user' or 'universal-auth'")
+		authMethodValid, strategy := util.IsAuthMethodValid(loginMethod, true)
+		if !authMethodValid {
+			util.PrintErrorMessageAndExit(fmt.Sprintf("Invalid login method: %s", loginMethod))
 		}
 
+		// standalone user auth
 		if loginMethod == "user" {
-
 			currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 			// if the key can't be found or there is an error getting current credentials from key ring, allow them to override
 			if err != nil && (strings.Contains(err.Error(), "we couldn't find your logged in details")) {
@@ -133,7 +221,7 @@ var loginCmd = &cobra.Command{
 
 			err = util.StoreUserCredsInKeyRing(&userCredentialsToBeStored)
 			if err != nil {
-				log.Error().Msgf("Unable to store your credentials in system vault [%s]")
+				log.Error().Msgf("Unable to store your credentials in system vault")
 				log.Error().Msgf("\nTo trouble shoot further, read https://infisical.com/docs/cli/faq")
 				log.Debug().Err(err)
 				//return here
@@ -160,47 +248,33 @@ var loginCmd = &cobra.Command{
 			fmt.Println("- Learn to inject secrets into your application at https://infisical.com/docs/cli/usage")
 			fmt.Println("- Stuck? Join our slack for quick support https://infisical.com/slack")
 			Telemetry.CaptureEvent("cli-command:login", posthog.NewProperties().Set("infisical-backend", config.INFISICAL_URL).Set("version", util.CLI_VERSION))
-		} else if loginMethod == "universal-auth" {
+		} else {
 
-			clientId, err := cmd.Flags().GetString("client-id")
-			if err != nil {
-				util.HandleError(err)
+			authStrategies := map[util.AuthStrategyType]func(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error){
+				util.AuthStrategy.UNIVERSAL_AUTH:    handleUniversalAuthLogin,
+				util.AuthStrategy.KUBERNETES_AUTH:   handleKubernetesAuthLogin,
+				util.AuthStrategy.AZURE_AUTH:        handleAzureAuthLogin,
+				util.AuthStrategy.GCP_ID_TOKEN_AUTH: handleGcpIdTokenAuthLogin,
+				util.AuthStrategy.GCP_IAM_AUTH:      handleGcpIamAuthLogin,
+				util.AuthStrategy.AWS_IAM_AUTH:      handleAwsIamAuthLogin,
 			}
 
-			clientSecret, err := cmd.Flags().GetString("client-secret")
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			if clientId == "" {
-				clientId = os.Getenv(util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
-				if clientId == "" {
-					util.PrintErrorMessageAndExit("Please provide client-id")
-				}
-			}
-			if clientSecret == "" {
-				clientSecret = os.Getenv(util.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET_NAME)
-				if clientSecret == "" {
-					util.PrintErrorMessageAndExit("Please provide client-secret")
-				}
-			}
-
-			res, err := util.UniversalAuthLogin(clientId, clientSecret)
+			credential, err := authStrategies[strategy](cmd, infisicalClient)
 
 			if err != nil {
-				util.HandleError(err)
+				util.HandleError(fmt.Errorf("unable to authenticate with %s [err=%v]", formatAuthMethod(loginMethod), err))
 			}
 
 			if plainOutput {
-				fmt.Println(res.AccessToken)
+				fmt.Println(credential.AccessToken)
 				return
 			}
 
 			boldGreen := color.New(color.FgGreen).Add(color.Bold)
 			boldPlain := color.New(color.Bold)
 			time.Sleep(time.Second * 1)
-			boldGreen.Printf(">>>> Successfully authenticated with Universal Auth!\n\n")
-			boldPlain.Printf("Universal Auth Access Token:\n%v", res.AccessToken)
+			boldGreen.Printf(">>>> Successfully authenticated with %s!\n\n", formatAuthMethod(loginMethod))
+			boldPlain.Printf("Access Token:\n%v", credential.AccessToken)
 
 			plainBold := color.New(color.Bold)
 			plainBold.Println("\n\nYou can use this access token to authenticate through other commands in the CLI.")
@@ -376,9 +450,12 @@ func init() {
 	rootCmd.AddCommand(loginCmd)
 	loginCmd.Flags().BoolP("interactive", "i", false, "login via the command line")
 	loginCmd.Flags().String("method", "user", "login method [user, universal-auth]")
-	loginCmd.Flags().String("client-id", "", "client id for universal auth")
 	loginCmd.Flags().Bool("plain", false, "only output the token without any formatting")
+	loginCmd.Flags().String("client-id", "", "client id for universal auth")
 	loginCmd.Flags().String("client-secret", "", "client secret for universal auth")
+	loginCmd.Flags().String("machine-identity-id", "", "machine identity id for kubernetes, azure, gcp-id-token, gcp-iam, and aws-iam auth methods")
+	loginCmd.Flags().String("service-account-token-path", "", "service account token path for kubernetes auth")
+	loginCmd.Flags().String("service-account-key-file-path", "", "service account key file path for GCP IAM auth")
 }
 
 func DomainOverridePrompt() (bool, error) {
@@ -539,6 +616,7 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	loginTwoResponseResult, err := api.CallLogin2V2(httpClient, api.GetLoginTwoV2Request{
 		Email:       email,
 		ClientProof: hex.EncodeToString(srpM1),
+		Password: password,
 	})
 
 	if err != nil {

@@ -161,6 +161,14 @@ type Secret struct {
 	PlainTextKey            string `json:"plainTextKey"`
 }
 
+type RawSecret struct {
+	SecretKey     string `json:"secretKey,omitempty"`
+	SecretValue   string `json:"secretValue,omitempty"`
+	Type          string `json:"type,omitempty"`
+	SecretComment string `json:"secretComment,omitempty"`
+	ID            string `json:"id,omitempty"`
+}
+
 type GetEncryptedWorkspaceKeyRequest struct {
 	WorkspaceId string `json:"workspaceId"`
 }
@@ -233,6 +241,7 @@ type GetLoginOneV2Response struct {
 type GetLoginTwoV2Request struct {
 	Email       string `json:"email"`
 	ClientProof string `json:"clientProof"`
+	Password    string `json:"password"`
 }
 
 type GetLoginTwoV2Response struct {
@@ -409,12 +418,23 @@ type CreateSecretV3Request struct {
 	SecretPath              string `json:"secretPath"`
 }
 
+type CreateRawSecretV3Request struct {
+	SecretName            string `json:"-"`
+	WorkspaceID           string `json:"workspaceId"`
+	Type                  string `json:"type,omitempty"`
+	Environment           string `json:"environment"`
+	SecretPath            string `json:"secretPath,omitempty"`
+	SecretValue           string `json:"secretValue"`
+	SecretComment         string `json:"secretComment,omitempty"`
+	SkipMultilineEncoding bool   `json:"skipMultilineEncoding,omitempty"`
+}
+
 type DeleteSecretV3Request struct {
 	SecretName  string `json:"secretName"`
 	WorkspaceId string `json:"workspaceId"`
 	Environment string `json:"environment"`
-	Type        string `json:"type"`
-	SecretPath  string `json:"secretPath"`
+	Type        string `json:"type,omitempty"`
+	SecretPath  string `json:"secretPath,omitempty"`
 }
 
 type UpdateSecretByNameV3Request struct {
@@ -425,6 +445,15 @@ type UpdateSecretByNameV3Request struct {
 	SecretValueCiphertext string `json:"secretValueCiphertext"`
 	SecretValueIV         string `json:"secretValueIV"`
 	SecretValueTag        string `json:"secretValueTag"`
+}
+
+type UpdateRawSecretByNameV3Request struct {
+	SecretName  string `json:"-"`
+	WorkspaceID string `json:"workspaceId"`
+	Environment string `json:"environment"`
+	SecretPath  string `json:"secretPath,omitempty"`
+	SecretValue string `json:"secretValue"`
+	Type        string `json:"type,omitempty"`
 }
 
 type GetSingleSecretByNameV3Request struct {

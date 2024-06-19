@@ -273,3 +273,17 @@ func GetEnvVarOrFileContent(envName string, filePath string) (string, error) {
 
 	return fileContent, nil
 }
+
+func GetCmdFlagOrEnv(cmd *cobra.Command, flag, envName string) (string, error) {
+	value, flagsErr := cmd.Flags().GetString(flag)
+	if flagsErr != nil {
+		return "", flagsErr
+	}
+	if value == "" {
+		value = os.Getenv(envName)
+	}
+	if value == "" {
+		return "", fmt.Errorf("please provide %s flag", flag)
+	}
+	return value, nil
+}

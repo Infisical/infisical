@@ -19,7 +19,23 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          user: UsersSchema.merge(UserEncryptionKeysSchema.omit({ verifier: true }))
+          user: UsersSchema.merge(
+            UserEncryptionKeysSchema.pick({
+              clientPublicKey: true,
+              serverPrivateKey: true,
+              encryptionVersion: true,
+              protectedKey: true,
+              protectedKeyIV: true,
+              protectedKeyTag: true,
+              publicKey: true,
+              encryptedPrivateKey: true,
+              iv: true,
+              tag: true,
+              salt: true,
+              verifier: true,
+              userId: true
+            })
+          )
         })
       }
     },
@@ -27,6 +43,26 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const user = await server.services.user.getMe(req.permission.id);
       return { user };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/private-key",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          privateKey: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    handler: async (req) => {
+      const privateKey = await server.services.user.getUserPrivateKey(req.permission.id);
+      return { privateKey };
     }
   });
 

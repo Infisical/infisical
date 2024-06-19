@@ -51,7 +51,8 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
         encryptedPrivateKeyIV: z.string().trim(),
         encryptedPrivateKeyTag: z.string().trim(),
         salt: z.string().trim(),
-        verifier: z.string().trim()
+        verifier: z.string().trim(),
+        password: z.string().trim()
       }),
       response: {
         200: z.object({

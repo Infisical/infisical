@@ -442,7 +442,34 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const updatedKubernetesAuth = await identityKubernetesAuthDAL.updateById(identityKubernetesAuth.id, updateQuery);
 
-    return { ...updatedKubernetesAuth, orgId: identityMembershipOrg.orgId };
+    const updatedCACert =
+      updatedKubernetesAuth.encryptedCaCert && updatedKubernetesAuth.caCertIV && updatedKubernetesAuth.caCertTag
+        ? decryptSymmetric({
+            ciphertext: updatedKubernetesAuth.encryptedCaCert,
+            iv: updatedKubernetesAuth.caCertIV,
+            tag: updatedKubernetesAuth.caCertTag,
+            key
+          })
+        : "";
+
+    const updatedTokenReviewerJwt =
+      updatedKubernetesAuth.encryptedTokenReviewerJwt &&
+      updatedKubernetesAuth.tokenReviewerJwtIV &&
+      updatedKubernetesAuth.tokenReviewerJwtTag
+        ? decryptSymmetric({
+            ciphertext: updatedKubernetesAuth.encryptedTokenReviewerJwt,
+            iv: updatedKubernetesAuth.tokenReviewerJwtIV,
+            tag: updatedKubernetesAuth.tokenReviewerJwtTag,
+            key
+          })
+        : "";
+
+    return {
+      ...updatedKubernetesAuth,
+      orgId: identityMembershipOrg.orgId,
+      caCert: updatedCACert,
+      tokenReviewerJwt: updatedTokenReviewerJwt
+    };
   };
 
   const getKubernetesAuth = async ({

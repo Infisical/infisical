@@ -55,6 +55,11 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		token, err := util.GetInfisicalToken(cmd)
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		format, err := cmd.Flags().GetString("format")
 		if err != nil {
 			util.HandleError(err)
@@ -66,11 +71,6 @@ var exportCmd = &cobra.Command{
 		}
 
 		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
-		if err != nil {
-			util.HandleError(err, "Unable to parse flag")
-		}
-
-		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -169,9 +169,9 @@ func init() {
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	exportCmd.Flags().Bool("include-imports", true, "Imported linked secrets")
-	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	exportCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
-	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
+	exportCmd.Flags().String("projectId", "", "manually set the projectId to export secrets from")
 	exportCmd.Flags().String("path", "/", "get secrets within a folder path")
 	exportCmd.Flags().String("template", "", "The path to the template file used to render secrets")
 }

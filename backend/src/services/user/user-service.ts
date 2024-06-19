@@ -1,3 +1,5 @@
+import { SecretKeyEncoding } from "@app/db/schemas";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -230,6 +232,21 @@ export const userServiceFactory = ({
     );
   };
 
+  const getUserPrivateKey = async (userId: string) => {
+    const user = await userDAL.findUserEncKeyByUserId(userId);
+    if (!user?.serverEncryptedPrivateKey || !user.serverEncryptedPrivateKeyIV || !user.serverEncryptedPrivateKeyTag) {
+      throw new BadRequestError({ message: "Private key not found. Please login again" });
+    }
+    const privateKey = infisicalSymmetricDecrypt({
+      ciphertext: user.serverEncryptedPrivateKey,
+      tag: user.serverEncryptedPrivateKeyTag,
+      iv: user.serverEncryptedPrivateKeyIV,
+      keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+    });
+
+    return privateKey;
+  };
+
   return {
     sendEmailVerificationCode,
     verifyEmailVerificationCode,
@@ -240,6 +257,7 @@ export const userServiceFactory = ({
     getMe,
     createUserAction,
     getUserAction,
-    unlockUser
+    unlockUser,
+    getUserPrivateKey
   };
 };

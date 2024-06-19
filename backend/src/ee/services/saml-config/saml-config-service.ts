@@ -41,7 +41,10 @@ import { TCreateSamlCfgDTO, TGetSamlCfgDTO, TSamlLoginDTO, TUpdateSamlCfgDTO } f
 
 type TSamlConfigServiceFactoryDep = {
   samlConfigDAL: Pick<TSamlConfigDALFactory, "create" | "findOne" | "update" | "findById">;
-  userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById" | "findById">;
+  userDAL: Pick<
+    TUserDALFactory,
+    "create" | "findOne" | "transaction" | "updateById" | "findById" | "findUserEncKeyByUserId"
+  >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
     TOrgDALFactory,
@@ -467,6 +470,7 @@ export const samlConfigServiceFactory = ({
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
     const isUserCompleted = Boolean(user.isAccepted);
+    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
     const providerAuthToken = jwt.sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
@@ -479,6 +483,7 @@ export const samlConfigServiceFactory = ({
         organizationId: organization.id,
         organizationSlug: organization.slug,
         authMethod: authProvider,
+        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
         authType: UserAliasType.SAML,
         isUserCompleted,
         ...(relayState
