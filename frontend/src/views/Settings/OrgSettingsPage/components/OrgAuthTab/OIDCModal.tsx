@@ -14,6 +14,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
+import { useToggle } from "@app/hooks";
 import { useGetOIDCConfig } from "@app/hooks/api";
 import { useCreateOIDCConfig, useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -106,6 +107,9 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
       configurationType: ConfigurationType.DISCOVERY_URL
     }
   });
+
+  const [isClientIdFocused, setIsClientIdFocused] = useToggle();
+  const [isClientSecretFocused, setIsClientSecretFocused] = useToggle();
 
   const configurationTypeValue = watch("configurationType");
 
@@ -339,9 +343,14 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
               <FormControl label="Client ID" errorText={error?.message} isError={Boolean(error)}>
                 <Input
                   placeholder="Client ID"
-                  type="password"
-                  autoComplete="off"
+                  type={isClientIdFocused ? "text" : "password"}
+                  onFocus={() => setIsClientIdFocused.on()}
                   {...field}
+                  onBlur={() => {
+                    field.onBlur();
+                    setIsClientIdFocused.off();
+                  }}
+                  autoComplete="off"
                   className="bg-mineshaft-800"
                 />
               </FormControl>
@@ -357,10 +366,15 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
                 isError={Boolean(error)}
               >
                 <Input
-                  placeholder="Client Secret"
-                  type="password"
-                  autoComplete="off"
                   {...field}
+                  placeholder="Client Secret"
+                  type={isClientSecretFocused ? "text" : "password"}
+                  autoComplete="off"
+                  onFocus={() => setIsClientSecretFocused.on()}
+                  onBlur={() => {
+                    field.onBlur();
+                    setIsClientSecretFocused.off();
+                  }}
                   className="bg-mineshaft-800"
                 />
               </FormControl>
