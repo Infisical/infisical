@@ -72,6 +72,7 @@ const attemptChangePassword = ({ email, currentPassword, newPassword }: Params):
               });
 
               await changePassword({
+                password: newPassword,
                 clientProof,
                 protectedKey,
                 protectedKeyIV,

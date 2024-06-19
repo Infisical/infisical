@@ -71,6 +71,7 @@ const attemptLogin = async ({
             tag
           } = await login2({
             email,
+            password,
             clientProof,
             providerAuthToken,
             captchaToken

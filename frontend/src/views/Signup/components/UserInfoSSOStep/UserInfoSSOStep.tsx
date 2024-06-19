@@ -2,14 +2,10 @@ import crypto from "crypto";
 
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { faInfoCircle, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import jsrp from "jsrp";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 
-import InputField from "@app/components/basic/InputField";
-import checkPassword from "@app/components/utilities/checks/password/checkPassword";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
 import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
@@ -30,17 +26,6 @@ type Props = {
   name: string;
   providerOrganizationName: string;
   providerAuthToken?: string;
-};
-
-type Errors = {
-  tooShort?: string;
-  tooLong?: string;
-  noLetterChar?: string;
-  noNumOrSpecialChar?: string;
-  repeatedChar?: string;
-  escapeChar?: string;
-  lowEntropy?: string;
-  breached?: string;
 };
 
 /**
@@ -69,12 +54,13 @@ export const UserInfoSSOStep = ({
   const [organizationName, setOrganizationName] = useState("");
   const [organizationNameError, setOrganizationNameError] = useState(false);
   const [attributionSource, setAttributionSource] = useState("");
-  const [errors, setErrors] = useState<Errors>({});
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   useEffect(() => {
+    const randomPassword = crypto.randomBytes(32).toString("hex");
+    setPassword(randomPassword);
     if (providerOrganizationName !== undefined) {
       setOrganizationName(providerOrganizationName);
     }
@@ -97,11 +83,6 @@ export const UserInfoSSOStep = ({
     } else {
       setOrganizationNameError(false);
     }
-
-    errorCheck = await checkPassword({
-      password,
-      setErrors
-    });
 
     if (!errorCheck) {
       // Generate a random pair of a public and a private key
@@ -158,6 +139,7 @@ export const UserInfoSSOStep = ({
 
               const response = await completeAccountSignup({
                 email: username,
+                password,
                 firstName: name.split(" ")[0],
                 lastName: name.split(" ").slice(1).join(" "),
                 protectedKey,
@@ -213,6 +195,12 @@ export const UserInfoSSOStep = ({
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (password && providerOrganizationName) {
+      signupErrorCheck();
+    }
+  }, [providerOrganizationName, password]);
 
   return (
     <div className="mx-auto mb-36 h-full w-max rounded-xl md:mb-16 md:px-8">
@@ -272,53 +260,6 @@ export const UserInfoSSOStep = ({
             />
           </div>
         )}
-        <div className="mt-2 flex max-h-60 w-1/4 w-full min-w-[20rem] flex-col items-center justify-center rounded-lg py-2 lg:w-1/6">
-          <InputField
-            label="Infisical Password"
-            onChangeHandler={async (pass: string) => {
-              setPassword(pass);
-              await checkPassword({
-                password: pass,
-                setErrors
-              });
-            }}
-            type="password"
-            value={password}
-            isRequired
-            error={Object.keys(errors).length > 0}
-            autoComplete="new-password"
-            id="new-password"
-          />
-          <div className="mt-2 max-h-60 w-min min-w-[20rem] flex-col items-center justify-center rounded-md bg-mineshaft-500 p-1.5 px-1.5 text-xs text-mineshaft-300">
-            <FontAwesomeIcon icon={faInfoCircle} className="mr-1.5" />
-            Infisical Password is used as part of the encryption mechanism so that even the
-            authentication provider is not able to access your secrets.
-          </div>
-          {Object.keys(errors).length > 0 && (
-            <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
-              <div className="mb-2 text-sm text-gray-400">
-                {t("section.password.validate-base")}
-              </div>
-              {Object.keys(errors).map((key) => {
-                if (errors[key as keyof Errors]) {
-                  return (
-                    <div className="items-top ml-1 flex flex-row justify-start" key={key}>
-                      <div>
-                        <FontAwesomeIcon
-                          icon={faXmark}
-                          className="text-md ml-0.5 mr-2.5 text-red"
-                        />
-                      </div>
-                      <p className="text-sm text-gray-400">{errors[key as keyof Errors]}</p>
-                    </div>
-                  );
-                }
-
-                return null;
-              })}
-            </div>
-          )}
-        </div>
         <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
           <div className="text-l w-full py-1 text-lg">
             <Button
@@ -330,6 +271,7 @@ export const UserInfoSSOStep = ({
               colorSchema="primary"
               variant="outline_bg"
               isLoading={isLoading}
+              isDisabled={isLoading}
             >
               {" "}
               {String(t("signup.signup"))}{" "}

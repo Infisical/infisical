@@ -29,7 +29,7 @@ const envSchema = z
     DB_USER: zpStr(z.string().describe("Postgres database username").optional()),
     DB_PASSWORD: zpStr(z.string().describe("Postgres database password").optional()),
     DB_NAME: zpStr(z.string().describe("Postgres database name").optional()),
-
+    BCRYPT_SALT_ROUND: z.number().default(12),
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
     INITIAL_ORGANIZATION_NAME: zpStr(z.string().optional()),

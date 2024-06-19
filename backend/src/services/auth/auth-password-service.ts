@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
@@ -57,7 +58,8 @@ export const authPaswordServiceFactory = ({
     encryptedPrivateKeyTag,
     salt,
     verifier,
-    tokenVersionId
+    tokenVersionId,
+    password
   }: TChangePasswordDTO) => {
     const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc) throw new Error("Failed to find user");
@@ -76,6 +78,8 @@ export const authPaswordServiceFactory = ({
     );
     if (!isValidClientProof) throw new Error("Failed to authenticate. Try again?");
 
+    const appCfg = getConfig();
+    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
     await userDAL.updateUserEncryptionByUserId(userId, {
       encryptionVersion: 2,
       protectedKey,
@@ -87,7 +91,8 @@ export const authPaswordServiceFactory = ({
       salt,
       verifier,
       serverPrivateKey: null,
-      clientPublicKey: null
+      clientPublicKey: null,
+      hashedPassword
     });
 
     if (tokenVersionId) {

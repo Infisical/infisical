@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import { OrgMembershipStatus, TableName } from "@app/db/schemas";
@@ -6,6 +7,8 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
@@ -119,6 +122,7 @@ export const authSignupServiceFactory = ({
 
   const completeEmailAccountSignup = async ({
     email,
+    password,
     firstName,
     lastName,
     providerAuthToken,
@@ -137,6 +141,7 @@ export const authSignupServiceFactory = ({
     userAgent,
     authorization
   }: TCompleteAccountSignupDTO) => {
+    const appCfg = getConfig();
     const user = await userDAL.findOne({ username: email });
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
@@ -152,6 +157,17 @@ export const authSignupServiceFactory = ({
       validateSignUpAuthorization(authorization, user.id);
     }
 
+    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
+    const privateKey = await getUserPrivateKey(password, {
+      salt,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
+      encryptedPrivateKey,
+      iv: encryptedPrivateKeyIV,
+      tag: encryptedPrivateKeyTag
+    });
+    const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
@@ -166,7 +182,12 @@ export const authSignupServiceFactory = ({
           protectedKeyTag,
           encryptedPrivateKey,
           iv: encryptedPrivateKeyIV,
-          tag: encryptedPrivateKeyTag
+          tag: encryptedPrivateKeyTag,
+          hashedPassword,
+          serverEncryptedPrivateKeyEncoding: encoding,
+          serverEncryptedPrivateKeyTag: tag,
+          serverEncryptedPrivateKeyIV: iv,
+          serverEncryptedPrivateKey: ciphertext
         },
         tx
       );
@@ -227,7 +248,6 @@ export const authSignupServiceFactory = ({
       userId: updateduser.info.id
     });
     if (!tokenSession) throw new Error("Failed to create token");
-    const appCfg = getConfig();
 
     const accessToken = jwt.sign(
       {
@@ -265,6 +285,7 @@ export const authSignupServiceFactory = ({
     ip,
     salt,
     email,
+    password,
     verifier,
     firstName,
     publicKey,
@@ -295,6 +316,18 @@ export const authSignupServiceFactory = ({
         name: "complete account invite"
       });
 
+    const appCfg = getConfig();
+    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
+    const privateKey = await getUserPrivateKey(password, {
+      salt,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
+      encryptedPrivateKey,
+      iv: encryptedPrivateKeyIV,
+      tag: encryptedPrivateKeyTag
+    });
+    const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
@@ -310,7 +343,12 @@ export const authSignupServiceFactory = ({
           protectedKeyTag,
           encryptedPrivateKey,
           iv: encryptedPrivateKeyIV,
-          tag: encryptedPrivateKeyTag
+          tag: encryptedPrivateKeyTag,
+          hashedPassword,
+          serverEncryptedPrivateKeyEncoding: encoding,
+          serverEncryptedPrivateKeyTag: tag,
+          serverEncryptedPrivateKeyIV: iv,
+          serverEncryptedPrivateKey: ciphertext
         },
         tx
       );
@@ -343,7 +381,6 @@ export const authSignupServiceFactory = ({
       userId: updateduser.info.id
     });
     if (!tokenSession) throw new Error("Failed to create token");
-    const appCfg = getConfig();
 
     const accessToken = jwt.sign(
       {
