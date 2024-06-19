@@ -14,7 +14,7 @@ import { z } from "zod";
 
 import { OidcConfigsSchema } from "@app/db/schemas/oidc-configs";
 import { getConfig } from "@app/lib/config/env";
-import { writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -38,7 +38,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     secret: appCfg.COOKIE_SECRET_SIGN_KEY,
     store: redisStore,
     cookie: {
-      secure: false // set to true in production
+      secure: appCfg.isProductionMode
     }
   });
 
@@ -97,13 +97,13 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
 
       if (req.passportUser.isUserCompleted) {
         return res.redirect(
-          `http://localhost:8080/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
+          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
         );
       }
 
       // signup
       return res.redirect(
-        `http://localhost:8080/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
+        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
       );
     }
   });
@@ -124,6 +124,10 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/config",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       querystring: z.object({
         orgSlug: z.string().trim()
