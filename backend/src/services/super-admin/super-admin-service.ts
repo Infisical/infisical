@@ -98,6 +98,7 @@ export const superAdminServiceFactory = ({
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
 
     const privateKey = await getUserPrivateKey(password, {
+      encryptionVersion: 2,
       salt,
       protectedKey,
       protectedKeyIV,

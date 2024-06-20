@@ -165,7 +165,8 @@ export const authSignupServiceFactory = ({
       protectedKeyTag,
       encryptedPrivateKey,
       iv: encryptedPrivateKeyIV,
-      tag: encryptedPrivateKeyTag
+      tag: encryptedPrivateKeyTag,
+      encryptionVersion: 2
     });
     const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
@@ -325,7 +326,8 @@ export const authSignupServiceFactory = ({
       protectedKeyTag,
       encryptedPrivateKey,
       iv: encryptedPrivateKeyIV,
-      tag: encryptedPrivateKeyTag
+      tag: encryptedPrivateKeyTag,
+      encryptionVersion: 2
     });
     const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
