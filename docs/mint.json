@@ -178,7 +178,8 @@
             "documentation/platform/sso/azure",
             "documentation/platform/sso/jumpcloud",
             "documentation/platform/sso/keycloak-saml",
-            "documentation/platform/sso/google-saml"
+            "documentation/platform/sso/google-saml",
+            "documentation/platform/sso/keycloak-oidc"
           ]
         },
         {
