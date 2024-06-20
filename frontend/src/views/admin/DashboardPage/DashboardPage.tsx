@@ -195,7 +195,7 @@ export const AdminDashboardPage = () => {
                   <div className="mb-2 text-xl font-semibold text-mineshaft-100">Trust emails</div>
                   <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
                     Select if you want Infisical to trust external emails from SAML/LDAP/OIDC
-                    identity providers. If set to false, then Infisical will prompt SAML/LDAP
+                    identity providers. If set to false, then Infisical will prompt SAML/LDAP/OIDC
                     provisioned users to verify their email upon their first login.
                   </div>
                   <Controller
