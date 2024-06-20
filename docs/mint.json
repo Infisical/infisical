@@ -180,7 +180,8 @@
             "documentation/platform/sso/keycloak-saml",
             "documentation/platform/sso/google-saml",
             "documentation/platform/sso/keycloak-oidc",
-            "documentation/platform/sso/auth0-oidc"
+            "documentation/platform/sso/auth0-oidc",
+            "documentation/platform/sso/general-oidc"
           ]
         },
         {
