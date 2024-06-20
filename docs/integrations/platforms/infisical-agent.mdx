@@ -41,21 +41,211 @@ It then formats these secrets using the user provided templates and writes the f
 To set up the authentication method for token renewal and to define secret templates, the Infisical agent requires a YAML configuration file containing properties defined below. 
 While specifying an authentication method is mandatory to start the agent, configuring sinks and secret templates are optional.
 
-| Field                        | Description |
-| ---------------------------- | ----------- |
-| `infisical.address`          | The URL of the Infisical service. Default: `"https://app.infisical.com"`. |
-| `auth.type`                  | The type of authentication method used. Only `"universal-auth"` type is currently available |
-| `auth.config.client-id`      | The file path where the universal-auth client id is stored.  |
-| `auth.config.client-secret`  | The file path where the universal-auth client secret is stored.  |
-| `auth.config.remove_client_secret_on_read`     | This will instruct the agent to remove the client secret from disk.  |
-| `sinks[].type`               | The type of sink in a list of sinks. Each item specifies a sink type. Currently, only `"file"` type is available. |
-| `sinks[].config.path`        | The file path where the access token should be stored for each sink in the list. |
-| `templates[].source-path`    | The path to the template file that should be used to render secrets. |
-| `templates[].destination-path` | The path where the rendered secrets from the source template will be saved to. |
-| `templates[].config.polling-interval` | How frequently to check for secret changes. Default: `5 minutes` (optional)  |
-| `templates[].config.execute.command` | The command to execute when secret change is detected (optional) |
-| `templates[].config.execute.timeout` | How long in seconds to wait for command to execute before timing out (optional) |
+| Field                                           | Description                   |
+| ------------------------------------------------| ----------------------------- |
+| `infisical.address`                             | The URL of the Infisical service. Default: `"https://app.infisical.com"`. |
+| `auth.type`                                     | The type of authentication method used. Available options: `universal-auth`, `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, `aws-iam`|
+| `auth.config.identity-id`                       | The file path where the machine identity id is stored<br/><br/>This field is required when using any of the following auth types: `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, or `aws-iam`. |
+| `auth.config.service-account-token`             | Path to the Kubernetes service account token to use (optional)<br/><br/>Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`  |
+| `auth.config.service-account-key`               | Path to your GCP service account key file. This field is required when using `gcp-iam` auth type.<br/><br/>Please note that the file should be in JSON format. |
+| `auth.config.client-id`                         | The file path where the universal-auth client id is stored.  |
+| `auth.config.client-secret`                     | The file path where the universal-auth client secret is stored.  |
+| `auth.config.remove_client_secret_on_read`      | This will instruct the agent to remove the client secret from disk.  |
+| `sinks[].type`                                  | The type of sink in a list of sinks. Each item specifies a sink type. Currently, only `"file"` type is available. |
+| `sinks[].config.path`                           | The file path where the access token should be stored for each sink in the list. |
+| `templates[].source-path`                       | The path to the template file that should be used to render secrets. |
+| `templates[].destination-path`                  | The path where the rendered secrets from the source template will be saved to. |
+| `templates[].config.polling-interval`           | How frequently to check for secret changes. Default: `5 minutes` (optional)  |
+| `templates[].config.execute.command`            | The command to execute when secret change is detected (optional) |
+| `templates[].config.execute.timeout`            | How long in seconds to wait for command to execute before timing out (optional) |
 
+
+## Authentication
+
+The Infisical agent supports multiple authentication methods. Below are the available authentication methods, with their respective configurations.
+
+<AccordionGroup>
+<Accordion title="Universal Auth">
+  The Universal Auth method is a simple and secure way to authenticate with Infisical. It requires a client ID and a client secret to authenticate with Infisical.
+
+  <ParamField query="config" type="UniversalAuthConfig">
+    <Expandable title="properties">
+        <ParamField query="client-id" type="string" required>
+          Path to the file containing the universal auth client ID.
+        </ParamField>
+        <ParamField query="client-secret" type="string" required>
+          Path to the file containing the universal auth client secret.
+        </ParamField>
+        <ParamField query="remove_client_secret_on_read" type="boolean" optional>
+          Instructs the agent to remove the client secret from disk after reading it.
+        </ParamField>
+    </Expandable>
+  </ParamField>
+
+  <Steps>
+    <Step title="Create a universal auth machine identity">
+      To create a universal auth machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/universal-auth).
+    </Step>
+    <Step title="Configure the agent">
+      Update the agent configuration file with the specified auth method, client ID, and client secret. In the snippet below you can see a sample configuration of the `auth` field when using the Universal Auth method.
+
+    ```yaml example-auth-config.yaml
+    auth:
+      type: "universal-auth"
+      config:
+        client-id: "./client-id" # Path to the file containing the client ID
+        client-secret: "./client" # Path to the file containing the client secret
+        remove_client_secret_on_read: false # Optional field, instructs the agent to remove the client secret from disk after reading it
+    ```
+    </Step>
+  </Steps>
+</Accordion>
+<Accordion title="Native Kubernetes">
+  The Native Kubernetes method is used to authenticate with Infisical when running in a Kubernetes environment. It requires a service account token to authenticate with Infisical.
+
+  <ParamField query="config" type="KubernetesAuthConfig">
+    <Expandable title="properties">
+        <ParamField query="identity-id" type="string" required>
+          Path to the file containing the machine identity ID.
+        </ParamField>
+        <ParamField query="service-account-token" type="string" optional>
+          Path to the Kubernetes service account token to use. Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+        </ParamField>
+    </Expandable>
+  </ParamField>
+
+  <Steps>
+    <Step title="Create a Kubernetes machine identity">
+      To create a Kubernetes machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/kubernetes-auth).
+    </Step>
+    <Step title="Configure the agent">
+      Update the agent configuration file with the specified auth method, identity ID, and service account token. In the snippet below you can see a sample configuration of the `auth` field when using the Kubernetes method.
+
+    ```yaml example-auth-config.yaml
+    auth:
+      type: "kubernetes"
+      config:
+        identity-id: "./identity-id" # Path to the file containing the machine identity ID
+        service-account-token: "/var/run/secrets/kubernetes.io/serviceaccount/token" # Optional field, custom path to the Kubernetes service account token to use
+    ```
+    </Step>
+  </Steps>
+
+</Accordion>
+  <Accordion title="Native Azure">
+    The Native Azure method is used to authenticate with Infisical when running in an Azure environment.
+
+    <ParamField query="config" type="AzureAuthConfig">
+      <Expandable title="properties">
+          <ParamField query="identity-id" type="string" required>
+            Path to the file containing the machine identity ID.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    <Steps>
+      <Step title="Create an Azure machine identity">
+        To create an Azure machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/azure-auth).
+      </Step>
+      <Step title="Configure the agent">
+        Update the agent configuration file with the specified auth method and identity ID. In the snippet below you can see a sample configuration of the `auth` field when using the Azure method.
+
+      ```yaml example-auth-config.yaml
+      auth:
+        type: "azure"
+        config:
+          identity-id: "./identity-id" # Path to the file containing the machine identity ID
+      ```
+      </Step>
+    </Steps>
+
+  </Accordion>
+  <Accordion title="Native GCP ID Token">
+    The Native GCP ID Token method is used to authenticate with Infisical when running in a GCP environment.
+
+    <ParamField query="config" type="GCPIDTokenAuthConfig">
+      <Expandable title="properties">
+          <ParamField query="identity-id" type="string" required>
+            Path to the file containing the machine identity ID.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    <Steps>
+      <Step title="Create a GCP machine identity">
+        To create a GCP machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/gcp-auth).
+      </Step>
+      <Step title="Configure the agent">
+        Update the agent configuration file with the specified auth method and identity ID. In the snippet below you can see a sample configuration of the `auth` field when using the GCP ID Token method.
+
+      ```yaml example-auth-config.yaml
+      auth:
+        type: "gcp-id-token"
+        config:
+          identity-id: "./identity-id" # Path to the file containing the machine identity ID
+      ```
+      </Step>
+    </Steps>
+  </Accordion>
+  <Accordion title="GCP IAM">
+    The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
+
+    <ParamField query="config" type="GCPIAMAuthConfig">
+      <Expandable title="properties">
+          <ParamField query="identity-id" type="string" required>
+            Path to the file containing the machine identity ID.
+          </ParamField>
+          <ParamField query="service-account-key" type="string" required>
+            Path to your GCP service account key file.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    <Steps>
+      <Step title="Create a GCP machine identity">
+        To create a GCP machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/gcp-auth).
+      </Step>
+      <Step title="Configure the agent">
+        Update the agent configuration file with the specified auth method, identity ID, and service account key. In the snippet below you can see a sample configuration of the `auth` field when using the GCP IAM method.
+
+      ```yaml example-auth-config.yaml
+      auth:
+        type: "gcp-iam"
+        config:
+          identity-id: "./identity-id" # Path to the file containing the machine identity ID
+          service-account-key: "./service-account-key.json" # Path to your GCP service account key file
+      ```
+      </Step>
+    </Steps>
+  </Accordion>
+  <Accordion title="Native AWS IAM">
+    The AWS IAM method is used to authenticate with Infisical with an AWS IAM role while running in an AWS environment like EC2, Lambda, etc.
+
+    <ParamField query="config" type="AWSIAMAuthConfig">
+      <Expandable title="properties">
+          <ParamField query="identity-id" type="string" required>
+            Path to the file containing the machine identity ID.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    <Steps>
+      <Step title="Create an AWS machine identity">
+        To create an AWS machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/aws-auth).
+      </Step>
+      <Step title="Configure the agent">
+        Update the agent configuration file with the specified auth method and identity ID. In the snippet below you can see a sample configuration of the `auth` field when using the AWS IAM method.
+
+      ```yaml example-auth-config.yaml
+      auth:
+        type: "aws-iam"
+        config:
+          identity-id: "./identity-id" # Path to the file containing the machine identity ID
+      ```
+      </Step>
+    </Steps>
+  </Accordion>
+</AccordionGroup>
 
 ## Quick start Infisical Agent
 To install the Infisical agent, you must first install the [Infisical CLI](../cli/overview) in the desired environment where you'd like the agent to run. This is because the Infisical agent is a sub-command of the Infisical CLI.

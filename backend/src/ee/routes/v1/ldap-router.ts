@@ -53,7 +53,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
       // eslint-disable-next-line
       async (req: IncomingMessage, user, cb) => {
         try {
-          if (!user.email) throw new BadRequestError({ message: "Invalid request. Missing email." });
+          if (!user.mail) throw new BadRequestError({ message: "Invalid request. Missing mail attribute on user." });
           const ldapConfig = (req as unknown as FastifyRequest).ldapConfig as TLDAPConfig;
 
           let groups: { dn: string; cn: string }[] | undefined;

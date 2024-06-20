@@ -32,6 +32,8 @@ import {
   TCreateManySecretsRawFn,
   TCreateManySecretsRawFnFactory,
   TFnSecretBlindIndexCheck,
+  TFnSecretBlindIndexCheckV2,
+  TFnSecretBulkDelete,
   TFnSecretBulkInsert,
   TFnSecretBulkUpdate,
   TUpdateManySecretsRawFn,
@@ -149,7 +151,8 @@ export const recursivelyGetSecretPaths = ({
 
     // Fetch all folders in env once with a single query
     const folders = await folderDAL.find({
-      envId: env.id
+      envId: env.id,
+      isReserved: false
     });
 
     // Build the folder hierarchy map
@@ -306,7 +309,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
   };
 
   const expandSecrets = async (
-    secrets: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }>
+    secrets: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean | null }>
   ) => {
     const expandedSec: Record<string, string> = {};
     const interpolatedSec: Record<string, string> = {};
@@ -326,8 +329,8 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
         // should not do multi line encoding if user has set it to skip
         // eslint-disable-next-line
         secrets[key].value = secrets[key].skipMultilineEncoding
-          ? expandedSec[key]
-          : formatMultiValueEnv(expandedSec[key]);
+          ? formatMultiValueEnv(expandedSec[key])
+          : expandedSec[key];
         // eslint-disable-next-line
         continue;
       }
@@ -344,7 +347,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
       );
 
       // eslint-disable-next-line
-      secrets[key].value = secrets[key].skipMultilineEncoding ? expandedVal : formatMultiValueEnv(expandedVal);
+      secrets[key].value = secrets[key].skipMultilineEncoding ? formatMultiValueEnv(expandedVal) : expandedVal;
     }
 
     return secrets;
@@ -353,7 +356,17 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
 };
 
 export const decryptSecretRaw = (
-  secret: TSecrets & { workspace: string; environment: string; secretPath: string },
+  secret: TSecrets & {
+    workspace: string;
+    environment: string;
+    secretPath: string;
+    tags?: {
+      id: string;
+      slug: string;
+      color?: string | null;
+      name: string;
+    }[];
+  },
   key: string
 ) => {
   const secretKey = decryptSymmetric128BitHexKeyUTF8({
@@ -392,8 +405,34 @@ export const decryptSecretRaw = (
     type: secret.type,
     _id: secret.id,
     id: secret.id,
-    user: secret.userId
+    user: secret.userId,
+    tags: secret.tags,
+    skipMultilineEncoding: secret.skipMultilineEncoding
   };
+};
+
+// this is used when secret blind index already exist
+// mainly for secret approval
+export const fnSecretBlindIndexCheckV2 = async ({
+  inputSecrets,
+  folderId,
+  userId,
+  secretDAL
+}: TFnSecretBlindIndexCheckV2) => {
+  if (inputSecrets.some(({ type }) => type === SecretType.Personal) && !userId) {
+    throw new BadRequestError({ message: "Missing user id for personal secret" });
+  }
+  const secrets = await secretDAL.findByBlindIndexes(
+    folderId,
+    inputSecrets.map(({ secretBlindIndex, type }) => ({
+      blindIndex: secretBlindIndex,
+      type: type || SecretType.Shared
+    })),
+    userId
+  );
+  const secsGroupedByBlindIndex = groupBy(secrets, (i) => i.secretBlindIndex as string);
+
+  return { secsGroupedByBlindIndex, secrets };
 };
 
 /**
@@ -596,6 +635,35 @@ export const fnSecretBulkUpdate = async ({
   }
 
   return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
+};
+
+export const fnSecretBulkDelete = async ({
+  folderId,
+  inputSecrets,
+  tx,
+  actorId,
+  secretDAL,
+  secretQueueService
+}: TFnSecretBulkDelete) => {
+  const deletedSecrets = await secretDAL.deleteMany(
+    inputSecrets.map(({ type, secretBlindIndex }) => ({
+      blindIndex: secretBlindIndex,
+      type
+    })),
+    folderId,
+    actorId,
+    tx
+  );
+
+  await Promise.allSettled(
+    deletedSecrets
+      .filter(({ secretReminderRepeatDays }) => Boolean(secretReminderRepeatDays))
+      .map(({ id, secretReminderRepeatDays }) =>
+        secretQueueService.removeSecretReminder({ secretId: id, repeatDays: secretReminderRepeatDays as number })
+      )
+  );
+
+  return deletedSecrets;
 };
 
 export const createManySecretsRawFnFactory = ({

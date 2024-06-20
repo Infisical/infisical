@@ -30,11 +30,13 @@ export interface IsCliLoginSuccessful {
 const attemptLogin = async ({
   email,
   password,
-  providerAuthToken
+  providerAuthToken,
+  captchaToken
 }: {
   email: string;
   password: string;
   providerAuthToken?: string;
+  captchaToken?: string;
 }): Promise<IsCliLoginSuccessful> => {
   const telemetry = new Telemetry().getInstance();
   return new Promise((resolve, reject) => {
@@ -69,8 +71,10 @@ const attemptLogin = async ({
             tag
           } = await login2({
             email,
+            password,
             clientProof,
-            providerAuthToken
+            providerAuthToken,
+            captchaToken
           });
           if (mfaEnabled) {
             // case: MFA is enabled

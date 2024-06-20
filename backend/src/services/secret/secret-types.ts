@@ -11,6 +11,8 @@ import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/se
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
+import { ActorType } from "../auth/auth-type";
+
 type TPartialSecret = Pick<TSecrets, "id" | "secretReminderRepeatDays" | "secretReminderNote">;
 
 type TPartialInputSecret = Pick<TSecrets, "type" | "secretReminderNote" | "secretReminderRepeatDays" | "id">;
@@ -162,6 +164,7 @@ export type TCreateSecretRawDTO = TProjectPermission & {
   secretName: string;
   secretValue: string;
   type: SecretType;
+  tagIds?: string[];
   secretComment?: string;
   skipMultilineEncoding?: boolean;
 };
@@ -172,6 +175,7 @@ export type TUpdateSecretRawDTO = TProjectPermission & {
   secretName: string;
   secretValue?: string;
   type: SecretType;
+  tagIds?: string[];
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
@@ -264,6 +268,10 @@ export type TFnSecretBulkDelete = {
   inputSecrets: Array<{ type: SecretType; secretBlindIndex: string }>;
   actorId: string;
   tx?: Knex;
+  secretDAL: Pick<TSecretDALFactory, "deleteMany">;
+  secretQueueService: {
+    removeSecretReminder: (data: TRemoveSecretReminderDTO) => Promise<void>;
+  };
 };
 
 export type TFnSecretBlindIndexCheck = {
@@ -277,6 +285,7 @@ export type TFnSecretBlindIndexCheck = {
 
 // when blind index is already present
 export type TFnSecretBlindIndexCheckV2 = {
+  secretDAL: Pick<TSecretDALFactory, "findByBlindIndexes">;
   folderId: string;
   userId?: string;
   inputSecrets: Array<{ secretBlindIndex: string; type?: SecretType }>;
@@ -363,3 +372,27 @@ export type TUpdateManySecretsRawFn = {
   }[];
   userId?: string;
 };
+
+export enum SecretOperations {
+  Create = "create",
+  Update = "update",
+  Delete = "delete"
+}
+
+export type TSyncSecretsDTO<T extends boolean = false> = {
+  _deDupeQueue?: Record<string, boolean>;
+  _deDupeReplicationQueue?: Record<string, boolean>;
+  _depth?: number;
+  secretPath: string;
+  projectId: string;
+  environmentSlug: string;
+  // cases for just doing sync integration and webhook
+  excludeReplication?: T;
+} & (T extends true
+  ? object
+  : {
+      actor: ActorType;
+      actorId: string;
+      // used for import creation to trigger replication
+      pickOnlyImportIds?: string[];
+    });

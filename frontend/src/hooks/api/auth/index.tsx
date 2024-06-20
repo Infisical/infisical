@@ -1,5 +1,6 @@
 export {
   useGetAuthToken,
+  useOauthTokenExchange,
   useResetPassword,
   useSelectOrganization,
   useSendMfaToken,
@@ -7,4 +8,5 @@ export {
   useSendVerificationEmail,
   useVerifyMfaToken,
   useVerifyPasswordResetCode,
-  useVerifySignupEmailVerificationCode} from "./queries";
+  useVerifySignupEmailVerificationCode
+} from "./queries";

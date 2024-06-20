@@ -198,7 +198,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }),
       response: {
         200: z.object({
-          identityKubernetesAuth: IdentityKubernetesAuthsSchema
+          identityKubernetesAuth: IdentityKubernetesAuthResponseSchema
         })
       }
     },

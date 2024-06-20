@@ -88,7 +88,7 @@ func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 		//configFile.LoggedInUserDomain
 		//if not empty set as infisical url
 		if configFile.LoggedInUserDomain != "" {
-			config.INFISICAL_URL = configFile.LoggedInUserDomain
+			config.INFISICAL_URL = AppendAPIEndpoint(configFile.LoggedInUserDomain)
 		}
 
 		isAuthenticated := api.CallIsAuthenticated(httpClient)

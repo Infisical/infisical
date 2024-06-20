@@ -1,3 +1,5 @@
+import { SecretKeyEncoding } from "@app/db/schemas";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -21,6 +23,7 @@ type TUserServiceFactoryDep = {
     | "findOneUserAction"
     | "createUserAction"
     | "findUserEncKeyByUserId"
+    | "delete"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "find" | "insertMany">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany">;
@@ -85,7 +88,7 @@ export const userServiceFactory = ({
         tx
       );
 
-      // check if there are users with the same email.
+      // check if there are verified users with the same email.
       const users = await userDAL.find(
         {
           email,
@@ -134,6 +137,15 @@ export const userServiceFactory = ({
           );
         }
       } else {
+        await userDAL.delete(
+          {
+            email,
+            isAccepted: false,
+            isEmailVerified: false
+          },
+          tx
+        );
+
         // update current user's username to [email]
         await userDAL.updateById(
           user.id,
@@ -207,6 +219,34 @@ export const userServiceFactory = ({
     return userAction;
   };
 
+  const unlockUser = async (userId: string, token: string) => {
+    await tokenService.validateTokenForUser({
+      userId,
+      code: token,
+      type: TokenType.TOKEN_USER_UNLOCK
+    });
+
+    await userDAL.update(
+      { id: userId },
+      { consecutiveFailedMfaAttempts: 0, isLocked: false, temporaryLockDateEnd: null }
+    );
+  };
+
+  const getUserPrivateKey = async (userId: string) => {
+    const user = await userDAL.findUserEncKeyByUserId(userId);
+    if (!user?.serverEncryptedPrivateKey || !user.serverEncryptedPrivateKeyIV || !user.serverEncryptedPrivateKeyTag) {
+      throw new BadRequestError({ message: "Private key not found. Please login again" });
+    }
+    const privateKey = infisicalSymmetricDecrypt({
+      ciphertext: user.serverEncryptedPrivateKey,
+      tag: user.serverEncryptedPrivateKeyTag,
+      iv: user.serverEncryptedPrivateKeyIV,
+      keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+    });
+
+    return privateKey;
+  };
+
   return {
     sendEmailVerificationCode,
     verifyEmailVerificationCode,
@@ -216,6 +256,8 @@ export const userServiceFactory = ({
     deleteMe,
     getMe,
     createUserAction,
-    getUserAction
+    getUserAction,
+    unlockUser,
+    getUserPrivateKey
   };
 };

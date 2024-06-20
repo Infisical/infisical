@@ -1,4 +1,6 @@
 /* eslint-disable no-await-in-loop */
+import { AxiosError } from "axios";
+
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
@@ -28,7 +30,12 @@ import { TWebhookDALFactory } from "../webhook/webhook-dal";
 import { fnTriggerWebhook } from "../webhook/webhook-fns";
 import { TSecretDALFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
-import { TCreateSecretReminderDTO, THandleReminderDTO, TRemoveSecretReminderDTO } from "./secret-types";
+import {
+  TCreateSecretReminderDTO,
+  THandleReminderDTO,
+  TRemoveSecretReminderDTO,
+  TSyncSecretsDTO
+} from "./secret-types";
 
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 type TSecretQueueFactoryDep = {
@@ -59,8 +66,13 @@ export type TGetSecrets = {
 };
 
 const MAX_SYNC_SECRET_DEPTH = 5;
-const uniqueIntegrationKey = (environment: string, secretPath: string) => `integration-${environment}-${secretPath}`;
+export const uniqueSecretQueueKey = (environment: string, secretPath: string) =>
+  `secret-queue-dedupe-${environment}-${secretPath}`;
 
+type TIntegrationSecret = Record<
+  string,
+  { value: string; comment?: string; skipMultilineEncoding?: boolean | null | undefined }
+>;
 export const secretQueueFactory = ({
   queueService,
   integrationDAL,
@@ -81,68 +93,6 @@ export const secretQueueFactory = ({
   secretTagDAL,
   secretVersionTagDAL
 }: TSecretQueueFactoryDep) => {
-  const createManySecretsRawFn = createManySecretsRawFnFactory({
-    projectDAL,
-    projectBotDAL,
-    secretDAL,
-    secretVersionDAL,
-    secretBlindIndexDAL,
-    secretTagDAL,
-    secretVersionTagDAL,
-    folderDAL
-  });
-
-  const updateManySecretsRawFn = updateManySecretsRawFnFactory({
-    projectDAL,
-    projectBotDAL,
-    secretDAL,
-    secretVersionDAL,
-    secretBlindIndexDAL,
-    secretTagDAL,
-    secretVersionTagDAL,
-    folderDAL
-  });
-
-  const syncIntegrations = async (dto: TGetSecrets & { deDupeQueue?: Record<string, boolean> }) => {
-    await queueService.queue(QueueName.IntegrationSync, QueueJobs.IntegrationSync, dto, {
-      attempts: 3,
-      delay: 1000,
-      backoff: {
-        type: "exponential",
-        delay: 3000
-      },
-      removeOnComplete: true,
-      removeOnFail: true
-    });
-  };
-
-  const syncSecrets = async ({
-    deDupeQueue = {},
-    ...dto
-  }: TGetSecrets & { depth?: number; deDupeQueue?: Record<string, boolean> }) => {
-    const deDuplicationKey = uniqueIntegrationKey(dto.environment, dto.secretPath);
-    if (deDupeQueue?.[deDuplicationKey]) {
-      return;
-    }
-    // eslint-disable-next-line
-    deDupeQueue[deDuplicationKey] = true;
-    logger.info(
-      `syncSecrets: syncing project secrets where [projectId=${dto.projectId}]  [environment=${dto.environment}] [path=${dto.secretPath}]`
-    );
-    await queueService.queue(QueueName.SecretWebhook, QueueJobs.SecWebhook, dto, {
-      jobId: `secret-webhook-${dto.environment}-${dto.projectId}-${dto.secretPath}`,
-      removeOnFail: true,
-      removeOnComplete: true,
-      delay: 1000,
-      attempts: 5,
-      backoff: {
-        type: "exponential",
-        delay: 3000
-      }
-    });
-    await syncIntegrations({ ...dto, deDupeQueue });
-  };
-
   const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
     const appCfg = getConfig();
     await queueService.stopRepeatableJob(
@@ -237,8 +187,27 @@ export const secretQueueFactory = ({
       }
     }
   };
+  const createManySecretsRawFn = createManySecretsRawFnFactory({
+    projectDAL,
+    projectBotDAL,
+    secretDAL,
+    secretVersionDAL,
+    secretBlindIndexDAL,
+    secretTagDAL,
+    secretVersionTagDAL,
+    folderDAL
+  });
 
-  type Content = Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }>;
+  const updateManySecretsRawFn = updateManySecretsRawFnFactory({
+    projectDAL,
+    projectBotDAL,
+    secretDAL,
+    secretVersionDAL,
+    secretBlindIndexDAL,
+    secretTagDAL,
+    secretVersionTagDAL,
+    folderDAL
+  });
 
   /**
    * Return the secrets in a given [folderId] including secrets from
@@ -251,7 +220,7 @@ export const secretQueueFactory = ({
     key: string;
     depth: number;
   }) => {
-    let content: Content = {};
+    let content: TIntegrationSecret = {};
     if (dto.depth > MAX_SYNC_SECRET_DEPTH) {
       logger.info(
         `getIntegrationSecrets: secret depth exceeded for [projectId=${dto.projectId}] [folderId=${dto.folderId}] [depth=${dto.depth}]`
@@ -301,7 +270,7 @@ export const secretQueueFactory = ({
     await expandSecrets(content);
 
     // check if current folder has any imports from other folders
-    const secretImport = await secretImportDAL.find({ folderId: dto.folderId });
+    const secretImport = await secretImportDAL.find({ folderId: dto.folderId, isReplication: false });
 
     // if no imports then return secrets in the current folder
     if (!secretImport) return content;
@@ -333,96 +302,207 @@ export const secretQueueFactory = ({
     return content;
   };
 
+  const syncIntegrations = async (dto: TGetSecrets & { deDupeQueue?: Record<string, boolean> }) => {
+    await queueService.queue(QueueName.IntegrationSync, QueueJobs.IntegrationSync, dto, {
+      attempts: 3,
+      delay: 1000,
+      backoff: {
+        type: "exponential",
+        delay: 3000
+      },
+      removeOnComplete: true,
+      removeOnFail: true
+    });
+  };
+
+  const replicateSecrets = async (dto: Omit<TSyncSecretsDTO, "deDupeQueue">) => {
+    await queueService.queue(QueueName.SecretReplication, QueueJobs.SecretReplication, dto, {
+      attempts: 3,
+      backoff: {
+        type: "exponential",
+        delay: 2000
+      },
+      removeOnComplete: true,
+      removeOnFail: true
+    });
+  };
+
+  const syncSecrets = async <T extends boolean = false>({
+    // seperate de-dupe queue for integration sync and replication sync
+    _deDupeQueue: deDupeQueue = {},
+    _depth: depth = 0,
+    _deDupeReplicationQueue: deDupeReplicationQueue = {},
+    ...dto
+  }: TSyncSecretsDTO<T>) => {
+    logger.info(
+      `syncSecrets: syncing project secrets where [projectId=${dto.projectId}]  [environment=${dto.environmentSlug}] [path=${dto.secretPath}]`
+    );
+    const deDuplicationKey = uniqueSecretQueueKey(dto.environmentSlug, dto.secretPath);
+    if (
+      !dto.excludeReplication
+        ? deDupeReplicationQueue?.[deDuplicationKey]
+        : deDupeQueue?.[deDuplicationKey] || depth > MAX_SYNC_SECRET_DEPTH
+    ) {
+      return;
+    }
+    // eslint-disable-next-line
+    deDupeQueue[deDuplicationKey] = true;
+    // eslint-disable-next-line
+    deDupeReplicationQueue[deDuplicationKey] = true;
+    await queueService.queue(
+      QueueName.SecretSync,
+      QueueJobs.SecretSync,
+      {
+        ...dto,
+        _deDupeQueue: deDupeQueue,
+        _deDupeReplicationQueue: deDupeReplicationQueue,
+        _depth: depth
+      } as TSyncSecretsDTO,
+      {
+        removeOnFail: true,
+        removeOnComplete: true,
+        delay: 1000,
+        attempts: 5,
+        backoff: {
+          type: "exponential",
+          delay: 3000
+        }
+      }
+    );
+  };
+
+  queueService.start(QueueName.SecretSync, async (job) => {
+    const {
+      _deDupeQueue: deDupeQueue,
+      _deDupeReplicationQueue: deDupeReplicationQueue,
+      _depth: depth,
+      secretPath,
+      projectId,
+      environmentSlug: environment,
+      excludeReplication,
+      actorId,
+      actor
+    } = job.data;
+
+    await queueService.queue(
+      QueueName.SecretWebhook,
+      QueueJobs.SecWebhook,
+      { environment, projectId, secretPath },
+      {
+        jobId: `secret-webhook-${environment}-${projectId}-${secretPath}`,
+        removeOnFail: { count: 5 },
+        removeOnComplete: true,
+        delay: 1000,
+        attempts: 5,
+        backoff: {
+          type: "exponential",
+          delay: 3000
+        }
+      }
+    );
+    await syncIntegrations({ secretPath, projectId, environment, deDupeQueue });
+    if (!excludeReplication) {
+      await replicateSecrets({
+        _deDupeReplicationQueue: deDupeReplicationQueue,
+        _depth: depth,
+        projectId,
+        secretPath,
+        actorId,
+        actor,
+        excludeReplication,
+        environmentSlug: environment
+      });
+    }
+  });
+
   queueService.start(QueueName.IntegrationSync, async (job) => {
     const { environment, projectId, secretPath, depth = 1, deDupeQueue = {} } = job.data;
+    if (depth > MAX_SYNC_SECRET_DEPTH) return;
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) {
-      logger.error(new Error("Secret path not found"));
-      return;
+      throw new Error("Secret path not found");
     }
 
-    // start syncing all linked imports also
-    if (depth < MAX_SYNC_SECRET_DEPTH) {
-      // find all imports made with the given environment and secret path
-      const linkSourceDto = {
-        projectId,
-        importEnv: folder.environment.id,
-        importPath: secretPath
-      };
-      const imports = await secretImportDAL.find(linkSourceDto);
+    // find all imports made with the given environment and secret path
+    const linkSourceDto = {
+      projectId,
+      importEnv: folder.environment.id,
+      importPath: secretPath,
+      isReplication: false
+    };
+    const imports = await secretImportDAL.find(linkSourceDto);
 
-      if (imports.length) {
-        // keep calling sync secret for all the imports made
-        const importedFolderIds = unique(imports, (i) => i.folderId).map(({ folderId }) => folderId);
-        const importedFolders = await folderDAL.findSecretPathByFolderIds(projectId, importedFolderIds);
-        const foldersGroupedById = groupBy(importedFolders, (i) => i.child || i.id);
-        logger.info(
-          `getIntegrationSecrets: Syncing secret due to link change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
-        );
-        await Promise.all(
-          imports
-            .filter(({ folderId }) => Boolean(foldersGroupedById[folderId][0].path))
-            // filter out already synced ones
-            .filter(
-              ({ folderId }) =>
-                !deDupeQueue[
-                  uniqueIntegrationKey(
-                    foldersGroupedById[folderId][0].environmentSlug,
-                    foldersGroupedById[folderId][0].path
-                  )
-                ]
-            )
-            .map(({ folderId }) =>
-              syncSecrets({
-                depth: depth + 1,
-                projectId,
-                secretPath: foldersGroupedById[folderId][0].path,
-                environment: foldersGroupedById[folderId][0].environmentSlug,
-                deDupeQueue
-              })
-            )
-        );
-      }
-
-      const secretReferences = await secretDAL.findReferencedSecretReferences(
-        projectId,
-        folder.environment.slug,
-        secretPath
+    if (imports.length) {
+      // keep calling sync secret for all the imports made
+      const importedFolderIds = unique(imports, (i) => i.folderId).map(({ folderId }) => folderId);
+      const importedFolders = await folderDAL.findSecretPathByFolderIds(projectId, importedFolderIds);
+      const foldersGroupedById = groupBy(importedFolders.filter(Boolean), (i) => i?.id as string);
+      logger.info(
+        `getIntegrationSecrets: Syncing secret due to link change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
       );
-      if (secretReferences.length) {
-        const referencedFolderIds = unique(secretReferences, (i) => i.folderId).map(({ folderId }) => folderId);
-        const referencedFolders = await folderDAL.findSecretPathByFolderIds(projectId, referencedFolderIds);
-        const referencedFoldersGroupedById = groupBy(referencedFolders, (i) => i.child || i.id);
-        logger.info(
-          `getIntegrationSecrets: Syncing secret due to reference change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
-        );
-        await Promise.all(
-          secretReferences
-            .filter(({ folderId }) => Boolean(referencedFoldersGroupedById[folderId][0].path))
-            // filter out already synced ones
-            .filter(
-              ({ folderId }) =>
-                !deDupeQueue[
-                  uniqueIntegrationKey(
-                    referencedFoldersGroupedById[folderId][0].environmentSlug,
-                    referencedFoldersGroupedById[folderId][0].path
-                  )
-                ]
-            )
-            .map(({ folderId }) =>
-              syncSecrets({
-                depth: depth + 1,
-                projectId,
-                secretPath: referencedFoldersGroupedById[folderId][0].path,
-                environment: referencedFoldersGroupedById[folderId][0].environmentSlug,
-                deDupeQueue
-              })
-            )
-        );
-      }
-    } else {
-      logger.info(`getIntegrationSecrets: Secret depth exceeded for [projectId=${projectId}] [folderId=${folder.id}]`);
+      await Promise.all(
+        imports
+          .filter(({ folderId }) => Boolean(foldersGroupedById[folderId][0]?.path as string))
+          // filter out already synced ones
+          .filter(
+            ({ folderId }) =>
+              !deDupeQueue[
+                uniqueSecretQueueKey(
+                  foldersGroupedById[folderId][0]?.environmentSlug as string,
+                  foldersGroupedById[folderId][0]?.path as string
+                )
+              ]
+          )
+          .map(({ folderId }) =>
+            syncSecrets({
+              projectId,
+              secretPath: foldersGroupedById[folderId][0]?.path as string,
+              environmentSlug: foldersGroupedById[folderId][0]?.environmentSlug as string,
+              _deDupeQueue: deDupeQueue,
+              _depth: depth + 1,
+              excludeReplication: true
+            })
+          )
+      );
+    }
+
+    const secretReferences = await secretDAL.findReferencedSecretReferences(
+      projectId,
+      folder.environment.slug,
+      secretPath
+    );
+    if (secretReferences.length) {
+      const referencedFolderIds = unique(secretReferences, (i) => i.folderId).map(({ folderId }) => folderId);
+      const referencedFolders = await folderDAL.findSecretPathByFolderIds(projectId, referencedFolderIds);
+      const referencedFoldersGroupedById = groupBy(referencedFolders.filter(Boolean), (i) => i?.id as string);
+      logger.info(
+        `getIntegrationSecrets: Syncing secret due to reference change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
+      );
+      await Promise.all(
+        secretReferences
+          .filter(({ folderId }) => Boolean(referencedFoldersGroupedById[folderId][0]?.path))
+          // filter out already synced ones
+          .filter(
+            ({ folderId }) =>
+              !deDupeQueue[
+                uniqueSecretQueueKey(
+                  referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
+                  referencedFoldersGroupedById[folderId][0]?.path as string
+                )
+              ]
+          )
+          .map(({ folderId }) =>
+            syncSecrets({
+              projectId,
+              secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
+              environmentSlug: referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
+              _deDupeQueue: deDupeQueue,
+              _depth: depth + 1,
+              excludeReplication: true
+            })
+          )
+      );
     }
 
     const integrations = await integrationDAL.findByProjectIdV2(projectId, environment); // note: returns array of integrations + integration auths in this environment
@@ -464,7 +544,7 @@ export const secretQueueFactory = ({
       }
 
       try {
-        await syncIntegrationSecrets({
+        const response = await syncIntegrationSecrets({
           createManySecretsRawFn,
           updateManySecretsRawFn,
           integrationDAL,
@@ -482,15 +562,20 @@ export const secretQueueFactory = ({
         await integrationDAL.updateById(integration.id, {
           lastSyncJobId: job.id,
           lastUsed: new Date(),
-          syncMessage: "",
-          isSynced: true
+          syncMessage: response?.syncMessage ?? "",
+          isSynced: response?.isSynced ?? true
         });
-      } catch (err: unknown) {
-        logger.info("Secret integration sync error:", err);
+      } catch (err) {
+        logger.info("Secret integration sync error: %o", err);
+
+        const message =
+          (err instanceof AxiosError ? JSON.stringify(err?.response?.data) : (err as Error)?.message) ||
+          "Unknown error occurred.";
+
         await integrationDAL.updateById(integration.id, {
           lastSyncJobId: job.id,
           lastUsed: new Date(),
-          syncMessage: (err as Error)?.message,
+          syncMessage: message,
           isSynced: false
         });
       }
@@ -546,10 +631,11 @@ export const secretQueueFactory = ({
 
   return {
     // depth is internal only field thus no need to make it available outside
-    syncSecrets: (dto: TGetSecrets) => syncSecrets(dto),
+    syncSecrets,
     syncIntegrations,
     addSecretReminder,
     removeSecretReminder,
-    handleSecretReminder
+    handleSecretReminder,
+    replicateSecrets
   };
 };

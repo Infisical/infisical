@@ -1,11 +1,6 @@
 import { TImmutableDBKeys, TSecretApprovalPolicies, TSecretApprovalRequestsSecrets } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
-
-export enum CommitType {
-  Create = "create",
-  Update = "update",
-  Delete = "delete"
-}
+import { SecretOperations } from "@app/services/secret/secret-types";
 
 export enum RequestState {
   Open = "open",
@@ -18,14 +13,14 @@ export enum ApprovalStatus {
   REJECTED = "rejected"
 }
 
-type TApprovalCreateSecret = Omit<
+export type TApprovalCreateSecret = Omit<
   TSecretApprovalRequestsSecrets,
   TImmutableDBKeys | "version" | "algorithm" | "keyEncoding" | "requestId" | "op" | "secretVersion" | "secretBlindIndex"
 > & {
   secretName: string;
   tagIds?: string[];
 };
-type TApprovalUpdateSecret = Partial<TApprovalCreateSecret> & {
+export type TApprovalUpdateSecret = Partial<TApprovalCreateSecret> & {
   secretName: string;
   newSecretName?: string;
   tagIds?: string[];
@@ -36,9 +31,9 @@ export type TGenerateSecretApprovalRequestDTO = {
   secretPath: string;
   policy: TSecretApprovalPolicies;
   data: {
-    [CommitType.Create]?: TApprovalCreateSecret[];
-    [CommitType.Update]?: TApprovalUpdateSecret[];
-    [CommitType.Delete]?: { secretName: string }[];
+    [SecretOperations.Create]?: TApprovalCreateSecret[];
+    [SecretOperations.Update]?: TApprovalUpdateSecret[];
+    [SecretOperations.Delete]?: { secretName: string }[];
   };
 } & TProjectPermission;
 

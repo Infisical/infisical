@@ -29,7 +29,7 @@ const envSchema = z
     DB_USER: zpStr(z.string().describe("Postgres database username").optional()),
     DB_PASSWORD: zpStr(z.string().describe("Postgres database password").optional()),
     DB_NAME: zpStr(z.string().describe("Postgres database name").optional()),
-
+    BCRYPT_SALT_ROUND: z.number().default(12),
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
     INITIAL_ORGANIZATION_NAME: zpStr(z.string().optional()),
@@ -39,7 +39,9 @@ const envSchema = z
     HTTPS_ENABLED: zodStrBool,
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
-    SMTP_SECURE: zodStrBool,
+    SMTP_IGNORE_TLS: zodStrBool.default("false"),
+    SMTP_REQUIRE_TLS: zodStrBool.default("true"),
+    SMTP_TLS_REJECT_UNAUTHORIZED: zodStrBool.default("true"),
     SMTP_PORT: z.coerce.number().default(587),
     SMTP_USERNAME: zpStr(z.string().optional()),
     SMTP_PASSWORD: zpStr(z.string().optional()),
@@ -75,6 +77,7 @@ const envSchema = z
         .optional()
         .default(process.env.URL_GITLAB_LOGIN ?? GITLAB_URL)
     ), // fallback since URL_GITLAB_LOGIN has been renamed
+    DEFAULT_SAML_ORG_SLUG: zpStr(z.string().optional()).default(process.env.NEXT_PUBLIC_SAML_ORG_SLUG),
     // integration client secrets
     // heroku
     CLIENT_ID_HEROKU: zpStr(z.string().optional()),
@@ -119,7 +122,8 @@ const envSchema = z
       .transform((val) => val === "true")
       .optional(),
     INFISICAL_CLOUD: zodStrBool.default("false"),
-    MAINTENANCE_MODE: zodStrBool.default("false")
+    MAINTENANCE_MODE: zodStrBool.default("false"),
+    CAPTCHA_SECRET: zpStr(z.string().optional())
   })
   .transform((data) => ({
     ...data,
@@ -131,7 +135,8 @@ const envSchema = z
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
-      Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET)
+      Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
+    samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG
   }));
 
 let envCfg: Readonly<z.infer<typeof envSchema>>;
@@ -150,13 +155,20 @@ export const initEnvConfig = (logger: Logger) => {
   return envCfg;
 };
 
-export const formatSmtpConfig = () => ({
-  host: envCfg.SMTP_HOST,
-  port: envCfg.SMTP_PORT,
-  auth:
-    envCfg.SMTP_USERNAME && envCfg.SMTP_PASSWORD
-      ? { user: envCfg.SMTP_USERNAME, pass: envCfg.SMTP_PASSWORD }
-      : undefined,
-  secure: envCfg.SMTP_SECURE,
-  from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`
-});
+export const formatSmtpConfig = () => {
+  return {
+    host: envCfg.SMTP_HOST,
+    port: envCfg.SMTP_PORT,
+    auth:
+      envCfg.SMTP_USERNAME && envCfg.SMTP_PASSWORD
+        ? { user: envCfg.SMTP_USERNAME, pass: envCfg.SMTP_PASSWORD }
+        : undefined,
+    secure: envCfg.SMTP_PORT === 465,
+    from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`,
+    ignoreTLS: envCfg.SMTP_IGNORE_TLS,
+    requireTLS: envCfg.SMTP_REQUIRE_TLS,
+    tls: {
+      rejectUnauthorized: envCfg.SMTP_TLS_REJECT_UNAUTHORIZED
+    }
+  };
+};

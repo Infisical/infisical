@@ -32,10 +32,7 @@
     "thumbsRating": true
   },
   "api": {
-    "baseUrl": [
-      "https://app.infisical.com",
-      "http://localhost:8080"
-    ]
+    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
   },
   "topbarLinks": [
     {
@@ -76,9 +73,7 @@
         "documentation/getting-started/introduction",
         {
           "group": "Quickstart",
-          "pages": [
-            "documentation/guides/local-development"
-          ]
+          "pages": ["documentation/guides/local-development"]
         },
         {
           "group": "Guides",
@@ -108,6 +103,14 @@
           ]
         },
         {
+          "group": "Internal PKI",
+          "pages": [
+            "documentation/platform/pki/overview",
+            "documentation/platform/pki/private-ca",
+            "documentation/platform/pki/certificates"
+          ]
+        },
+        {
           "group": "Identities",
           "pages": [
             "documentation/platform/identities/overview",
@@ -124,7 +127,9 @@
             "documentation/platform/access-controls/temporary-access",
             "documentation/platform/access-controls/access-requests",
             "documentation/platform/pr-workflows",
-            "documentation/platform/audit-logs"
+            "documentation/platform/audit-logs",
+            "documentation/platform/audit-log-streams",
+            "documentation/platform/groups"
           ]
         },
         {
@@ -148,8 +153,7 @@
             "documentation/platform/dynamic-secrets/aws-iam"
           ]
         },
-        "documentation/platform/groups",
-        "documentation/platform/audit-log-streams"
+        "documentation/platform/secret-sharing"
       ]
     },
     {
@@ -160,6 +164,7 @@
         "documentation/platform/identities/universal-auth",
         "documentation/platform/identities/kubernetes-auth",
         "documentation/platform/identities/gcp-auth",
+        "documentation/platform/identities/azure-auth",
         "documentation/platform/identities/aws-auth",
         "documentation/platform/mfa",
         {
@@ -219,9 +224,7 @@
         },
         {
           "group": "Reference architectures",
-          "pages": [
-            "self-hosting/reference-architectures/aws-ecs"
-          ]
+          "pages": ["self-hosting/reference-architectures/aws-ecs"]
         },
         "self-hosting/ee",
         "self-hosting/faq"
@@ -341,6 +344,7 @@
           "pages": [
             "integrations/cicd/circleci",
             "integrations/cicd/travisci",
+            "integrations/cicd/rundeck",
             "integrations/cicd/codefresh",
             "integrations/cloud/checkly"
           ]
@@ -377,21 +381,18 @@
     },
     {
       "group": "Build Tool Integrations",
-      "pages": [
-        "integrations/build-tools/gradle"
-      ]
+      "pages": ["integrations/build-tools/gradle"]
     },
     {
       "group": "",
-      "pages": [
-        "sdks/overview"
-      ]
+      "pages": ["sdks/overview"]
     },
     {
       "group": "SDK's",
       "pages": [
         "sdks/languages/node",
         "sdks/languages/python",
+        "sdks/languages/go",
         "sdks/languages/java",
         "sdks/languages/csharp"
       ]
@@ -403,9 +404,7 @@
         "api-reference/overview/authentication",
         {
           "group": "Examples",
-          "pages": [
-            "api-reference/overview/examples/integration"
-          ]
+          "pages": ["api-reference/overview/examples/integration"]
         }
       ]
     },
@@ -476,6 +475,16 @@
           ]
         },
         {
+          "group": "Project Roles",
+          "pages": [
+            "api-reference/endpoints/project-roles/create",
+            "api-reference/endpoints/project-roles/update",
+            "api-reference/endpoints/project-roles/delete",
+            "api-reference/endpoints/project-roles/get-by-slug",
+            "api-reference/endpoints/project-roles/list"
+          ]
+        },
+        {
           "group": "Environments",
           "pages": [
             "api-reference/endpoints/environments/create",
@@ -496,7 +505,10 @@
           "group": "Secret Tags",
           "pages": [
             "api-reference/endpoints/secret-tags/list",
+            "api-reference/endpoints/secret-tags/get-by-id",
+            "api-reference/endpoints/secret-tags/get-by-slug",
             "api-reference/endpoints/secret-tags/create",
+            "api-reference/endpoints/secret-tags/update",
             "api-reference/endpoints/secret-tags/delete"
           ]
         },
@@ -551,14 +563,34 @@
         },
         {
           "group": "Service Tokens",
-          "pages": [
-            "api-reference/endpoints/service-tokens/get"
-          ]
+          "pages": ["api-reference/endpoints/service-tokens/get"]
         },
         {
           "group": "Audit Logs",
+          "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+        },
+        {
+          "group": "Certificate Authorities",
           "pages": [
-            "api-reference/endpoints/audit-logs/export-audit-log"
+            "api-reference/endpoints/certificate-authorities/create",
+            "api-reference/endpoints/certificate-authorities/read",
+            "api-reference/endpoints/certificate-authorities/update",
+            "api-reference/endpoints/certificate-authorities/delete",
+            "api-reference/endpoints/certificate-authorities/csr",
+            "api-reference/endpoints/certificate-authorities/cert",
+            "api-reference/endpoints/certificate-authorities/sign-intermediate",
+            "api-reference/endpoints/certificate-authorities/import-cert",
+            "api-reference/endpoints/certificate-authorities/issue-cert",
+            "api-reference/endpoints/certificate-authorities/crl"
+          ]
+        },
+        {
+          "group": "Certificates",
+          "pages": [
+            "api-reference/endpoints/certificates/read",
+            "api-reference/endpoints/certificates/revoke",
+            "api-reference/endpoints/certificates/delete",
+            "api-reference/endpoints/certificates/cert-body"
           ]
         }
       ]
@@ -575,9 +607,7 @@
     },
     {
       "group": "",
-      "pages": [
-        "changelog/overview"
-      ]
+      "pages": ["changelog/overview"]
     },
     {
       "group": "Contributing",
@@ -601,9 +631,7 @@
         },
         {
           "group": "Contributing to SDK",
-          "pages": [
-            "contributing/sdk/developing"
-          ]
+          "pages": ["contributing/sdk/developing"]
         }
       ]
     }

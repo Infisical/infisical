@@ -5,17 +5,16 @@ import { useRouter } from "next/router";
 import axios from "axios";
 import jwt_decode from "jwt-decode";
 
-import Error from "@app/components/basic/Error"; // which to notification
+import Error from "@app/components/basic/Error";
 import { createNotification } from "@app/components/notifications";
 import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa";
 import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
+import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button } from "@app/components/v2";
-import { useUpdateUserAuthMethods } from "@app/hooks/api";
 import { useSendMfaToken } from "@app/hooks/api/auth";
-import { useSelectOrganization } from "@app/hooks/api/auth/queries";
+import { useSelectOrganization, verifyMfaToken } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import { fetchUserDetails } from "@app/hooks/api/users/queries";
-import { AuthMethod } from "@app/hooks/api/users/types";
+import { fetchMyPrivateKey } from "@app/hooks/api/users/queries";
 
 import { navigateUserToOrg, navigateUserToSelectOrg } from "../../Login.utils";
 
@@ -46,20 +45,7 @@ type Props = {
   callbackPort?: string | null;
 };
 
-interface VerifyMfaTokenError {
-  response: {
-    data: {
-      context: {
-        code: string;
-        triesLeft: number;
-      };
-    };
-    status: number;
-  };
-}
-
 export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
-  
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingResend, setIsLoadingResend] = useState(false);
@@ -69,15 +55,59 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
   const { t } = useTranslation();
 
   const sendMfaToken = useSendMfaToken();
-  const { mutateAsync: updateUserAuthMethodsMutateAsync } = useUpdateUserAuthMethods();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
+
+  // They don't have password
+  const handleLoginMfaOauth = async (callbackPort: string, organizationId?: string) => {
+    setIsLoading(true);
+    const { token } = await verifyMfaToken({
+      email,
+      mfaCode
+    });
+    //
+    // unset temporary (MFA) JWT token and set JWT token
+    SecurityClient.setMfaToken("");
+    SecurityClient.setToken(token);
+    SecurityClient.setProviderAuthToken("");
+    const privateKey = await fetchMyPrivateKey();
+    localStorage.setItem("PRIVATE_KEY", privateKey);
+
+    // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
+    if (organizationId) {
+      const { token: newJwtToken } = await selectOrganization({ organizationId });
+      if (callbackPort) {
+        const cliUrl = `http://127.0.0.1:${callbackPort}/`;
+        const instance = axios.create();
+        await instance.post(cliUrl, {
+          email,
+          privateKey,
+          JTWToken: newJwtToken
+        });
+      }
+      await navigateUserToOrg(router, organizationId);
+    }
+    // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
+    // if the user has no orgs, navigate to the create org page
+    else {
+      const userOrgs = await fetchOrganizations();
+
+      // case: user has orgs, so we navigate the user to select an org
+      if (userOrgs.length > 0) {
+        navigateUserToSelectOrg(router, callbackPort);
+      }
+      // case: no orgs found, so we navigate the user to create an org
+      // cli login will fail in this case
+      else {
+        await navigateUserToOrg(router);
+      }
+    }
+  };
 
   const handleLoginMfa = async () => {
     try {
-      let isLinkingRequired: undefined | boolean;
       let callbackPort: undefined | string;
-      let authMethod: undefined | AuthMethod;
       let organizationId: undefined | string;
+      let hasExchangedPrivateKey: undefined | boolean;
 
       const queryParams = new URLSearchParams(window.location.search);
 
@@ -86,10 +116,9 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
       if (providerAuthToken) {
         const decodedToken = jwt_decode(providerAuthToken) as any;
 
-        isLinkingRequired = decodedToken.isLinkingRequired;
         callbackPort = decodedToken.callbackPort;
-        authMethod = decodedToken.authMethod;
         organizationId = decodedToken?.organizationId;
+        hasExchangedPrivateKey = decodedToken?.hasExchangedPrivateKey;
       }
 
       if (mfaCode.length !== 6) {
@@ -97,6 +126,11 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
           text: "Please enter a 6-digit MFA code and try again",
           type: "error"
         });
+        return;
+      }
+
+      if (hasExchangedPrivateKey) {
+        await handleLoginMfaOauth(callbackPort as string, organizationId);
         return;
       }
 
@@ -158,14 +192,6 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
             type: "success"
           });
 
-          if (isLinkingRequired && authMethod) {
-            const user = await fetchUserDetails();
-            const newAuthMethods = [...user.authMethods, authMethod];
-            await updateUserAuthMethodsMutateAsync({
-              authMethods: newAuthMethods
-            });
-          }
-
           if (organizationId) {
             await navigateUserToOrg(router, organizationId);
           } else {
@@ -178,20 +204,31 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
           });
         }
       }
-    } catch (err) {
-      const error = err as VerifyMfaTokenError;
+    } catch (err: any) {
+      if (err.response.data.error === "User Locked") {
+        createNotification({
+          title: err.response.data.error,
+          text: err.response.data.message,
+          type: "error"
+        });
+        setIsLoading(false);
+        return;
+      }
+
       createNotification({
         text: "Failed to log in",
         type: "error"
       });
 
-      if (error?.response?.status === 500) {
-        window.location.reload();
-      } else if (error?.response?.data?.context?.triesLeft) {
-        setTriesLeft(error?.response?.data?.context?.triesLeft);
-        if (error.response.data.context.triesLeft === 0) {
-          window.location.reload();
-        }
+      if (triesLeft) {
+        setTriesLeft((left) => {
+          if (triesLeft === 1) {
+            router.push("/");
+          }
+          return (left as number) - 1;
+        });
+      } else {
+        setTriesLeft(2);
       }
 
       setIsLoading(false);
@@ -236,7 +273,7 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
         />
       </div>
       {typeof triesLeft === "number" && (
-        <Error text={`${t("mfa.step2-code-error")} ${triesLeft}`} />
+        <Error text={`Invalid code. You have ${triesLeft} attempt(s) remaining.`} />
       )}
       <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
         <div className="text-l w-full py-1 text-lg">

@@ -156,12 +156,16 @@ func CallGetDecryptedSecretsV3(httpClient *resty.Client, request GetDecryptedSec
 		R().
 		SetResult(&decryptedSecretsResponse).
 		SetHeader("User-Agent", USER_AGENT_NAME).
+		SetQueryParam("include_imports", "true").
 		SetQueryParam("secretPath", request.SecretPath).
 		SetQueryParam("workspaceSlug", request.ProjectSlug).
 		SetQueryParam("environment", request.Environment)
 
 	if request.Recursive {
 		req.SetQueryParam("recursive", "true")
+	}
+	if request.ExpandSecretReferences {
+		req.SetQueryParam("expandSecretReferences", "true")
 	}
 
 	response, err := req.Get(fmt.Sprintf("%v/v3/secrets/raw", API_HOST_URL))

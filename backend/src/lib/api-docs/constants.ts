@@ -225,7 +225,8 @@ export const PROJECT_IDENTITIES = {
     roles: {
       description: "A list of role slugs to assign to the identity project membership.",
       role: "The role slug to assign to the newly created identity project membership.",
-      isTemporary: "Whether the assigned role is temporary.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
       temporaryMode: "Type of temporary expiry.",
       temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s,2m,3h",
       temporaryAccessStartTime: "Time to which the temporary access starts"
@@ -242,7 +243,8 @@ export const PROJECT_IDENTITIES = {
     roles: {
       description: "A list of role slugs to assign to the newly created identity project membership.",
       role: "The role slug to assign to the newly created identity project membership.",
-      isTemporary: "Whether the assigned role is temporary.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
       temporaryMode: "Type of temporary expiry.",
       temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s,2m,3h",
       temporaryAccessStartTime: "Time to which the temporary access starts"
@@ -341,7 +343,8 @@ export const RAW_SECRETS = {
     secretValue: "The value of the secret to create.",
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to create.",
-    workspaceId: "The ID of the project to create the secret in."
+    workspaceId: "The ID of the project to create the secret in.",
+    tagIds: "The ID of the tags to be attached to the created secret."
   },
   GET: {
     secretName: "The name of the secret to get.",
@@ -362,7 +365,8 @@ export const RAW_SECRETS = {
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to update.",
     projectSlug: "The slug of the project to update the secret in.",
-    workspaceId: "The ID of the project to update the secret in."
+    workspaceId: "The ID of the project to update the secret in.",
+    tagIds: "The ID of the tags to be attached to the updated secret."
   },
   DELETE: {
     secretName: "The name of the secret to delete.",
@@ -384,6 +388,8 @@ export const SECRET_IMPORTS = {
     environment: "The slug of the environment to import into.",
     path: "The path to import into.",
     workspaceId: "The ID of the project you are working in.",
+    isReplication:
+      "When true, secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately.",
     import: {
       environment: "The slug of the environment to import from.",
       path: "The path to import from."
@@ -502,11 +508,26 @@ export const SECRET_TAGS = {
   LIST: {
     projectId: "The ID of the project to list tags from."
   },
+  GET_TAG_BY_ID: {
+    projectId: "The ID of the project to get tags from.",
+    tagId: "The ID of the tag to get details"
+  },
+  GET_TAG_BY_SLUG: {
+    projectId: "The ID of the project to get tags from.",
+    tagSlug: "The slug of the tag to get details"
+  },
   CREATE: {
     projectId: "The ID of the project to create the tag in.",
     name: "The name of the tag to create.",
     slug: "The slug of the tag to create.",
     color: "The color of the tag to create."
+  },
+  UPDATE: {
+    projectId: "The ID of the project to update the tag in.",
+    tagId: "The ID of the tag to get details",
+    name: "The name of the tag to update.",
+    slug: "The slug of the tag to update.",
+    color: "The color of the tag to update."
   },
   DELETE: {
     tagId: "The ID of the tag to delete.",
@@ -519,7 +540,8 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     projectSlug: "The slug of the project of the identity in.",
     identityId: "The ID of the identity to create.",
     slug: "The slug of the privilege to create.",
-    permissions: `The permission object for the privilege.
+    permissions: `@deprecated - use privilegePermission
+The permission object for the privilege.
 - Read secrets
 \`\`\`
 { "permissions": [{"action": "read", "subject": "secrets"]}
@@ -533,6 +555,7 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
 - { "permissions": [{"action": "read", "subject": "secrets", "conditions": { "environment": "dev", "secretPath": { "$glob": "/" } }}] }
 \`\`\`
 `,
+    privilegePermission: "The permission object for the privilege.",
     isPackPermission: "Whether the server should pack(compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
     temporaryMode: "Type of temporary access given. Types: relative",
@@ -544,7 +567,8 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
     identityId: "The ID of the identity to update.",
     slug: "The slug of the privilege to update.",
     newSlug: "The new slug of the privilege to update.",
-    permissions: `The permission object for the privilege.
+    permissions: `@deprecated - use privilegePermission
+The permission object for the privilege.
 - Read secrets
 \`\`\`
 { "permissions": [{"action": "read", "subject": "secrets"]}
@@ -558,6 +582,7 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE = {
 - { "permissions": [{"action": "read", "subject": "secrets", "conditions": { "environment": "dev", "secretPath": { "$glob": "/" } }}] }
 \`\`\`
 `,
+    privilegePermission: "The permission object for the privilege.",
     isTemporary: "Whether the privilege is temporary.",
     temporaryMode: "Type of temporary access given. Types: relative",
     temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
@@ -655,6 +680,7 @@ export const INTEGRATION = {
     targetServiceId:
       "The service based grouping identifier ID of the external provider. Used in Terraform cloud, Checkly, Railway and NorthFlank",
     owner: "External integration providers service entity owner. Used in Github.",
+    url: "The self-hosted URL of the platform to integrate with",
     path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault",
     region: "AWS region to sync secrets to.",
     scope: "Scope of the provider. Used by Github, Qovery",
@@ -667,7 +693,10 @@ export const INTEGRATION = {
       secretGCPLabel: "The label for GCP secrets.",
       secretAWSTag: "The tags for AWS secrets.",
       kmsKeyId: "The ID of the encryption key from AWS KMS.",
-      shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store."
+      shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store.",
+      shouldMaskSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Masked'.",
+      shouldProtectSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Protected'.",
+      shouldEnableDelete: "The flag to enable deletion of secrets"
     }
   },
   UPDATE: {
@@ -713,5 +742,130 @@ export const AUDIT_LOG_STREAMS = {
   },
   GET_BY_ID: {
     id: "The ID of the audit log stream to get details."
+  }
+};
+
+export const CERTIFICATE_AUTHORITIES = {
+  CREATE: {
+    projectSlug: "Slug of the project to create the CA in.",
+    type: "The type of CA to create",
+    friendlyName: "A friendly name for the CA",
+    organization: "The organization (O) for the CA",
+    ou: "The organization unit (OU) for the CA",
+    country: "The country name (C) for the CA",
+    province: "The state of province name for the CA",
+    locality: "The locality name for the CA",
+    commonName: "The common name (CN) for the CA",
+    notBefore: "The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    notAfter: "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    maxPathLength:
+      "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
+    keyAlgorithm:
+      "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA."
+  },
+  GET: {
+    caId: "The ID of the CA to get"
+  },
+  UPDATE: {
+    caId: "The ID of the CA to update",
+    status: "The status of the CA to update to. This can be one of active or disabled"
+  },
+  DELETE: {
+    caId: "The ID of the CA to delete"
+  },
+  GET_CSR: {
+    caId: "The ID of the CA to generate CSR from",
+    csr: "The generated CSR from the CA"
+  },
+  GET_CERT: {
+    caId: "The ID of the CA to get the certificate body and certificate chain from",
+    certificate: "The certificate body of the CA",
+    certificateChain: "The certificate chain of the CA",
+    serialNumber: "The serial number of the CA certificate"
+  },
+  SIGN_INTERMEDIATE: {
+    caId: "The ID of the CA to sign the intermediate certificate with",
+    csr: "The CSR to sign with the CA",
+    notBefore: "The date and time when the intermediate CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    notAfter: "The date and time when the intermediate CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    maxPathLength:
+      "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
+    certificate: "The signed intermediate certificate",
+    certificateChain: "The certificate chain of the intermediate certificate",
+    issuingCaCertificate: "The certificate of the issuing CA",
+    serialNumber: "The serial number of the intermediate certificate"
+  },
+  IMPORT_CERT: {
+    caId: "The ID of the CA to import the certificate for",
+    certificate: "The certificate body to import",
+    certificateChain: "The certificate chain to import"
+  },
+  ISSUE_CERT: {
+    caId: "The ID of the CA to issue the certificate from",
+    friendlyName: "A friendly name for the certificate",
+    commonName: "The common name (CN) for the certificate",
+    ttl: "The time to live for the certificate such as 1m, 1h, 1d, 1y, ...",
+    notBefore: "The date and time when the certificate becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    notAfter: "The date and time when the certificate expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    certificate: "The issued certificate",
+    issuingCaCertificate: "The certificate of the issuing CA",
+    certificateChain: "The certificate chain of the issued certificate",
+    privateKey: "The private key of the issued certificate",
+    serialNumber: "The serial number of the issued certificate"
+  },
+  GET_CRL: {
+    caId: "The ID of the CA to get the certificate revocation list (CRL) for",
+    crl: "The certificate revocation list (CRL) of the CA"
+  }
+};
+
+export const CERTIFICATES = {
+  GET: {
+    serialNumber: "The serial number of the certificate to get"
+  },
+  REVOKE: {
+    serialNumber:
+      "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
+    revocationReason: "The reason for revoking the certificate.",
+    revokedAt: "The date and time when the certificate was revoked",
+    serialNumberRes: "The serial number of the revoked certificate."
+  },
+  DELETE: {
+    serialNumber: "The serial number of the certificate to delete"
+  },
+  GET_CERT: {
+    serialNumber: "The serial number of the certificate to get the certificate body and certificate chain for",
+    certificate: "The certificate body of the certificate",
+    certificateChain: "The certificate chain of the certificate",
+    serialNumberRes: "The serial number of the certificate"
+  }
+};
+
+export const PROJECT_ROLE = {
+  CREATE: {
+    projectSlug: "Slug of the project to create the role for.",
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  UPDATE: {
+    projectSlug: "Slug of the project to update the role for.",
+    roleId: "The ID of the role to update",
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  DELETE: {
+    projectSlug: "Slug of the project to delete this role for.",
+    roleId: "The ID of the role to update"
+  },
+  GET_ROLE_BY_SLUG: {
+    projectSlug: "The slug of the project.",
+    roleSlug: "The slug of the role to get details"
+  },
+  LIST: {
+    projectSlug: "The slug of the project to list the roles of."
   }
 };

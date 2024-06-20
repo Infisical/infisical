@@ -6,6 +6,7 @@ const headersOrder = [
   "cf-connecting-ip", // Cloudflare
   "Cf-Pseudo-IPv4", // Cloudflare
   "x-client-ip", // Most common
+  "x-envoy-external-address", // for envoy
   "x-forwarded-for", // Mostly used by proxies
   "fastly-client-ip",
   "true-client-ip", // Akamai and Cloudflare
@@ -23,7 +24,21 @@ export const fastifyIp = fp(async (fastify) => {
     const forwardedIpHeader = headersOrder.find((header) => Boolean(req.headers[header]));
     const forwardedIp = forwardedIpHeader ? req.headers[forwardedIpHeader] : undefined;
     if (forwardedIp) {
-      req.realIp = Array.isArray(forwardedIp) ? forwardedIp[0] : forwardedIp;
+      if (Array.isArray(forwardedIp)) {
+        // eslint-disable-next-line
+        req.realIp = forwardedIp[0];
+        return;
+      }
+
+      if (forwardedIp.includes(",")) {
+        // the ip header when placed with load balancers that proxy request
+        // will attach the internal ips to header by appending with comma
+        // https://github.com/go-chi/chi/blob/master/middleware/realip.go
+        const clientIPFromProxy = forwardedIp.slice(0, forwardedIp.indexOf(",")).trim();
+        req.realIp = clientIPFromProxy;
+        return;
+      }
+      req.realIp = forwardedIp;
     } else {
       req.realIp = req.ip;
     }

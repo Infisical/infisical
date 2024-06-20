@@ -30,7 +30,8 @@ export enum Integrations {
   DIGITAL_OCEAN_APP_PLATFORM = "digital-ocean-app-platform",
   CLOUD_66 = "cloud-66",
   NORTHFLANK = "northflank",
-  HASURA_CLOUD = "hasura-cloud"
+  HASURA_CLOUD = "hasura-cloud",
+  RUNDECK = "rundeck"
 }
 
 export enum IntegrationType {
@@ -364,6 +365,15 @@ export const getIntegrationOptions = async () => {
       name: "Hasura Cloud",
       slug: "hasura-cloud",
       image: "Hasura.svg",
+      isAvailable: true,
+      type: "pat",
+      clientId: "",
+      docsLink: ""
+    },
+    {
+      name: "Rundeck",
+      slug: "rundeck",
+      image: "Rundeck.svg",
       isAvailable: true,
       type: "pat",
       clientId: "",

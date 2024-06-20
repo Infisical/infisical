@@ -24,7 +24,7 @@ import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 
 type Props = {
-  onSelectRole: (role?: TProjectRole) => void;
+  onSelectRole: (slug?: string) => void;
 };
 
 export const ProjectRoleList = ({ onSelectRole }: Props) => {
@@ -32,10 +32,9 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
 
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
   const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
+  const projectSlug = currentWorkspace?.slug || "";
 
-  const { data: roles, isLoading: isRolesLoading } = useGetProjectRoles(workspaceId);
-  console.log(roles);
+  const { data: roles, isLoading: isRolesLoading } = useGetProjectRoles(projectSlug);
 
   const { mutateAsync: deleteRole } = useDeleteProjectRole();
 
@@ -43,7 +42,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
     try {
       await deleteRole({
-        projectId: workspaceId,
+        projectSlug,
         id
       });
       createNotification({ type: "success", text: "Successfully removed the role" });
@@ -109,7 +108,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
                             <IconButton
                               isDisabled={!isAllowed}
                               ariaLabel="edit"
-                              onClick={() => onSelectRole(role)}
+                              onClick={() => onSelectRole(role.slug)}
                               variant="plain"
                             >
                               <FontAwesomeIcon icon={faEdit} />
@@ -146,9 +145,8 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
       </div>
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
-        title={`Are you sure want to delete ${
-          (popUp?.deleteRole?.data as TProjectRole)?.name || " "
-        } role?`}
+        title={`Are you sure want to delete ${(popUp?.deleteRole?.data as TProjectRole)?.name || " "
+          } role?`}
         deleteKey={(popUp?.deleteRole?.data as TProjectRole)?.slug || ""}
         onClose={() => handlePopUpClose("deleteRole")}
         onDeleteApproved={handleRoleDelete}

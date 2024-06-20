@@ -35,11 +35,12 @@ jobs:
             echo "SECRET_SCANNING_GIT_APP_ID=793712" >> .env
             echo "SECRET_SCANNING_PRIVATE_KEY=some-random" >> .env
             echo "SECRET_SCANNING_WEBHOOK_SECRET=some-random" >> .env
-            docker run --name infisical-api -d -p 4000:4000 -e DB_CONNECTION_URI=$DB_CONNECTION_URI -e REDIS_URL=$REDIS_URL -e JWT_AUTH_SECRET=$JWT_AUTH_SECRET --env-file .env --entrypoint '/bin/sh' infisical-api -c "npm run migration:latest && ls && node dist/main.mjs"
+            docker run --name infisical-api -d -p 4000:4000 -e DB_CONNECTION_URI=$DB_CONNECTION_URI -e REDIS_URL=$REDIS_URL -e JWT_AUTH_SECRET=$JWT_AUTH_SECRET -e ENCRYPTION_KEY=$ENCRYPTION_KEY --env-file .env --entrypoint '/bin/sh' infisical-api -c "npm run migration:latest && ls && node dist/main.mjs"
         env:
           REDIS_URL: redis://172.17.0.1:6379
           DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
           JWT_AUTH_SECRET: something-random
+          ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
       - uses: actions/setup-go@v5
         with:
           go-version: '1.21.5'

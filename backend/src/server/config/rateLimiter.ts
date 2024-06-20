@@ -1,6 +1,7 @@
 import type { RateLimitOptions, RateLimitPluginOptions } from "@fastify/rate-limit";
 import { Redis } from "ioredis";
 
+import { getRateLimiterConfig } from "@app/ee/services/rate-limit/rate-limit-service";
 import { getConfig } from "@app/lib/config/env";
 
 export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
@@ -21,14 +22,14 @@ export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
 // GET endpoints
 export const readLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 600,
+  max: () => getRateLimiterConfig().readLimit,
   keyGenerator: (req) => req.realIp
 };
 
 // POST, PATCH, PUT, DELETE endpoints
 export const writeLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 50,
+  max: () => getRateLimiterConfig().writeLimit,
   keyGenerator: (req) => req.realIp
 };
 
@@ -36,25 +37,48 @@ export const writeLimit: RateLimitOptions = {
 export const secretsLimit: RateLimitOptions = {
   // secrets, folders, secret imports
   timeWindow: 60 * 1000,
-  max: 60,
+  max: () => getRateLimiterConfig().secretsLimit,
   keyGenerator: (req) => req.realIp
 };
 
 export const authRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 60,
+  max: () => getRateLimiterConfig().authRateLimit,
   keyGenerator: (req) => req.realIp
 };
 
 export const inviteUserRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 30,
+  max: () => getRateLimiterConfig().inviteUserRateLimit,
   keyGenerator: (req) => req.realIp
+};
+
+export const mfaRateLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  max: () => getRateLimiterConfig().mfaRateLimit,
+  keyGenerator: (req) => {
+    return req.headers.authorization?.split(" ")[1] || req.realIp;
+  }
 };
 
 export const creationLimit: RateLimitOptions = {
   // identity, project, org
   timeWindow: 60 * 1000,
-  max: 30,
+  max: () => getRateLimiterConfig().creationLimit,
+  keyGenerator: (req) => req.realIp
+};
+
+// Public endpoints to avoid brute force attacks
+export const publicEndpointLimit: RateLimitOptions = {
+  // Read Shared Secrets
+  timeWindow: 60 * 1000,
+  max: () => getRateLimiterConfig().publicEndpointLimit,
+  keyGenerator: (req) => req.realIp
+};
+
+export const publicSecretShareCreationLimit: RateLimitOptions = {
+  // Create Shared Secrets
+  timeWindow: 60 * 1000,
+  max: 5,
   keyGenerator: (req) => req.realIp
 };

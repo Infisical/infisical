@@ -172,19 +172,28 @@ func GetFoldersViaMachineIdentity(accessToken string, workspaceId string, envSlu
 
 // CreateFolder creates a folder in Infisical
 func CreateFolder(params models.CreateFolderParameters) (models.SingleFolder, error) {
-	loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
-	if err != nil {
-		return models.SingleFolder{}, err
-	}
 
-	if loggedInUserDetails.LoginExpired {
-		PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+	// If no token is provided, we will try to get the token from the current logged in user
+	if params.InfisicalToken == "" {
+		RequireLogin()
+		RequireLocalWorkspaceFile()
+		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
+
+		if err != nil {
+			return models.SingleFolder{}, err
+		}
+
+		if loggedInUserDetails.LoginExpired {
+			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+		}
+
+		params.InfisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
 	// set up resty client
 	httpClient := resty.New()
 	httpClient.
-		SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
+		SetAuthToken(params.InfisicalToken).
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json")
 
@@ -209,19 +218,29 @@ func CreateFolder(params models.CreateFolderParameters) (models.SingleFolder, er
 }
 
 func DeleteFolder(params models.DeleteFolderParameters) ([]models.SingleFolder, error) {
-	loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
-	if err != nil {
-		return nil, err
-	}
 
-	if loggedInUserDetails.LoginExpired {
-		PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+	// If no token is provided, we will try to get the token from the current logged in user
+	if params.InfisicalToken == "" {
+		RequireLogin()
+		RequireLocalWorkspaceFile()
+
+		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
+
+		if err != nil {
+			return nil, err
+		}
+
+		if loggedInUserDetails.LoginExpired {
+			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+		}
+
+		params.InfisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
 	// set up resty client
 	httpClient := resty.New()
 	httpClient.
-		SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
+		SetAuthToken(params.InfisicalToken).
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json")
 

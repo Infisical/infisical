@@ -1,13 +1,12 @@
-
 const path = require("path");
 
 const ContentSecurityPolicy = `
 	default-src 'self';
-	script-src 'self' https://app.posthog.com https://js.stripe.com https://api.stripe.com https://widget.intercom.io https://js.intercomcdn.com 'unsafe-inline' 'unsafe-eval';
-	style-src 'self' https://rsms.me 'unsafe-inline';
+	script-src 'self' https://app.posthog.com https://js.stripe.com https://api.stripe.com https://widget.intercom.io https://js.intercomcdn.com https://hcaptcha.com https://*.hcaptcha.com 'unsafe-inline' 'unsafe-eval';
+	style-src 'self' https://rsms.me 'unsafe-inline' https://hcaptcha.com https://*.hcaptcha.com;
 	child-src https://api.stripe.com;
-	frame-src https://js.stripe.com/ https://api.stripe.com https://www.youtube.com/;
-	connect-src 'self' wss://nexus-websocket-a.intercom.io https://api-iam.intercom.io https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://api.stripe.com https://api.pwnedpasswords.com http://127.0.0.1:*;
+	frame-src https://js.stripe.com/ https://api.stripe.com https://www.youtube.com/ https://hcaptcha.com https://*.hcaptcha.com;
+	connect-src 'self' wss://nexus-websocket-a.intercom.io https://api-iam.intercom.io https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://api.stripe.com https://api.pwnedpasswords.com http://127.0.0.1:* https://hcaptcha.com https://*.hcaptcha.com;
 	img-src 'self' https://static.intercomassets.com https://js.intercomcdn.com https://downloads.intercomcdn.com https://*.stripe.com https://i.ytimg.com/ data:;
 	media-src https://js.intercomcdn.com;
 	font-src 'self' https://fonts.intercomcdn.com/ https://maxcdn.bootstrapcdn.com https://rsms.me https://fonts.gstatic.com;  

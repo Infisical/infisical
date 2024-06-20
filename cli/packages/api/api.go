@@ -391,6 +391,7 @@ func CallCreateSecretsV3(httpClient *resty.Client, request CreateSecretV3Request
 }
 
 func CallDeleteSecretsV3(httpClient *resty.Client, request DeleteSecretV3Request) error {
+
 	var secretsResponse GetEncryptedSecretsV3Response
 	response, err := httpClient.
 		R().
@@ -490,7 +491,7 @@ func CallUniversalAuthLogin(httpClient *resty.Client, request UniversalAuthLogin
 	return universalAuthLoginResponse, nil
 }
 
-func CallUniversalAuthRefreshAccessToken(httpClient *resty.Client, request UniversalAuthRefreshRequest) (UniversalAuthRefreshResponse, error) {
+func CallMachineIdentityRefreshAccessToken(httpClient *resty.Client, request UniversalAuthRefreshRequest) (UniversalAuthRefreshResponse, error) {
 	var universalAuthRefreshResponse UniversalAuthRefreshResponse
 	response, err := httpClient.
 		R().
@@ -500,11 +501,11 @@ func CallUniversalAuthRefreshAccessToken(httpClient *resty.Client, request Unive
 		Post(fmt.Sprintf("%v/v1/auth/token/renew", config.INFISICAL_URL))
 
 	if err != nil {
-		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallUniversalAuthRefreshAccessToken: Unable to complete api request [err=%s]", err)
+		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallMachineIdentityRefreshAccessToken: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.IsError() {
-		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallUniversalAuthRefreshAccessToken: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallMachineIdentityRefreshAccessToken: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
 	}
 
 	return universalAuthRefreshResponse, nil
@@ -565,4 +566,40 @@ func CallCreateDynamicSecretLeaseV1(httpClient *resty.Client, request CreateDyna
 	}
 
 	return createDynamicSecretLeaseResponse, nil
+}
+
+func CallCreateRawSecretsV3(httpClient *resty.Client, request CreateRawSecretV3Request) error {
+	response, err := httpClient.
+		R().
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v3/secrets/raw/%s", config.INFISICAL_URL, request.SecretName))
+
+	if err != nil {
+		return fmt.Errorf("CallCreateRawSecretsV3: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return fmt.Errorf("CallCreateRawSecretsV3: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return nil
+}
+
+func CallUpdateRawSecretsV3(httpClient *resty.Client, request UpdateRawSecretByNameV3Request) error {
+	response, err := httpClient.
+		R().
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Patch(fmt.Sprintf("%v/v3/secrets/raw/%s", config.INFISICAL_URL, request.SecretName))
+
+	if err != nil {
+		return fmt.Errorf("CallUpdateRawSecretsV3: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return fmt.Errorf("CallUpdateRawSecretsV3: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return nil
 }

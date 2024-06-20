@@ -32,7 +32,8 @@ const integrationSlugNameMapping: Mapping = {
   northflank: "Northflank",
   windmill: "Windmill",
   "gcp-secret-manager": "GCP Secret Manager",
-  "hasura-cloud": "Hasura Cloud"
+  "hasura-cloud": "Hasura Cloud",
+  rundeck: "Rundeck"
 };
 
 const envMapping: Mapping = {

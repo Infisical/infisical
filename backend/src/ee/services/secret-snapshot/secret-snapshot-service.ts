@@ -81,8 +81,7 @@ export const secretSnapshotServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-    const count = await snapshotDAL.countOfSnapshotsByFolderId(folder.id);
-    return count;
+    return snapshotDAL.countOfSnapshotsByFolderId(folder.id);
   };
 
   const listSnapshots = async ({
@@ -220,7 +219,7 @@ export const secretSnapshotServiceFactory = ({
       const deletedTopLevelSecsGroupById = groupBy(deletedTopLevelSecs, (item) => item.id);
       // this will remove all secrets and folders on child
       // due to sql foreign key and link list connection removing the folders removes everything below too
-      const deletedFolders = await folderDAL.delete({ parentId: snapshot.folderId }, tx);
+      const deletedFolders = await folderDAL.delete({ parentId: snapshot.folderId, isReserved: false }, tx);
       const deletedTopLevelFolders = groupBy(
         deletedFolders.filter(({ parentId }) => parentId === snapshot.folderId),
         (item) => item.id

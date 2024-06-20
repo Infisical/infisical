@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
@@ -11,6 +12,7 @@ import {
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { logger } from "@app/lib/logger";
 
 export type TSnapshotDALFactory = ReturnType<typeof snapshotDALFactory>;
 
@@ -325,12 +327,151 @@ export const snapshotDALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * Prunes excess snapshots from the database to ensure only a specified number of recent snapshots are retained for each folder.
+   *
+   * This function operates in three main steps:
+   * 1. Pruning snapshots from current folders.
+   * 2. Pruning snapshots from non-current folders (versioned ones).
+   * 3. Removing orphaned snapshots that do not belong to any existing folder or folder version.
+   *
+   * The function processes snapshots in batches, determined by the `PRUNE_FOLDER_BATCH_SIZE` constant,
+   * to manage the large datasets without overwhelming the DB.
+   *
+   * Steps:
+   * - Fetch a batch of folder IDs.
+   * - For each batch, use a Common Table Expression (CTE) to rank snapshots within each folder by their creation date.
+   * - Identify and delete snapshots that exceed the project's point-in-time version limit (`pitVersionLimit`).
+   * - Repeat the process for versioned folders.
+   * - Finally, delete orphaned snapshots that do not have an associated folder.
+   */
+  const pruneExcessSnapshots = async () => {
+    const PRUNE_FOLDER_BATCH_SIZE = 10000;
+
+    try {
+      let uuidOffset = "00000000-0000-0000-0000-000000000000";
+      // cleanup snapshots from current folders
+      // eslint-disable-next-line no-constant-condition, no-unreachable-loop
+      while (true) {
+        const folderBatch = await db(TableName.SecretFolder)
+          .where("id", ">", uuidOffset)
+          .where("isReserved", false)
+          .orderBy("id", "asc")
+          .limit(PRUNE_FOLDER_BATCH_SIZE)
+          .select("id");
+
+        const batchEntries = folderBatch.map((folder) => folder.id);
+
+        if (folderBatch.length) {
+          try {
+            logger.info(`Pruning snapshots in [range=${batchEntries[0]}:${batchEntries[batchEntries.length - 1]}]`);
+            await db(TableName.Snapshot)
+              .with("snapshot_cte", (qb) => {
+                void qb
+                  .from(TableName.Snapshot)
+                  .whereIn(`${TableName.Snapshot}.folderId`, batchEntries)
+                  .select(
+                    "folderId",
+                    `${TableName.Snapshot}.id as id`,
+                    db.raw(
+                      `ROW_NUMBER() OVER (PARTITION BY ${TableName.Snapshot}."folderId" ORDER BY ${TableName.Snapshot}."createdAt" DESC) AS row_num`
+                    )
+                  );
+              })
+              .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Snapshot}.folderId`)
+              .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+              .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
+              .join("snapshot_cte", "snapshot_cte.id", `${TableName.Snapshot}.id`)
+              .whereRaw(`snapshot_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+              .delete();
+          } catch (err) {
+            logger.error(
+              `Failed to prune snapshots from current folders in range ${batchEntries[0]}:${
+                batchEntries[batchEntries.length - 1]
+              }`
+            );
+          } finally {
+            uuidOffset = batchEntries[batchEntries.length - 1];
+          }
+        } else {
+          break;
+        }
+      }
+
+      // cleanup snapshots from non-current folders
+      uuidOffset = "00000000-0000-0000-0000-000000000000";
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const folderBatch = await db(TableName.SecretFolderVersion)
+          .select("folderId")
+          .distinct("folderId")
+          .where("folderId", ">", uuidOffset)
+          .orderBy("folderId", "asc")
+          .limit(PRUNE_FOLDER_BATCH_SIZE);
+
+        const batchEntries = folderBatch.map((folder) => folder.folderId);
+
+        if (folderBatch.length) {
+          try {
+            logger.info(`Pruning snapshots in range ${batchEntries[0]}:${batchEntries[batchEntries.length - 1]}`);
+            await db(TableName.Snapshot)
+              .with("snapshot_cte", (qb) => {
+                void qb
+                  .from(TableName.Snapshot)
+                  .whereIn(`${TableName.Snapshot}.folderId`, batchEntries)
+                  .select(
+                    "folderId",
+                    `${TableName.Snapshot}.id as id`,
+                    db.raw(
+                      `ROW_NUMBER() OVER (PARTITION BY ${TableName.Snapshot}."folderId" ORDER BY ${TableName.Snapshot}."createdAt" DESC) AS row_num`
+                    )
+                  );
+              })
+              .join(
+                TableName.SecretFolderVersion,
+                `${TableName.SecretFolderVersion}.folderId`,
+                `${TableName.Snapshot}.folderId`
+              )
+              .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolderVersion}.envId`)
+              .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
+              .join("snapshot_cte", "snapshot_cte.id", `${TableName.Snapshot}.id`)
+              .whereRaw(`snapshot_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+              .delete();
+          } catch (err) {
+            logger.error(
+              `Failed to prune snapshots from non-current folders in range ${batchEntries[0]}:${
+                batchEntries[batchEntries.length - 1]
+              }`
+            );
+          } finally {
+            uuidOffset = batchEntries[batchEntries.length - 1];
+          }
+        } else {
+          break;
+        }
+      }
+
+      // cleanup orphaned snapshots (those that don't belong to an existing folder and folder version)
+      await db(TableName.Snapshot)
+        .whereNotIn("folderId", (qb) => {
+          void qb
+            .select("folderId")
+            .from(TableName.SecretFolderVersion)
+            .union((qb1) => void qb1.select("id").from(TableName.SecretFolder));
+        })
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "SnapshotPrune" });
+    }
+  };
+
   return {
     ...secretSnapshotOrm,
     findById,
     findLatestSnapshotByFolderId,
     findRecursivelySnapshots,
     countOfSnapshotsByFolderId,
-    findSecretSnapshotDataById
+    findSecretSnapshotDataById,
+    pruneExcessSnapshots
   };
 };

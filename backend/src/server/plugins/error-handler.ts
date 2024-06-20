@@ -6,6 +6,7 @@ import {
   BadRequestError,
   DatabaseError,
   InternalServerError,
+  NotFoundError,
   ScimRequestError,
   UnauthorizedError
 } from "@app/lib/errors";
@@ -15,6 +16,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     req.log.error(error);
     if (error instanceof BadRequestError) {
       void res.status(400).send({ statusCode: 400, message: error.message, error: error.name });
+    } else if (error instanceof NotFoundError) {
+      void res.status(404).send({ statusCode: 404, message: error.message, error: error.name });
     } else if (error instanceof UnauthorizedError) {
       void res.status(403).send({ statusCode: 403, message: error.message, error: error.name });
     } else if (error instanceof DatabaseError || error instanceof InternalServerError) {

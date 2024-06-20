@@ -62,3 +62,15 @@ export const useDeleteGroupFromWorkspace = () => {
     }
   });
 };
+
+export const useLeaveProject = () => {
+  const queryClient = useQueryClient();
+  return useMutation<{}, {}, { workspaceId: string }>({
+    mutationFn: ({ workspaceId }) => {
+      return apiRequest.delete(`/api/v1/workspace/${workspaceId}/leave`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+    }
+  });
+};

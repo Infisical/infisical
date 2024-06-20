@@ -12,21 +12,30 @@ export type TIdentityProjectPrivilege = {
   updatedAt: Date;
   permissions?: TProjectPermission[];
 } & (
-    | {
+  | {
       isTemporary: true;
       temporaryMode: string;
       temporaryRange: string;
       temporaryAccessStartTime: string;
       temporaryAccessEndTime?: string;
     }
-    | {
+  | {
       isTemporary: false;
       temporaryMode?: null;
       temporaryRange?: null;
       temporaryAccessStartTime?: null;
       temporaryAccessEndTime?: null;
     }
-  );
+);
+
+export type TProjectSpecificPrivilegePermission = {
+  conditions: {
+    environment: string;
+    secretPath?: { $glob: string };
+  };
+  actions: string[];
+  subject: string;
+};
 
 export type TCreateIdentityProjectPrivilegeDTO = {
   identityId: string;
@@ -36,14 +45,16 @@ export type TCreateIdentityProjectPrivilegeDTO = {
   temporaryMode?: IdentityProjectAdditionalPrivilegeTemporaryMode;
   temporaryRange?: string;
   temporaryAccessStartTime?: string;
-  permissions: TProjectPermission[];
+  privilegePermission: TProjectSpecificPrivilegePermission;
 };
 
 export type TUpdateIdentityProjectPrivlegeDTO = {
   projectSlug: string;
   identityId: string;
   privilegeSlug: string;
-  privilegeDetails: Partial<Omit<TCreateIdentityProjectPrivilegeDTO, "projectMembershipId" | "projectId">>;
+  privilegeDetails: Partial<
+    Omit<TCreateIdentityProjectPrivilegeDTO, "projectMembershipId" | "projectId">
+  >;
 };
 
 export type TDeleteIdentityProjectPrivilegeDTO = {

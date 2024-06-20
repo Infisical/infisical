@@ -12,6 +12,7 @@ export type TCreateIntegrationDTO = {
   targetService?: string;
   targetServiceId?: string;
   owner?: string;
+  url?: string;
   path?: string;
   region?: string;
   scope?: string;
@@ -28,6 +29,9 @@ export type TCreateIntegrationDTO = {
     }[];
     kmsKeyId?: string;
     shouldDisableDelete?: boolean;
+    shouldMaskSecrets?: boolean;
+    shouldProtectSecrets?: boolean;
+    shouldEnableDelete?: boolean;
   };
 } & Omit<TProjectPermission, "projectId">;
 
@@ -53,6 +57,7 @@ export type TUpdateIntegrationDTO = {
     }[];
     kmsKeyId?: string;
     shouldDisableDelete?: boolean;
+    shouldEnableDelete?: boolean;
   };
 } & Omit<TProjectPermission, "projectId">;
 

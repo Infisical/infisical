@@ -24,14 +24,13 @@ The operator can be install via [Helm](https://helm.sh) or [kubectl](https://git
 
     **Install the Helm chart**
 
-    For production deployments, it is highly recommended to set the chart version and the application version during installs and upgrades.
-    This will prevent the operator from being accidentally updated to the latest version and introduce unintended breaking changes.
-
-    View application versions [here](https://hub.docker.com/r/infisical/kubernetes-operator/tags) and chart versions [here](https://cloudsmith.io/~infisical/repos/helm-charts/packages/detail/helm/secrets-operator/#versions)
+    To select a specific version, view the  application versions [here](https://hub.docker.com/r/infisical/kubernetes-operator/tags) and chart versions [here](https://cloudsmith.io/~infisical/repos/helm-charts/packages/detail/helm/secrets-operator/#versions)
 
     ```bash
-    helm install --generate-name infisical-helm-charts/secrets-operator --version=<PLACE-CHART-VERSION-HERE> --set controllerManager.manager.image.tag=<PLACE-APP-VERSION-HERE>
+    helm install --generate-name infisical-helm-charts/secrets-operator 
+    ```
 
+    ```bash
     # Example installing app version v0.2.0 and chart version 0.1.4
     helm install --generate-name infisical-helm-charts/secrets-operator --version=0.1.4 --set controllerManager.manager.image.tag=v0.2.0
     ```
@@ -58,46 +57,108 @@ Once you apply the manifest, the operator will be installed in `infisical-operat
 Once you have installed the operator to your cluster, you'll need to create a `InfisicalSecret` custom resource definition (CRD).
 
 ```yaml example-infisical-secret-crd.yaml
+
 apiVersion: secrets.infisical.com/v1alpha1
 kind: InfisicalSecret
 metadata:
-  name: infisicalsecret-sample
-  labels:
-    label-to-be-passed-to-managed-secret: sample-value
-  annotations:
-    example.com/annotation-to-be-passed-to-managed-secret: "sample-value"
+    name: infisicalsecret-sample
+    labels:
+        label-to-be-passed-to-managed-secret: sample-value
+    annotations:
+        example.com/annotation-to-be-passed-to-managed-secret: "sample-value"
 spec:
-  hostAPI: https://app.infisical.com/api
-  resyncInterval: 10
-  authentication:
-    # Make sure to only have 1 authentication method defined, serviceToken/universalAuth.
-    # If you have multiple authentication methods defined, it may cause issues.
-    universalAuth:
-      secretsScope:
-        projectSlug: <project-slug>
-        envSlug: <env-slug> # "dev", "staging", "prod", etc..
-        secretsPath: "<secrets-path>" # Root is "/"
-        recursive: true # Fetch all secrets from the specified path and all sub-directories. Default is false.
-      
-      credentialsRef:
-        secretName: universal-auth-credentials
-        secretNamespace: default
+    hostAPI: https://app.infisical.com/api
+    resyncInterval: 10
+    authentication:
+        # Make sure to only have 1 authentication method defined, serviceToken/universalAuth.
+        # If you have multiple authentication methods defined, it may cause issues.
 
-      # Service tokens are deprecated and will be removed in the near future. Please use Machine Identities for authenticating with Infisical.
-    serviceToken:
-      serviceTokenSecretReference:
-        secretName: service-token
-        secretNamespace: default
-      secretsScope:
-        envSlug: <env-slug>
-        secretsPath: <secrets-path> # Root is "/"
-        recursive: true # Fetch all secrets from the specified path and all sub-directories. Default is false.
+        # (Deprecated) Service Token Auth
+        serviceToken:
+            serviceTokenSecretReference:
+                secretName: service-token
+                secretNamespace: default
+            secretsScope:
+                envSlug: <env-slug>
+                secretsPath: <secrets-path>
+                recursive: true
 
-  managedSecretReference:
-    secretName: managed-secret
-    secretNamespace: default
-    creationPolicy: "Orphan" ## Owner | Orphan (default)
-    # secretType: kubernetes.io/dockerconfigjson
+        # Universal Auth
+        universalAuth:
+            secretsScope:
+                projectSlug: new-ob-em
+                envSlug: dev # "dev", "staging", "prod", etc..
+                secretsPath: "/" # Root is "/"
+                recursive: true # Wether or not to use recursive mode (Fetches all secrets in an environment from a given secret path, and all folders inside the path) / defaults to false
+            credentialsRef:
+                secretName: universal-auth-credentials
+                secretNamespace: default
+
+        # Native Kubernetes Auth
+        kubernetesAuth:
+            identityId: <machine-identity-id>
+            serviceAccountRef:
+              name: <service-account-name>
+              namespace: <service-account-namespace>
+
+            # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+            secretsScope:
+                projectSlug: your-project-slug
+                envSlug: prod
+                secretsPath: "/path"
+                recursive: true
+
+        # AWS IAM Auth
+        awsIamAuth:
+            identityId: <your-machine-identity-id>
+
+            # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+            secretsScope:
+                projectSlug: your-project-slug
+                envSlug: prod
+                secretsPath: "/path"
+                recursive: true
+
+        # Azure Auth
+        azureAuth:
+            identityId: <your-machine-identity-id>
+
+            # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+            secretsScope:
+                projectSlug: your-project-slug
+                envSlug: prod
+                secretsPath: "/path"
+                recursive: true
+
+        # GCP ID Token Auth
+        gcpIdTokenAuth:
+            identityId: <your-machine-identity-id>
+
+            # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+            secretsScope:
+                projectSlug: your-project-slug
+                envSlug: prod
+                secretsPath: "/path"
+                recursive: true
+
+        # GCP IAM Auth
+        gcpIamAuth:
+            identityId: <your-machine-identity-id>
+
+            # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+            secretsScope:
+                projectSlug: your-project-slug
+                envSlug: prod
+                secretsPath: "/path"
+                recursive: true
+
+    managedSecretReference:
+        secretName: managed-secret
+        secretNamespace: default
+        creationPolicy: "Orphan" ## Owner | Orphan
+        # secretType: kubernetes.io/dockerconfigjson
+
+
 ```
 
 ### InfisicalSecret CRD properties
@@ -156,7 +217,7 @@ When `hostAPI` is not defined the operator fetches secrets from Infisical Cloud.
 
   </Steps>
 
-{" "}
+
 
 <Info>
   Make sure to also populate the `secretsScope` field with the project slug
@@ -182,6 +243,339 @@ spec:
           credentialsRef:
               secretName: universal-auth-credentials # <-- name of the Kubernetes secret that stores our machine identity credentials
               secretNamespace: default # <-- namespace of the Kubernetes secret that stores our machine identity credentials
+  ...
+```
+
+</Accordion>
+
+<Accordion title="authentication.kubernetesAuth">
+  The Kubernetes machine identity authentication method is used to authenticate with Infisical. The identity ID is stored in a field in the InfisicalSecret resource. This authentication method can only be used within a Kubernetes environment.
+
+  <Steps>
+    <Step title="Obtaining the token reviewer JWT for Infisical">
+        1.1. Start by creating a service account in your Kubernetes cluster that will be used by Infisical to authenticate with the Kubernetes API Server.
+
+        ```yaml infisical-service-account.yaml
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: infisical-auth
+          namespace: default
+
+        ```
+
+        ```
+        kubectl apply -f infisical-service-account.yaml
+        ```
+
+        1.2. Bind the service account to the `system:auth-delegator` cluster role. As described [here](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#other-component-roles), this role allows delegated authentication and authorization checks, specifically for Infisical to access the [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/). You can apply the following configuration file:
+
+        ```yaml cluster-role-binding.yaml
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: role-tokenreview-binding
+          namespace: default
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: system:auth-delegator
+        subjects:
+          - kind: ServiceAccount
+            name: infisical-auth
+            namespace: default
+        ```
+
+        ```
+        kubectl apply -f cluster-role-binding.yaml
+        ```
+
+        1.3. Next, create a long-lived service account JWT token (i.e. the token reviewer JWT token) for the service account using this configuration file for a new `Secret` resource:
+
+        ```yaml service-account-token.yaml
+        apiVersion: v1
+        kind: Secret
+        type: kubernetes.io/service-account-token
+        metadata:
+          name: infisical-auth-token
+          annotations:
+            kubernetes.io/service-account.name: "infisical-auth"
+        ```
+
+
+        ```
+        kubectl apply -f service-account-token.yaml
+        ```
+
+        1.4. Link the secret in step 1.3 to the service account in step 1.1:
+
+        ```bash
+        kubectl patch serviceaccount infisical-auth -p '{"secrets": [{"name": "infisical-auth-token"}]}' -n default
+        ```
+
+        1.5. Finally, retrieve the token reviewer JWT token from the secret.
+
+        ```bash
+        kubectl get secret infisical-auth-token -n default -o=jsonpath='{.data.token}' | base64 --decode
+        ```
+
+        Keep this JWT token handy as you will need it for the **Token Reviewer JWT** field when configuring the Kubernetes Auth authentication method for the identity in step 2.
+
+    </Step>
+
+    <Step title="Creating an identity">
+      To create an identity, head to your Organization Settings > Access Control > Machine Identities and press **Create identity**.
+
+      ![identities organization](/images/platform/identities/identities-org.png)
+
+      When creating an identity, you specify an organization level [role](/documentation/platform/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
+
+      ![identities organization create](/images/platform/identities/identities-org-create.png)
+
+      Now input a few details for your new identity. Here's some guidance for each field:
+
+      - Name (required): A friendly name for the identity.
+      - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
+
+      Once you've created an identity, you'll be prompted to configure the authentication method for it. Here, select **Kubernetes Auth**.
+
+      <Info>
+        To learn more about each field of the Kubernetes native authentication method, see step 2 of [guide](/documentation/platform/identities/kubernetes-auth#guide).
+      </Info>
+
+      ![identities organization create auth method](/images/platform/identities/identities-org-create-kubernetes-auth-method.png)
+
+
+    </Step>
+    <Step title="Adding an identity to a project">
+      To allow the operator to use the given identity to access secrets, you will need to add the identity to project(s) that you would like  to grant it access to.
+
+      To do this, head over to the project you want to add the identity to and go to Project Settings > Access Control > Machine Identities and press **Add identity**.
+
+      Next, select the identity you want to add to the project and the project level role you want to allow it to assume. The project role assigned will determine what project level resources this identity can have access to.
+
+      ![identities project](/images/platform/identities/identities-project.png)
+
+      ![identities project create](/images/platform/identities/identities-project-create.png)
+
+    </Step>
+    <Step title="Add your identity ID & service account to your InfisicalSecret resource">
+      Once you have created your machine identity and added it to your project(s), you will need to add the identity ID to your InfisicalSecret resource. 
+      In the `authentication.kubernetesAuth.identityId` field, add the identity ID of the machine identity you created. 
+      See the example below for more details.
+    </Step>
+    <Step title="Add your Kubernetes service account token to the InfisicalSecret resource">
+      Add the service account details from the previous steps under `authentication.kubernetesAuth.serviceAccountRef`. 
+      Here you will need to enter the name and namespace of the service account. 
+      The example below shows a complete InfisicalSecret resource with all required fields defined.
+    </Step> 
+
+  </Steps>
+
+<Info>
+  Make sure to also populate the `secretsScope` field with the project slug
+  _`projectSlug`_, environment slug _`envSlug`_, and secrets path
+  _`secretsPath`_ that you want to fetch secrets from. Please see the example
+  below.
+</Info>
+
+## Example
+
+```yaml example-kubernetes-auth.yaml
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: infisicalsecret-sample-crd
+spec:
+  authentication:
+      kubernetesAuth:
+          identityId: <machine-identity-id>
+          serviceAccountRef:
+            name: <service-account-name>
+            namespace: <service-account-namespace>
+
+          # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+          secretsScope:
+              projectSlug: your-project-slug
+              envSlug: prod
+              secretsPath: "/path"
+              recursive: true
+  ...
+```
+
+</Accordion>
+
+<Accordion title="authentication.awsIamAuth">
+  The AWS IAM machine identity authentication method is used to authenticate with Infisical. The identity ID is stored in a field in the InfisicalSecret resource. This authentication method can only be used within an AWS environment like an EC2 or a Lambda function.
+
+  <Steps>
+    <Step title="Create a machine identity">
+      You need to create a machine identity, and give it access to the project(s) you want to interact with. You can [read more about AWS machine identities here](/documentation/platform/identities/aws-auth).
+    </Step>
+    <Step title="Add your identity ID to your InfisicalSecret resource">
+      Once you have created your machine identity and added it to your project(s), you will need to add the identity ID to your InfisicalSecret resource. In the `authentication.awsIamAuth.identityId` field, add the identity ID of the machine identity you created. See the example below for more details.
+    </Step>
+
+  </Steps>
+
+<Info>
+  Make sure to also populate the `secretsScope` field with the project slug
+  _`projectSlug`_, environment slug _`envSlug`_, and secrets path
+  _`secretsPath`_ that you want to fetch secrets from. Please see the example
+  below.
+</Info>
+
+## Example
+
+```yaml example-aws-iam-auth.yaml
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: infisicalsecret-sample-crd
+spec:
+  authentication:
+      awsIamAuth:
+          identityId: <your-machine-identity-id>
+
+          # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+          secretsScope:
+              projectSlug: your-project-slug
+              envSlug: prod
+              secretsPath: "/path"
+              recursive: true
+  ...
+```
+
+</Accordion>
+
+<Accordion title="authentication.azureAuth">
+  The Azure machine identity authentication method is used to authenticate with Infisical. The identity ID is stored in a field in the InfisicalSecret resource. This authentication method can only be used within an Azure environment.
+
+  <Steps>
+    <Step title="Create a machine identity">
+      You need to create a machine identity, and give it access to the project(s) you want to interact with. You can [read more about Azure machine identities here](/documentation/platform/identities/azure-auth).
+    </Step>
+    <Step title="Add your identity ID to your InfisicalSecret resource">
+      Once you have created your machine identity and added it to your project(s), you will need to add the identity ID to your InfisicalSecret resource. In the `authentication.azureAuth.identityId` field, add the identity ID of the machine identity you created. See the example below for more details.
+    </Step>
+
+  </Steps>
+
+<Info>
+  Make sure to also populate the `secretsScope` field with the project slug
+  _`projectSlug`_, environment slug _`envSlug`_, and secrets path
+  _`secretsPath`_ that you want to fetch secrets from. Please see the example
+  below.
+</Info>
+
+## Example
+
+```yaml example-azure-auth.yaml
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: infisicalsecret-sample-crd
+spec:
+  authentication:
+      azureAuth:
+          identityId: <your-machine-identity-id>
+
+          # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+          secretsScope:
+              projectSlug: your-project-slug
+              envSlug: prod
+              secretsPath: "/path"
+              recursive: true
+  ...
+```
+
+</Accordion>
+
+<Accordion title="authentication.gcpIdTokenAuth">
+  The GCP ID Token machine identity authentication method is used to authenticate with Infisical. The identity ID is stored in a field in the InfisicalSecret resource. This authentication method can only be used within GCP environments.
+
+  <Steps>
+    <Step title="Create a machine identity">
+      You need to create a machine identity, and give it access to the project(s) you want to interact with. You can [read more about GCP machine identities here](/documentation/platform/identities/gcp-auth).
+    </Step>
+    <Step title="Add your identity ID to your InfisicalSecret resource">
+      Once you have created your machine identity and added it to your project(s), you will need to add the identity ID to your InfisicalSecret resource. In the `authentication.gcpIdTokenAuth.identityId` field, add the identity ID of the machine identity you created. See the example below for more details.
+    </Step>
+
+  </Steps>
+
+<Info>
+  Make sure to also populate the `secretsScope` field with the project slug
+  _`projectSlug`_, environment slug _`envSlug`_, and secrets path
+  _`secretsPath`_ that you want to fetch secrets from. Please see the example
+  below.
+</Info>
+
+## Example
+
+```yaml example-gcp-id-token-auth.yaml
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: infisicalsecret-sample-crd
+spec:
+  authentication:
+      gcpIdTokenAuth:
+          identityId: <your-machine-identity-id>
+
+          # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+          secretsScope:
+              projectSlug: your-project-slug
+              envSlug: prod
+              secretsPath: "/path"
+              recursive: true
+  ...
+```
+
+</Accordion>
+
+
+
+<Accordion title="authentication.gcpIamAuth">
+  The GCP IAM machine identity authentication method is used to authenticate with Infisical. The identity ID is stored in a field in the InfisicalSecret resource. This authentication method can only be used both within and outside GCP environments.
+
+  <Steps>
+    <Step title="Create a machine identity">
+      You need to create a machine identity, and give it access to the project(s) you want to interact with. You can [read more about GCP machine identities here](/documentation/platform/identities/gcp-auth).
+    </Step>
+    <Step title="Add your identity ID and service account token path to your InfisicalSecret resource">
+      Once you have created your machine identity and added it to your project(s), you will need to add the identity ID to your InfisicalSecret resource. In the `authentication.gcpIamAuth.identityId` field, add the identity ID of the machine identity you created.
+      You'll also need to add the service account key file path to your InfisicalSecret resource. In the `authentication.gcpIamAuth.serviceAccountKeyFilePath` field, add the path to your service account key file path. Please see the example below for more details.
+    </Step>
+
+  </Steps>
+
+<Info>
+  Make sure to also populate the `secretsScope` field with the project slug
+  _`projectSlug`_, environment slug _`envSlug`_, and secrets path
+  _`secretsPath`_ that you want to fetch secrets from. Please see the example
+  below.
+</Info>
+
+## Example
+
+```yaml example-gcp-id-token-auth.yaml
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: infisicalsecret-sample-crd
+spec:
+  authentication:
+      gcpIamAuth:
+          identityId: <your-machine-identity-id>
+          serviceAccountKeyFilePath: "/path/to-service-account-key-file-path.json"
+
+          # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+          secretsScope:
+              projectSlug: your-project-slug
+              envSlug: prod
+              secretsPath: "/path"
+              recursive: true
   ...
 ```
 
@@ -496,7 +890,6 @@ To enable auto redeployment you simply have to add the following annotation to t
 ```yaml
 secrets.infisical.com/auto-reload: "true"
 ```
-
 <Accordion title="Deployment example with auto redeploy enabled">
 ```yaml
 apiVersion: apps/v1
@@ -527,7 +920,11 @@ spec:
         - containerPort: 80
 ```
 </Accordion>
-
+<Info>
+  #### How it works 
+  When a secret change occurs, the operator will check to see which deployments are using the operator-managed Kubernetes secret that received the update. 
+  Then, for each deployment that has this annotation present, a rolling update will be triggered.
+</Info>
 ## Global configuration
 
 To configure global settings that will apply to all instances of `InfisicalSecret`, you can define these configurations in a Kubernetes ConfigMap.

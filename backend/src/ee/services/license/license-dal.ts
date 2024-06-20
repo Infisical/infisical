@@ -16,6 +16,8 @@ export const licenseDALFactory = (db: TDbClient) => {
             void bd.where({ orgId });
           }
         })
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .where(`${TableName.Users}.isGhost`, false)
         .count();
       return doc?.[0].count;
     } catch (error) {

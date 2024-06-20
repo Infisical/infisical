@@ -16,8 +16,10 @@ import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretImport, useUpdateSecretImport } from "@app/hooks/api";
+import { ReservedFolders } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { DecryptedSecret, WorkspaceEnv } from "@app/hooks/api/types";
+import { formatReservedPaths } from "@app/lib/fn/string";
 
 import { SecretImportItem } from "./SecretImportItem";
 
@@ -43,14 +45,13 @@ export const computeImportedSecretRows = (
   if (importedSecIndex === -1) return [];
 
   const importedSec = importSecrets[importedSecIndex];
-
   const overridenSec: Record<string, { env: string; secretPath: string }> = {};
 
   for (let i = importedSecIndex + 1; i < importSecrets.length; i += 1) {
     importSecrets[i].secrets.forEach((el) => {
       overridenSec[el.key] = {
         env: importSecrets[i].environmentInfo.name,
-        secretPath: importSecrets[i].secretPath
+        secretPath: formatReservedPaths(importSecrets[i].secretPath)
       };
     });
   }
@@ -59,11 +60,28 @@ export const computeImportedSecretRows = (
     overridenSec[el.key] = { env: SECRET_IN_DASHBOARD, secretPath: "" };
   });
 
-  return importedSec.secrets.map(({ key, value }) => ({
-    key,
-    value,
-    overriden: overridenSec?.[key]
-  }));
+  const importedEntry: Record<string, boolean> = {};
+  const importedSecretEntries: {
+    key: string;
+    value: string;
+    overriden: {
+      env: string;
+      secretPath: string;
+    };
+  }[] = [];
+
+  importedSec.secrets.forEach(({ key, value }) => {
+    if (!importedEntry[key]) {
+      importedSecretEntries.push({
+        key,
+        value,
+        overriden: overridenSec?.[key]
+      });
+      importedEntry[key] = true;
+    }
+  });
+
+  return importedSecretEntries;
 };
 
 type Props = {
@@ -90,7 +108,9 @@ export const SecretImportListView = ({
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteSecretImport"
   ] as const);
-  
+
+  const [replicationSecrets, setReplicationSecrets] = useState<Record<string, boolean>>({});
+
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
     useSensor(TouchSensor, {}),
@@ -149,6 +169,24 @@ export const SecretImportListView = ({
     }
   };
 
+  const handleOpenReplicationSecrets = (replicationImportId: string) => {
+    const reservedImport = secretImports.find(
+      ({ isReserved, importPath, importEnv }) =>
+        importEnv.slug === environment &&
+        isReserved &&
+        importPath ===
+          `${secretPath === "/" ? "" : secretPath}/${
+            ReservedFolders.SecretReplication
+          }${replicationImportId}`
+    );
+    if (reservedImport) {
+      setReplicationSecrets((state) => ({
+        ...state,
+        [reservedImport.id]: !state?.[reservedImport.id]
+      }));
+    }
+  };
+
   return (
     <>
       <DndContext
@@ -159,17 +197,17 @@ export const SecretImportListView = ({
       >
         <SortableContext items={items} strategy={verticalListSortingStrategy}>
           {items?.map((item) => {
-            const { importPath, importEnv, id } = item;
+            // TODO(akhilmhdh): change this and pass this whole object instead of one by one
             return (
               <SecretImportItem
                 searchTerm={searchTerm}
-                key={`imported-env-${id}`}
-                id={id}
-                importEnvPath={importPath}
-                importEnvName={importEnv.name}
+                key={`imported-env-${item.id}`}
+                isReplicationExpand={replicationSecrets?.[item.id]}
+                onExpandReplicateSecrets={handleOpenReplicationSecrets}
+                secretImport={item}
                 importedSecrets={computeImportedSecretRows(
-                  importEnv.slug,
-                  importPath,
+                  item.importEnv.slug,
+                  item.importPath,
                   importedSecrets,
                   secrets
                 )}

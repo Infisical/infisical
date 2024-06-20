@@ -18,6 +18,20 @@ export const buildScimUserList = ({
   };
 };
 
+export const parseScimFilter = (filterToParse: string | undefined) => {
+  if (!filterToParse) return {};
+  const [parsedName, parsedValue] = filterToParse.split("eq").map((s) => s.trim());
+
+  let attributeName = parsedName;
+  if (parsedName === "userName") {
+    attributeName = "email";
+  } else if (parsedName === "displayName") {
+    attributeName = "name";
+  }
+
+  return { [attributeName]: parsedValue.replace(/"/g, "") };
+};
+
 export const buildScimUser = ({
   orgMembershipId,
   username,

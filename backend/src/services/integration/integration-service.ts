@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -43,6 +43,7 @@ export const integrationServiceFactory = ({
     scope,
     actorId,
     region,
+    url,
     isActive,
     metadata,
     secretPath,
@@ -66,6 +67,11 @@ export const integrationServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment: sourceEnvironment, secretPath })
+    );
+
     const folder = await folderDAL.findBySecretPath(integrationAuth.projectId, sourceEnvironment, secretPath);
     if (!folder) throw new BadRequestError({ message: "Folder path not found" });
 
@@ -82,6 +88,7 @@ export const integrationServiceFactory = ({
       region,
       scope,
       owner,
+      url,
       appId,
       path,
       app,
@@ -122,6 +129,11 @@ export const integrationServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
 
     const folder = await folderDAL.findBySecretPath(integration.projectId, environment, secretPath);
     if (!folder) throw new BadRequestError({ message: "Folder path not found" });

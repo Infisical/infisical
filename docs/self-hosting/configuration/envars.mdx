@@ -25,6 +25,10 @@ Used to configure platform-specific security and operational settings
   https://app.infisical.com).
 </ParamField>
 
+<ParamField query="TELEMETRY_ENABLED" type="string" default="true" optional>
+  Telemetry helps us improve Infisical but if you want to dsiable it you may set this to `false`.
+</ParamField>
+
 ## Data Layer
 
 The platform utilizes Postgres to persist all of its data and Redis for caching and backgroud tasks
@@ -48,44 +52,44 @@ The platform utilizes Postgres to persist all of its data and Redis for caching 
 Without email configuration, Infisical's core functions like sign-up/login and secret operations work, but this disables multi-factor authentication, email invites for projects, alerts for suspicious logins, and all other email-dependent features.
 
 <Accordion title="Generic Configuration">
-  <ParamField query="SMTP_HOST" type="string" default="none" optional>
-    Hostname to connect to for establishing SMTP connections
-  </ParamField>
-
-{" "}
-
-<ParamField query="SMTP_USERNAME" type="string" default="none" optional>
-  Credential to connect to host (e.g. team@infisical.com)
+<ParamField query="SMTP_HOST" type="string" default="none" optional>
+  Hostname to connect to for establishing SMTP connections
 </ParamField>
-
-{" "}
-
-<ParamField query="SMTP_PASSWORD" type="string" default="none" optional>
-  Credential to connect to host
-</ParamField>
-
-{" "}
 
 <ParamField query="SMTP_PORT" type="string" default="587" optional>
   Port to connect to for establishing SMTP connections
 </ParamField>
 
-{" "}
-
-<ParamField query="SMTP_SECURE" type="string" default="none" optional>
-  If true, use TLS when connecting to host. If false, TLS will be used if
-  STARTTLS is supported
+<ParamField query="SMTP_USERNAME" type="string" default="none" optional>
+  Credential to connect to host (e.g. team@infisical.com)
 </ParamField>
 
-{" "}
+<ParamField query="SMTP_PASSWORD" type="string" default="none" optional>
+  Credential to connect to host
+</ParamField>
 
 <ParamField query="SMTP_FROM_ADDRESS" type="string" default="none" optional>
   Email address to be used for sending emails
 </ParamField>
 
-  <ParamField query="SMTP_FROM_NAME" type="string" default="none" optional>
-    Name label to be used in From field (e.g. Team)
-  </ParamField>
+<ParamField query="SMTP_FROM_NAME" type="string" default="none" optional>
+  Name label to be used in From field (e.g. Team)
+</ParamField>
+
+<ParamField query="SMTP_IGNORE_TLS" type="bool" default="false" optional>
+  If this is `true` and `SMTP_PORT` is not 465 then TLS is not used even if the
+  server supports STARTTLS extension.
+</ParamField>
+
+<ParamField query="SMTP_REQUIRE_TLS" type="bool" default="true" optional>
+  If this is `true` and `SMTP_PORT` is not 465 then Infisical tries to use
+  STARTTLS even if the server does not advertise support for it. If the
+  connection can not be encrypted then message is not sent.
+</ParamField>
+
+<ParamField query="SMTP_TLS_REJECT_UNAUTHORIZED" type="bool" default="true" optional>
+  If this is `true`, Infisical will validate the server's SSL/TLS certificate and reject the connection if the certificate is invalid or not trusted. If set to `false`, the client will accept the server's certificate regardless of its validity, which can be useful in development or testing environments but is not recommended for production use.
+</ParamField>
 </Accordion>
 
 <Accordion title="Twilio SendGrid">
@@ -105,7 +109,6 @@ SMTP_HOST=smtp.sendgrid.net
 SMTP_USERNAME=apikey
 SMTP_PASSWORD=SG.rqFsfjxYPiqE1lqZTgD_lz7x8IVLx # your SendGrid API Key from step above
 SMTP_PORT=587
-SMTP_SECURE=true
 SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
 SMTP_FROM_NAME=Infisical
 ```
@@ -128,7 +131,6 @@ SMTP_HOST=smtp.mailgun.org # obtained from credentials page
 SMTP_USERNAME=postmaster@example.mailgun.org # obtained from credentials page
 SMTP_PASSWORD=password # obtained from credentials page
 SMTP_PORT=587
-SMTP_SECURE=true
 SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
 SMTP_FROM_NAME=Infisical
 ```
@@ -159,7 +161,6 @@ SMTP_FROM_NAME=Infisical
       SMTP_USERNAME=xxx # your SMTP username
       SMTP_PASSWORD=xxx # your SMTP password
       SMTP_PORT=465
-      SMTP_SECURE=true
       SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
       SMTP_FROM_NAME=Infisical
       ```
@@ -187,7 +188,6 @@ SMTP_HOST=smtp.socketlabs.com
 SMTP_USERNAME=username # obtained from your credentials
 SMTP_PASSWORD=password # obtained from your credentials
 SMTP_PORT=587
-SMTP_SECURE=true
 SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
 SMTP_FROM_NAME=Infisical
 ```
@@ -229,7 +229,6 @@ SMTP_HOST=smtp.resend.com
 SMTP_USERNAME=resend
 SMTP_PASSWORD=YOUR_API_KEY
 SMTP_PORT=587
-SMTP_SECURE=true
 SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
 SMTP_FROM_NAME=Infisical
 ```
@@ -253,7 +252,6 @@ SMTP_HOST=smtp.gmail.com
 SMTP_USERNAME=hey@gmail.com # your email
 SMTP_PASSWORD=password # your password
 SMTP_PORT=587
-SMTP_SECURE=true
 SMTP_FROM_ADDRESS=hey@gmail.com
 SMTP_FROM_NAME=Infisical
 ```
@@ -277,7 +275,6 @@ SMTP_HOST=smtp.office365.com
 SMTP_USERNAME=username@yourdomain.com # your username
 SMTP_PASSWORD=password # your password
 SMTP_PORT=587
-SMTP_SECURE=true
 SMTP_FROM_ADDRESS=username@yourdomain.com
 SMTP_FROM_NAME=Infisical
 ```
@@ -294,7 +291,6 @@ SMTP_HOST=smtp.zoho.com
 SMTP_USERNAME=username # your email
 SMTP_PASSWORD=password # your password
 SMTP_PORT=587
-SMTP_SECURE=true
 SMTP_FROM_ADDRESS=hey@example.com # your personal Zoho email or domain-based email linked to Zoho Mail
 SMTP_FROM_NAME=Infisical
 ```
@@ -317,6 +313,12 @@ SMTP_FROM_NAME=Infisical
 
 By default, users can only login via email/password based login method.
 To login into Infisical with OAuth providers such as Google, configure the associated variables.
+
+<ParamField query="DEFAULT_SAML_ORG_SLUG" type="string">
+
+When set, all visits to the Infisical login page will automatically redirect users of your Infisical instance to the SAML identity provider associated with the specified organization slug.
+
+</ParamField>
 
 <Accordion title="Google">
   Follow detailed guide to configure [Google SSO](/documentation/platform/sso/google)
@@ -368,11 +370,6 @@ To login into Infisical with OAuth providers such as Google, configure the assoc
   Requires enterprise license. Please contact team@infisical.com to get more
   information.
 </Accordion>
-
-<ParamField query="NEXT_PUBLIC_SAML_ORG_SLUG" type="string">
-  Configure SAML organization slug to automatically redirect all users of your
-  Infisical instance to the identity provider.
-</ParamField>
 
 ## Native secret integrations
 

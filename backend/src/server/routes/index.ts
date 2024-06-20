@@ -1,3 +1,4 @@
+import { CronJob } from "cron";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -13,6 +14,8 @@ import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-lo
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { auditLogStreamDALFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-dal";
 import { auditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
+import { certificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { certificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
 import { dynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { dynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/providers";
@@ -33,6 +36,8 @@ import { permissionDALFactory } from "@app/ee/services/permission/permission-dal
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { projectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
+import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
+import { rateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
@@ -44,6 +49,7 @@ import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approva
 import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-reviewer-dal";
 import { secretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { secretRotationQueueFactory } from "@app/ee/services/secret-rotation/secret-rotation-queue";
 import { secretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
@@ -70,6 +76,14 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
+import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
+import { certificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
+import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
@@ -80,6 +94,8 @@ import { identityAccessTokenDALFactory } from "@app/services/identity-access-tok
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { identityAwsAuthDALFactory } from "@app/services/identity-aws-auth/identity-aws-auth-dal";
 import { identityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
+import { identityAzureAuthDALFactory } from "@app/services/identity-azure-auth/identity-azure-auth-dal";
+import { identityAzureAuthServiceFactory } from "@app/services/identity-azure-auth/identity-azure-auth-service";
 import { identityGcpAuthDALFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-dal";
 import { identityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
 import { identityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
@@ -94,6 +110,9 @@ import { integrationDALFactory } from "@app/services/integration/integration-dal
 import { integrationServiceFactory } from "@app/services/integration/integration-service";
 import { integrationAuthDALFactory } from "@app/services/integration-auth/integration-auth-dal";
 import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
+import { kmsDALFactory } from "@app/services/kms/kms-dal";
+import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
+import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
 import { orgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
@@ -115,6 +134,7 @@ import { projectMembershipServiceFactory } from "@app/services/project-membershi
 import { projectUserMembershipRoleDALFactory } from "@app/services/project-membership/project-user-membership-role-dal";
 import { projectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
+import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-cleanup/resource-cleanup-queue";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
 import { secretQueueFactory } from "@app/services/secret/secret-queue";
 import { secretServiceFactory } from "@app/services/secret/secret-service";
@@ -127,6 +147,8 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
+import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
+import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
@@ -176,6 +198,7 @@ export const registerRoutes = async (
   const incidentContactDAL = incidentContactDALFactory(db);
   const orgRoleDAL = orgRoleDALFactory(db);
   const superAdminDAL = superAdminDALFactory(db);
+  const rateLimitDAL = rateLimitDALFactory(db);
   const apiKeyDAL = apiKeyDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
@@ -212,8 +235,8 @@ export const registerRoutes = async (
   const identityKubernetesAuthDAL = identityKubernetesAuthDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
   const identityAwsAuthDAL = identityAwsAuthDALFactory(db);
-
   const identityGcpAuthDAL = identityGcpAuthDALFactory(db);
+  const identityAzureAuthDAL = identityAzureAuthDALFactory(db);
 
   const auditLogDAL = auditLogDALFactory(db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
@@ -235,8 +258,8 @@ export const registerRoutes = async (
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
   const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
   const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
-  const sarReviewerDAL = secretApprovalRequestReviewerDALFactory(db);
-  const sarSecretDAL = secretApprovalRequestSecretDALFactory(db);
+  const secretApprovalRequestReviewerDAL = secretApprovalRequestReviewerDALFactory(db);
+  const secretApprovalRequestSecretDAL = secretApprovalRequestSecretDALFactory(db);
 
   const secretRotationDAL = secretRotationDALFactory(db);
   const snapshotDAL = snapshotDALFactory(db);
@@ -250,9 +273,13 @@ export const registerRoutes = async (
   const groupProjectMembershipRoleDAL = groupProjectMembershipRoleDALFactory(db);
   const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
+  const secretSharingDAL = secretSharingDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
+
+  const kmsDAL = kmsDALFactory(db);
+  const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -262,6 +289,12 @@ export const registerRoutes = async (
     projectDAL
   });
   const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL, keyStore });
+  const kmsService = kmsServiceFactory({
+    kmsRootConfigDAL,
+    keyStore,
+    kmsDAL
+  });
+
   const trustedIpService = trustedIpServiceFactory({
     licenseService,
     projectDAL,
@@ -282,7 +315,7 @@ export const registerRoutes = async (
     permissionService,
     auditLogStreamDAL
   });
-  const sapService = secretApprovalPolicyServiceFactory({
+  const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectMembershipDAL,
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
@@ -425,6 +458,10 @@ export const registerRoutes = async (
     orgService,
     keyStore
   });
+  const rateLimitService = rateLimitServiceFactory({
+    rateLimitDAL,
+    licenseService
+  });
   const apiKeyService = apiKeyServiceFactory({ apiKeyDAL, userDAL });
 
   const secretScanningQueue = secretScanningQueueFactory({
@@ -483,8 +520,60 @@ export const registerRoutes = async (
     projectBotDAL,
     projectMembershipDAL,
     secretApprovalRequestDAL,
-    secretApprovalSecretDAL: sarSecretDAL,
+    secretApprovalSecretDAL: secretApprovalRequestSecretDAL,
     projectUserMembershipRoleDAL
+  });
+
+  const certificateAuthorityDAL = certificateAuthorityDALFactory(db);
+  const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
+  const certificateAuthoritySecretDAL = certificateAuthoritySecretDALFactory(db);
+  const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
+
+  const certificateDAL = certificateDALFactory(db);
+  const certificateBodyDAL = certificateBodyDALFactory(db);
+
+  const certificateService = certificateServiceFactory({
+    certificateDAL,
+    certificateBodyDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthorityCrlDAL,
+    certificateAuthoritySecretDAL,
+    projectDAL,
+    kmsService,
+    permissionService
+  });
+
+  const certificateAuthorityQueue = certificateAuthorityQueueFactory({
+    certificateAuthorityCrlDAL,
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL,
+    certificateDAL,
+    projectDAL,
+    kmsService,
+    queueService
+  });
+
+  const certificateAuthorityService = certificateAuthorityServiceFactory({
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCrlDAL,
+    certificateAuthorityQueue,
+    certificateDAL,
+    certificateBodyDAL,
+    projectDAL,
+    kmsService,
+    permissionService
+  });
+
+  const certificateAuthorityCrlService = certificateAuthorityCrlServiceFactory({
+    certificateAuthorityDAL,
+    certificateAuthorityCrlDAL,
+    projectDAL,
+    kmsService,
+    permissionService,
+    licenseService
   });
 
   const projectService = projectServiceFactory({
@@ -503,6 +592,8 @@ export const registerRoutes = async (
     projectMembershipDAL,
     folderDAL,
     licenseService,
+    certificateAuthorityDAL,
+    certificateDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore
@@ -520,7 +611,8 @@ export const registerRoutes = async (
     permissionService,
     projectRoleDAL,
     projectUserMembershipRoleDAL,
-    identityProjectMembershipRoleDAL
+    identityProjectMembershipRoleDAL,
+    projectDAL
   });
 
   const snapshotService = secretSnapshotServiceFactory({
@@ -580,6 +672,7 @@ export const registerRoutes = async (
     secretVersionTagDAL
   });
   const secretImportService = secretImportServiceFactory({
+    licenseService,
     projectEnvDAL,
     folderDAL,
     permissionService,
@@ -608,19 +701,24 @@ export const registerRoutes = async (
     projectEnvDAL,
     projectBotService
   });
-  const sarService = secretApprovalRequestServiceFactory({
+
+  const secretSharingService = secretSharingServiceFactory({
+    permissionService,
+    secretSharingDAL
+  });
+
+  const secretApprovalRequestService = secretApprovalRequestServiceFactory({
     permissionService,
     projectBotService,
     folderDAL,
     secretDAL,
     secretTagDAL,
-    secretApprovalRequestSecretDAL: sarSecretDAL,
-    secretApprovalRequestReviewerDAL: sarReviewerDAL,
+    secretApprovalRequestSecretDAL,
+    secretApprovalRequestReviewerDAL,
     projectDAL,
     secretVersionDAL,
     secretBlindIndexDAL,
     secretApprovalRequestDAL,
-    secretService,
     snapshotService,
     secretVersionTagDAL,
     secretQueueService
@@ -649,6 +747,23 @@ export const registerRoutes = async (
     accessApprovalPolicyApproverDAL
   });
 
+  const secretReplicationService = secretReplicationServiceFactory({
+    secretTagDAL,
+    secretVersionTagDAL,
+    secretDAL,
+    secretVersionDAL,
+    secretImportDAL,
+    keyStore,
+    queueService,
+    folderDAL,
+    secretApprovalPolicyService,
+    secretBlindIndexDAL,
+    secretApprovalRequestDAL,
+    secretApprovalRequestSecretDAL,
+    secretQueueService,
+    projectMembershipDAL,
+    projectBotService
+  });
   const secretRotationQueue = secretRotationQueueFactory({
     telemetryService,
     secretRotationDAL,
@@ -742,6 +857,15 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const identityAzureAuthService = identityAzureAuthServiceFactory({
+    identityAzureAuthDAL,
+    identityOrgMembershipDAL,
+    identityAccessTokenDAL,
+    identityDAL,
+    permissionService,
+    licenseService
+  });
+
   const dynamicSecretProviders = buildDynamicSecretProviders();
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
     queueService,
@@ -769,14 +893,24 @@ export const registerRoutes = async (
     folderDAL,
     licenseService
   });
+  const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
+    auditLogDAL,
+    queueService,
+    secretVersionDAL,
+    secretFolderVersionDAL: folderVersionDAL,
+    snapshotDAL,
+    identityAccessTokenDAL,
+    secretSharingDAL
+  });
 
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
   await licenseService.init();
 
-  await auditLogQueue.startAuditLogPruneJob();
   await telemetryQueue.startTelemetryCheck();
+  await dailyResourceCleanUp.startCleanUp();
+  await kmsService.startService();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
@@ -798,7 +932,9 @@ export const registerRoutes = async (
     projectEnv: projectEnvService,
     projectRole: projectRoleService,
     secret: secretService,
+    secretReplication: secretReplicationService,
     secretTag: secretTagService,
+    rateLimit: rateLimitService,
     folder: folderService,
     secretImport: secretImportService,
     projectBot: projectBotService,
@@ -813,10 +949,11 @@ export const registerRoutes = async (
     identityKubernetesAuth: identityKubernetesAuthService,
     identityGcpAuth: identityGcpAuthService,
     identityAwsAuth: identityAwsAuthService,
-    secretApprovalPolicy: sapService,
+    identityAzureAuth: identityAzureAuthService,
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,
-    secretApprovalRequest: sarService,
+    secretApprovalPolicy: secretApprovalPolicyService,
+    secretApprovalRequest: secretApprovalRequestService,
     secretRotation: secretRotationService,
     dynamicSecret: dynamicSecretService,
     dynamicSecretLease: dynamicSecretLeaseService,
@@ -825,6 +962,9 @@ export const registerRoutes = async (
     ldap: ldapService,
     auditLog: auditLogService,
     auditLogStream: auditLogStreamService,
+    certificate: certificateService,
+    certificateAuthority: certificateAuthorityService,
+    certificateAuthorityCrl: certificateAuthorityCrlService,
     secretScanning: secretScanningService,
     license: licenseService,
     trustedIp: trustedIpService,
@@ -832,8 +972,17 @@ export const registerRoutes = async (
     secretBlindIndex: secretBlindIndexService,
     telemetry: telemetryService,
     projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService,
-    identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService
+    identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
+    secretSharing: secretSharingService
   });
+
+  const cronJobs: CronJob[] = [];
+  if (appCfg.isProductionMode) {
+    const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
+    if (rateLimitSyncJob) {
+      cronJobs.push(rateLimitSyncJob);
+    }
+  }
 
   server.decorate<FastifyZodProvider["store"]>("store", {
     user: userDAL
@@ -857,7 +1006,8 @@ export const registerRoutes = async (
           emailConfigured: z.boolean().optional(),
           inviteOnlySignup: z.boolean().optional(),
           redisConfigured: z.boolean().optional(),
-          secretScanningConfigured: z.boolean().optional()
+          secretScanningConfigured: z.boolean().optional(),
+          samlDefaultOrgSlug: z.string().optional()
         })
       }
     },
@@ -870,7 +1020,8 @@ export const registerRoutes = async (
         emailConfigured: cfg.isSmtpConfigured,
         inviteOnlySignup: Boolean(serverCfg.allowSignUp),
         redisConfigured: cfg.isRedisConfigured,
-        secretScanningConfigured: cfg.isSecretScanningConfigured
+        secretScanningConfigured: cfg.isSecretScanningConfigured,
+        samlDefaultOrgSlug: cfg.samlDefaultOrgSlug
       };
     }
   });
@@ -887,6 +1038,7 @@ export const registerRoutes = async (
   await server.register(registerV3Routes, { prefix: "/api/v3" });
 
   server.addHook("onClose", async () => {
+    cronJobs.forEach((job) => job.stop());
     await telemetryService.flushAll();
   });
 };

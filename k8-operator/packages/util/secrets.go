@@ -12,6 +12,7 @@ import (
 	"github.com/Infisical/infisical/k8-operator/packages/crypto"
 	"github.com/Infisical/infisical/k8-operator/packages/model"
 	"github.com/go-resty/resty/v2"
+	infisical "github.com/infisical/go-sdk"
 )
 
 type DecodedSymmetricEncryptionDetails = struct {
@@ -51,28 +52,26 @@ func GetServiceTokenDetails(infisicalToken string) (api.GetServiceTokenDetailsRe
 	return serviceTokenDetails, nil
 }
 
-func GetPlainTextSecretsViaUniversalAuth(accessToken string, etag string, secretScope v1alpha1.MachineIdentityScopeInWorkspace) ([]model.SingleEnvironmentVariable, model.RequestUpdateUpdateDetails, error) {
+func GetPlainTextSecretsViaMachineIdentity(infisicalClient infisical.InfisicalClientInterface, etag string, secretScope v1alpha1.MachineIdentityScopeInWorkspace) ([]model.SingleEnvironmentVariable, model.RequestUpdateUpdateDetails, error) {
 
-	httpClient := resty.New()
-	httpClient.SetAuthScheme("Bearer")
-	httpClient.SetAuthToken(accessToken)
-
-	secretsResponse, err := api.CallGetDecryptedSecretsV3(httpClient, api.GetDecryptedSecretsV3Request{
-		ProjectSlug: secretScope.ProjectSlug,
-		Environment: secretScope.EnvSlug,
-		Recursive:   secretScope.Recursive,
-		SecretPath:  secretScope.SecretsPath,
-		ETag:        etag,
+	secrets, err := infisicalClient.Secrets().List(infisical.ListSecretsOptions{
+		ProjectSlug:            secretScope.ProjectSlug,
+		Environment:            secretScope.EnvSlug,
+		Recursive:              secretScope.Recursive,
+		SecretPath:             secretScope.SecretsPath,
+		IncludeImports:         true,
+		ExpandSecretReferences: true,
 	})
 
 	if err != nil {
 		return nil, model.RequestUpdateUpdateDetails{}, err
 	}
 
-	var secrets []model.SingleEnvironmentVariable
+	var environmentVariables []model.SingleEnvironmentVariable
 
-	for _, secret := range secretsResponse.Secrets {
-		secrets = append(secrets, model.SingleEnvironmentVariable{
+	for _, secret := range secrets {
+
+		environmentVariables = append(environmentVariables, model.SingleEnvironmentVariable{
 			Key:   secret.SecretKey,
 			Value: secret.SecretValue,
 			Type:  secret.Type,
@@ -80,9 +79,11 @@ func GetPlainTextSecretsViaUniversalAuth(accessToken string, etag string, secret
 		})
 	}
 
-	return secrets, model.RequestUpdateUpdateDetails{
-		Modified: secretsResponse.Modified,
-		ETag:     secretsResponse.ETag,
+	newEtag := crypto.ComputeEtag([]byte(fmt.Sprintf("%v", environmentVariables)))
+
+	return environmentVariables, model.RequestUpdateUpdateDetails{
+		Modified: etag != newEtag,
+		ETag:     newEtag,
 	}, nil
 }
 
@@ -434,4 +435,33 @@ func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []model.SingleEn
 	}
 
 	return secrets, nil
+}
+
+func MergeRawImportedSecrets(secrets []model.SingleEnvironmentVariable, importedSecrets []api.ImportedRawSecretV3) []model.SingleEnvironmentVariable {
+	if importedSecrets == nil {
+		return secrets
+	}
+
+	hasOverriden := make(map[string]bool)
+	for _, sec := range secrets {
+		hasOverriden[sec.Key] = true
+	}
+
+	for i := len(importedSecrets) - 1; i >= 0; i-- {
+		importSec := importedSecrets[i]
+
+		for _, sec := range importSec.Secrets {
+			if _, ok := hasOverriden[sec.SecretKey]; !ok {
+				secrets = append(secrets, model.SingleEnvironmentVariable{
+					Key:   sec.SecretKey,
+					Value: sec.SecretValue,
+					Type:  sec.Type,
+					ID:    sec.ID,
+				})
+				hasOverriden[sec.SecretKey] = true
+			}
+		}
+	}
+
+	return secrets
 }

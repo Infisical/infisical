@@ -143,7 +143,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         projectId: req.params.workspaceId,
         ...req.query,
-        startDate: req.query.endDate || getLastMidnightDateISO(),
+        endDate: req.query.endDate,
+        startDate: req.query.startDate || getLastMidnightDateISO(),
         auditLogActor: req.query.actor,
         actor: req.permission.type
       });

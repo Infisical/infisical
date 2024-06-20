@@ -4,6 +4,7 @@ import {
   DynamicSecretsSchema,
   IdentityProjectAdditionalPrivilegeSchema,
   IntegrationAuthsSchema,
+  ProjectRolesSchema,
   SecretApprovalPoliciesSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -88,7 +89,35 @@ export const ProjectPermissionSchema = z.object({
     .optional()
 });
 
+export const ProjectSpecificPrivilegePermissionSchema = z.object({
+  actions: z
+    .nativeEnum(ProjectPermissionActions)
+    .describe("Describe what action an entity can take. Possible actions: create, edit, delete, and read")
+    .array()
+    .min(1),
+  subject: z
+    .enum([ProjectPermissionSub.Secrets])
+    .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+  conditions: z
+    .object({
+      environment: z.string().describe("The environment slug this permission should allow."),
+      secretPath: z
+        .object({
+          $glob: z
+            .string()
+            .min(1)
+            .describe("The secret path this permission should allow. Can be a glob pattern such as /folder-name/*/** ")
+        })
+        .optional()
+    })
+    .describe("When specified, only matching conditions will be allowed to access given resource.")
+});
+
 export const SanitizedIdentityPrivilegeSchema = IdentityProjectAdditionalPrivilegeSchema.extend({
+  permissions: UnpackedPermissionSchema.array()
+});
+
+export const SanitizedRoleSchema = ProjectRolesSchema.extend({
   permissions: UnpackedPermissionSchema.array()
 });
 

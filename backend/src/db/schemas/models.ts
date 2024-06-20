@@ -2,6 +2,13 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  CertificateAuthority = "certificate_authorities",
+  CertificateAuthorityCert = "certificate_authority_certs",
+  CertificateAuthoritySecret = "certificate_authority_secret",
+  CertificateAuthorityCrl = "certificate_authority_crl",
+  Certificate = "certificates",
+  CertificateBody = "certificate_bodies",
+  CertificateSecret = "certificate_secrets",
   Groups = "groups",
   GroupProjectMembership = "group_project_memberships",
   GroupProjectMembershipRole = "group_project_membership_roles",
@@ -18,6 +25,7 @@ export enum TableName {
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
   SuperAdmin = "super_admin",
+  RateLimit = "rate_limit",
   ApiKey = "api_keys",
   Project = "projects",
   ProjectBot = "project_bots",
@@ -29,6 +37,7 @@ export enum TableName {
   ProjectKeys = "project_keys",
   Secret = "secrets",
   SecretReference = "secret_references",
+  SecretSharing = "secret_sharing",
   SecretBlindIndex = "secret_blind_indexes",
   SecretVersion = "secret_versions",
   SecretFolder = "secret_folders",
@@ -47,6 +56,7 @@ export enum TableName {
   IdentityUniversalAuth = "identity_universal_auths",
   IdentityKubernetesAuth = "identity_kubernetes_auths",
   IdentityGcpAuth = "identity_gcp_auths",
+  IdentityAzureAuth = "identity_azure_auths",
   IdentityUaClientSecret = "identity_ua_client_secrets",
   IdentityAwsAuth = "identity_aws_auths",
   IdentityOrgMembership = "identity_org_memberships",
@@ -79,7 +89,11 @@ export enum TableName {
   DynamicSecretLease = "dynamic_secret_leases",
   // junction tables with tags
   JnSecretTag = "secret_tag_junction",
-  SecretVersionTag = "secret_version_tag_junction"
+  SecretVersionTag = "secret_version_tag_junction",
+  // KMS Service
+  KmsServerRootConfig = "kms_root_config",
+  KmsKey = "kms_keys",
+  KmsKeyVersion = "kms_key_versions"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
@@ -149,5 +163,6 @@ export enum IdentityAuthMethod {
   Univeral = "universal-auth",
   KUBERNETES_AUTH = "kubernetes-auth",
   GCP_AUTH = "gcp-auth",
-  AWS_AUTH = "aws-auth"
+  AWS_AUTH = "aws-auth",
+  AZURE_AUTH = "azure-auth"
 }

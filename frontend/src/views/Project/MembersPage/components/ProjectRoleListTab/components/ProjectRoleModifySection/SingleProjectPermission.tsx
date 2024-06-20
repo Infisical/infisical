@@ -25,6 +25,8 @@ type Props = {
     | "audit-logs"
     | "ip-allowlist"
     | "identity"
+    | "certificate-authorities"
+    | "certificates"
     | ProjectPermissionSub.SecretApproval;
   isNonEditable?: boolean;
   setValue: UseFormSetValue<TFormSchema>;
@@ -98,6 +100,7 @@ export const SingleProjectPermission = ({
   }, [selectedPermissionCategory]);
 
   const handlePermissionChange = (val: Permission) => {
+    if(!val) return;
     if (val === Permission.Custom) setIsCustom.on();
     else setIsCustom.off();
 

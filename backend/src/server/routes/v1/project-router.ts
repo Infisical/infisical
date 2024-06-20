@@ -335,6 +335,44 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "PUT",
+    url: "/:workspaceSlug/version-limit",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceSlug: z.string().trim()
+      }),
+      body: z.object({
+        pitVersionLimit: z.number().min(1).max(100)
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          workspace: ProjectsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const workspace = await server.services.project.updateVersionLimit({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        pitVersionLimit: req.body.pitVersionLimit,
+        workspaceSlug: req.params.workspaceSlug
+      });
+
+      return {
+        message: "Successfully changed workspace version limit",
+        workspace
+      };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/:workspaceId/integrations",
     config: {
