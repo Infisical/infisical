@@ -40,7 +40,8 @@ const formSchema = z.object({
   allowedSignUpDomain: z.string().optional().nullable(),
   trustSamlEmails: z.boolean(),
   trustLdapEmails: z.boolean(),
-  trustOidcEmails: z.boolean()
+  trustOidcEmails: z.boolean(),
+  defaultOrgSlug: z.string().optional().nullable()
 });
 
 type TDashboardForm = z.infer<typeof formSchema>;
@@ -62,7 +63,8 @@ export const AdminDashboardPage = () => {
       allowedSignUpDomain: config.allowedSignUpDomain,
       trustSamlEmails: config.trustSamlEmails,
       trustLdapEmails: config.trustLdapEmails,
-      trustOidcEmails: config.trustOidcEmails
+      trustOidcEmails: config.trustOidcEmails,
+      defaultOrgSlug: config.defaultOrgSlug
     }
   });
 
@@ -86,10 +88,17 @@ export const AdminDashboardPage = () => {
 
   const onFormSubmit = async (formData: TDashboardForm) => {
     try {
-      const { signUpMode, allowedSignUpDomain, trustSamlEmails, trustLdapEmails, trustOidcEmails } =
-        formData;
+      const {
+        signUpMode,
+        allowedSignUpDomain,
+        trustSamlEmails,
+        trustLdapEmails,
+        trustOidcEmails,
+        defaultOrgSlug
+      } = formData;
 
       await updateServerConfig({
+        defaultOrgSlug,
         allowSignUp: signUpMode !== SignUpModes.Disabled,
         allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : null,
         trustSamlEmails,
@@ -130,7 +139,7 @@ export const AdminDashboardPage = () => {
             </TabList>
             <TabPanel value={TabSections.Settings}>
               <form
-                className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+                className="mb-6 space-y-8 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
                 onSubmit={handleSubmit(onFormSubmit)}
               >
                 <div className="flex flex-col justify-start">
@@ -165,7 +174,7 @@ export const AdminDashboardPage = () => {
                   />
                 </div>
                 {signupMode === "anyone" && (
-                  <div className="mt-8 mb-8 flex flex-col justify-start">
+                  <div className="flex flex-col justify-start">
                     <div className="mb-4 text-xl font-semibold text-mineshaft-100">
                       Restrict signup by email domain(s)
                     </div>
@@ -191,7 +200,33 @@ export const AdminDashboardPage = () => {
                     />
                   </div>
                 )}
-                <div className="mt-8 mb-8 flex flex-col justify-start">
+
+                <div className="flex flex-col justify-start">
+                  <div className="mb-2 text-xl font-semibold text-mineshaft-100">
+                    Default organization slug
+                  </div>
+                  <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
+                    Select the slug of the organization you want to set as default for SAML/LDAP
+                    logins.
+                  </div>
+                  <Controller
+                    control={control}
+                    defaultValue=""
+                    name="defaultOrgSlug"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="acme-corp"
+                        className="w-72"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                      >
+                        <Input {...field} value={field.value || ""} placeholder="acme-corp" />
+                      </FormControl>
+                    )}
+                  />
+                </div>
+
+                <div className="flex flex-col justify-start">
                   <div className="mb-2 text-xl font-semibold text-mineshaft-100">Trust emails</div>
                   <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
                     Select if you want Infisical to trust external emails from SAML/LDAP/OIDC
