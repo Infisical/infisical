@@ -41,7 +41,10 @@ import {
 } from "./oidc-config-types";
 
 type TOidcConfigServiceFactoryDep = {
-  userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById" | "findById">;
+  userDAL: Pick<
+    TUserDALFactory,
+    "create" | "findOne" | "transaction" | "updateById" | "findById" | "findUserEncKeyByUserId"
+  >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
     TOrgDALFactory,
@@ -276,6 +279,7 @@ export const oidcConfigServiceFactory = ({
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
+    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
     const isUserCompleted = Boolean(user.isAccepted);
     const providerAuthToken = jwt.sign(
       {
@@ -288,6 +292,7 @@ export const oidcConfigServiceFactory = ({
         organizationName: organization.name,
         organizationId: organization.id,
         organizationSlug: organization.slug,
+        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
         authMethod: AuthMethod.OIDC,
         authType: UserAliasType.OIDC,
         isUserCompleted,

@@ -574,7 +574,8 @@ export const authLoginServiceFactory = ({
     const { authMethod, userName } = decodedProviderToken;
     if (!userName) throw new BadRequestError({ message: "Missing user name" });
     const organizationId =
-      (isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && decodedProviderToken.orgId
+      (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod)) &&
+      decodedProviderToken.orgId
         ? decodedProviderToken.orgId
         : undefined;
 
