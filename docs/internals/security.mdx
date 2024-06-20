@@ -79,9 +79,8 @@ Infisical uses AES-256-GCM for symmetric encryption and x25519-xsalsa20-poly1305
 By default, Infisical employs a zero-knowledge-first approach to securely storing and sharing secrets.
 
 - Each secret belongs to a project and is symmetrically encrypted by that project's unique key. Each member of a project is shared a copy of the project key, encrypted under their public key, when they are first invited to join the project.
-Since these encryption operations occur on the client-side, the Infisical API is not able to view the value of any secret and the default zero-knowledge property of Infisical is retained; as you'd expect, it follows that decryption operations also occur on the client-side.
+  Since these encryption operations occur on the client-side, the Infisical API is not able to view the value of any secret and the default zero-knowledge property of Infisical is retained; as you'd expect, it follows that decryption operations also occur on the client-side.
 - An exception to the zero-knowledge property occurs when a member of a project explicitly shares that project's unique key with Infisical. It is often necessary to share the project key with Infisical in order to use features like native integrations and secret rotation that wouldn't be possible to offer otherwise.
-
 
 ## Infrastructure
 
@@ -90,19 +89,22 @@ Since these encryption operations occur on the client-side, the Infisical API is
 Infisical Cloud utilizes several strategies to ensure high availability, leveraging AWS services to maintain continuous operation and data integrity.
 
 #### Multi-AZ AWS RDS
-Infisical Cloud uses AWS Relational Database Service (RDS) with Multi-AZ deployments. 
-This configuration ensures that the database service is highly available and durable. 
-AWS RDS automatically provisions and maintains a synchronous standby replica of the database in a different Availability Zone (AZ). 
-This setup facilitates immediate failover to the standby in the event of an AZ failure, thereby ensuring that database operations can continue with minimal interruption. 
+
+Infisical Cloud uses AWS Relational Database Service (RDS) with Multi-AZ deployments.
+This configuration ensures that the database service is highly available and durable.
+AWS RDS automatically provisions and maintains a synchronous standby replica of the database in a different Availability Zone (AZ).
+This setup facilitates immediate failover to the standby in the event of an AZ failure, thereby ensuring that database operations can continue with minimal interruption.
 The continuous backup and replication to the standby instance safeguard data against loss and ensure its availability even during system failures.
 
 #### Multi-AZ ECS for Container Orchestration
-Infisical Cloud leverages Amazon Elastic Container Service (ECS) in a Multi-AZ configuration for container orchestration. 
-This arrangement enables the management and operation of containers across multiple availability zones, increasing the application's fault tolerance. 
-Should there be an AZ failure, load is seamlessly sent to an operational AZ, thus minimizing downtime and preserving service availability. 
+
+Infisical Cloud leverages Amazon Elastic Container Service (ECS) in a Multi-AZ configuration for container orchestration.
+This arrangement enables the management and operation of containers across multiple availability zones, increasing the application's fault tolerance.
+Should there be an AZ failure, load is seamlessly sent to an operational AZ, thus minimizing downtime and preserving service availability.
 
 #### Standby Regions for Regional Failover
-To fight regional outages, secondary regions are always in standby mode and maintained with up-to-date configurations and data, ready to take over in case the primary region fails. 
+
+To fight regional outages, secondary regions are always in standby mode and maintained with up-to-date configurations and data, ready to take over in case the primary region fails.
 The standby regions enable a rapid transition and service continuity with minimal disruption in the event of a complete regional failure, ensuring that Infisical Cloud services remain accessible.
 
 ### Snapshots
@@ -127,7 +129,7 @@ JWT tokens are stored in browser memory and appended to outbound requests requir
 
 ### User authentication
 
-Infisical supports several authentication methods including email/password, Google SSO, GitHub SSO, and SAML 2.0 (Okta, Azure, JumpCloud); Infisical also currently offers email-based 2FA with authenticator app methods coming in Q1 2024.
+Infisical supports several authentication methods including email/password, Google SSO, GitHub SSO, SAML 2.0 (Okta, Azure, JumpCloud), and OpenID Connect; Infisical also currently offers email-based 2FA with authenticator app methods coming in Q1 2024.
 
 Infisical uses the [secure remote password protocol](https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol#:~:text=The%20SRP%20protocol%20has%20a,the%20user%20to%20the%20server), commonly found in other zero-knowledge platform architectures, for authentication.
 Put simply, the protocol enables Infisical to validate a user's knowledge of their password without ever seeing it by constructing a mutual secret; we use this protocol because each user's password is used to seed the generation of a master encryption/decryption key via KDF for that user which the platform
@@ -141,6 +143,7 @@ Lastly, Infisical enforces strong password requirements according to the guidanc
     to access the platform.
 
     We strongly encourage users to generate and store their passwords / master decryption key in a password manager, such as 1Password, Bitwarden, or Dashlane.
+
 </Note>
 
 ## Role-based access control (RBAC)
@@ -172,7 +175,7 @@ Please email security@infisical.com to request any reports including a letter of
 Whether or not Infisical or your employees can access data in the Infisical instance and/or storage backend depends on many factors how you use Infisical:
 
 - Infisical Self-Hosted: Self-hosting Infisical is common amongst organizations that prefer to keep data on their own infrastructure usually to adhere to strict regulatory and compliance requirements. In this option, organizations retain full control over their data and therefore govern the data access policy of their Infisical instance and storage backend.
-- Infisical Cloud: Using Infisical's managed service, [Infisical Cloud](https://app.infisical.com) means delegating data oversight and management to Infisical.  Under our policy controls, employees are only granted access to parts of infrastructure according to principle of least privilege; this is especially relevant to customer data can only be accessed currently by executive management of Infisical. Moreover, any changes to sensitive customer data is prohibited without explicit customer approval.
+- Infisical Cloud: Using Infisical's managed service, [Infisical Cloud](https://app.infisical.com) means delegating data oversight and management to Infisical. Under our policy controls, employees are only granted access to parts of infrastructure according to principle of least privilege; this is especially relevant to customer data can only be accessed currently by executive management of Infisical. Moreover, any changes to sensitive customer data is prohibited without explicit customer approval.
 
 It should be noted that, even on Infisical Cloud, it is physically impossible for employees of Infisical to view the values of secrets if users have not explicitly granted Infisical access to their project (i.e. opted out of zero-knowledge).
 
