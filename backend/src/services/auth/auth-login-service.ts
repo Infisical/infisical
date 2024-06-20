@@ -9,6 +9,7 @@ import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TTokenDALFactory } from "../auth-token/auth-token-dal";
@@ -258,7 +259,13 @@ export const authLoginServiceFactory = ({
     });
     // from password decrypt the private key
     if (password) {
-      const privateKey = await getUserPrivateKey(password, userEnc);
+      const privateKey = await getUserPrivateKey(password, userEnc).catch((err) => {
+        logger.error(
+          err,
+          `loginExchangeClientProof: private key generation failed for [userId=${user.id}] and [email=${user.email}] `
+        );
+        return "";
+      });
       const hashedPassword = await bcrypt.hash(password, cfg.BCRYPT_SALT_ROUND);
       const { iv, tag, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
       await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
