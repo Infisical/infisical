@@ -14,6 +14,22 @@ export const pick = <T extends object, TKeys extends keyof T>(obj: T, keys: TKey
 };
 
 /**
+ * Omit a list of properties from an object
+ * into a new object
+ */
+export const omit = <T extends object, TKeys extends keyof T>(obj: T, keys: TKeys[]): Omit<T, TKeys> => {
+  if (!obj) return {} as Omit<T, TKeys>;
+  return (Object.keys(obj) as TKeys[]).reduce(
+    (acc, key) => {
+      if (!keys.includes(key)) {
+        (acc as T)[key] = obj[key];
+      }
+      return acc;
+    },
+    {} as Omit<T, TKeys>
+  );
+};
+/**
  * Removes (shakes out) undefined entries from an
  * object. Optional second argument shakes out values
  * by custom evaluation.
