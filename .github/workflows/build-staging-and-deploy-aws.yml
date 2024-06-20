@@ -87,7 +87,7 @@ jobs:
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.render-web-container.outputs.task-definition }}
-          service: infisical-core-platform
+          service: infisical-core-gamma-stage
           cluster: infisical-core-platform
           wait-for-service-stability: true
 
