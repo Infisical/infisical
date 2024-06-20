@@ -41,7 +41,8 @@ const formSchema = z.object({
   trustSamlEmails: z.boolean(),
   trustLdapEmails: z.boolean(),
   trustOidcEmails: z.boolean(),
-  defaultOrgSlug: z.string().optional().nullable()
+  defaultOrgSlug: z.string().optional().nullable(),
+  defaultAuthOrgSlug: z.string().optional().nullable()
 });
 
 type TDashboardForm = z.infer<typeof formSchema>;
@@ -64,7 +65,8 @@ export const AdminDashboardPage = () => {
       trustSamlEmails: config.trustSamlEmails,
       trustLdapEmails: config.trustLdapEmails,
       trustOidcEmails: config.trustOidcEmails,
-      defaultOrgSlug: config.defaultOrgSlug
+      defaultOrgSlug: config.defaultOrgSlug,
+      defaultAuthOrgSlug: config.defaultAuthOrgSlug
     }
   });
 
@@ -94,11 +96,12 @@ export const AdminDashboardPage = () => {
         trustSamlEmails,
         trustLdapEmails,
         trustOidcEmails,
-        defaultOrgSlug
+        defaultOrgSlug,
+        defaultAuthOrgSlug
       } = formData;
 
       await updateServerConfig({
-        defaultOrgSlug,
+        defaultAuthOrgSlug,
         allowSignUp: signUpMode !== SignUpModes.Disabled,
         allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : null,
         trustSamlEmails,
@@ -207,15 +210,16 @@ export const AdminDashboardPage = () => {
                   </div>
                   <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
                     Select the slug of the organization you want to set as default for SAML/LDAP
-                    logins.
+                    logins. When this field is set, users will also skip the organization selection
+                    page and automatically be logged into the default organization.
                   </div>
                   <Controller
                     control={control}
                     defaultValue=""
-                    name="defaultOrgSlug"
+                    name="defaultAuthOrgSlug"
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
-                        label="acme-corp"
+                        label="Default organization slug"
                         className="w-72"
                         isError={Boolean(error)}
                         errorText={error?.message}
