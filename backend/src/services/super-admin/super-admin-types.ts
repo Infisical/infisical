@@ -18,6 +18,6 @@ export type TAdminSignUpDTO = {
   userAgent: string;
 };
 
-export type TUpdateServerCfgDTO = Omit<TSuperAdminUpdate, "defaultOrgId"> & {
-  defaultOrgSlug?: string | null;
+export type TUpdateServerCfgDTO = Omit<TSuperAdminUpdate, "defaultAuthOrgId"> & {
+  defaultAuthOrgSlug?: string | null;
 };

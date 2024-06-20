@@ -35,12 +35,12 @@ export const useNavigateToSelectOrganization = () => {
   const router = useRouter();
 
   const navigate = async (cliCallbackPort?: string) => {
-    if (config.defaultOrgId) {
+    if (config.defaultAuthOrgId) {
       await selectOrganization.mutateAsync({
-        organizationId: config.defaultOrgId
+        organizationId: config.defaultAuthOrgId
       });
 
-      await navigateUserToOrg(router, config.defaultOrgId);
+      await navigateUserToOrg(router, config.defaultAuthOrgId);
     }
 
     queryClient.invalidateQueries(userKeys.getUser);

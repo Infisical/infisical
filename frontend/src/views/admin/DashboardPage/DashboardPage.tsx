@@ -41,7 +41,6 @@ const formSchema = z.object({
   trustSamlEmails: z.boolean(),
   trustLdapEmails: z.boolean(),
   trustOidcEmails: z.boolean(),
-  defaultOrgSlug: z.string().optional().nullable(),
   defaultAuthOrgSlug: z.string().optional().nullable()
 });
 
@@ -65,7 +64,6 @@ export const AdminDashboardPage = () => {
       trustSamlEmails: config.trustSamlEmails,
       trustLdapEmails: config.trustLdapEmails,
       trustOidcEmails: config.trustOidcEmails,
-      defaultOrgSlug: config.defaultOrgSlug,
       defaultAuthOrgSlug: config.defaultAuthOrgSlug
     }
   });
@@ -96,7 +94,6 @@ export const AdminDashboardPage = () => {
         trustSamlEmails,
         trustLdapEmails,
         trustOidcEmails,
-        defaultOrgSlug,
         defaultAuthOrgSlug
       } = formData;
 

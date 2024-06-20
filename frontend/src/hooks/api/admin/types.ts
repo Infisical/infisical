@@ -7,8 +7,8 @@ export type TServerConfig = {
   trustLdapEmails: boolean;
   trustOidcEmails: boolean;
   isSecretScanningDisabled: boolean;
-  defaultOrgSlug: string | null;
-  defaultOrgId: string | null;
+  defaultAuthOrgSlug: string | null;
+  defaultAuthOrgId: string | null;
 };
 
 export type TCreateAdminUserDTO = {

@@ -22,7 +22,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           config: SuperAdminSchema.omit({ createdAt: true, updatedAt: true }).extend({
             isMigrationModeOn: z.boolean(),
-            defaultOrgSlug: z.string().nullable(),
+            defaultAuthOrgSlug: z.string().nullable(),
             isSecretScanningDisabled: z.boolean()
           })
         })
@@ -54,12 +54,12 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         trustSamlEmails: z.boolean().optional(),
         trustLdapEmails: z.boolean().optional(),
         trustOidcEmails: z.boolean().optional(),
-        defaultOrgSlug: z.string().optional().nullable()
+        defaultAuthOrgSlug: z.string().optional().nullable()
       }),
       response: {
         200: z.object({
           config: SuperAdminSchema.extend({
-            defaultOrgSlug: z.string().nullable()
+            defaultAuthOrgSlug: z.string().nullable()
           })
         })
       }

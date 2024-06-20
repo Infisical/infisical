@@ -28,7 +28,7 @@ type TSuperAdminServiceFactoryDep = {
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
 // eslint-disable-next-line
-export let getServerCfg: () => Promise<TSuperAdmin & { defaultOrgSlug: string | null }>;
+export let getServerCfg: () => Promise<TSuperAdmin & { defaultAuthOrgSlug: string | null }>;
 
 const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
 const ADMIN_CONFIG_KEY_EXP = 60; // 60s
@@ -57,7 +57,7 @@ export const superAdminServiceFactory = ({
         return serverCfg;
       }
 
-      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin & { defaultOrgSlug: string | null };
+      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin & { defaultAuthOrgSlug: string | null };
       return {
         ...keyStoreServerCfg,
         // this is to allow admin router to work
@@ -78,9 +78,9 @@ export const superAdminServiceFactory = ({
 
   const updateServerCfg = async (data: TUpdateServerCfgDTO) => {
     let organization: TOrganizations | undefined;
-    if (data.defaultOrgSlug) {
+    if (data.defaultAuthOrgSlug) {
       organization = await orgDAL.findOne({
-        slug: data.defaultOrgSlug
+        slug: data.defaultAuthOrgSlug
       });
 
       if (!organization) {
@@ -92,13 +92,13 @@ export const superAdminServiceFactory = ({
     }
 
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, {
-      ...omit(data, ["defaultOrgSlug"]),
-      defaultOrgId: organization?.id || null
+      ...omit(data, ["defaultAuthOrgSlug"]),
+      defaultAuthOrgId: organization?.id || null
     });
 
     const result = {
       ...updatedServerCfg,
-      defaultOrgSlug: organization?.slug || null
+      defaultAuthOrgSlug: organization?.slug || null
     };
 
     await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(result));

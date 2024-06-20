@@ -54,8 +54,8 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
   }, [serverDetails?.samlDefaultOrgSlug]);
 
   const handleSaml = useCallback((step: number) => {
-    if (config.defaultOrgSlug) {
-      redirectToSaml(config.defaultOrgSlug);
+    if (config.defaultAuthOrgSlug) {
+      redirectToSaml(config.defaultAuthOrgSlug);
     } else {
       setStep(step);
     }
