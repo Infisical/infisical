@@ -1,3 +1,5 @@
+import { TSuperAdminUpdate } from "@app/db/schemas";
+
 export type TAdminSignUpDTO = {
   email: string;
   password: string;
@@ -14,4 +16,8 @@ export type TAdminSignUpDTO = {
   encryptedPrivateKeyTag: string;
   ip: string;
   userAgent: string;
+};
+
+export type TUpdateServerCfgDTO = Omit<TSuperAdminUpdate, "defaultOrgId"> & {
+  defaultOrgSlug?: string | null;
 };
