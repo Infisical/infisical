@@ -67,7 +67,7 @@ export const LoginLDAP = () => {
         What&apos;s your LDAP Login?
       </p>
       <form onSubmit={handleSubmission}>
-        {!config.defaultOrgSlug && (
+        {!config.defaultOrgSlug && !passedOrgSlug && (
           <div className="relative mx-auto flex max-h-24 w-1/4 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-[22rem] lg:w-1/6">
             <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
               <Input
@@ -79,7 +79,6 @@ export const LoginLDAP = () => {
                 autoComplete="email"
                 id="email"
                 className="h-12"
-                isDisabled={passedOrgSlug !== null}
               />
             </div>
           </div>
