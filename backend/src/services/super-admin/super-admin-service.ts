@@ -1,21 +1,24 @@
 import bcrypt from "bcrypt";
 
-import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
+import { TOrganizations, TSuperAdmin } from "@app/db/schemas";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError } from "@app/lib/errors";
+import { omit } from "@app/lib/fn";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { AuthMethod } from "../auth/auth-type";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
-import { TAdminSignUpDTO } from "./super-admin-types";
+import { TAdminSignUpDTO, TUpdateServerCfgDTO } from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
   serverCfgDAL: TSuperAdminDALFactory;
+  orgDAL: Pick<TOrgDALFactory, "findOne">;
   userDAL: TUserDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
@@ -25,7 +28,7 @@ type TSuperAdminServiceFactoryDep = {
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
 // eslint-disable-next-line
-export let getServerCfg: () => Promise<TSuperAdmin>;
+export let getServerCfg: () => Promise<TSuperAdmin & { defaultOrgSlug: string | null }>;
 
 const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
 const ADMIN_CONFIG_KEY_EXP = 60; // 60s
@@ -33,6 +36,7 @@ const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
 
 export const superAdminServiceFactory = ({
   serverCfgDAL,
+  orgDAL,
   userDAL,
   authService,
   orgService,
@@ -42,16 +46,18 @@ export const superAdminServiceFactory = ({
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
     getServerCfg = async () => {
       const config = await keyStore.getItem(ADMIN_CONFIG_KEY);
+
       // missing in keystore means fetch from db
       if (!config) {
         const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+
         if (serverCfg) {
           await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
         }
         return serverCfg;
       }
 
-      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin;
+      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin & { defaultOrgSlug: string | null };
       return {
         ...keyStoreServerCfg,
         // this is to allow admin router to work
@@ -70,10 +76,33 @@ export const superAdminServiceFactory = ({
     return newCfg;
   };
 
-  const updateServerCfg = async (data: TSuperAdminUpdate) => {
-    const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, data);
-    await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
-    return updatedServerCfg;
+  const updateServerCfg = async (data: TUpdateServerCfgDTO) => {
+    let organization: TOrganizations | undefined;
+    if (data.defaultOrgSlug) {
+      organization = await orgDAL.findOne({
+        slug: data.defaultOrgSlug
+      });
+
+      if (!organization) {
+        throw new BadRequestError({
+          name: "Update server config",
+          message: "Failed to find default organization"
+        });
+      }
+    }
+
+    const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, {
+      ...omit(data, ["defaultOrgSlug"]),
+      defaultOrgId: organization?.id || null
+    });
+
+    const result = {
+      ...updatedServerCfg,
+      defaultOrgSlug: organization?.slug || null
+    };
+
+    await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(result));
+    return result;
   };
 
   const adminSignUp = async ({
