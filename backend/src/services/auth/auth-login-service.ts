@@ -260,7 +260,10 @@ export const authLoginServiceFactory = ({
     // from password decrypt the private key
     if (password) {
       const privateKey = await getUserPrivateKey(password, userEnc).catch((err) => {
-        logger.error(err, `private key generation failed for user id - ${user.id} and email -${user.email}`);
+        logger.error(
+          err,
+          `loginExchangeClientProof: private key generation failed for [userId=${user.id}] and [email=${user.email}] `
+        );
         return "";
       });
       const hashedPassword = await bcrypt.hash(password, cfg.BCRYPT_SALT_ROUND);
