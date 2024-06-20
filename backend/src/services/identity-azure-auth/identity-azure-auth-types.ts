@@ -118,3 +118,7 @@ export type TDecodedAzureAuthJwt = {
     [key: string]: string;
   };
 };
+
+export type TRevokeAzureAuthDTO = {
+  identityId: string;
+} & Omit<TProjectPermission, "projectId">;

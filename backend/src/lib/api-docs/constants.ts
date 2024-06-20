@@ -118,6 +118,27 @@ export const AWS_AUTH = {
     iamRequestBody:
       "The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke."
+  }
+} as const;
+
+export const AZURE_AUTH = {
+  REVOKE: {
+    identityId: "The ID of the identity to revoke."
+  }
+} as const;
+
+export const GCP_AUTH = {
+  REVOKE: {
+    identityId: "The ID of the identity to revoke."
+  }
+} as const;
+
+export const KUBERNETES_AUTH = {
+  REVOKE: {
+    identityId: "The ID of the identity to revoke."
   }
 } as const;
 
