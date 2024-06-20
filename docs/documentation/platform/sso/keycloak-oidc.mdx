@@ -28,11 +28,11 @@ description: "Learn how to configure Keycloak OIDC for Infisical SSO."
       
       ![OIDC keycloak create client capability config settings](../../../images/sso/keycloak-oidc/create-client-capability.png)
       
-      1.4. In the Login Settings step, set the appropriate values for the following:
-      - Root URL (base URL of Infisical)
-      - Home URL (base URL of Infisical)
-      - Valid Redirect URIs (`${INFISICAL_BASE_URL}/api/v1/sso/oidc/callback`)
-      - Web origins (base URL of Infisical)
+      1.4. In the Login Settings step, set the following values:
+      - Root URL: `https://app.infisical.com`.
+      - Home URL: `https://app.infisical.com`.
+      - Valid Redirect URIs: `https://app.infisical.com/api/v1/sso/oidc/callback`.
+      - Web origins: `https://app.infisical.com`.
 
       ![OIDC keycloak create client login settings](../../../images/sso/keycloak-oidc/create-client-login-settings.png)
       <Info>
@@ -60,7 +60,7 @@ description: "Learn how to configure Keycloak OIDC for Infisical SSO."
       2.1. Back in Keycloak, navigate to Configure > Realm settings > General tab > Endpoints > OpenID Endpoint Configuration and copy the opened URL. This is what is to referred to as the Discovery Document URL and it takes the form: `https://keycloak-mysite.com/realms/myrealm/.well-known/openid-configuration`.
       ![OIDC keycloak realm OIDC metadata](../../../images/sso/keycloak-oidc/realm-setting-oidc-config.png)
 
-      2.2. From the Clients page, navigate to the Credential tab and copy the value of Client secret for use in the preceding steps.
+      2.2. From the Clients page, navigate to the Credential tab and copy the **Client Secret** to be used in the next steps.
       ![OIDC keycloak realm OIDC secret](../../../images/sso/keycloak-oidc/client-secret.png)
 
    </Step>
