@@ -1,24 +1,21 @@
 import bcrypt from "bcrypt";
 
-import { TOrganizations, TSuperAdmin } from "@app/db/schemas";
+import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError } from "@app/lib/errors";
-import { omit } from "@app/lib/fn";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { AuthMethod } from "../auth/auth-type";
-import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
-import { TAdminSignUpDTO, TUpdateServerCfgDTO } from "./super-admin-types";
+import { TAdminSignUpDTO } from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
   serverCfgDAL: TSuperAdminDALFactory;
-  orgDAL: Pick<TOrgDALFactory, "findOne">;
   userDAL: TUserDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
@@ -36,7 +33,6 @@ const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
 
 export const superAdminServiceFactory = ({
   serverCfgDAL,
-  orgDAL,
   userDAL,
   authService,
   orgService,
@@ -76,33 +72,11 @@ export const superAdminServiceFactory = ({
     return newCfg;
   };
 
-  const updateServerCfg = async (data: TUpdateServerCfgDTO) => {
-    let organization: TOrganizations | undefined;
-    if (data.defaultAuthOrgSlug) {
-      organization = await orgDAL.findOne({
-        slug: data.defaultAuthOrgSlug
-      });
+  const updateServerCfg = async (data: TSuperAdminUpdate) => {
+    const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, data);
 
-      if (!organization) {
-        throw new BadRequestError({
-          name: "Update server config",
-          message: "Failed to find default organization"
-        });
-      }
-    }
-
-    const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, {
-      ...omit(data, ["defaultAuthOrgSlug"]),
-      defaultAuthOrgId: organization?.id || null
-    });
-
-    const result = {
-      ...updatedServerCfg,
-      defaultAuthOrgSlug: organization?.slug || null
-    };
-
-    await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(result));
-    return result;
+    await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
+    return updatedServerCfg;
   };
 
   const adminSignUp = async ({

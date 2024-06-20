@@ -21,7 +21,7 @@ import {
   Tabs
 } from "@app/components/v2";
 import { useOrganization, useServerConfig, useUser } from "@app/context";
-import { useUpdateServerConfig } from "@app/hooks/api";
+import { useGetOrganizations, useUpdateServerConfig } from "@app/hooks/api";
 
 import { RateLimitPanel } from "./RateLimitPanel";
 
@@ -41,7 +41,7 @@ const formSchema = z.object({
   trustSamlEmails: z.boolean(),
   trustLdapEmails: z.boolean(),
   trustOidcEmails: z.boolean(),
-  defaultAuthOrgSlug: z.string().optional().nullable()
+  defaultAuthOrgId: z.string()
 });
 
 type TDashboardForm = z.infer<typeof formSchema>;
@@ -64,7 +64,7 @@ export const AdminDashboardPage = () => {
       trustSamlEmails: config.trustSamlEmails,
       trustLdapEmails: config.trustLdapEmails,
       trustOidcEmails: config.trustOidcEmails,
-      defaultAuthOrgSlug: config.defaultAuthOrgSlug
+      defaultAuthOrgId: config.defaultAuthOrgId ?? ""
     }
   });
 
@@ -73,6 +73,8 @@ export const AdminDashboardPage = () => {
   const { user, isLoading: isUserLoading } = useUser();
   const { orgs } = useOrganization();
   const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
+
+  const organizations = useGetOrganizations();
 
   const isNotAllowed = !user?.superAdmin;
 
@@ -94,11 +96,11 @@ export const AdminDashboardPage = () => {
         trustSamlEmails,
         trustLdapEmails,
         trustOidcEmails,
-        defaultAuthOrgSlug
+        defaultAuthOrgId
       } = formData;
 
       await updateServerConfig({
-        defaultAuthOrgSlug,
+        defaultAuthOrgId: defaultAuthOrgId || null,
         allowSignUp: signUpMode !== SignUpModes.Disabled,
         allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : null,
         trustSamlEmails,
@@ -155,13 +157,13 @@ export const AdminDashboardPage = () => {
                     name="signUpMode"
                     render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                       <FormControl
-                        className="max-w-72 w-72"
+                        className="max-w-sm"
                         errorText={error?.message}
                         isError={Boolean(error)}
                       >
                         <Select
-                          className="w-72 bg-mineshaft-700"
-                          dropdownContainerClassName="bg-mineshaft-700"
+                          className="w-full bg-mineshaft-700"
+                          dropdownContainerClassName="bg-mineshaft-800"
                           defaultValue={field.value}
                           onValueChange={(e) => onChange(e)}
                           {...field}
@@ -203,7 +205,7 @@ export const AdminDashboardPage = () => {
 
                 <div className="flex flex-col justify-start">
                   <div className="mb-2 text-xl font-semibold text-mineshaft-100">
-                    Default organization slug
+                    Default organization
                   </div>
                   <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
                     Select the slug of the organization you want to set as default for SAML/LDAP
@@ -212,16 +214,33 @@ export const AdminDashboardPage = () => {
                   </div>
                   <Controller
                     control={control}
-                    defaultValue=""
-                    name="defaultAuthOrgSlug"
-                    render={({ field, fieldState: { error } }) => (
+                    name="defaultAuthOrgId"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                       <FormControl
-                        label="Default organization slug"
-                        className="w-72"
-                        isError={Boolean(error)}
+                        className="max-w-sm"
                         errorText={error?.message}
+                        isError={Boolean(error)}
                       >
-                        <Input {...field} value={field.value || ""} placeholder="acme-corp" />
+                        <Select
+                          className="w-full bg-mineshaft-700"
+                          dropdownContainerClassName="bg-mineshaft-800"
+                          defaultValue={field.value ?? " "}
+                          onValueChange={(e) => {
+                            if (e === " ") {
+                              onChange(null);
+                            } else {
+                              onChange(e);
+                            }
+                          }}
+                          {...field}
+                        >
+                          <SelectItem value=" ">Select organization...</SelectItem>
+                          {organizations.data?.map((org) => (
+                            <SelectItem key={org.id} value={org.id}>
+                              {org.name}
+                            </SelectItem>
+                          ))}
+                        </Select>
                       </FormControl>
                     )}
                   />

@@ -458,7 +458,6 @@ export const registerRoutes = async (
     userDAL,
     authService: loginService,
     serverCfgDAL: superAdminDAL,
-    orgDAL,
     orgService,
     keyStore
   });
