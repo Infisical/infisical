@@ -50,6 +50,13 @@ jobs:
     environment:
       name: Gamma
     steps:
+      - uses: twingate/github-action@v1
+        with:
+          # The Twingate Service Key used to connect Twingate to the proper service
+          # Learn more about [Twingate Services](https://docs.twingate.com/docs/services)
+          #
+          # Required
+          service-key: ${{ secrets.TWINGATE_GAMMA_SERVICE_KEY }}
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Setup Node.js environment
