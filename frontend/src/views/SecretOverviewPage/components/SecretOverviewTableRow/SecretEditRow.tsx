@@ -93,12 +93,13 @@ export const SecretEditRow = ({
     <div className="group flex w-full cursor-text items-center space-x-2">
       <div className="flex-grow border-r border-r-mineshaft-600 pr-2 pl-1">
         <Controller
-          disabled={isImportedSecret}
+          disabled={isImportedSecret && !defaultValue}
           control={control}
           name="value"
           render={({ field }) => (
             <InfisicalSecretInput
               {...field}
+              isReadOnly={isImportedSecret}
               value={field.value as string}
               key="secret-input"
               isVisible={isVisible}
