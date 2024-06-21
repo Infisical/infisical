@@ -14,6 +14,7 @@ import { twMerge } from "tailwind-merge";
 import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
+import { WorkspaceEnv } from "@app/hooks/api/types";
 
 import { SecretEditRow } from "./SecretEditRow";
 import SecretRenameRow from "./SecretRenameRow";
@@ -30,6 +31,10 @@ type Props = {
   onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
+  getImportedSecretByKey: (
+    env: string,
+    secretName: string
+  ) => { secret?: DecryptedSecret; environmentInfo?: WorkspaceEnv } | undefined;
 };
 
 export const SecretOverviewTableRow = ({
@@ -41,6 +46,7 @@ export const SecretOverviewTableRow = ({
   onSecretCreate,
   onSecretDelete,
   isImportedSecretPresentInEnv,
+  getImportedSecretByKey,
   expandableColWidth,
   onToggleSecretSelect,
   isSelected
@@ -53,8 +59,9 @@ export const SecretOverviewTableRow = ({
     <>
       <Tr isHoverable isSelectable onClick={() => setIsFormExpanded.toggle()} className="group">
         <Td
-          className={`sticky left-0 z-10 bg-mineshaft-800 bg-clip-padding py-0 px-0 group-hover:bg-mineshaft-700 ${isFormExpanded && "border-t-2 border-mineshaft-500"
-            }`}
+          className={`sticky left-0 z-10 bg-mineshaft-800 bg-clip-padding py-0 px-0 group-hover:bg-mineshaft-700 ${
+            isFormExpanded && "border-t-2 border-mineshaft-500"
+          }`}
         >
           <div className="h-full w-full border-r border-mineshaft-600 py-2.5 px-5">
             <div className="flex items-center space-x-5">
@@ -107,8 +114,8 @@ export const SecretOverviewTableRow = ({
                         isSecretPresent
                           ? "Present secret"
                           : isSecretImported
-                            ? "Imported secret"
-                            : "Missing secret"
+                          ? "Imported secret"
+                          : "Missing secret"
                       }
                     >
                       <FontAwesomeIcon
@@ -132,8 +139,9 @@ export const SecretOverviewTableRow = ({
         <Tr>
           <Td
             colSpan={totalCols}
-            className={`bg-bunker-600 px-0 py-0 ${isFormExpanded && "border-b-2 border-mineshaft-500"
-              }`}
+            className={`bg-bunker-600 px-0 py-0 ${
+              isFormExpanded && "border-b-2 border-mineshaft-500"
+            }`}
           >
             <div
               className="ml-2 p-2"
@@ -179,6 +187,7 @@ export const SecretOverviewTableRow = ({
                       const isCreatable = !secret;
 
                       const isImportedSecret = isImportedSecretPresentInEnv(slug, secretKey);
+                      const importedSecret = getImportedSecretByKey(slug, secretKey);
 
                       return (
                         <tr
@@ -189,8 +198,15 @@ export const SecretOverviewTableRow = ({
                             className="flex h-full items-center"
                             style={{ padding: "0.25rem 1rem" }}
                           >
-                            <div title={name} className="flex h-8 w-[8rem] items-center ">
+                            <div title={name} className="flex h-8 w-[8rem] items-center space-x-2 ">
                               <span className="truncate">{name}</span>
+                              {isImportedSecret && (
+                                <Tooltip
+                                  content={`Imported secret from the '${importedSecret?.environmentInfo?.name}' environment`}
+                                >
+                                  <FontAwesomeIcon icon={faFileImport} />
+                                </Tooltip>
+                              )}
                             </div>
                           </td>
                           <td className="col-span-2 h-8 w-full">
@@ -198,7 +214,7 @@ export const SecretOverviewTableRow = ({
                               secretPath={secretPath}
                               isVisible={isSecretVisible}
                               secretName={secretKey}
-                              defaultValue={secret?.value}
+                              defaultValue={secret?.value || importedSecret?.secret?.value}
                               secretId={secret?.id}
                               isImportedSecret={isImportedSecret}
                               isCreatable={isCreatable}
