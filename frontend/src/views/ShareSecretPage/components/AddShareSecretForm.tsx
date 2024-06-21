@@ -11,7 +11,6 @@ import {
   FormControl,
   Input,
   ModalClose,
-  SecretInput,
   Select,
   SelectItem
 } from "@app/components/v2";
@@ -125,7 +124,7 @@ export const AddShareSecretForm = ({
   };
   return (
     <form className="flex w-full flex-col items-center" onSubmit={handleSubmit(onFormSubmit)}>
-      <div className={`${!inModal && "border border-mineshaft-600 bg-mineshaft-800 p-4"}`}>
+      <div className={`${!inModal && "border border-mineshaft-600 bg-mineshaft-800 rounded-md p-6"}`}>
         <div className="mb-4">
           <Controller
             control={control}
@@ -137,25 +136,25 @@ export const AddShareSecretForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <SecretInput
-                  isVisible
+                <textarea
+                  placeholder="Enter sensitive data to share via an encrypted link..."
                   {...field}
-                  containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2 text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 min-h-[70px]"
+                  className="py-1.5 w-full h-40 placeholder:text-mineshaft-400 rounded-md transition-all group-hover:mr-2 text-bunker-300 hover:border-primary-400/30 focus:border-primary-400/50 outline-none border border-mineshaft-600 bg-mineshaft-900 px-2 min-h-[70px]"
                 />
               </FormControl>
             )}
           />
         </div>
         <div className="flex w-full flex-row justify-center">
-          <div className="w-2/7 flex">
+          <div className="hidden sm:block sm:w-2/6 flex">
             <Controller
               control={control}
               name="expiresAfterViews"
-              defaultValue={6}
+              defaultValue={1}
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   className="mb-4 w-full"
-                  label="Expires After Views"
+                  label="Expires after Views"
                   isError={Boolean(error)}
                   errorText="Please enter a valid number of views"
                 >
@@ -164,16 +163,16 @@ export const AddShareSecretForm = ({
               )}
             />
           </div>
-          <div className="w-1/7 flex items-center justify-center px-2">
+          <div className="hidden sm:flex sm:w-1/7 items-center justify-center px-2 mx-auto">
             <p className="px-4 text-sm text-gray-400">OR</p>
           </div>
-          <div className="w-4/7 flex">
-            <div className="flex w-full">
-              <div className="flex w-2/5 w-full justify-center">
+          <div className="w-full sm:w-3/6 flex justify-end">
+            <div className="flex justify-start">
+              <div className="flex w-full pr-2 justify-center">
                 <Controller
                   control={control}
                   name="expiresInValue"
-                  defaultValue={6}
+                  defaultValue={10}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="Expires after Time"
@@ -185,7 +184,7 @@ export const AddShareSecretForm = ({
                   )}
                 />
               </div>
-              <div className="flex w-3/5 w-full justify-center">
+              <div className="flex justify-center">
                 <Controller
                   control={control}
                   name="expiresInUnit"
@@ -196,7 +195,7 @@ export const AddShareSecretForm = ({
                         defaultValue={field.value}
                         {...field}
                         onValueChange={(e) => onChange(e)}
-                        className="w-full"
+                        className="w-full border border-mineshaft-600"
                       >
                         {expirationUnitsAndActions.map(({ unit }) => (
                           <SelectItem value={unit} key={unit}>
@@ -211,7 +210,7 @@ export const AddShareSecretForm = ({
             </div>
           </div>
         </div>
-        <div className={`flex items-center ${!inModal && "justify-left pt-1"}`}>
+        <div className={`flex items-center ${!inModal && "justify-left pt-2"}`}>
           <Button className="mr-4" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
             {inModal ? "Create" : "Share Secret"}
           </Button>
