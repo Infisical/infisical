@@ -226,15 +226,15 @@ export const AdminDashboardPage = () => {
                           dropdownContainerClassName="bg-mineshaft-800"
                           defaultValue={field.value ?? " "}
                           onValueChange={(e) => {
-                            if (e === " ") {
-                              onChange(null);
-                            } else {
-                              onChange(e);
+                            if (e === "EMPTY") {
+                              onChange("");
+                              return;
                             }
+                            onChange(e);
                           }}
                           {...field}
                         >
-                          <SelectItem value=" ">Select organization...</SelectItem>
+                          <SelectItem value="EMPTY">Select organization...</SelectItem>
                           {organizations.data?.map((org) => (
                             <SelectItem key={org.id} value={org.id}>
                               {org.name}

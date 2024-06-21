@@ -26,11 +26,9 @@ export const superAdminDALFactory = (db: TDbClient) => {
   };
 
   const updateById = async (id: string, data: TSuperAdminUpdate, tx?: Knex) => {
-    const updatedConfig = await superAdminOrm.transaction(async (trx) => {
-      await superAdminOrm.updateById(id, data, tx || trx);
-      const config = await findById(id, tx || trx);
-
-      return config;
+    const updatedConfig = await (superAdminOrm || tx).transaction(async (trx: Knex) => {
+      await superAdminOrm.updateById(id, data, trx);
+      return findById(id, trx);
     });
 
     return updatedConfig;
