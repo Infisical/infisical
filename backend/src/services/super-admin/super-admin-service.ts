@@ -47,9 +47,11 @@ export const superAdminServiceFactory = ({
       if (!config) {
         const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
 
-        if (serverCfg) {
-          await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
+        if (!serverCfg) {
+          throw new BadRequestError({ name: "Admin config", message: "Admin config not found" });
         }
+
+        await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
         return serverCfg;
       }
 
@@ -67,8 +69,13 @@ export const superAdminServiceFactory = ({
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (serverCfg) return;
 
-    // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-    const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true, id: ADMIN_CONFIG_DB_UUID });
+    const newCfg = await serverCfgDAL.create({
+      // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+      id: ADMIN_CONFIG_DB_UUID,
+      initialized: false,
+      allowSignUp: true,
+      defaultAuthOrgId: null
+    });
     return newCfg;
   };
 
@@ -76,6 +83,7 @@ export const superAdminServiceFactory = ({
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, data);
 
     await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
+
     return updatedServerCfg;
   };
 
