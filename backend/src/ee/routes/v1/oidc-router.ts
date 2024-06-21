@@ -60,44 +60,50 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         callbackPort: z.string().trim().optional()
       })
     },
-    handler: async (req, res) => {
-      const { orgSlug, callbackPort } = req.query;
+    preValidation: [
+      async (req, res) => {
+        const { orgSlug, callbackPort } = req.query;
 
-      // ensure fresh session state per login attempt
-      await req.session.regenerate();
+        // ensure fresh session state per login attempt
+        await req.session.regenerate();
 
-      req.session.set<any>("oidcOrgSlug", orgSlug);
+        req.session.set<any>("oidcOrgSlug", orgSlug);
 
-      if (callbackPort) {
-        req.session.set<any>("callbackPort", callbackPort);
+        if (callbackPort) {
+          req.session.set<any>("callbackPort", callbackPort);
+        }
+
+        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(orgSlug, callbackPort);
+        return (
+          passport.authenticate(oidcStrategy as Strategy, {
+            scope: "profile email openid"
+          }) as any
+        )(req, res);
       }
-
-      const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(orgSlug, callbackPort);
-      (
-        passport.authenticate(oidcStrategy as Strategy, {
-          scope: "profile email openid"
-        }) as any
-      )(req, res);
-    }
+    ],
+    handler: () => {}
   });
 
   // callback route after login from IDP
   server.route({
     url: "/callback",
     method: "GET",
+    preValidation: [
+      async (req, res) => {
+        const oidcOrgSlug = req.session.get<any>("oidcOrgSlug");
+        const callbackPort = req.session.get<any>("callbackPort");
+        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(oidcOrgSlug, callbackPort);
+
+        return (
+          passport.authenticate(oidcStrategy as Strategy, {
+            failureRedirect: "/api/v1/sso/oidc/login/error",
+            session: false,
+            failureMessage: true
+          }) as any
+        )(req, res);
+      }
+    ],
     handler: async (req, res) => {
-      const oidcOrgSlug = req.session.get<any>("oidcOrgSlug");
-      const callbackPort = req.session.get<any>("callbackPort");
-      const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(oidcOrgSlug, callbackPort);
-
-      await (
-        passport.authenticate(oidcStrategy as Strategy, {
-          failureRedirect: "/api/v1/sso/oidc/login/error",
-          session: false,
-          failureMessage: true
-        }) as any
-      )(req, res);
-
       await req.session.destroy();
 
       if (req.passportUser.isUserCompleted) {
