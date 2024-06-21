@@ -12,10 +12,10 @@ description: "Learn how to configure OIDC for Infisical SSO with any OIDC-compli
 
 You can configure your organization in Infisical to have members authenticate with the platform through identity providers via [OpenID Connect](https://openid.net/specs/openid-connect-core-1_0.html).
 
-**Prerequisites:**
+Prerequisites:
 
 - The identity provider (Okta, Google, Azure AD, etc.) should support OIDC.
-- Users in the IdP should have a configured email and given_name.
+- Users in the IdP should have a configured `email` and `given_name`.
 
 <Steps>
    <Step title="Setup Identity Provider">
@@ -32,15 +32,21 @@ You can configure your organization in Infisical to have members authenticate wi
       ![OIDC general manage org Infisical](../../../images/sso/general-oidc/org-oidc-manage.png)
 
       2.2. You can configure OIDC either through the Discovery URL (Recommended) or by inputting custom endpoints.
-      - If you want to configure via Discovery URL, you will have to use the URL with the following format: `https://<idp-domain>/.well-known/openid-configuration` as input for the **Discovery Document URL** field.
+
+      To configure OIDC via Discovery URL, set the **Configuration Type** field to **Discovery URL** and fill out the **Discovery Document URL** field.
+
+      <Note>
+      Note that the Discovery Document URL typically takes the form: `https://<idp-domain>/.well-known/openid-configuration`.
+      </Note>
+
       ![OIDC general discovery config](../../../images/sso/general-oidc/discovery-oidc-form.png)
 
-      - If you want to configure via the Custom option, you will have to define values for all the required endpoints.
+      To configure OIDC via the custom endpoints, set the **Configuration Type** field to **Custom** and input the required endpoint fields.
       ![OIDC general custom config](../../../images/sso/general-oidc/custom-oidc-form.png)
 
       2.3. Optionally, you can define a whitelist of allowed email domains.
 
-      Fill up the **Client ID** and **Client Secret** fields and press **Update** to complete the required configuration.
+      Finally, fill out the **Client ID** and **Client Secret** fields and press **Update** to complete the required configuration.
 
        </Step>
 
