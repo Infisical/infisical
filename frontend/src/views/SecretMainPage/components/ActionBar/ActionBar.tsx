@@ -47,7 +47,7 @@ import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from 
 import { interpolateSecrets } from "@app/helpers/secret";
 import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch, useGetUserWsKey } from "@app/hooks/api";
-import { DecryptedSecret, TImportedSecrets, WsTag } from "@app/hooks/api/types";
+import { DecryptedSecret, SecretType, TImportedSecrets, WsTag } from "@app/hooks/api/types";
 import { debounce } from "@app/lib/fn/debounce";
 
 import {
@@ -211,7 +211,7 @@ export const ActionBar = ({
         secretPath,
         workspaceId,
         environment,
-        secrets: bulkDeletedSecrets.map(({ key }) => ({ secretName: key, type: "shared" }))
+        secrets: bulkDeletedSecrets.map(({ key }) => ({ secretName: key, type: SecretType.Shared }))
       });
       resetSelectedSecret();
       handlePopUpClose("bulkDeleteSecrets");

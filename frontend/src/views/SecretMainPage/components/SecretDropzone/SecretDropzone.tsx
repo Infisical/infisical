@@ -16,7 +16,7 @@ import { usePopUp, useToggle } from "@app/hooks";
 import { useCreateSecretBatch, useUpdateSecretBatch } from "@app/hooks/api";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { DecryptedSecret, UserWsKeyPair } from "@app/hooks/api/types";
+import { DecryptedSecret, SecretType, UserWsKeyPair } from "@app/hooks/api/types";
 
 import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
 import { CopySecretsFromBoard } from "./CopySecretsFromBoard";
@@ -170,7 +170,7 @@ export const SecretDropzone = ({
           workspaceId,
           environment,
           secrets: Object.entries(create).map(([secretName, secData]) => ({
-            type: "shared",
+            type: SecretType.Shared,
             secretComment: secData.comments.join("\n"),
             secretValue: secData.value,
             secretName
@@ -184,7 +184,7 @@ export const SecretDropzone = ({
           workspaceId,
           environment,
           secrets: Object.entries(update).map(([secretName, secData]) => ({
-            type: "shared",
+            type: SecretType.Shared,
             secretComment: secData.comments.join("\n"),
             secretValue: secData.value,
             secretName

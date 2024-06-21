@@ -18,7 +18,7 @@ import {
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useGetUserWsKey, useUpdateSecretV3 } from "@app/hooks/api";
-import { DecryptedSecret } from "@app/hooks/api/types";
+import { DecryptedSecret, SecretType } from "@app/hooks/api/types";
 import { SecretActionType } from "@app/views/SecretMainPage/components/SecretListView/SecretListView.utils";
 
 type Props = {
@@ -37,7 +37,6 @@ type TFormSchema = z.infer<typeof formSchema>;
 function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }: Props) {
   const { currentWorkspace } = useWorkspace();
   const { permission } = useProjectPermission();
-  
 
   const secrets = environments.map((env) => getSecretByKey(env.slug, secretKey));
 
@@ -113,7 +112,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
           secretName: secret.key,
           secretId: secret.id,
           secretValue: secret.value || "",
-          type: "shared",
+          type: SecretType.Shared,
           latestFileKey: decryptFileKey!,
           tags: secret.tags.map((tag) => tag.id),
           secretComment: secret.comment,

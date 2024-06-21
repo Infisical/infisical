@@ -7,7 +7,7 @@ import {
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 
-import { DecryptedSecret } from "../secrets/types";
+import { DecryptedSecret, SecretType } from "../secrets/types";
 import {
   TGetSecretSnapshotsDTO,
   TSecretRollbackDTO,
@@ -112,7 +112,7 @@ export const useGetSnapshotSecrets = ({ decryptFileKey, snapshotId }: TSnapshotD
           version: encSecret.version
         };
 
-        if (encSecret.type === "personal") {
+        if (encSecret.type === SecretType.Personal) {
           personalSecrets[decryptedSecret.key] = { id: encSecret.secretId, value: secretValue };
         } else {
           sharedSecrets.push(decryptedSecret);
