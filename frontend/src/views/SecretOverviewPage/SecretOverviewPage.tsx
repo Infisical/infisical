@@ -188,7 +188,7 @@ export const SecretOverviewPage = () => {
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
 
-  const { isImportedSecretPresentInEnv } = useGetImportedSecretsAllEnvs({
+  const { isImportedSecretPresentInEnv, getImportedSecretByKey } = useGetImportedSecretsAllEnvs({
     projectId: workspaceId,
     decryptFileKey: latestFileKey!,
     path: secretPath,
@@ -807,6 +807,7 @@ export const SecretOverviewPage = () => {
                       isSelected={selectedEntries.secret[key]}
                       onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
                       secretPath={secretPath}
+                      getImportedSecretByKey={getImportedSecretByKey}
                       isImportedSecretPresentInEnv={isImportedSecretPresentInEnv}
                       onSecretCreate={handleSecretCreate}
                       onSecretDelete={handleSecretDelete}
