@@ -13,7 +13,7 @@ import { twMerge } from "tailwind-merge";
 
 import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
-import { DecryptedSecret } from "@app/hooks/api/secrets/types";
+import { DecryptedSecret, SecretType } from "@app/hooks/api/secrets/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 
 import { SecretEditRow } from "./SecretEditRow";
@@ -28,7 +28,13 @@ type Props = {
   onToggleSecretSelect: (key: string) => void;
   getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
+  onSecretUpdate: (
+    env: string,
+    key: string,
+    value: string,
+    type?: SecretType,
+    secretId?: string
+  ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
   getImportedSecretByKey: (
@@ -214,8 +220,13 @@ export const SecretOverviewTableRow = ({
                               secretPath={secretPath}
                               isVisible={isSecretVisible}
                               secretName={secretKey}
-                              defaultValue={secret?.value || importedSecret?.secret?.value}
+                              defaultValue={
+                                secret?.valueOverride ||
+                                secret?.value ||
+                                importedSecret?.secret?.value
+                              }
                               secretId={secret?.id}
+                              isOverride={Boolean(secret?.valueOverride)}
                               isImportedSecret={isImportedSecret}
                               isCreatable={isCreatable}
                               onSecretDelete={onSecretDelete}
