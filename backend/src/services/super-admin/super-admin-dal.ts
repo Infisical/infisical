@@ -19,9 +19,13 @@ export const superAdminDALFactory = (db: TDbClient) => {
       )
       .first();
 
+    if (!config) {
+      return null;
+    }
+
     return {
-      defaultAuthOrgSlug: config?.defaultAuthOrgSlug || null,
-      ...config
+      ...config,
+      defaultAuthOrgSlug: config?.defaultAuthOrgSlug || null
     } as TSuperAdmin & { defaultAuthOrgSlug: string | null };
   };
 
