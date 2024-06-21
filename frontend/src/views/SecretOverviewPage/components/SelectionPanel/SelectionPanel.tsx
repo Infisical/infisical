@@ -13,7 +13,12 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useDeleteSecretBatch } from "@app/hooks/api";
-import { DecryptedSecret, TDeleteSecretBatchDTO, TSecretFolder } from "@app/hooks/api/types";
+import {
+  DecryptedSecret,
+  SecretType,
+  TDeleteSecretBatchDTO,
+  TSecretFolder
+} from "@app/hooks/api/types";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -100,7 +105,7 @@ export const SelectionPanel = ({
               ...accum,
               {
                 secretName: entry.key,
-                type: "shared" as "shared"
+                type: SecretType.Shared
               }
             ];
           }

@@ -15,7 +15,7 @@ const replaceContentWithDot = (str: string) => {
 };
 
 const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?: boolean) => {
-  if (isImport) return "IMPORTED";
+  if (isImport && !content) return "IMPORTED";
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
   if (!isVisible) return replaceContentWithDot(content);

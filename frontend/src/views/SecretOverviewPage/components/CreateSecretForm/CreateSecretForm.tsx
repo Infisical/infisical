@@ -18,7 +18,7 @@ import {
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { useWorkspace } from "@app/context";
 import { useCreateFolder, useCreateSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
-import { DecryptedSecret, UserWsKeyPair } from "@app/hooks/api/types";
+import { DecryptedSecret, SecretType, UserWsKeyPair } from "@app/hooks/api/types";
 
 const typeSchema = z
   .object({
@@ -103,7 +103,7 @@ export const CreateSecretForm = ({
           secretPath,
           secretName: key,
           secretValue: value || "",
-          type: "shared",
+          type: SecretType.Shared,
           latestFileKey: decryptFileKey
         });
       }
@@ -115,7 +115,7 @@ export const CreateSecretForm = ({
         secretName: key,
         secretValue: value || "",
         secretComment: "",
-        type: "shared",
+        type: SecretType.Shared,
         latestFileKey: decryptFileKey
       });
     });

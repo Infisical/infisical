@@ -6,6 +6,8 @@ import { faUpload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { parseDocument, Scalar, YAMLMap } from "yaml";
 
+import { SecretType } from "@app/hooks/api/types";
+
 import Button from "../basic/buttons/Button";
 import Error from "../basic/Error";
 import { createNotification } from "../notifications";
@@ -33,7 +35,6 @@ const DropZone = ({
   numCurrentRows
 }: DropZoneProps) => {
   const { t } = useTranslation();
-  
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault();
@@ -66,7 +67,7 @@ const DropZone = ({
           key,
           value: keyPairs[key as keyof typeof keyPairs].value,
           comment: keyPairs[key as keyof typeof keyPairs].comments.join("\n"),
-          type: "shared",
+          type: SecretType.Shared,
           tags: []
         }));
         break;
@@ -79,7 +80,7 @@ const DropZone = ({
           key,
           value: keyPairs[key as keyof typeof keyPairs],
           comment: "",
-          type: "shared",
+          type: SecretType.Shared,
           tags: []
         }));
         break;
@@ -102,7 +103,7 @@ const DropZone = ({
             key,
             value: keyPairs[key as keyof typeof keyPairs]?.toString() ?? "",
             comment,
-            type: "shared",
+            type: SecretType.Shared,
             tags: []
           };
         });
@@ -132,7 +133,7 @@ const DropZone = ({
     if (file === undefined) {
       createNotification({
         text: "You can't inject files from VS Code. Click 'Reveal in finder', and drag your file directly from the directory where it's located.",
-        type: "error",
+        type: "error"
       });
       setLoading(false);
       return;

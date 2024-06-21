@@ -10,24 +10,33 @@ import { IconButton, Tooltip } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
+import { SecretType } from "@app/hooks/api/types";
 
 type Props = {
   defaultValue?: string | null;
   secretName: string;
   secretId?: string;
+  isOverride?: boolean;
   isCreatable?: boolean;
   isVisible?: boolean;
   isImportedSecret: boolean;
   environment: string;
   secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
+  onSecretUpdate: (
+    env: string,
+    key: string,
+    value: string,
+    type?: SecretType,
+    secretId?: string
+  ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
 };
 
 export const SecretEditRow = ({
   defaultValue,
   isCreatable,
+  isOverride,
   isImportedSecret,
   onSecretUpdate,
   secretName,
@@ -73,7 +82,13 @@ export const SecretEditRow = ({
       if (isCreatable) {
         await onSecretCreate(environment, secretName, value);
       } else {
-        await onSecretUpdate(environment, secretName, value, secretId);
+        await onSecretUpdate(
+          environment,
+          secretName,
+          value,
+          isOverride ? SecretType.Personal : SecretType.Shared,
+          secretId
+        );
       }
     }
     reset({ value });
@@ -93,12 +108,13 @@ export const SecretEditRow = ({
     <div className="group flex w-full cursor-text items-center space-x-2">
       <div className="flex-grow border-r border-r-mineshaft-600 pr-2 pl-1">
         <Controller
-          disabled={isImportedSecret}
+          disabled={isImportedSecret && !defaultValue}
           control={control}
           name="value"
           render={({ field }) => (
             <InfisicalSecretInput
               {...field}
+              isReadOnly={isImportedSecret}
               value={field.value as string}
               key="secret-input"
               isVisible={isVisible}
