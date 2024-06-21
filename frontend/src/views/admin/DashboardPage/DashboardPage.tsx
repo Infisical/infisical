@@ -13,6 +13,7 @@ import {
   FormControl,
   Input,
   Select,
+  SelectClear,
   SelectItem,
   Switch,
   Tab,
@@ -68,7 +69,8 @@ export const AdminDashboardPage = () => {
     }
   });
 
-  const signupMode = watch("signUpMode");
+  const signUpMode = watch("signUpMode");
+  const defaultAuthOrgId = watch("defaultAuthOrgId");
 
   const { user, isLoading: isUserLoading } = useUser();
   const { orgs } = useOrganization();
@@ -90,14 +92,7 @@ export const AdminDashboardPage = () => {
 
   const onFormSubmit = async (formData: TDashboardForm) => {
     try {
-      const {
-        signUpMode,
-        allowedSignUpDomain,
-        trustSamlEmails,
-        trustLdapEmails,
-        trustOidcEmails,
-        defaultAuthOrgId
-      } = formData;
+      const { allowedSignUpDomain, trustSamlEmails, trustLdapEmails, trustOidcEmails } = formData;
 
       await updateServerConfig({
         defaultAuthOrgId: defaultAuthOrgId || null,
@@ -175,7 +170,7 @@ export const AdminDashboardPage = () => {
                     )}
                   />
                 </div>
-                {signupMode === "anyone" && (
+                {signUpMode === "anyone" && (
                   <div className="flex flex-col justify-start">
                     <div className="mb-4 text-xl font-semibold text-mineshaft-100">
                       Restrict signup by email domain(s)
@@ -222,19 +217,22 @@ export const AdminDashboardPage = () => {
                         isError={Boolean(error)}
                       >
                         <Select
+                          placeholder="Allow all organizations"
                           className="w-full bg-mineshaft-700"
                           dropdownContainerClassName="bg-mineshaft-800"
                           defaultValue={field.value ?? " "}
-                          onValueChange={(e) => {
-                            if (e === "EMPTY") {
-                              onChange("");
-                              return;
-                            }
-                            onChange(e);
-                          }}
+                          onValueChange={(e) => onChange(e)}
                           {...field}
                         >
-                          <SelectItem value="EMPTY">Select organization...</SelectItem>
+                          <SelectClear
+                            selectValue={defaultAuthOrgId}
+                            onClear={() => {
+                              console.log("clearing");
+                              onChange("");
+                            }}
+                          >
+                            Allow all organizations
+                          </SelectClear>
                           {organizations.data?.map((org) => (
                             <SelectItem key={org.id} value={org.id}>
                               {org.name}
