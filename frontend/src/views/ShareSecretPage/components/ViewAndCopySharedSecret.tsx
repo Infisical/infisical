@@ -15,9 +15,9 @@ export const ViewAndCopySharedSecret = ({
   copyUrlToClipboard: () => void;
 }) => {
   return (
-    <div className={`flex w-full justify-center ${!inModal ? "mx-auto max-w-[40rem]" : ""}`}>
-      <div className={`${!inModal ? "border border-mineshaft-600 bg-mineshaft-800 p-4" : ""}`}>
-        <div className="my-2 flex items-center justify-end rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+    <div className={`flex w-full justify-center px-6 ${!inModal ? "mx-auto max-w-2xl" : ""}`}>
+      <div className={`${!inModal ? "border border-mineshaft-600 bg-mineshaft-800 rounded-md p-4" : ""}`}>
+        <div className="my-2 flex items-center justify-end rounded-md border border-mineshaft-500 bg-mineshaft-700 p-2 text-base text-gray-400">
           <p className="mr-4 break-all">{newSharedSecret}</p>
           <IconButton
             ariaLabel="copy icon"
