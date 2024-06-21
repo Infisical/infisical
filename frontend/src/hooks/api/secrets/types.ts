@@ -1,11 +1,16 @@
 import type { UserWsKeyPair } from "../keys/types";
 import type { WsTag } from "../tags/types";
 
+export enum SecretType {
+  Shared = "shared",
+  Personal = "personal"
+}
+
 export type EncryptedSecret = {
   id: string;
   version: number;
   workspace: string;
-  type: "shared" | "personal";
+  type: SecretType;
   environment: string;
   secretKeyCiphertext: string;
   secretKeyIV: string;
@@ -49,7 +54,7 @@ export type EncryptedSecretVersion = {
   secretId: string;
   version: number;
   workspace: string;
-  type: string;
+  type: SecretType;
   isDeleted: boolean;
   envId: string;
   secretKeyCiphertext: string;
@@ -101,14 +106,14 @@ export type TCreateSecretsV3DTO = {
   secretPath: string;
   workspaceId: string;
   environment: string;
-  type: string;
+  type: SecretType;
 };
 
 export type TUpdateSecretsV3DTO = {
   latestFileKey: UserWsKeyPair;
   workspaceId: string;
   environment: string;
-  type: string;
+  type: SecretType;
   secretPath: string;
   skipMultilineEncoding?: boolean;
   newSecretName?: string;
@@ -124,7 +129,7 @@ export type TUpdateSecretsV3DTO = {
 export type TDeleteSecretsV3DTO = {
   workspaceId: string;
   environment: string;
-  type: "shared" | "personal";
+  type: SecretType;
   secretPath: string;
   secretName: string;
   secretId?: string;
@@ -140,7 +145,7 @@ export type TCreateSecretBatchDTO = {
     secretValue: string;
     secretComment: string;
     skipMultilineEncoding?: boolean;
-    type: "shared" | "personal";
+    type: SecretType;
     metadata?: {
       source?: string;
     };
@@ -153,7 +158,7 @@ export type TUpdateSecretBatchDTO = {
   secretPath: string;
   latestFileKey: UserWsKeyPair;
   secrets: Array<{
-    type: "shared" | "personal";
+    type: SecretType;
     secretName: string;
     skipMultilineEncoding?: boolean;
     secretValue: string;
@@ -168,14 +173,14 @@ export type TDeleteSecretBatchDTO = {
   secretPath: string;
   secrets: Array<{
     secretName: string;
-    type: "shared" | "personal";
+    type: SecretType;
   }>;
 };
 
 export type CreateSecretDTO = {
   workspaceId: string;
   environment: string;
-  type: "shared" | "personal";
+  type: SecretType;
   secretKey: string;
   secretKeyCiphertext: string;
   secretKeyIV: string;
