@@ -5,6 +5,7 @@ import { E2EESection } from "../E2EESection";
 import { EnvironmentSection } from "../EnvironmentSection";
 import { PointInTimeVersionLimitSection } from "../PointInTimeVersionLimitSection";
 import { ProjectNameChangeSection } from "../ProjectNameChangeSection";
+import { RebuildSecretIndicesSection } from "../RebuildSecretIndicesSection/RebuildSecretIndicesSection";
 import { SecretTagsSection } from "../SecretTagsSection";
 
 export const ProjectGeneralTab = () => {
@@ -17,6 +18,7 @@ export const ProjectGeneralTab = () => {
       <E2EESection />
       <PointInTimeVersionLimitSection />
       <BackfillSecretReferenceSecretion />
+      <RebuildSecretIndicesSection />
       <DeleteProjectSection />
     </div>
   );
