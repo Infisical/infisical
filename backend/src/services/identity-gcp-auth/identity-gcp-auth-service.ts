@@ -326,9 +326,9 @@ export const identityGcpAuthServiceFactory = ({
   }: TRevokeGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.GCP_AUTH)
       throw new BadRequestError({
-        message: "The identity does not have aws auth"
+        message: "The identity does not have gcp auth"
       });
     const { permission } = await permissionService.getOrgPermission(
       actor,
