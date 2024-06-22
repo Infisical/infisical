@@ -337,7 +337,7 @@ export const identityGcpAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
@@ -353,9 +353,9 @@ export const identityGcpAuthServiceFactory = ({
       });
 
     const revokedIdentityGcpAuth = await identityGcpAuthDAL.transaction(async (tx) => {
-      const deletedUniversalAuth = await identityGcpAuthDAL.delete({ identityId }, tx);
+      const deletedGcpAuth = await identityGcpAuthDAL.delete({ identityId }, tx);
       await identityDAL.updateById(identityId, { authMethod: null }, tx);
-      return { ...deletedUniversalAuth?.[0], orgId: identityMembershipOrg.orgId };
+      return { ...deletedGcpAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityGcpAuth;
   };

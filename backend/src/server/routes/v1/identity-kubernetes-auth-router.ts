@@ -286,7 +286,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     method: "DELETE",
     url: "/kubernetes-auth/identities/:identityId",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {

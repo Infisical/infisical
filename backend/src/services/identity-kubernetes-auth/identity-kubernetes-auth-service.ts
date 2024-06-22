@@ -555,7 +555,7 @@ export const identityKubernetesAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
@@ -571,9 +571,9 @@ export const identityKubernetesAuthServiceFactory = ({
       });
 
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
-      const deletedUniversalAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
+      const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
       await identityDAL.updateById(identityId, { authMethod: null }, tx);
-      return { ...deletedUniversalAuth?.[0], orgId: identityMembershipOrg.orgId };
+      return { ...deletedKubernetesAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityKubernetesAuth;
   };

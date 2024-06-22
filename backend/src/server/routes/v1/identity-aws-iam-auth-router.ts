@@ -271,7 +271,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     method: "DELETE",
     url: "/aws-auth/identities/:identityId",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {

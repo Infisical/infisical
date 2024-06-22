@@ -299,7 +299,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     method: "DELETE",
     url: "/universal-auth/identities/:identityId",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
@@ -450,7 +450,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/universal-auth/identities/:identityId/client-secrets/:clientSecretId",
     config: {
-      rateLimit: writeLimit
+      rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {

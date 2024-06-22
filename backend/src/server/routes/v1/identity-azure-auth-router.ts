@@ -265,7 +265,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     method: "DELETE",
     url: "/azure-auth/identities/:identityId",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {

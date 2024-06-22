@@ -323,7 +323,7 @@ export const identityAwsAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
@@ -339,9 +339,9 @@ export const identityAwsAuthServiceFactory = ({
       });
 
     const revokedIdentityAwsAuth = await identityAwsAuthDAL.transaction(async (tx) => {
-      const deletedUniversalAuth = await identityAwsAuthDAL.delete({ identityId }, tx);
+      const deletedAwsAuth = await identityAwsAuthDAL.delete({ identityId }, tx);
       await identityDAL.updateById(identityId, { authMethod: null }, tx);
-      return { ...deletedUniversalAuth?.[0], orgId: identityMembershipOrg.orgId };
+      return { ...deletedAwsAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityAwsAuth;
   };

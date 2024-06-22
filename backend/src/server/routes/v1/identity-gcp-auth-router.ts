@@ -271,7 +271,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     method: "DELETE",
     url: "/gcp-auth/identities/:identityId",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
