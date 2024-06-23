@@ -26,13 +26,6 @@ A typical workflow for using identities consists of four steps:
 3. Authenticating the identity with the Infisical API based on the configured authentication method on it and receiving a short-lived access token back.
 4. Authenticating subsequent requests with the Infisical API using the short-lived access token.
 
-<Note>
-  Currently, identities can only be used to make authenticated requests to the Infisical API, SDKs, Terraform, Kubernetes Operator, and Infisical Agent. They do not work with clients such as CLI, Ansible look up plugin, etc.
-
-Machine Identity support for the rest of the clients is planned to be released in the current quarter.
-
-</Note>
-
 ## Authentication Methods
 
 To interact with various resources in Infisical, Machine Identities are able to authenticate using:
