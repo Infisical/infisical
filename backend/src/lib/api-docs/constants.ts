@@ -347,6 +347,7 @@ export const RAW_SECRETS = {
     tagIds: "The ID of the tags to be attached to the created secret."
   },
   GET: {
+    expand: "Whether or not to expand secret references",
     secretName: "The name of the secret to get.",
     workspaceId: "The ID of the project to get the secret from.",
     workspaceSlug: "The slug of the project to get the secret from.",

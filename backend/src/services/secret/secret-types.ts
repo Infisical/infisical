@@ -151,6 +151,7 @@ export type TGetASecretRawDTO = {
   secretName: string;
   path: string;
   environment: string;
+  expandSecretReferences?: boolean;
   type: "shared" | "personal";
   includeImports?: boolean;
   version?: number;
