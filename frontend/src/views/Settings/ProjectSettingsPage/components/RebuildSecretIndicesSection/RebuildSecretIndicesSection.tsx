@@ -67,6 +67,11 @@ export const RebuildSecretIndicesSection = () => {
   };
 
   const isAdmin = membership.roles.includes(ProjectMembershipRole.Admin);
+
+  if (!isAdmin) {
+    return null;
+  }
+
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex w-full items-center justify-between">
