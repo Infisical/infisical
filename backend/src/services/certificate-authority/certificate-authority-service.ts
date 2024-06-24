@@ -776,7 +776,6 @@ export const certificateAuthorityServiceFactory = ({
           throw new Error(`Invalid altName: ${altName}`);
         });
 
-      console.log("the altNamesArray: ", altNamesArray);
       const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
       extensions.push(altNamesExtension);
     }
