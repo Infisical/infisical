@@ -25,7 +25,7 @@ type TSuperAdminServiceFactoryDep = {
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
 // eslint-disable-next-line
-export let getServerCfg: () => Promise<TSuperAdmin>;
+export let getServerCfg: () => Promise<TSuperAdmin & { defaultAuthOrgSlug: string | null }>;
 
 const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
 const ADMIN_CONFIG_KEY_EXP = 60; // 60s
@@ -42,16 +42,20 @@ export const superAdminServiceFactory = ({
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
     getServerCfg = async () => {
       const config = await keyStore.getItem(ADMIN_CONFIG_KEY);
+
       // missing in keystore means fetch from db
       if (!config) {
         const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-        if (serverCfg) {
-          await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
+
+        if (!serverCfg) {
+          throw new BadRequestError({ name: "Admin config", message: "Admin config not found" });
         }
+
+        await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
         return serverCfg;
       }
 
-      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin;
+      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin & { defaultAuthOrgSlug: string | null };
       return {
         ...keyStoreServerCfg,
         // this is to allow admin router to work
@@ -65,14 +69,21 @@ export const superAdminServiceFactory = ({
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (serverCfg) return;
 
-    // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-    const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true, id: ADMIN_CONFIG_DB_UUID });
+    const newCfg = await serverCfgDAL.create({
+      // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+      id: ADMIN_CONFIG_DB_UUID,
+      initialized: false,
+      allowSignUp: true,
+      defaultAuthOrgId: null
+    });
     return newCfg;
   };
 
   const updateServerCfg = async (data: TSuperAdminUpdate) => {
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, data);
+
     await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
+
     return updatedServerCfg;
   };
 

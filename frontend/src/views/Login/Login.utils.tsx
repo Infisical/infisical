@@ -1,5 +1,7 @@
-import { NextRouter } from "next/router";
+import { NextRouter, useRouter } from "next/router";
 
+import { useServerConfig } from "@app/context";
+import { useSelectOrganization } from "@app/hooks/api";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { userKeys } from "@app/hooks/api/users/queries";
 import { queryClient } from "@app/reactQuery";
@@ -27,14 +29,29 @@ export const navigateUserToOrg = async (router: NextRouter, organizationId?: str
   }
 };
 
-export const navigateUserToSelectOrg = (router: NextRouter, cliCallbackPort?: string) => {
-  queryClient.invalidateQueries(userKeys.getUser);
+export const useNavigateToSelectOrganization = () => {
+  const { config } = useServerConfig();
+  const selectOrganization = useSelectOrganization();
+  const router = useRouter();
 
-  let redirectTo = "/login/select-organization";
+  const navigate = async (cliCallbackPort?: string) => {
+    if (config.defaultAuthOrgId) {
+      await selectOrganization.mutateAsync({
+        organizationId: config.defaultAuthOrgId
+      });
 
-  if (cliCallbackPort) {
-    redirectTo += `?callback_port=${cliCallbackPort}`;
-  }
+      await navigateUserToOrg(router, config.defaultAuthOrgId);
+    }
 
-  router.push(redirectTo, undefined, { shallow: true });
+    queryClient.invalidateQueries(userKeys.getUser);
+    let redirectTo = "/login/select-organization";
+
+    if (cliCallbackPort) {
+      redirectTo += `?callback_port=${cliCallbackPort}`;
+    }
+
+    router.push(redirectTo, undefined, { shallow: true });
+  };
+
+  return { navigateToSelectOrganization: navigate };
 };

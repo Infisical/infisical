@@ -4,15 +4,19 @@ import { useRouter } from "next/router";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Input } from "@app/components/v2";
+import { useServerConfig } from "@app/context";
 import { loginLDAPRedirect } from "@app/hooks/api/auth/queries";
 
 export const LoginLDAP = () => {
   const router = useRouter();
+  const { config } = useServerConfig();
   const queryParams = new URLSearchParams(window.location.search);
   const passedOrgSlug = queryParams.get("organizationSlug");
   const passedUsername = queryParams.get("username");
 
-  const [organizationSlug, setOrganizationSlug] = useState(passedOrgSlug || "");
+  const [organizationSlug, setOrganizationSlug] = useState(
+    config.defaultAuthOrgSlug || passedOrgSlug || ""
+  );
   const [username, setUsername] = useState(passedUsername || "");
   const [password, setPassword] = useState("");
 
@@ -63,21 +67,22 @@ export const LoginLDAP = () => {
         What&apos;s your LDAP Login?
       </p>
       <form onSubmit={handleSubmission}>
-        <div className="relative mx-auto flex max-h-24 w-1/4 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-[22rem] lg:w-1/6">
-          <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
-            <Input
-              value={organizationSlug}
-              onChange={(e) => setOrganizationSlug(e.target.value)}
-              type="text"
-              placeholder="Enter your organization slug..."
-              isRequired
-              autoComplete="email"
-              id="email"
-              className="h-12"
-              isDisabled={passedOrgSlug !== null}
-            />
+        {!config.defaultAuthOrgSlug && !passedOrgSlug && (
+          <div className="relative mx-auto flex max-h-24 w-1/4 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-[22rem] lg:w-1/6">
+            <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
+              <Input
+                value={organizationSlug}
+                onChange={(e) => setOrganizationSlug(e.target.value)}
+                type="text"
+                placeholder="Enter your organization slug..."
+                isRequired
+                autoComplete="email"
+                id="email"
+                className="h-12"
+              />
+            </div>
           </div>
-        </div>
+        )}
         <div className="relative mx-auto mt-2 flex max-h-24 w-1/4 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-[22rem] lg:w-1/6">
           <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
             <Input
