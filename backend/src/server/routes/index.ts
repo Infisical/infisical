@@ -395,7 +395,9 @@ export const registerRoutes = async (
     userDAL,
     userAliasDAL,
     permissionService,
-    licenseService
+    licenseService,
+    tokenService,
+    smtpService
   });
 
   const telemetryService = telemetryServiceFactory({
