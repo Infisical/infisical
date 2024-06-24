@@ -9,7 +9,10 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-types";
-import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
+import {
+  validateAltNamesField,
+  validateCaDateField
+} from "@app/services/certificate-authority/certificate-authority-validators";
 
 export const registerCaRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -452,6 +455,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         .object({
           friendlyName: z.string().optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.friendlyName),
           commonName: z.string().trim().min(1).describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.commonName),
+          altNames: validateAltNamesField.describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.altNames),
           ttl: z
             .string()
             .refine((val) => ms(val) > 0, "TTL must be a positive number")
