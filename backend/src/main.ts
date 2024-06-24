@@ -15,7 +15,11 @@ const run = async () => {
   const appCfg = initEnvConfig(logger);
   const db = initDbConnection({
     dbConnectionUri: appCfg.DB_CONNECTION_URI,
-    dbRootCert: appCfg.DB_ROOT_CERT
+    dbRootCert: appCfg.DB_ROOT_CERT,
+    readReplicas: appCfg.DB_READ_REPLICAS?.map((el) => ({
+      dbRootCert: el.DB_ROOT_CERT,
+      dbConnectionUri: el.DB_CONNECTION_URI
+    }))
   });
 
   const smtp = smtpServiceFactory(formatSmtpConfig());

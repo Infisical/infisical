@@ -1,4 +1,4 @@
-import { Knex as KnexOriginal } from "knex";
+import { Knex } from "knex";
 
 import {
   TableName,
@@ -134,9 +134,6 @@ import {
   TLdapGroupMaps,
   TLdapGroupMapsInsert,
   TLdapGroupMapsUpdate,
-  TOidcConfigs,
-  TOidcConfigsInsert,
-  TOidcConfigsUpdate,
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
@@ -552,7 +549,6 @@ declare module "knex/types/tables" {
       TDynamicSecretLeasesUpdate
     >;
     [TableName.SamlConfig]: Knex.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
-    [TableName.OidcConfig]: Knex.CompositeTableType<TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate>;
     [TableName.LdapConfig]: Knex.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
     [TableName.LdapGroupMap]: Knex.CompositeTableType<TLdapGroupMaps, TLdapGroupMapsInsert, TLdapGroupMapsUpdate>;
     [TableName.OrgBot]: Knex.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;
@@ -593,14 +589,5 @@ declare module "knex/types/tables" {
     >;
     [TableName.KmsKey]: Knex.CompositeTableType<TKmsKeys, TKmsKeysInsert, TKmsKeysUpdate>;
     [TableName.KmsKeyVersion]: Knex.CompositeTableType<TKmsKeyVersions, TKmsKeyVersionsInsert, TKmsKeyVersionsUpdate>;
-  }
-}
-
-declare module "knex" {
-  namespace Knex {
-    interface QueryInterface {
-      primaryNode(): KnexOriginal;
-      replicaNode(): KnexOriginal;
-    }
   }
 }
