@@ -805,6 +805,8 @@ export const CERTIFICATE_AUTHORITIES = {
     caId: "The ID of the CA to issue the certificate from",
     friendlyName: "A friendly name for the certificate",
     commonName: "The common name (CN) for the certificate",
+    altNames:
+      "A comma-delimited list of Subject Alternative Names (SANs) for the certificate; these can be host names or email addresses.",
     ttl: "The time to live for the certificate such as 1m, 1h, 1d, 1y, ...",
     notBefore: "The date and time when the certificate becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
     notAfter: "The date and time when the certificate expires in YYYY-MM-DDTHH:mm:ss.sssZ format",

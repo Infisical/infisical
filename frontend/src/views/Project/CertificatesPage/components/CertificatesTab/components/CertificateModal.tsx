@@ -24,6 +24,7 @@ const schema = z.object({
   caId: z.string(),
   friendlyName: z.string(),
   commonName: z.string().trim().min(1),
+  altNames: z.string(),
   ttl: z.string().trim()
 });
 
@@ -71,6 +72,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         caId: cert.caId,
         friendlyName: cert.friendlyName,
         commonName: cert.commonName,
+        altNames: cert.altNames,
         ttl: ""
       });
     } else {
@@ -78,12 +80,13 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         caId: "",
         friendlyName: "",
         commonName: "",
+        altNames: "",
         ttl: ""
       });
     }
   }, [cert]);
 
-  const onFormSubmit = async ({ caId, friendlyName, commonName, ttl }: FormData) => {
+  const onFormSubmit = async ({ caId, friendlyName, commonName, altNames, ttl }: FormData) => {
     try {
       if (!currentWorkspace?.slug) return;
 
@@ -92,6 +95,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         caId,
         friendlyName,
         commonName,
+        altNames,
         ttl
       });
 
@@ -189,6 +193,24 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                   isRequired
                 >
                   <Input {...field} placeholder="service.acme.com" isDisabled={Boolean(cert)} />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue=""
+              name="altNames"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Alternative Names (SANs)"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input
+                    {...field}
+                    placeholder="app1.acme.com, app2.acme.com, ..."
+                    isDisabled={Boolean(cert)}
+                  />
                 </FormControl>
               )}
             />

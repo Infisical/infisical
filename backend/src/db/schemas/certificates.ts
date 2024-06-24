@@ -19,7 +19,8 @@ export const CertificatesSchema = z.object({
   notBefore: z.date(),
   notAfter: z.date(),
   revokedAt: z.date().nullable().optional(),
-  revocationReason: z.number().nullable().optional()
+  revocationReason: z.number().nullable().optional(),
+  altNames: z.string().default("").nullable().optional()
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

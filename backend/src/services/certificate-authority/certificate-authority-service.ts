@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import crypto, { KeyObject } from "crypto";
 import ms from "ms";
+import { z } from "zod";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -38,6 +39,7 @@ import {
   TSignIntermediateDTO,
   TUpdateCaDTO
 } from "./certificate-authority-types";
+import { hostnameRegex } from "./certificate-authority-validators";
 
 type TCertificateAuthorityServiceFactoryDep = {
   certificateAuthorityDAL: Pick<
@@ -653,6 +655,7 @@ export const certificateAuthorityServiceFactory = ({
     caId,
     friendlyName,
     commonName,
+    altNames,
     ttl,
     notBefore,
     notAfter,
@@ -738,6 +741,45 @@ export const certificateAuthorityServiceFactory = ({
       kmsService
     });
 
+    const extensions: x509.Extension[] = [
+      new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
+      new x509.BasicConstraintsExtension(false),
+      await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
+      await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
+    ];
+
+    if (altNames) {
+      const altNamesArray: {
+        type: "email" | "dns";
+        value: string;
+      }[] = altNames
+        .split(",")
+        .map((name) => name.trim())
+        .map((altName) => {
+          // check if the altName is a valid email
+          if (z.string().email().safeParse(altName).success) {
+            return {
+              type: "email",
+              value: altName
+            };
+          }
+
+          // check if the altName is a valid hostname
+          if (hostnameRegex.test(altName)) {
+            return {
+              type: "dns",
+              value: altName
+            };
+          }
+
+          // If altName is neither a valid email nor a valid hostname, throw an error or handle it accordingly
+          throw new Error(`Invalid altName: ${altName}`);
+        });
+
+      const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
+      extensions.push(altNamesExtension);
+    }
+
     const serialNumber = crypto.randomBytes(32).toString("hex");
     const leafCert = await x509.X509CertificateGenerator.create({
       serialNumber,
@@ -748,12 +790,7 @@ export const certificateAuthorityServiceFactory = ({
       signingKey: caPrivateKey,
       publicKey: csrObj.publicKey,
       signingAlgorithm: alg,
-      extensions: [
-        new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
-        new x509.BasicConstraintsExtension(false),
-        await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
-        await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
-      ]
+      extensions
     });
 
     const skLeafObj = KeyObject.from(leafKeys.privateKey);
@@ -771,6 +808,7 @@ export const certificateAuthorityServiceFactory = ({
           status: CertStatus.ACTIVE,
           friendlyName: friendlyName || commonName,
           commonName,
+          altNames,
           serialNumber,
           notBefore: notBeforeDate,
           notAfter: notAfterDate
