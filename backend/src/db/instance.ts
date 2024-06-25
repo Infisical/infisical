@@ -13,8 +13,12 @@ export const initDbConnection = ({
     dbRootCert?: string;
   }[];
 }) => {
-  let db: Knex;
-  let readReplicaDbs: Knex[];
+  // akhilmhdh: the default Knex is knex.Knex<any, any[]>. but when assigned with knex({<config>}) the value is knex.Knex<any, unknown[]>
+  // this was causing issue with files like `snapshot-dal` `findRecursivelySnapshots` this i am explicitly putting the any and unknown[]
+  // eslint-disable-next-line
+  let db: Knex<any, unknown[]>;
+  // eslint-disable-next-line
+  let readReplicaDbs: Knex<any, unknown[]>[];
   // @ts-expect-error the querybuilder type is expected but our intension is to return  a knex instance
   knex.QueryBuilder.extend("primaryNode", () => {
     return db;
