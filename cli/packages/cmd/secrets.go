@@ -73,6 +73,11 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		plainOutput, err := cmd.Flags().GetBool("plain")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		request := models.GetAllSecretsParameters{
 			Environment:   environmentName,
 			WorkspaceId:   projectId,
@@ -100,7 +105,6 @@ var secretsCmd = &cobra.Command{
 		}
 
 		if shouldExpandSecrets {
-
 			authParams := models.ExpandSecretsAuthentication{}
 			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 				authParams.InfisicalToken = token.Token
@@ -114,7 +118,14 @@ var secretsCmd = &cobra.Command{
 		// Sort the secrets by key so we can create a consistent output
 		secrets = util.SortSecretsByKeys(secrets)
 
-		visualize.PrintAllSecretDetails(secrets)
+		if plainOutput {
+			for _, secret := range secrets {
+				fmt.Println(secret.Value)
+			}
+		} else {
+			visualize.PrintAllSecretDetails(secrets)
+		}
+
 		Telemetry.CaptureEvent("cli-command:secrets", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 	},
 }
@@ -325,9 +336,20 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse recursive flag")
 	}
 
+	// deprecated, in favor of --plain
 	showOnlyValue, err := cmd.Flags().GetBool("raw-value")
 	if err != nil {
-		util.HandleError(err, "Unable to parse path flag")
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	plainOutput, err := cmd.Flags().GetBool("plain")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	includeImports, err := cmd.Flags().GetBool("include-imports")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
 	}
 
 	request := models.GetAllSecretsParameters{
@@ -335,7 +357,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		WorkspaceId:   projectId,
 		TagSlugs:      tagSlugs,
 		SecretsPath:   secretsPath,
-		IncludeImport: true,
+		IncludeImport: includeImports,
 		Recursive:     recursive,
 	}
 
@@ -377,15 +399,15 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if showOnlyValue && len(requestedSecrets) > 1 {
-		util.PrintErrorMessageAndExit("--raw-value only works with one secret.")
-	}
-
-	if showOnlyValue {
-		fmt.Printf(requestedSecrets[0].Value)
+	// showOnlyValue deprecated in favor of --plain, below only for backward compatibility
+	if plainOutput || showOnlyValue {
+		for _, secret := range requestedSecrets {
+			fmt.Println(secret.Value)
+		}
 	} else {
 		visualize.PrintAllSecretDetails(requestedSecrets)
 	}
+
 	Telemetry.CaptureEvent("cli-command:secrets get", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 }
 
@@ -639,11 +661,12 @@ func init() {
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
 	secretsGetCmd.Flags().String("projectId", "", "manually set the project ID to fetch secrets from when using machine identity based auth")
 	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
-	secretsGetCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
-	secretsGetCmd.Flags().Bool("raw-value", false, "Returns only the value of secret, only works with one secret")
+	secretsGetCmd.Flags().Bool("plain", false, "print values without formatting, one per line")
+	secretsGetCmd.Flags().Bool("raw-value", false, "deprecated. Returns only the value of secret, only works with one secret. Use --plain instead")
+	secretsGetCmd.Flags().Bool("include-imports", true, "Imported linked secrets ")
+	secretsGetCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets, and process your referenced secrets")
 	secretsGetCmd.Flags().Bool("recursive", false, "Fetch secrets from all sub-folders")
 	secretsCmd.AddCommand(secretsGetCmd)
-
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
 	secretsSetCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
@@ -687,10 +710,11 @@ func init() {
 	secretsCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
 	secretsCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets when using machine identity based auth")
 	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
-	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
+	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets, and process your referenced secrets")
 	secretsCmd.Flags().Bool("include-imports", true, "Imported linked secrets ")
 	secretsCmd.Flags().Bool("recursive", false, "Fetch secrets from all sub-folders")
 	secretsCmd.PersistentFlags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	secretsCmd.Flags().String("path", "/", "get secrets within a folder path")
+	secretsCmd.Flags().Bool("plain", false, "print values without formatting, one per line")
 	rootCmd.AddCommand(secretsCmd)
 }
