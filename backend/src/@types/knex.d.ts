@@ -597,7 +597,7 @@ declare module "knex/types/tables" {
       TDynamicSecretLeasesUpdate
     >;
     [TableName.SamlConfig]: KnexOriginal.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
-    [TableName.OidcConfig]: Knex.CompositeTableType<TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate>;
+    [TableName.OidcConfig]: KnexOriginal.CompositeTableType<TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate>;
     [TableName.LdapConfig]: KnexOriginal.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
     [TableName.LdapGroupMap]: KnexOriginal.CompositeTableType<
       TLdapGroupMaps,
