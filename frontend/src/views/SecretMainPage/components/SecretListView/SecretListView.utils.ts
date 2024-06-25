@@ -10,6 +10,7 @@ import {
   faCopy,
   faEllipsis,
   faKey,
+  faShare,
   faTags
 } from "@fortawesome/free-solid-svg-icons";
 import { z } from "zod";
@@ -66,7 +67,8 @@ export enum FontAwesomeSpriteName {
   Override = "secret-override",
   Close = "close",
   CheckedCircle = "check-circle",
-  ReplicatedSecretKey = "secret-replicated"
+  ReplicatedSecretKey = "secret-replicated",
+  ShareSecret = "share-secret"
 }
 
 // this is an optimization technique
@@ -82,5 +84,6 @@ export const FontAwesomeSpriteSymbols = [
   { icon: faCodeBranch, symbol: FontAwesomeSpriteName.Override },
   { icon: faClose, symbol: FontAwesomeSpriteName.Close },
   { icon: faCheckCircle, symbol: FontAwesomeSpriteName.CheckedCircle },
-  { icon: faClone, symbol: FontAwesomeSpriteName.ReplicatedSecretKey }
+  { icon: faClone, symbol: FontAwesomeSpriteName.ReplicatedSecretKey },
+  { icon: faShare, symbol: FontAwesomeSpriteName.ShareSecret }
 ];
